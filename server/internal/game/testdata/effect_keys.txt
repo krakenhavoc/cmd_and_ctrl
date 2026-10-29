@@ -1795,3 +1795,5 @@ confirm confirm/uncover-the-moon-letters-draw
 drawthen silvan-reveler/discard
 payunless pay-unless/graveyard-return-this-card-to-hand
 tail tail/eagles-are-coming-birds
+body head-of-the-hunt/wolf
+resume replacement-resume/move-reflexive

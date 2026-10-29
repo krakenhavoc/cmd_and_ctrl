@@ -869,6 +869,14 @@ type ReplacementEvent struct {
 	// (runMoveTailLocked). Unexported engine plumbing.
 	extraTurnsAfterMove []extraTurnInstruction
 
+	// reflexiveAfterMove is the list of CR 603.12 reflexive triggers a
+	// replacement declared as part of the modified move ("exile it
+	// instead. When you do, …", #4517), set only through
+	// QueueReflexiveTriggerAfterReplacedMoveForEffect. Each is created
+	// after the card has landed, if it landed where the replacement sent
+	// it (runMoveTailLocked). Unexported engine plumbing.
+	reflexiveAfterMove []reflexiveMoveInstruction
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. It is NOT a gate on the CR 903.9

@@ -2681,6 +2681,31 @@ question. Player and source are fixed when the replacement applies. The
 change still happens if a later replacement redirects or cancels the
 move (CR 614.6). A move paid as a cost settles it without asking.
 
+#### "Exile it instead. When you do, …" (ADR 0178 amendment 2026-10-29, #4517)
+
+A zone-change replacement that creates a reflexive trigger (Head of the
+Hunt) declares the trigger on the move, after rewriting the destination.
+Never trigger on the exile event: that would also fire when Rest in Peace
+did the exiling.
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.QueueReflexiveTriggerAfterReplacedMoveForEffect(ev, src, game.ReflexiveTrigger{
+        Label: "Head of the Hunt — create a 2/2 green Wolf creature token",
+        Body:  headOfTheHuntWolfBody, // a game.ReflexiveBody
+    })
+},
+```
+
+The trigger is created once the card has landed in the zone the
+replacement sent it to, under the replacement's controller, and goes on the
+stack the next time a player would receive priority. A later replacement
+that sends the card elsewhere or cancels the move means no trigger. Each
+replaced move makes its own trigger. A target clause goes on the
+`ReflexiveBody` registration; `Optional` and `Payload` are not supported.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and

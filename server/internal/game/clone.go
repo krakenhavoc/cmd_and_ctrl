@@ -1146,6 +1146,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// move, copied for the reason the life instructions are.
 			ev.extraTurnsAfterMove = append([]extraTurnInstruction(nil), f.ev.extraTurnsAfterMove...)
 		}
+		if len(f.ev.reflexiveAfterMove) > 0 {
+			// #4517: the reflexive triggers a replacement declared on
+			// this move, copied for the same reason.
+			ev.reflexiveAfterMove = append([]reflexiveMoveInstruction(nil), f.ev.reflexiveAfterMove...)
+		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather
 		// than the tail on the event, because the rest of what it
