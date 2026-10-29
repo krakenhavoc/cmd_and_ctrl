@@ -1905,6 +1905,7 @@ followUpParks[].then.permission.duration.SourceEpoch	number:int
 followUpParks[].then.permission.energyEqualToManaValue	bool
 followUpParks[].then.permission.entersTapped	bool
 followUpParks[].then.permission.exileInsteadOfGraveyard	bool
+followUpParks[].then.permission.exileInsteadOnlyInstantOrSorcery	bool
 followUpParks[].then.permission.exileOnResolution	bool
 followUpParks[].then.permission.exileOtherFromGraveyard	number:int
 followUpParks[].then.permission.faces	array
@@ -2475,6 +2476,7 @@ frozenEntries[].event.counterTail.then.permission.duration.SourceEpoch	number:in
 frozenEntries[].event.counterTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.counterTail.then.permission.entersTapped	bool
 frozenEntries[].event.counterTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.counterTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.counterTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.counterTail.then.permission.faces	array
@@ -3025,6 +3027,7 @@ frozenEntries[].event.damageTail.each.each.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.damageTail.each.each.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.each.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.each.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.each.each.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.each.each.permission.faces	array
@@ -3566,6 +3569,7 @@ frozenEntries[].event.damageTail.each.then.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.damageTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.then.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.each.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.each.then.permission.faces	array
@@ -4247,6 +4251,7 @@ frozenEntries[].event.damageTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.damageTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.then.permission.faces	array
@@ -4886,6 +4891,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.Sour
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.faces	array
@@ -5479,6 +5485,7 @@ frozenEntries[].event.entryTail.batch.then.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.batch.then.permission.faces	array
@@ -6020,6 +6027,7 @@ frozenEntries[].event.entryTail.keyed.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.entryTail.keyed.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.entersTapped	bool
 frozenEntries[].event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.keyed.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.keyed.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.keyed.permission.faces	array
@@ -6592,6 +6600,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.SourceE
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.faces	array
@@ -7153,6 +7162,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.duration.SourceEpoch	numb
 frozenEntries[].event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.tokens.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.faces	array
@@ -8100,6 +8110,7 @@ frozenEntries[].event.keywordActionTail.then.permission.duration.SourceEpoch	num
 frozenEntries[].event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.keywordActionTail.then.permission.entersTapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.keywordActionTail.then.permission.faces	array
@@ -8658,6 +8669,7 @@ frozenEntries[].event.lifeTail.each.then.permission.duration.SourceEpoch	number:
 frozenEntries[].event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileOnResolution	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.lifeTail.each.then.permission.faces	array
@@ -9202,6 +9214,7 @@ frozenEntries[].event.lifeTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.lifeTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.lifeTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.lifeTail.then.permission.faces	array
@@ -10513,6 +10526,7 @@ frozenEntries[].event.millTail.run.then.permission.duration.SourceEpoch	number:i
 frozenEntries[].event.millTail.run.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.run.then.permission.exileOnResolution	bool
 frozenEntries[].event.millTail.run.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.millTail.run.then.permission.faces	array
@@ -11052,6 +11066,7 @@ frozenEntries[].event.millTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.millTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.millTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.millTail.then.permission.faces	array
@@ -12434,6 +12449,7 @@ frozenEntries[].event.tokenTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.tokenTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.entersTapped	bool
 frozenEntries[].event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.tokenTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.tokenTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.tokenTail.then.permission.faces	array
@@ -13749,6 +13765,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEp
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.faces	array
@@ -14321,6 +14338,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.So
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.faces	array
@@ -14860,6 +14878,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.SourceEpoch	n
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.faces	array
@@ -15419,6 +15438,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.SourceEpoch
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.faces	array
@@ -16043,6 +16063,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.SourceEpoc
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.faces	array
@@ -20379,6 +20400,7 @@ pendingChoices[].attackSplit.tail.permission.duration.SourceEpoch	number:int
 pendingChoices[].attackSplit.tail.permission.energyEqualToManaValue	bool
 pendingChoices[].attackSplit.tail.permission.entersTapped	bool
 pendingChoices[].attackSplit.tail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].attackSplit.tail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].attackSplit.tail.permission.exileOnResolution	bool
 pendingChoices[].attackSplit.tail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].attackSplit.tail.permission.faces	array
@@ -22236,6 +22258,7 @@ pendingChoices[].diceRoll.then.permission.duration.SourceEpoch	number:int
 pendingChoices[].diceRoll.then.permission.energyEqualToManaValue	bool
 pendingChoices[].diceRoll.then.permission.entersTapped	bool
 pendingChoices[].diceRoll.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].diceRoll.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].diceRoll.then.permission.exileOnResolution	bool
 pendingChoices[].diceRoll.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].diceRoll.then.permission.faces	array
@@ -23092,6 +23115,7 @@ pendingChoices[].divideShield.walk.each.permission.duration.SourceEpoch	number:i
 pendingChoices[].divideShield.walk.each.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.each.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].divideShield.walk.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.each.permission.exileOnResolution	bool
 pendingChoices[].divideShield.walk.each.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].divideShield.walk.each.permission.faces	array
@@ -23633,6 +23657,7 @@ pendingChoices[].divideShield.walk.then.permission.duration.SourceEpoch	number:i
 pendingChoices[].divideShield.walk.then.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].divideShield.walk.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.then.permission.exileOnResolution	bool
 pendingChoices[].divideShield.walk.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].divideShield.walk.then.permission.faces	array
@@ -24180,6 +24205,7 @@ pendingChoices[].libraryOrder.then.permission.duration.SourceEpoch	number:int
 pendingChoices[].libraryOrder.then.permission.energyEqualToManaValue	bool
 pendingChoices[].libraryOrder.then.permission.entersTapped	bool
 pendingChoices[].libraryOrder.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].libraryOrder.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].libraryOrder.then.permission.exileOnResolution	bool
 pendingChoices[].libraryOrder.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].libraryOrder.then.permission.faces	array
@@ -24777,6 +24803,7 @@ pendingChoices[].nameThen.permission.duration.SourceEpoch	number:int
 pendingChoices[].nameThen.permission.energyEqualToManaValue	bool
 pendingChoices[].nameThen.permission.entersTapped	bool
 pendingChoices[].nameThen.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].nameThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].nameThen.permission.exileOnResolution	bool
 pendingChoices[].nameThen.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].nameThen.permission.faces	array
@@ -25756,6 +25783,7 @@ pendingChoices[].pickTail.permission.duration.SourceEpoch	number:int
 pendingChoices[].pickTail.permission.energyEqualToManaValue	bool
 pendingChoices[].pickTail.permission.entersTapped	bool
 pendingChoices[].pickTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].pickTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].pickTail.permission.exileOnResolution	bool
 pendingChoices[].pickTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].pickTail.permission.faces	array
@@ -26339,6 +26367,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.duration.So
 pendingChoices[].replacementResume.event.counterTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.faces	array
@@ -26889,6 +26918,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.faces	array
@@ -27430,6 +27460,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.faces	array
@@ -28111,6 +28142,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.duration.Sou
 pendingChoices[].replacementResume.event.damageTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.faces	array
@@ -28750,6 +28782,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.faces	array
@@ -29343,6 +29376,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duratio
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.faces	array
@@ -29884,6 +29918,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.Sou
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.faces	array
@@ -30456,6 +30491,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.faces	array
@@ -31017,6 +31053,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.durati
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.faces	array
@@ -31964,6 +32001,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.durat
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.faces	array
@@ -32522,6 +32560,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.faces	array
@@ -33066,6 +33105,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.Sourc
 pendingChoices[].replacementResume.event.lifeTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.faces	array
@@ -34377,6 +34417,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.S
 pendingChoices[].replacementResume.event.millTail.run.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.faces	array
@@ -34916,6 +34957,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.duration.Sourc
 pendingChoices[].replacementResume.event.millTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.faces	array
@@ -36298,6 +36340,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.Sour
 pendingChoices[].replacementResume.event.tokenTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.faces	array
@@ -37613,6 +37656,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.faces	array
@@ -38185,6 +38229,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.faces	array
@@ -38724,6 +38769,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.dur
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.faces	array
@@ -39283,6 +39329,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.d
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.faces	array
@@ -39907,6 +39954,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.faces	array
@@ -40860,6 +40908,7 @@ pendingChoices[].scryThen.permission.duration.SourceEpoch	number:int
 pendingChoices[].scryThen.permission.energyEqualToManaValue	bool
 pendingChoices[].scryThen.permission.entersTapped	bool
 pendingChoices[].scryThen.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].scryThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].scryThen.permission.exileOnResolution	bool
 pendingChoices[].scryThen.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].scryThen.permission.faces	array
@@ -41445,6 +41494,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.duration.SourceEpoch	numb
 pendingChoices[].searchPrompt.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileOnResolution	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.faces	array
@@ -45512,6 +45562,7 @@ seats[].castPermissions[].duration.SourceEpoch	number:int
 seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].entersTapped	bool
 seats[].castPermissions[].exileInsteadOfGraveyard	bool
+seats[].castPermissions[].exileInsteadOnlyInstantOrSorcery	bool
 seats[].castPermissions[].exileOnResolution	bool
 seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
