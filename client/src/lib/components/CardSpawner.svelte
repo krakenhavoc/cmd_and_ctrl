@@ -122,7 +122,10 @@
         : searchDevCards(q, ctrl.signal);
       find.then((r) => {
         if (ctrl.signal.aborted) return;
-        results = r;
+        // The list below is keyed by card id, and Svelte throws
+        // each_key_duplicate (blanking the table's UI) on a repeat. The
+        // server lists a card once, but a repeat is not worth a crash.
+        results = r.filter((c, i) => r.findIndex((o) => o.id === c.id) === i);
       });
     }, 200);
     return () => {
