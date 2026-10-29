@@ -1774,3 +1774,13 @@ tail cantankerous-keepers/after-mill
 choose choose-cards/vow-to-erebor-attach
 tail gandalf-shadows-foe/return-lands-tapped
 tail then/shuffle-then-draw-n
+choose choose-cards/hobbit-take-milled-into-hand
+run prompt-run/rhovanion-rampager-sacrifice
+run prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
+tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail silvan-rally/after-mill
+tail speak-secrets/after-mill
+body dain-ironfoot/attach-axe
+body thorin-mountain-king/damage
+tail dain-ironfoot/axe-created
