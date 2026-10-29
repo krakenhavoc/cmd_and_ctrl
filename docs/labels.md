@@ -190,6 +190,8 @@ registered, or when this file is stale.
 | `effectBadgePwEnter` | `Planeswalker arrived` | status | text | `lib/components/board/TableEffects.svelte` | the still badge for a planeswalker entering the battlefield |
 | `effectBadgePwLeave` | `Planeswalker gone` | status | text | `lib/components/board/TableEffects.svelte` | the still badge for a planeswalker that died |
 | `effectBadgeWipe` | `Board wipe: <N> permanent(s)` (starts with `Board wipe: `) | status | text | `lib/components/board/TableEffects.svelte` | the one still badge a board wipe leaves over the table (three or more permanents leaving in one batch from one source) |
+| `effectExtort` | `Extort` | status | text | `lib/components/board/ExtortScales.svelte` | the caption under the Scales of Souls, the table effect an extort drain plays (#4544); the whole scene is aria-hidden, the log and the life popups carry the news |
+| `effectExtortMany` | `Extort ×<N>` (starts with `Extort ×`) | status | text | `lib/components/board/ExtortScales.svelte` | the same caption when several extort triggers resolved in one scale's wait and were merged into it |
 | `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts`<br>`routes/Lobby.svelte` | the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |

@@ -238,6 +238,24 @@ describe("sounds", () => {
       expect(Object.keys(m.SOUND_MANIFEST)).not.toContain("face_hit");
     });
 
+    // #4544: extort has no file yet. It plays damage until extort-1.mp3 is
+    // added to the manifest, and then plays itself, with no other change.
+    it("plays damage when extort has no file, and itself once a take is listed", async () => {
+      const m = await load();
+      expect(m.SOUND_MANIFEST.extort).toEqual([]);
+      expect(m.SOUND_CATEGORY.extort).toBe("effects");
+      expect(m.SOUND_FALLBACK.extort).toBe("damage");
+      m.play("extort");
+      await settle();
+      expect(played().at(-1)?.src).toMatch(/damage-/);
+
+      tick();
+      m.SOUND_MANIFEST.extort = ["/sounds/extort-1.mp3"];
+      m.play("extort");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/extort-1.mp3");
+    });
+
     it("falls back to an existing sound when every take of a cue is missing", async () => {
       const m = await load();
       for (const u of m.SOUND_MANIFEST.your_turn) FakeAudio.broken.add(u);
