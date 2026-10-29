@@ -147,6 +147,17 @@ type CastTimingRule struct {
 	// text. Declaration-only, like Affects: a stored statement's
 	// clause is its `PlayerStatic.Label`.
 	Label string `json:"label,omitempty"`
+
+	// FirstCreatureSpellThisTurn narrows a DECLARATION to a caster who
+	// has cast no creature spell yet this turn: Radagast of Rhosgobel's
+	// "the first creature spell you cast each turn ... can be cast as
+	// though it had flash". It reads the per-turn cast tally, which is
+	// bumped only once a spell has been cast (CR 601.2i), so while the
+	// first creature spell is being begun the count is still zero and
+	// the second sees one. Pair it with Filter.CreatureOnly.
+	// Declaration-only: castTimingVerdictLocked reads it on the derived
+	// half, and a stored grant never carries it.
+	FirstCreatureSpellThisTurn bool `json:"firstCreatureSpellThisTurn,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -215,6 +226,7 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	// fact could disagree with itself.
 	rule.Affects = TimingAffectsYou
 	rule.Label = ""
+	rule.FirstCreatureSpellThisTurn = false
 	p.Statics = append(p.Statics, PlayerStatic{
 		Timing:   rule,
 		Source:   source,
@@ -311,6 +323,11 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		for _, t := range CatalogCastTimings(key) {
 			if !castTimingAffects(t.Affects, src.Controller, playerID) {
 				continue
+			}
+			if t.FirstCreatureSpellThisTurn {
+				if tally := g.CastTallyFor(playerID); tally.Total-tally.Noncreature != 0 {
+					continue
+				}
 			}
 			v.fold(t, card, zone)
 		}

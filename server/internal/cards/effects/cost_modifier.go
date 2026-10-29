@@ -571,6 +571,23 @@ func NoArtifactSpellCastYetThisTurn() CostPredicate {
 	}
 }
 
+// NoCreatureSpellCastYetThisTurn passes while the CASTER has cast no
+// creature spell this turn. With CreatureSpell() it is "the first
+// creature spell you cast each turn" (Shadow in the Warp, Radagast of
+// Rhosgobel).
+//
+// The tally is bumped after a spell is priced (OtherSpellsCastThisTurn
+// says why), so no creature spell so far means this one is the first.
+func NoCreatureSpellCastYetThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		if q.Game == nil {
+			return false
+		}
+		t := q.Game.CastTallyFor(q.Controller)
+		return t.Total-t.Noncreature == 0
+	}
+}
+
 // ArtifactInstantOrSorcerySpell passes on an artifact, instant or
 // sorcery spell — Urza, Lord Protector.
 func ArtifactInstantOrSorcerySpell() CostPredicate {

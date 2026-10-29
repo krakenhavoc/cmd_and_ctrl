@@ -54,6 +54,17 @@ func CastKindAsThoughFlash(filter game.PermissionFilter, label string) game.Cast
 	}
 }
 
+// CastFirstCreatureSpellAsThoughFlash is "The first creature spell you
+// cast each turn ... can be cast as though it had flash" — Radagast of
+// Rhosgobel. CastKindAsThoughFlash narrowed to creature spells and to a
+// caster who has cast no creature spell yet this turn
+// (CastTimingRule.FirstCreatureSpellThisTurn).
+func CastFirstCreatureSpellAsThoughFlash(label string) game.CastTimingRule {
+	rule := CastKindAsThoughFlash(game.PermissionFilter{CreatureOnly: true}, label)
+	rule.FirstCreatureSpellThisTurn = true
+	return rule
+}
+
 // OpponentsCastAtSorcerySpeed is "Each opponent can cast spells only
 // any time they could cast a sorcery" — Teferi, Time Raveler and
 // Teferi, Mage of Zhalfir.
