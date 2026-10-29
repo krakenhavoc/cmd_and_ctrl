@@ -35,22 +35,9 @@ func init() {
 		OracleID:     "b1cc49cd-5039-4c31-a895-4ebf869fc5e4",
 		Name:         "Minas Tirith Garrison",
 		Completeness: CompletenessFull,
-		Static: []game.StaticAbility{{
-			Label:             "Minas Tirith Garrison's power is equal to the number of cards in your hand.",
-			Layer:             game.Layer7PT,
-			SubLayer:          game.SubLayer7A_CDA,
-			DependsOnHandSize: true,
-			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
-					n = p.Hand.Size()
-				}
-				c.Power = n
-			},
-		}},
+		Static: []game.StaticAbility{
+			Labelled(powerIsCardsInYourHand(), "Minas Tirith Garrison's power is equal to the number of cards in your hand."),
+		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, ThisAttacked,
 				"Minas Tirith Garrison — you may tap any number of untapped Humans you control; draw a card for each",
