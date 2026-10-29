@@ -25,24 +25,7 @@ func init() {
 		Name:         "Colleen Wing, Street Samurai",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller {
-					return false
-				}
-				item := g.StackItemForEffect(ev.CardID)
-				if item == nil || item.Kind != game.StackItemSpell {
-					return false
-				}
-				for _, t := range item.Targets {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && c.Controller == source.Controller && onBattlefield(g, t.ID) {
-						return true
-					}
-				}
-				return false
-			}, "Colleen Wing, Street Samurai — a +1/+1 counter on her, then scry 1", Do(
+			On(game.EventCast, mshB4CastSpellTargetingYourCreature, "Colleen Wing, Street Samurai — a +1/+1 counter on her, then scry 1", Do(
 				Instruction(plusOneCounterOnSourceIfSameObject),
 				Scry{N: 1},
 			)),
