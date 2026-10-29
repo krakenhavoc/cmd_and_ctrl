@@ -61,13 +61,7 @@ func init() {
 				Modes: ChooseOne(
 					ModeDoing("Untap target land.",
 						TargetPermanent("target land", Land()),
-						func(_ *game.StackItem, ctx *Context, occ int) error {
-							t, ok := ModeTarget(ctx, occ)
-							if !ok {
-								return nil
-							}
-							return UntapTarget{Target: t.ID}.Apply(ctx)
-						}),
+						UntapTheModesTarget),
 					ModeDoing("Target creature can't block this turn.",
 						TargetCreature("target creature"),
 						func(_ *game.StackItem, ctx *Context, occ int) error {
