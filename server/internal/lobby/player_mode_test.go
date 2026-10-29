@@ -1057,6 +1057,11 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"POST /admin/users/{id}/revoke-sessions", []string{"route:POST /admin/users/{id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
+		// Ban sync (ADR 0156, amendment 2026-10-29): an unknown member, so
+		// admin mode answers "gate_off" or "no_account" and nothing is revoked.
+		{"POST /admin/discord-members/{discord_id}/revoke-sessions", []string{"route:POST /admin/discord-members/{discord_id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", "/admin/discord-members/123456789012345678/revoke-sessions", map[string]string{"reason": "left"})
+		}},
 		// Playmat moderation (ADR 0128 section 9).
 		{"DELETE /admin/users/{id}/playmat", []string{"route:DELETE /admin/users/{id}/playmat"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmat", nil)

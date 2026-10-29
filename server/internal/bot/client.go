@@ -393,6 +393,63 @@ func (c *ServerClient) ArchiveGame(ctx context.Context, id uuid.UUID) (lobby.Gam
 	return meta, nil
 }
 
+// Outcomes of the server's ban sync route (lobby.BanSync*).
+const (
+	BanSyncRevoked    = "revoked"
+	BanSyncNoAccount  = "no_account"
+	BanSyncExempt     = "exempt"
+	BanSyncGateOff    = "gate_off"
+	BanSyncAlreadyOut = "already_out"
+)
+
+// BanSyncResult is the answer of POST /admin/discord-members/{discord_id}/revoke-sessions.
+type BanSyncResult struct {
+	Outcome       string `json:"outcome"`
+	SocketsClosed int    `json:"sockets_closed"`
+}
+
+// RevokeDiscordMember calls POST /admin/discord-members/{discord_id}/revoke-sessions
+// with the cached admin session (re-logging in once on a 401): ban sync
+// (bansync.go). reason is "banned", "role_removed" or "left". The server
+// finds the account, skips who it must, revokes and logs; the result says
+// which.
+func (c *ServerClient) RevokeDiscordMember(ctx context.Context, discordID, reason string) (BanSyncResult, error) {
+	body, err := json.Marshal(map[string]string{"reason": reason})
+	if err != nil {
+		return BanSyncResult{}, err
+	}
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		u := c.baseURL + "/admin/discord-members/" + url.PathEscape(discordID) + "/revoke-sessions"
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return BanSyncResult{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return BanSyncResult{}, ErrUnauthorized
+	}
+	if resp.StatusCode != http.StatusOK {
+		return BanSyncResult{}, statusErr(resp)
+	}
+	var out BanSyncResult
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return BanSyncResult{}, fmt.Errorf("decode ban sync: %w", err)
+	}
+	return out, nil
+}
+
 // --- Deck coverage / deck requests (ADR 0095 §4, #1631) ---
 //
 // These types mirror the wire shapes documented in docs/lobby.md's

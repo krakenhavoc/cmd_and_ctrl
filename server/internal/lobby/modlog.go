@@ -243,6 +243,36 @@ func (m *ModLog) SessionsRevoked(p auth.Principal, userID uuid.UUID, name string
 	})
 }
 
+// DiscordRemoval logs ban sync (ban_sync.go) signing an account out
+// everywhere because the C2 server banned the person, took the player
+// role away, or saw them leave. name is the account's display name, ""
+// when it could not be read. Like SessionsRevoked it names nobody by id.
+func (m *ModLog) DiscordRemoval(userID uuid.UUID, name string, why MemberRemoval, sockets int) {
+	if m == nil {
+		return
+	}
+	if name == "" {
+		name = "an account"
+	}
+	reason := "Left the C2 server, or was kicked"
+	switch why {
+	case MemberBanned:
+		reason = "Banned from the C2 server"
+	case MemberRoleRemoved:
+		reason = "The player role was taken away"
+	}
+	m.post(discord.ModLogEntry{
+		Title: "Sessions revoked by ban sync",
+		Link:  m.link("#/admin/accounts/" + userID.String()),
+		Fields: []discord.ModLogField{
+			{Name: "Account", Value: name},
+			{Name: "Why", Value: reason},
+			{Name: "Connections closed", Value: strconv.Itoa(sockets)},
+		},
+		Footer: "Ban sync: the Discord bot acted on the C2 server's event. They can sign in again once a mod restores the role.",
+	})
+}
+
 // modLogActor names the admin behind p for an entry's footer: an
 // allowlisted person by their display name, the shared token by what it
 // is. The token is what the Discord bot's /c2-end uses, so an entry made
