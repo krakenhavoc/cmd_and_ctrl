@@ -1,8 +1,8 @@
 # ADR 0211 — Closing idle tables: unstarted tables after a day, abandoned games after two
 
-**Status:** Proposed · 2026-10-29 · S70 — Public beta: a table strangers can find. Building starts after the soft launch of 2026-10-30.
+**Status:** Accepted · 2026-10-29 · S70 — Public beta: a table strangers can find. Building starts after the soft launch of 2026-10-30.
 **Issue:** [#4562](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4562)
-**Owner decisions:** the four answers of 2026-10-29 are quoted under [Owner decisions](#owner-decisions-2026-10-29). They are binding. Calls this ADR makes on its own are listed under [Calls made here](#calls-made-here), and the questions still open are at the [end](#open-questions-for-the-owner).
+**Owner decisions:** the four answers of 2026-10-29 are quoted under [Owner decisions](#owner-decisions-2026-10-29), and the six answers to this ADR's open questions, given the same day, are recorded at the [end](#owner-decisions-2026-10-29-open-questions). They are binding. Calls this ADR makes on its own are listed under [Calls made here](#calls-made-here).
 **Numbering:** checked on 2026-10-29. `develop` ends at 0210, and `git ls-tree` over every remote head's `docs/decisions/` shows no file above 0210. The heads checked are listed in the PR. This is **0211**.
 **Builds on:**
 - [ADR 0148](0148-capacity-limits-for-a-public-launch.md): the table-load cap, the restore pass and deferred tables.
@@ -93,7 +93,7 @@ A table whose humans have all **conceded, lost or been handed to stand-ins** is 
 
 The 48-hour clock applies as well, so a watched bot-only table with no human move still closes at 48 hours.
 
-Whether a bot-only game should first be **played out at the fast pace** is open question 2.
+Before that close, a bot-only game **plays out at the fast pace** (`BotPaceFast`) so it reaches a real result (CR 800.4a); the 1-hour close is only the backstop for a stall (owner decision 2, sub-PR 5).
 
 ### 3. The sweep
 
@@ -117,9 +117,9 @@ The sweep closes a table through `SetArchived`'s own steps, so it is recorded ex
 
 The three additions:
 
-- **The reason is recorded.** A new nullable column, `games.closed_reason` (migration 0029, with `last_active_at`): `idle_lobby`, `idle_game` or `idle_bots`. An admin archive leaves it NULL, and unarchiving clears it. My games and the admin views read it (open question 4).
+- **The reason is recorded.** A new nullable column, `games.closed_reason` (migration 0029, with `last_active_at`): `idle_lobby`, `idle_game` or `idle_bots`. An admin archive leaves it NULL, and unarchiving clears it. My games and the admin views read it (owner decision 4).
 - **A line in the table's log.** The close commits one `EventIdleClose` through `ApplyExternalClearingUndo` before archiving: "Closed: no moves for 48 hours." (or "no activity for 24 hours", or "only bots left for an hour"). The undo ring is emptied by the same commit, which frees most of a closed table's memory. Nobody is connected to see the line live; it is for the replay and for anyone who opens the table's history. The new event kind is additive within the snapshot version (docs/snapshots.md).
-- **The table leaves memory after 7 days.** An idle-closed table keeps its room and restore point for **7 days** (`idleClosedKeep`), so an admin can unarchive it if someone asks. After that, the sweep unloads it: a new `RoomManager.Unload(id)` drops the room, the restore point and the snapshot but keeps the replay (unlike `Delete`, which removes the replay too), and the row is written `state = 'ended'` with `ended_at` set and `outcome` still NULL, which is how `closeUnresidentRows` records a table the server let go. My games and the admin views keep the row. Admin archives are not unloaded: that is a separate change (§10).
+- **The table leaves memory after 48 hours.** An idle-closed table keeps its room and restore point for **48 hours** (`idleClosedKeep`), so an admin can unarchive it if someone asks. After that, the sweep unloads it: a new `RoomManager.Unload(id)` drops the room, the restore point and the snapshot but keeps the replay (unlike `Delete`, which removes the replay too), and the row is written `state = 'ended'` with `ended_at` set and `outcome` still NULL, which is how `closeUnresidentRows` records a table the server let go. My games and the admin views keep the row. Admin archives are not unloaded: that is a separate change (§10).
 
 **Closed means closed.** Sub-PR 1 makes an archived table refuse, for anyone but an admin: `join`, `SpectateAs`, `Start`, `SetDeck`, `SetSeatDeckID`, `addBot`, a WebSocket upgrade, and any action. The refusal is `ErrGameArchived`, mapped to `409` with `code: "game_closed"`, and the client shows "This table was closed." This fixes gap 1 for admin archives too.
 
@@ -129,17 +129,17 @@ The three additions:
 |---|---|---|
 | Load cap | The table costs 0 from the close on | `entryCostLocked` |
 | Three open tables | The creator's slot is free again | `OpenTablesCreatedBy` |
-| My games | The row stays. "archived" today; with open question 4, "Closed: no moves for 48 hours" | `mygames.go`, `client/src/lib/myGames.ts` |
+| My games | The row stays. "archived" today; with owner decision 4, "Closed: no moves for 48 hours" | `mygames.go`, `client/src/lib/myGames.ts` |
 | Results feed | Nothing is posted | `results_feed.go` runs only from an engine end |
 | Statistics | No record | `recordStatsLocked` runs only from an engine end |
 | Rematch | No offer: offers follow an engine end. A rematch's new table is an ordinary lobby table with its own 24-hour clock, and an accept to a closed one is refused (`rematch.go`) | |
 | #lfg | The post is withdrawn | `lfg_board.go` |
 | Voice room | Removed | `voice_manager.go` |
-| Restore point | Kept 7 days, then removed with the room. The replay is kept | §4 |
+| Restore point | Kept 48 hours, then removed with the room. The replay is kept | §4 |
 | Invites | Rows kept (unarchive brings them back). `FindByInvite` already refuses; `join` and spectate refuse after sub-PR 1 | `lobby.go` |
 | Reclaim tickets | Dropped | `SetArchived` |
 | DM notifier, away clock | Skip archived tables already | `notify.go`, `away.go` |
-| Admin views | Listed under archived, with the reason and the last activity time; Unarchive works for 7 days | `adminview`, `client/src/lib/adminViews.ts` |
+| Admin views | Listed under archived, with the reason and the last activity time; Unarchive works for 48 hours | `adminview`, `client/src/lib/adminViews.ts` |
 
 ### 6. Telling people
 
@@ -147,7 +147,7 @@ The three additions:
 
 - commits an `EventIdleClose` warning line: "No one has moved for 36 hours. This game closes at 21:14 on Friday unless someone makes a move.";
 - stamps `idle_close_at` on the game view (RFC 3339, omitted until warned), from which the table shows a one-line notice above the dock;
-- sends a DM (ADR 0162) to each seated person still in the game who has opted in (open question 3 says which switch): "«Table name» will be closed at 21:14 on Friday because no one has moved for 36 hours. https://cmd.labxp.io/#/games/{id}".
+- sends a DM (ADR 0162) to each seated person still in the game who has opted in (the existing "Your turn" switch, owner decision 3): "«Table name» will be closed at 21:14 on Friday because no one has moved for 36 hours. https://cmd.labxp.io/#/games/{id}".
 
 Any human move clears the warning and the field. The lead is 12 hours, or a quarter of `IdleGameAfter` when that is shorter, so a short test value does not warn the moment a game starts. The warned flag is in memory: a restart between warning and close repeats the warning once, which is harmless.
 
@@ -162,7 +162,7 @@ Any human move clears the warning and the field. The lead is 12 hours, or a quar
 | `cmdctrl_capacity_idle_after_seconds` | gauge | `kind` = `lobby`, `game`, `bots` | the configured threshold; 0 is off, as `cmdctrl_capacity_limit` reads |
 | `cmdctrl_capacity_idle_closed_total` | counter | `kind` | tables the sweep closed |
 | `cmdctrl_capacity_idle_warned_total` | counter | — | started games warned |
-| `cmdctrl_capacity_idle_unloaded_total` | counter | — | closed tables unloaded after 7 days |
+| `cmdctrl_capacity_idle_unloaded_total` | counter | — | closed tables unloaded after 48 hours |
 
 The DM rides the existing `cmdctrl_dm_notifications_total{kind, result}` with a new `kind="idle_warning"`. The Grafana Overview's Capacity row gains one panel: tables closed by kind. No alert: a close is the system working.
 
@@ -174,11 +174,11 @@ Two settings for the owner's two thresholds, and a third for §2. They live in `
 |---|---|---|
 | `CMDCTRL_IDLE_LOBBY_TABLE_AFTER` | `24h` | close an unstarted table after this long with no activity |
 | `CMDCTRL_IDLE_GAME_AFTER` | `48h` | close a started game after this long with no human move |
-| `CMDCTRL_IDLE_BOTS_AFTER` | `1h` | close a bot-only, unwatched game after this long (open question 1) |
+| `CMDCTRL_IDLE_BOTS_AFTER` | `1h` | close a bot-only, unwatched game after this long (owner decision 1) |
 
 Documented in `docs/env.md` under the Capacity caps bullet. The ADR 0148 caps have no CD step today: they run on the binary's defaults. These get one, `Sync server env (idle cleanup)` in `ci-cd.yml`, reading repository or environment variables of the same names and always writing them, with empty meaning the default, the way the community variables are written. That lets the owner change a threshold, or turn one off, from GitHub without SSH, and lets the preview use short values.
 
-The warning lead (12 hours), the residency grace (1 hour), the sweep interval (5 minutes) and the keep time (7 days) are constants.
+The warning lead (12 hours), the residency grace (1 hour), the sweep interval (5 minutes) and the keep time (48 hours) are constants.
 
 ### 8. Until this ships: archive by hand
 
@@ -208,7 +208,7 @@ The deferred "slow game" option (owner decision 3) is a table setting that lengt
 ## Calls made here
 
 - **Archive, not an engine end.** Ending the engine would write a statistics record, post a result and arm a rematch for a game nobody finished. The owner asked for the admin close's record, and the admin close is an archive.
-- **Agents count as people** for every clock. An agent seat is a person's own process (ADR 0122), and ADR 0177 already treats it as a player. Open question 5 asks the owner to confirm.
+- **Agents count as people** for every clock. An agent seat is a person's own process (ADR 0122), and ADR 0177 already treats it as a player. The owner confirmed this (owner decision 5).
 - **Admin commits never count.** An admin poking a table to see what is wrong must not keep it open.
 - **Chat counts for a lobby table, not for a started game.** The owner's word for a started game is "move". People chatting while they wait for a fourth player are at the table.
 - **A client's automatic pass counts as a move.** The server cannot tell it from a click, so an open tab that auto-passes keeps its game open. That is a person's open tab, and the safety belt (ADR 0143 §4.2) clears Skip to my turn at the player's own main phase.
@@ -219,14 +219,15 @@ The deferred "slow game" option (owner decision 3) is a table setting that lengt
 ## Consequences
 
 - Abandoned tables stop holding the cap and their creators' slots. A table nobody starts is gone within a day, a walked-away game within two, and a game left to its bots within an hour or so.
-- A player who returns to a game after 48 hours finds it closed, with a warning they may have missed if they had no DMs on. An admin can unarchive it for 7 days.
+- A player who returns to a game after 48 hours finds it closed, with a warning they may have missed if they had no DMs on. An admin can unarchive it for 48 hours.
 - Archived tables are closed for real (gap 1), for admin archives as well.
-- Idle-closed tables leave memory and disk after 7 days, so the sweep does not trade a full cap for a full VM.
+- Idle-closed tables leave memory and disk after 48 hours, so the sweep does not trade a full cap for a full VM.
+- A game becomes unrecoverable about 4 days after its last move (48 hours idle plus the 48-hour keep). After that only the row and the replay remain.
 - New surface: two columns, one event kind, one view field, three settings, one CD step, four metrics, one DM message, and a sweep goroutine.
 
 ## Back-out
 
-Set any of the three variables to `0` (through the repository variable, then a deploy, or in the host's env file and a restart) to turn that cleanup off. Tables already closed stay archived and can be unarchived from `/admin/games` for 7 days. The columns are nullable and unused with the sweep off.
+Set any of the three variables to `0` (through the repository variable, then a deploy, or in the host's env file and a restart) to turn that cleanup off. Tables already closed stay archived and can be unarchived from `/admin/games` for 48 hours. The columns are nullable and unused with the sweep off.
 
 ## Implementation plan
 
@@ -236,19 +237,21 @@ Each sub-PR targets `develop`, references #4562, and adds or updates the tests n
 |---|---|---|---|---|
 | 1 | **Closed means closed.** Archived tables refuse join, spectate, start, deck, bots, socket upgrade and actions for non-admins; `game_closed` code; client message | `lobby/lobby.go`, `lobby/ws_authorizer.go`, `lobby/http.go` (error map), `ws/hub.go` (action gate), `docs/lobby.md`, `docs/protocol.md`, `client/src/lib/` (refusal text) | A test per refused route on an archived table, written first to show the gap; an admin is still admitted; unarchive restores every route | Sonnet |
 | 2 | **The clocks.** `Room.lastHumanAt` and `LastHumanAt`; `touchLocked` at the lobby entry points; seated chat stamp; migration 0029 (`last_active_at`, `closed_reason`); `GameRecord` and `SQLStore` columns; `loadEntry` reads them; `PRIVACY_SCHEMA_VERSION` bump | `ws/room.go`, `ws/away.go`, `ws/hub.go` (chat), `lobby/lobby.go`, `lobby/seat_remove.go`, `lobby/settings.go`, `lobby/host.go`, `lobby/away.go`, `lobby/store.go`, `lobby/store_sql.go`, `lobby/persist.go`, `db/migrations/0029_idle_tables.sql`, `client/src/lib/privacy.ts` | A bot's, a stand-in's and an admin's commit leave `LastHumanAt` alone, a person's and an agent's set it; each listed lobby entry point touches, a spectator, a playmat restamp and a voice restamp do not; the columns round-trip through the store and a restore | Opus |
-| 3 | **The sweep and the close.** `lobby/idle.go` (`RunIdle`, `TickIdle`, deadlines, residency grace, bot-only clock, close, unload after 7 days); `capacity.Limits` gains the three durations and `FromEnv` reads them; `RoomManager.Unload`; `EventIdleClose`; metrics; `main.go` wiring; `docs/env.md`, `docs/monitoring.md`, `docs/snapshots.md`; the CD step | `lobby/idle.go`, `capacity/capacity.go`, `ws/manager.go`, `game/` (event kind), `metrics/capacity.go`, `cmd/server/main.go`, `.github/workflows/ci-cd.yml`, `deploy/monitoring/` (panel) | With a fake clock: a lobby table closes at 24 h and not at 23 h 55; a touch resets it; a game closes at 48 h after a warning, and a move clears the warning; a bot-only unwatched game closes at 1 h and a watching seat holds it; nothing closes within an hour of residency; `0` turns each off; a closed table costs 0, frees the creator's slot, records `closed_reason` and `outcome` NULL, counts `closed` once, posts no result and writes no stats; unload after 7 days keeps the replay and writes the row ended; `FromEnv` rejects a malformed duration | Opus |
+| 3 | **The sweep and the close.** `lobby/idle.go` (`RunIdle`, `TickIdle`, deadlines, residency grace, bot-only clock, close, unload after 48 hours); `capacity.Limits` gains the three durations and `FromEnv` reads them; `RoomManager.Unload`; `EventIdleClose`; metrics; `main.go` wiring; `docs/env.md`, `docs/monitoring.md`, `docs/snapshots.md`; the CD step | `lobby/idle.go`, `capacity/capacity.go`, `ws/manager.go`, `game/` (event kind), `metrics/capacity.go`, `cmd/server/main.go`, `.github/workflows/ci-cd.yml`, `deploy/monitoring/` (panel) | With a fake clock: a lobby table closes at 24 h and not at 23 h 55; a touch resets it; a game closes at 48 h after a warning, and a move clears the warning; a bot-only unwatched game closes at 1 h and a watching seat holds it; nothing closes within an hour of residency; `0` turns each off; a closed table costs 0, frees the creator's slot, records `closed_reason` and `outcome` NULL, counts `closed` once, posts no result and writes no stats; unload after 48 hours keeps the replay and writes the row ended; `FromEnv` rejects a malformed duration | Opus |
 | 4 | **Telling people.** `idle_close_at` on the view and the table notice; the warning DM (`notify` message kind); My games and admin views show the reason and the last activity; the launch-week runbook entry is replaced by the sweep's | `protocol/protocol.go`, `ws/` (stamp), `notify/message.go`, `notify/notifier.go`, `adminview/merge.go`, `lobby/mygames.go`, `client/src/` (table notice, `lib/myGames.ts`, `lib/adminViews.ts`), `docs/protocol.md`, `docs/environments.md` | The warning DM goes once, only to opted-in seated people still in the game, never to a bot, guest, agent or spectator; the view field appears at the warning and clears on a move; client unit tests for the notice and the My games label | Sonnet |
-| 5 | **Bot-only play-out** (only if open question 2 is yes). A bot-only, unwatched game runs its bots at `BotPaceFast` until a person connects | `aiseat/runner.go`, `lobby/idle.go` | The pace switches on and off with the condition; a stalled bot-only game still closes at the 1-hour backstop | Opus |
+| 5 | **Bot-only play-out** (owner decision 2). A bot-only, unwatched game runs its bots at `BotPaceFast` until a person connects | `aiseat/runner.go`, `lobby/idle.go` | The pace switches on and off with the condition; a stalled bot-only game still closes at the 1-hour backstop | Opus |
 
 The branch E2E is not needed: the sweep is server-side and driven by a fake clock in Go tests. Sub-PR 1 changes what a client sees on a refused socket, so it runs the branch E2E.
 
 Until sub-PR 3 is deployed to production, §8 is the procedure.
 
-## Open questions for the owner
+## Owner decisions (2026-10-29, open questions)
 
-1. **Close a bot-only game after an hour with nobody watching?** When every person at a started game has conceded, lost or been handed to a stand-in, and no person's seat has a connection, the bots play on at the table's pace. **Recommended: yes, after 1 hour, as a third setting (`CMDCTRL_IDLE_BOTS_AFTER`, `0` off).** It frees the cap and the CPU the same evening, and a stand-in player who comes back within the hour still gets their seat.
-2. **Play a bot-only game out first?** The alternative to waiting is to switch its bots to the fast pace while nobody watches, so the game reaches a real result (the statistics record and the results post) within minutes, with the 1-hour close as the backstop for a stall. **Recommended: yes.** By the rules the game goes on among the remaining players (CR 800.4a), and finishing it is the faithful ending; closing it unfinished throws away a result the conceding players' statistics would otherwise get. It is sub-PR 5, and can follow the rest.
-3. **Which DM switch covers the warning?** **Recommended: "Your turn".** A player who asked to be told when a game waits on them expects to be told it is about to close; a fourth switch would be off for everyone, which defeats the warning. "Table ready" and "Table filled" are about lobbies.
-4. **Should My games say why a table closed?** Today an archived table reads "archived". **Recommended: yes, from `games.closed_reason`:** "Closed: no moves for 48 hours", "Closed: not started within a day", "Closed: only bots left". A player whose game vanished should not have to guess whether a moderator closed it.
-5. **Do agent seats count as people?** **Recommended: yes,** as ADR 0177 already does. An agent's moves keep a game open the way a person's do. The cost is that an agent left running against bots keeps its table for as long as it runs, which a person playing bots can do too.
-6. **Is 7 days the right window to unarchive an idle-closed table?** After it the table leaves memory and disk, and only the row and the replay remain. **Recommended: 7 days.** It covers a weekend and a "where did my game go" message, and it keeps memory bounded on a 4 GB VM.
+The owner answered the six questions this ADR asked when it was Proposed. The answers are binding:
+
+1. **A bot-only game closes after 1 hour.** A game left to bots alone (every person conceded, lost or replaced by a stand-in, and no seat connected) is closed after 1 hour, through a third setting, `CMDCTRL_IDLE_BOTS_AFTER=1h` (`0` off). Yes.
+2. **It plays out first.** Before that close, such a game plays out at fast bot pace so it reaches a real result (CR 800.4a); the 1-hour close is only a backstop. Yes (sub-PR 5).
+3. **The warning DM uses the existing "Your turn" switch.** No new setting.
+4. **My games shows why a table closed,** from `closed_reason`. Yes.
+5. **Agent seats count as people** for the idle clocks, as in ADR 0177. Yes.
+6. **The keep window is 48 hours, not 7 days.** The recommendation was 7 days. The owner chose 48 hours after being told that once the window ends, the restore point is removed and the game cannot be resumed; only the row and the replay remain.
