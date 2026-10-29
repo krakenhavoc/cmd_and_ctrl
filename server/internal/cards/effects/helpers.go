@@ -1640,3 +1640,18 @@ func replacementSourceController(_ *game.ReplacementEvent, _ *game.Game, src *ga
 	}
 	return src.Controller
 }
+
+// PlusOneCounterOnTheTarget is "put a +1/+1 counter on target creature"
+// (or "up to one target creature"): one counter on the item's first card
+// target still legal as it resolves (CR 608.2b), nothing when none is
+// (Shortcut to Mushrooms, Bifur, Melodic Rider, The Mountain-king's
+// Return).
+func PlusOneCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+		}
+	}
+	return nil
+}

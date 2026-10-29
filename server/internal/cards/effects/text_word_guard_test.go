@@ -68,6 +68,7 @@ var textWordLiteralAllowed = map[string]string{
 	// or a spell already on the stack.
 	"angelic_favor.go":  "alternative cost, judged as cast",
 	"lashknife.go":      "alternative cost, judged as cast",
+	"bards_company.go":  "alternative cost, judged as cast",
 	"orims_cure.go":     "alternative cost, judged as cast",
 	"ramosian_rally.go": "alternative cost, judged as cast",
 	"sivvis_ruse.go":    "alternative cost, judged as cast",

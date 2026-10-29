@@ -3682,6 +3682,31 @@ var items = []Item{
 		Examples: []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Tilonalli's Summoner"},
 	},
 	{
+		// #4475 (ADR 0096 amendment 2026-10-29): storied is a canonical
+		// keyword read by the same sweep as ascend
+		// (game/earned_designations.go), and the enduring story it grants
+		// is a per-player designation like the city's blessing.
+		Slug: "storied", Name: "Storied and the enduring story", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Storied gives you an enduring story for the rest of the game once you control three or more permanents that are artifacts, Sagas and/or legendary, each counted once. You keep it even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
+		Rules:    []string{"702.195"},
+		Issue:    4475,
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Keywords: []string{game.KeywordStoried},
+		Probe:    hasKeyword(game.KeywordStoried),
+		Printed:  printedKeyword("storied"),
+		Examples: []string{"Ori, Keeper of Songs", "Bombur, Gentle Dreamer", "Fíli the Pathfinder", "Bifur, Melodic Rider"},
+	},
+	{
+		// #4475: recruit is effects.Recruit, a draw and a keyed discard.
+		Slug: "recruit", Name: "Recruit", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Draw a card, then discard a card; if you discarded a nonland card, create a 1/1 white Human Soldier creature token.",
+		Rules:    []string{"701.70"},
+		Issue:    4475,
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Printed:  printedWords("recruit"),
+		Examples: []string{"Lake-town Lookout", "The Queen of Dale", "The Mountain-king's Return"},
+	},
+	{
 		Slug: "permanent-becomes-equipment", Name: "A permanent that becomes an Equipment, with a granted equip and \"equipped creature gets\"", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Effects that turn a permanent into an Equipment, rename it, or give it equip and an \"Equipped creature gets +N/+N\" ability, such as The Irencrag becoming Everflame, Heroes' Legacy and Gemcutter Buccaneer's Treasures.",
 		Rules:    []string{"612.8", "205.1a", "205.4b", "613.4c", "702.6a", "702.6d"},
