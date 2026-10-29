@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	ab := powerUpAnswering(game.AnswerPump,
+	ab := PowerUp(
 		"{5}{R/G}{R/G}: Put a +1/+1 counter on Abomination. He fights up to one target creature an opponent controls.",
 		ManaCost("{5}{R/G}{R/G}"), func(g *game.Game, item *game.StackItem) error {
 			if !b09SourceStillOnBattlefield(g, item) {
@@ -29,6 +29,7 @@ func init() {
 			}
 			return b30SourceFightsFirstLegalTarget(g, item)
 		})
+	ab.Purpose.Answers = game.AnswerPump
 	ab.Targets = TargetCreature("up to one target creature an opponent controls", OpponentControls()).WithCount(0, 1)
 	Register(Spec{
 		OracleID:        "72101185-4336-480a-b4d7-f8ceb0007a51",
