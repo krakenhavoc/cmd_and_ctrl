@@ -243,11 +243,13 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// Gloom Stalker) and "if you have the initiative" are layer
 		// inputs no permanent moving stands in for, as the monarchy is.
 		g.layerVersion.Add(1)
-	case EventCitysBlessing:
+	case EventCitysBlessing, EventEnduringStory:
 		// #2696: "as long as you have the city's blessing" (Tendershoot
 		// Dryad, Snubhorn Sentry, Skymarcher Aspirant) is a layer input
 		// no permanent moving stands in for. It changes once a game per
-		// player, so there is nothing to gate.
+		// player, so there is nothing to gate. #4475: "as long as you
+		// have an enduring story" (Fíli the Pathfinder, Thorin
+		// Oakenshield) is the same input for storied (CR 702.195c).
 		g.layerVersion.Add(1)
 	case EventSpeedChanged:
 		// ADR 0138, CR 702.178a: "Max speed — this creature gets +1/+1"

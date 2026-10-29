@@ -56,17 +56,13 @@ func YouHaveTheCitysBlessingNow(_ game.Event, source *game.Card, _ game.Characte
 // under test passes `inner` and the SOURCE's controller has the
 // blessing.
 func WhileCitysBlessing(inner func(target *game.Card, g *game.Game, source *game.Card) bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
-	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return inner(target, g, source) && YouHaveTheCitysBlessing(g, source.Controller)
-	}
+	return whileYouHave(YouHaveTheCitysBlessing, inner)
 }
 
 // SelfWhileCitysBlessing is "as long as you have the city's blessing,
 // THIS creature …".
 func SelfWhileCitysBlessing() func(target *game.Card, g *game.Game, source *game.Card) bool {
-	return WhileCitysBlessing(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.IsCreature() && selfOnly(target, g, source)
-	})
+	return whileYouHave(YouHaveTheCitysBlessing, selfCreature)
 }
 
 // SelfPumpWhileCitysBlessing is "This creature gets +p/+t as long as
@@ -78,10 +74,7 @@ func SelfPumpWhileCitysBlessing(power, toughness int) game.StaticAbility {
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: SelfWhileCitysBlessing(),
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Power += power
-			c.Toughness += toughness
-		},
+		Apply:     pumpBy(power, toughness),
 	}
 }
 
@@ -92,6 +85,30 @@ func SelfKeywordWhileCitysBlessing(keyword string) game.StaticAbility {
 	ab := KeywordGrant(SelfWhileCitysBlessing(), keyword)
 	ab.Label = "Has " + keyword + " while you have the city's blessing."
 	return ab
+}
+
+// whileYouHave is the shared body of "as long as you have <a player
+// designation>, <these permanents> …" for the designations a keyword
+// earns for the rest of the game (the city's blessing, an enduring
+// story; game/earned_designations.go): the permanent under test passes
+// `inner` and the SOURCE's controller has the designation.
+func whileYouHave(has func(g *game.Game, you uuid.UUID) bool, inner func(target *game.Card, g *game.Game, source *game.Card) bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
+	return func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return inner(target, g, source) && has(g, source.Controller)
+	}
+}
+
+// selfCreature is "THIS creature": the source itself, while it is one.
+func selfCreature(target *game.Card, g *game.Game, source *game.Card) bool {
+	return target.IsCreature() && selfOnly(target, g, source)
+}
+
+// pumpBy is the layer 7c Apply of "gets +p/+t".
+func pumpBy(power, toughness int) func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+	return func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+		c.Power += power
+		c.Toughness += toughness
+	}
 }
 
 // CantAttackUnlessYouHaveTheCitysBlessing is "This creature can't

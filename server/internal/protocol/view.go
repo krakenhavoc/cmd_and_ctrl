@@ -2512,6 +2512,10 @@ type PlayerView struct {
 	// designation ascend gives, kept for the rest of the game. Public
 	// and identical for every viewer, like the monarch. #2696.
 	CitysBlessing bool `json:"citys_blessing,omitempty"`
+	// EnduringStory is the enduring story (CR 702.195b): a player
+	// designation storied gives, kept for the rest of the game. Public
+	// and identical for every viewer, like the city's blessing. #4475.
+	EnduringStory bool `json:"enduring_story,omitempty"`
 	// Dungeon is the dungeon card this player owns in the command zone,
 	// with its rooms and the room their venture marker is in (CR 309.4,
 	// ADR 0203). Absent when they own none. Public and identical for
@@ -10330,6 +10334,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		EnduringStory:         p.EnduringStory,
 		Dungeon:               dungeonView(p.Dungeon),
 		CompletedDungeons:     completedDungeonNames(p.CompletedDungeons),
 		TurnSkips:             g.TurnSkipsForLocked(p.ID),
