@@ -47,7 +47,7 @@ const (
 	b28RampagingYaoGuaiSkipOracle  = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
 	b28TectonicGiantSkipOracle     = "0e5e46e3-f9af-47cc-a740-bf808d5cb4b1"
 	b28HoldoutSettlementFullOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
-	b28FertilidSkipOracle          = "21f1c6d7-8289-44b2-b88f-c09e202be200"
+	b28FertilidOracle              = "21f1c6d7-8289-44b2-b88f-c09e202be200"
 	b28MeathookMassacreIISkipOID   = "68957dca-df5c-4051-af22-407cb7e47200"
 	b28LoyalGuardianSkipOracle     = "de1cfa83-2049-48ab-b093-2f120a3ef4f2"
 )
@@ -142,8 +142,10 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 	}
 	// #758 moves this former declared skip into the completed set.
 	want[b28HoldoutSettlementFullOracle] = "Holdout Settlement"
-	if len(want) != 29 {
-		t.Fatalf("the batch registers 28 cards plus one already on main, the table lists %d", len(want))
+	// #4380 uses the existing counter cost and target-player search seams.
+	want[b28FertilidOracle] = "Fertilid"
+	if len(want) != 30 {
+		t.Fatalf("the completed batch table should have 30 cards, it lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -155,7 +157,7 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The six declared skips must NOT be registered — each needs a
+	// The remaining declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
 	// Bribery was the ninth until #1230 gave the search primitive a
@@ -165,7 +167,6 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 	for _, skipped := range []string{
 		b28RampagingYaoGuaiSkipOracle, // an enters trigger cannot read the spell's X
 		b28TectonicGiantSkipOracle,    // a modal triggered ability
-		b28FertilidSkipOracle,         // counter-removal cost
 		b28MeathookMassacreIISkipOID,  // an opponent's life-payment choice with the consequence on decline; finality counters
 		b28LoyalGuardianSkipOracle,    // a beginning-of-combat trigger event
 	} {

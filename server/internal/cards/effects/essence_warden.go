@@ -17,13 +17,7 @@ func init() {
 		Name:         "Essence Warden",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature()
-			}, "Essence Warden — you gain 1 life", Do(GainLife{Amount: 1})),
+			On(game.EventETB, AnotherCreatureEntered, "Essence Warden — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 	})
 }

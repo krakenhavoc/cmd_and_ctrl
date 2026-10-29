@@ -1750,3 +1750,8 @@ resume replacement-resume/move-attraction-open
 resume replacement-resume/move-token-batch
 confirm confirm/dragons-approach-exile
 tail then/dragons-approach-search
+body hunters-insight/draw-that-much
+body time-to-feed/gain-three-life
+condition combat/hunters-insight-creature-hit-player-or-planeswalker
+payunless pay-unless/chain-lightning-offer-copy
+tail then/chain-lightning-offer-red-payment
