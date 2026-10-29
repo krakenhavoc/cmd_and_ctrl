@@ -541,6 +541,13 @@ type CardDef struct {
 	// through CatalogAdditionalLandPlays; see land_drops.go.
 	AdditionalLandPlays int
 
+	// ConditionalLandPlays is AdditionalLandPlays that count only while
+	// the controller controls ANOTHER permanent of a creature type:
+	// Thranduil's Company's "as long as you control another Elf, you may
+	// play an additional land on each of your turns". Read through
+	// CatalogConditionalLandPlays; see land_drops.go.
+	ConditionalLandPlays ConditionalLandPlays
+
 	// CastPermissions are the STANDING cast and play permissions this
 	// permanent grants its controller while it is on the battlefield
 	// (ADR 0066) — Underworld Breach's escape for every nonland card
@@ -1184,6 +1191,12 @@ func init() {
 			return d.AdditionalLandPlays
 		}
 		return 0
+	}
+	CatalogConditionalLandPlays = func(key string) ConditionalLandPlays {
+		if d := catalogDef(key); d != nil {
+			return d.ConditionalLandPlays
+		}
+		return ConditionalLandPlays{}
 	}
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)

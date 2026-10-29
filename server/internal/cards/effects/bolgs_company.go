@@ -24,17 +24,7 @@ func init() {
 		Name:         "Bolg's Company",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-				if target.InstanceID != source.InstanceID {
-					return false
-				}
-				for _, id := range permanentsControlledByMatching(g, source.Controller, And(Creature(), Subtype("Goblin"))) {
-					if id != source.InstanceID {
-						return true
-					}
-				}
-				return false
-			}, "haste"),
+			KeywordGrant(hobA9WhileYouControlAnother("Goblin"), "haste"),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{

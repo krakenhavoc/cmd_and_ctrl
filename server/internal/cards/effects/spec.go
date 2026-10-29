@@ -1541,6 +1541,15 @@ type Spec struct {
 	// one-line Spec each rather than an engine change.
 	AdditionalLandPlays int
 
+	// AdditionalLandPlaysNeedsAnother makes AdditionalLandPlays
+	// conditional: it counts only while the controller controls another
+	// permanent with this creature type — Thranduil's Company's "as long
+	// as you control another Elf, you may play an additional land on
+	// each of your turns" is "Elf". Empty is unconditional. The check is
+	// the engine's, in EffectiveLandDropsLocked, read live on every land
+	// play, so the extra drop comes and goes with the other creature.
+	AdditionalLandPlaysNeedsAnother string
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard

@@ -61,6 +61,25 @@ const DefaultLandDropsPerTurn = 1
 // may play an additional land" is not one.
 var CatalogAdditionalLandPlays func(oracleID string) int
 
+// ConditionalLandPlays is a permanent's extra land plays that count only
+// while its controller controls a second permanent of a creature type:
+// Thranduil's Company's "as long as you control another Elf, you may play
+// an additional land on each of your turns" is {Plays: 1, Another: "Elf"}.
+// Plain data, so the card definition stays snapshot-safe.
+type ConditionalLandPlays struct {
+	// Plays is how many extra lands per turn; zero means none.
+	Plays int
+	// Another is the creature type of the OTHER permanent that is needed.
+	Another string
+}
+
+// CatalogConditionalLandPlays returns a battlefield permanent's
+// ConditionalLandPlays, the zero value for everything else. Populated at
+// init time by the cards/effects package from
+// `effects.Spec.AdditionalLandPlaysNeedsAnother`, and read beside
+// CatalogAdditionalLandPlays by EffectiveLandDropsLocked.
+var CatalogConditionalLandPlays func(oracleID string) ConditionalLandPlays
+
 // EffectiveLandDropsLocked returns how many lands p may play in
 // total this turn: their base allowance, plus every controlled
 // permanent's static grant, plus any one-turn grant. Never negative —
@@ -90,6 +109,11 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 				continue
 			}
 			n += CatalogAdditionalLandPlays(key)
+			if CatalogConditionalLandPlays != nil {
+				if cp := CatalogConditionalLandPlays(key); cp.Plays > 0 && g.controlsAnotherSubtypeLocked(p.ID, c.InstanceID, cp.Another) {
+					n += cp.Plays
+				}
+			}
 		}
 	}
 	n += g.ExtraLandDropsThisTurn[p.ID]
@@ -97,6 +121,22 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 		return 0
 	}
 	return n
+}
+
+// controlsAnotherSubtypeLocked reports whether player controls a battlefield
+// permanent other than `except` that has `subtype` right now (effective
+// subtypes, so a changeling is every creature type): the "another Elf" of
+// a conditional static.
+//
+// Caller must hold g.mu.
+func (g *Game) controlsAnotherSubtypeLocked(player, except uuid.UUID, subtype string) bool {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == player && c.InstanceID != except && hasSubtype(c, subtype) {
+			return true
+		}
+	}
+	return false
 }
 
 // LandDropsRemainingLocked returns how many more lands playerID may

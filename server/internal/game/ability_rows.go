@@ -301,6 +301,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
+	{field: "ConditionalLandPlays", label: conditionalLandPlayRows},
 	{field: "CastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
 	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true, nestedLabel: "Permission"},
 	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
@@ -419,6 +420,17 @@ func additionalLandPlayRows(v reflect.Value) []string {
 		return []string{"You may play an additional land on each of your turns."}
 	case n > 1:
 		return []string{fmt.Sprintf("You may play %d additional lands on each of your turns.", n)}
+	}
+	return nil
+}
+
+func conditionalLandPlayRows(v reflect.Value) []string {
+	cp, _ := v.Interface().(ConditionalLandPlays)
+	switch {
+	case cp.Plays == 1:
+		return []string{fmt.Sprintf("As long as you control another %s, you may play an additional land on each of your turns.", cp.Another)}
+	case cp.Plays > 1:
+		return []string{fmt.Sprintf("As long as you control another %s, you may play %d additional lands on each of your turns.", cp.Another, cp.Plays)}
 	}
 	return nil
 }
