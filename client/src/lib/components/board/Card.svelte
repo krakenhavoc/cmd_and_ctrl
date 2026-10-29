@@ -1549,7 +1549,8 @@
       {#if fx.blades > 0 || fx.reach}
         <span class="kw-blades" data-blades={fx.blades}>
           {#if fx.reach}<i class="kw-bow"></i>{/if}
-          {#if fx.blades > 0}<i class="kw-blade"></i>{/if}{#if fx.blades === 2}<i class="kw-blade"></i>{/if}
+          {#if fx.blades > 0}<i class="kw-blade"></i>{/if}{#if fx.blades === 2}<i class="kw-blade"
+            ></i>{/if}
         </span>
       {/if}
     </span>
@@ -1744,8 +1745,7 @@
   .card.kw-fly {
     translate: 0 calc(var(--card-turn, 1) * var(--kw-lift) * -1);
     --kw-drop: calc(var(--card-h, 112px) * 0.085);
-    --kw-fly-shadow:
-      calc(var(--card-turn, 1) * sin(var(--tap-rot, 0deg)) * var(--kw-drop))
+    --kw-fly-shadow: calc(var(--card-turn, 1) * sin(var(--tap-rot, 0deg)) * var(--kw-drop))
       calc(var(--card-turn, 1) * cos(var(--tap-rot, 0deg)) * var(--kw-drop))
       calc(var(--card-h, 112px) * 0.06) calc(var(--card-h, 112px) * -0.025) rgba(0, 0, 0, 0.5);
   }
@@ -1797,8 +1797,8 @@
   /* Lifelink: a faint red glow, outside the frame. A blood red, not the
      attack or danger signal: those mean something else on a card. */
   .card.kw-lifelink {
-    --kw-life-glow:
-      0 0 calc(var(--card-w, 80px) * 0.11) calc(var(--card-w, 80px) * 0.012) rgba(214, 38, 64, 0.5);
+    --kw-life-glow: 0 0 calc(var(--card-w, 80px) * 0.11) calc(var(--card-w, 80px) * 0.012)
+      rgba(214, 38, 64, 0.5);
   }
   .card.kw-fly,
   .card.kw-lifelink {
@@ -1828,8 +1828,12 @@
     position: absolute;
     inset: 0;
     box-sizing: border-box;
+    /* On the top edge, below the name strip. On the bottom edge (an
+       opponent card drawn upright), above the badge row: the chips and
+       the power and toughness live there. */
     padding-top: calc(
-      var(--face-top, 0px) * max(0, var(--blade-turn, 1)) + max(3px, calc(var(--card-w, 80px) * 0.04))
+      var(--face-top, 0px) * max(0, var(--blade-turn, 1)) + 22px *
+        max(0, calc(-1 * var(--blade-turn, 1))) + max(3px, calc(var(--card-w, 80px) * 0.04))
     );
     display: flex;
     justify-content: center;

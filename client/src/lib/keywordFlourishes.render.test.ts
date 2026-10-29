@@ -109,15 +109,19 @@ describe("a battlefield card's keyword flourishes", () => {
   });
 
   it("lifelink glows", () => {
-    expect(mount(creature(["lifelink"])).el().classList.contains("kw-lifelink")).toBe(true);
+    expect(
+      mount(creature(["lifelink"]))
+        .el()
+        .classList.contains("kw-lifelink"),
+    ).toBe(true);
   });
 
   it("combines: a flying lifelink deathtouch card hovers, glows and has the edge", () => {
     const { el, container } = mount(creature(["flying", "lifelink", "deathtouch", "first strike"]));
     const cl = el().classList;
-    expect(cl.contains("kw-fly") && cl.contains("kw-lifelink") && cl.contains("kw-deathtouch")).toBe(
-      true,
-    );
+    expect(
+      cl.contains("kw-fly") && cl.contains("kw-lifelink") && cl.contains("kw-deathtouch"),
+    ).toBe(true);
     expect(container.querySelector(".kw-fx.kw-edge")).not.toBeNull();
     expect(blades(el())).toBe(1);
   });
@@ -160,7 +164,9 @@ describe("the setting and reduced motion", () => {
   it("defaults on, and Off draws none of them", () => {
     expect(defaultSettings().display.keywordFlourishes).toBe(true);
     updateSettings("display", "keywordFlourishes", false);
-    const { el, container } = mount(creature(["flying", "deathtouch", "double strike", "lifelink"]));
+    const { el, container } = mount(
+      creature(["flying", "deathtouch", "double strike", "lifelink"]),
+    );
     expect(el().className).not.toMatch(/kw-/);
     expect(container.querySelector(".kw-fx")).toBeNull();
     expect(container.querySelector(".kw-badge")).not.toBeNull();
@@ -173,12 +179,18 @@ describe("the setting and reduced motion", () => {
     updateSettings("display", "keywordFlourishes", true);
     // The store is read reactively; a new mount is the plain check.
     cleanup();
-    expect(mount(creature(["flying"])).el().classList.contains("kw-fly")).toBe(true);
+    expect(
+      mount(creature(["flying"]))
+        .el()
+        .classList.contains("kw-fly"),
+    ).toBe(true);
   });
 
   it("reduced motion drops the sway and keeps every still cue", () => {
     updateSettings("accessibility", "reduceMotion", true);
-    const { el, container } = mount(creature(["flying", "deathtouch", "double strike", "lifelink"]));
+    const { el, container } = mount(
+      creature(["flying", "deathtouch", "double strike", "lifelink"]),
+    );
     const cl = el().classList;
     expect(cl.contains("kw-sway")).toBe(false);
     expect(el().style.getPropertyValue("--kw-delay")).toBe("");
