@@ -211,3 +211,10 @@ and `damage output 2.mp3` (no matching `damage popup 2` or
 `damage output 1`). Both are mapped here as generic damage variants
 (`damage-1.mp3`, `damage-2.mp3`). Revisit if a take feels out of
 character for the event.
+
+## Length caps
+
+`combat_resolve` (the war cry; takes run 5 and 7 s) is capped at 2 s with a
+300 ms fade-out, in code, so its tail doesn't cover the sounds after combat.
+The files are untouched. The caps live in `SOUND_MAX_MS` and `SOUND_FADE_MS`
+in `client/src/lib/sounds.ts` (#4567).
