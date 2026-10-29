@@ -40,6 +40,7 @@
   import { useCombatCues } from "../../combatCues.svelte";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
+  import { NO_FLOURISHES, flourishesFor, swayDelay } from "../../keywordFlourishes";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
   import { boardChoicePick, isBoardPickable, isBoardPicked } from "../../boardChoicePick";
   import { blockBoard, blockTargetFor, inBlockGroup } from "../../blockPick";
@@ -293,6 +294,12 @@
     // unlock buttons only to the Room's controller (CR 709.5e). Set by
     // BattlefieldRow; undefined everywhere else, which offers none.
     viewerID?: string | null;
+    // #4556: wear the keyword flourishes (flying hover, reach lean,
+    // deathtouch edge, strike blades, lifelink glow). BattlefieldRow
+    // sets it; the hand, stack, exile and every other Card leave it off,
+    // because a flourish says what a permanent is doing on the table.
+    // The Settings toggle (display.keywordFlourishes) gates it too.
+    flourishes?: boolean;
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
@@ -388,6 +395,7 @@
     priority = false,
     memberIDs,
     viewerID,
+    flourishes = false,
     onClick,
   }: Props = $props();
 
@@ -556,6 +564,20 @@
   // to it, so the click affordance is withheld here rather than by
   // every parent remembering to withhold it.
   const phasedOut = $derived(card.phased_out === true);
+  // #4556: the flourishes follow the card's EFFECTIVE keywords
+  // (`card.abilities`, the list KeywordBadgeRow badges), so a granted
+  // keyword shows and a lost one goes. A face-down card has none to show.
+  const fx = $derived(
+    flourishes && $settings.display.keywordFlourishes && !showBack
+      ? flourishesFor(card.abilities)
+      : NO_FLOURISHES,
+  );
+  // The sway is the only motion. It stops with reduced motion or with
+  // animations off; the still cues (lift, edge, blades, glow) stay.
+  // CSS stops it too, for the OS signal before the settings load.
+  const fxSway = $derived(
+    fx.flying && !$settings.accessibility.reduceMotion && $settings.animations.enabled,
+  );
   // #3043: a token copy wears the original's art and frame, so the art
   // alone cannot say which one is the token. Every token carries a mark;
   // a copy of a real card says so.
@@ -970,6 +992,12 @@
   class:phased-out={phasedOut}
   class:ring-bearer={!!card.ring_bearer}
   class:menu-open={manaMenuOpen}
+  class:kw-fly={fx.flying}
+  class:kw-sway={fxSway}
+  class:kw-reach={fx.reach}
+  class:kw-deathtouch={fx.deathtouch}
+  class:kw-lifelink={fx.lifelink}
+  style:--kw-delay={fxSway ? swayDelay(card.instance_id) : null}
   data-instance-id={card.instance_id}
   data-board-shot-private={showFaceDownBadge ? "" : undefined}
   data-tapped={card.tapped ? "true" : "false"}
@@ -1514,6 +1542,18 @@
          token group's card carries one stepper for all its members. -->
     <DamageStepper cardID={card.instance_id} name={displayName(card)} {memberIDs} />
   {/if}
+  {#if fx.deathtouch || fx.blades > 0 || fx.reach}
+    <!-- #4556: the deathtouch edge and the strike blades. Inside the
+         frame (the card clips), under every badge, never takes a click. -->
+    <span class="kw-fx" class:kw-edge={fx.deathtouch} aria-hidden="true">
+      {#if fx.blades > 0 || fx.reach}
+        <span class="kw-blades" data-blades={fx.blades}>
+          {#if fx.reach}<i class="kw-bow"></i>{/if}
+          {#if fx.blades > 0}<i class="kw-blade"></i>{/if}{#if fx.blades === 2}<i class="kw-blade"></i>{/if}
+        </span>
+      {/if}
+    </span>
+  {/if}
   {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor" use:anchoredMenu>
       <ManaAbilityMenu
@@ -1671,6 +1711,150 @@
        sets --impact-wash for the length of the shake. */
     background: var(--impact-wash, #fff);
     opacity: calc(var(--impact-glow, 0) * 0.5);
+  }
+  /* #4556: the keyword flourishes. Quiet on purpose: a full board has
+     dozens of these and has to stay calm.
+
+     They are built so they do not fight a state. Lift and lean use the
+     individual `translate` and `rotate` properties, which compose with
+     (never replace) the `transform` that carries the tap turn, the
+     hover scale and the combat shake. The shadow and the glow join the
+     resting box-shadow, so a ring a state draws (selected, targeted,
+     attacking, blocking, picked) simply replaces them, and the outline
+     the ready ring uses is left alone. The edge and the blades are drawn
+     inside the frame by .kw-fx, under every badge.
+
+     Two variables say how the card is drawn, and are set where the
+     card's panel turns it (PlayerPanel.svelte):
+       --card-turn  1 when the card's top points up the screen, -1 when
+                    it is drawn turned 180° (a top-row opponent's cards
+                    face them). The lift and the shadow are in SCREEN
+                    terms, so they flip with it.
+       --blade-turn 1 when the card's top edge is the one that faces the
+                    other players, -1 when its bottom edge is (an
+                    opponent's card drawn upright for the viewer).
+     Both default to 1: the viewer's own cards. */
+  .card {
+    --kw-lift: max(2px, calc(var(--card-h, 112px) * 0.03));
+  }
+  /* Flying: a small lift and a soft shadow beneath. The shadow is
+     offset along the screen's down, whatever the card is turned to: the
+     tap turn (--tap-rot) and the panel's turn both rotate the card's own
+     axes, so the offset is rotated back by them. */
+  .card.kw-fly {
+    translate: 0 calc(var(--card-turn, 1) * var(--kw-lift) * -1);
+    --kw-drop: calc(var(--card-h, 112px) * 0.085);
+    --kw-fly-shadow:
+      calc(var(--card-turn, 1) * sin(var(--tap-rot, 0deg)) * var(--kw-drop))
+      calc(var(--card-turn, 1) * cos(var(--tap-rot, 0deg)) * var(--kw-drop))
+      calc(var(--card-h, 112px) * 0.06) calc(var(--card-h, 112px) * -0.025) rgba(0, 0, 0, 0.5);
+  }
+  /* The tiniest, slowest sway: a fraction of a degree and a pixel, on
+     transform properties only (no layout, no paint, no box-shadow). Each
+     card starts at its own phase (--kw-delay) so a row does not move in
+     step. */
+  .card.kw-sway {
+    animation: kw-sway 7s ease-in-out infinite;
+    animation-delay: var(--kw-delay, 0ms);
+  }
+  @keyframes kw-sway {
+    0%,
+    100% {
+      rotate: -0.6deg;
+      translate: 0 calc(var(--card-turn, 1) * var(--kw-lift) * -1);
+    }
+    50% {
+      rotate: 0.6deg;
+      translate: 0 calc(var(--card-turn, 1) * var(--kw-lift) * -1.3);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card.kw-sway {
+      animation: none;
+    }
+  }
+  :global(:root[data-reduce-motion="1"]) .card.kw-sway {
+    animation: none;
+  }
+  /* Reach: a small drawn bow, arrow pointing up, beside the blades on
+     the same edge. A lean of a few degrees was tried first and read as
+     a card set down crooked, which on a full row is clutter, not
+     calm. The bow is drawn in .kw-fx like the blades and shares their
+     edge, so it follows the same facing. */
+  .kw-bow {
+    display: block;
+    flex: 0 0 auto;
+    /* The row is mirrored where it sits on the bottom edge; the bow
+       stands up whichever edge it is on. */
+    transform: scaleY(var(--blade-turn, 1));
+    width: calc(var(--blade-h, 18px) * 0.75);
+    height: var(--blade-h, 18px);
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 26'%3E%3Cpath d='M8 22V2' stroke='%23060912' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M1.5 15Q8 -2.5 14.5 15' fill='none' stroke='%23060912' stroke-width='4.6' stroke-linecap='round'/%3E%3Cpath d='M1.5 15Q8 -2.5 14.5 15' fill='none' stroke='%23d19a55' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M1.5 15 8 22 14.5 15' fill='none' stroke='%23f2f5fa' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M8 21V3' stroke='%23e4eaf4' stroke-width='1.3' stroke-linecap='round'/%3E%3Cpath d='M5.6 5 8 .6 10.4 5Z' fill='%23e4eaf4' stroke='%23060912' stroke-width='.6'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
+    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
+  }
+
+  /* Lifelink: a faint red glow, outside the frame. A blood red, not the
+     attack or danger signal: those mean something else on a card. */
+  .card.kw-lifelink {
+    --kw-life-glow:
+      0 0 calc(var(--card-w, 80px) * 0.11) calc(var(--card-w, 80px) * 0.012) rgba(214, 38, 64, 0.5);
+  }
+  .card.kw-fly,
+  .card.kw-lifelink {
+    box-shadow:
+      var(--kw-fly-shadow, 0 0 0 0 transparent),
+      var(--kw-life-glow, 0 0 0 0 transparent),
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  /* Deathtouch's edge and the strike blades, inside the frame. */
+  .kw-fx {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .kw-fx.kw-edge {
+    box-shadow:
+      inset 0 0 0 max(3px, calc(var(--card-w, 80px) * 0.035)) #010206,
+      inset 0 0 0 calc(max(3px, calc(var(--card-w, 80px) * 0.035)) + 1px) rgba(255, 255, 255, 0.22);
+  }
+  /* One blade, or two splayed from the hilt, on the edge that faces the
+     other players: the top edge, or the bottom one where --blade-turn is
+     -1. The tip points at the edge. */
+  .kw-blades {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    padding-top: calc(
+      var(--face-top, 0px) * max(0, var(--blade-turn, 1)) + max(3px, calc(var(--card-w, 80px) * 0.04))
+    );
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: calc(var(--blade-h, 18px) * 0.12);
+    transform: scaleY(var(--blade-turn, 1));
+    --blade-h: clamp(11px, calc(var(--card-h, 112px) * 0.2), 40px);
+  }
+  .kw-blade {
+    display: block;
+    flex: 0 0 auto;
+    width: calc(var(--blade-h) * 0.38);
+    height: var(--blade-h);
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 26'%3E%3Cpath d='M5 .6 8.2 15H1.8Z' fill='%23e4eaf4' stroke='%23060912' stroke-width='1' stroke-linejoin='round'/%3E%3Cpath d='M5 2.6V15H1.8Z' fill='%23aab6c8'/%3E%3Crect x='.6' y='15' width='8.8' height='2.2' rx='.8' fill='%23c9a24a' stroke='%23060912' stroke-width='.8'/%3E%3Crect x='4' y='17.2' width='2' height='5' fill='%23634027' stroke='%23060912' stroke-width='.7'/%3E%3Ccircle cx='5' cy='23.8' r='1.7' fill='%23c9a24a' stroke='%23060912' stroke-width='.7'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
+    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
+    transform-origin: 50% 85%;
+  }
+  .kw-blades[data-blades="2"] .kw-blade:first-child {
+    rotate: -17deg;
+    margin-right: calc(var(--blade-h) * -0.1);
+  }
+  .kw-blades[data-blades="2"] .kw-blade:last-child {
+    rotate: 17deg;
+    margin-left: calc(var(--blade-h) * -0.1);
   }
   .card.clickable {
     cursor: pointer;

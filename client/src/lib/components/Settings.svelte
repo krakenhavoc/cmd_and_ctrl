@@ -991,6 +991,18 @@
               {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
 
+            <!-- #4556: motion stops under reduced motion or with animations off
+                 whatever this says; the still cues follow it. -->
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.keywordFlourishes}
+                onchange={(e) => change("display", "keywordFlourishes", e.currentTarget.checked)}
+              />
+              {L.keywordFlourishesToggle}
+              {#if isFresh("display.keywordFlourishes")}<span class="saved">✓ saved</span>{/if}
+            </label>
+
             <!-- ADR 0179: only where the operator configured a shop. -->
             {#if $configuredShops.length > 0}
               <label>

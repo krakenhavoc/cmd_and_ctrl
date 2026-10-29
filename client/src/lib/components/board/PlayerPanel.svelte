@@ -1990,6 +1990,26 @@
        overlay, which is never flipped, reads upright. */
     .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row-cards) {
       transform: rotate(180deg);
+      /* #4556: the keyword flourishes (Card.svelte) are drawn in screen
+         terms, so a card needs to know it is drawn turned. A flier's lift
+         and shadow flip with it; the strike blades stay on its top edge,
+         which is the one facing the table's centre when it is turned.
+         Anything that turns the cards back upright (#4555's "facing me")
+         must set --card-turn: 1 and --blade-turn: -1 on what it turns,
+         since an upright top-row card faces the centre with its bottom
+         edge. */
+      --card-turn: -1;
+    }
+    /* #4555 ("Facing me") turns each pile back upright, so its cards are
+       upright to the viewer; but that seat's other players are still
+       across the table, at the edge the card draws as its bottom. The
+       class is #4555's, written as a global so this reads the same
+       whether or not that has landed. */
+    :global(.panel.opponent.flipped.faces-viewer)
+      :is(.grid-creatures, .grid-middle)
+      :global(.pile) {
+      --card-turn: 1;
+      --blade-turn: -1;
     }
     /* #4555: "Facing me" (settings.display.opponentCardFacing) draws the
        cards upright for the viewer. Only the drawing changes: the lists

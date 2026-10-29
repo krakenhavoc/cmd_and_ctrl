@@ -212,6 +212,29 @@ describe("settings", () => {
     expect(get((await freshModule()).settings).animations.effects).toBe("full");
   });
 
+  // #4556: display.keywordFlourishes fills from the default (on) with no
+  // version bump; a chosen Off survives and junk is the default.
+  it("defaults display.keywordFlourishes on, keeps Off and resets junk, synced", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { cardSize: "large" } }),
+    );
+    const first = await freshModule();
+    expect(first.defaultSettings().display.keywordFlourishes).toBe(true);
+    expect(get(first.settings).display.keywordFlourishes).toBe(true);
+    expect(first.SYNCED_FIELDS.display.keywordFlourishes).toBe("synced");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { keywordFlourishes: false } }),
+    );
+    expect(get((await freshModule()).settings).display.keywordFlourishes).toBe(false);
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { keywordFlourishes: "no" } }),
+    );
+    expect(get((await freshModule()).settings).display.keywordFlourishes).toBe(true);
+  });
+
   // #3586: v27 → v28 adds gameplay.attackDefault. Existing players stay
   // on today's behaviour ("ask"); a chosen mode survives; junk is "ask".
   it("migrates v27 to v28 with attackDefault on Choose each time", async () => {

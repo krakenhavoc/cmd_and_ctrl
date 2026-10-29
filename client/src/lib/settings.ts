@@ -211,6 +211,13 @@ export interface Settings {
     // every one. Per person: a signed-in account's choice follows it,
     // a guest's stays in this browser.
     shopLinks: boolean;
+    // #4556: the quiet flourishes on battlefield cards that have a
+    // keyword: flying hovers, reach leans up, deathtouch has a dark edge,
+    // first and double strike carry blades, lifelink glows red. Default
+    // on. Off draws none of them; the keyword chips are untouched. With
+    // reduced motion (or the animations master switch off) the motion
+    // goes and the still cues stay, whatever this says about them.
+    keywordFlourishes: boolean;
   };
 
   gameplay: {
@@ -562,6 +569,8 @@ export function defaultSettings(): Settings {
       playmats: DEFAULT_PLAYMATS_MODE,
       // ADR 0179 default: shown (owner rule, #3444).
       shopLinks: true,
+      // #4556 default: shown.
+      keywordFlourishes: true,
     },
     gameplay: {
       confirmExit: true,
@@ -718,6 +727,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     playmats: "device",
     // ADR 0179: the person's choice, on every device.
     shopLinks: "synced",
+    // #4556: a taste, like the art tiles.
+    keywordFlourishes: "synced",
   },
   gameplay: {
     confirmExit: "synced",
@@ -1320,6 +1331,12 @@ function migrate(raw: unknown): Settings {
   // boolean is the default.
   if (typeof merged.display.shopLinks !== "boolean") {
     merged.display.shopLinks = true;
+  }
+  // #4556: display.keywordFlourishes fills from the default (on) through
+  // the shallow merge, so SETTINGS_VERSION stands. Anything but a boolean
+  // is the default.
+  if (typeof merged.display.keywordFlourishes !== "boolean") {
+    merged.display.keywordFlourishes = true;
   }
   return absorbLegacy(merged);
 }
