@@ -24,11 +24,13 @@
 </script>
 
 <section class="lfg-post" aria-labelledby={`lfg-title-${game.id}`}>
-  <h3 id={`lfg-title-${game.id}`}>#lfg</h3>
+  <h3 id={`lfg-title-${game.id}`}>#looking-for-game</h3>
   {#if status}
     <p class="lfg-status" data-testid="lfg-status">{status}</p>
   {:else if !canManage}
-    <p class="lfg-status" data-testid="lfg-status">This table is not posted to #lfg.</p>
+    <p class="lfg-status" data-testid="lfg-status">
+      This table is not posted to #looking-for-game.
+    </p>
   {/if}
 
   {#if canManage}
@@ -40,7 +42,7 @@
         onchange={(e) => ontoggle((e.currentTarget as HTMLInputElement).checked)}
       />
       <span>
-        Post to the CMD & CTRL Discord (#lfg)
+        Post to the CMD & CTRL Discord (#looking-for-game)
         <span class="lfg-sum"
           >the table's name, you as host and the open seats, with a Join button</span
         >

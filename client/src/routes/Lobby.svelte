@@ -378,7 +378,7 @@
       await setLFG(gameID, enabled);
       await refresh();
     } catch (e) {
-      lfgError = lobbyErrorMessage(e, "the #lfg request failed");
+      lfgError = lobbyErrorMessage(e, "the #looking-for-game request failed");
       lfgErrorFor = gameID;
     } finally {
       lfgBusy = false;
@@ -956,15 +956,16 @@
     const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null;
     if (lfg?.kind === "post") {
       items.push({
-        label: "Post to #lfg",
+        label: "Post to #looking-for-game",
         title: lfg.title,
         disabled: lfg.disabled || lfgBusy,
         onclick: () => void toggleLFG(g.id, true),
       });
     } else if (lfg?.kind === "posted" && g.lfg && g.state === "lobby") {
       items.push({
-        label: "Withdraw from #lfg",
-        title: "take this table's post down from the CMD & CTRL Discord's #lfg channel",
+        label: "Withdraw from #looking-for-game",
+        title:
+          "take this table's post down from the CMD & CTRL Discord's #looking-for-game channel",
         disabled: lfgBusy,
         onclick: () => void toggleLFG(g.id, false),
       });
@@ -1260,7 +1261,7 @@
           <label class="use-setup">
             <input type="checkbox" bind:checked={wantLFG} disabled={lfgCreateBlocked} />
             <span>
-              Post to the CMD & CTRL Discord (#lfg)
+              Post to the CMD & CTRL Discord (#looking-for-game)
               <span class="setup-sum"
                 >{lfgCreateBlocked
                   ? LFG_GUEST_HINT
@@ -1635,7 +1636,7 @@
                       title={lfg.title}
                       onclick={() => toggleLFG(g.id, true)}
                     >
-                      <Icon name="discord" size={13} /> Post to #lfg
+                      <Icon name="discord" size={13} /> Post to #looking-for-game
                     </button>
                   {:else if lfg?.kind === "posted"}
                     <span class="lfg-state" title={lfg.title} data-testid="lfg-state">
