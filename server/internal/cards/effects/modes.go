@@ -257,6 +257,28 @@ func TapTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	return TapTarget{Target: t.ID}.Apply(ctx)
 }
 
+// UntapTheModesTarget is "untap target <thing>" as a modal bullet's body —
+// Elven Raft-Steerer's creature bullet and Lost Jitte's land bullet differ
+// only in the clause on the option.
+func UntapTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return UntapTarget{Target: t.ID}.Apply(ctx)
+}
+
+// PlusOneCounterOnTheModesTarget is "put a +1/+1 counter on target
+// <thing>" as a modal bullet's body — Inspired Inventor's and Bejeweled
+// Warg's bullets differ only in the clause on the option.
+func PlusOneCounterOnTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
 // TokenCopyTheModesTarget is "create a token that's a copy of target
 // <thing> you control" as a modal bullet's body — Sublime Epiphany's
 // creature bullet and Three Steps Ahead's artifact-or-creature bullet

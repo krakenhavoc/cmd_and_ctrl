@@ -55,6 +55,34 @@ type DiscardCost struct {
 	// in a hand has none).
 	Match func(Card) bool
 
+	// SameNameAsLegendaryPermanent is the board half of "Discard a
+	// legendary card with the same name as a legendary permanent you
+	// control" (#4487; Key to the Side-Door): the discarded card must
+	// share a name with a legendary permanent the activator controls
+	// as the cost is announced and paid.
+	//
+	// It is DATA, not a second predicate. Match is a func(Card) bool
+	// with no *Game, and a func(*Game, ...) beside it would be a new
+	// route from Game to a func (closure_fields.txt only lets those
+	// fall). The one question a printed card asks of the board is
+	// "does this activator control a legendary permanent named like
+	// this card", so the engine answers it
+	// (discardClauseAcceptsLocked) and the card file only says so.
+	//
+	// It narrows, and is read beside Match: "a legendary card" stays in
+	// Match, so the clause is both. Every reader goes through
+	// DiscardCostOptionsForEffect (the view, the legal enumerator) or
+	// validateDiscardCostLocked (the activation), which is what keeps
+	// the cards offered and the cards accepted the same set.
+	//
+	// The names compared are the hand card's own (both halves of a
+	// split card, CR 709.4) against each permanent's effective name,
+	// so a copy of the legend or a transformed face counts as the name
+	// it has now (CR 201.2). A face-down permanent has no name
+	// (CR 708.2a). Random, Hand and ManaValueX are meaningless beside
+	// it, and Register refuses them.
+	SameNameAsLegendaryPermanent bool
+
 	// Random is "Discard N cards at random" (ADR 0109 §7, owner
 	// decision 3; CR 701.9b) — Pyromancy, Mage il-Vec, Meteor Storm's
 	// two. The activator chooses nothing: the engine draws the cards
@@ -187,6 +215,47 @@ func (d *DiscardCost) Matches(c Card) bool {
 	return d.Match(c)
 }
 
+// discardClauseAcceptsLocked is Matches plus the clauses that read the
+// board (#4487): whether `c`, a card in `playerID`'s hand, could pay `d`
+// right now. The only two readers of a clause's per-card verdict,
+// DiscardCostOptionsForEffect and validateDiscardCostLocked, both call
+// it, so what is offered and what is accepted cannot drift.
+//
+// Caller must hold g.mu.
+func (g *Game) discardClauseAcceptsLocked(playerID uuid.UUID, d *DiscardCost, c Card) bool {
+	if !d.Matches(c) {
+		return false
+	}
+	if !d.SameNameAsLegendaryPermanent {
+		return true
+	}
+	return g.controlsLegendaryNamedLikeLocked(playerID, c)
+}
+
+// controlsLegendaryNamedLikeLocked reports whether `playerID` controls a
+// legendary permanent whose name is one of `c`'s names (CR 201.2). The
+// permanent's legendary supertype and name are the effective ones, after
+// continuous effects, as the legend rule (CR 704.5j) reads them.
+//
+// Caller must hold g.mu.
+func (g *Game) controlsLegendaryNamedLikeLocked(playerID uuid.UUID, c Card) bool {
+	names := NamesOf(c)
+	if len(names) == 0 {
+		return false
+	}
+	for _, perm := range g.Battlefield.Cards {
+		if perm.Controller != playerID || !perm.IsLegendary() {
+			continue
+		}
+		for _, n := range names {
+			if PermanentHasName(perm, n) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // DiscardCostOptionsForEffect lists the cards in `playerID`'s hand
 // that could pay `cost` right now, in hand order, excluding `sourceID`
 // when the source is itself a card in that hand (an ability activated
@@ -221,7 +290,7 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 		if c.InstanceID == sourceID {
 			continue
 		}
-		if !cost.Matches(lendCostText(text, c)) {
+		if !g.discardClauseAcceptsLocked(playerID, cost, lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -334,7 +403,7 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 			return nil, ErrCardNotFound
 		}
 		c := g.findHandCardLocked(p, id)
-		if c == nil || !cost.DiscardCards.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
+		if c == nil || !g.discardClauseAcceptsLocked(playerID, cost.DiscardCards, lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 		// #2190: "Discard a card with mana value X" — the card's mana

@@ -1214,7 +1214,8 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 	// text now says it (CR 612.2) when the predicate asks through
 	// HasSubtypeWord / HasColorWord.
 	pred := s.Predicate
-	if reader := ctx.textReader(); reader != nil && pred != nil {
+	reader := ctx.textReader()
+	if reader != nil && pred != nil {
 		printed := pred
 		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
 	}
@@ -1231,7 +1232,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Optional:             s.Optional,
 		UpTo:                 s.UpTo,
 		Reason:               s.Reason,
-		Rule:                 s.Rule,
+		Rule:                 s.Rule.ThroughTextOf(reader),
 		ThenTail:             s.thenTail(source),
 		ToTop:                s.ToTop,
 		Depth:                s.Depth,

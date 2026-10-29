@@ -84,6 +84,7 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"LosesAllLandTypes", LosesAllLandTypes(nil).Label, "Affected lands lose all land types."},
 		{"LosesAllAbilitiesAndHas", LosesAllAbilitiesAndHas(nil, "x").Label, "Affected permanents lose all abilities and have what the card says they have."},
 		{"fraThresholdSelfPT", fraThresholdSelfPT(1, 0).Label, "Gets +1/+0 while there are seven or more cards in your graveyard."},
+		{"fraThresholdSelfPT both", fraThresholdSelfPT(2, 1).Label, "Gets +2/+1 while there are seven or more cards in your graveyard."},
 		{"fraThresholdSelfKeywords", fraThresholdSelfKeywords("flying", "vigilance").Label, "Has flying and vigilance while there are seven or more cards in your graveyard."},
 		{"equippedCreatureIs", equippedCreatureIs(game.Layer6Ability, "Equipped creature has menace.", nil).Label, "Equipped creature has menace."},
 		{"whileExactlyTideCounters", whileExactlyTideCounters(3, thisCreatureOnly, 1, 1).Label, "While it has exactly 3 tide counters on it, affected creatures get +1/+1."},

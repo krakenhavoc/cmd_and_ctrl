@@ -60,8 +60,10 @@
     pruneStage,
     soleTarget,
     stageAt,
+    stageMany,
     stagedParams,
     unstage,
+    unstageMany,
     type StagedAttack,
   } from "../lib/attackStage";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
@@ -191,6 +193,7 @@
   import {
     cancel as cancelTargeting,
     confirm as confirmTargeting,
+    pickPlayer as pickTargetPlayer,
     cardRepeats,
     repeatsOf,
     shareTargetScope,
@@ -258,6 +261,7 @@
     controlledByViewer,
     controllerOfViewer,
     endTurnClosed,
+    handoffChip,
     nextPlayingAs,
     playingAsBanner,
     togglePlayingAs,
@@ -316,6 +320,7 @@
   import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
   import { BOARD_ACTION_SELECTOR, sheetCoversBoardAction, type Box } from "../lib/sheetCover";
+  import { coveredPlayerTargets } from "../lib/targetReach";
 
   interface Props {
     gameID: string;
@@ -1178,6 +1183,13 @@
   function togglePlayingAsBoard(): void {
     playingAs = togglePlayingAs(playingAs);
   }
+  // #4434: the board never switches by itself after the controlled turn
+  // begins. When the next decision is owed on the board not shown, the
+  // dock offers the jump.
+  const handoffOffer = $derived.by(() => {
+    const chip = handoffChip(view, viewerID, actingID);
+    return chip ? { whose: chip.whose, onJump: togglePlayingAsBoard } : null;
+  });
 
   // #1530, #1968: keep the server's copy of the trigger-order setting in
   // step with Settings. The effect reads the live snapshot, never a
@@ -1811,6 +1823,50 @@
       if (frame) cancelAnimationFrame(frame);
     };
   });
+  // #4435: whether a legal player is under something. The targeting
+  // request lists the legal players as buttons once any avatar a prompt
+  // may take is covered at its centre (lib/targetReach.ts says why it is
+  // not always there), by the dock, a sheet, the hand or a popover.
+  // Latched for the prompt: the row makes the dock taller, which moves
+  // what is covered, and a row that came and went would flicker. Measured
+  // at most once a frame, only while a prompt is open.
+  let playerRowOn = $state(false);
+  $effect(() => {
+    const root = sectionEl;
+    if (!root || !$targeting) {
+      playerRowOn = false;
+      return;
+    }
+    if (untrack(() => playerRowOn)) return;
+    let frame = 0;
+    const check = (): void => {
+      frame = 0;
+      if (typeof document.elementFromPoint !== "function") return;
+      const hit = (x: number, y: number) => document.elementFromPoint(x, y);
+      if (coveredPlayerTargets(root, hit).length === 0) return;
+      playerRowOn = true;
+      stop();
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    const mo = new MutationObserver(schedule);
+    function stop(): void {
+      mo.disconnect();
+      window.removeEventListener("resize", schedule);
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    }
+    mo.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return stop;
+  });
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(actingID ? actionableCount(legalHighlights, view, actingID) : 0);
@@ -2140,13 +2196,20 @@
     attackLimitRefusalDefenderID ? attackLimitOn(view, attackLimitRefusalDefenderID) : null,
   );
 
-  function openAttackPicker(defenderSeatID: string): void {
+  // #4423: set when the picker was opened by a token group's attack,
+  // whose confirm adds to the creatures already staged by clicking
+  // rather than replacing them. "Attack with all" leaves it off: it is
+  // the action that asks for the reset.
+  let attackPickerKeepsStage = false;
+  function openAttackPicker(defenderSeatID: string, keepStage = false): void {
     attackPickerLimitReason = null;
+    attackPickerKeepsStage = keepStage;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
     if (!bulkRefusal) return;
     attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
+    attackPickerKeepsStage = false;
     attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
@@ -2160,7 +2223,9 @@
     phyrexianLife = 0,
   ): void {
     const defenderSeatID = attackPickerDefenderID;
+    const keepsStage = attackPickerKeepsStage;
     attackPickerDefenderID = null;
+    attackPickerKeepsStage = false;
     if (!defenderSeatID) return;
     attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
@@ -2172,6 +2237,16 @@
       phyrexianLife,
     });
     if (!params) return;
+    if (keepsStage) {
+      // #4423: the picker lists every creature that may attack this
+      // seat, so a staged one it shows is the player's to uncheck. A
+      // staged one it does not show (aimed at another seat) stays
+      // staged. One declaration carries both.
+      const shown = new Set(eligibleAt(attackPlan, defenderSeatID).map((c) => c.instance_id));
+      const chosen = new Set(params.attackers.map((a) => a.attacker));
+      const kept = attackStage.filter((s) => !shown.has(s.attacker) && !chosen.has(s.attacker));
+      params.attackers = [...params.attackers, ...kept.map((s) => ({ ...s }))];
+    }
     sendBulkAttack(defenderSeatID, params);
   }
   // #1724: "Attack <seat> with N" from a token group's list. The same
@@ -2183,7 +2258,7 @@
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
     if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
-      openAttackPicker(defenderSeatID);
+      openAttackPicker(defenderSeatID, true);
       return;
     }
     // #4198: the picker asks mana or life for a Phyrexian tax.
@@ -2194,12 +2269,21 @@
         actingLife,
       )
     ) {
-      openAttackPicker(defenderSeatID);
+      openAttackPicker(defenderSeatID, true);
       return;
     }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
     if (!params) return;
-    sendBulkAttack(defenderSeatID, params);
+    // #4423: a group's attack is staged, like a click on one creature,
+    // and joins whatever else is staged. Sending it here as its own
+    // declaration emptied the stage, dropping the creatures the player
+    // had already chosen, and left no way to change the count.
+    combatSelection = null;
+    attackStage = stageMany(attackStage, params.attackers);
+  }
+  // #4423: take a group's picked members back out of the staged set.
+  function unstageGroupAttackers(attackerIDs: string[]): void {
+    attackStage = unstageMany(attackStage, attackerIDs);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
@@ -2660,6 +2744,9 @@
       ? targetingRequest($targeting, view, {
           onDone: confirmTargeting,
           onCancel: cancelTargeting,
+          // #4435: the legal players as buttons, for a player the board
+          // hides behind a dialog or the hand.
+          onPlayer: playerRowOn ? pickTargetPlayer : undefined,
           // #2394: the board pick's list fallback. Board leaves the
           // targeting flow once the choice is no longer board-answered,
           // and ChoicePromptModal opens it.
@@ -3252,6 +3339,7 @@
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
+          onUnstageAttackers={unstageGroupAttackers}
           docked={dockShown}
           coached={coachShown}
           {beatsPrimeKey}
@@ -3560,6 +3648,7 @@
           loop={loopDock}
           outside={outsideDockProps}
           {viewerID}
+          handoff={handoffOffer}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />

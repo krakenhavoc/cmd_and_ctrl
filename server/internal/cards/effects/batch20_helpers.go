@@ -168,10 +168,12 @@ func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.Trigger
 // Impulse) generalised to N cards, and the same one-line duration
 // since #945: ADR 0063's `UntilEndOfYourNextTurnDuration` is the
 // printed clause, keyed on the controller's seat-turn count rather
-// than on the shared round number.
-func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem, n int) error {
+// than on the shared round number. Every card that uses it exiles ONE
+// card (Prosper, Cori Mountain Monastery, Gila Courser, Gundabad
+// Opportunist), so it is an Effect as it stands.
+func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	_, err := g.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
+	_, err := g.ExileTopWithPermissionForEffect(controller, controller, 1, game.CastPermission{
 		Duration: g.UntilEndOfYourNextTurnDuration(controller),
 	})
 	return err

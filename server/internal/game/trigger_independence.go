@@ -95,6 +95,9 @@ const (
 	// FootprintCondLifeLost: the item's controller lost N or more life
 	// this turn (Lunar Convocation's Bat). The tally only rises.
 	FootprintCondLifeLost FootprintCond = "life_lost"
+	// FootprintCondCardsDrawn: the item's controller drew N or more cards
+	// this turn (Lake-town Toymaker). The turn's tally only rises.
+	FootprintCondCardsDrawn FootprintCond = "cards_drawn"
 	// FootprintCondCreatureDied: a creature died under the item's
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
@@ -717,6 +720,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.LifeGained >= atLeast
 	case FootprintCondLifeLost:
 		return tally.LifeLost >= atLeast
+	case FootprintCondCardsDrawn:
+		return tally.CardsDrawn >= atLeast
 	case FootprintCondCreatureDied:
 		return tally.CreaturesDied > 0
 	case FootprintCondCitysBlessing:
@@ -1615,7 +1620,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
-	"AttackTaxes": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
+	"AttackTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
@@ -1641,7 +1646,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
-	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
+	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
 	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,

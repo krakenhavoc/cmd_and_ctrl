@@ -889,6 +889,7 @@ type playerSnapshot struct {
 	Agent             bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
 	AgentClient       string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
 	CitysBlessing     bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
+	EnduringStory     bool                  `json:"enduringStory,omitempty"` // CR 702.195b, #4475, additive in schema 9
 	// Dungeon is the player's dungeon card and venture marker (CR
 	// 309.4, ADR 0203); CompletedDungeons the dungeons they completed
 	// (CR 309.7), by key. Additive within v8: a file without them
@@ -2573,7 +2574,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			if sp := snapshotSearchPrompt(c); sp != nil {
 				// #4253 slice 5: the search prompt's frame, as data.
-				pc.SearchPrompt, pc.PickThen = sp, SearchPromptKey
+				pc.SearchPrompt, pc.PickThen = sp, searchPromptKey(sp)
 			}
 			if d := snapshotDivideShield(c.DivideShield); d != nil && c.Kind == PendingChoiceDivideShield {
 				// #4361 S16: the divide_shield prompt and its landing step.
@@ -3046,6 +3047,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		EnduringStory:         p.EnduringStory,
 		Dungeon:               cloneDungeonState(p.Dungeon),
 		CompletedDungeons:     append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
@@ -4182,6 +4184,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Agent:              p.Agent,
 		AgentClient:        p.AgentClient,
 		CitysBlessing:      p.CitysBlessing,
+		EnduringStory:      p.EnduringStory,
 		Dungeon:            cloneDungeonState(p.Dungeon),
 		CompletedDungeons:  append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,

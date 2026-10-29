@@ -43,12 +43,7 @@ func init() {
 			Label:   "{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
 			Cost:    Plus(ManaCost("{R}"), TapCost(), b10SacrificeAnArtifact()),
 			Targets: TargetCardInGraveyard("target artifact card with mana value 3 or less in your graveyard", YouOwn(), Artifact(), ManaValueLE(3)),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
-			},
+			Effect:  hobB8ReturnTargetGraveyardCardToBattlefield,
 		}},
 	})
 }

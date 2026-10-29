@@ -22,6 +22,7 @@
 // "Select target for <card>", which s19-triggers.spec.ts waits on, and
 // the buttons keep "Done", "Cancel", "Auto-tap & cast", "Cast anyway".
 
+import { seatColor } from "./colors";
 import type { DockAction, DockRequest } from "./dock";
 import { L } from "./labels";
 import type { GameView } from "./protocol";
@@ -29,7 +30,9 @@ import {
   canConfirm,
   effectiveShareScope,
   isCardSetPick,
+  isLegalPlayerTarget,
   isMultiPick,
+  isPicked,
   legalTargetCount,
   type ShareScope,
   type TargetingMode,
@@ -198,6 +201,11 @@ export interface TargetingHandlers {
   // #2394: a card-set pick answered on the board offers the same
   // choice as the list. Called with the choice's ID.
   onShowList?: (choiceID: string) => void;
+  // #4435: picks a legal player, as a click on their avatar does. Given
+  // only while a legal avatar is covered, and then the request lists
+  // every legal player as a button (playerRow), so a player the board
+  // hides, behind a dialog, a sheet or the hand, can still be chosen.
+  onPlayer?: (playerID: string) => void;
   // #3265: the same ability on this source has `count` more instances
   // waiting for a target, and the player may answer them all with this
   // pick. #3817: `card` is the reach over every copy of the card (the
@@ -261,6 +269,39 @@ function shareRow(name: string, share: NonNullable<TargetingHandlers["share"]>):
   return row;
 }
 
+// playerRow is the row of legal players (#4435): a seat-colour dot and
+// the name, in seat order, for a prompt that may take a player. The
+// board is where a player is usually picked, but the dock and its
+// sheets float over it and the hand fans across its foot, so a target
+// can sit under one of them. A button here can not. Game.svelte offers
+// the row (the `onPlayer` handler) once any legal avatar is covered
+// (lib/targetReach.ts), not always: it makes the dock taller. A picked
+// player in a pick list reads as pressed, and pressing it again takes it
+// back, as the second click on an avatar does.
+export function playerRow(
+  state: TargetingState,
+  view: GameView | null | undefined,
+  onPlayer: (playerID: string) => void,
+): DockAction[] {
+  if (!view || isCardSetPick(state)) return [];
+  const row: DockAction[] = [];
+  for (const seat of view.seats) {
+    if (seat.eliminated || !isLegalPlayerTarget(state, seat.id)) continue;
+    const name = seat.display_name || seat.name;
+    row.push({
+      id: `target-player:${seat.id}`,
+      label: name,
+      ariaLabel: L.targetPlayer(name),
+      title: `target ${name}`,
+      seatColor: seatColor(seat.seat),
+      clip: true,
+      pressed: isPicked(state, seat.id),
+      onPress: () => onPlayer(seat.id),
+    });
+  }
+  return row;
+}
+
 export function targetingRequest(
   state: TargetingState,
   view: GameView | null | undefined,
@@ -292,7 +333,8 @@ export function targetingRequest(
   // in the modal's grid, for a player who would rather read names.
   const showList = h.onShowList;
   const share = multi ? undefined : h.share;
-  const rowOf = share ? shareRow(state.card.name, share) : [];
+  const players = h.onPlayer ? playerRow(state, view, h.onPlayer) : [];
+  const rowOf = [...players, ...(share ? shareRow(state.card.name, share) : [])];
   const choiceID = state.choiceID;
   const secondary: DockAction[] = choiceID
     ? cardSet && showList
@@ -326,6 +368,7 @@ export function targetingRequest(
     primary,
     secondary,
     ...(rowOf.length > 0 ? { row: rowOf } : {}),
+    ...(players.length > 0 ? { rowLead: L.targetPlayersLead } : {}),
   };
 }
 

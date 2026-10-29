@@ -32,9 +32,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			AtYourEndStep("Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn", func(g *game.Game, item *game.StackItem) error {
-				return b20ExileTopUntilEndOfNextTurn(g, item, 1)
-			}),
+			AtYourEndStep("Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn", b20ExileTopUntilEndOfNextTurn),
 			OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b20PlayedACardFromExile(ev, source, g)
 			}, "Prosper, Tome-Bound — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),

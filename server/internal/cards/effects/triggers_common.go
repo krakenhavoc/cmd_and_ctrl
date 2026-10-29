@@ -434,6 +434,16 @@ func LandEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Charac
 	return ok && c.IsLand()
 }
 
+// AnotherCreatureEntered is a creature entering under any player's
+// control, other than the source itself.
+func AnotherCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.CardID == source.InstanceID {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature()
+}
+
 // CreatureEnteredUnderYourControl — "whenever a creature you control
 // enters", the source itself included (Impact Tremors).
 func CreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

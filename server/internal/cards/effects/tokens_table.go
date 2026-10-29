@@ -82,6 +82,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 white Goat":                                                   {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/4 colorless Wall artifact with defender":                        {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
 	"0/4 colorless Wall with defender":                                 {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
+	"3/1 colorless Wall artifact with defender named Stone Boulder":    {Name: "Stone Boulder", TypeLine: "Token Artifact Creature — Wall", Power: 3, Toughness: 1, Keywords: []string{"defender"}},
 	"0/4 white Wall with defender and flying":                          {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender", "flying"}},
 	"1/1 black Bat with flying":                                        {Name: "Bat", TypeLine: "Token Creature — Bat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 black Horror":                                                 {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -125,6 +126,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Forest Tentacle":                                        {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Forest Dryad":                                           {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Elf Warrior":                                            {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"1/1 green Elf":                                                    {Name: "Elf", TypeLine: "Token Creature — Elf", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"5/4 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 5, Toughness: 4, Colors: []string{"G"}},
 	"1/1 green Insect":                                                 {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}},
@@ -174,6 +176,7 @@ var tokenTable = map[string]game.Card{
 	"3/1 red Elemental":                                                {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
+	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
 	"2/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 2, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
 	"2/2 black Rogue":                                                  {Name: "Rogue", TypeLine: "Token Creature — Rogue", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 colorless Wizard Soldier named Cadet":                         {Name: "Cadet", TypeLine: "Token Creature — Wizard Soldier", Power: 2, Toughness: 2},

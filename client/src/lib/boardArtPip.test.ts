@@ -119,13 +119,14 @@ function stripMargin(it: Item, w: number, h: number): number {
 // Inside a pile: the rest-state step between copies, and the step
 // once the pile is hovered and spread.
 const WITHIN = '.row.strip .pile > [role="listitem"] + [role="listitem"]';
-const WITHIN_HOVER = '.row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"]';
 const withinRest = (w: number, h: number) =>
   w + px(decl(block(rowSvelte, WITHIN), "margin-left"), w, h);
-const WITHIN_HOVER_TAPPED =
-  '.row.strip .pile.tapped.multi:hover > [role="listitem"] + [role="listitem"]';
+// #4422: the spread is a translate, so the step between copies is the
+// pile's --spread-step; the layout is the rest one.
+const SPREAD = ".row.strip .pile.multi:hover";
+const SPREAD_TAPPED = ".row.strip .pile.tapped.multi:hover";
 const withinHover = (w: number, h: number, tapped = false) =>
-  w + px(decl(block(rowSvelte, tapped ? WITHIN_HOVER_TAPPED : WITHIN_HOVER), "margin-left"), w, h);
+  px(decl(block(rowSvelte, tapped ? SPREAD_TAPPED : SPREAD), "--spread-step"), w, h);
 
 // A pile of `n` same-name lands, and the
 // pip of each tile in it with the room it has: right of the row's

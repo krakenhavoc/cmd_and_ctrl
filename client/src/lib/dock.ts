@@ -74,6 +74,10 @@ export interface DockAction {
   icon?: IconName;
   // A seat-colour dot before the label (the per-opponent attack buttons).
   seatColor?: string;
+  // Clip a long label to the button with an ellipsis instead of wrapping
+  // it (a player's name, #4435). Only for a button whose accessible name
+  // and title carry the whole label.
+  clip?: boolean;
   // Muted text after the label, part of its name ("{1}" attack tax).
   note?: string;
   // The one emphasised button of a prompt row (not the bar's primary).

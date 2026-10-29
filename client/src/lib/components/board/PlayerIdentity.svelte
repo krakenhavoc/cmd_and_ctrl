@@ -12,6 +12,7 @@
   // ADR 0076 §2.4), so keep it on the element a player clicks to attack.
 
   import { untrack } from "svelte";
+  import { get } from "svelte/store";
   import type { ActionPayload, ActionType, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
@@ -27,7 +28,9 @@
     trackLife,
     type LifePopupView,
   } from "../../lifePopup";
-  import { lifeCauseLookup } from "../../lifeCause";
+  import { combatHitLookup, lifeCauseLookup } from "../../lifeCause";
+  import { popupSound } from "../../faceHit";
+  import { combatMotion, strikesScheduled } from "../../combatStrikes";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
@@ -239,6 +242,7 @@
   // #3379: names the card behind each delta. Absent with no Board
   // above (a unit test), and then the popup is bare numbers.
   const causesFor = lifeCauseLookup();
+  const combatHitFor = combatHitLookup();
   $effect(() => {
     const frame = trackLife(tracker, seat.life_history);
     tracker = frame.tracker;
@@ -246,7 +250,22 @@
     const causes = untrack(() => causesFor?.(seat.id, frame.popup!.deltas) ?? []);
     const view = lifePopupView(frame.popup, LIFE_POPUP_MAX_LINES, causes);
     popup = { key: frame.popup.key, view };
-    play(view.sound);
+    // #4432: a combat hit to this seat is face_hit, played by the strike
+    // layer at contact (or here, when no strike plays), never damage too.
+    const st = get(settings);
+    const sound = popupSound(
+      view.sound,
+      untrack(() => combatHitFor?.(seat.id, frame.popup!.deltas) ?? false),
+      strikesScheduled(
+        combatMotion({
+          enabled: st.animations.enabled,
+          combat: st.animations.combat,
+          reduceMotion: st.accessibility.reduceMotion,
+        }),
+        typeof document === "undefined" ? undefined : document.visibilityState,
+      ),
+    );
+    if (sound) play(sound);
     if (popupTimer) clearTimeout(popupTimer);
     popupTimer = setTimeout(() => {
       popup = null;
@@ -530,6 +549,16 @@
           class="marker citys-blessing active"
           title="the city's blessing"
           aria-label="the city's blessing"><Icon name="flag" size={12} /></span
+        >
+      {/if}
+      <!-- An enduring story (CR 702.195b, #4475): storied's designation,
+           kept for the rest of the game like the blessing, so read-only
+           and on every seat. -->
+      {#if seat.enduring_story}
+        <span
+          class="marker enduring-story active"
+          title={L.enduringStory}
+          aria-label={L.enduringStory}><Icon name="book" size={12} /></span
         >
       {/if}
       {#if isSelf}
@@ -1183,6 +1212,12 @@
     border-color: color-mix(in srgb, var(--accent) 70%, transparent);
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .marker.active.enduring-story {
+    color: var(--mint);
+    border-color: color-mix(in srgb, var(--mint) 70%, transparent);
+    background: color-mix(in srgb, var(--mint) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--mint) 35%, transparent);
   }
   .marker.poison {
     color: var(--mint);

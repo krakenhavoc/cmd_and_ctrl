@@ -270,6 +270,8 @@ Board targeting stays on the board: highlights, rings and the click that picks. 
 
 The combat-selection hint (`Game.svelte:1751-1774`) works the same way: question line plus Cancel.
 
+*Amendment (2026-10-28, #4435):* the dock, a sheet, the hand or a popover can land on a legal player's avatar, and a player the board hides is a prompt nobody can answer. Once any legal avatar is covered at its centre (`lib/targetReach.ts`, measured by `Game.svelte`, latched for the prompt), the targeting request adds a row of the legal players, a seat-colour dot and the name each (`playerRow` in `lib/targetingDock.ts`; the buttons are named `Target <name>`, `L.targetPlayer`). A press picks that player exactly as a click on the avatar does (`pickPlayer`, which Board answers with the same handler). Nothing is added while every avatar is clear, because the row makes the dock taller and the dock's height is what lifts the viewer's own avatar at the narrow quadrant table. An open sheet that lies over a ringed avatar folds down to its question line, as it already did over a ringed card (`lib/sheetCover.ts`).
+
 ### 7. What leaves its old place
 
 Nothing is drawn twice. Each control below is deleted where it was in the PR that adds it to the dock:

@@ -32,6 +32,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
+  - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
@@ -2724,6 +2725,49 @@ enters under. The engine does everything else
 owner draws a card") reads `Card.Owner`. The card's other abilities say
 "you" for the controller, as every card does.
 
+### "They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)
+
+Supper for Spiders ("They are Food artifacts with '{2}, {T}, Sacrifice
+this artifact: You gain 3 life.' (They lose all other types and
+subtypes.)") and Tom, Bert, and William ("return them to the
+battlefield. They're an artifact.") put a card onto the battlefield
+with its type line SET by the putting effect. Say it on the put, never
+as a scoped effect registered after the card has landed:
+
+```go
+ReturnFromGraveyardTogether{
+    Targets:    ids,
+    Controller: item.Controller,
+    EntersAs: &game.EntersAs{
+        Types:    []string{"Artifact"},
+        Subtypes: []string{"Food"},
+        Grants:   []string{supperForSpidersFood}, // a Spec.Grants bundle (ADR 0093)
+        Label:    "Supper for Spiders — a Food artifact",
+    },
+}.Apply(ctx)
+```
+
+`EntersAs` rides `game.ZoneEntryOptions`, so any batch door takes it.
+The engine registers one `ScopedEffect` (`SetTypesMod` in layer 4,
+`GrantAbilitiesMod` in layer 6) as the permanent lands, before the zone
+move and `EventETB`, pinned to that object by its epoch:
+
+- It is never a creature on the battlefield, so "whenever a creature
+  enters" does not trigger and a creature-only wipe does not touch it.
+- The entry window judges it as it will be (CR 614.12): an opponent's
+  Authority of the Consuls does not tap it.
+- The types are CR 205.1a's set. Subtypes of a card type it lost go,
+  `Subtypes` replace their own set, and supertypes stay (CR 205.4b).
+  The card keeps its own abilities.
+- It lasts as long as that object is on the battlefield. A flicker or a
+  reanimation is a new object without it (CR 400.7), and a copy copies
+  the printed card (CR 707.2).
+
+A "dies, if it was a creature, return it" trigger (Tom, Bert, and
+William) reads `lki.Types` in `AppliesTo`. The returned artifact was
+not a creature when it died, so it does not loop. See
+`supper_for_spiders.go` and `tom_bert_and_william.go`.
+
 ### Adding a copy effect (S16.5+)
 
 "You may have this creature enter as a copy of X" (Clone, Phyrexian
@@ -3037,6 +3081,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"cipher"` | Cipher (CR 702.99) — #3867, a SPELL's keyword read as it RESOLVES: once every prompt the spell's own text opened is answered, the engine asks its controller to exile it encoded on a creature they control (`game/cipher.go`, a keyed option pick). The creature then has a granted "whenever this creature deals combat damage to a player" trigger, one per encoded card, that offers its controller a free copy of the card; the copy runs the card's OnResolve again with new targets. Declare `PrintedKeywords: []string{game.KeywordCipher}` on the instant or sorcery and write only the rest of its text: never exile the card yourself. ([ADR 0093's 2026-10-16 amendment](decisions/0093-abilities-granted-to-other-permanents.md)) |
 | `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
 | `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
+| `"storied"` | Storied (CR 702.195) — #4475, read by the engine, never by a card file: a permanent with storied gives its controller an enduring story as soon as they control three or more permanents that are artifacts, Sagas and/or legendary (`game/enduring_story.go`, the city's blessing's sweep in `game/earned_designations.go`). Declare it as `game.KeywordStoried`; the card reads the designation, not the keyword. See "Storied, the enduring story, and recruit" below ([ADR 0096 amendment 2026-10-29](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
@@ -3057,6 +3102,15 @@ Emissary of Soulfire ruling), and so are decayed counters, where two
 flying counters are one flying. "Hexproof from" counters are not read
 yet, because that keyword is not enforced: a card that places one ships
 with a caveat.
+
+**A hone counter needs no static either** (CR 122.1j, #4500). "Put a hone
+counter on each Equipment you control" is `AddCounter{Target: id, Kind:
+game.CounterHone, N: 1}`; the engine gives the creature an Equipment is
+attached to +1/+0 for each hone counter on it, as a layer 7c effect
+(`game/hone_counters.go`), so the bonus follows the Equipment when it is
+re-equipped, ends when it is unattached, and adds up across Equipment.
+Never write a `PumpAttached` that counts the counters. Sting, Bilbo's
+Sword and Dwalin, Weaponmaster are the cards.
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
@@ -4167,6 +4221,28 @@ on a clone for every candidate, and
 does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
+
+**"Whenever an ability resolves" (#4505).** Watch `game.EventResolve`: an
+ability emits it as it begins to resolve (`CardID` empty,
+`ResolvedStackItemID` the item), and a fizzled one never does. The item has
+already left `StackMeta`, so read its triggering event through
+`Game.ResolvingAbilityTriggerForEffect(ev.ResolvedStackItemID)`. A Saga
+chapter's is the `EventSagaChapter` with its chapter number in `Amount`;
+compare it with `game.SagaFinalChapter` for "the final chapter ability"
+(CR 714.2e, Tom Bombadil).
+
+**Fights (#4384).** `b10Fight` delegates to `Game.FightForEffect`, which
+requires two current battlefield creature object references. It publishes
+`EventFight` for each participant before dealing damage, even when damage
+is zero or prevented. `Actor` is the fighter's controller, `CardID` /
+`Source` the fighter, `Target` the other creature, and `BatchSeq` groups
+one fight. Separate fights within one resolving effect have distinct
+`BatchSeq` values. Do not infer fights from damage events. Neyith's
+`WheneverYourCreaturesFightOrBecomeBlocked` uses that occurrence key for
+fights and the ordinary event batch for blocked attackers; controlling
+both fighters or having several attackers blocked draws only once for
+that occurrence. Target legality remains the calling effect's check.
+
 
 **Committing a crime (CR 700.13, ADR 0157).** Watch
 `game.EventBecomesTarget` and use `YouCommittedCrime(ev, source)`.
@@ -6191,6 +6267,13 @@ A search's set rule is a registered rule (#4253 slice 5; the closure
 `SearchLibrary{Rule: searchRuleDifferentNames}` or
 `searchRuleTotalManaValueAtMost.WithN(6)` (`effects/search_rules.go`, or
 `game.RegisterSearchRule` for a new clause, ledgered `searchrule <key>`).
+Subtype and color words in a set rule use `Card.HasSubtypeWord` /
+`HasColorWord`, just like the candidate predicate. `SearchLibrary` captures
+the resolving spell or ability's text lens for the rule, including a
+sacrificed source's last-known words; the prompt persists it as plain data
+(#4382). A captured-word prompt uses a distinct on-disk marker so older
+readers refuse it instead of discarding its words. Engine callers use
+`rule.ThroughTextOf(g.TextReaderForEffect(item))`.
 With the "then" a `ThenTail`, the only continuation a search takes, the
 open prompt is a restore point. The per-card `Predicate` may stay a closure: it lists the
 candidates when the search starts and the prompt carries that list, so it
@@ -6801,6 +6884,13 @@ GrantCastFromYourGraveyard{                            // Past in Flames
 // ExileOnResolution, which replaces every way off the stack.
 OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
     FollowUp: emetSelchCastTally}.Apply(ctx)             // Emet-Selch
+// "you may cast an artifact, instant, or sorcery spell from your
+// graveyard. If an instant or sorcery spell cast this way would be put
+// into your graveyard, exile it instead": ONE pass-closed permission over
+// every candidate through game.OfferResolutionCastForEffect (the first
+// cast spends it), with ExileInsteadOnlyInstantOrSorcery narrowing the
+// exile to the spells the clause names (#4505).
+bilboCastFromGraveyard(g, item)                         // Bilbo, Thief in the Night
 ```
 
 Five rules worth knowing before you write one. **The key is shared with
@@ -10599,6 +10689,41 @@ real, put an ascend permanent and nine others on the battlefield and call
 blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
 `CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
 
+### Storied, the enduring story, and recruit (ADR 0096 amendment 2026-10-29, #4475, CR 702.195 / 701.70)
+
+The enduring story is the city's blessing with a different count: a
+**player** designation (`Player.EnduringStory`, `game/enduring_story.go`)
+that a permanent with storied gives its controller once they control three
+or more permanents that are artifacts, Sagas and/or legendary, each
+counted once. Both are rows of one sweep (`game/earned_designations.go`),
+so never write a second one, and never approximate either with a live
+count. A card declares the keyword and reads the designation with the
+vocabulary in
+[enduring_story.go](../server/internal/cards/effects/enduring_story.go),
+the blessing's words with the name changed:
+
+```go
+PrintedKeywords: []string{game.KeywordStoried},                          // the badge; the engine reads it
+Static: []game.StaticAbility{SelfPumpWhileEnduringStory(1, 0),           // Ori: +1/+0 as long as you have one
+    SelfKeywordWhileEnduringStory("vigilance")},                         //      and vigilance
+AppliesTo: WhileEnduringStory(CreaturesYouControl),                      // "as long as you have an enduring story, creatures you control …"
+UntapStepRestrictions: []game.UntapStepRestriction{DoesntUntapUnlessEnduringStory()}, // Bombur
+if YouHaveAnEnduringStory(g, item.Controller) { … }                      // "if you have an enduring story" as it resolves
+```
+
+The shared bodies (`whileYouHave`, `selfCreature`, `pumpBy`) live in
+`citys_blessing.go`; a third designation of the kind is a row in
+`earnedDesignations` plus these few lines. In a test, put a storied
+permanent and three artifacts on the battlefield and run the state checks.
+
+**Recruit** (CR 701.70a) is `Recruit{}` (`recruit.go`), usable wherever an
+effect runs: `Do(Recruit{})` in a trigger, a spell's clause, a Saga
+chapter. It draws, then opens a keyed discard (`choose-cards/recruit-discarded`,
+a restore point), and a nonland card discarded makes a 1/1 white Human
+Soldier for the recruiter. It is the last instruction of every card that
+has it; anything after it would have to ride the discard's continuation,
+as connive's chain does.
+
 ### Speed: start your engines! and max speed (ADR 0138, #2122, CR 702.178 / 702.179)
 
 Speed is the player's, and the engine owns all of it (`game/speed.go`):
@@ -11498,6 +11623,17 @@ the activator names at announce (`discard_ids`), like a sacrifice cost's.
 Both pay through the one discard helper with cause COST, so every
 discard payoff sees them and none of them can pause (CR 601.2h /
 602.2b).
+
+A clause that has to read the board ("Discard a legendary card with the
+same name as a legendary permanent you control", Key to the Side-Door,
+#4487) cannot be a `Match` predicate: `Match` is `func(Card) bool` and has
+no `*Game`. Do not add a second func beside it (a new route from `Game` to
+a func raises the closure ledger). `DiscardCost.SameNameAsLegendaryPermanent`
+is the declarative half, read by the engine in `discardClauseAcceptsLocked`
+for both the options the view and the enumerator offer and the activation's
+validation; `effects.DiscardLegendaryNamedLikeYourPermanent()` builds the
+printed clause. A new board question of this kind is a new bool there, with
+the same two readers.
 
 "The discarded card" of an activated ability (Land's Edge's "if the
 discarded card was a land card", Volrath's "the discarded card's mana

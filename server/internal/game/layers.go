@@ -648,6 +648,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// its own CR 613.7c timestamp. One more source list into the same
 	// gather; see keyword_counters.go.
 	out = append(out, g.keywordCounterEffectsLocked()...)
+	// CR 122.1j / 613.4c (#4500): a hone counter on an attached Equipment
+	// is +1/+0 for the creature it is attached to, in layer 7c. One more
+	// source list into the same gather; see hone_counters.go.
+	out = append(out, g.honeCounterEffectsLocked()...)
 	// ADR 0208 / CR 123.6-123.8: stickers, each in its layer at its
 	// CR 613.7k timestamp. One more source list; see sticker.go.
 	out = append(out, g.stickerContinuousEffectsLocked()...)

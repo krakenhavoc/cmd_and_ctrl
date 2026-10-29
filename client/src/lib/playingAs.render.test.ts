@@ -12,9 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./sounds", () => ({ play: () => {} }));
 
 import Board from "./components/board/Board.svelte";
+import ActionDock from "./components/board/ActionDock.svelte";
 import PlayingAsBanner from "./components/board/PlayingAsBanner.svelte";
 import { legalActionsOf, visibleHighlights } from "./legalActions";
-import { actingSeatID, playingAsBanner, viewForSeat, type PlayingAsPref } from "./playingAs";
+import {
+  actingSeatID,
+  handoffChip,
+  playingAsBanner,
+  viewForSeat,
+  type PlayingAsPref,
+} from "./playingAs";
 import { _resetForTests as resetDock } from "./dock";
 import type { ActionType, CardView, GameView, LegalMoveView, PlayerView } from "./protocol";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -230,5 +237,68 @@ describe("PlayingAsBanner", () => {
     const r = mountBanner(BOB, BOB);
     expect(r.container.textContent).toContain("Alice controls you this turn");
     expect(r.container.querySelector("button")).toBeNull();
+  });
+});
+
+// #4434: the board no longer switches by itself; when the decision is owed
+// on the board not shown, the dock carries a small chip that jumps there.
+describe("the jump chip on the dock", () => {
+  const CHIP = '[role="status"][aria-label^="Your decision on"]';
+
+  // mountDock mounts the dock the way Game.svelte does for Alice with the
+  // toggle at `pref`, the frame's priority held by seat `holder`.
+  function mountDock(pref: PlayingAsPref, holder: 0 | 1, onJump = () => {}) {
+    const frame = alicesFrame();
+    (frame.turn as unknown as { priority_holder: number }).priority_holder = holder;
+    const actingID = actingSeatID(frame, ALICE, pref);
+    const chip = handoffChip(frame, ALICE, actingID);
+    return render(
+      ActionDock as never,
+      {
+        view: viewForSeat(frame, actingID, ALICE),
+        viewerHasPriority: false,
+        viewerIsActive: false,
+        autopassEnabled: false,
+        onPassPriority: () => {},
+        onPassTurn: () => {},
+        onToggleAutopass: () => {},
+        viewerID: ALICE,
+        handoff: chip ? { whose: chip.whose, onJump } : null,
+      } as never,
+    ).container;
+  }
+
+  it("shows for Bob's decision while Alice is on her own board, and jumps on click", () => {
+    const jump = vi.fn();
+    const c = mountDock("self", 1, jump);
+    const chip = c.querySelector<HTMLElement>(CHIP)!;
+    expect(chip).toBeTruthy();
+    expect(chip.getAttribute("aria-label")).toBe("Your decision on Bob's board");
+    expect(chip.textContent).toContain("Your decision on Bob's board");
+    const button = chip.querySelector<HTMLButtonElement>("button")!;
+    expect(button.textContent?.trim()).toBe("Jump");
+    click(button);
+    expect(jump).toHaveBeenCalledOnce();
+  });
+
+  it("names her own board when she is on Bob's and owes a decision herself", () => {
+    const c = mountDock("controlled", 0);
+    expect(c.querySelector(CHIP)?.getAttribute("aria-label")).toBe(
+      "Your decision on your own board",
+    );
+  });
+
+  it("is absent when the board shown owes the decision", () => {
+    expect(mountDock("controlled", 1).querySelector(CHIP)).toBeNull();
+    expect(mountDock("self", 0).querySelector(CHIP)).toBeNull();
+  });
+
+  it("does not take focus, on appearing or on a press", () => {
+    const c = mountDock("self", 1);
+    expect(c.querySelector(CHIP)!.contains(document.activeElement)).toBe(false);
+    const button = c.querySelector<HTMLButtonElement>(`${CHIP} button`)!;
+    const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    button.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
   });
 });

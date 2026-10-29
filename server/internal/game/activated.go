@@ -1319,6 +1319,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #4475: an equip ability's {0} twin (equip_cost_alternative.go) is
+	// addressed by its own index and ref; below this line `index` and
+	// `params.Ref` name the mirrored row, and `twin` says the cost is the
+	// alternative. The announcement as sent is kept for a park's resume.
+	wireIndex, wireParams := index, params
+	index, ref, twin, err := decodeEquipTwin(index, params.Ref)
+	if err != nil {
+		return err
+	}
+	params.Ref = ref
 	// #3895: the announced X is bounded first, before anything reads
 	// it (x_bound.go) — the mana half, and every cost sized by X: pay X
 	// life, loyalty −X, energy, remove X counters, blight, discard and
@@ -1413,6 +1423,18 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// #4475, CR 118.9: the twin pays the alternative instead of the
+	// whole printed cost; everything else about the row is the row's.
+	if twin {
+		if !ab.Equip {
+			return ErrInvalidParam
+		}
+		alt, from, ok := g.EquipCostAlternativeLocked(playerID)
+		if !ok {
+			return ErrAlternativeCostUnavailable
+		}
+		ab = equipTwinShape(ab, alt, from)
+	}
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
@@ -1934,7 +1956,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		parked := params
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
-			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, index, parked),
+			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, wireIndex, withWireRef(parked, wireParams)),
 		}, SourceObject(playerID, source), oppTargets)
 	}
 	// The announcement a CR 903.9b answer makes again (#4361 S13: as
@@ -1945,7 +1967,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	again.Targets = ownTargets
 	again.commanderAnswers = nil
 	asked, answers := g.askCostCommanderLocked(asking, params.commanderAnswers, source.Name,
-		activationAnnouncement(playerID, cardID, source.Name, index, again))
+		activationAnnouncement(playerID, cardID, source.Name, wireIndex, withWireRef(again, wireParams)))
 	if asked {
 		return nil
 	}
@@ -2358,6 +2380,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	// #4475: "the first equip ability you activate each turn" counts
+	// every equip announce, either row, resolved or not.
+	if ab.Equip {
+		g.bumpPlayerTally(playerID, func(p *PlayerTurnTally) { p.EquipActivations++ })
+	}
 	g.noteBorrowedActivationLocked(borrowedKey)
 	// #3779: and whether it targeted a creature of the activator's own
 	// — the record "the first activated ability you activate … that

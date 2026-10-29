@@ -455,6 +455,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
 	"entersAsAura":              repFieldCarried,
+	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
 	"stackItem":                 repFieldCarried,
 	"putByEntering":             repFieldCarried,
@@ -762,6 +763,7 @@ type replacementEventSnapshot struct {
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
+	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
 	StackItem                 *stackItemSnapshot  `json:"stackItem,omitempty"`
 	PutByEntering             bool                `json:"putByEntering,omitempty"`
@@ -1171,6 +1173,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
 		EntersAsAura:              ev.entersAsAura,
+		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
 		PutByEntering:             ev.putByEntering,
 		EntersWithCounters:        copyStringIntMap(ev.EntersWithCounters),
@@ -1333,6 +1336,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
 		entersAsAura:              s.EntersAsAura,
+		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),
 		putByEntering:             s.PutByEntering,
 		EntersWithCounters:        copyStringIntMap(s.EntersWithCounters),

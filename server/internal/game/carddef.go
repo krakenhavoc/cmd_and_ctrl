@@ -173,6 +173,12 @@ type CardDef struct {
 	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// EquipCostAlternatives are the "you may pay {0} rather than pay the
+	// equip cost of the first equip ability you activate each turn"
+	// clauses this permanent contributes to its controller (CR 118.9,
+	// #4475, Kíli the Resourceful). Read from the battlefield through
+	// Game.EquipCostAlternativeLocked.
+	EquipCostAlternatives []EquipCostAlternative
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an
 	// additional N life" statics this permanent contributes (CR 601.2f,
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
@@ -535,6 +541,13 @@ type CardDef struct {
 	// through CatalogAdditionalLandPlays; see land_drops.go.
 	AdditionalLandPlays int
 
+	// ConditionalLandPlays is AdditionalLandPlays that count only while
+	// the controller controls ANOTHER permanent of a creature type:
+	// Thranduil's Company's "as long as you control another Elf, you may
+	// play an additional land on each of your turns". Read through
+	// CatalogConditionalLandPlays; see land_drops.go.
+	ConditionalLandPlays ConditionalLandPlays
+
 	// CastPermissions are the STANDING cast and play permissions this
 	// permanent grants its controller while it is on the battlefield
 	// (ADR 0066) — Underworld Breach's escape for every nonland card
@@ -857,6 +870,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogEquipCostAlternatives = func(key string) []EquipCostAlternative {
+		if d := catalogDef(key); d != nil {
+			return d.EquipCostAlternatives
+		}
+		return nil
+	}
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {
 			return d.TargetTaxes
@@ -1172,6 +1191,12 @@ func init() {
 			return d.AdditionalLandPlays
 		}
 		return 0
+	}
+	CatalogConditionalLandPlays = func(key string) ConditionalLandPlays {
+		if d := catalogDef(key); d != nil {
+			return d.ConditionalLandPlays
+		}
+		return ConditionalLandPlays{}
 	}
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)

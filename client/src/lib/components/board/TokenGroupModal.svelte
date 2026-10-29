@@ -62,6 +62,11 @@
     onTarget?: (card: CardView) => boolean;
     onTapToggle?: (card: CardView) => void;
     onAttack?: (attackerIDs: string[], defenderSeatID: string) => void;
+    // #4423: "Attack Bob with N" stages the members; these are the
+    // staged ones, and onUnstage takes some back out, so the count can
+    // be changed before the attack is sent.
+    stagedAttackers?: ReadonlySet<string>;
+    onUnstage?: (attackerIDs: string[]) => void;
     onBlock?: (blockerIDs: string[], attackerID: string) => void;
     onClose: () => void;
     // ADR 0105 sub-PR 5: the frame's FULL legal-action lookup, so the
@@ -83,6 +88,8 @@
     onTarget,
     onTapToggle,
     onAttack,
+    stagedAttackers,
+    onUnstage,
     onBlock,
     onClose,
     legalGate = NO_LEGAL_ACTIONS,
@@ -191,6 +198,14 @@
     if (!onAttack || ids.length === 0) return;
     onAttack(ids, seatID);
     onClose();
+  }
+  // The picked members that are staged to attack, for "Take N out".
+  const pickedStaged = $derived(picked.filter((c) => stagedAttackers?.has(c.instance_id)));
+  function unstage(): void {
+    const ids = pickedStaged.map((c) => c.instance_id);
+    if (!onUnstage || ids.length === 0) return;
+    onUnstage(ids);
+    selected = selected.filter((id) => !ids.includes(id));
   }
   function block(): void {
     const ids = pickedForAction.map((c) => c.instance_id);
@@ -323,6 +338,9 @@
                 {#each rowBadges(c, attachmentsByHost[c.instance_id] ?? [], reason) as b, i (i)}
                   <span class="tg-badge {b.kind}">{b.text}</span>
                 {/each}
+                {#if stagedAttackers?.has(c.instance_id)}
+                  <span class="tg-badge counter">attacking (staged)</span>
+                {/if}
               </span>
               {#if c.power !== undefined || c.toughness !== undefined}
                 <span class="note pt">{c.power ?? 0}/{c.toughness ?? 0}</span>
@@ -353,6 +371,15 @@
               >Attack {seatLabel(seat)} with {pickedForAction.length}</button
             >
           {/each}
+          {#if onUnstage && (stagedAttackers?.size ?? 0) > 0}
+            <button
+              type="button"
+              class="ghost"
+              disabled={pickedStaged.length === 0}
+              onclick={unstage}
+              data-testid="tg-unstage">Take {pickedStaged.length} out of the attack</button
+            >
+          {/if}
         {:else if mode === "block"}
           <select bind:value={blockAttackerID} aria-label="attacker to block">
             {#each incoming as a (a.instance_id)}

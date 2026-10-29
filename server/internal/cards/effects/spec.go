@@ -865,6 +865,14 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
+	// cost of the first equip ability you activate each turn" (Kíli the
+	// Resourceful, #4475): a CR 118.9 alternative cost this permanent
+	// offers its controller for equip abilities, read from the
+	// battlefield. The engine derives a twin row for each equip ability
+	// (game/equip_cost_alternative.go). Nil for nearly every card.
+	EquipCostAlternatives []game.EquipCostAlternative
+
 	// TargetTaxes is a cost a permanent adds to spells that TARGET
 	// something: "Spells your opponents cast that target this creature
 	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
@@ -1532,6 +1540,15 @@ type Spec struct {
 	// all. No card sets it yet; Exploration and Azusa are now a
 	// one-line Spec each rather than an engine change.
 	AdditionalLandPlays int
+
+	// AdditionalLandPlaysNeedsAnother makes AdditionalLandPlays
+	// conditional: it counts only while the controller controls another
+	// permanent with this creature type — Thranduil's Company's "as long
+	// as you control another Elf, you may play an additional land on
+	// each of your turns" is "Elf". Empty is unconditional. The check is
+	// the engine's, in EffectiveLandDropsLocked, read live on every land
+	// play, so the extra drop comes and goes with the other creature.
+	AdditionalLandPlaysNeedsAnother string
 
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the

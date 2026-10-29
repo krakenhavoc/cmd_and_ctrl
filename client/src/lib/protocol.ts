@@ -1248,6 +1248,9 @@ export type LogKind =
   // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
   // `card_id` the ascend permanent or spell whose check granted it.
   | "citys_blessing"
+  // #4475 (CR 702.195): a player got an enduring story. `seat` is who,
+  // `card_id` the storied permanent whose check granted it.
+  | "enduring_story"
   // ADR 0203 (#4096): a player moved their venture marker into a room
   // (CR 309.4). `seat` is who; `label` is "<dungeon> — <room>".
   | "venture"
@@ -2641,6 +2644,10 @@ export interface PlayerView {
   // ascend gives and nothing takes away. Public, identical for every
   // viewer; absent until the seat has it.
   citys_blessing?: boolean;
+  // #4475 (CR 702.195b): an enduring story, the designation storied
+  // gives for the rest of the game. Public, identical for every viewer;
+  // absent until the seat has it.
+  enduring_story?: boolean;
   // ADR 0203 (#4096, CR 309.4): the dungeon card this player owns in the
   // command zone, its rooms and the room their venture marker is in.
   // Public, identical for every viewer; absent when they own none.

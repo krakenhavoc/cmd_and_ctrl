@@ -26,6 +26,7 @@
 // asks it when a popup goes up.
 
 import { getContext, setContext } from "svelte";
+import { popupHasCombatHit } from "./faceHit";
 import type { CardView, GameView, LogEvent } from "./protocol";
 
 function namedIn(cards: readonly CardView[] | undefined, id: string): string | null {
@@ -120,6 +121,26 @@ export function provideLifeCauses(getView: () => GameView): void {
     );
   };
   setContext(KEY, lookup);
+  // #4432: whether a popup's loss includes combat damage to the seat.
+  const combat: CombatHitLookup = (seatID, deltas) => {
+    const view = getView();
+    return popupHasCombatHit(
+      view,
+      (view.seats ?? []).findIndex((s) => s.id === seatID),
+      deltas,
+    );
+  };
+  setContext(HIT_KEY, combat);
+}
+
+/** Whether a seat's popup deltas include combat damage to that seat. */
+export type CombatHitLookup = (seatID: string, deltas: readonly number[]) => boolean;
+
+const HIT_KEY = Symbol("combatHits");
+
+/** combatHitLookup is the avatar's: call it during component init. Undefined with no board above. */
+export function combatHitLookup(): CombatHitLookup | undefined {
+  return getContext<CombatHitLookup | undefined>(HIT_KEY);
 }
 
 /** lifeCauseLookup is the avatar's: call it during component init. Undefined with no board above. */

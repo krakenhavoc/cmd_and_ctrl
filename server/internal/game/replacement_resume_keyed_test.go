@@ -70,6 +70,7 @@ func keyedFrameSample() *ReplacementEvent {
 		EntersAsCopyOf: &PrintedValues{Name: "Copied"}, copySourceID: id("copy"), copyUntilEndOfTurn: true,
 		auraHost: TargetRef{Kind: TargetCard, ID: id("host")}, auraHostFixed: true, auraHostSettled: true,
 		entersAsAura: true, exchangeTextWith: id("xt"),
+		entersAs:           &EntersAs{Types: []string{"Artifact"}, Subtypes: []string{"Food"}, Grants: []string{"test/food"}, Label: "test"},
 		stackItem:          &StackItem{ID: id("item"), Controller: id("actor"), SourceCardID: id("card"), Label: "Spell"},
 		putByEntering:      true,
 		EntersWithCounters: map[string]int{CounterPlusOne: 2},

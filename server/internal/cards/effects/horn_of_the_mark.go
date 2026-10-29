@@ -55,14 +55,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			OncePerBatchPerPlayer(On(game.EventAttack,
-				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.Actor != source.Controller {
-						return false
-					}
-					defender := b17DefendingPlayer(g, ev)
-					return defender != uuid.Nil &&
-						b41AttackersAgainst(g, source.Controller, defender) >= 2
-				},
+				twoOrMoreOfYourCreaturesAttackThatPlayer,
 				"Horn of the Mark — look at the top five cards of your library",
 				LookAtTopThenMayTakeToHand(5, Creature(), 1,
 					"Horn of the Mark — you may reveal a creature card from among them and put it into your hand"))),

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Academy Manufactor — Artifact Creature — Assembly-Worker {3}, 1/3
 // (EDHREC rank 262):
@@ -39,22 +35,10 @@ func init() {
 		OracleID:     "f36d1d8b-8303-44a9-ab56-531931641ea2",
 		Name:         "Academy Manufactor",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventTokenCreated},
-			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-				return ev.Kind == game.RepEventCreateTokens &&
-					ev.TokenController == src.Controller &&
-					ev.TokenTemplatesMatch(isClueFoodOrTreasure)
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.ReplaceTokenKindsWhere(isClueFoodOrTreasure, ClueToken(), FoodToken(), TreasureToken())
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Academy Manufactor: a Clue, a Food and a Treasure instead",
-		}},
+		Replacements: []game.ReplacementEffect{
+			hobA9InsteadCreateTokens("Academy Manufactor: a Clue, a Food and a Treasure instead",
+				isClueFoodOrTreasure, func() []game.Card { return []game.Card{ClueToken(), FoodToken(), TreasureToken()} }),
+		},
 	})
 }
 

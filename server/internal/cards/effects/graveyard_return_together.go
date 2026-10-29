@@ -50,6 +50,10 @@ type ReturnFromGraveyardTogether struct {
 	// return that names no host, whose Auras choose theirs as they enter
 	// (CR 303.4f).
 	AttachedTo game.TargetRef
+	// EntersAs is "they are <types> with <ability>" (Supper for
+	// Spiders, ADR 0210): every card enters as that type and is it for
+	// as long as it is that permanent. Nil for every other return.
+	EntersAs *game.EntersAs
 
 	// The resolving item rides the tail as data (its targets, its modes,
 	// the words of its text), and ThenN is a number it reads.
@@ -59,7 +63,7 @@ type ReturnFromGraveyardTogether struct {
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
 	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
-		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo}, r.ThenTail, r.ThenN)
+		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
 }
 
 // TogetherTail registers the rest of a ReturnFromGraveyardTogether or

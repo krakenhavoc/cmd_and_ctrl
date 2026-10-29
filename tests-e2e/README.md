@@ -48,6 +48,7 @@ tests-e2e/
     ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
 ├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold
+    ├── target-player-reach-4435.spec.ts # #4435: with Lightning Bolt's prompt open at four seats, in all three table layouts and three sizes, every legal player (a hand-covered avatar included) is a button in the prompt; pressing one casts the Bolt at them
     └── zone-browser.spec.ts   # graveyard / exile modal behind the pile chips
 ```
 

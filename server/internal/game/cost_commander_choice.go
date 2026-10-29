@@ -315,8 +315,13 @@ func costCommanderMovesTo(to ZoneKind, ids ...uuid.UUID) []costCommanderMove {
 // withCommanderAnswer returns a NEW map holding `answers` plus one
 // more. Never writes the map it was given: a parked frame and the
 // params of the announcement it re-runs can hold the same map.
+//
+// The size hint is len(answers) with no arithmetic: since #4385 `answers`
+// can be read back from a snapshot, so its length is decoded data, and
+// CodeQL (go/allocation-size-overflow) flags any sum on it, min() or
+// not. The one extra entry grows the map.
 func withCommanderAnswer(answers map[uuid.UUID]bool, id uuid.UUID, apply bool) map[uuid.UUID]bool {
-	out := make(map[uuid.UUID]bool, len(answers)+1)
+	out := make(map[uuid.UUID]bool, len(answers))
 	for k, v := range answers {
 		out[k] = v
 	}

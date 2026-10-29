@@ -111,6 +111,7 @@ var reviewedNotAWipe = map[string]string{
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
 	"Bag of Holding":                           "returns the cards it exiled, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
+	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",

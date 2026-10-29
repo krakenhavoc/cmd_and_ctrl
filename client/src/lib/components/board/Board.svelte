@@ -191,6 +191,7 @@
     togglePick,
     canConfirm,
     setConfirmHandler,
+    setPlayerPickHandler,
     needsDivision,
     withDivision,
     distributionOf,
@@ -282,6 +283,8 @@
     // #1724: a token group's "Attack <seat> with N" — forwarded to the
     // viewer's own PlayerPanel. See PlayerPanel's prop of the same name.
     onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
+    // #4423: a group's picked members taken back out of the staged attack.
+    onUnstageAttackers?: (attackerIDs: string[]) => void;
     // #519: connectionBanner.ts's actionsDisabled(status), computed by
     // Game.svelte and handed down rather than recomputed here — Board
     // has no socket of its own to ask. Dims the table and turns every
@@ -332,6 +335,7 @@
     onDeclareAttack,
     onDeclareBlock,
     onDeclareAttackers,
+    onUnstageAttackers,
     disabled = false,
     docked = false,
     coached = false,
@@ -1919,6 +1923,12 @@
   $effect(() => {
     setConfirmHandler(confirmTargets);
     return () => setConfirmHandler(null);
+  });
+  // #4435: the dock's row of legal players picks through the same path
+  // as a click on an avatar, and refuses a player who is not legal.
+  $effect(() => {
+    setPlayerPickHandler(handleTargetPlayer);
+    return () => setPlayerPickHandler(null);
   });
 
   // #3264: a step with one legal target is answered for the player, as
@@ -3897,6 +3907,7 @@
       onManaAbilityCost={handleManaAbilityCost}
       considering={seat.id === consideringSeatID}
       onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
+      onUnstageAttackers={pos === "self" && !disabled ? onUnstageAttackers : undefined}
       {legal}
       {legalGate}
     />

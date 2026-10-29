@@ -182,12 +182,43 @@ describe("sounds", () => {
   });
 
   describe("missing files", () => {
-    it("lists only takes that exist in public/sounds", async () => {
+    // Entries whose files Ian has not made yet (ADR 0209 §6: a manifest entry
+    // may name files that do not exist, and the cue falls back). Remove an
+    // entry from this list in the PR that adds its files; the test below fails
+    // if a listed entry's files all exist by then, so the list cannot go stale.
+    const NOT_MADE_YET = ["face_hit"] as const;
+
+    it("lists only takes that exist in public/sounds, bar the entries not made yet", async () => {
       const m = await load();
-      const absent = Object.values(m.SOUND_MANIFEST)
-        .flat()
-        .filter((u) => !existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url))));
+      const exists = (u: string) =>
+        existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url)));
+      const pending = new Set<string>(NOT_MADE_YET);
+      const absent = (Object.entries(m.SOUND_MANIFEST) as [string, string[]][])
+        .filter(([name]) => !pending.has(name))
+        .flatMap(([, urls]) => urls)
+        .filter((u) => !exists(u));
       expect(absent).toEqual([]);
+    });
+
+    it("keeps the not-made-yet list honest: each has a fallback and no files yet", async () => {
+      const m = await load();
+      for (const name of NOT_MADE_YET) {
+        expect(m.SOUND_FALLBACK[name]).toBeTruthy();
+        for (const u of m.SOUND_MANIFEST[name]) {
+          expect(existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url)))).toBe(
+            false,
+          );
+        }
+      }
+    });
+
+    it("plays damage when face_hit has no file", async () => {
+      const m = await load();
+      for (const u of m.SOUND_MANIFEST.face_hit) FakeAudio.broken.add(u);
+      m.play("face_hit");
+      await settle();
+      expect(played().at(-1)?.src).toMatch(/damage-/);
+      expect(m.SOUND_CATEGORY.face_hit).toBe("combat");
     });
 
     it("falls back to an existing sound when every take of a cue is missing", async () => {

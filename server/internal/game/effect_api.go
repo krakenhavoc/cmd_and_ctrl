@@ -102,6 +102,11 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 		// to see one. See Game.enteringTokens.
 		return g.enteringTokenLocked(cardID)
 	}
+	if g.entryView != nil && z.Kind != ZoneBattlefield {
+		// ADR 0210, CR 614.12: an entry replacement asking what the
+		// entering card is reads it as it would exist on the battlefield.
+		return g.viewEnteringCardLocked(z.Cards[pos]), true
+	}
 	return z.Cards[pos], true
 }
 
@@ -4011,8 +4016,8 @@ func (g *Game) addManaEntriesLocked(
 		}
 		// #2558: "N mana of different colors" — a greedy set of
 		// different colours in the auto-tap mode, one pick naming them
-		// one at a time otherwise. A pick cannot carry restrictions on
-		// this path, as below.
+		// one at a time otherwise. A pick of this kind cannot carry
+		// restrictions (the single-colour pick below can).
 		if slot.DifferentColors() {
 			if len(restrictions) > 0 {
 				return ErrInvalidParam
@@ -4047,7 +4052,9 @@ func (g *Game) addManaEntriesLocked(
 			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, riders, srcKinds, false, pending)
 			continue
 		}
-		if len(restrictions) > 0 {
+		if len(restrictions) > 0 && pending != nil {
+			// The auto-tap executor mints with no restrictions and may not
+			// leave a prompt, so a restricted pick has no home there.
 			return ErrInvalidParam
 		}
 		if pending != nil {
@@ -4074,6 +4081,11 @@ func (g *Game) addManaEntriesLocked(
 			ManaAmounts:     copyManaAmounts(slot.Amounts),
 			ManaSourceKinds: srcKinds,
 			ManaRiders:      copyManaRiders(riders),
+			// "Add four mana in any combination of colors. Spend this
+			// mana only to cast Dragon spells" (Desolation of Smaug): the
+			// pick carries the spend restrictions to the token minted when
+			// it is answered (#352), as a mana ability's pick does.
+			ManaRestrictions: copyRestrictions(restrictions),
 		})
 	}
 	return nil

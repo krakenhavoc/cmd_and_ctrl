@@ -45,7 +45,7 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 	// hand form or the count-from-X form beside it is a card file that
 	// has mixed the forms up.
 	if dc.ManaValueX {
-		if dc.N != 1 || dc.Match != nil || dc.Random || dc.Hand || dc.CountFromX {
+		if dc.N != 1 || dc.Match != nil || dc.Random || dc.Hand || dc.CountFromX || dc.SameNameAsLegendaryPermanent {
 			panic(fmt.Sprintf("effects.Register: %q %s discards a card with mana value X and also declares another count, a predicate, \"at random\", your hand or X cards — build it with DiscardCardWithManaValueX",
 				name, where))
 		}
@@ -59,11 +59,17 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 		return
 	}
 	if dc.Hand {
-		if dc.N != 0 || dc.Match != nil || dc.Random {
+		if dc.N != 0 || dc.Match != nil || dc.Random || dc.SameNameAsLegendaryPermanent {
 			panic(fmt.Sprintf("effects.Register: %q %s discards your hand and also declares a count, a predicate or \"at random\" — build it with DiscardYourHand",
 				name, where))
 		}
 		return
+	}
+	// #4487: the board clause narrows which cards a named pick may take,
+	// and a random draw names none.
+	if dc.Random && dc.SameNameAsLegendaryPermanent {
+		panic(fmt.Sprintf("effects.Register: %q %s discards at random and also names a legendary permanent — a random discard takes any card",
+			name, where))
 	}
 	// #660 / #1213: a count clause that discards nothing would make the
 	// ability free, the way a zero-counter cost would.

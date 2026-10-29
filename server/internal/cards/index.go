@@ -732,12 +732,22 @@ func (i *Index) Search(q string, limit int) []Card {
 	byName(prefix)
 	byName(contains)
 
+	// A double-faced or split card is filed under its full name AND each
+	// face's name (Put, Load), so one query can match it under several
+	// keys. It is listed once, at its best rank: callers key a result
+	// list by card id, and a repeat there is a crash in the client
+	// (Svelte's each_key_duplicate, #4424) as well as wasted limit.
+	seen := make(map[uuid.UUID]struct{})
 	out := make([]Card, 0, limit)
 	for _, group := range [][]Card{exact, prefix, contains} {
 		for _, c := range group {
 			if len(out) == limit {
 				return out
 			}
+			if _, dup := seen[c.ID]; dup {
+				continue
+			}
+			seen[c.ID] = struct{}{}
 			out = append(out, c)
 		}
 	}

@@ -22,9 +22,16 @@
 
 // What the player can act on, on the board, while a sheet is open: a
 // card ringed as a legal target or a choice's option (Card.svelte's
-// `targetable`), one already picked, and a blocker's damage stepper.
-export const BOARD_ACTION_SELECTOR =
-  '.card.targetable, .card.picked, [data-testid="damage-stepper"]';
+// `targetable`), one already picked, a blocker's damage stepper, and
+// (#4435) a player's avatar ringed as a legal target or already picked
+// (PlayerIdentity's `cast-targetable`, `cast-picked`).
+export const BOARD_ACTION_SELECTOR = [
+  ".card.targetable",
+  ".card.picked",
+  '[data-testid="damage-stepper"]',
+  ".identity.cast-targetable .avatar-wrap",
+  ".identity.cast-picked .avatar-wrap",
+].join(", ");
 
 export interface Box {
   left: number;

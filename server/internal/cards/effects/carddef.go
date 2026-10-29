@@ -218,6 +218,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ExhaustPermissions:                  spec.ExhaustPermissions,
 		BoastLimits:                         spec.BoastLimits,
 		AttackTaxes:                         spec.AttackTaxes,
+		EquipCostAlternatives:               spec.EquipCostAlternatives,
 		TargetTaxes:                         spec.TargetTaxes,
 		BlockRules:                          spec.BlockRules,
 		AttackLimits:                        spec.AttackLimits,
@@ -267,7 +268,8 @@ func buildDef(spec Spec) *game.CardDef {
 		ReadsManaSpent:                      spec.ReadsManaSpent,
 		WantsManaFrom:                       spec.WantsManaFrom,
 		WantsColors:                         spec.WantsColors,
-		AdditionalLandPlays:                 spec.AdditionalLandPlays,
+		AdditionalLandPlays:                 unconditionalLandPlays(spec),
+		ConditionalLandPlays:                conditionalLandPlays(spec),
 		XMatters:                            spec.XMatters,
 		MadnessLife:                         spec.MadnessLife,
 		XCeiling:                            spec.XCeiling,
@@ -470,4 +472,23 @@ func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID
 		return func(g *game.Game, c, s uuid.UUID) game.ManaOutput { return game.ManaOutput{Text: f(g, c, s)} }
 	}
 	return nil
+}
+
+// unconditionalLandPlays is the Spec's AdditionalLandPlays that count
+// always; a Spec with AdditionalLandPlaysNeedsAnother has none of those, its
+// plays are ConditionalLandPlays.
+func unconditionalLandPlays(spec Spec) int {
+	if spec.AdditionalLandPlaysNeedsAnother != "" {
+		return 0
+	}
+	return spec.AdditionalLandPlays
+}
+
+// conditionalLandPlays is the Spec's AdditionalLandPlays that count only
+// while the controller controls another permanent of a creature type.
+func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
+	if spec.AdditionalLandPlaysNeedsAnother == "" {
+		return game.ConditionalLandPlays{}
+	}
+	return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, Another: spec.AdditionalLandPlaysNeedsAnother}
 }

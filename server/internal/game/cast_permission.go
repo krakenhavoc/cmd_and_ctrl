@@ -563,6 +563,16 @@ type CastPermission struct {
 	// StackItem.ExileInsteadOfGraveyard.
 	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
 
+	// ExileInsteadOnlyInstantOrSorcery narrows ExileInsteadOfGraveyard
+	// to the spells that are instants or sorceries: "If an instant or
+	// sorcery spell cast this way would be put into your graveyard,
+	// exile it instead" (Bilbo, Thief in the Night, #4505), whose one
+	// permission also opens artifact cards. An artifact spell cast
+	// through it that is countered goes to the graveyard, as printed.
+	// Read off the card as it is cast. Meaningless without
+	// ExileInsteadOfGraveyard.
+	ExileInsteadOnlyInstantOrSorcery bool `json:"exileInsteadOnlyInstantOrSorcery,omitempty"`
+
 	// AnyColor lets the holder spend mana as though it were mana of
 	// any color for this card (Breeches, Brazen Plunderer).
 	AnyColor bool `json:"anyColor,omitempty"`
@@ -1120,7 +1130,8 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		out.PayLabel = HarmonizeTapLabel
 	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
-	out.ExileInsteadOfGraveyard = p.ExileInsteadOfGraveyard
+	out.ExileInsteadOfGraveyard = p.ExileInsteadOfGraveyard &&
+		(!p.ExileInsteadOnlyInstantOrSorcery || card.IsInstant() || card.IsSorcery())
 	if out.Label == "" {
 		out.Label = p.AltCostKey
 	}

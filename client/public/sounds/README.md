@@ -49,8 +49,24 @@ array there.
 | Game over (win)           | `win-1.mp3`, `win-2.mp3`                       |
 | Game over (loss)          | `loss-1.mp3`, `loss-2.mp3`                     |
 
-A manifest entry lists exactly the takes that exist. One with a single
-take plays it every time.
+A manifest entry lists exactly the takes that exist, except the entries
+under "Files not made yet" below. One with a single take plays it every
+time.
+
+### Files not made yet
+
+An entry here is in `SOUND_MANIFEST` and plays its fallback until the files
+land (ADR 0209 §6). `sounds.test.ts` keeps an explicit `NOT_MADE_YET` list
+of them; delete the entry from that list in the PR that adds the files.
+
+| Entry      | Files                              | Spec                                                                                                                                             | Falls back to |
+| ---------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| `face_hit` | `face_hit-1.mp3`, `face_hit-2.mp3` | At most 1 s. A heavy impact: something smashing into the player, a body blow or a hit on armour. Plays when combat damage hits a player (#4432). | `damage`      |
+
+`face_hit` plays at the strike's contact, once per player a combat damage
+beat hits; the life popup then does not also play `damage`. With combat
+motion off, reduced motion or a hidden tab it plays when the life loss shows.
+Other life loss (a drain, life paid, noncombat damage) keeps `damage`.
 
 ### Interface cues (ADR 0209 §2)
 
@@ -111,7 +127,7 @@ each, and `play()` multiplies master x category x the caller's hint.
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                  |
 | `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                     |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`                                                                                                                                                                                     |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit`                                                                                                                                                                         |
 | `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
 | `voice`     | planeswalker lines to come                                                                                                                                                                                                        |
 

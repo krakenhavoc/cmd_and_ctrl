@@ -233,7 +233,23 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
 	defer func() { e.rowOrigin = game.AbilityOrigin{} }()
-	for idx, ab := range abilities {
+	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
+	// is offered as a row of its own, addressed by its own index and ref,
+	// with the mirrored row's origin for every gate below.
+	twins := g.EquipTwinsLocked(e.seat, *source, abilities, origins)
+	own := len(abilities)
+	if len(twins) > 0 {
+		abilities = append(append([]game.ActivatedAbilityShape(nil), abilities...), make([]game.ActivatedAbilityShape, len(twins))...)
+		for k, tw := range twins {
+			abilities[own+k] = tw.Shape
+		}
+	}
+	for row, ab := range abilities {
+		idx, wireIndex, wireRef := row, row, origins.Ref(row)
+		if row >= own {
+			tw := twins[row-own]
+			idx, wireIndex, wireRef = tw.Of, tw.Index, tw.Ref
+		}
 		e.rowOrigin = origins.At(idx)
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
@@ -1013,8 +1029,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									CombatDefenderOnly: combat.defenderOnly,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
-										AbilityIndex:      idx,
-										Ref:               origins.Ref(idx),
+										AbilityIndex:      wireIndex,
+										Ref:               wireRef,
 										Targets:           wireTargets(targets),
 										Modes:             ann.modes,
 										SacrificeIDs:      idStrings(sacs),

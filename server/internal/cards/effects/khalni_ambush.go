@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Khalni Ambush // Khalni Territory — Modal DFC. Front: Instant
 // {2}{G}: "Target creature you control fights target creature you don't
 // control." Back: Land (mdfc_lands.go).
@@ -19,16 +17,6 @@ func init() {
 			TargetCreature("target creature you control", YouControl()),
 			TargetCreature("target creature you don't control", OpponentControls()),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			mine, ok := ctx.ClauseTarget(0)
-			if !ok || mine.Kind != game.TargetCard {
-				return nil
-			}
-			theirs, ok := ctx.ClauseTarget(1)
-			if !ok || theirs.Kind != game.TargetCard {
-				return nil
-			}
-			return b10Fight(ctx, mine.ID, theirs.ID)
-		},
+		OnResolve: ResolveSteps(Instruction(fightTargetClauses)),
 	})
 }

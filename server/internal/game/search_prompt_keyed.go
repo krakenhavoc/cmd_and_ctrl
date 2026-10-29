@@ -27,9 +27,9 @@ import (
 //     library or a text-changed word (ThroughTextOf) has already done so.
 //   - Validate judges the picked set, so the answer does read it. Its
 //     data form is a registered set rule (RegisterSearchRule, ledgered
-//     "searchrule <key>") and the one number it reads (SearchRule.N): Myriad
-//     Landscape's "share a land type", "different names", "total mana
-//     value N or less".
+//     "searchrule <key>") and the number and captured text lens it reads
+//     (SearchRule): Myriad Landscape's "share a land type", "different
+//     names", "total mana value N or less".
 //   - Then is the card's continuation. Its data form, ThenTail, already
 //     exists (slices 3 and 4).
 //
@@ -49,18 +49,34 @@ import (
 // on-disk identity: never renamed, never reused.
 const SearchPromptKey = "search-library/prompt"
 
+// SearchPromptWordsKey protects captured rule words from older readers,
+// which must refuse this prompt rather than silently validate printed words.
+const SearchPromptWordsKey = "search-library/prompt/source-words"
+
+func searchPromptKey(s *searchPromptSnapshot) string {
+	if s != nil && len(s.RuleWords) != 0 {
+		return SearchPromptWordsKey
+	}
+	return SearchPromptKey
+}
+
 // SearchRuleFunc is a registered set rule over a search's picks: is
 // `picked` (never empty) a legal answer, given the rule's number? It runs
 // under the game lock, inside the enumerator's read lock too, so it is a
 // function of the cards and the number alone and must capture nothing.
+// HasSubtypeWord and HasColorWord on the cards read the searching ability
+// through the text lens captured by SearchRule.ThroughTextOf.
 type SearchRuleFunc func(picked []Card, n int) bool
 
-// SearchRule names a registered set rule and the number it reads. The key
-// is unexported, so the only way to hold one is RegisterSearchRule.
+// SearchRule names a registered set rule, its number and captured text
+// lens. The key is unexported, so the only way to hold one is
+// RegisterSearchRule.
 type SearchRule struct {
 	key string
 	// N is the number the rule reads: "total mana value N or less".
 	N int
+	// words is the captured source text substitution, never a live source.
+	words []TextWordChange
 }
 
 // Key is the rule's on-disk key.
@@ -71,6 +87,18 @@ func (r SearchRule) IsZero() bool { return r.key == "" }
 
 // WithN is the rule reading n.
 func (r SearchRule) WithN(n int) SearchRule { r.N = n; return r }
+
+// ThroughTextOf captures the words of the resolving spell or ability for
+// this rule. The source may already have left; pass TextReaderForEffect
+// so its last-known words are used. The captured data survives the search
+// prompt and never rereads a source that could have become a new object.
+func (r SearchRule) ThroughTextOf(reader *Card) SearchRule {
+	r.words = nil
+	if reader != nil && !r.IsZero() {
+		r.words = reader.TextWords.entries()
+	}
+	return r
+}
 
 // searchRules is guarded by effectRegistryMu.
 var searchRules = map[string]SearchRuleFunc{}
@@ -124,7 +152,18 @@ func (spec SearchLibrarySpec) setAllows(picked []Card) bool {
 		return true
 	}
 	fn, ok := lookupSearchRule(spec.Rule.key)
-	return ok && fn(picked, spec.Rule.N)
+	if !ok {
+		return false
+	}
+	if len(spec.Rule.words) != 0 {
+		reader := textReaderOf(textWordsFromEntries(spec.Rule.words))
+		lensed := make([]Card, len(picked))
+		for i, c := range picked {
+			lensed[i] = ThroughTextOf(reader, c)
+		}
+		picked = lensed
+	}
+	return fn(picked, spec.Rule.N)
 }
 
 // newSearchResumeFrame is the frame a search prompt holds for spec: the
@@ -159,6 +198,8 @@ type searchPromptSnapshot struct {
 	// Rule and RuleN are SearchLibrarySpec.Rule.
 	Rule  string `json:"rule,omitempty"`
 	RuleN int    `json:"ruleN,omitempty"`
+	// RuleWords is the source text lens captured when the search began.
+	RuleWords []TextWordChange `json:"ruleWords,omitempty"`
 	// Undecided is searchResumeFrame.undecided: a "you may search" not
 	// yet begun (#4134).
 	Undecided bool `json:"undecided,omitempty"`
@@ -177,6 +218,7 @@ func snapshotSearchPrompt(c *PendingChoice) *searchPromptSnapshot {
 		Quality:        f.quality,
 		Rule:           f.rule.key,
 		RuleN:          f.rule.N,
+		RuleWords:      cloneTextWordChanges(f.rule.words),
 		Undecided:      f.undecided,
 		GraveyardFinds: copyUUIDs(f.graveyardFinds),
 	}
@@ -186,7 +228,7 @@ func restoreSearchPrompt(s *searchPromptSnapshot) *searchResumeFrame {
 	return &searchResumeFrame{
 		data:           searchTailSpecOf(s.Spec.searchSpec()),
 		quality:        s.Quality,
-		rule:           SearchRule{key: s.Rule, N: s.RuleN},
+		rule:           SearchRule{key: s.Rule, N: s.RuleN, words: cloneTextWordChanges(s.RuleWords)},
 		graveyardFinds: copyUUIDs(s.GraveyardFinds),
 		undecided:      s.Undecided,
 	}
@@ -195,7 +237,7 @@ func restoreSearchPrompt(s *searchPromptSnapshot) *searchResumeFrame {
 // unknownSearchPromptKeys is checkEffectKeys' half for a search prompt:
 // the marker, the rule and the card's tail.
 func unknownSearchPromptKeys(c *pendingChoiceSnapshot) []string {
-	if c.SearchPrompt == nil || c.PickThen != SearchPromptKey {
+	if c.SearchPrompt == nil || c.PickThen != searchPromptKey(c.SearchPrompt) {
 		return []string{fmt.Sprintf("search prompt %q", c.PickThen)}
 	}
 	var unknown []string

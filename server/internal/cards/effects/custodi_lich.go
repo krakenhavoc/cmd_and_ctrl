@@ -28,22 +28,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouBecomeTheMonarch("Custodi Lich"),
-			Targeting(WheneverYouBecomeTheMonarch("Custodi Lich — target player sacrifices a creature", custodiLichEdict),
+			Targeting(WheneverYouBecomeTheMonarch("Custodi Lich — target player sacrifices a creature",
+				targetPlayerSacrificesACreature("Custodi Lich — sacrifice a creature")),
 				TargetPlayer("target player")),
 		},
 	})
-}
-
-// custodiLichEdict asks the chosen player to sacrifice a creature. A
-// target that left the game in response (CR 608.2b) does nothing.
-func custodiLichEdict(g *game.Game, item *game.StackItem) error {
-	for _, t := range NewContext(g, item).LegalTargets() {
-		if t.Kind != game.TargetPlayer {
-			continue
-		}
-		g.PlayerSacrificesForEffect(item.SourceCardID, t.ID, sacrificeSpec("a creature", Creature()),
-			"Custodi Lich — sacrifice a creature")
-		return nil
-	}
-	return nil
 }
