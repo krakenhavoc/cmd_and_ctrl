@@ -43,6 +43,18 @@ func init() {
 		{"60b36821-0fad-423c-98c4-f64d991719f3", "Graypelt Refuge", "G", "W"},
 		// Roadmap batch 36 (#399): the Rakdos refuge.
 		{"354fecd1-2371-49e3-81c6-7e47728dbb1f", "Akoum Refuge", "B", "R"},
+		// Marvel Super Heroes (#4455): ten printings of the same three
+		// lines under Marvel names, each its own oracle id.
+		{"d49a7525-eca5-48e1-b94b-d618a706fd02", "Subterranean Cavern", "B", "G"},
+		{"5a8977fc-0732-4807-b876-01819aedd70b", "Pym Technologies", "G", "U"},
+		{"4b17048f-8c7f-4e29-8f56-16db4c2106e6", "Los Diablos Missile Base", "R", "G"},
+		{"c3172c5d-c745-4422-b651-cd414c8da11b", "Birnin Zana Plaza", "G", "W"},
+		{"1337d89e-a883-4568-a14f-9ca3305cc3df", "Hell's Kitchen", "B", "R"},
+		{"5554db95-9676-4c24-b82a-8173513d7927", "Fisk Tower", "W", "B"},
+		{"10fc2009-4212-47c6-8a97-ab0f45c1f91b", "Avengers Hangar", "W", "U"},
+		{"8417f2d5-93c9-474a-a143-5c4e17097a88", "A.I.M. Labs", "U", "B"},
+		{"e3614df6-ce84-4180-ade1-a1751e8e3c9a", "Asgardian Citadel", "R", "W"},
+		{"52401cb4-1bce-4191-9220-0d93ea4108b8", "Stark Industries", "U", "R"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
