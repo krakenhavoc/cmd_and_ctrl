@@ -1771,6 +1771,11 @@ type activeReplacement struct {
 	// its catalog row is gone. It is an effect that no longer applies
 	// (CR 616.1f), so no resolve path fires it.
 	lost bool
+	// departed marks a catalog effect gathered from a member of an open
+	// simultaneous exit that had already left the battlefield (#4521,
+	// simultaneous_replacements.go). Its source is the batch's pre-move
+	// copy, and a resume fires it from that copy.
+	departed bool
 }
 
 // replacementIdentity names one declared replacement effect: the
@@ -2608,6 +2613,18 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 			// ability-removing effect contributes none.
 			gatherFrom(card, catalogAbilityKeyOf(card))
 		}
+		// #4521, CR 608.2f / 614.4: a leg of a simultaneous exit is also
+		// replaced by the members of its batch that already left, read off
+		// the copies taken when the event began
+		// (simultaneous_replacements.go).
+		for _, c := range g.departedBatchSourcesLocked(ev) {
+			card := c
+			n := len(out)
+			gatherFrom(&card, catalogAbilityKeyOf(&card))
+			for i := n; i < len(out); i++ {
+				out[i].departed = true
+			}
+		}
 		// #4192, ADR 0109 §5: an emblem's replacement and prevention
 		// effects, after the battlefield (CR 114.4 — an emblem's
 		// abilities function in the command zone). The emblem is the
@@ -2841,6 +2858,10 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	} else if card = g.emblemWithSerialLocked(serial); card != nil {
 		// #4192: an emblem's effect, named by its object like a permanent's.
 		key = CatalogKey(*card)
+	} else if card = g.departedReplacementSourceLocked(id); card != nil {
+		// #4521: a source that left in the same simultaneous event, named
+		// by the copy its effect was gathered from.
+		key = catalogAbilityKeyOf(card)
 	} else {
 		return "", uuid.UUID{}
 	}
