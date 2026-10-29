@@ -5591,3 +5591,19 @@ A wipe destroys every creature at once (CR 608.2f), and a replacement effect onl
 **Back-out**, restored: removing the departed gather fails the Head of the Hunt, Liesa, two-Liesa, ordering and Fumigate tests. Not firing a departed source after the pause (`liveReplacementSourceLocked`) fails the ordering test in both orders; the keyed Fumigate restore still passes, because its re-entry regathers the effect from the route's copies. Writing the fire-and-forget frame fails the not-written test. Dropping the departed label fails the ordering and Fumigate tests. Skipping `hostsBeforeAttachmentsLocked` still fails `TestBearUmbraSavesItsCreatureFromAWipeThatAlsoHitsIt` with the Aura first, which is why it stays.
 
 **Not changed: a regeneration after an "exile instead".** Regeneration and umbra armor read `ev.Destruction`, which stays set after a replacement has sent the creature to exile, so either one chosen after Liesa still cancels the move. That is older than this amendment and filed as #4526.
+
+## Amendment 2026-10-29 — a redirect ends the destruction for the rest of the order (#4526)
+
+CR 701.8a: to destroy a permanent is to move it from the battlefield to its owner's graveyard. A replacement that sends the move somewhere else ("exile it instead": Liesa, Rest in Peace, Head of the Hunt, Dauthi Voidwalker, a shuffle-in) has replaced the destruction, and CR 616.1f has the controller choose again among "only replacement or prevention effects that would now be applicable". A regeneration (CR 701.19a), a static regeneration (CR 701.19b), umbra armor (CR 702.89a) and a shield counter (CR 122.1c) replace only a destruction, so they stop applying. The engine kept `ReplacementEvent.Destruction` set (§5d: declared by the route, never derived), so each of them still applied after the redirect, and a shielded creature stayed on the battlefield under a Liesa that had been ordered first.
+
+**The rule.** `runReplaceLocked`, the one door every apply path fires a `Replace` through, compares `ev.NewZone` before and after. If a `RepEventMove` that is a `Destruction` came out of a `Replace` headed somewhere new and not cancelled, `Destruction` is cleared (`endDestructionOnRedirectLocked`, `prevention_then.go`). The four `AppliesTo` readers needed no change, and a catalog replacement written later gets the rule without asking for it. Declared stays declared: nothing derives a destruction from the destination, so the exile-by-default of a departed owner's destruction (§5d) is still a destruction until something moves it.
+
+**The mirror.** A regeneration or umbra armor chosen first cancels the event (§5i), and the loop does not offer the rest.
+
+**What was left alone.** `ReplacementEvent.LeaveCause` is stamped from the route when the event is built and still says "destroy" for a creature a replacement then exiled. It is the event log's word for why the permanent left, not a gate, and is not touched here.
+
+**Compatibility.** No snapshot field, resume key or fixture changes: `Destruction` was already carried by the CR 616 resume mirror, so a restore mid-order sees the cleared flag. No closure route is added.
+
+**Tests.** `effects/destruction_redirect_test.go`, for Liesa and for Rest in Peace: with the exile ordered first, a shielded Bear is exiled and a Bear Umbra's Bear is exiled; with the regeneration shield or umbra armor ordered first, the Bear stays (tapped, shield spent, for the shield; the Aura destroyed, for umbra); a restore at the prompt keeps the order a real choice. `simultaneous_replacements_test.go`'s ordering, not-written and Fumigate restore tests use a real regeneration shield on the Needle in place of the no-op probe the 2026-10-29 amendment above used.
+
+**Back-out**, restored: dropping the `endDestructionOnRedirectLocked` call fails the exile-first tests for both a shield and umbra armor, the restore test, the Liesa ordering test and the Fumigate restore test.
