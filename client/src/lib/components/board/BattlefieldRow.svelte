@@ -456,6 +456,7 @@
             class:tapped={!!c.tapped}
             class:buried={i > 0 && depths[i] === depths[i - 1]}
             style:--i={depths[i]}
+            style:--k={i}
             use:etbPulse
           >
             <div class="host-stack" class:has-attachments={attached.length > 0}>
@@ -787,12 +788,23 @@
     position: relative;
     top: calc(var(--i, 0) * -3px);
   }
-  /* The spread eases open on hover only. #3044: an always-on transition
-     animated every copy's margin whenever fitRow resized the cards, so
-     the strip measured itself mid-animation, resized again, and never
-     settled once tapped lands piled too. */
-  .row.strip .pile:hover > [role="listitem"] {
-    transition: margin-left 140ms var(--ease);
+  /* #4422: hovering a pile spreads its copies apart, but only as paint.
+     The spread used to be a hover margin, which widened the pile, so
+     fitRow (which measures the strip's width) read a wider strip while a
+     pile was hovered, tightened every pile's overlap (--strip-k) to
+     compensate, and the piles slid left out from under the pointer; the
+     hover dropped, the strip measured narrower, the piles slid back
+     right, and the pile flickered left and right for as long as the
+     pointer rested there. A translate moves no layout box: the pile, its
+     neighbours and the strip measure the same hovered or not. Copy k
+     rests at its depth's 4px step and moves to k spread steps. The pile
+     stays hovered because the copies are its descendants, and it
+     paints over its neighbours (z-index above). The spread eases open
+     on hover only. #3044: an always-on transition animated every
+     copy's move whenever fitRow resized the cards. */
+  .row.strip .pile.multi:hover > [role="listitem"] {
+    transform: translateX(calc(var(--k, 0) * var(--spread-step) - var(--i, 0) * 4px));
+    transition: transform 140ms var(--ease);
   }
   .row.strip .pile > [role="listitem"] + [role="listitem"] {
     margin-left: calc(var(--card-w, 88px) * -1 + 4px);
@@ -803,32 +815,28 @@
   .row.strip .pile > [role="listitem"] + [role="listitem"].buried {
     margin-left: calc(var(--card-w, 88px) * -1);
   }
-  /* Hovering a pile spreads it to the between-pile overlap so each
-     copy can be told apart, hovered and clicked (a specific Forest
-     for a fetch, say) — the same 40% of each card the strip already
-     leaves visible between names. */
-  .row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"] {
-    margin-left: calc(var(--card-w, 88px) * -0.6);
+  /* The spread step: 40% of each card, the same the strip already leaves
+     visible between names, so each copy can be told apart, hovered and
+     clicked (a specific Forest for a fetch, say). */
+  .row.strip .pile.multi:hover {
+    --spread-step: calc(var(--card-w, 88px) * 0.4);
   }
   /* #3044: tapped lands pile by name too. A turned copy is a height
      wide, so a spread tapped pile steps by a share of the height, which
      leaves each copy's pip (#33) clear of the next. */
-  .row.strip .pile.tapped.multi:hover > [role="listitem"] + [role="listitem"] {
-    margin-left: calc(var(--card-w, 88px) * -1 + var(--card-h, 123px) * 0.45);
+  .row.strip .pile.tapped.multi:hover {
+    --spread-step: calc(var(--card-h, 123px) * 0.45);
   }
   /* #3044: a deep pile spreads no wider than four more cards, so a
      hover over 28 Forests stays near the pile; each copy still shows a
      sliver to hover (it zooms) and click. */
-  .row.strip .pile.deep:hover > [role="listitem"] + [role="listitem"] {
-    margin-left: calc(
-      var(--card-w, 88px) * -1 +
-        min(var(--card-w, 88px) * 0.4, var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1))
-    );
+  .row.strip .pile.deep:hover {
+    --spread-step: min(var(--card-w, 88px) * 0.4, var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1));
   }
-  .row.strip .pile.tapped.deep:hover > [role="listitem"] + [role="listitem"] {
-    margin-left: calc(
-      var(--card-w, 88px) * -1 +
-        min(var(--card-h, 123px) * 0.45, var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1))
+  .row.strip .pile.tapped.deep:hover {
+    --spread-step: min(
+      var(--card-h, 123px) * 0.45,
+      var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1)
     );
   }
   /* #1724: a token group's card. The host box is what the hidden

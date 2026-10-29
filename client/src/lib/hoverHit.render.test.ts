@@ -97,6 +97,22 @@ describe("a hovered card's box stays where it rests (#2396)", () => {
   });
 });
 
+describe("a hovered land pile moves no layout box (#4422)", () => {
+  // fitRow measures the strip's width. A hover margin widened the hovered
+  // pile, so the measure changed with the hover, the piles slid out from
+  // under the pointer and the pile flickered left and right.
+  it("spreads its copies with a translate, not a margin", () => {
+    const css = src("src/lib/components/board/BattlefieldRow.svelte");
+    const hovered = [...css.matchAll(/\n {2}(\.row\.strip \.pile[^{]*:hover[^{]*) \{([^}]*)\}/g)];
+    expect(hovered.length).toBeGreaterThan(0);
+    for (const [, sel, body] of hovered) {
+      expect(body, sel).not.toMatch(/margin|width|padding|left:|top:/);
+    }
+    const copy = rule(css, '  .row.strip .pile.multi:hover > [role="listitem"]');
+    expect(copy).toContain("translateX(");
+  });
+});
+
 describe("innerLift", () => {
   const box = (top: number): DOMRect =>
     ({ top, left: 0, right: 10, bottom: top + 10, width: 10, height: 10 }) as DOMRect;
