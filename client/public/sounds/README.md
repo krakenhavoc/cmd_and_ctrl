@@ -23,6 +23,11 @@ Two sets, by when they were made:
   - _TangoFlux_: one take, `pw_enter-2.mp3`, generated with TangoFlux. Its
     model licence is non-commercial. That is fine for C2, which is free and
     never charges (PLAN.md §3), but replace the take if that ever changes.
+  - _ElevenLabs (Ian's paid subscription), 2026-10-29_: the four files of
+    the hit and elimination cues (`face_hit_light-1.mp3`,
+    `face_hit_medium-1.mp3`, `face_hit_heavy-1.mp3` and
+    `player_eliminated-1.mp3`, #4543 and #4449), made by Ian on his paid
+    ElevenLabs plan, which allows commercial use.
 
 None comes from Wizards.
 
@@ -55,19 +60,37 @@ time.
 
 ### Files not made yet
 
-An entry here is in `SOUND_MANIFEST` with no takes, so nothing is fetched (a
-listed file that is absent logs a 404) and it plays its fallback until the
-files land (ADR 0209 §6). `sounds.test.ts` fails if a manifest take has no
-file. In the PR that adds the files, list the takes in the manifest.
+An entry here would be in `SOUND_MANIFEST` with no takes, so nothing is
+fetched (a listed file that is absent logs a 404) and it would play its
+fallback until the files land (ADR 0209 §6). `sounds.test.ts` fails if a
+manifest take has no file. In the PR that adds the files, list the takes in
+the manifest.
 
-| Entry      | Files                              | Spec                                                                                                                                             | Falls back to |
-| ---------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| `face_hit` | `face_hit-1.mp3`, `face_hit-2.mp3` | At most 1 s. A heavy impact: something smashing into the player, a body blow or a hit on armour. Plays when combat damage hits a player (#4432). | `damage`      |
+None at present.
 
-`face_hit` plays at the strike's contact, once per player a combat damage
-beat hits; the life popup then does not also play `damage`. With combat
-motion off, reduced motion or a hidden tab it plays when the life loss shows.
-Other life loss (a drain, life paid, noncombat damage) keeps `damage`.
+### Hits on a player and elimination (#4543, #4449)
+
+Combat damage that lands on a player plays one of three sounds in the
+`combat` category, by how much that player takes in the beat: **light** for
+exactly 1, **medium** for 2 to 3 and **heavy** for 4 or more. Each is one
+take, and each falls back to `damage` if its file fails to load
+(`SOUND_FALLBACK`). A player leaving the game plays `player_eliminated`, one
+take, in the `effects` category, with no fallback.
+
+| Entry               | Files                     | When it plays                                                                               | Falls back to | Source                                           |
+| ------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------ |
+| `face_hit_light`    | `face_hit_light-1.mp3`    | 1 combat damage hits a player: a deflection, a dink                                         | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_medium`   | `face_hit_medium-1.mp3`   | 2 or 3 combat damage hits a player: a blunt punch, no gore                                  | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_heavy`    | `face_hit_heavy-1.mp3`    | 4 or more combat damage hits a player: a bone and blood crush (the skull crush)             | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `player_eliminated` | `player_eliminated-1.mp3` | A player leaves the game, once for each: their avatar shatters like rock, a tombstone stays | none          | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+
+A face hit plays at the strike's contact, once per player a combat damage
+beat hits, and the tier is picked by all the combat damage that player takes
+in that beat (two attackers of 2 are one blow of 4). The life popup then does
+not also play `damage`. With combat motion off, reduced motion or a hidden
+tab it plays when the life loss shows. Commander damage is combat damage, so
+it gets a tier like any other. Other life loss (a drain, life paid,
+noncombat damage) keeps `damage`.
 
 ### Interface cues (ADR 0209 §2)
 
@@ -124,13 +147,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                                            |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                  |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                     |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit`                                                                                                                                                                         |
-| `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                                        |
+| Category    | Sounds                                                                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                       |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                          |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                   |
+| `effects`   | `heal`, `player_eliminated`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                                             |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

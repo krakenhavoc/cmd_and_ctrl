@@ -81,6 +81,7 @@
   import CombatArrows from "./CombatArrows.svelte";
   import CombatStrikes from "./CombatStrikes.svelte";
   import TableEffects from "./TableEffects.svelte";
+  import EliminationFx from "./EliminationFx.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -4063,6 +4064,10 @@
        z 57, aria-hidden, no pointer events; a click or Escape skips what
        is playing, for this player only. -->
   <TableEffects {view} {boardEl} {beatsPrimeKey} />
+  <!-- #4449: a player leaves the game: their avatar shatters and the
+       player_eliminated sound plays, once; the tombstone that follows is on
+       their panel (Tombstone.svelte). z 57, aria-hidden, no pointer events. -->
+  <EliminationFx {view} {boardEl} {beatsPrimeKey} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->

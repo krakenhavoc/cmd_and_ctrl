@@ -29,6 +29,9 @@ import { play as playSound } from "./sounds";
 // How many times the mocked play() was asked for `name`.
 const soundCalls = (name: string) =>
   vi.mocked(playSound).mock.calls.filter(([n]) => n === name).length;
+// How many times any face_hit tier played.
+const faceHitCalls = () =>
+  ["face_hit_light", "face_hit_medium", "face_hit_heavy"].reduce((n, t) => n + soundCalls(t), 0);
 import { CombatCues } from "./combatCues.svelte";
 import type { CardView, GameView, LogEvent } from "./protocol";
 import { resetSettings, settings, updateSettings } from "./settings";
@@ -73,14 +76,20 @@ const blockE = (seq: number, blocker: string, attacker: string): LogEvent => ({
   target: attacker,
   text: "",
 });
-const hit = (seq: number, seat: number, src: string, to: string | number): LogEvent => ({
+const hit = (
+  seq: number,
+  seat: number,
+  src: string,
+  to: string | number,
+  amount = 3,
+): LogEvent => ({
   seq,
   kind: "damage",
   turn: 3,
   seat,
   card_id: src,
   ...(typeof to === "number" ? { target_seat: to } : { target: to }),
-  amount: 3,
+  amount,
   combat: true,
   text: "",
 });
@@ -245,7 +254,7 @@ describe("the strike layer", () => {
     expect(soundCalls("combat_resolve")).toBe(1);
   });
 
-  it("plays face_hit once, at the same contact, when the beat hits a player (#4432)", () => {
+  it("plays one face_hit tier, at the same contact, when the beat hits a player (#4432)", () => {
     const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
     const next = [
       ...before,
@@ -255,26 +264,61 @@ describe("the strike layer", () => {
     ];
     play(before, next, [ogre], [ogre]);
     advance(179);
-    expect(soundCalls("face_hit")).toBe(0);
+    expect(faceHitCalls()).toBe(0);
     advance(1);
-    expect(soundCalls("face_hit")).toBe(1);
+    // Two hits of 3 are one blow of 6 on the player: heavy, and only that.
+    expect(soundCalls("face_hit_heavy")).toBe(1);
+    expect(faceHitCalls()).toBe(1);
     advance(2000);
-    expect(soundCalls("face_hit")).toBe(1);
+    expect(faceHitCalls()).toBe(1);
   });
 
-  it("plays face_hit once per player a beat hits, a little apart (#4432)", () => {
+  it.each([
+    [1, "face_hit_light"],
+    [2, "face_hit_medium"],
+    [3, "face_hit_medium"],
+    [4, "face_hit_heavy"],
+    [7, "face_hit_heavy"],
+  ])("picks the tier for %i combat damage on a player: %s (#4543)", (amount, name) => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1, amount)];
+    play(before, next, [ogre], [ogre]);
+    advance(2000);
+    expect(soundCalls(name)).toBe(1);
+    expect(faceHitCalls()).toBe(1);
+    // Not the drain's sound.
+    expect(soundCalls("damage")).toBe(0);
+  });
+
+  it("adds up the blows two attackers land on one player into one tier (#4543)", () => {
     const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
     const next = [
       ...before,
       stepE(120, "combat_damage"),
-      hit(121, 0, "ogre", 1),
-      hit(122, 0, "bear", 2),
+      hit(121, 0, "ogre", 1, 2),
+      hit(122, 0, "bear", 1, 2),
+    ];
+    play(before, next, [ogre, bear], [ogre, bear]);
+    advance(2000);
+    expect(soundCalls("face_hit_heavy")).toBe(1);
+    expect(faceHitCalls()).toBe(1);
+  });
+
+  it("plays a tier per player a beat hits, a little apart (#4432)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", 1, 1),
+      hit(122, 0, "bear", 2, 5),
     ];
     play(before, next, [ogre, bear], [ogre, bear]);
     advance(180);
-    expect(soundCalls("face_hit")).toBe(1);
+    expect(soundCalls("face_hit_light")).toBe(1);
+    expect(soundCalls("face_hit_heavy")).toBe(0);
     advance(2000);
-    expect(soundCalls("face_hit")).toBe(2);
+    expect(soundCalls("face_hit_light")).toBe(1);
+    expect(soundCalls("face_hit_heavy")).toBe(1);
   });
 
   it("plays no face_hit when the beat only hits creatures (#4432)", () => {
@@ -282,7 +326,7 @@ describe("the strike layer", () => {
     const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", "bear")];
     play(before, next, [ogre, bear], [ogre, bear]);
     advance(2000);
-    expect(soundCalls("face_hit")).toBe(0);
+    expect(faceHitCalls()).toBe(0);
   });
 
   it("plays it once per beat: a first strike beat, then the regular beat", () => {
@@ -327,7 +371,7 @@ describe("the strike layer", () => {
     cues.frame(next, get(settings));
     advance(180);
     expect(soundCalls("combat_resolve")).toBe(1);
-    expect(soundCalls("face_hit")).toBe(1);
+    expect(faceHitCalls()).toBe(1);
   });
 
   it("plays nothing on a priming frame (a reconnect, a replay jump)", () => {
