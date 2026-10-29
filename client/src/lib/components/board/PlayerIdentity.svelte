@@ -28,7 +28,7 @@
     trackLife,
     type LifePopupView,
   } from "../../lifePopup";
-  import { combatHitLookup, lifeCauseLookup } from "../../lifeCause";
+  import { combatHitLookup, extortDrainLookup, lifeCauseLookup } from "../../lifeCause";
   import { popupSound } from "../../faceHit";
   import { combatMotion, strikesScheduled } from "../../combatStrikes";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
@@ -243,6 +243,7 @@
   // above (a unit test), and then the popup is bare numbers.
   const causesFor = lifeCauseLookup();
   const combatHitFor = combatHitLookup();
+  const extortFor = extortDrainLookup();
   $effect(() => {
     const frame = trackLife(tracker, seat.life_history);
     tracker = frame.tracker;
@@ -265,7 +266,9 @@
         typeof document === "undefined" ? undefined : document.visibilityState,
       ),
     );
-    if (sound) play(sound);
+    // #4544: an extort drain is sounded once, by the Scales of Souls cue.
+    const extort = untrack(() => extortFor?.(seat.id, frame.popup!.deltas) ?? false);
+    if (sound && !extort) play(sound);
     if (popupTimer) clearTimeout(popupTimer);
     popupTimer = setTimeout(() => {
       popup = null;

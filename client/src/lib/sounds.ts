@@ -82,7 +82,10 @@ export type SoundName =
   | "sig_toxic_deluge"
   | "sig_bitter_triumph"
   | "sig_nicol_bolas"
-  | "sig_dragons_approach";
+  | "sig_dragons_approach"
+  // #4544: an extort drain resolving (a soul sucked out, a coin on the scale).
+  // Plays damage until its file lands (SOUND_FALLBACK, ADR 0209 §6).
+  | "extort";
 
 // The volume buses a sound can belong to. The music bus is music.ts's.
 export type SoundCategory = "interface" | "cards" | "combat" | "effects" | "voice";
@@ -133,6 +136,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   sig_bitter_triumph: "effects",
   sig_nicol_bolas: "effects",
   sig_dragons_approach: "effects",
+  extort: "effects",
 };
 
 // Each event has two takes. pickVariant() chooses uniformly at
@@ -179,6 +183,11 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
     "/sounds/sig_dragons_approach-1.mp3",
     "/sounds/sig_dragons_approach-2.mp3",
   ],
+  // #4544: file not made yet (ADR 0209 §6). No takes are listed, so none is
+  // fetched and the cue plays damage through SOUND_FALLBACK. The PR that adds
+  // extort-1.mp3 lists it here (client/public/sounds/README.md, "Files not
+  // made yet").
+  extort: [],
 };
 
 // What a sound plays when none of its own files exist. Only the cues that
@@ -197,6 +206,7 @@ export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   sig_bitter_triumph: "destroy",
   sig_nicol_bolas: "pw_enter",
   sig_dragons_approach: "board_wipe",
+  extort: "damage",
 };
 
 // Sounds preloadAll leaves alone: a signature's files are fetched the

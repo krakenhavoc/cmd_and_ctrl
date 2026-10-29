@@ -66,7 +66,9 @@ fallback until the files land (ADR 0209 §6). `sounds.test.ts` fails if a
 manifest take has no file. In the PR that adds the files, list the takes in
 the manifest.
 
-None at present.
+| Entry    | Files          | Spec                                                                                                                                                                    | Falls back to |
+| -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `extort` | `extort-1.mp3` | About 2 s. A soul sucked out (~1.2 s rising whoosh), then a coin clinking onto a brass scale, with the clink at 1.2-1.4 s. Plays when an extort drain resolves (#4544). | `damage`      |
 
 ### Hits on a player and elimination (#4543, #4449)
 
@@ -91,6 +93,20 @@ not also play `damage`. With combat motion off, reduced motion or a hidden
 tab it plays when the life loss shows. Commander damage is combat damage, so
 it gets a tier like any other. Other life loss (a drain, life paid,
 noncombat damage) keeps `damage`.
+
+`extort` plays once when an extort trigger resolves and drains, as the Scales
+of Souls effect starts (`ExtortScales.svelte`, #4544). The life popups on the
+drained opponents and the extort player stay quiet for that drain, so this is
+its only sound. Brief for the file: soul sucked out (~1.2 s rising whoosh) then
+a coin clinking onto a brass scale. **The coin hit must land 1.2-1.4 s into the
+file**: the animation's scale levels (the coin falls and the light bursts) at
+exactly 1.25 s after the sound starts (`EXTORT_HIT_MS` in
+[../../src/lib/extort.ts](../../src/lib/extort.ts)), at animations.speed 1. A
+short tail after the clink is fine; the animation runs 2.6 s in all. In the
+reduced-motion and Short settings the scene is a still scale and the sound
+still plays. Until the file is added it plays `damage`. To add it: put
+`extort-1.mp3` here, list `"/sounds/extort-1.mp3"` in `SOUND_MANIFEST.extort`
+(`src/lib/sounds.ts`), and remove the row above.
 
 ### Interface cues (ADR 0209 §2)
 
@@ -147,13 +163,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                       |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                          |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                   |
-| `effects`   | `heal`, `player_eliminated`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                                                             |
+| Category    | Sounds                                                                                                                                                                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                 |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                    |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                             |
+| `effects`   | `heal`, `player_eliminated`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                       |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

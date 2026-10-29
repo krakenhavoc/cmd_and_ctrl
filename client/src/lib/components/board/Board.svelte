@@ -82,6 +82,7 @@
   import CombatStrikes from "./CombatStrikes.svelte";
   import TableEffects from "./TableEffects.svelte";
   import EliminationFx from "./EliminationFx.svelte";
+  import ExtortScales from "./ExtortScales.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -4068,6 +4069,10 @@
        player_eliminated sound plays, once; the tombstone that follows is on
        their panel (Tombstone.svelte). z 57, aria-hidden, no pointer events. -->
   <EliminationFx {view} {boardEl} {beatsPrimeKey} />
+  <!-- #4544: an extort drain plays the Scales of Souls, small, at the middle
+       of the table. z 57 after TableEffects, aria-hidden, no pointer events;
+       a click or Escape skips it, for this player only. -->
+  <ExtortScales {view} {boardEl} {beatsPrimeKey} {viewerID} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->
