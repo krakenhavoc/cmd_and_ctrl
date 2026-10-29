@@ -256,9 +256,11 @@ function mountList(
   opts: {
     combatMode?: "idle" | "attack" | "block";
     attachmentsByHost?: Record<string, CardView[]>;
+    staged?: string[];
   } = {},
 ) {
   const attacks: Array<{ ids: string[]; seat: string }> = [];
+  const unstaged: string[][] = [];
   const targeted: string[] = [];
   const used: string[] = [];
   let closed = 0;
@@ -279,11 +281,13 @@ function mountList(
       },
       onTapToggle: () => {},
       onAttack: (ids: string[], seatID: string) => attacks.push({ ids, seat: seatID }),
+      stagedAttackers: new Set(opts.staged ?? []),
+      onUnstage: (ids: string[]) => unstaged.push(ids),
       onBlock: () => {},
       onClose: () => closed++,
     } as never,
   );
-  return { attacks, targeted, used, closed: () => closed };
+  return { attacks, unstaged, targeted, used, closed: () => closed };
 }
 
 const body = () => document.body;
@@ -339,6 +343,24 @@ describe("the token group's list (#1724)", () => {
     expect(checkedIDs()).toEqual(["s2", "s4", "s5"]);
     click(button(/^Attack Bob with 3$/));
     expect(attacks).toEqual([{ ids: ["s2", "s4", "s5"], seat: "bob" }]);
+  });
+
+  it("#4423: marks the staged members, and takes picked ones back out of the attack", () => {
+    const { unstaged } = mountList(members(), { staged: ["s2", "s4"] });
+    const rows = rowButtons();
+    expect(text(rows[1])).toContain("attacking (staged)");
+    expect(text(rows[2])).not.toContain("attacking (staged)");
+    // Nothing picked is staged yet: the button is there but idle.
+    expect(button(/^Take 0 out of the attack$/).disabled).toBe(true);
+    click(rows[1]);
+    click(rows[4]);
+    click(button(/^Take 1 out of the attack$/));
+    expect(unstaged).toEqual([["s2"]]);
+  });
+
+  it("#4423: offers no way out of the attack when nothing is staged", () => {
+    mountList(members());
+    expect(body().querySelector('[data-testid="tg-unstage"]')).toBeNull();
   });
 
   it("shows a member's counters and attachments as badges on its row", () => {

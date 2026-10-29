@@ -60,8 +60,10 @@
     pruneStage,
     soleTarget,
     stageAt,
+    stageMany,
     stagedParams,
     unstage,
+    unstageMany,
     type StagedAttack,
   } from "../lib/attackStage";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
@@ -2140,13 +2142,20 @@
     attackLimitRefusalDefenderID ? attackLimitOn(view, attackLimitRefusalDefenderID) : null,
   );
 
-  function openAttackPicker(defenderSeatID: string): void {
+  // #4423: set when the picker was opened by a token group's attack,
+  // whose confirm adds to the creatures already staged by clicking
+  // rather than replacing them. "Attack with all" leaves it off: it is
+  // the action that asks for the reset.
+  let attackPickerKeepsStage = false;
+  function openAttackPicker(defenderSeatID: string, keepStage = false): void {
     attackPickerLimitReason = null;
+    attackPickerKeepsStage = keepStage;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
     if (!bulkRefusal) return;
     attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
+    attackPickerKeepsStage = false;
     attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
@@ -2160,7 +2169,9 @@
     phyrexianLife = 0,
   ): void {
     const defenderSeatID = attackPickerDefenderID;
+    const keepsStage = attackPickerKeepsStage;
     attackPickerDefenderID = null;
+    attackPickerKeepsStage = false;
     if (!defenderSeatID) return;
     attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
@@ -2172,6 +2183,16 @@
       phyrexianLife,
     });
     if (!params) return;
+    if (keepsStage) {
+      // #4423: the picker lists every creature that may attack this
+      // seat, so a staged one it shows is the player's to uncheck. A
+      // staged one it does not show (aimed at another seat) stays
+      // staged. One declaration carries both.
+      const shown = new Set(eligibleAt(attackPlan, defenderSeatID).map((c) => c.instance_id));
+      const chosen = new Set(params.attackers.map((a) => a.attacker));
+      const kept = attackStage.filter((s) => !shown.has(s.attacker) && !chosen.has(s.attacker));
+      params.attackers = [...params.attackers, ...kept.map((s) => ({ ...s }))];
+    }
     sendBulkAttack(defenderSeatID, params);
   }
   // #1724: "Attack <seat> with N" from a token group's list. The same
@@ -2183,7 +2204,7 @@
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
     if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
-      openAttackPicker(defenderSeatID);
+      openAttackPicker(defenderSeatID, true);
       return;
     }
     // #4198: the picker asks mana or life for a Phyrexian tax.
@@ -2194,12 +2215,21 @@
         actingLife,
       )
     ) {
-      openAttackPicker(defenderSeatID);
+      openAttackPicker(defenderSeatID, true);
       return;
     }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
     if (!params) return;
-    sendBulkAttack(defenderSeatID, params);
+    // #4423: a group's attack is staged, like a click on one creature,
+    // and joins whatever else is staged. Sending it here as its own
+    // declaration emptied the stage, dropping the creatures the player
+    // had already chosen, and left no way to change the count.
+    combatSelection = null;
+    attackStage = stageMany(attackStage, params.attackers);
+  }
+  // #4423: take a group's picked members back out of the staged set.
+  function unstageGroupAttackers(attackerIDs: string[]): void {
+    attackStage = unstageMany(attackStage, attackerIDs);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
@@ -3252,6 +3282,7 @@
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
+          onUnstageAttackers={unstageGroupAttackers}
           docked={dockShown}
           coached={coachShown}
           {beatsPrimeKey}

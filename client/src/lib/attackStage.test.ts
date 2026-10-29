@@ -7,8 +7,10 @@ import {
   pruneStage,
   soleTarget,
   stageAt,
+  stageMany,
   stagedParams,
   unstage,
+  unstageMany,
   type StagedAttack,
 } from "./attackStage";
 import { primaryKind } from "./dockHint";
@@ -72,6 +74,38 @@ describe("staging attackers", () => {
       ],
       auto_tap: true,
     });
+  });
+});
+
+describe("staging a token group's members (#4423)", () => {
+  const stage: StagedAttack[] = [
+    { attacker: "bear", target: "cy" },
+    { attacker: "wolf1", target: "cy" },
+  ];
+
+  it("adds the group beside what is already staged, leaving it untouched", () => {
+    const next = stageMany(stage, [
+      { attacker: "wolf2", target: "bob" },
+      { attacker: "wolf3", target: "bob" },
+    ]);
+    expect(next).toEqual([
+      { attacker: "bear", target: "cy" },
+      { attacker: "wolf1", target: "cy" },
+      { attacker: "wolf2", target: "bob" },
+      { attacker: "wolf3", target: "bob" },
+    ]);
+  });
+
+  it("re-aims a member that is already staged instead of staging it twice", () => {
+    expect(stageMany(stage, [{ attacker: "wolf1", target: "bob" }])).toEqual([
+      { attacker: "bear", target: "cy" },
+      { attacker: "wolf1", target: "bob" },
+    ]);
+  });
+
+  it("takes some members back out, which is how the count changes", () => {
+    expect(unstageMany(stage, ["wolf1", "nobody"])).toEqual([{ attacker: "bear", target: "cy" }]);
+    expect(unstageMany(stage, [])).toEqual(stage);
   });
 });
 
