@@ -1808,3 +1808,4 @@ tail saruman-of-many-colors/copy-exiled
 body ant-man-colony-commander/counter
 payunless pay-unless/ant-man-colony-commander-counter
 tail alien-invasion/grow
+confirm confirm/armor-wars-draw

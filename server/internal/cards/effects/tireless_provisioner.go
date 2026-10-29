@@ -27,18 +27,25 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			LandfallPaying("Tireless Provisioner — create a Treasure (landfall)", game.LandfallPayoff{Tokens: 1},
-				func(g *game.Game, item *game.StackItem) error {
-					return PickOption{
-						Question: "Tireless Provisioner — create a Food token or a Treasure token",
-						Options: []game.ChoiceOption{
-							{Label: "Create a Treasure token"},
-							{Label: "Create a Food token"},
-						},
-						ThenKey: tirelessProvisionerToken,
-					}.Apply(NewContext(g, item))
-				}),
+				createFoodOrTreasure("Tireless Provisioner — create a Food token or a Treasure token")),
 		},
 	})
+}
+
+// createFoodOrTreasure is "create a Food token or a Treasure token" as an
+// effect: the controller picks as it resolves, Treasure first. Ant-Man's
+// Army (#4455) shares it.
+func createFoodOrTreasure(question string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		return PickOption{
+			Question: question,
+			Options: []game.ChoiceOption{
+				{Label: "Create a Treasure token"},
+				{Label: "Create a Food token"},
+			},
+			ThenKey: tirelessProvisionerToken,
+		}.Apply(NewContext(g, item))
+	}
 }
 
 // tirelessProvisionerToken is the answer to "Food or Treasure?", keyed
