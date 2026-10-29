@@ -61,6 +61,7 @@ class FakeSocket {
 
 const ME = "p-1";
 const OPP = "p-2";
+const OPP2 = "p-3";
 
 const zone = (kind: string, owner?: string, cards: CardView[] = []) => ({
   kind,
@@ -95,14 +96,20 @@ const creature = (id: string, name: string): CardView =>
 
 const ATTACKERS = ["b1", "w1", "w2", "w3"];
 
-function declareAttackers(): GameView {
+function declareAttackers(
+  over: Record<string, Record<string, unknown>> = {},
+  extraSeat = false,
+): GameView {
   const sources = Object.fromEntries(
-    ATTACKERS.map((id) => [id, { kinds: ["attack"], moves: 1, attack_targets: [OPP] }]),
+    ATTACKERS.map((id) => [
+      id,
+      { kinds: ["attack"], moves: 1, attack_targets: [OPP], ...over[id] },
+    ]),
   );
   return {
     id: "g",
     state: "active",
-    seats: [seat(ME, "Me", 0), seat(OPP, "Opp", 1)],
+    seats: [seat(ME, "Me", 0), seat(OPP, "Opp", 1), ...(extraSeat ? [seat(OPP2, "Cy", 2)] : [])],
     battlefield: zone("battlefield", undefined, [
       creature("b1", "Grizzly Bears"),
       creature("w1", "Wolf"),
@@ -229,5 +236,30 @@ describe("a token group's attack joins the staged set (#4423)", () => {
     // And more can be added again.
     pressed(c, "group-attack");
     expect(staged(c)).toBe("b1,w1,w2,w3");
+  });
+  it("keeps a click-staged creature when the group's exert question opens the picker", async () => {
+    // b1 can only attack Cy, so one click stages it there; the wolves
+    // attack Opp, and w1 may be exerted, which asks in the picker.
+    const c = await mountGame(
+      declareAttackers({ b1: { attack_targets: [OPP2] }, w1: { exert_on_attack: true } }, true),
+    );
+    pressed(c, "select-b1");
+    expect(staged(c)).toBe("b1");
+
+    pressed(c, "group-attack");
+    expect(FakeSocket.last!.declarations()).toHaveLength(0);
+    // The picker lists the wolves (b1 cannot attack Opp) and confirms them.
+    const confirm = dockButtons(c, /^Attack with 3/);
+    expect(confirm).toHaveLength(1);
+    click(confirm[0]!);
+
+    const sent = FakeSocket.last!.declarations();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.payload!.params!.attackers!.map((a) => [a.attacker, a.target])).toEqual([
+      ["w1", OPP],
+      ["w2", OPP],
+      ["w3", OPP],
+      ["b1", OPP2],
+    ]);
   });
 });
