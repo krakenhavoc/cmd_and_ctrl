@@ -219,6 +219,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
+	// Falcon, Winged Wonder's Redwing (#4455).
+	printedMshA3RedwingToken,
+
 	// ADR 0114 PR 5: There and Back Again's Smaug.
 	printedSmaugToken,
 

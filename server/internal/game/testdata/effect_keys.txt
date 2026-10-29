@@ -1811,3 +1811,8 @@ tail alien-invasion/grow
 confirm confirm/armor-wars-draw
 body claim-the-kingdom/indestructible
 tail daredevil-man-without-fear/hero-boost
+body death-to-our-enemies/divided-damage
+body doom-reigns-supreme/exile-and-cast
+confirm confirm/black-widow-counter-or-cast
+tail msh-a3/black-widow-after-exile
+tail msh-a3/doom-reigns-supreme-after-exile
