@@ -17,6 +17,9 @@ export const COUNTER_STUN = "stun";
 export const COUNTER_SHIELD = "shield";
 export const COUNTER_LORE = "lore";
 export const COUNTER_AGE = "age";
+// Hone counter (CR 122.1j, #4500): each one on an Equipment gives the
+// equipped creature +1/+0, so the pip reads "Hone", not "hon".
+export const COUNTER_HONE = "hone";
 
 // Keyword counter kinds (CR 122.1b, ADR 0101). Mirrors
 // keywordCounterKinds in server/internal/game/keyword_counters.go: the
@@ -73,6 +76,7 @@ export const COUNTER_STYLES: Record<string, CounterStyle> = {
   [COUNTER_SHIELD]: { abbr: "Sh", color: "#5f9abf", glyph: "🛡" },
   [COUNTER_LORE]: { abbr: "Lo", color: "#bfa55f", glyph: "📜" },
   [COUNTER_AGE]: { abbr: "Age", color: "#8a7f6e", glyph: "⌛" },
+  [COUNTER_HONE]: { abbr: "Hone", color: "#c28a4a", glyph: "⚔" },
   [COUNTER_POISON]: { abbr: "Poi", color: "#7ab85f", glyph: "🟢" },
   [COUNTER_ENERGY]: { abbr: "E", color: "#e0c050", glyph: "⚡" },
   [COUNTER_EXPERIENCE]: { abbr: "Exp", color: "#d0a050", glyph: "⭐" },

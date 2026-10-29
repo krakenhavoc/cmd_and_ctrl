@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  COUNTER_HONE,
   COUNTER_MINUS_ONE,
   COUNTER_PLUS_ONE,
   COUNTER_STYLES,
@@ -30,6 +31,13 @@ describe("counterStyle", () => {
     expect(counterStyle("polyp").abbr).toBe("pol");
     expect(counterStyle("1/1").abbr).toBe("1/1");
     expect(counterStyle("+X/+X").abbr).toBe("+X/");
+  });
+});
+
+describe("hone counters (#4500)", () => {
+  it("pins a readable style for the hone counter", () => {
+    expect(counterStyle(COUNTER_HONE)).toBe(COUNTER_STYLES[COUNTER_HONE]);
+    expect(counterStyle(COUNTER_HONE).abbr).toBe("Hone");
   });
 });
 
