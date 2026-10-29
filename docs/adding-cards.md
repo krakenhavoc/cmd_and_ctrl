@@ -4178,6 +4178,15 @@ does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
+**"Whenever an ability resolves" (#4505).** Watch `game.EventResolve`: an
+ability emits it as it begins to resolve (`CardID` empty,
+`ResolvedStackItemID` the item), and a fizzled one never does. The item has
+already left `StackMeta`, so read its triggering event through
+`Game.ResolvingAbilityTriggerForEffect(ev.ResolvedStackItemID)`. A Saga
+chapter's is the `EventSagaChapter` with its chapter number in `Amount`;
+compare it with `game.SagaFinalChapter` for "the final chapter ability"
+(CR 714.2e, Tom Bombadil).
+
 **Fights (#4384).** `b10Fight` delegates to `Game.FightForEffect`, which
 requires two current battlefield creature object references. It publishes
 `EventFight` for each participant before dealing damage, even when damage
@@ -6831,6 +6840,13 @@ GrantCastFromYourGraveyard{                            // Past in Flames
 // ExileOnResolution, which replaces every way off the stack.
 OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
     FollowUp: emetSelchCastTally}.Apply(ctx)             // Emet-Selch
+// "you may cast an artifact, instant, or sorcery spell from your
+// graveyard. If an instant or sorcery spell cast this way would be put
+// into your graveyard, exile it instead": ONE pass-closed permission over
+// every candidate through game.OfferResolutionCastForEffect (the first
+// cast spends it), with ExileInsteadOnlyInstantOrSorcery narrowing the
+// exile to the spells the clause names (#4505).
+bilboCastFromGraveyard(g, item)                         // Bilbo, Thief in the Night
 ```
 
 Five rules worth knowing before you write one. **The key is shared with
