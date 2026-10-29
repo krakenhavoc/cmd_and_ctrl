@@ -11,6 +11,7 @@ import {
   controllerOfViewer,
   decisionOwer,
   endTurnClosed,
+  handoffChip,
   nextPlayingAs,
   playingAsBanner,
   playsForSeat,
@@ -123,18 +124,27 @@ describe("nextPlayingAs: the toggle", () => {
     expect(actingSeatID(controlled(), ALICE, s.pref)).toBe(BOB);
   });
 
-  it("switches by itself at a handoff, and only then", () => {
+  it("never switches by itself at a handoff (#4434)", () => {
     let s = fold([controlled({}, 1)]);
     expect(s.pref).toBe("controlled");
-    // Alice gets priority for herself (CR 723.8): her board.
+    const first = s;
+    // Alice gets priority for herself (CR 723.8): the board stays on Bob's.
     s = nextPlayingAs(s, controlled({}, 0), ALICE);
-    expect(s.pref).toBe("self");
-    // Carol decides: nothing moves.
-    s = nextPlayingAs(s, controlled({}, 2), ALICE);
-    expect(s.pref).toBe("self");
-    // Back to Bob: his board.
-    s = nextPlayingAs(s, controlled({}, 1), ALICE);
+    expect(s).toBe(first);
     expect(s.pref).toBe("controlled");
+    // A prompt of hers, a discard of Bob's: same.
+    const ask = { id: "c", kind: "confirm", chooser: ALICE } as PendingChoiceView;
+    s = nextPlayingAs(s, controlled({ pending_choices: [ask] }, 1), ALICE);
+    expect(s.pref).toBe("controlled");
+    s = nextPlayingAs(s, controlled({ discard_pending: { [BOB]: 1 } }, 1), ALICE);
+    expect(s.pref).toBe("controlled");
+    // And on her own board it stays there through every handoff.
+    s = togglePlayingAs(s);
+    s = nextPlayingAs(s, controlled({}, 1), ALICE);
+    s = nextPlayingAs(s, controlled({}, 0), ALICE);
+    s = nextPlayingAs(s, controlled({}, 2), ALICE);
+    s = nextPlayingAs(s, controlled({}, 1), ALICE);
+    expect(s.pref).toBe("self");
   });
 
   it("keeps a manual toggle while the same seat is still deciding", () => {
@@ -230,24 +240,72 @@ describe("actsForSeat", () => {
   });
 });
 
+describe("handoffChip (#4434)", () => {
+  const prompt = { id: "c", kind: "confirm", chooser: ALICE } as PendingChoiceView;
+
+  it("shows when the decision is owed on the board not shown", () => {
+    // Alice holds priority for herself while she is on Bob's board.
+    expect(handoffChip(controlled({}, 0), ALICE, BOB)).toEqual({ whose: "your own" });
+    // Bob holds priority while she is on her own.
+    expect(handoffChip(controlled({}, 1), ALICE, ALICE)).toEqual({ whose: "Bob's" });
+    // A prompt of hers, a prompt she answers for Bob, and Bob's cleanup discard.
+    expect(handoffChip(controlled({ pending_choices: [prompt] }, 1), ALICE, BOB)).toEqual({
+      whose: "your own",
+    });
+    expect(
+      handoffChip(
+        controlled({ pending_choices: [{ ...prompt, on_behalf_of: BOB }] }, 0),
+        ALICE,
+        ALICE,
+      ),
+    ).toEqual({ whose: "Bob's" });
+    expect(handoffChip(controlled({ discard_pending: { [BOB]: 1 } }, 1), ALICE, ALICE)).toEqual({
+      whose: "Bob's",
+    });
+  });
+
+  it("is absent when the board shown owes the decision, or neither does", () => {
+    expect(handoffChip(controlled({}, 1), ALICE, BOB)).toBeNull();
+    expect(handoffChip(controlled({}, 0), ALICE, ALICE)).toBeNull();
+    // Carol decides.
+    expect(handoffChip(controlled({}, 2), ALICE, BOB)).toBeNull();
+    expect(handoffChip(controlled({}, 2), ALICE, ALICE)).toBeNull();
+  });
+
+  it("is only for the player who plays the turn", () => {
+    expect(handoffChip(controlled({}, 0), BOB, BOB)).toBeNull();
+    expect(handoffChip(controlled({}, 0), CAROL, CAROL)).toBeNull();
+    expect(handoffChip(frame(), ALICE, ALICE)).toBeNull();
+    expect(handoffChip(null, ALICE, ALICE)).toBeNull();
+    expect(handoffChip(controlled({}, 0), null, null)).toBeNull();
+  });
+
+  it("is answered by the one toggle, from either board", () => {
+    // The jump is togglePlayingAs: it lands on the board that owes it.
+    const view = controlled({}, 0);
+    let s = nextPlayingAs(NOT_PLAYING_AS, view, ALICE);
+    expect(handoffChip(view, ALICE, actingSeatID(view, ALICE, s.pref))).not.toBeNull();
+    s = togglePlayingAs(s);
+    expect(handoffChip(view, ALICE, actingSeatID(view, ALICE, s.pref))).toBeNull();
+  });
+});
+
 describe("playingAsBanner", () => {
-  it("offers the controller the toggle and the handoff", () => {
+  it("offers the controller the toggle", () => {
     const v = controlled({}, 0);
     const on = playingAsBanner(v, ALICE, BOB)!;
     expect(on.kind).toBe("playing");
     expect(on.text).toBe("Playing as Bob");
     expect(on.source).toBe("Emrakul, the Promised End");
     expect(on.toggle?.label).toBe("View my board");
-    // Alice holds priority for herself.
-    expect(on.switchTo?.label).toBe("Switch to you");
 
     const off = playingAsBanner(controlled({}, 1), ALICE, ALICE)!;
     expect(off.kind).toBe("viewing");
     expect(off.text).toBe("Viewing your board, Bob's turn is yours");
     expect(off.toggle?.label).toBe("Play as Bob");
-    expect(off.switchTo?.label).toBe("Switch to Bob");
-
-    expect(playingAsBanner(controlled({}, 1), ALICE, BOB)!.switchTo).toBeUndefined();
+    // The handoff is the dock chip's now (#4434), not the banner's.
+    expect(on).not.toHaveProperty("switchTo");
+    expect(off).not.toHaveProperty("switchTo");
   });
 
   it("tells the controlled player, and who is choosing for them", () => {
@@ -274,7 +332,6 @@ describe("playingAsBanner", () => {
       expect(line.kind).toBe("watching");
       expect(line.text).toBe("Alice controls Bob this turn");
       expect(line.toggle).toBeUndefined();
-      expect(line.switchTo).toBeUndefined();
     }
   });
 

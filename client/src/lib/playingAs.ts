@@ -160,30 +160,27 @@ export function decisionOwer(
 
 /**
  * PlayingAsState is the toggle's memory, one per board. `control` is
- * the seat whose turn the viewer is playing (null when none), `pref`
- * the board the viewer is on, and `lastOwer` the seat that owed the
- * last decision, so the board switches by itself only at a handoff.
+ * the seat whose turn the viewer is playing (null when none) and
+ * `pref` the board the viewer is on.
  */
 export interface PlayingAsState {
   control: string | null;
   pref: PlayingAsPref;
-  lastOwer: string | null;
 }
 
 export const NOT_PLAYING_AS: PlayingAsState = Object.freeze({
   control: null,
   pref: "controlled",
-  lastOwer: null,
 }) as PlayingAsState;
 
 /**
  * nextPlayingAs folds a new frame into the toggle (ADR 0167 §9). The
- * swap is on as the controlled turn begins. After that the board
- * switches by itself only when the seat that owes the next decision
- * changes between the viewer and the controlled seat; it never switches
- * while the same seat is still deciding, so a manual toggle stands
- * until the next handoff. When the control ends, the board is the
- * viewer's again. Returns `prev` itself when nothing changed.
+ * swap is on as the controlled turn begins, and that is the only time
+ * the board switches by itself (#4434): after it, the board stays on
+ * whichever one the viewer last chose, however the decision passes
+ * between their two seats. `handoffChip` offers the jump instead. When
+ * the control ends, the board is the viewer's again. Returns `prev`
+ * itself when nothing changed.
  */
 export function nextPlayingAs(
   prev: PlayingAsState,
@@ -192,12 +189,35 @@ export function nextPlayingAs(
 ): PlayingAsState {
   const control = controlledByViewer(view, viewerID)?.controlled ?? null;
   if (!control) return prev.control === null ? prev : NOT_PLAYING_AS;
-  const base: PlayingAsState =
-    prev.control === control ? prev : { control, pref: "controlled", lastOwer: null };
-  const ower = decisionOwer(view, viewerID, control);
-  if (ower === null || ower === base.lastOwer) return base;
-  const pref: PlayingAsPref = ower === control ? "controlled" : "self";
-  return { control, pref, lastOwer: ower };
+  return prev.control === control ? prev : { control, pref: "controlled" };
+}
+
+/** What the jump chip says (#4434). */
+export interface HandoffChipModel {
+  // "Bob's", or "your own": the board the decision is owed on.
+  whose: string;
+}
+
+/**
+ * handoffChip is the small, non-modal offer near the dock: the viewer
+ * plays another seat's turn (ADR 0167) and the next decision is owed on
+ * the board they are not on. The board no longer switches by itself at a
+ * handoff, so this is how that decision is reached. Null when the
+ * decision is owed on the board shown, or on neither (a third player is
+ * deciding). The jump is the banner's toggle, and no prompt needs the
+ * switch made for the viewer: each is answered from its own seat's
+ * board, which the chip reaches.
+ */
+export function handoffChip(
+  view: GameView | null | undefined,
+  viewerID: string | null,
+  actingID: string | null,
+): HandoffChipModel | null {
+  const mine = controlledByViewer(view, viewerID);
+  if (!view || !mine || !viewerID || !actingID) return null;
+  const ower = decisionOwer(view, viewerID, mine.controlled);
+  if (!ower || ower === actingID) return null;
+  return { whose: ower === viewerID ? "your own" : `${nameOf(view, ower)}'s` };
 }
 
 /** togglePlayingAs is the banner's button: the other board. */
@@ -270,8 +290,6 @@ export interface PlayingAsBannerModel {
   note?: string;
   // The toggle, for the controller only.
   toggle?: { label: string };
-  // The handoff offer: the other seat owes a decision.
-  switchTo?: { label: string };
   // The seat the line is about, for its colour.
   seatID?: string;
 }
@@ -296,12 +314,7 @@ export function playingAsBanner(
   if (mine && viewerID) {
     const bob = nameOf(view, mine.controlled);
     const span = mine.until === "combat" ? "combat" : "turn";
-    const ower = decisionOwer(view, viewerID, mine.controlled);
     const onBob = actingID === mine.controlled;
-    const switchTo =
-      ower && ower !== actingID
-        ? { label: ower === mine.controlled ? `Switch to ${bob}` : "Switch to you" }
-        : undefined;
     // #4154: choosing one declaration for Bob, not playing his turn.
     const declaring = mine.until === "declarations";
     const kind = declarationKind(view);
@@ -311,7 +324,6 @@ export function playingAsBanner(
           text: declaring ? `Choosing ${bob}'s ${kind}` : `Playing as ${bob}`,
           source: mine.source_name,
           toggle: { label: "View my board" },
-          switchTo,
           seatID: mine.controlled,
         }
       : {
@@ -321,7 +333,6 @@ export function playingAsBanner(
             : `Viewing your board, ${bob}'s ${span} is yours`,
           source: mine.source_name,
           toggle: { label: declaring ? `Choose ${bob}'s ${kind}` : `Play as ${bob}` },
-          switchTo,
           seatID: mine.controlled,
         };
   }

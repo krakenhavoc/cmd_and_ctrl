@@ -260,6 +260,7 @@
     controlledByViewer,
     controllerOfViewer,
     endTurnClosed,
+    handoffChip,
     nextPlayingAs,
     playingAsBanner,
     togglePlayingAs,
@@ -1180,6 +1181,13 @@
   function togglePlayingAsBoard(): void {
     playingAs = togglePlayingAs(playingAs);
   }
+  // #4434: the board never switches by itself after the controlled turn
+  // begins. When the next decision is owed on the board not shown, the
+  // dock offers the jump.
+  const handoffOffer = $derived.by(() => {
+    const chip = handoffChip(view, viewerID, actingID);
+    return chip ? { whose: chip.whose, onJump: togglePlayingAsBoard } : null;
+  });
 
   // #1530, #1968: keep the server's copy of the trigger-order setting in
   // step with Settings. The effect reads the live snapshot, never a
@@ -3591,6 +3599,7 @@
           loop={loopDock}
           outside={outsideDockProps}
           {viewerID}
+          handoff={handoffOffer}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />

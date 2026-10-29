@@ -79,6 +79,7 @@
   import { passHint, primaryKind, primaryTitles, type PrimaryKind } from "../../dockHint";
   import { L } from "../../labels";
   import LoopControl from "./LoopControl.svelte";
+  import HandoffChip from "./HandoffChip.svelte";
   import type { LoopDockProps } from "../../loopShortcut";
   import type { OutsideDock } from "../../outsideRight";
 
@@ -137,6 +138,10 @@
     // ADR 0206 (#4211): the seat looking, so the attack-direction line can
     // name who it may attack. Null or absent for a spectator.
     viewerID?: string | null;
+    // #4434: the next decision is owed on the other board of a turn the
+    // viewer plays for another seat. Drawn as a small chip over the dock's
+    // top edge; absent or null, none. Game.svelte builds it.
+    handoff?: { whose: string; onJump: () => void } | null;
   }
 
   const {
@@ -163,6 +168,7 @@
     loop,
     outside,
     viewerID = null,
+    handoff = null,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -899,6 +905,10 @@
         {primaryLabel}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
       </button>
     </div>
+  {/if}
+  <!-- #4434: not over an open sheet, which grows up from the same edge. -->
+  {#if handoff && !(sheetOpen && !minimised)}
+    <HandoffChip whose={handoff.whose} onJump={handoff.onJump} />
   {/if}
 </section>
 
