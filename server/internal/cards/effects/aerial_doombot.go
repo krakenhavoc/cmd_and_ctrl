@@ -15,14 +15,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
+	// Purpose set by hand: a fourth AnswerPump caller of powerUpAnswering
+	// trips unparam (#4571 drops that parameter).
+	ab := PowerUp("{5}{U}: Put three +1/+1 counters on this creature.",
+		ManaCost("{5}{U}"), plusOneCountersOnThis(3))
+	ab.Purpose.Answers = game.AnswerPump
 	Register(Spec{
 		OracleID:        "f24efc60-fdac-4a5d-bcbc-784ec5ae6d96",
 		Name:            "Aerial Doombot",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Activated: []ActivatedAbility{
-			powerUpAnswering(game.AnswerPump, "{5}{U}: Put three +1/+1 counters on this creature.",
-				ManaCost("{5}{U}"), plusOneCountersOnThis(3)),
-		},
+		Activated:       []ActivatedAbility{ab},
 	})
 }
