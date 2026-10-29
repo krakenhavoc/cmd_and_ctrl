@@ -32,7 +32,8 @@ import (
 // before any ETB trigger or state check sees the printed 0/0.
 func b10EntersWithCounters(kind string, n int, label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		SelfEntryCounters: &game.EntryCounterAmount{Kind: kind, Amount: n},
+		Watches:           []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove && ev.NewZone == game.ZoneBattlefield &&
 				src != nil && ev.CardID == src.InstanceID

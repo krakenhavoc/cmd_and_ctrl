@@ -53,7 +53,17 @@ const SearchPromptKey = "search-library/prompt"
 // which must refuse this prompt rather than silently validate printed words.
 const SearchPromptWordsKey = "search-library/prompt/source-words"
 
+// SearchPromptZonesKey protects an and/or search's zone step (#4519) from
+// older readers: one that does not know it would restore the prompt as
+// an ordinary one, showing the library's candidates before the searcher
+// said they searched the library, and shuffling by the take alone. It
+// must refuse the file instead. An on-disk identity.
+const SearchPromptZonesKey = "search-library/prompt/zones"
+
 func searchPromptKey(s *searchPromptSnapshot) string {
+	if s != nil && s.Zones != "" {
+		return SearchPromptZonesKey
+	}
 	if s != nil && len(s.RuleWords) != 0 {
 		return SearchPromptWordsKey
 	}
@@ -176,6 +186,7 @@ func newSearchResumeFrame(spec SearchLibrarySpec, undecided bool) *searchResumeF
 		rule:           spec.Rule,
 		graveyardFinds: copyUUIDs(spec.graveyardFinds),
 		undecided:      undecided,
+		zones:          spec.initialZones(),
 	}
 }
 
@@ -203,9 +214,43 @@ type searchPromptSnapshot struct {
 	// Undecided is searchResumeFrame.undecided: a "you may search" not
 	// yet begun (#4134).
 	Undecided bool `json:"undecided,omitempty"`
+	// Zones is searchResumeFrame.zones, an and/or search's zone step
+	// (#4519): "asking" while the searcher has not said which zones they
+	// search, then "library" (the library was chosen, so it is shuffled)
+	// or "other" (the graveyard or hand alone). Absent for a search that
+	// does not ask, and for a prompt written before #4519, which restores
+	// as one. Its key is SearchPromptZonesKey.
+	Zones string `json:"zones,omitempty"`
 	// GraveyardFinds is a TakeAll search's graveyard matches (#4033),
 	// found with the searcher's picks.
 	GraveyardFinds []uuid.UUID `json:"graveyardFinds,omitempty"`
+}
+
+// wire is the zone step's on-disk name; "" for a search that does not ask.
+func (z searchZones) wire() string {
+	switch z {
+	case searchZonesAsking:
+		return "asking"
+	case searchZonesLibrary:
+		return "library"
+	case searchZonesOther:
+		return "other"
+	}
+	return ""
+}
+
+// searchZonesOfWire is wire's inverse. A name this binary does not know
+// cannot reach it: the prompt's key (SearchPromptZonesKey) is checked first.
+func searchZonesOfWire(s string) searchZones {
+	switch s {
+	case "asking":
+		return searchZonesAsking
+	case "library":
+		return searchZonesLibrary
+	case "other":
+		return searchZonesOther
+	}
+	return searchZonesUnasked
 }
 
 func snapshotSearchPrompt(c *PendingChoice) *searchPromptSnapshot {
@@ -220,6 +265,7 @@ func snapshotSearchPrompt(c *PendingChoice) *searchPromptSnapshot {
 		RuleN:          f.rule.N,
 		RuleWords:      cloneTextWordChanges(f.rule.words),
 		Undecided:      f.undecided,
+		Zones:          f.zones.wire(),
 		GraveyardFinds: copyUUIDs(f.graveyardFinds),
 	}
 }
@@ -231,6 +277,7 @@ func restoreSearchPrompt(s *searchPromptSnapshot) *searchResumeFrame {
 		rule:           SearchRule{key: s.Rule, N: s.RuleN, words: cloneTextWordChanges(s.RuleWords)},
 		graveyardFinds: copyUUIDs(s.GraveyardFinds),
 		undecided:      s.Undecided,
+		zones:          searchZonesOfWire(s.Zones),
 	}
 }
 

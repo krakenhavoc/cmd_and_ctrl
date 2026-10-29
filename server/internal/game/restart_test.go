@@ -407,7 +407,7 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,
 		"LandDropsPerTurn": true, "ManaPool": true, "CastPermissions": true, "Statics": true,
-		"CitysBlessing": true, "Dungeon": true, "CompletedDungeons": true,
+		"CitysBlessing": true, "EnduringStory": true, "Dungeon": true, "CompletedDungeons": true,
 		// ADR 0207: rebuilt by the restart from every Attraction card the
 		// player owns (CR 727.2), so neither pile is carried as it was.
 		"AttractionDeck": true, "Junkyard": true,

@@ -17,15 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	counter := AtYourEndStepIfRevolt("Shortcut to Mushrooms — put a +1/+1 counter on target creature you control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				}
-			}
-			return nil
-		})
+		PlusOneCounterOnTheTarget)
 	counter.Targets = TargetCreature("target creature you control", YouControl())
 	Register(Spec{
 		OracleID:     "2dc6637a-0b51-462b-9f18-571146bb4558",

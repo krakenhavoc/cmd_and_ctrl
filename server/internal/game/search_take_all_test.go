@@ -128,7 +128,11 @@ func TestTakeAllNeedsTheGraveyardHandAndLibrarySearch(t *testing.T) {
 		Shuffle: true, AlsoGraveyard: true, TakeAll: true,
 	})
 	c := openSearch(g, me.ID)
-	if c == nil || len(c.SearchGraveyardCards) != 1 || c.SearchGraveyardCards[0] != gy {
+	if c == nil {
+		t.Fatal("no prompt")
+	}
+	c = answerZones(t, g, c, SearchZoneLibrary, SearchZoneGraveyard)
+	if len(c.SearchGraveyardCards) != 1 || c.SearchGraveyardCards[0] != gy {
 		t.Fatalf("the and/or graveyard match is not a candidate: %+v", c)
 	}
 	if !g.SearchPickLegalLocked(c, nil) {

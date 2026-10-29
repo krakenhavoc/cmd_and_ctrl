@@ -106,9 +106,9 @@
         </dd>
         <dt>Choose your deck</dt>
         <dd>
-          Pick a pre-built deck, one of your saved decks, or paste a Moxfield or Archidekt link or a
-          plain decklist. Every deck is checked against the Commander rules: 100 cards, singleton,
-          colour identity.
+          Pick a pre-built deck, one of your saved decks, or paste an Archidekt link or a plain
+          decklist. On Moxfield, open the deck, then Export and Copy plain text, and paste it here.
+          Every deck is checked against the Commander rules: 100 cards, singleton, colour identity.
         </dd>
         <dt>Start</dt>
         <dd>Once every seat has a deck, the host presses <strong>Start</strong>.</dd>
@@ -168,11 +168,11 @@
           <dd>Brewing, swapping lists, asking what works.</dd>
           <dt>#account-requests</dt>
           <dd>Ask for the Elder Dragon Highlander role.</dd>
-          <dt>#bugs-and-ideas</dt>
+          <dt>#bug-reports (forum)</dt>
           <dd>
-            Report a bug or suggest something. The bug button (<strong>{L.reportABug}</strong>), in
-            a game's toolbar or, signed in, at the top of every other page, files it on GitHub,
-            where what you write is public.
+            Open a post in the #bug-reports forum to report a bug or suggest something. The bug
+            button (<strong>{L.reportABug}</strong>), in a game's toolbar or, signed in, at the top
+            of every other page, files it on GitHub, where what you write is public.
           </dd>
         </dl>
         <p class="para">The C2 bot's slash commands:</p>

@@ -1248,6 +1248,9 @@ export type LogKind =
   // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
   // `card_id` the ascend permanent or spell whose check granted it.
   | "citys_blessing"
+  // #4475 (CR 702.195): a player got an enduring story. `seat` is who,
+  // `card_id` the storied permanent whose check granted it.
+  | "enduring_story"
   // ADR 0203 (#4096): a player moved their venture marker into a room
   // (CR 309.4). `seat` is who; `label` is "<dungeon> — <room>".
   | "venture"
@@ -2020,6 +2023,21 @@ export interface PendingChoiceView {
   // every zone is searched, so the library is shuffled whatever is taken.
   search_hand?: string[];
   search_all_zones?: boolean;
+  // #4519: an and/or search ("search your library and/or graveyard",
+  // "search your hand and/or library") asks which zones are searched
+  // BEFORE it shows anything (looking through the library is searching it,
+  // CR 701.23a). `options` is withheld while `search_zones_pending` is set;
+  // the answer is `{choice_id, search_zones: ["library", "graveyard"]}`, any
+  // non-empty subset of "library" and `search_other_zone`. The same prompt
+  // then reappears with the chosen zones' candidates. The library is
+  // shuffled if and only if "library" was chosen.
+  search_zones_pending?: boolean;
+  // The zone an and/or search offers beside the library: "graveyard" or
+  // "hand". On every such prompt, asked or answered.
+  search_other_zone?: "graveyard" | "hand";
+  // An and/or search answered with the other zone alone: the library is not
+  // searched, shown or shuffled.
+  search_library_skipped?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
@@ -2641,6 +2659,10 @@ export interface PlayerView {
   // ascend gives and nothing takes away. Public, identical for every
   // viewer; absent until the seat has it.
   citys_blessing?: boolean;
+  // #4475 (CR 702.195b): an enduring story, the designation storied
+  // gives for the rest of the game. Public, identical for every viewer;
+  // absent until the seat has it.
+  enduring_story?: boolean;
   // ADR 0203 (#4096, CR 309.4): the dungeon card this player owns in the
   // command zone, its rooms and the room their venture marker is in.
   // Public, identical for every viewer; absent when they own none.
@@ -3589,6 +3611,12 @@ export interface ActivatedAbilityView {
   // the number of uses the server counts). Absent when the ability is not
   // a boast ability or nothing objects.
   boast_blocked?: "not_attacked" | "used";
+  // #4527, CR 702.193a: true when this is a power-up ability ("Activate
+  // each power-up ability only once") that this permanent has already
+  // activated. Absent otherwise. Only a new object (CR 400.7) clears it.
+  // charged_mana_cost already carries the keyword's reduction by the
+  // permanent's mana cost the turn it entered.
+  power_up_used?: boolean;
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -3902,6 +3930,8 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  /** Reliable fixed/X own-entry clauses; other replacements are not predicted. */
+  entry_counters?: { kind: string; amount?: number; amount_is_x?: boolean }[];
   // #4317: own catalog entry only; conditional entries remain absent.
   land_entry?: "tapped" | "untapped";
   returns_land_on_entry?: boolean;

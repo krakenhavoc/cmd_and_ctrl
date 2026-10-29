@@ -27,6 +27,8 @@ registered, or when this file is stale.
 |---|---|---|---|---|---|
 | `yourBoard` | `your board` | region | aria | `lib/components/board/PlayerPanel.svelte` | the viewer's own board panel; scopes the tutorial's lands and creatures anchors |
 | `seatBoard` | `<name> board` (ends with ` board`) | region | aria | `lib/components/board/PlayerPanel.svelte`<br>`lib/components/board/SeatSummary.svelte` | another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name) |
+| `tombstoneRip` | `R. I. P.` | generic | text | `lib/components/board/Tombstone.svelte` | #4449: the epitaph on the tombstone that stays on an eliminated player's panel |
+| `tombstoneOf` | `<name> is out of the game` (ends with ` is out of the game`) | group | aria | `lib/components/board/Tombstone.svelte` | #4449: the tombstone on an eliminated player's panel; its text is the player's name, their commander and the epitaph |
 | `reflowNextUp` | `Next up` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the active player (drawn upper case) |
 | `reflowAfterYou` | `After you` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the viewer (drawn upper case) |
 | `reflowAfter` | `After <name>` (starts with `After `) | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card naming the opponent who plays right before it (drawn upper case) |
@@ -36,6 +38,7 @@ registered, or when this file is stale.
 | `attractionDeck` | `attractions` | button | text | `lib/components/board/PileBar.svelte` | a seat's face-down Attraction deck in the rail (ADR 0207, CR 717.2), drawn only while it holds a card; a count, not openable |
 | `junkyard` | `junkyard` | button | text | `lib/components/board/PileBar.svelte` | a seat's face-up junkyard in the rail (ADR 0207, CR 717.6a), drawn only while it holds a card; opens the zone browser's junkyard tab |
 | `tickets` | `tickets` | status | aria | `lib/components/board/PlayerIdentity.svelte` | a seat's ticket counters ({TK}, ADR 0208, CR 107.17) in its marker column, drawn only while it has one; a count, no stepper |
+| `enduringStory` | `an enduring story` | status | aria | `lib/components/board/PlayerIdentity.svelte` | a seat's enduring story (CR 702.195b, #4475) in its marker column, drawn only once storied has given it; read-only, there is no toggle |
 | `stickerSheets` | `sticker sheets` | status | aria | `lib/components/board/PlayerIdentity.svelte` | a seat's three sticker sheets (ADR 0208, CR 123.2c): how many stickers are still free, the sheets and their stickers on hover |
 | `stickersOnCard` | `stickers` | status | aria | `lib/components/board/StickerBadge.svelte` | the stickers on a card (ADR 0208, CR 123): a count on the card's left edge, the stickers on hover |
 | `commandZone` | `<name> command zone, <N> card(s)` (contains ` command zone, `) | group | aria | `lib/components/board/ExileStrip.svelte`<br>`lib/components/board/CommandStrip.svelte` | a seat's command zone beside its hand (#2349): yours in the castable strip, others' in their command strip; the tutorial's commander step and the table.commander hint anchor to yours, within your board |
@@ -122,6 +125,7 @@ registered, or when this file is stale.
 | `rollD6` | `Roll a d6` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5); disabled for 2 s after the viewer's own roll |
 | `rollD20` | `Roll a d20` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
 | `flipCoin` | `Flip a coin` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
+| `powerUpUsed` | `already activated (power-up)` | generic | text | `lib/contextMenu.logic.ts` | the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover |
 | `rulings` | `Rulings` | menuitem | text | `lib/components/board/CardContextMenu.svelte`<br>`lib/components/board/ManaAbilityMenu.svelte` | a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token |
 | `adminViews` | `admin views` | navigation | aria | `routes/Admin.svelte` | the admin views' tabs: Live now, Games, Accounts |
 | `adminLiveNowTab` | `Live now` | link | text | `routes/Admin.svelte` | the admin views' first tab |
@@ -200,6 +204,11 @@ registered, or when this file is stale.
 | `automaticAnswers` | `automatic answers` | region | aria | `lib/components/AutoAnswersSettings.svelte` | Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it |
 | `forgetAutoAnswer` | `Forget` | button | text | `lib/components/AutoAnswersSettings.svelte` | removes one standing answer in Settings → Gameplay, so its prompt is asked again |
 | `useThisOrderAgain` | `Use this order again` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart |
+| `searchLibraryAndGraveyard` | `Library and graveyard` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the primary of the question a "search your library and/or graveyard" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards |
+| `searchLibraryAndHand` | `Library and hand` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the primary of the question a "search your hand and/or library" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards |
+| `searchLibraryOnly` | `Library only` | button | text | `lib/components/board/ChoicePromptModal.svelte` | an and/or search's zone question (#4519): search the library alone; it is shuffled afterwards |
+| `searchGraveyardOnly` | `Graveyard only` | button | text | `lib/components/board/ChoicePromptModal.svelte` | a "search your library and/or graveyard" prompt zone question (#4519): search the graveyard alone; the library is never shown or shuffled |
+| `searchHandOnly` | `Hand only` | button | text | `lib/components/board/ChoicePromptModal.svelte` | a "search your hand and/or library" prompt zone question (#4519): search the hand alone; the library is never shown or shuffled |
 | `forgetTriggerOrders` | `Forget remembered trigger orders (<N>)` (starts with `Forget remembered trigger orders`) | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's entry that forgets every trigger order you asked to reuse this game (#3016); shown while you have one |
 | `volumeMaster` | `Master volume` | generic | text | `lib/components/Settings.svelte` | the slider in Settings → Audio that sits over every category and the music |
 | `volumeInterface` | `Interface volume` | generic | text | `lib/components/Settings.svelte` | the slider for your-turn, priority, prompt and timer cues (ADR 0209 §2); an interface cue ducks the other buses while it plays |

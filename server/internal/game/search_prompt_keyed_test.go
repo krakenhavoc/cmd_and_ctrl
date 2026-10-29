@@ -34,7 +34,7 @@ func strictSearchRestore(t *testing.T, g *Game) *Game {
 	}
 	written := false
 	for _, c := range snap.PendingChoices {
-		if c.Kind == PendingChoiceSearchLibrary && c.PickThen == SearchPromptKey && c.SearchPrompt != nil {
+		if c.Kind == PendingChoiceSearchLibrary && c.SearchPrompt != nil && c.PickThen == searchPromptKey(c.SearchPrompt) {
 			written = true
 		}
 	}
@@ -99,6 +99,11 @@ func TestARestoredGraveyardSearchKeepsItsFloor(t *testing.T) {
 	g = strictSearchRestore(t, g)
 	me = g.Seats[0]
 	c := openSearch(g, me.ID)
+	// #4519: the zones are asked first; the floor is the chosen zones'.
+	if err := g.ChooseSearchZones(c.ID, me.ID, []string{SearchZoneLibrary, SearchZoneGraveyard}); err != nil {
+		t.Fatalf("the restored zone question: %v", err)
+	}
+	c = openSearch(g, me.ID)
 	if got := g.SearchFloorLocked(c); got != 1 {
 		t.Fatalf("the restored unconditional graveyard search's floor is %d, want 1", got)
 	}

@@ -866,6 +866,13 @@ type Game struct {
 	// nor cloned.
 	counterPlacerScope []uuid.UUID
 
+	// entryView is the entering card as the CR 614.12 dry run sees it
+	// while an entry window that carries an overwrite gathers its
+	// replacements (ADR 0210, entry_overwrite.go). Set and cleared
+	// around the one call, so it is nil between actions and is neither
+	// snapshotted nor cloned.
+	entryView *entryOverwriteView
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it

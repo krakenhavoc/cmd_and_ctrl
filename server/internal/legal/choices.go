@@ -23,6 +23,9 @@ type choiceParams struct {
 	Call     string   `json:"call,omitempty"`
 	Order    []string `json:"order,omitempty"`
 	Apply    *bool    `json:"apply,omitempty"`
+	// SearchZones answers an and/or search's zone question (#4519): the
+	// zones the searcher searches, asked before any card is shown.
+	SearchZones []string `json:"search_zones,omitempty"`
 	// Remember rides an agent seat's trigger_order answer that keeps
 	// the order for the batch (ADR 0018's eighth amendment, #3016).
 	Remember *bool `json:"remember,omitempty"`
@@ -746,6 +749,26 @@ func (e *enumerator) choiceMoves() bool {
 				p.Apply = &yes
 				e.addChoice(c, reason+": search", p)
 				addDecline()
+				break
+			}
+			if c.SearchZonesPending() {
+				// #4519: an and/or search asks which zones before it shows
+				// anything, and the zones are what shuffle the library. No
+				// card can be taken until it is answered. Searching both is
+				// the always-legal answer (and the sensible default: it
+				// leaves nothing out; the library is shuffled, as it is
+				// for most searches).
+				other := c.SearchOtherZone()
+				both := []string{game.SearchZoneLibrary, other}
+				p := base()
+				p.SearchZones = both
+				e.addAlwaysLegalChoice(c, reason+": search your library and "+other, p)
+				p = base()
+				p.SearchZones = []string{game.SearchZoneLibrary}
+				e.addChoice(c, reason+": search your library only", p)
+				p = base()
+				p.SearchZones = []string{other}
+				e.addChoice(c, reason+": search your "+other+" only", p)
 				break
 			}
 			if floor == 0 {

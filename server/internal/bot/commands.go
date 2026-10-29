@@ -200,6 +200,9 @@ type Handler struct {
 	// access remembers which members already have an access request
 	// posted in #account-requests (access.go).
 	access *accessRequests
+	// sleep is ban sync's wait (bansync.go); nil is time.Sleep. A test
+	// replaces it.
+	sleep func(time.Duration)
 }
 
 // NewHandler wires the bot's configuration and HTTP client into

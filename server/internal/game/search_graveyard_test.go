@@ -68,9 +68,15 @@ func TestGraveyardOnlyMatchIsFoundWithoutSearchingTheLibrary(t *testing.T) {
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true,
 		AlsoGraveyard: true, ThenTail: searchHook(func(_ *Game, found []uuid.UUID) error { then = found; return nil }),
 	})
-	if c := openSearch(g, me.ID); c == nil || c.SearchMin != 0 {
+	c := openSearch(g, me.ID)
+	if c == nil {
+		t.Fatal("no prompt")
+	}
+	c = answerZones(t, g, c, SearchZoneGraveyard)
+	if c.SearchMin != 0 {
 		t.Fatalf("a stated-quality search asks and may find nothing: %+v", c)
-	} else if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
 		t.Fatal(err)
 	}
 	if !me.Hand.Contains(id) || me.Graveyard.Contains(id) {
@@ -98,9 +104,12 @@ func TestGraveyardTakeToTheBattlefieldEnters(t *testing.T) {
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneBattlefield, Limit: 1, Shuffle: true,
 		AlsoGraveyard: true,
 	})
-	if c := openSearch(g, me.ID); c == nil {
+	c := openSearch(g, me.ID)
+	if c == nil {
 		t.Fatal("no prompt")
-	} else if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
+	}
+	c = answerZones(t, g, c, SearchZoneGraveyard)
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
 		t.Fatal(err)
 	}
 	if !g.Battlefield.Contains(id) || me.Graveyard.Contains(id) {
@@ -132,6 +141,7 @@ func TestBothZonesAreOfferedMarkedByZone(t *testing.T) {
 	if c == nil {
 		t.Fatal("no prompt")
 	}
+	c = answerZones(t, g, c, SearchZoneLibrary, SearchZoneGraveyard)
 	if len(c.SearchCards) != 2 || c.SearchCards[0] != ids[0] || c.SearchCards[1] != gy {
 		t.Errorf("candidates = %v, want library match then graveyard match", c.SearchCards)
 	}
@@ -148,10 +158,10 @@ func TestBothZonesAreOfferedMarkedByZone(t *testing.T) {
 	})
 }
 
-// Finding nothing with a graveyard match present is legal, and counts as
-// a library search: the event fires and the library is shuffled (the
-// declared simplification).
-func TestFindingNothingWithAGraveyardMatchIsAllowedAndShuffles(t *testing.T) {
+// Finding nothing with a graveyard match present is legal. The searcher
+// chose the graveyard alone (#4516, #4519), so the event does not fire
+// and the library is not shuffled.
+func TestFindingNothingWithAGraveyardMatchIsAllowed(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	searchLibraryOf(me, "Wanted")
@@ -164,14 +174,15 @@ func TestFindingNothingWithAGraveyardMatchIsAllowedAndShuffles(t *testing.T) {
 	if c == nil {
 		t.Fatal("no prompt")
 	}
+	c = answerZones(t, g, c, SearchZoneGraveyard)
 	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); err != nil {
 		t.Fatalf("finding nothing = %v, want accepted", err)
 	}
 	if !me.Graveyard.Contains(gy) || me.Hand.Contains(gy) {
 		t.Error("nothing should have been taken")
 	}
-	if searchEvents(g) != 1 || libraryKnownTo(me, me.ID) != 0 {
-		t.Errorf("events=%d known=%d: finding nothing is treated as a library search",
+	if searchEvents(g) != 0 || libraryKnownTo(me, me.ID) != 1 {
+		t.Errorf("events=%d known=%d: finding nothing in the graveyard alone is not a library search",
 			searchEvents(g), libraryKnownTo(me, me.ID))
 	}
 }
@@ -191,6 +202,7 @@ func TestUnconditionalAlsoGraveyardFloorCountsBothZonesAndFalls(t *testing.T) {
 	if c == nil {
 		t.Fatal("no prompt")
 	}
+	c = answerZones(t, g, c, SearchZoneLibrary, SearchZoneGraveyard)
 	if len(c.SearchCards) != 2 || c.SearchMin != 1 {
 		t.Fatalf("candidates/min = %d/%d, want 2/1", len(c.SearchCards), c.SearchMin)
 	}
@@ -225,6 +237,7 @@ func TestMixedTakeShuffles(t *testing.T) {
 		// not the match count, so this asks.
 		t.Fatal("expected a prompt")
 	}
+	c = answerZones(t, g, c, SearchZoneLibrary, SearchZoneGraveyard)
 	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{ids[0], gy}); err != nil {
 		t.Fatal(err)
 	}
@@ -273,12 +286,36 @@ func TestCloneCarriesTheGraveyardCandidates(t *testing.T) {
 	if c == nil || len(c.SearchGraveyardCards) != 1 || c.SearchGraveyardCards[0] != gy {
 		t.Fatalf("clone lost the graveyard half: %+v", c)
 	}
+	if !c.SearchZonesPending() {
+		t.Error("the clone lost the open zone question")
+	}
 	orig := openSearch(g, me.ID)
 	c.SearchGraveyardCards[0] = uuid.New()
 	if orig.SearchGraveyardCards[0] != gy {
 		t.Error("the clone shares its backing array with the live prompt")
 	}
-	if err := cl.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{gy}); err == nil {
-		t.Error("the mutated clone should now reject the original id")
+}
+
+// An undo clone taken after the zones were answered keeps the answer, and
+// answering on the clone leaves the live prompt asking (the frame is
+// replaced, never written through).
+func TestCloneCarriesTheZoneAnswer(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	searchLibraryOf(me, "Wanted")
+	gyCard(me, "Wanted")
+	runSearch(t, g, SearchLibrarySpec{
+		Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true, AlsoGraveyard: true,
+	})
+	live := openSearch(g, me.ID)
+	cl := g.Clone()
+	c := openSearch(cl, me.ID)
+	answerZones(t, cl, c, SearchZoneGraveyard)
+	if !live.SearchZonesPending() || !openSearch(g, me.ID).SearchZonesPending() {
+		t.Error("answering on the clone answered the live prompt")
+	}
+	cl2 := cl.Clone()
+	if c2 := openSearch(cl2, me.ID); c2 == nil || c2.SearchZonesPending() || len(c2.SearchCards) != 1 {
+		t.Errorf("a clone of an answered prompt must stay answered: %+v", c2)
 	}
 }

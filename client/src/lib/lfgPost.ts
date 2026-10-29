@@ -12,7 +12,7 @@ import { authFetch } from "./session";
 export type LFGStatus = "pending" | "posted" | "unavailable";
 
 /** The hint a host who cannot post sees under the disabled box. */
-export const LFG_GUEST_HINT = "Sign in with Discord to post to #lfg";
+export const LFG_GUEST_HINT = "Sign in with Discord to post to #looking-for-game";
 
 // setLFG posts the table to #lfg, or withdraws it (PUT /games/{id}/lfg).
 // Host or admin; the server refuses anyone else, and says why a table
@@ -53,24 +53,26 @@ export function lfgHeader(g: GameMeta): LFGHeader | null {
     return {
       kind: "post",
       disabled: blocked !== null,
-      title: blocked ?? "post this table to the CMD & CTRL Discord's #lfg channel and ping LFG",
+      title:
+        blocked ??
+        "post this table to the CMD & CTRL Discord's #looking-for-game channel and ping LFG",
     };
   }
   switch (g.lfg_status) {
     case "posted":
       return {
         kind: "posted",
-        label: "In #lfg",
-        title: "posted in #lfg; it comes down when the game starts",
+        label: "In #looking-for-game",
+        title: "posted in #looking-for-game; it comes down when the game starts",
       };
     case "unavailable":
       return {
         kind: "posted",
-        label: "#lfg unavailable",
+        label: "#looking-for-game unavailable",
         title: "Discord refused the post or didn't answer; withdraw and post again to retry",
       };
     default:
-      return { kind: "posted", label: "Posting…", title: "posting to #lfg" };
+      return { kind: "posted", label: "Posting…", title: "posting to #looking-for-game" };
   }
 }
 
@@ -78,13 +80,14 @@ export function lfgHeader(g: GameMeta): LFGHeader | null {
 // null when the table is not posted.
 export function lfgStatusLine(g: GameMeta): string | null {
   if (!g.lfg) return null;
-  if (g.state !== "lobby" || g.archived_at) return "The #lfg post comes down once the game starts.";
+  if (g.state !== "lobby" || g.archived_at)
+    return "The #looking-for-game post comes down once the game starts.";
   switch (g.lfg_status) {
     case "posted":
-      return "Posted in #lfg. The post follows the seats and comes down when the game starts.";
+      return "Posted in #looking-for-game. The post follows the seats and comes down when the game starts.";
     case "unavailable":
-      return "The #lfg post is unavailable: Discord refused it or didn't answer. The table is unaffected; turn it off and on to try again.";
+      return "The #looking-for-game post is unavailable: Discord refused it or didn't answer. The table is unaffected; turn it off and on to try again.";
     default:
-      return "Posting to #lfg…";
+      return "Posting to #looking-for-game…";
   }
 }

@@ -250,12 +250,12 @@
     const causes = untrack(() => causesFor?.(seat.id, frame.popup!.deltas) ?? []);
     const view = lifePopupView(frame.popup, LIFE_POPUP_MAX_LINES, causes);
     popup = { key: frame.popup.key, view };
-    // #4432: a combat hit to this seat is face_hit, played by the strike
+    // #4432, #4543: a combat hit to this seat is a face_hit tier, played by the strike
     // layer at contact (or here, when no strike plays), never damage too.
     const st = get(settings);
     const sound = popupSound(
       view.sound,
-      untrack(() => combatHitFor?.(seat.id, frame.popup!.deltas) ?? false),
+      untrack(() => combatHitFor?.(seat.id, frame.popup!.deltas) ?? 0),
       strikesScheduled(
         combatMotion({
           enabled: st.animations.enabled,
@@ -549,6 +549,16 @@
           class="marker citys-blessing active"
           title="the city's blessing"
           aria-label="the city's blessing"><Icon name="flag" size={12} /></span
+        >
+      {/if}
+      <!-- An enduring story (CR 702.195b, #4475): storied's designation,
+           kept for the rest of the game like the blessing, so read-only
+           and on every seat. -->
+      {#if seat.enduring_story}
+        <span
+          class="marker enduring-story active"
+          title={L.enduringStory}
+          aria-label={L.enduringStory}><Icon name="book" size={12} /></span
         >
       {/if}
       {#if isSelf}
@@ -1202,6 +1212,12 @@
     border-color: color-mix(in srgb, var(--accent) 70%, transparent);
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .marker.active.enduring-story {
+    color: var(--mint);
+    border-color: color-mix(in srgb, var(--mint) 70%, transparent);
+    background: color-mix(in srgb, var(--mint) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--mint) 35%, transparent);
   }
   .marker.poison {
     color: var(--mint);

@@ -394,6 +394,13 @@ var (
 	// permanent this turn (ADR 0155 Decision 7).
 	ErrBorrowedAbilityUsed = errors.New("game: each of those abilities can be activated only once each turn")
 
+	// ErrAlternativeCostUnavailable is returned when an activation names
+	// an equip ability's {0} twin (equip_cost_alternative.go) while no
+	// alternative is open to the activator: no such permanent, its
+	// condition unmet, or an equip ability already activated this turn.
+	// Nothing is paid. #4475.
+	ErrAlternativeCostUnavailable = errors.New("game: that alternative cost isn't available right now")
+
 	// ErrBoastNotAttacked and ErrBoastSpent are the two halves of a
 	// boast ability's activation instruction (CR 702.142a, #2697):
 	// "Activate only if this creature attacked this turn" and "only once
@@ -404,6 +411,14 @@ var (
 	// is paid.
 	ErrBoastNotAttacked = errors.New("game: this creature hasn't attacked this turn, so its boast ability can't be activated")
 	ErrBoastSpent       = errors.New("game: this boast ability has already been activated as many times as it can be this turn")
+
+	// ErrPowerUpUsed is returned by ActivateCatalogAbility when a
+	// power-up ability (CR 702.193a: "Activate this ability only once")
+	// has already been activated by this object (#4527). Its own error
+	// rather than ErrAbilityExhausted, because the two keywords are
+	// different rules and the client says which. Checked beside the
+	// exhaust gate, so nothing is paid.
+	ErrPowerUpUsed = errors.New("game: this power-up ability has already been activated")
 
 	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
 	// ActivateManaAbility when the announcement names an ability by a

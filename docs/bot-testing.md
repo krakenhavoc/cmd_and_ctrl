@@ -9,6 +9,115 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Entry-counter creature bodies (#4322, S75)
+
+The heuristic prices a creature's prospective body using reliable fixed
+and X own-entry counters projected as `purpose.entry_counters`. Shared
+constructors supply the metadata; neither the view nor the policy executes
+a replacement callback or parses names, oracle text or row labels. Casts
+use the announced X. Fixed counts also inform off-board card/fuel value;
+actual battlefield evaluation never adds entry counters again.
+
+`PriceEntryCounters` is on by default and off in the frozen baseline.
+`heuristic-noentrycounters` disables this price alone for future arena
+comparisons. Only +1/+1 and -1/-1 counters adjust P/T; other counter kinds,
+conditional or board/payment-dependent counts and external replacements
+(including counter doublers) remain unpredicted. Krasis's separate half-X
+cast payout is unchanged. Metadata remains hidden with a hidden card.
+
+Focused tests compare Hydra with a vanilla 4/4 trampler, require Mikaeus
+and Krasis prices to rise with X, and preserve the zero-X and disabled
+prices. The real-engine regression gives the bot five Forests and Hydra
+and Burnished Hart in hand: it chooses Hart with the price off, Hydra with
+it on, and the Hydra enters with four counters and survives. Projection
+tests ensure catalog callbacks are never executed while viewing a card.
+
+The 2026-10-29 UTC comparison used develop `12ad35d5c` before and after
+#4322, all four seats using the same policy, seeds 2000–2095, rotation and
+lockstep. Each run played 96 pool2 games with the decks below. All 192
+ended with a winner, without stalls or dropped decision records. The
+labelled position suite retained its agreement.
+
+| Card | Before games cast / offered | Fixed games cast / offered | Before offer windows | Fixed offer windows |
+|---|---:|---:|---:|---:|
+| Kalonian Hydra | 5/15 | 11/15 | 77 | 41 |
+| Mikaeus, the Lunarch | 11/17 | 17/17 | 170 | 38 |
+| Hydroid Krasis | 7/10 | 7/10 | 27 | 24 |
+
+An offered game has at least one legal cast in a recorded window. Window
+counts are repeated observations within games, not independent trials.
+Kalonian Hydra is absent from the fixed run's `never` list; it was already
+absent on this newer baseline, unlike the original report's older sample.
+The controlled choice test establishes the scoring regression directly.
+
+| Deck | Before wins / 96 (Wilson 95%) | Fixed wins / 96 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 42, 43.8% (34.3–53.7%) | 43, 44.8% (35.2–54.7%) |
+| mono-white-weenie | 34, 35.4% (26.6–45.4%) | 34, 35.4% (26.6–45.4%) |
+| mono-green-stompy | 12, 12.5% (7.3–20.6%) | 11, 11.5% (6.5–19.4%) |
+| wubrg-dragons | 8, 8.3% (4.3–15.6%) | 8, 8.3% (4.3–15.6%) |
+
+The four-seat null rate is 25%. Stompy lost one win and dragons held;
+these intervals do not establish a strength gain or prove noninferiority.
+The evidence supports the card-pricing behavior change. Reports, fixed
+binaries and the streaming scanner remain local under `data/arena-4322/`
+(gitignored). Full decision logs stay private.
+
+## Own-target removal returns (#4319, S75)
+
+A removal target's declared `returns` now prices an own permanent as a
+loss plus the return, rather than a helpful pick. Such an own-target cast
+also loses its generic mana-value proxy and still pays for the card spent.
+An own commander pays its tax-and-tempo loss, capped at its board value.
+Opposing-target prices are unchanged, and `NetRemoval=false` restores the
+old behavior. Own-target pricing requires `PriceTargetPurposes`.
+
+Token bodies receive credit when replacing an ordinary creature. They
+receive no credit against a land, mana rock, planeswalker or commander:
+the existing body weights alone would otherwise still prefer turning
+Sol Ring into a 3/3. This conservative rule preserves those resources;
+it does not model rescuing a doomed permanent or future death triggers.
+A profitable ordinary creature conversion remains allowed, including a
+1/1 mana creature. Position tests cover these choices and prefer removing
+an opposing 6/6. An ungated whole-engine regression uses the real Generous
+Gift, Sol Ring, enumerator and view, and reproduces the own-goal with
+`NetRemoval` off.
+
+The 2026-10-29 UTC evaluation used develop `fd4b401d3` plus #4319,
+all four seats using the fixed heuristic, rotation and lockstep. Each pool
+played 48 games: std seeds 1000–1047 and pool2 seeds 2000–2047, with the
+decks listed below. All 96 ended with a winner, without stalls or dropped
+decision records. The full bot package tests, labelled suite, real-engine
+regression and `go vet` passed.
+
+| Pool | Generous Gift casts | Beast Within casts | Own-target casts | Own targets |
+|---|---:|---:|---:|---|
+| std | 6 | 8 | 3 | 1/1 Human, Saproling and Soldier tokens |
+| pool2 | 20 | 8 | 1 | 1/1 Human token |
+
+No applied cast of either spell hit an own land, rock, planeswalker,
+commander or larger creature. The four remaining own-target casts are
+profitable token-body conversions, consistent with allowing the issue's
+Elvish Mystic example. The issue's literal zero-own-target count was not
+reached: four profitable conversions remain by design.
+
+| Pool | Deck | Wins / 48 (Wilson 95%) |
+|---|---|---|
+| std | esper-control | 13, 27.1% (16.6–41.0%) |
+| std | mono-black-aristocrats | 10, 20.8% (11.7–34.3%) |
+| std | mono-red-aggro | 16, 33.3% (21.7–47.5%) |
+| std | simic-ramp | 9, 18.8% (10.2–31.9%) |
+| pool2 | boros-voltron | 22, 45.8% (32.6–59.7%) |
+| pool2 | mono-green-stompy | 5, 10.4% (4.5–22.2%) |
+| pool2 | mono-white-weenie | 18, 37.5% (25.2–51.6%) |
+| pool2 | wubrg-dragons | 3, 6.2% (2.1–16.8%) |
+
+The four-seat null rate is 25%. This is a behavior validation with wide
+intervals and no paired back-out comparison; it does not establish a
+strength gain. Reports and the streaming scanner are local under
+`data/arena-4319/`; final runs are in `final/`. Full decision logs stay
+private. Earlier provisional runs are excluded from these counts.
+
 ## Land-drop sequencing (#4317, S75)
 
 `heuristic-nolandorder` is today's heuristic with `OrderLandDrops` off.

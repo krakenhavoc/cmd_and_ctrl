@@ -1,9 +1,12 @@
 // Command cmd_and_ctrl-bot is the S12.5 Discord slash-command bot.
 // It runs as a second systemd unit next to the game server and
 // exposes /c2-invite + /c2-games + /c2-end + /c2-deck-check +
-// /c2-deck-req against an allow-listed set of guilds, and answers
+// /c2-deck-req against an allow-listed set of guilds, answers
 // access requests in #account-requests with Approve and Decline
-// buttons (ADR 0156's 2026-10-16 amendment). Every command
+// buttons (ADR 0156's 2026-10-16 amendment), and, with ban sync on,
+// ends a person's sessions when the community server bans them,
+// takes the player role away or sees them leave (its 2026-10-29
+// amendment). Every command
 // works by calling back into the game server's admin HTTP API over
 // loopback — the bot never mutates game state directly.
 //
@@ -50,24 +53,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// IntentsGuilds lets us observe GuildCreate so the bot can
-	// register (or explicitly refuse to register) commands on a
-	// guild that was added while the process was running. Not
-	// privileged; no portal approval required.
-	session.Identify.Intents = discordgo.IntentsGuilds
-	// The [[Card Name]] watcher (#3324) reads message text, which needs the
-	// privileged Message Content intent, switched on in the Developer
-	// Portal. Ask for it only when card channels are configured: asking
-	// for it un-enabled makes Discord refuse the connection (4014).
-	if len(cfg.CardChannelIDs) > 0 {
-		session.Identify.Intents |= discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
-	}
-	// Access requests (ADR 0156's 2026-10-16 amendment, #3325) need to
-	// see who posts in #account-requests, which is the unprivileged
-	// Guild Messages intent; they never read the text.
-	if cfg.AccessRequestsEnabled() {
-		session.Identify.Intents |= discordgo.IntentsGuildMessages
-	}
+	// Each feature asks only for the intents it needs (bot.Config.Intents):
+	// a privileged intent asked for and not switched on in the Developer
+	// Portal makes Discord refuse the connection (4014).
+	session.Identify.Intents = cfg.Intents()
 
 	client := bot.NewServerClient(cfg.ServerBaseURL, cfg.AdminToken)
 	handler := bot.NewHandler(cfg, client, log)
@@ -83,6 +72,16 @@ func main() {
 		session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) { handler.HandleAccessRequestMessage(s, m) })
 		log.Info("access requests on: a member without the player role who posts in the channel gets Approve and Decline buttons",
 			"channel", cfg.AccessRequestChannelID)
+	}
+	// Ban sync (ADR 0156's 2026-10-29 amendment, #3325): a ban, the
+	// player role taken away, or a leave in the community server ends
+	// that person's sessions at once.
+	if cfg.BanSyncEnabled() {
+		session.AddHandler(func(_ *discordgo.Session, e *discordgo.GuildBanAdd) { handler.HandleBan(e) })
+		session.AddHandler(func(_ *discordgo.Session, e *discordgo.GuildMemberUpdate) { handler.HandleMemberUpdate(e) })
+		session.AddHandler(func(_ *discordgo.Session, e *discordgo.GuildMemberRemove) { handler.HandleMemberRemove(e) })
+		log.Info("ban sync on: a ban, the player role taken away or a leave in the community server ends that person's sessions",
+			"guild", cfg.CommunityGuildID)
 	}
 
 	// Guild allow-list enforcement happens in two places:
@@ -106,7 +105,10 @@ func main() {
 		bot.RegisterCommands(s, cfg.AppID, []string{g.ID}, log)
 	})
 
-	if err := session.Open(); err != nil {
+	// OpenGateway retries once without the Server Members intent when
+	// Discord refuses it (4014), so an intent not yet switched on in the
+	// Developer Portal costs ban sync its member events, not the bot.
+	if err := bot.OpenGateway(session, log); err != nil {
 		log.Error("discord session open", "error", err.Error())
 		os.Exit(1)
 	}

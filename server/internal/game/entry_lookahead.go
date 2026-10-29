@@ -194,6 +194,14 @@ func (g *Game) entryCharacteristicsLocked(ev *ReplacementEvent) (Card, bool) {
 		}
 		extra = adaptScopedEffects(carried)
 	}
+	// ADR 0210: the putting effect's "it's a <type>" is how it enters
+	// (CR 614.1c), so the permanent it would be has it, at its entry
+	// stamp.
+	if ev.entersAs != nil {
+		rec := entryOverwriteRecord(ev.entersAs, perm.InstanceID, perm.ObjectEpoch)
+		rec.Timestamp = perm.EnteredBattlefieldAt
+		extra = append(extra, adaptScopedEffects([]ScopedEffect{rec})...)
+	}
 
 	orig := g.Battlefield.Cards
 	dry := make([]Card, len(orig), len(orig)+1)

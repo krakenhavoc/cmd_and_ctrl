@@ -831,11 +831,30 @@ type PendingChoiceView struct {
 	// and library" prompt: every zone is searched, so the library is
 	// shuffled whatever is taken. Chooser-only.
 	SearchAllZones bool `json:"search_all_zones,omitempty"`
+	// SearchZonesPending (#4519) marks the question an and/or search
+	// ("search your library and/or graveyard", "search your hand and/or
+	// library") asks before it looks: which zones the searcher searches.
+	// options[] is withheld (looking through the library is searching it,
+	// CR 701.23a), and the answer is {choice_id, search_zones: [...]}, any
+	// non-empty subset of "library" and search_other_zone. The same prompt
+	// then reappears with the candidates of the chosen zones, without this
+	// flag. The library is shuffled, and the search announced, if and only
+	// if "library" was chosen. Chooser-only.
+	SearchZonesPending bool `json:"search_zones_pending,omitempty"`
+	// SearchOtherZone (#4519) is the zone an and/or search offers beside
+	// the library, "graveyard" or "hand". Present on every such prompt,
+	// asked or answered; absent for any other search. Chooser-only.
+	SearchOtherZone string `json:"search_other_zone,omitempty"`
+	// SearchLibrarySkipped (#4519) marks an and/or search answered with the
+	// other zone alone: the library is not searched, so options[] holds
+	// none of its cards and it is neither shuffled nor announced.
+	// Chooser-only.
+	SearchLibrarySkipped bool `json:"search_library_skipped,omitempty"`
 	// SearchOptional (#4134) marks a "you may search" prompt on which
 	// "don't search" is a legal answer right now: the client offers a
 	// "Don't search" button, sent as {choice_id, apply: false}. It is
 	// present only while the prompt is undecided: looking at the list is
-	// searching (CR 701.19), so once the searcher has begun there is no
+	// searching (CR 701.23a), so once the searcher has begun there is no
 	// decline. Declining is not finding nothing: a declined search never
 	// happens, so the library is neither shuffled nor announced. Absent
 	// for a mandatory search. Chooser-only.
@@ -2512,6 +2531,10 @@ type PlayerView struct {
 	// designation ascend gives, kept for the rest of the game. Public
 	// and identical for every viewer, like the monarch. #2696.
 	CitysBlessing bool `json:"citys_blessing,omitempty"`
+	// EnduringStory is the enduring story (CR 702.195b): a player
+	// designation storied gives, kept for the rest of the game. Public
+	// and identical for every viewer, like the city's blessing. #4475.
+	EnduringStory bool `json:"enduring_story,omitempty"`
 	// Dungeon is the dungeon card this player owns in the command zone,
 	// with its rooms and the room their venture marker is in (CR 309.4,
 	// ADR 0203). Absent when they own none. Public and identical for
@@ -4607,6 +4630,14 @@ type ActivatedAbilityView struct {
 	// untap). The client greys the row the same way; the server
 	// refuses with ErrAbilityExhausted either way.
 	Exhausted bool `json:"exhausted,omitempty"`
+	// PowerUpUsed is true when this is a power-up ability (CR 702.193a,
+	// "Activate this ability only once") that this object has already
+	// activated (#4527). Its own flag rather than Exhausted, because the
+	// keyword is a different rule and the client names it. Like an
+	// exhaust, it never recovers until the permanent becomes a new
+	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
+	// way, and the legal-move enumerator does not offer it.
+	PowerUpUsed bool `json:"power_up_used,omitempty"`
 	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
 	// if this creature attacked this turn and only once each turn")
 	// cannot be activated right now: "not_attacked" or "used". Absent
@@ -9585,19 +9616,30 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// that nobody else is entitled to.
 		if c.Kind == game.PendingChoiceSearchLibrary {
 			v.SearchMax = c.SearchMax
-			v.SearchMin = c.SearchMin
-			for _, id := range c.SearchGraveyardCards {
-				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
-			}
-			for _, id := range c.SearchHandCards {
-				v.SearchHand = append(v.SearchHand, id.String())
+			// #4519: an and/or search that has not said which zones it
+			// searches has looked at nothing yet. The floor would count the
+			// library's matches (an unconditional search), and the lists
+			// name no secret but are the answer's to come.
+			zonesPending := c.SearchZonesPending()
+			v.SearchOtherZone = c.SearchOtherZone()
+			v.SearchLibrarySkipped = c.SearchLibrarySkipped()
+			if zonesPending {
+				v.SearchZonesPending = true
+			} else {
+				v.SearchMin = c.SearchMin
+				for _, id := range c.SearchGraveyardCards {
+					v.SearchGraveyard = append(v.SearchGraveyard, id.String())
+				}
+				for _, id := range c.SearchHandCards {
+					v.SearchHand = append(v.SearchHand, id.String())
+				}
 			}
 			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
 			v.SearchOptional = g.SearchDeclineLegalLocked(c)
 			v.SearchUndecided = c.SearchIsUndecided()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
-				if v.SearchUndecided {
+				if v.SearchUndecided || zonesPending {
 					// Not searching yet: nothing has been looked at.
 					break
 				}
@@ -10330,6 +10372,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		EnduringStory:         p.EnduringStory,
 		Dungeon:               dungeonView(p.Dungeon),
 		CompletedDungeons:     completedDungeonNames(p.CompletedDungeons),
 		TurnSkips:             g.TurnSkipsForLocked(p.ID),
@@ -11102,6 +11145,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchGraveyard = nil
 			out[i].SearchHand = nil
 			out[i].SearchAllZones = false
+			out[i].SearchZonesPending = false
+			out[i].SearchOtherZone = ""
+			out[i].SearchLibrarySkipped = false
 			out[i].SearchOptional = false
 			out[i].SearchUndecided = false
 			continue
@@ -12706,16 +12752,33 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	// permanent, or since #660 the hand card whose cycling ability
 	// this is — so the protection check has the source it needs.
 	abilitySrc := game.SourceObject(caster, &c)
+	// #4475: an equip ability's {0} twin (Kíli the Resourceful,
+	// game/equip_cost_alternative.go) is a row of its own after the
+	// permanent's rows, with its own index and ref; everything else is
+	// read off the mirrored row, whose origin it shares.
+	twins := g.EquipTwinsLocked(caster, c, raw, origins)
+	rows := raw
+	if len(twins) > 0 {
+		rows = append(append([]game.ActivatedAbilityShape(nil), raw...), make([]game.ActivatedAbilityShape, len(twins))...)
+		for k, tw := range twins {
+			rows[len(raw)+k] = tw.Shape
+		}
+	}
 	var out []ActivatedAbilityView
-	for i, a := range raw {
+	for k, a := range rows {
+		i, wireIndex, wireRef := k, k, origins.Ref(k)
+		if k >= len(raw) {
+			tw := twins[k-len(raw)]
+			i, wireIndex, wireRef = tw.Of, tw.Index, tw.Ref
+		}
 		if !game.AbilityFunctionsFromZone(a, zone) {
 			continue
 		}
 		v := ActivatedAbilityView{
-			Index: i,
+			Index: wireIndex,
 			// ADR 0093 Decision 5 / 8: the row's stable ref, and who
 			// granted it when another effect did.
-			Ref:       origins.Ref(i),
+			Ref:       wireRef,
 			GrantedBy: grantedByView(g, origins.At(i)),
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's
@@ -12787,6 +12850,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
+		// CR 702.193a (#4527): a power-up ability already activated,
+		// the reader ActivateCatalogAbility and internal/legal share.
+		v.PowerUpUsed = g.PowerUpUsed(c.InstanceID, a)
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true

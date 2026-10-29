@@ -96,20 +96,54 @@ func TestRemovalReturnsLifeAndLand(t *testing.T) {
 	}
 }
 
-// A removal the bot aims at its own permanent nets nothing: the
-// controller who gets the gift is the bot, and the pick keeps its old
-// price.
-func TestReturnsAreNotNettedOnTheBotsOwnPermanent(t *testing.T) {
-	within, mine := cardID(1), cardID(2)
-	v := newView([]protocol.PlayerView{
-		newSeat(0, withHand(removalReturning(within, "Beast Within", "{2}{G}", threeThree()))),
-		newSeat(1),
-	}, withBattlefield(append(manaLands(3, 0, 100), creature(mine, 0, "Elf", 1, 1))...),
-		withTurn(4, 0, "precombat_main"))
-	own := castMove(t, 0, within, "Beast Within my elf", cardTarget(mine))
-	in := input(0, v, passMove(0), own)
-	if on, off := rankValue(t, heuristic.New(), in, own.Label), rankValue(t, withoutNetRemoval(), in, own.Label); !nearly(on, off) {
-		t.Errorf("Beast Within on the bot's own elf priced %.3f, want the old %.3f", on, off)
+// #4319: a declared return means the target is removed even when it is
+// ours. Keep expensive permanents; allow a profitable token conversion,
+// but prefer removing an opposing threat.
+func TestRemovalReturnsPriceLosingTheBotsOwnPermanent(t *testing.T) {
+	elf := creature(cardID(2), 0, "Elvish Mystic", 1, 1)
+	elf.ManaAbilities = []protocol.ManaAbilityView{{Index: 0, TapCost: true, Produced: "{G}"}}
+	for _, tc := range []struct {
+		name     string
+		card     protocol.CardView
+		wantCast bool
+	}{
+		{"Sol Ring", protocol.CardView{TypeLine: "Artifact", ManaAbilities: []protocol.ManaAbilityView{{Index: 0, TapCost: true, Produced: "{C}{C}"}}}, false},
+		{"Plains", land(cardID(2), 0), false},
+		{"Elspeth", protocol.CardView{TypeLine: "Legendary Planeswalker", Counters: map[string]int{"loyalty": 4}}, false},
+		{"Bristling Hydra", creature(cardID(2), 0, "Bristling Hydra", 5, 4), false},
+		{"commander", creature(cardID(2), 0, "Commander", 2, 4, commander()), false},
+		{"Elvish Mystic", elf, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			within, mine, theirs := cardID(1), cardID(2), cardID(3)
+			c := tc.card
+			c.InstanceID, c.Name = mine, tc.name
+			c.Owner, c.Controller = seatID(0).String(), seatID(0).String()
+			v := newView([]protocol.PlayerView{
+				newSeat(0, withHand(removalReturning(within, "Generous Gift", "{2}{W}", threeThree()))),
+				newSeat(1),
+			}, withBattlefield(append(manaLands(3, 0, 100), c, creature(theirs, 1, "Dragon", 6, 6))...),
+				withTurn(4, 0, "precombat_main"))
+			own := castMove(t, 0, within, "Gift my permanent", cardTarget(mine))
+			opp := castMove(t, 0, within, "Gift their dragon", cardTarget(theirs))
+			pass := passMove(0)
+			in := input(0, v, pass, own)
+			p := heuristic.New()
+			want := pass.Label
+			if tc.wantCast {
+				want = own.Label
+			}
+			if d := decide(t, p, in); in.Moves[d.Index].Label != want {
+				t.Errorf("chose %q, want %q", in.Moves[d.Index].Label, want)
+			}
+			if !tc.wantCast && rankValue(t, p, in, own.Label) >= rankValue(t, p, in, pass.Label) {
+				t.Error("destroying our valuable permanent must score below passing")
+			}
+			in = input(0, v, pass, own, opp)
+			if d := decide(t, p, in); in.Moves[d.Index].Label != opp.Label {
+				t.Errorf("chose %q, want opposing dragon", in.Moves[d.Index].Label)
+			}
+		})
 	}
 }
 

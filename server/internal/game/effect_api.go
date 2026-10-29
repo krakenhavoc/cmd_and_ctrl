@@ -102,6 +102,11 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 		// to see one. See Game.enteringTokens.
 		return g.enteringTokenLocked(cardID)
 	}
+	if g.entryView != nil && z.Kind != ZoneBattlefield {
+		// ADR 0210, CR 614.12: an entry replacement asking what the
+		// entering card is reads it as it would exist on the battlefield.
+		return g.viewEnteringCardLocked(z.Cards[pos]), true
+	}
 	return z.Cards[pos], true
 }
 
@@ -2354,12 +2359,15 @@ type SearchLibrarySpec struct {
 	// this way, shuffle"): a take that comes entirely from the graveyard
 	// neither shuffles nor fires EventSearchLibrary.
 	//
-	// Declared simplification: the engine does not ask which zones were
-	// searched. A take of nothing is treated as a library search (shuffle
-	// and event), the common case; a player who looked only in the
-	// graveyard and found nothing would not have shuffled. The
-	// difference is a no-op for play. The graveyard searched is the
-	// library owner's, so
+	// Which zones were searched is the searcher's answer, and it is asked
+	// FIRST (#4516, #4519, CR 701.23): the prompt opens on "your library,
+	// your graveyard, or both" (ChooseSearchZones, the wire's
+	// search_zones) and shows no library card until the library is chosen,
+	// because looking through the library is searching it (CR 701.23a). The
+	// library is shuffled, and EventSearchLibrary fires, if and only if it
+	// was chosen, whatever is then taken, nothing included; a graveyard-only
+	// search never offers a library card and never shuffles. The graveyard
+	// searched is the library owner's, so
 	// combining this with LibraryOwner is not meaningful. Dest must be a
 	// zone the cards leave to (hand, battlefield, exile); ZoneLibrary
 	// with ToTop is not supported.
@@ -2384,6 +2392,24 @@ type SearchLibrarySpec struct {
 	// cards leave to.
 	AlsoGraveyardAndHand bool
 
+	// AlsoHand is "search your hand and/or library" (Last Light of Durin's
+	// Day): the searcher's own hand is searched beside the library, under
+	// the same predicate, in the same prompt (PendingChoice.SearchHandCards
+	// says which candidates are in the hand). It is AlsoGraveyard's twin for
+	// the hand, with no graveyard in it.
+	//
+	// "And/or" lets the searcher choose which zones to look in, so a search
+	// with a stated quality may find nothing whatever the hand holds (CR
+	// 701.23b), and "If you search your library this way, shuffle" is the
+	// card's Shuffle. The zones are asked first, exactly as for AlsoGraveyard
+	// (#4519): "your library, your hand, or both", no library card shown
+	// until the library is chosen, and the library shuffled and the search
+	// announced if and only if it was chosen; a hand-only search neither
+	// shuffles nor fires EventSearchLibrary. The hand searched is the
+	// library owner's own, so combining this with LibraryOwner is not
+	// meaningful. Dest must be a zone the cards leave to.
+	AlsoHand bool
+
 	// TakeAll is "search … for ALL cards with the same name …" on an
 	// AlsoGraveyardAndHand search (#4033: Eradicate, Extirpate, Quash,
 	// Scour, Splinter, Sowing Salt). There is no count, so it implies
@@ -2406,8 +2432,9 @@ type SearchLibrarySpec struct {
 	graveyardFinds []uuid.UUID
 
 	// libraryUntouched is set by executeSearchTakeLocked, on the copy it
-	// carries into the finish, when every card taken came out of the
-	// graveyard. Never set by a card.
+	// carries into the finish, when an and/or search did not search the
+	// library: the searcher chose only the graveyard (or the hand)
+	// (#4516, #4519). Never set by a card.
 	libraryUntouched bool
 
 	// exileFoundFor is set by executeSearchTakeLocked, on the copy it
@@ -2440,6 +2467,43 @@ func (spec SearchLibrarySpec) statedQuality() bool {
 // "graveyard, hand, and library" (AlsoGraveyardAndHand).
 func (spec SearchLibrarySpec) searchesGraveyard() bool {
 	return spec.AlsoGraveyard || spec.AlsoGraveyardAndHand
+}
+
+// searchesHand reports whether the library owner's hand is searched beside
+// the library: "hand and/or library" (AlsoHand), or "graveyard, hand, and
+// library" (AlsoGraveyardAndHand).
+func (spec SearchLibrarySpec) searchesHand() bool {
+	return spec.AlsoHand || spec.AlsoGraveyardAndHand
+}
+
+// asksZones reports whether the searcher chooses which zones they search
+// (#4519): "your library and/or graveyard" (AlsoGraveyard) and "your hand
+// and/or library" (AlsoHand). "Graveyard, hand, and library" names all
+// three, so it asks nothing.
+func (spec SearchLibrarySpec) asksZones() bool {
+	return !spec.AlsoGraveyardAndHand && (spec.AlsoGraveyard || spec.AlsoHand)
+}
+
+// otherZoneName is the zone an and/or search offers beside the library,
+// "graveyard" or "hand" (SearchZoneGraveyard, SearchZoneHand); "" when the
+// search does not ask.
+func (spec SearchLibrarySpec) otherZoneName() string {
+	switch {
+	case !spec.asksZones():
+		return ""
+	case spec.AlsoGraveyard:
+		return SearchZoneGraveyard
+	}
+	return SearchZoneHand
+}
+
+// initialZones is where a freshly queued prompt for this search stands on
+// the zone question: open for an and/or search, absent for every other.
+func (spec SearchLibrarySpec) initialZones() searchZones {
+	if spec.asksZones() {
+		return searchZonesAsking
+	}
+	return searchZonesUnasked
 }
 
 // floor is the fewest cards the searcher may take when `matches` cards
@@ -2635,7 +2699,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	// the graveyard's (PendingChoice.SearchHandCards), and the searcher
 	// looks at the whole hand as they search it.
 	var handMatches []uuid.UUID
-	if spec.AlsoGraveyardAndHand {
+	if spec.searchesHand() {
 		for i := range p.Hand.Cards {
 			c := p.Hand.Cards[i]
 			p.Hand.Cards[i].AddKnower(spec.Player)
@@ -2652,7 +2716,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		if len(spec.graveyardFinds) > 0 {
 			// #4033: nothing to choose, but the graveyard's matches
 			// are found all the same.
-			return g.executeSearchTakeLocked(spec, p, nil)
+			return g.executeSearchTakeLocked(spec, p, nil, searchZonesUnasked)
 		}
 		// Nothing matches (#4140). It is still asked: the searcher
 		// answers a prompt with no candidates, "find nothing" (a search
@@ -2673,18 +2737,20 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// whole match set rather than a forced take-all.
 		spec.Limit = len(matches)
 	}
-	if spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) && len(matches) <= spec.Limit &&
-		spec.setAllows(matched) {
+	if !spec.asksZones() && spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) &&
+		len(matches) <= spec.Limit && spec.setAllows(matched) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
 		// library of exactly that many). A search for a stated quality
 		// never lands here, however few matches there are: it may
-		// always find nothing (CR 701.23b, #3053), so it always asks.
+		// always find nothing (CR 701.23b, #3053), so it always asks. An
+		// and/or search never lands here either (#4519): which zones it
+		// searches is a decision, and the library's shuffle follows it.
 		// Take them all. The take finishes the
 		// search itself (#478): a battlefield destination is an entry
 		// and an entry can pause, so "then shuffle" is the last link of
 		// a chain rather than the line after the loop.
-		return g.executeSearchTakeLocked(spec, p, matches)
+		return g.executeSearchTakeLocked(spec, p, matches, searchZonesUnasked)
 	}
 	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
@@ -2743,7 +2809,12 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 	// Agent's controller takes over only once the search has begun
 	// (CR 723.2, "while they're searching").
 	undecided := spec.Optional
-	if !undecided {
+	// #4519: an and/or search asks which zones it searches before it
+	// shows anything, for the same reason: the library's candidates are
+	// seen, and the library is shuffled, only if it is searched.
+	// ChooseSearchZones grants the knowledge and the control then.
+	asksZones := spec.asksZones()
+	if !undecided && !asksZones {
 		g.markSearchCandidatesKnownLocked(spec.Player, p, matches)
 	}
 	reason := spec.Reason
@@ -2777,7 +2848,7 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 	// the searcher's own library is "searching their library". An
 	// undecided prompt has not begun a search, so it records no control
 	// (BeginSearchLibrary does, once the searcher says yes).
-	if !undecided && spec.libraryOwnerID() == spec.Player {
+	if !undecided && !asksZones && spec.libraryOwnerID() == spec.Player {
 		g.beginSearchControlsLocked(spec.Player, id)
 	}
 }
@@ -2809,7 +2880,12 @@ func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, ma
 // continuation. finishSearchLocked is the single place it ends.
 //
 // Caller must hold g.mu.
-func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+//
+// zones is what the searcher said about the zones they searched (#4519):
+// the library or only the other zone of an and/or search, which decides the
+// shuffle and the search event whatever is taken; searchZonesUnasked for a
+// search that did not ask.
+func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID, zones searchZones) error {
 	// #4033: "all cards" — the graveyard's matches are found with the
 	// searcher's picks, in one take. One that left the graveyard while
 	// the prompt was open is not there to find.
@@ -2830,22 +2906,41 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// same exit route, and finishSearchLocked grants them to the
 	// Agent's controller. Decided here, as the cards are found, not when
 	// the prompt opened.
-	if spec.exileFoundFor == uuid.Nil && spec.libraryOwnerID() == spec.Player && len(ids) > 0 {
+	// #4519: not when the searcher chose only the graveyard (or hand) of
+	// an and/or search: they never searched their library.
+	if spec.exileFoundFor == uuid.Nil && spec.libraryOwnerID() == spec.Player && len(ids) > 0 &&
+		zones != searchZonesOther {
 		if holder := g.searchExileHolderLocked(spec.Player); holder != uuid.Nil {
 			spec.exileFoundFor = holder
 			spec.Dest = ZoneExile
 			spec.FaceDown = FaceDownNone
 		}
 	}
-	// #3217: a take that came wholly out of the graveyard never looked
-	// in the library, so it is not "searched" — no shuffle, no
-	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
-	// any library card, is a library search.
-	spec.libraryUntouched = spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand && len(ids) > 0
-	for _, id := range ids {
-		if !p.Graveyard.Contains(id) {
-			spec.libraryUntouched = false
-			break
+	// #3217, #4516, #4519: an and/or search lets the searcher look in the
+	// other zone alone, and the searcher said so before anything was
+	// shown (ChooseSearchZones): the library is then not searched, so
+	// there is no shuffle and no EventSearchLibrary (finishSearchLocked)
+	// whatever was taken. Having chosen the library, it is searched
+	// whatever was taken, a take of nothing included.
+	switch zones {
+	case searchZonesOther:
+		spec.libraryUntouched = true
+	case searchZonesLibrary:
+		spec.libraryUntouched = false
+	default:
+		// A prompt that never asked (searchZonesUnasked): a plain library
+		// search, or an and/or prompt written before the question
+		// existed (#4519), which keeps the reading #4516 gave it: a take
+		// wholly out of the graveyard, or nothing, is a graveyard-only
+		// search, and a take wholly out of the hand is a hand-only one.
+		// Any library card taken is a library search.
+		fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand
+		spec.libraryUntouched = fromGraveyard || (spec.AlsoHand && len(ids) > 0)
+		for _, id := range ids {
+			if !(fromGraveyard && p.Graveyard.Contains(id)) && !(spec.AlsoHand && p.Hand.Contains(id)) {
+				spec.libraryUntouched = false
+				break
+			}
 		}
 	}
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
@@ -2940,7 +3035,7 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 	// A card that is no longer in the library (or, for an "and/or
 	// graveyard" search, the graveyard) is skipped rather than fetched:
 	// it left while an earlier card's entry prompt was open.
-	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.searchesGraveyard() && p.Graveyard.Contains(ids[0])) && !(spec.AlsoGraveyardAndHand && p.Hand.Contains(ids[0])) {
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.searchesGraveyard() && p.Graveyard.Contains(ids[0])) && !(spec.searchesHand() && p.Hand.Contains(ids[0])) {
 		ids = ids[1:]
 	}
 	if len(ids) == 0 {
@@ -3012,7 +3107,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// event's OldZone to where the card actually is).
 		from, zone = ZoneGraveyard, p.Graveyard
 	}
-	if spec.AlsoGraveyardAndHand && p.Hand.Contains(id) {
+	if spec.searchesHand() && p.Hand.Contains(id) {
 		// #3988: out of the hand, likewise.
 		from, zone = ZoneHand, p.Hand
 	}
@@ -4011,8 +4106,8 @@ func (g *Game) addManaEntriesLocked(
 		}
 		// #2558: "N mana of different colors" — a greedy set of
 		// different colours in the auto-tap mode, one pick naming them
-		// one at a time otherwise. A pick cannot carry restrictions on
-		// this path, as below.
+		// one at a time otherwise. A pick of this kind cannot carry
+		// restrictions (the single-colour pick below can).
 		if slot.DifferentColors() {
 			if len(restrictions) > 0 {
 				return ErrInvalidParam
@@ -4047,7 +4142,9 @@ func (g *Game) addManaEntriesLocked(
 			g.produceManaLocked(p, source, []string{colorOptions[0]}, restrictions, riders, srcKinds, false, pending)
 			continue
 		}
-		if len(restrictions) > 0 {
+		if len(restrictions) > 0 && pending != nil {
+			// The auto-tap executor mints with no restrictions and may not
+			// leave a prompt, so a restricted pick has no home there.
 			return ErrInvalidParam
 		}
 		if pending != nil {
@@ -4074,6 +4171,11 @@ func (g *Game) addManaEntriesLocked(
 			ManaAmounts:     copyManaAmounts(slot.Amounts),
 			ManaSourceKinds: srcKinds,
 			ManaRiders:      copyManaRiders(riders),
+			// "Add four mana in any combination of colors. Spend this
+			// mana only to cast Dragon spells" (Desolation of Smaug): the
+			// pick carries the spend restrictions to the token minted when
+			// it is answered (#352), as a mana ability's pick does.
+			ManaRestrictions: copyRestrictions(restrictions),
 		})
 	}
 	return nil

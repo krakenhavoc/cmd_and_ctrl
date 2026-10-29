@@ -775,6 +775,9 @@ export interface AbilityCost {
   // #2697: a boast ability that cannot be activated now, and which half
   // of its instruction fails. ActivatedAbilityView only.
   boast_blocked?: string;
+  // #4527: a power-up ability (CR 702.193a) this permanent has already
+  // activated. ActivatedAbilityView only.
+  power_up_used?: boolean;
   // #844: a "in your commander's color identity" mana ability with no
   // identity to narrow to. Mana abilities only.
   adds_no_mana?: boolean;
@@ -826,6 +829,12 @@ export const ABILITY_EXHAUSTED = "already activated (exhaust)";
 // the one that tells them what to do: attack, or wait for next turn.
 export const BOAST_NOT_ATTACKED = "hasn't attacked this turn";
 export const BOAST_USED = "boast already used this turn";
+
+// POWER_UP_USED is the hint on a power-up ability the server marked
+// power_up_used (#4527, CR 702.193a: "Activate each power-up ability only
+// once"). Its own string rather than ABILITY_EXHAUSTED, which names the
+// other keyword; like an exhaust, only a new object clears it.
+export const POWER_UP_USED: string = L.powerUpUsed;
 
 // ADDS_NO_MANA is the hint on a mana row the server marked
 // adds_no_mana: it would add nothing right now. That was #844's case
@@ -1067,6 +1076,9 @@ export function abilityBlocked(
   // because Bitter Work prints both and "already activated" is the one
   // that will still be true tomorrow.
   if (a.exhausted) return ABILITY_EXHAUSTED;
+  // #4527: a power-up ability already activated, which, like an exhaust,
+  // will still be true tomorrow.
+  if (a.power_up_used) return POWER_UP_USED;
   // #2697: a boast ability's own two halves, before the generic
   // condition (the server checks them in this order too).
   if (a.boast_blocked === "not_attacked") return BOAST_NOT_ATTACKED;

@@ -865,6 +865,14 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
+	// cost of the first equip ability you activate each turn" (Kíli the
+	// Resourceful, #4475): a CR 118.9 alternative cost this permanent
+	// offers its controller for equip abilities, read from the
+	// battlefield. The engine derives a twin row for each equip ability
+	// (game/equip_cost_alternative.go). Nil for nearly every card.
+	EquipCostAlternatives []game.EquipCostAlternative
+
 	// TargetTaxes is a cost a permanent adds to spells that TARGET
 	// something: "Spells your opponents cast that target this creature
 	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
@@ -1533,6 +1541,15 @@ type Spec struct {
 	// one-line Spec each rather than an engine change.
 	AdditionalLandPlays int
 
+	// AdditionalLandPlaysNeedsAnother makes AdditionalLandPlays
+	// conditional: it counts only while the controller controls another
+	// permanent with this creature type — Thranduil's Company's "as long
+	// as you control another Elf, you may play an additional land on
+	// each of your turns" is "Elf". Empty is unconditional. The check is
+	// the engine's, in EffectiveLandDropsLocked, read live on every land
+	// play, so the extra drop comes and goes with the other creature.
+	AdditionalLandPlaysNeedsAnother string
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard
@@ -1944,6 +1961,13 @@ type ActivatedAbility struct {
 	// Set it through the Boast constructor (boast.go), which also
 	// writes the label, so a card file never spells the keyword by hand.
 	Boast bool
+	// PowerUp marks a power-up ability — "Power-up — {4}{W}: … (Activate
+	// each power-up ability only once. Reduce the cost by its mana cost
+	// if it entered this turn.)" (CR 702.193a, #4527). One bit, no card
+	// logic: the engine reads the activation record and prices the
+	// reduction itself (game/power_up.go). Set it through the PowerUp
+	// constructor (power_up.go), which also writes the label.
+	PowerUp bool
 	// CostModifiers is the ability's OWN cost clause — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (the channel lands), "…for each color of the creature

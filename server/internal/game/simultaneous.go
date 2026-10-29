@@ -52,6 +52,12 @@ import "github.com/google/uuid"
 // (hostsBeforeAttachmentsLocked, umbra_armor.go), so the Aura is still
 // there when its host's leg asks.
 //
+// Every other replacement learned it through the gather instead (#4521):
+// a leg is replaced by the catalog effects of the batch members that
+// already left as well as by the live battlefield's, read off these same
+// copies, so a Liesa destroyed early in a Wrath of God still exiles the
+// opponents' creatures destroyed after her (simultaneous_replacements.go).
+//
 // Deliberately NOT addressed here:
 //   - Nothing about the moves themselves beyond that ordering.
 //

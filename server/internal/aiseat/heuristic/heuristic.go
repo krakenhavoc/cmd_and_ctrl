@@ -233,7 +233,9 @@ type Config struct {
 	// 903.9b). A target entry's declared `returns` (a creature token,
 	// life equal to the target's power, a land) is valued as its
 	// controller would value it and taken off the removal's price, on
-	// the removal's own scale. Off (the zero value) prices both as plain
+	// the removal's own scale. Own targets with returns pay for the
+	// permanent lost; token bodies replace noncommander creatures only (#4319).
+	// Off (the zero value) prices opposing targets as plain
 	// removal.
 	NetRemoval bool
 	// TutorWeight is a card searched out to hand or the top of the
@@ -449,6 +451,9 @@ type Config struct {
 	// bot has fewer than RampWantCap mana sources. Off (the zero value)
 	// prices Oracle of Mul Daya and Exploration by their bodies alone.
 	PriceExtraLandDrops bool
+	// PriceEntryCounters uses reliable fixed/X own-entry counters to price
+	// the resolved creature body (#4322). Other replacements are not modelled.
+	PriceEntryCounters bool
 	// ExtraLandDropRecurring is what one extra land drop on each later
 	// turn adds to a permanent's cast price.
 	ExtraLandDropRecurring float64
@@ -900,6 +905,7 @@ func DefaultConfig() Config {
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
 		PriceExtraLandDrops:    true,
+		PriceEntryCounters:     true,
 		ExtraLandDropRecurring: 0.50,
 		PriceLandfallPayoffs:   true,
 		PriceLandfallDoublers:  true,
@@ -1117,6 +1123,7 @@ func BaselineConfig() Config {
 	c.PricePutsFromHand = false
 	c.PriceOwnPermanentPicks = false
 	c.PriceExtraLandDrops = false
+	c.PriceEntryCounters = false
 	c.ExtraLandDropRecurring = 0
 	// #3072: landfall payoffs.
 	c.PriceLandfallPayoffs = false

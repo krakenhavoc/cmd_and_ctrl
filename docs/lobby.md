@@ -4056,6 +4056,55 @@ are unaffected, including the caller's.
 | 404 | no such user |
 | 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
 
+### `POST /admin/discord-members/{discord_id}/revoke-sessions` *(admin only)*
+
+Ban sync ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md),
+amendment 2026-10-29, #3325). The gateway bot calls it, with its admin
+session, when the C2 server bans a member, takes the player role away
+or sees them leave (with `CMDCTRL_DISCORD_BAN_SYNC=1` in the bot's
+environment; see [docs/discord-bot.md](discord-bot.md)). It looks the
+account up by Discord id and runs the same revocation as
+`POST /admin/users/{id}/revoke-sessions`, then records the refusal as
+the account's last gate answer (`not_member` for a ban or a leave,
+`no_role` for the role) and posts a "Sessions revoked by ban sync" line
+to the mod log when it is set. Rows stay, as for the other route.
+
+**Request**
+
+```json
+{ "reason": "banned" }
+```
+
+`reason` is `banned`, `role_removed` or `left`.
+
+**Response 200**
+
+```json
+{ "outcome": "revoked", "sockets_closed": 1 }
+```
+
+`outcome` is one of:
+
+| Outcome | Meaning |
+|---|---|
+| `revoked` | sessions ended, the answer recorded, the mod log told |
+| `no_account` | no account has that Discord id; nothing done |
+| `exempt` | an allowlisted admin (`CMDCTRL_DISCORD_ADMIN_USER_IDS`) or an account on `CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS`; nothing done |
+| `gate_off` | the sign-up gate is off on this server, so the role admits no one; nothing done |
+| `already_out` | the account's last gate answer is already a refusal and it has not signed in since; nothing done, so a ban followed by its member-remove revokes and logs once |
+
+Calls are serialized, so two events for one person cannot both revoke.
+The answer names no account.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `{discord_id}` is not a Discord id, or `reason` is not one of the three |
+| 401 | no session |
+| 403 | caller is not an admin |
+| 503 | no user database, for an account that exists (cannot happen in practice) |
+
 ---
 
 ## Moderation (#2984)

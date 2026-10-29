@@ -148,6 +148,24 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PlayerPanel.svelte`, `${BOARD}SeatSummary.svelte`],
     doc: "another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name)",
   }),
+  tombstoneRip: label({
+    name: "R. I. P.",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}Tombstone.svelte`],
+    doc: "#4449: the epitaph on the tombstone that stays on an eliminated player's panel",
+  }),
+  tombstoneOf: dynamicLabel({
+    stem: " is out of the game",
+    match: "suffix",
+    shape: "<name> is out of the game",
+    make: (name: string) => `${name} is out of the game`,
+    example: ["Practice Bot"],
+    kind: "aria",
+    role: "group",
+    owners: [`${BOARD}Tombstone.svelte`],
+    doc: "#4449: the tombstone on an eliminated player's panel; its text is the player's name, their commander and the epitaph",
+  }),
   reflowNextUp: label({
     name: "Next up",
     kind: "text",
@@ -214,6 +232,13 @@ export const LABEL_SPECS = {
     role: "status",
     owners: [`${BOARD}PlayerIdentity.svelte`],
     doc: "a seat's ticket counters ({TK}, ADR 0208, CR 107.17) in its marker column, drawn only while it has one; a count, no stepper",
+  }),
+  enduringStory: label({
+    name: "an enduring story",
+    kind: "aria",
+    role: "status",
+    owners: [`${BOARD}PlayerIdentity.svelte`],
+    doc: "a seat's enduring story (CR 702.195b, #4475) in its marker column, drawn only once storied has given it; read-only, there is no toggle",
   }),
   stickerSheets: label({
     name: "sticker sheets",
@@ -941,6 +966,14 @@ export const LABEL_SPECS = {
     doc: "a table roll (ADR 0121 §5)",
   }),
 
+  powerUpUsed: label({
+    name: "already activated (power-up)",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/contextMenu.logic.ts"],
+    doc: "the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover",
+  }),
+
   rulings: label({
     name: "Rulings",
     kind: "text",
@@ -1517,6 +1550,41 @@ export const LABEL_SPECS = {
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
     doc: "the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart",
+  }),
+  searchLibraryAndGraveyard: label({
+    name: "Library and graveyard",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the primary of the question a "search your library and/or graveyard" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards',
+  }),
+  searchLibraryAndHand: label({
+    name: "Library and hand",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the primary of the question a "search your hand and/or library" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards',
+  }),
+  searchLibraryOnly: label({
+    name: "Library only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: "an and/or search's zone question (#4519): search the library alone; it is shuffled afterwards",
+  }),
+  searchGraveyardOnly: label({
+    name: "Graveyard only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'a "search your library and/or graveyard" prompt zone question (#4519): search the graveyard alone; the library is never shown or shuffled',
+  }),
+  searchHandOnly: label({
+    name: "Hand only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'a "search your hand and/or library" prompt zone question (#4519): search the hand alone; the library is never shown or shuffled',
   }),
   forgetTriggerOrders: dynamicLabel({
     stem: "Forget remembered trigger orders",

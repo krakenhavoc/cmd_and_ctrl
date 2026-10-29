@@ -559,6 +559,12 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	if ev.entersAsAura {
 		g.seedReturnedAuraEntryLocked(entered, &moved)
 	}
+	// ADR 0210, CR 614.1c: a card put onto the battlefield as a
+	// different type ("They are Food artifacts", "They're an artifact")
+	// is that type from the moment it lands: after the CR 400.7 reset,
+	// and before the zone move and EventETB, so an enters trigger looking
+	// for a creature finds none.
+	g.applyEntryOverwriteLocked(entered, ev)
 	// ADR 0104 (CR 110.2b, CR 400.7a): a permanent spell whose control
 	// was changed on the stack keeps that change as a permanent, and
 	// its default controller is the player who put the spell on the

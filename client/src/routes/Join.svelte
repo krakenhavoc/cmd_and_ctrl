@@ -323,8 +323,8 @@
           </p>
         {:else}
           <p class="help">
-            Joining claims an open seat. You'll add your deck in the lobby — a Moxfield or Archidekt
-            link is enough.
+            Joining claims an open seat. You'll add your deck in the lobby — an Archidekt link or a
+            pasted list is enough.
           </p>
         {/if}
       {/if}

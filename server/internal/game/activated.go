@@ -907,6 +907,32 @@ type ActivatedAbilityShape struct {
 	// sets both, checked in that order.
 	Boast bool
 
+	// PowerUp marks a POWER-UP ability (CR 702.193a, #4527):
+	//
+	//	Power-up — {4}{W}: Put two +1/+1 counters on this creature.
+	//	(Activate each power-up ability only once. Reduce the cost by
+	//	its mana cost if it entered this turn.)
+	//
+	// One declarative bit, built by effects.PowerUp, for the reason
+	// Exhaust and Boast are: the keyword IS two rules, and the engine
+	// enforces both in the places every activation is already priced
+	// and gated (power_up.go):
+	//
+	//   - "Activate this ability only once" is Game.PowerUpUsed, read
+	//     by ActivateCatalogAbility (ErrPowerUpUsed), internal/legal and
+	//     the view (`power_up_used`). It reads the same per-object,
+	//     per-label activation record exhaust reads, so a flicker makes
+	//     a new object that may power up again (CR 400.7) and a restore
+	//     keeps a spent one spent. Its own reader rather than Exhaust's,
+	//     because an exhaust permission (Elvish Refueler) is not a
+	//     power-up permission.
+	//   - "If this permanent entered this turn, this ability's cost is
+	//     reduced by this permanent's mana cost" is a reduction in the
+	//     CR 601.2f pass (applyCostModifiersLocked), coloured symbols
+	//     included (CR 702.193b, 118.7b–g), so the menu, the enumerator
+	//     and the payment price it from one function.
+	PowerUp bool
+
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
@@ -1319,6 +1345,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #4475: an equip ability's {0} twin (equip_cost_alternative.go) is
+	// addressed by its own index and ref; below this line `index` and
+	// `params.Ref` name the mirrored row, and `twin` says the cost is the
+	// alternative. The announcement as sent is kept for a park's resume.
+	wireIndex, wireParams := index, params
+	index, ref, twin, err := decodeEquipTwin(index, params.Ref)
+	if err != nil {
+		return err
+	}
+	params.Ref = ref
 	// #3895: the announced X is bounded first, before anything reads
 	// it (x_bound.go) — the mana half, and every cost sized by X: pay X
 	// life, loyalty −X, energy, remove X counters, blight, discard and
@@ -1413,6 +1449,18 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// #4475, CR 118.9: the twin pays the alternative instead of the
+	// whole printed cost; everything else about the row is the row's.
+	if twin {
+		if !ab.Equip {
+			return ErrInvalidParam
+		}
+		alt, from, ok := g.EquipCostAlternativeLocked(playerID)
+		if !ok {
+			return ErrAlternativeCostUnavailable
+		}
+		ab = equipTwinShape(ab, alt, from)
+	}
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
@@ -1493,6 +1541,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
+	}
+	// CR 702.193a (#4527): "Activate this ability only once", read from
+	// the same record and key as exhaust, before anything is paid.
+	if g.PowerUpUsed(cardID, ab) {
+		return ErrPowerUpUsed
 	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
 	// once each turn" (Mairsil). Keyed, like exhaust, before anything is
@@ -1934,7 +1987,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		parked := params
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
-			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, index, parked),
+			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, wireIndex, withWireRef(parked, wireParams)),
 		}, SourceObject(playerID, source), oppTargets)
 	}
 	// The announcement a CR 903.9b answer makes again (#4361 S13: as
@@ -1945,7 +1998,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	again.Targets = ownTargets
 	again.commanderAnswers = nil
 	asked, answers := g.askCostCommanderLocked(asking, params.commanderAnswers, source.Name,
-		activationAnnouncement(playerID, cardID, source.Name, index, again))
+		activationAnnouncement(playerID, cardID, source.Name, wireIndex, withWireRef(again, wireParams)))
 	if asked {
 		return nil
 	}
@@ -2358,6 +2411,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	// #4475: "the first equip ability you activate each turn" counts
+	// every equip announce, either row, resolved or not.
+	if ab.Equip {
+		g.bumpPlayerTally(playerID, func(p *PlayerTurnTally) { p.EquipActivations++ })
+	}
+	// #4527: "the first power-up ability you activate during each of
+	// your turns" (Advancing the Spirit) counts every power-up announce,
+	// resolved or not, as the equip count above does.
+	if ab.PowerUp {
+		g.bumpPlayerTally(playerID, func(p *PlayerTurnTally) { p.PowerUpActivations++ })
+	}
 	g.noteBorrowedActivationLocked(borrowedKey)
 	// #3779: and whether it targeted a creature of the activator's own
 	// — the record "the first activated ability you activate … that
@@ -2411,6 +2475,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
 		Boast:       ab.Boast,
+		PowerUp:     ab.PowerUp,
 		// ADR 0109 §2: "whenever you activate a loyalty ability of
 		// enchanted planeswalker" (Elspeth's and Rowan's Talents). A
 		// loyalty ability is one with a loyalty symbol in its cost

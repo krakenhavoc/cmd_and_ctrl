@@ -89,7 +89,7 @@ var activatedRowScopes = map[string]rowScope{
 	"SacrificeLabel": rowPublic, "ReturnLabel": rowPublic, "TapOthersLabel": rowPublic,
 	// Verdicts over public state: whose turn it is, the stack, the
 	// battlefield, the ability's own activation record.
-	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "BoastBlocked": rowPublic,
+	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "PowerUpUsed": rowPublic, "BoastBlocked": rowPublic,
 	"CantActivate": rowPublic, "TimingClosed": rowPublic,
 	// Option lists read off the BATTLEFIELD, which every viewer can
 	// count for themselves.

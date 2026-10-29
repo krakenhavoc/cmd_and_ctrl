@@ -58,8 +58,29 @@ func (g *Game) ExileUntilCastFreeKeepingForEffect(player, source uuid.UUID, hit 
 	return g.exileUntilCastFreeLocked(player, source, hit, true)
 }
 
+// ExileUntilCastFreeByForEffect is ExileUntilCastFreeForEffect when the
+// player whose library is walked is not the one who may cast the hit:
+// Gríma, Saruman's Footman's "that player exiles cards from the top of
+// their library until they exile an instant or sorcery card. You may cast
+// that card without paying its mana cost. Then that player puts the exiled
+// cards that weren't cast this way on the bottom of their library in a
+// random order". `library` exiles (the exiling events name them), and
+// `chooser` is offered the free cast, holds the resolution open while they
+// answer, and is the actor of the bottoming. The cards go to the bottom of
+// their OWNER's library whoever the chooser is (CR 401.4), so the pile and
+// an uncast hit return to `library`'s.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileUntilCastFreeByForEffect(library, chooser, source uuid.UUID, hit func(Card) bool) error {
+	return g.exileUntilCastFreeByLocked(library, chooser, source, hit, false)
+}
+
 func (g *Game) exileUntilCastFreeLocked(player, source uuid.UUID, hit func(Card) bool, keepUncast bool) error {
-	pile, found, err := g.exileUntilLocked(player, hit)
+	return g.exileUntilCastFreeByLocked(player, player, source, hit, keepUncast)
+}
+
+func (g *Game) exileUntilCastFreeByLocked(library, player, source uuid.UUID, hit func(Card) bool, keepUncast bool) error {
+	pile, found, err := g.exileUntilLocked(library, hit)
 	if err != nil {
 		return err
 	}

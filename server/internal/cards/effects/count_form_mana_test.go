@@ -138,7 +138,7 @@ func TestAddManaCountFormCarriesRestrictions(t *testing.T) {
 }
 
 // A multi-colour option is N independent picks (Burnt Offering, Culling
-// Ritual), and a pick cannot carry a restriction.
+// Ritual).
 func TestAddManaCountFormQueuesOnePickPerMana(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -152,10 +152,33 @@ func TestAddManaCountFormQueuesOnePickPerMana(t *testing.T) {
 	if picks != 3 {
 		t.Errorf("queued %d colour picks, want 3", picks)
 	}
-	err := AddMana{Amount: ManaN(1, "B", "R"), Restrictions: []string{ManaRestrictCast}}.Apply(
-		NewContext(g, &game.StackItem{Controller: me.ID, SourceCardID: uuid.New()}))
-	if err == nil {
-		t.Error("a restricted colour pick was accepted; it would mint unrestricted mana")
+}
+
+// A restricted pick carries its restrictions on the prompt, so the mana
+// minted when it is answered is restricted too (Desolation of Smaug, #4454).
+func TestAddManaCountFormPickCarriesItsRestrictions(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	restrictions := []string{ManaRestrictCast, game.ManaRestrictSubtype("Dragon")}
+	addManaAmount(t, g, AddMana{Amount: ManaN(1, "B", "R"), Restrictions: restrictions})
+	var pick *game.PendingChoice
+	for _, pc := range g.PendingChoices {
+		if pc.Kind == game.PendingChoiceMana && pc.Chooser == me.ID {
+			pick = pc
+		}
+	}
+	if pick == nil {
+		t.Fatal("no colour pick was queued")
+	}
+	if len(pick.ManaRestrictions) != 2 {
+		t.Fatalf("the pick carries %v, want the two restrictions", pick.ManaRestrictions)
+	}
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "R"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	units := me.ManaPool.Units()
+	if len(units) != 1 || len(units[0].Restrictions) != 2 {
+		t.Errorf("minted %+v, want one token with both restrictions", units)
 	}
 }
 

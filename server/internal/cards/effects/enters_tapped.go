@@ -55,10 +55,11 @@ func SelfEntersTapped() game.ReplacementEffect {
 // the finished permanent.
 func SelfEntersTappedWithCounters(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		SelfEntersTapped: true,
-		RowLabel:         "Enters tapped with " + counterCountPhrase(n, kind) + " on it.",
-		EntryOnly:        true,
-		Watches:          []game.EventKind{game.EventZoneMove},
+		SelfEntryCounters: &game.EntryCounterAmount{Kind: kind, Amount: n},
+		SelfEntersTapped:  true,
+		RowLabel:          "Enters tapped with " + counterCountPhrase(n, kind) + " on it.",
+		EntryOnly:         true,
+		Watches:           []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&

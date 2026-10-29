@@ -1155,12 +1155,11 @@ type SearchLibrary struct {
 	// offers matches from both zones, marked by zone. "And/or" lets the
 	// searcher choose their zones, so the floor is unchanged: a stated
 	// quality may still find nothing even with a match in the graveyard.
-	// A take that came wholly from the graveyard does not search the
-	// library, so it does not shuffle — "If you search your library this
-	// way, shuffle." Taking nothing counts as a library search (shuffle
-	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
-	// as the card prints it; the engine decides whether the library was
-	// searched.
+	// The searcher is asked which zones they search before any card is
+	// shown (#4519), and the library is shuffled — "If you search your
+	// library this way, shuffle" — if and only if they chose it; see
+	// game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle as the card
+	// prints it; the answer decides whether the library was searched.
 	AlsoGraveyard bool
 	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
 	// library" (#3988, Kotose, the Silent Spider): the library owner's
@@ -1169,6 +1168,12 @@ type SearchLibrary struct {
 	// searched and shuffled; the searcher looks at the whole hand. See
 	// game.SearchLibrarySpec.AlsoGraveyardAndHand.
 	AlsoGraveyardAndHand bool
+	// AlsoHand is "search your hand and/or library" (Last Light of Durin's
+	// Day): your hand is searched beside the library in one prompt, marked
+	// by zone, and asks the zones first as AlsoGraveyard does (#4519): a
+	// search of the hand alone does not shuffle. See
+	// game.SearchLibrarySpec.AlsoHand.
+	AlsoHand bool
 	// TakeAll is "search … for ALL cards with the same name" on an
 	// AlsoGraveyardAndHand search (#4033, Eradicate and the rest of the
 	// extraction family): every graveyard match is found, a public zone
@@ -1241,6 +1246,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		FaceDown:             s.FaceDown,
 		AlsoGraveyard:        s.AlsoGraveyard,
 		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		AlsoHand:             s.AlsoHand,
 		TakeAll:              s.TakeAll,
 		EntersAttachedTo:     s.EntersAttachedTo,
 		LinkTo:               s.LinkTo,

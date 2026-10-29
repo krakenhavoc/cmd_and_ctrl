@@ -1947,6 +1947,13 @@ type Event struct {
 	// knowable. False on every other event.
 	Boast bool `json:"boast,omitempty"`
 
+	// PowerUp marks an EventActivateAbility whose ability is a power-up
+	// ability (CR 702.193a, #4527): "whenever you activate a power-up
+	// ability" (Marvel Boy, Noh-Varr). Stamped at the announcement for
+	// Exhaust's reason. False on every other event. Additive within
+	// schema v9.
+	PowerUp bool `json:"power_up,omitempty"`
+
 	// Loyalty marks an EventActivateAbility whose ability is a loyalty
 	// ability — one with a loyalty symbol in its cost (CR 606.2),
 	// printed or granted (ADR 0109 §2). "Whenever you activate a loyalty

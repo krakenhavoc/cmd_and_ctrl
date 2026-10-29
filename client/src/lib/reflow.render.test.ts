@@ -206,7 +206,7 @@ describe("reflow on an opponent's turn", () => {
     expect(slotOf("Dee").className).not.toBe(deeBefore);
   });
 
-  it("sorts an eliminated opponent last, with no chip, reading out", () => {
+  it("sorts an eliminated opponent last, with no chip, reading as a tombstone", () => {
     const view = gameView(1);
     (view.seats[2] as { eliminated?: boolean }).eliminated = true;
     mountBoard(1, view);
@@ -215,7 +215,8 @@ describe("reflow on an opponent's turn", () => {
     // With Cat out, Dee plays straight after Bob.
     expect(cards[0].querySelector(".turn-chip")?.textContent?.trim()).toBe("Next up");
     expect(cards[1].querySelector(".turn-chip")).toBeNull();
-    expect(cards[1].querySelector(".out")?.textContent).toBe("out");
+    // A tombstone stands in for the old "out" line (#4449).
+    expect(cards[1].querySelector("[data-tombstone]")?.textContent).toContain("R. I. P.");
     expect(cards[1].querySelector(".readout")).toBeNull();
   });
 

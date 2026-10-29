@@ -147,6 +147,25 @@ func (g *Game) resolvingSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) 
 	return r.card, r.item, true
 }
 
+// ResolvingAbilityTriggerForEffect is the triggering event of the
+// ABILITY resolving now, when itemID names it: the EventSagaChapter a
+// chapter ability was put on the stack for, with its chapter number in
+// Amount. It is read by a trigger on that ability's EventResolve, whose
+// item has already left StackMeta (Tom Bombadil's "whenever the final
+// chapter ability of a Saga you control resolves", #4505, CR 714.2e).
+//
+// False for a spell, for an item that is not the resolving one, and for
+// an ability with no triggering event (an activated ability, a
+// reflexive trigger). A copy of the context, so the reader cannot
+// change the item. Caller must hold g.mu.
+func (g *Game) ResolvingAbilityTriggerForEffect(itemID uuid.UUID) (TriggerContext, bool) {
+	r := g.resolving
+	if r == nil || r.hasCard || r.item == nil || r.item.ID != itemID || r.item.Trigger == nil {
+		return TriggerContext{}, false
+	}
+	return *cloneTriggerContext(r.item.Trigger), true
+}
+
 // resolvingSnapshot is the resolving slot as plain data (#4270). It
 // exists because a keyed prompt (ADR 0127: a pay-unless, a confirm, a
 // choice with a ThenKey) carries no resume frame, so a table waiting on

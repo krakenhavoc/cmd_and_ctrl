@@ -43,8 +43,11 @@ export type SoundName =
   | "tap"
   | "untap_all"
   | "damage"
-  // #4432: combat damage hitting a player; plays damage until its files land.
-  | "face_hit"
+  // #4432, #4543: combat damage hitting a player, by how much lands: light
+  // (1), medium (2-3) and heavy (4+). Each falls back to damage.
+  | "face_hit_light"
+  | "face_hit_medium"
+  | "face_hit_heavy"
   | "heal"
   | "attack"
   | "block"
@@ -53,6 +56,8 @@ export type SoundName =
   | "shuffle"
   | "win"
   | "loss"
+  // #4449: a player leaves the game (the rock-shatter and the tombstone).
+  | "player_eliminated"
   // ADR 0209 §2 interface cues. If its files fail to load, your_turn falls
   // back (SOUND_FALLBACK) and the others stay silent.
   | "your_turn"
@@ -99,11 +104,14 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   untap_all: "cards",
   shuffle: "cards",
   damage: "combat",
-  face_hit: "combat",
+  face_hit_light: "combat",
+  face_hit_medium: "combat",
+  face_hit_heavy: "combat",
   attack: "combat",
   block: "combat",
   combat_resolve: "combat",
   heal: "effects",
+  player_eliminated: "effects",
   turn_change: "interface",
   win: "interface",
   loss: "interface",
@@ -136,8 +144,12 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   tap: ["/sounds/tap-1.mp3", "/sounds/tap-2.mp3"],
   untap_all: ["/sounds/untap_all-1.mp3", "/sounds/untap_all-2.mp3"],
   damage: ["/sounds/damage-1.mp3", "/sounds/damage-2.mp3"],
-  // #4432: files not made yet (ADR 0209 §6); plays damage until they land.
-  face_hit: ["/sounds/face_hit-1.mp3", "/sounds/face_hit-2.mp3"],
+  // #4543: one take per damage tier.
+  face_hit_light: ["/sounds/face_hit_light-1.mp3"],
+  face_hit_medium: ["/sounds/face_hit_medium-1.mp3"],
+  face_hit_heavy: ["/sounds/face_hit_heavy-1.mp3"],
+  // #4449: exactly one take.
+  player_eliminated: ["/sounds/player_eliminated-1.mp3"],
   heal: ["/sounds/heal-1.mp3", "/sounds/heal-2.mp3"],
   attack: ["/sounds/attack-1.mp3", "/sounds/attack-2.mp3"],
   block: ["/sounds/block-1.mp3", "/sounds/block-2.mp3"],
@@ -171,13 +183,15 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
 
 // What a sound plays when none of its own files exist. Only the cues that
 // replace an old one name a fallback: your_turn plays turn_change if its
-// file fails to load, and face_hit plays damage. The others stay silent, because a placeholder ping on every
-// priority would be noise.
+// file fails to load, and each face_hit tier plays damage. The others stay silent, because a placeholder ping
+// on every priority would be noise.
 // A signature (#4397) falls back to the generic cue it replaces, so a card
 // with a signature never sounds quieter than one without.
 export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   your_turn: "turn_change",
-  face_hit: "damage",
+  face_hit_light: "damage",
+  face_hit_medium: "damage",
+  face_hit_heavy: "damage",
   sig_blasphemous_act: "board_wipe",
   sig_toxic_deluge: "board_wipe",
   sig_bitter_triumph: "destroy",

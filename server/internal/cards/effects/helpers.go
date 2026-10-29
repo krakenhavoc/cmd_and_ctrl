@@ -26,6 +26,17 @@ func returnLegalGraveyardTargetsToHand(ctx *Context) error {
 	return nil
 }
 
+// putPlusOneCounterOnTheLegalTarget puts a +1/+1 counter on the spell's
+// still-legal creature target (CR 608.2b: one that left in response gets
+// none). The first sentence of Slip Out the Back and Moment of Glory.
+func putPlusOneCounterOnTheLegalTarget(ctx *Context) error {
+	targets := legalTargetCards(ctx.Item, ctx.Game)
+	if len(targets) == 0 {
+		return nil
+	}
+	return AddCounter{Target: targets[0], Kind: "+1/+1", N: 1}.Apply(ctx)
+}
+
 // cardDied reports whether an EventLTB marks `source` going to the
 // graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
 // opposed to being exiled, bounced, or tucked into the library.
@@ -1568,9 +1579,16 @@ func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason strin
 // opponent still in the game, in seat order. The controller is not
 // dealt any — Pyrohemia's "each player" is the sibling that is.
 func damageEachCreatureAndEachOpponent(ctx *Context, n int) error {
+	return damageEachMatchingAndEachOpponent(ctx, Creature(), n)
+}
+
+// damageEachMatchingAndEachOpponent is damageEachCreatureAndEachOpponent
+// for a narrower creature set: "N damage to each non-Villain creature and
+// each opponent" (Avengers: Under Siege's chapter II).
+func damageEachMatchingAndEachOpponent(ctx *Context, match CardPredicate, n int) error {
 	controller := ctx.Controller()
 	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := damageEachMatching(ctx, Creature(), n); err != nil {
+		if err := damageEachMatching(ctx, match, n); err != nil {
 			return err
 		}
 		for _, p := range ctx.Game.Seats {
@@ -1628,4 +1646,19 @@ func replacementSourceController(_ *game.ReplacementEvent, _ *game.Game, src *ga
 		return uuid.Nil
 	}
 	return src.Controller
+}
+
+// PlusOneCounterOnTheTarget is "put a +1/+1 counter on target creature"
+// (or "up to one target creature"): one counter on the item's first card
+// target still legal as it resolves (CR 608.2b), nothing when none is
+// (Shortcut to Mushrooms, Bifur, Melodic Rider, The Mountain-king's
+// Return).
+func PlusOneCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+		}
+	}
+	return nil
 }

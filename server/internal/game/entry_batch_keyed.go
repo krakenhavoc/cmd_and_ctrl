@@ -145,6 +145,7 @@ type zoneEntryOptionsSnapshot struct {
 	EntersWithCounters       map[string]int        `json:"entersWithCounters,omitempty"`
 	EntersWithCountersIfType []EntryCountersIfType `json:"entersWithCountersIfType,omitempty"`
 	AttachedTo               *TargetRef            `json:"attachedTo,omitempty"`
+	EntersAs                 *EntersAs             `json:"entersAs,omitempty"`
 }
 
 func copyFaceDownListing(l *FaceDownListing) *FaceDownListing {
@@ -160,6 +161,7 @@ func snapshotZoneEntryOptions(o ZoneEntryOptions) zoneEntryOptionsSnapshot {
 		Attacking: uuidPtrOrNil(o.Attacking), FaceDown: o.FaceDown, FaceDownListed: copyFaceDownListing(o.FaceDownListed),
 		EntersWithCounters:       copyCounterMap(o.EntersWithCounters),
 		EntersWithCountersIfType: append([]EntryCountersIfType(nil), o.EntersWithCountersIfType...),
+		EntersAs:                 copyEntersAs(o.EntersAs),
 	}
 	if o.AttachedTo != (TargetRef{}) {
 		h := o.AttachedTo
@@ -174,6 +176,7 @@ func restoreZoneEntryOptions(s zoneEntryOptionsSnapshot) ZoneEntryOptions {
 		Attacking: uuidOrNil(s.Attacking), FaceDown: s.FaceDown, FaceDownListed: copyFaceDownListing(s.FaceDownListed),
 		EntersWithCounters:       copyCounterMap(s.EntersWithCounters),
 		EntersWithCountersIfType: append([]EntryCountersIfType(nil), s.EntersWithCountersIfType...),
+		EntersAs:                 copyEntersAs(s.EntersAs),
 	}
 	if s.AttachedTo != nil {
 		out.AttachedTo = *s.AttachedTo

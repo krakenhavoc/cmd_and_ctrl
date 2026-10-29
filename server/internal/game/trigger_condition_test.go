@@ -91,6 +91,9 @@ func TestAMonotoneConditionReadsNothingOnceItHolds(t *testing.T) {
 		{"life lost", cond(FootprintCondLifeLost, 1), func(f condFixture) {
 			f.g.TurnTally.Players = map[uuid.UUID]PlayerTurnTally{f.me.ID: {LifeLost: 1}}
 		}},
+		{"cards drawn", cond(FootprintCondCardsDrawn, 2), func(f condFixture) {
+			f.g.TurnTally.Players = map[uuid.UUID]PlayerTurnTally{f.me.ID: {CardsDrawn: 2}}
+		}},
 		{"a creature died", cond(FootprintCondCreatureDied, 0), func(f condFixture) {
 			f.g.TurnTally.Players = map[uuid.UUID]PlayerTurnTally{f.me.ID: {CreaturesDied: 1}}
 		}},

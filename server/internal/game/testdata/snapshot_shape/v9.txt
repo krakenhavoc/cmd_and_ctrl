@@ -1015,6 +1015,7 @@ events[].old_zone	string
 events[].paperDeclared	bool
 events[].paperPaid	string
 events[].played	bool
+events[].power_up	bool
 events[].public_names	map:array
 events[].public_names{}	string
 events[].resolved_stack_item_id	custom(uuid.UUID)
@@ -1756,6 +1757,7 @@ followUpParks[].then.asked.trigger.Event.old_zone	string
 followUpParks[].then.asked.trigger.Event.paperDeclared	bool
 followUpParks[].then.asked.trigger.Event.paperPaid	string
 followUpParks[].then.asked.trigger.Event.played	bool
+followUpParks[].then.asked.trigger.Event.power_up	bool
 followUpParks[].then.asked.trigger.Event.public_names	map:array
 followUpParks[].then.asked.trigger.Event.public_names{}	string
 followUpParks[].then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -1905,6 +1907,7 @@ followUpParks[].then.permission.duration.SourceEpoch	number:int
 followUpParks[].then.permission.energyEqualToManaValue	bool
 followUpParks[].then.permission.entersTapped	bool
 followUpParks[].then.permission.exileInsteadOfGraveyard	bool
+followUpParks[].then.permission.exileInsteadOnlyInstantOrSorcery	bool
 followUpParks[].then.permission.exileOnResolution	bool
 followUpParks[].then.permission.exileOtherFromGraveyard	number:int
 followUpParks[].then.permission.faces	array
@@ -2326,6 +2329,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.counterTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -2475,6 +2479,7 @@ frozenEntries[].event.counterTail.then.permission.duration.SourceEpoch	number:in
 frozenEntries[].event.counterTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.counterTail.then.permission.entersTapped	bool
 frozenEntries[].event.counterTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.counterTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.counterTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.counterTail.then.permission.faces	array
@@ -2876,6 +2881,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.played	bool
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -3025,6 +3031,7 @@ frozenEntries[].event.damageTail.each.each.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.damageTail.each.each.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.each.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.each.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.each.each.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.each.each.permission.faces	array
@@ -3417,6 +3424,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.played	bool
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -3566,6 +3574,7 @@ frozenEntries[].event.damageTail.each.then.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.damageTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.then.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.each.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.each.then.permission.faces	array
@@ -4098,6 +4107,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.damageTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -4247,6 +4257,7 @@ frozenEntries[].event.damageTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.damageTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.damageTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.damageTail.then.permission.faces	array
@@ -4554,6 +4565,14 @@ frozenEntries[].event.drawThen.key	string
 frozenEntries[].event.drawThen.n	number:int
 frozenEntries[].event.drawThen.player	custom(uuid.UUID)
 frozenEntries[].event.drawThen.source	custom(uuid.UUID)
+frozenEntries[].event.entersAs	object
+frozenEntries[].event.entersAs.grants	array
+frozenEntries[].event.entersAs.grants[]	string
+frozenEntries[].event.entersAs.label	string
+frozenEntries[].event.entersAs.subtypes	array
+frozenEntries[].event.entersAs.subtypes[]	string
+frozenEntries[].event.entersAs.types	array
+frozenEntries[].event.entersAs.types[]	string
 frozenEntries[].event.entersAsAura	bool
 frozenEntries[].event.entersAsCopyOf	object
 frozenEntries[].event.entersAsCopyOf.ActiveFace	number:int
@@ -4737,6 +4756,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.old_
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.played	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -4886,6 +4906,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.Sour
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.faces	array
@@ -5210,6 +5231,14 @@ frozenEntries[].event.entryTail.batch.opts.attachedTo.epoch	number:int
 frozenEntries[].event.entryTail.batch.opts.attachedTo.splice	number:int
 frozenEntries[].event.entryTail.batch.opts.attacking	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.opts.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.opts.entersAs	object
+frozenEntries[].event.entryTail.batch.opts.entersAs.grants	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.grants[]	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.label	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes[]	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.types	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.types[]	string
 frozenEntries[].event.entryTail.batch.opts.entersWithCounters	map:string
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType	array
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[]	object
@@ -5330,6 +5359,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.played	bool
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -5479,6 +5509,7 @@ frozenEntries[].event.entryTail.batch.then.permission.duration.SourceEpoch	numbe
 frozenEntries[].event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.batch.then.permission.faces	array
@@ -5871,6 +5902,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.played	bool
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -6020,6 +6052,7 @@ frozenEntries[].event.entryTail.keyed.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.entryTail.keyed.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.entersTapped	bool
 frozenEntries[].event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.keyed.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.keyed.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.keyed.permission.faces	array
@@ -6314,6 +6347,7 @@ frozenEntries[].event.entryTail.search.rest[]	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec	object
 frozenEntries[].event.entryTail.search.spec.alsoGraveyard	bool
 frozenEntries[].event.entryTail.search.spec.alsoGraveyardAndHand	bool
+frozenEntries[].event.entryTail.search.spec.alsoHand	bool
 frozenEntries[].event.entryTail.search.spec.depth	number:int
 frozenEntries[].event.entryTail.search.spec.dest	string
 frozenEntries[].event.entryTail.search.spec.entersAttachedTo	object
@@ -6443,6 +6477,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.old_zon
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.played	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -6592,6 +6627,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.SourceE
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.faces	array
@@ -7004,6 +7040,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.played	bool
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -7153,6 +7190,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.duration.SourceEpoch	numb
 frozenEntries[].event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.tokens.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileOnResolution	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.faces	array
@@ -7951,6 +7989,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -8100,6 +8139,7 @@ frozenEntries[].event.keywordActionTail.then.permission.duration.SourceEpoch	num
 frozenEntries[].event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.keywordActionTail.then.permission.entersTapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.keywordActionTail.then.permission.faces	array
@@ -8509,6 +8549,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.played	bool
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -8658,6 +8699,7 @@ frozenEntries[].event.lifeTail.each.then.permission.duration.SourceEpoch	number:
 frozenEntries[].event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileOnResolution	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.lifeTail.each.then.permission.faces	array
@@ -9053,6 +9095,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -9202,6 +9245,7 @@ frozenEntries[].event.lifeTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.lifeTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.lifeTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.lifeTail.then.permission.faces	array
@@ -10364,6 +10408,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.played	bool
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -10513,6 +10558,7 @@ frozenEntries[].event.millTail.run.then.permission.duration.SourceEpoch	number:i
 frozenEntries[].event.millTail.run.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.run.then.permission.exileOnResolution	bool
 frozenEntries[].event.millTail.run.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.millTail.run.then.permission.faces	array
@@ -10903,6 +10949,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.millTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.millTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -11052,6 +11099,7 @@ frozenEntries[].event.millTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.millTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.millTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.millTail.then.permission.faces	array
@@ -11342,6 +11390,36 @@ frozenEntries[].event.newZone	string
 frozenEntries[].event.newZoneOwner	custom(uuid.UUID)
 frozenEntries[].event.oldZone	string
 frozenEntries[].event.putByEntering	bool
+frozenEntries[].event.reflexiveAfterMove	array
+frozenEntries[].event.reflexiveAfterMove[]	object
+frozenEntries[].event.reflexiveAfterMove[].body	string
+frozenEntries[].event.reflexiveAfterMove[].controller	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].label	string
+frozenEntries[].event.reflexiveAfterMove[].params	object
+frozenEntries[].event.reflexiveAfterMove[].params.ability	object
+frozenEntries[].event.reflexiveAfterMove[].params.ability.key	string
+frozenEntries[].event.reflexiveAfterMove[].params.ability.name	string
+frozenEntries[].event.reflexiveAfterMove[].params.ability.ref	string
+frozenEntries[].event.reflexiveAfterMove[].params.ability.slot	string
+frozenEntries[].event.reflexiveAfterMove[].params.amount	number:int
+frozenEntries[].event.reflexiveAfterMove[].params.cost	string
+frozenEntries[].event.reflexiveAfterMove[].params.filter	object
+frozenEntries[].event.reflexiveAfterMove[].params.filter.types	array
+frozenEntries[].event.reflexiveAfterMove[].params.filter.types[]	string
+frozenEntries[].event.reflexiveAfterMove[].params.name	string
+frozenEntries[].event.reflexiveAfterMove[].params.object	object
+frozenEntries[].event.reflexiveAfterMove[].params.object.epoch	number:int
+frozenEntries[].event.reflexiveAfterMove[].params.object.id	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].params.objects	array
+frozenEntries[].event.reflexiveAfterMove[].params.objects[]	object
+frozenEntries[].event.reflexiveAfterMove[].params.objects[].epoch	number:int
+frozenEntries[].event.reflexiveAfterMove[].params.objects[].id	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].params.player	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].source	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].sourceObject	object
+frozenEntries[].event.reflexiveAfterMove[].sourceObject.epoch	number:int
+frozenEntries[].event.reflexiveAfterMove[].sourceObject.id	custom(uuid.UUID)
+frozenEntries[].event.reflexiveAfterMove[].zone	string
 frozenEntries[].event.shuffleDestinationLibrary	bool
 frozenEntries[].event.source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki	object
@@ -11727,6 +11805,7 @@ frozenEntries[].event.stackItem.trigger.Event.old_zone	string
 frozenEntries[].event.stackItem.trigger.Event.paperDeclared	bool
 frozenEntries[].event.stackItem.trigger.Event.paperPaid	string
 frozenEntries[].event.stackItem.trigger.Event.played	bool
+frozenEntries[].event.stackItem.trigger.Event.power_up	bool
 frozenEntries[].event.stackItem.trigger.Event.public_names	map:array
 frozenEntries[].event.stackItem.trigger.Event.public_names{}	string
 frozenEntries[].event.stackItem.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -12285,6 +12364,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.played	bool
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -12434,6 +12514,7 @@ frozenEntries[].event.tokenTail.then.permission.duration.SourceEpoch	number:int
 frozenEntries[].event.tokenTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.entersTapped	bool
 frozenEntries[].event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.tokenTail.then.permission.exileOnResolution	bool
 frozenEntries[].event.tokenTail.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.tokenTail.then.permission.faces	array
@@ -13600,6 +13681,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.played	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -13749,6 +13831,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEp
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.faces	array
@@ -14043,6 +14126,7 @@ frozenEntries[].event.zoneRoute.batchLegs.rest[]	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search	object
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.alsoHand	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.depth	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.dest	string
 frozenEntries[].event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -14172,6 +14256,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ol
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.played	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -14321,6 +14406,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.So
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.faces	array
@@ -14711,6 +14797,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	stri
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.played	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -14860,6 +14947,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.SourceEpoch	n
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.faces	array
@@ -15270,6 +15358,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	st
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.played	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -15419,6 +15508,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.SourceEpoch
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.faces	array
@@ -15894,6 +15984,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	s
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperPaid	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.played	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -16043,6 +16134,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.SourceEpoc
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileOtherFromGraveyard	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.faces	array
@@ -17867,6 +17959,7 @@ lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.paperDeclared	bool
 lastKnownStack[].item.trigger.Event.paperPaid	string
 lastKnownStack[].item.trigger.Event.played	bool
+lastKnownStack[].item.trigger.Event.power_up	bool
 lastKnownStack[].item.trigger.Event.public_names	map:array
 lastKnownStack[].item.trigger.Event.public_names{}	string
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -18328,6 +18421,7 @@ pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.paperDeclared	bool
 pausedModeWalk.item.trigger.Event.paperPaid	string
 pausedModeWalk.item.trigger.Event.played	bool
+pausedModeWalk.item.trigger.Event.power_up	bool
 pausedModeWalk.item.trigger.Event.public_names	map:array
 pausedModeWalk.item.trigger.Event.public_names{}	string
 pausedModeWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -18640,6 +18734,7 @@ pausedResolutionTail.item.trigger.Event.old_zone	string
 pausedResolutionTail.item.trigger.Event.paperDeclared	bool
 pausedResolutionTail.item.trigger.Event.paperPaid	string
 pausedResolutionTail.item.trigger.Event.played	bool
+pausedResolutionTail.item.trigger.Event.power_up	bool
 pausedResolutionTail.item.trigger.Event.public_names	map:array
 pausedResolutionTail.item.trigger.Event.public_names{}	string
 pausedResolutionTail.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -18946,6 +19041,7 @@ pausedStepWalk.item.trigger.Event.old_zone	string
 pausedStepWalk.item.trigger.Event.paperDeclared	bool
 pausedStepWalk.item.trigger.Event.paperPaid	string
 pausedStepWalk.item.trigger.Event.played	bool
+pausedStepWalk.item.trigger.Event.power_up	bool
 pausedStepWalk.item.trigger.Event.public_names	map:array
 pausedStepWalk.item.trigger.Event.public_names{}	string
 pausedStepWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -19123,6 +19219,7 @@ pendingChoices[].asked.trigger.Event.old_zone	string
 pendingChoices[].asked.trigger.Event.paperDeclared	bool
 pendingChoices[].asked.trigger.Event.paperPaid	string
 pendingChoices[].asked.trigger.Event.played	bool
+pendingChoices[].asked.trigger.Event.power_up	bool
 pendingChoices[].asked.trigger.Event.public_names	map:array
 pendingChoices[].asked.trigger.Event.public_names{}	string
 pendingChoices[].asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -20230,6 +20327,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.old_zone	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.paperPaid	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.played	bool
+pendingChoices[].attackSplit.tail.asked.trigger.Event.power_up	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.public_names	map:array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.public_names{}	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -20379,6 +20477,7 @@ pendingChoices[].attackSplit.tail.permission.duration.SourceEpoch	number:int
 pendingChoices[].attackSplit.tail.permission.energyEqualToManaValue	bool
 pendingChoices[].attackSplit.tail.permission.entersTapped	bool
 pendingChoices[].attackSplit.tail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].attackSplit.tail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].attackSplit.tail.permission.exileOnResolution	bool
 pendingChoices[].attackSplit.tail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].attackSplit.tail.permission.faces	array
@@ -21334,6 +21433,7 @@ pendingChoices[].copyWalk.item.trigger.Event.old_zone	string
 pendingChoices[].copyWalk.item.trigger.Event.paperDeclared	bool
 pendingChoices[].copyWalk.item.trigger.Event.paperPaid	string
 pendingChoices[].copyWalk.item.trigger.Event.played	bool
+pendingChoices[].copyWalk.item.trigger.Event.power_up	bool
 pendingChoices[].copyWalk.item.trigger.Event.public_names	map:array
 pendingChoices[].copyWalk.item.trigger.Event.public_names{}	string
 pendingChoices[].copyWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -22087,6 +22187,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.old_zone	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.played	bool
+pendingChoices[].diceRoll.then.asked.trigger.Event.power_up	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].diceRoll.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -22236,6 +22337,7 @@ pendingChoices[].diceRoll.then.permission.duration.SourceEpoch	number:int
 pendingChoices[].diceRoll.then.permission.energyEqualToManaValue	bool
 pendingChoices[].diceRoll.then.permission.entersTapped	bool
 pendingChoices[].diceRoll.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].diceRoll.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].diceRoll.then.permission.exileOnResolution	bool
 pendingChoices[].diceRoll.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].diceRoll.then.permission.faces	array
@@ -22943,6 +23045,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.paperPaid	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.played	bool
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.public_names	map:array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.public_names{}	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -23092,6 +23195,7 @@ pendingChoices[].divideShield.walk.each.permission.duration.SourceEpoch	number:i
 pendingChoices[].divideShield.walk.each.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.each.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].divideShield.walk.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.each.permission.exileOnResolution	bool
 pendingChoices[].divideShield.walk.each.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].divideShield.walk.each.permission.faces	array
@@ -23484,6 +23588,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.played	bool
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -23633,6 +23738,7 @@ pendingChoices[].divideShield.walk.then.permission.duration.SourceEpoch	number:i
 pendingChoices[].divideShield.walk.then.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].divideShield.walk.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.then.permission.exileOnResolution	bool
 pendingChoices[].divideShield.walk.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].divideShield.walk.then.permission.faces	array
@@ -24031,6 +24137,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.old_zone	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.played	bool
+pendingChoices[].libraryOrder.then.asked.trigger.Event.power_up	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -24180,6 +24287,7 @@ pendingChoices[].libraryOrder.then.permission.duration.SourceEpoch	number:int
 pendingChoices[].libraryOrder.then.permission.energyEqualToManaValue	bool
 pendingChoices[].libraryOrder.then.permission.entersTapped	bool
 pendingChoices[].libraryOrder.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].libraryOrder.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].libraryOrder.then.permission.exileOnResolution	bool
 pendingChoices[].libraryOrder.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].libraryOrder.then.permission.faces	array
@@ -24628,6 +24736,7 @@ pendingChoices[].nameThen.asked.trigger.Event.old_zone	string
 pendingChoices[].nameThen.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].nameThen.asked.trigger.Event.paperPaid	string
 pendingChoices[].nameThen.asked.trigger.Event.played	bool
+pendingChoices[].nameThen.asked.trigger.Event.power_up	bool
 pendingChoices[].nameThen.asked.trigger.Event.public_names	map:array
 pendingChoices[].nameThen.asked.trigger.Event.public_names{}	string
 pendingChoices[].nameThen.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -24777,6 +24886,7 @@ pendingChoices[].nameThen.permission.duration.SourceEpoch	number:int
 pendingChoices[].nameThen.permission.energyEqualToManaValue	bool
 pendingChoices[].nameThen.permission.entersTapped	bool
 pendingChoices[].nameThen.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].nameThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].nameThen.permission.exileOnResolution	bool
 pendingChoices[].nameThen.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].nameThen.permission.faces	array
@@ -25175,6 +25285,7 @@ pendingChoices[].ordered.asked.trigger.Event.old_zone	string
 pendingChoices[].ordered.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].ordered.asked.trigger.Event.paperPaid	string
 pendingChoices[].ordered.asked.trigger.Event.played	bool
+pendingChoices[].ordered.asked.trigger.Event.power_up	bool
 pendingChoices[].ordered.asked.trigger.Event.public_names	map:array
 pendingChoices[].ordered.asked.trigger.Event.public_names{}	string
 pendingChoices[].ordered.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -25607,6 +25718,7 @@ pendingChoices[].pickTail.asked.trigger.Event.old_zone	string
 pendingChoices[].pickTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].pickTail.asked.trigger.Event.paperPaid	string
 pendingChoices[].pickTail.asked.trigger.Event.played	bool
+pendingChoices[].pickTail.asked.trigger.Event.power_up	bool
 pendingChoices[].pickTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].pickTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].pickTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -25756,6 +25868,7 @@ pendingChoices[].pickTail.permission.duration.SourceEpoch	number:int
 pendingChoices[].pickTail.permission.energyEqualToManaValue	bool
 pendingChoices[].pickTail.permission.entersTapped	bool
 pendingChoices[].pickTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].pickTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].pickTail.permission.exileOnResolution	bool
 pendingChoices[].pickTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].pickTail.permission.faces	array
@@ -26190,6 +26303,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ol
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -26339,6 +26453,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.duration.So
 pendingChoices[].replacementResume.event.counterTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.faces	array
@@ -26740,6 +26855,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -26889,6 +27005,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.faces	array
@@ -27281,6 +27398,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -27430,6 +27548,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.faces	array
@@ -27962,6 +28081,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.old
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -28111,6 +28231,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.duration.Sou
 pendingChoices[].replacementResume.event.damageTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.faces	array
@@ -28418,6 +28539,14 @@ pendingChoices[].replacementResume.event.drawThen.key	string
 pendingChoices[].replacementResume.event.drawThen.n	number:int
 pendingChoices[].replacementResume.event.drawThen.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.drawThen.source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entersAs	object
+pendingChoices[].replacementResume.event.entersAs.grants	array
+pendingChoices[].replacementResume.event.entersAs.grants[]	string
+pendingChoices[].replacementResume.event.entersAs.label	string
+pendingChoices[].replacementResume.event.entersAs.subtypes	array
+pendingChoices[].replacementResume.event.entersAs.subtypes[]	string
+pendingChoices[].replacementResume.event.entersAs.types	array
+pendingChoices[].replacementResume.event.entersAs.types[]	string
 pendingChoices[].replacementResume.event.entersAsAura	bool
 pendingChoices[].replacementResume.event.entersAsCopyOf	object
 pendingChoices[].replacementResume.event.entersAsCopyOf.ActiveFace	number:int
@@ -28601,6 +28730,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -28750,6 +28880,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.faces	array
@@ -29074,6 +29205,14 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.attachedTo.epoch	n
 pendingChoices[].replacementResume.event.entryTail.batch.opts.attachedTo.splice	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.opts.attacking	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.opts.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs	object
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.label	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCounters	map:string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[]	object
@@ -29194,6 +29333,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -29343,6 +29483,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duratio
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.faces	array
@@ -29735,6 +29876,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.old
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -29884,6 +30026,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.Sou
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.faces	array
@@ -30178,6 +30321,7 @@ pendingChoices[].replacementResume.event.entryTail.search.rest[]	custom(uuid.UUI
 pendingChoices[].replacementResume.event.entryTail.search.spec	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyardAndHand	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.alsoHand	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.depth	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.dest	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.entersAttachedTo	object
@@ -30307,6 +30451,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -30456,6 +30601,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.faces	array
@@ -30868,6 +31014,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -31017,6 +31164,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.durati
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.faces	array
@@ -31815,6 +31963,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -31964,6 +32113,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.durat
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.faces	array
@@ -32373,6 +32523,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -32522,6 +32673,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.faces	array
@@ -32917,6 +33069,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.old_z
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -33066,6 +33219,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.Sourc
 pendingChoices[].replacementResume.event.lifeTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.faces	array
@@ -34228,6 +34382,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.o
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -34377,6 +34532,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.S
 pendingChoices[].replacementResume.event.millTail.run.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.faces	array
@@ -34767,6 +34923,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.old_z
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -34916,6 +35073,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.duration.Sourc
 pendingChoices[].replacementResume.event.millTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.faces	array
@@ -35206,6 +35364,36 @@ pendingChoices[].replacementResume.event.newZone	string
 pendingChoices[].replacementResume.event.newZoneOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.oldZone	string
 pendingChoices[].replacementResume.event.putByEntering	bool
+pendingChoices[].replacementResume.event.reflexiveAfterMove	array
+pendingChoices[].replacementResume.event.reflexiveAfterMove[]	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].body	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].label	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability.key	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability.name	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability.ref	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability.slot	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.amount	number:int
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.cost	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter.types	array
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter.types[]	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.name	string
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.object	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.object.epoch	number:int
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.object.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.objects	array
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.objects[]	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.objects[].epoch	number:int
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.objects[].id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.player	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].sourceObject	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].sourceObject.epoch	number:int
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].sourceObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].zone	string
 pendingChoices[].replacementResume.event.shuffleDestinationLibrary	bool
 pendingChoices[].replacementResume.event.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki	object
@@ -35591,6 +35779,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -36149,6 +36338,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.old_
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -36298,6 +36488,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.Sour
 pendingChoices[].replacementResume.event.tokenTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.faces	array
@@ -37464,6 +37655,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -37613,6 +37805,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.faces	array
@@ -37907,6 +38100,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.rest[]	custom(uuid.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoHand	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.depth	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.dest	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -38036,6 +38230,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -38185,6 +38380,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.faces	array
@@ -38575,6 +38771,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -38724,6 +38921,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.dur
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.faces	array
@@ -39134,6 +39332,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -39283,6 +39482,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.d
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.faces	array
@@ -39758,6 +39958,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperPaid	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.played	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -39907,6 +40108,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.faces	array
@@ -40711,6 +40913,7 @@ pendingChoices[].scryThen.asked.trigger.Event.old_zone	string
 pendingChoices[].scryThen.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].scryThen.asked.trigger.Event.paperPaid	string
 pendingChoices[].scryThen.asked.trigger.Event.played	bool
+pendingChoices[].scryThen.asked.trigger.Event.power_up	bool
 pendingChoices[].scryThen.asked.trigger.Event.public_names	map:array
 pendingChoices[].scryThen.asked.trigger.Event.public_names{}	string
 pendingChoices[].scryThen.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -40860,6 +41063,7 @@ pendingChoices[].scryThen.permission.duration.SourceEpoch	number:int
 pendingChoices[].scryThen.permission.energyEqualToManaValue	bool
 pendingChoices[].scryThen.permission.entersTapped	bool
 pendingChoices[].scryThen.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].scryThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].scryThen.permission.exileOnResolution	bool
 pendingChoices[].scryThen.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].scryThen.permission.faces	array
@@ -41167,6 +41371,7 @@ pendingChoices[].searchPrompt.ruleWords[].to	string
 pendingChoices[].searchPrompt.spec	object
 pendingChoices[].searchPrompt.spec.alsoGraveyard	bool
 pendingChoices[].searchPrompt.spec.alsoGraveyardAndHand	bool
+pendingChoices[].searchPrompt.spec.alsoHand	bool
 pendingChoices[].searchPrompt.spec.depth	number:int
 pendingChoices[].searchPrompt.spec.dest	string
 pendingChoices[].searchPrompt.spec.entersAttachedTo	object
@@ -41296,6 +41501,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.paperPaid	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.played	bool
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -41445,6 +41651,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.duration.SourceEpoch	numb
 pendingChoices[].searchPrompt.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOfGraveyard	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileOnResolution	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileOtherFromGraveyard	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.faces	array
@@ -41734,6 +41941,7 @@ pendingChoices[].searchPrompt.spec.toTop	bool
 pendingChoices[].searchPrompt.spec.unbounded	bool
 pendingChoices[].searchPrompt.spec.upTo	bool
 pendingChoices[].searchPrompt.undecided	bool
+pendingChoices[].searchPrompt.zones	string
 pendingChoices[].secondName	bool
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].sourceShield	object
@@ -42536,6 +42744,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.old_zone	string
 pendingChoices[].targetWalk.frame.trigger.Event.paperDeclared	bool
 pendingChoices[].targetWalk.frame.trigger.Event.paperPaid	string
 pendingChoices[].targetWalk.frame.trigger.Event.played	bool
+pendingChoices[].targetWalk.frame.trigger.Event.power_up	bool
 pendingChoices[].targetWalk.frame.trigger.Event.public_names	map:array
 pendingChoices[].targetWalk.frame.trigger.Event.public_names{}	string
 pendingChoices[].targetWalk.frame.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -43178,6 +43387,7 @@ pendingChoices[].triggerFrame.trigger.Event.old_zone	string
 pendingChoices[].triggerFrame.trigger.Event.paperDeclared	bool
 pendingChoices[].triggerFrame.trigger.Event.paperPaid	string
 pendingChoices[].triggerFrame.trigger.Event.played	bool
+pendingChoices[].triggerFrame.trigger.Event.power_up	bool
 pendingChoices[].triggerFrame.trigger.Event.public_names	map:array
 pendingChoices[].triggerFrame.trigger.Event.public_names{}	string
 pendingChoices[].triggerFrame.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -43492,6 +43702,7 @@ pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.paperDeclared	bool
 pendingTriggers[].trigger.Event.paperPaid	string
 pendingTriggers[].trigger.Event.played	bool
+pendingTriggers[].trigger.Event.power_up	bool
 pendingTriggers[].trigger.Event.public_names	map:array
 pendingTriggers[].trigger.Event.public_names{}	string
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -44072,6 +44283,7 @@ promptRuns[].asked.trigger.Event.old_zone	string
 promptRuns[].asked.trigger.Event.paperDeclared	bool
 promptRuns[].asked.trigger.Event.paperPaid	string
 promptRuns[].asked.trigger.Event.played	bool
+promptRuns[].asked.trigger.Event.power_up	bool
 promptRuns[].asked.trigger.Event.public_names	map:array
 promptRuns[].asked.trigger.Event.public_names{}	string
 promptRuns[].asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -44785,6 +44997,7 @@ resolving.item.trigger.Event.old_zone	string
 resolving.item.trigger.Event.paperDeclared	bool
 resolving.item.trigger.Event.paperPaid	string
 resolving.item.trigger.Event.played	bool
+resolving.item.trigger.Event.power_up	bool
 resolving.item.trigger.Event.public_names	map:array
 resolving.item.trigger.Event.public_names{}	string
 resolving.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -45512,6 +45725,7 @@ seats[].castPermissions[].duration.SourceEpoch	number:int
 seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].entersTapped	bool
 seats[].castPermissions[].exileInsteadOfGraveyard	bool
+seats[].castPermissions[].exileInsteadOnlyInstantOrSorcery	bool
 seats[].castPermissions[].exileOnResolution	bool
 seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
@@ -46746,6 +46960,7 @@ seats[].emblems.cards[].variableToughness	bool
 seats[].emblems.kind	string
 seats[].emblems.owner	custom(uuid.UUID)
 seats[].endStepTurn	number:int
+seats[].enduringStory	bool
 seats[].energy	number:int
 seats[].graveyard	object
 seats[].graveyard.cards	array
@@ -48910,6 +49125,7 @@ seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.filter.withCounter	string
+seats[].statics[].timing.firstCreatureSpellThisTurn	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
@@ -49623,6 +49839,7 @@ stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.paperDeclared	bool
 stackMeta[].trigger.Event.paperPaid	string
 stackMeta[].trigger.Event.played	bool
+stackMeta[].trigger.Event.power_up	bool
 stackMeta[].trigger.Event.public_names	map:array
 stackMeta[].trigger.Event.public_names{}	string
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
@@ -49806,6 +50023,7 @@ turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.energyPaidOrLost	number:int
+turnTally.players{}.equipActivations	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.landsToGraveyard	number:int
 turnTally.players{}.lifeGained	number:int
@@ -49816,6 +50034,7 @@ turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
+turnTally.players{}.powerUpActivations	number:int
 turnTally.players{}.speedTriggered	bool
 turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int

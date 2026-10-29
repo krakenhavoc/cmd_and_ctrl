@@ -51,6 +51,7 @@
   import { heldPlayableCount } from "../../exileGrants";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import CommandStrip from "./CommandStrip.svelte";
+  import Tombstone from "./Tombstone.svelte";
   import CompanionSlot from "./CompanionSlot.svelte";
   import { seatColor } from "../../colors";
   import { L } from "../../labels";
@@ -358,7 +359,7 @@
       {@render identity()}
     </div>
     {#if summary.eliminated}
-      <p class="out">out</p>
+      <Tombstone {seat} {view} compact />
     {:else}
       <div class="readout" data-dice-avoid>
         <!-- Each tile is a number over its label. The spoken form is the
@@ -457,7 +458,7 @@
       <!-- An eliminated seat keeps its identity and life and reports
          nothing else. A read-out full of zeroes reads as a bug rather
          than as a player who is out. -->
-      <p class="out">out</p>
+      <Tombstone {seat} {view} compact />
     {:else}
       <!-- Mana first. It is the "can they respond?" read, and it is the
          line this whole design exists to surface: today a player gets
@@ -1047,13 +1048,5 @@
   .quiet {
     color: var(--fg-dim);
     font-size: 11px;
-  }
-  .out {
-    margin: 0;
-    color: var(--fg-dim);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-weight: 600;
   }
 </style>

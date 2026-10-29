@@ -3594,3 +3594,154 @@ wire `mana_abilities[i].mill_cost`, are withdrawn:
   The client reads it nowhere else, so an old or new client tolerates its absence. `docs/protocol.md` is updated.
 - **Snapshot impact:** none. A restore point stores a card's mana-ability count, never the shape
   (`cardSnapshot.ManaAbilityCount`; the shapes are rebuilt from the catalog), so no persisted field is removed.
+
+## Amendment 2026-10-29 ([#4475](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4475)): "you may pay {0} rather than pay the equip cost", an alternative cost as a derived row
+
+Kíli the Resourceful prints "As long as you have an enduring story, you may pay {0} rather than pay the
+equip cost of the first equip ability you activate each turn." That is a CR 118.9 alternative cost on an
+activated ability. The S22 `AlternativeCost` machinery is a cast-time clause that only spells reach, and
+Heart of Kiran's "rather than pay its crew cost" was a second row on the card itself (#625). Kíli's
+alternative applies to other permanents' equip abilities, so it can be neither of those.
+
+**The choice is a derived row.** While the alternative is open to a player, each equip ability of a
+permanent they may activate it on has a *twin* row (`game/equip_cost_alternative.go`). The twin is the
+mirrored row with the alternative as its whole cost (CR 118.9: it replaces the cost, non-mana parts too)
+and a label that says so. Everything else is the mirrored row's: its target clause, timing, gates and
+origin. So "Equip legendary creature {3}" paid with {0} still equips only a legendary creature, and the
+player who wants to pay the printed cost still can. Increases and reductions still apply to the twin's
+cost (CR 601.2f through 602.2b), because its mana component is "{0}", not empty.
+
+**Addressing.** A twin's index is `AltEquipIndexBase` (1 << 20) plus the mirrored row's index, and its ref
+is `alt-equip:` plus the mirrored row's ref. Every reader that already sends a row's index and ref back
+(the client's menus, the legal enumerator, a bot's move) therefore sends a twin's back unchanged, and
+`activateCatalogAbilityLocked` decodes it before the ref check. A twin index with a plain ref, or a
+plain index with a twin ref, is refused as stale. A twin named while no alternative is open is refused
+with `ErrAlternativeCostUnavailable`, before anything is paid. A parked announcement (the CR 903.9 and
+opponent's-choice resumes) keeps the twin's index and ref, so the resume decodes the same twin. The stack
+item names the mirrored row (ADR 0041 P9). How the cost was paid is not part of the item.
+
+**"The first equip ability you activate each turn"** is `PlayerTurnTally.EquipActivations`, bumped at the
+announce of every equip activation, either row, whether or not it resolves. It is additive within schema
+9 and is emptied with the rest of the turn tally. Activating the printed row first spends the
+alternative for the turn.
+
+**Declaring it.** `effects.Spec.EquipCostAlternatives` / `game.CardDef.EquipCostAlternatives`, read
+through `CatalogEquipCostAlternatives` from the battlefield, as attack taxes are. Each entry has a
+`Label`, a `Cost`, `FirstEachTurn` and a `Condition` on its controller. Nothing is stored on the Game, so
+the closure census does not move.
+
+**Readers.** The view (`viewOfActivatedAbilities`) and the enumerator (`abilityMovesForSource`) both ask
+`Game.EquipTwinsLocked` and append the twins after the permanent's own rows. The client needs no change:
+a twin is an ordinary row with its own index, ref, label and `mana_cost`.
+
+**Back-outs.** Making `EquipCostAlternativeLocked` ignore `FirstEachTurn`, or dropping the
+`EquipActivations` bump, fails `TestHobKiliPaysZeroForTheFirstEquipEachTurn` and
+`TestHobKiliAPaidEquipFirstSpendsTheAlternative`; building the activated twin from another equip row than
+the one it mirrors fails `TestHobKiliTwinKeepsTheRowsTargets`; dropping the twins from the enumerator fails
+`TestHobKiliTwinIsOfferedToTheEnumerator`.
+
+## Amendment 2026-10-29 ([#4527](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4527)): power-up, a coloured reduction by the source's mana cost, and a "{0} rather than" alternative
+
+### Context
+
+Marvel Super Heroes and its Commander deck print power-up on about 37 cards (#4455). CR 702.193 reads:
+
+> 702.193a Power-up is a keyword that adds additional rules to the activated ability that follows it. "Power-up —
+> [Cost]: [Effect]" means "[Cost]: [Effect]. If this permanent entered this turn, this ability's cost is reduced by
+> this permanent's mana cost. Activate this ability only once."
+>
+> 702.193b Generic mana in the permanent's mana cost reduces generic mana in the cost to activate its power-up
+> ability. Colored and colorless mana in the permanent's mana cost reduces mana of the same type, and any excess
+> reduces that much generic mana. (See rule 118.7.)
+
+Exhaust (Decision 61's sibling, #1181) already had "activate only once" per object, and the CR 601.2f pass already
+priced activations. Three things were missing: a reduction that takes coloured symbols (every reduction so far was
+generic only, ADR 0048 addendum §3), a reduction keyed to "entered this turn", and a way for another card to replace
+a power-up's cost ("You may pay {0} rather than pay the power-up cost of the first power-up ability you activate
+during each of your turns", Advancing the Spirit).
+
+### Decision 68: one bit, read where exhaust is read
+
+`ActivatedAbilityShape.PowerUp`, set by `effects.PowerUp` (which writes the "Power-up — " label), is the whole
+keyword. "Activate this ability only once" is `Game.PowerUpUsed` (`game/power_up.go`). It reads the exhaust
+activation record (`Activations.Ever`, per object epoch and printed label, written at the announce), so:
+
+- a flickered creature is a new object and may power up again (CR 400.7), and a copy has its own;
+- a countered or fizzled power-up has been activated;
+- the record is already in the snapshot, so a restore keeps a used power-up used.
+
+It is its own reader rather than `Exhaust`, because an exhaust permission (Elvish Refueler's "as though they
+haven't been activated") is not a power-up permission, and the client names the keyword. `ActivateCatalogAbility`
+refuses with `ErrPowerUpUsed` beside the exhaust gate, before anything is paid; `internal/legal` drops the move; the
+view stamps `power_up_used`, and the client greys the row with `L.powerUpUsed`. `Register` panics when a label
+prints "Power-up —" without the bit, the bit without the label, two power-up rows share a label, a power-up row is
+also a loyalty, equip, cycling, exhaust or boast row, or its cost has no mana.
+
+### Decision 69: the reduction is in the CR 601.2f pass, and takes coloured symbols
+
+While the source entered the battlefield this turn (`TurnTally.Entered`, the per-object entry tally), a power-up
+activation's cost is reduced by the source's mana cost (`Card.ManaCost`, so a transformed back face or a face-down
+permanent has none). It is taken in `applyCostModifiersLocked` with the other reductions, so the payment, the
+legal-move enumerator and the view's `charged_mana_cost` read one price. `reduceByManaCost` follows CR 702.193b and
+118.7: generic reduces generic (118.7a); a coloured or colourless symbol removes one requirement that mana of its
+type pays, an exact single-colour requirement before a hybrid one, and reduces one generic when none is left
+(118.7b–d); a Phyrexian symbol is its colour (118.7f); snow is generic (118.7g); {X} in the mana cost is 0. For a
+hybrid symbol the payer chooses a half (118.7e): the engine chooses the half that removes a coloured requirement
+when one matches, and otherwise reduces generic mana (N for a {N/C} symbol). What is left floors at {0}, and a
+remainder may come off the mana announced for {X} as any generic reduction does (#2701). Within the reductions the
+order cannot change the result: each component floors at zero and a coloured symbol's excess only reduces generic.
+
+This narrows ADR 0048 addendum §3 ("a reduction spends generic mana and nothing else") by one named exception. Board
+and self modifiers are still generic only; `CostModifier.Unit` is still an increase's shape.
+
+### Decision 70: a "{0} rather than" alternative on an activation is taken for the player
+
+`game.CostZeroAlternative` is a fourth `CostModifierKind`, appended so no existing value moves. While its
+`AppliesTo` holds, the CR 601.2f pass starts from {0} instead of the printed cost (CR 118.9, step 1), and increases
+and reductions still apply (CR 118.9d through 602.2b). Advancing the Spirit declares it with
+`effects.PayZeroRatherThanThePowerUpCost`: a power-up ability, activated by the modifier's controller during their
+turn, while `PlayerTurnTally.PowerUpActivations` (bumped at every power-up announce, additive within schema 9) is
+zero.
+
+Unlike Kíli's equip alternative (the 2026-10-29 #4475 amendment above), there is no twin row: the engine takes the
+alternative without asking. Declining can never help the player. {0} is no more than any cost in every component,
+the pass is monotone, and "the first power-up you activate" is spent by the first activation whichever cost it
+paid. A second row would offer a choice that is always worse. The one exception is a cost with {X}: taking the
+alternative would hold X to 0 (CR 107.3b, through 602.2b), so a zero alternative is never applied to a cost with
+{X}, and Stature, Size Shifter pays its printed cost. `Register` refuses the kind in a spell's or an ability's own
+slot, without `Activations`, or with an `Amount`.
+
+### Decision 71: a card can read the bit
+
+`AbilityCostSubject.PowerUp` lets a board modifier price power-up abilities ("Power-up abilities of other creatures
+you control cost {3} less to activate", Hulk, Gamma Goliath, through `APowerUpAbilityCost` and
+`OfAnotherCreatureYouControl`), and `Event.PowerUp` is stamped on `EventActivateAbility` at the announce (Marvel
+Boy, Noh-Varr's "whenever you activate a power-up ability", through `APowerUpAbility`). The snapshot gains
+`events[].power_up` and the turn tally's `powerUpActivations`, both additive under v9 and omitted when zero.
+
+### Cards
+
+Brave Brawler, Hulk, Gamma Goliath and Advancing the Spirit, all Full. The roadmap row is `power-up`.
+
+### Still out of scope
+
+- **Wonder Man, Hollywood Hero** ("Each power-up ability of permanents you control can be activated an additional
+  time") needs a limit on `PowerUpUsed`, as Birgi's `BoastLimits` is for boast.
+- **Kang the Conqueror** ("During that turn, power-up abilities can't be activated") needs an extra-turn-scoped ban
+  that reads the bit; `ActivationGateLocked` is the place.
+- **Quinjet Technician** ("Spend this mana only to activate power-up abilities") needs a spend restriction keyed to
+  the bit.
+- The other power-up cards are card work on this seam.
+
+### Tests and back-outs
+
+`game/power_up_test.go` (once only, a flicker refreshes it, reduced only the turn it entered, no bit no rule, the
+reduction table, the reduction reaching X, a snapshot round trip, the event bit and count, the zero alternative and
+X), `effects/power_up_cards_test.go` (the three cards), `legal/power_up_test.go` and
+`protocol/power_up_view_test.go`, and `client/src/lib/powerUp.test.ts`. Backing out `PowerUpUsed` fails the once
+tests in all four Go packages; reducing whether or not the source entered fails
+`TestThePowerUpCostIsReducedOnlyTheTurnItEntered` and the Brawler and Hulk next-turn checks; a generic-only
+reduction fails the reduction table and the Brawler and Hulk prices; dropping the `PowerUpActivations` bump fails
+the Advancing the Spirit test and the event and snapshot tests; dropping the your-turn predicate or Hulk's "other
+creature" predicate fails their card tests; dropping `Event.PowerUp` fails `TestAPowerUpActivationIsAnnouncedAsOne`;
+letting the alternative reach an {X} cost fails `TestPowerUpZeroAlternativeReplacesTheCostButNeverAnXCost`.

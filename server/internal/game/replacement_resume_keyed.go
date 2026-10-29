@@ -128,6 +128,12 @@ const (
 	// the exchange's entry.
 	ReplacementResumeMill         = "replacement-resume/mill"
 	ReplacementResumeMoveExchange = "replacement-resume/move-exchange"
+
+	// #4517: a move carrying a reflexive trigger a replacement declared
+	// on it (reflexiveAfterMove, "exile it instead. When you do, …").
+	// It takes precedence over every other move key: a binary from
+	// before it knows those keys and would drop the trigger.
+	ReplacementResumeMoveReflexive = "replacement-resume/move-reflexive"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -153,6 +159,8 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 
 	ReplacementResumeMill:         RepEventMill,
 	ReplacementResumeMoveExchange: RepEventMove,
+
+	ReplacementResumeMoveReflexive: RepEventMove,
 
 	ReplacementResumeDamage: RepEventDamage,
 
@@ -222,6 +230,9 @@ func eventCarriesDataTail(ev *ReplacementEvent) bool {
 // when it carries a data tail: its kind's tailed key, or the move-entry-tail
 // key when the tail is a single permanent's entry tail (#4253 slice 6).
 func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
+	if ev.Kind == RepEventMove && len(ev.reflexiveAfterMove) > 0 {
+		return ReplacementResumeMoveReflexive
+	}
 	if ev.Kind == RepEventMove && ev.entryTail != nil && ev.entryTail.batch != nil && ev.entryTail.batch.discard != nil {
 		return ReplacementResumeDiscardEntry
 	}
@@ -244,6 +255,9 @@ func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
 
 // snapshotTailedKeyOf is replacementResumeTailedKeyOf over the mirror.
 func snapshotTailedKeyOf(ev *replacementEventSnapshot, kind ReplacementEventKind) string {
+	if kind == RepEventMove && len(ev.ReflexiveAfterMove) > 0 {
+		return ReplacementResumeMoveReflexive
+	}
 	if kind == RepEventMove && ev.EntryTail != nil && ev.EntryTail.Batch != nil && ev.EntryTail.Batch.Discard != nil {
 		return ReplacementResumeDiscardEntry
 	}
@@ -455,6 +469,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
 	"entersAsAura":              repFieldCarried,
+	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
 	"stackItem":                 repFieldCarried,
 	"putByEntering":             repFieldCarried,
@@ -468,6 +483,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"zoneRoute":                 repFieldCarried, // its data half; see replacementFrameKeyable
 	"lifeAfterMove":             repFieldCarried,
 	"extraTurnsAfterMove":       repFieldCarried,
+	"reflexiveAfterMove":        repFieldCarried,
 	"asCommanderMove":           repFieldCarried,
 	"commanderAnswer":           repFieldCarried,
 
@@ -580,7 +596,7 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	if key == "" || !g.replacementEventKeyable(ev) {
 		return ""
 	}
-	if eventCarriesDataTail(ev) {
+	if eventCarriesDataTail(ev) || (ev.Kind == RepEventMove && len(ev.reflexiveAfterMove) > 0) {
 		key = replacementResumeTailedKeyOf(ev)
 	}
 	if ev.Kind == RepEventDamage {
@@ -590,7 +606,7 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 		// them would drop.
 		key = damageEventResumeKey(ev)
 	}
-	if !applicableRegathered(f.applicable) {
+	if !applicableRegathered(f.applicable) || frameDepartedUnregatherable(f) {
 		return ""
 	}
 	return key
@@ -762,6 +778,7 @@ type replacementEventSnapshot struct {
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
+	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
 	StackItem                 *stackItemSnapshot  `json:"stackItem,omitempty"`
 	PutByEntering             bool                `json:"putByEntering,omitempty"`
@@ -777,6 +794,9 @@ type replacementEventSnapshot struct {
 	ExtraTurnsAfterMove       []moveTurnSnapshot  `json:"extraTurnsAfterMove,omitempty"`
 	AsCommanderMove           bool                `json:"asCommanderMove,omitempty"`
 	CommanderAnswer           commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+
+	// #4517: reflexive triggers a replacement declared on the move.
+	ReflexiveAfterMove []moveReflexiveSnapshot `json:"reflexiveAfterMove,omitempty"`
 
 	// #4253 slice 2: a keyword action's tail (its data half), a counter
 	// placement and a life change.
@@ -1085,6 +1105,38 @@ type moveTurnSnapshot struct {
 	Player uuid.UUID  `json:"player"`
 }
 
+// moveReflexiveSnapshot is a reflexiveMoveInstruction (#4517, ADR 0178
+// amendment of 2026-10-29). Body is a ReflexiveBody key, checked at
+// restore.
+type moveReflexiveSnapshot struct {
+	Source       *uuid.UUID    `json:"source,omitempty"`
+	SourceObject *ObjectRef    `json:"sourceObject,omitempty"`
+	Controller   uuid.UUID     `json:"controller"`
+	Zone         ZoneKind      `json:"zone"`
+	Label        string        `json:"label"`
+	Body         string        `json:"body"`
+	Params       *EffectParams `json:"params,omitempty"`
+}
+
+func snapshotMoveReflexive(r reflexiveMoveInstruction) moveReflexiveSnapshot {
+	out := moveReflexiveSnapshot{Source: uuidPtrOrNil(r.Source), Controller: r.Controller, Zone: r.Zone, Label: r.Label, Body: r.Body}
+	if r.SourceObject != (ObjectRef{}) {
+		o := r.SourceObject
+		out.SourceObject = &o
+	}
+	out.Params = effectParamsOrNil(r.Params)
+	return out
+}
+
+func restoreMoveReflexive(s moveReflexiveSnapshot) reflexiveMoveInstruction {
+	out := reflexiveMoveInstruction{Source: uuidOrNil(s.Source), Controller: s.Controller, Zone: s.Zone, Label: s.Label, Body: s.Body}
+	if s.SourceObject != nil {
+		out.SourceObject = *s.SourceObject
+	}
+	out.Params = effectParamsValue(s.Params)
+	return out
+}
+
 // replacementSerialSnapshot is one entry of Game.replacementObjectSerials.
 type replacementSerialSnapshot struct {
 	Object ObjectRef `json:"object"`
@@ -1171,6 +1223,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
 		EntersAsAura:              ev.entersAsAura,
+		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
 		PutByEntering:             ev.putByEntering,
 		EntersWithCounters:        copyStringIntMap(ev.EntersWithCounters),
@@ -1289,6 +1342,9 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 	for _, x := range ev.extraTurnsAfterMove {
 		out.ExtraTurnsAfterMove = append(out.ExtraTurnsAfterMove, moveTurnSnapshot{Source: uuidPtrOrNil(x.Source), Player: x.Player})
 	}
+	for _, r := range ev.reflexiveAfterMove {
+		out.ReflexiveAfterMove = append(out.ReflexiveAfterMove, snapshotMoveReflexive(r))
+	}
 	snapshotDamageEvent(ev, &out)
 	return out
 }
@@ -1333,6 +1389,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
 		entersAsAura:              s.EntersAsAura,
+		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),
 		putByEntering:             s.PutByEntering,
 		EntersWithCounters:        copyStringIntMap(s.EntersWithCounters),
@@ -1446,6 +1503,9 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 	for _, x := range s.ExtraTurnsAfterMove {
 		ev.extraTurnsAfterMove = append(ev.extraTurnsAfterMove, extraTurnInstruction{Source: uuidOrNil(x.Source), Player: x.Player})
 	}
+	for _, r := range s.ReflexiveAfterMove {
+		ev.reflexiveAfterMove = append(ev.reflexiveAfterMove, restoreMoveReflexive(r))
+	}
 	restoreDamageEvent(s, ev)
 	return ev
 }
@@ -1471,6 +1531,10 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) && snapshotCarriesDataTail(&f.Event):
 		// #4362: combat damage owes its caller nothing.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
+	case kind == RepEventMove && (len(f.Event.ReflexiveAfterMove) > 0) != (c.PickThen == ReplacementResumeMoveReflexive):
+		// #4517: a declared reflexive trigger is written under its own
+		// key, and only an event carrying one is.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over a move whose reflexive triggers it does not match")
 	case kind != RepEventDamage && snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
 		// #4253 slice 3: a tail written as data under the key a binary
 		// that drops it would accept.
@@ -1522,6 +1586,11 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 	if t := ev.DamageTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
 		unknown = append(unknown, unknownDamageEachKeys(t.Each)...)
+	}
+	for _, r := range ev.ReflexiveAfterMove {
+		if !KnownEffectBody(r.Body) {
+			unknown = append(unknown, "reflexive body "+r.Body)
+		}
 	}
 	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)

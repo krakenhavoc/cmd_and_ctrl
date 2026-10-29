@@ -21,13 +21,7 @@ func init() {
 			return GetEnergy{N: 3}.Apply(ctx)
 		}), game.Purpose{Energy: 3}),
 		ModeDoing("Put a +1/+1 counter on target creature.", TargetCreature("target creature"),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-			}),
+			PlusOneCounterOnTheModesTarget),
 		ModeWithPurpose(ModeDoing("Create a 1/1 colorless Servo artifact creature token.", nil,
 			func(_ *game.StackItem, ctx *Context, _ int) error {
 				return CreateToken{Template: TokenCard("1/1 colorless Servo artifact"), N: 1}.Apply(ctx)

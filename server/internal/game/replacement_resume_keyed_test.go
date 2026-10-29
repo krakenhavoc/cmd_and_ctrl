@@ -70,6 +70,7 @@ func keyedFrameSample() *ReplacementEvent {
 		EntersAsCopyOf: &PrintedValues{Name: "Copied"}, copySourceID: id("copy"), copyUntilEndOfTurn: true,
 		auraHost: TargetRef{Kind: TargetCard, ID: id("host")}, auraHostFixed: true, auraHostSettled: true,
 		entersAsAura: true, exchangeTextWith: id("xt"),
+		entersAs:           &EntersAs{Types: []string{"Artifact"}, Subtypes: []string{"Food"}, Grants: []string{"test/food"}, Label: "test"},
 		stackItem:          &StackItem{ID: id("item"), Controller: id("actor"), SourceCardID: id("card"), Label: "Spell"},
 		putByEntering:      true,
 		EntersWithCounters: map[string]int{CounterPlusOne: 2},
@@ -165,8 +166,13 @@ func keyedFrameSample() *ReplacementEvent {
 			run: &millUntilRun{Player: id("mrp"), Dest: ZoneGraveyard, Until: "mru", Then: &keyedTailSnapshot{Key: "mrt"}}},
 		lifeAfterMove:       []lifeInstruction{{Source: id("ls"), Player: id("lp"), Delta: -2}},
 		extraTurnsAfterMove: []extraTurnInstruction{{Source: id("xs"), Player: id("xp")}},
-		asCommanderMove:     true,
-		commanderAnswer:     commanderZoneDecline,
+		// #4517: a reflexive trigger a replacement declared on the move.
+		reflexiveAfterMove: []reflexiveMoveInstruction{{
+			Source: id("rs"), SourceObject: ObjectRef{ID: id("rs"), Epoch: 2}, Controller: id("rc"),
+			Zone: ZoneExile, Label: "When you do", Body: "rb", Params: EffectParams{Amount: 2},
+		}},
+		asCommanderMove: true,
+		commanderAnswer: commanderZoneDecline,
 		// #4253: a damage event's fields and its tail's data half.
 		DamageSource: id("dmg-src"), DamageTarget: id("dmg-tgt"), DamageAmount: 3, DamageInstance: 12,
 		SourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
@@ -572,6 +578,23 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 		"a mill under the move key": func(c *pendingChoiceSnapshot) {
 			c.ReplacementResume.Event.Kind = RepEventMill
 			c.ReplacementResume.Event.MillTail = &millTailSnapshot{Dest: ZoneGraveyard}
+		},
+		// #4517: a declared reflexive trigger under any other move key,
+		// the reflexive key over a move with none, and an unknown body.
+		"a reflexive trigger under the move key": func(c *pendingChoiceSnapshot) {
+			c.ReplacementResume.Event.ReflexiveAfterMove = []moveReflexiveSnapshot{{Zone: ZoneHand, Label: "x", Body: moveReflexiveProbe.Key()}}
+		},
+		"a reflexive trigger under the move-tail key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.ZoneRoute.FaceDownLegs = &faceDownExileRun{}
+			c.ReplacementResume.Event.ReflexiveAfterMove = []moveReflexiveSnapshot{{Zone: ZoneHand, Label: "x", Body: moveReflexiveProbe.Key()}}
+		},
+		"the reflexive key over a move with none": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveReflexive
+		},
+		"an unknown reflexive body": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveReflexive
+			c.ReplacementResume.Event.ReflexiveAfterMove = []moveReflexiveSnapshot{{Zone: ZoneHand, Label: "x", Body: "never-registered"}}
 		},
 		"an unknown tail in a batch's settled member": func(c *pendingChoiceSnapshot) {
 			c.PickThen = ReplacementResumeMoveTail

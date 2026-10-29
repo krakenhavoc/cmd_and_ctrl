@@ -82,7 +82,7 @@ func (g *Game) mintReplacementObjectSerialLocked(ref ObjectRef) int {
 	} else if len(g.replacementObjectSerials) >= g.replacementSerialsCompactAt {
 		for r := range g.replacementObjectSerials {
 			if c, ok := g.LookupCardForEffect(r.ID); !ok || c.ObjectEpoch != r.Epoch {
-				if !g.isEmblemRefLocked(r) {
+				if !g.isEmblemRefLocked(r) && !g.replacementRefInOpenBatchLocked(r) {
 					delete(g.replacementObjectSerials, r)
 				}
 			}
@@ -159,6 +159,12 @@ func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplaceme
 		}
 		return true
 	})
+	if !found && a.departed {
+		// #4521: a source that left in the same simultaneous event as
+		// the one being replaced. Its effect existed when the event began
+		// (CR 614.4), so it is fired from the copy it was gathered from.
+		return a, true
+	}
 	return a, found
 }
 

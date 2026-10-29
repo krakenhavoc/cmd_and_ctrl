@@ -27,16 +27,23 @@ func init() {
 		Purpose:      ForTargets(BenefitUntilEOT(0, 4, 4)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return BoostUntilEOT{
-				Target:    item.Targets[0].ID,
-				Power:     4,
-				Toughness: 4,
-				Label:     "Titanic Growth — +4/+4",
-			}.Apply(ctx)
-		},
+		OnResolve:    plusFourPlusFourToTheTarget("Titanic Growth"),
 	})
+}
+
+// plusFourPlusFourToTheTarget is "target creature gets +4/+4 until end of
+// turn" as a spell's OnResolve, labelled with the card's name. Feral
+// Ferocity (Marvel Super Heroes, #4455) prints the same text.
+func plusFourPlusFourToTheTarget(name string) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return BoostUntilEOT{
+			Target:    item.Targets[0].ID,
+			Power:     4,
+			Toughness: 4,
+			Label:     name + " — +4/+4",
+		}.Apply(ctx)
+	}
 }

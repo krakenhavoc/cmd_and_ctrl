@@ -774,6 +774,7 @@ func clonePlayer(p *Player) *Player {
 		Agent:             p.Agent,
 		AgentClient:       p.AgentClient,
 		CitysBlessing:     p.CitysBlessing,
+		EnduringStory:     p.EnduringStory,
 		HasSideboard:      p.HasSideboard,
 		Dungeon:           cloneDungeonState(p.Dungeon),
 		CompletedDungeons: append([]string(nil), p.CompletedDungeons...),
@@ -1144,6 +1145,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// ADR 0188: the extra turns a replacement declared on this
 			// move, copied for the reason the life instructions are.
 			ev.extraTurnsAfterMove = append([]extraTurnInstruction(nil), f.ev.extraTurnsAfterMove...)
+		}
+		if len(f.ev.reflexiveAfterMove) > 0 {
+			// #4517: the reflexive triggers a replacement declared on
+			// this move, copied for the same reason.
+			ev.reflexiveAfterMove = append([]reflexiveMoveInstruction(nil), f.ev.reflexiveAfterMove...)
 		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather

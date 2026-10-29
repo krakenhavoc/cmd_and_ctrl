@@ -712,6 +712,17 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2697, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-08 amendment): `ActivatedAbilityShape.Boast`, set by `effects.Boast` / `BoastTargeting`, is the whole keyword. `game.Game.BoastBlockLocked` (`game/boast.go`) joins \"attacked this turn\" (`TurnTally.Attacks`) with \"once each turn\" (`Activations.Turn`, announce-time) and answers WHICH half failed; `ActivateCatalogAbility` refuses with `ErrBoastNotAttacked` / `ErrBoastSpent`, `internal/legal` drops the move, and `ActivatedAbilityView.boast_blocked` (`not_attacked` | `used`) greys the row with the client's own sentence. The limit is read through `CardDef.BoastLimits` (`game.BoastLimit`, built with `effects.YourCreaturesBoastTimes`): the largest applicable limit wins, so Birgi's \"twice rather than once\" is a replacement of the number, not an addition, and two of her do not make three. `Event.Boast` is stamped at the announce (Frenzied Raider), and `AbilityCostSubject.Boast` lets a cost modifier price boast abilities (Dragonkin Berserker, `ActivationCostsLessEach`). **Cards** (15): Birgi, Varragoth, Broadside Bombardiers, Eradicator Valkyrie, Dragonkin Berserker, Fearless Liberator, Usher of the Fallen, Fearless Pup, Duskwielder, Draugr Recruiter, Horizon Seeker, Tuskeri Firewalker, Frenzied Raider, Axgard Braggart, Battershield Warrior. Arni Brokenbrow followed with #2731, whose boast is a resolution-time \"you may\" ([ADR 0197](decisions/0197-optional-triggers-ask-as-they-resolve.md) §10). **Still waiting, on card work or a separate seam:** Sigurd, Jarl of Ravensthorpe (a put-or-remove lore counter and a lore-counter trigger), Baron Helmut Zemo (copying a variable set of exiled cards), Goldmaw Champion and Hagi Mob (no blocker, left for the next slice).",
 	},
 	{
+		Slug: "power-up", Name: "Power-up", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:     "An ability each creature can use only once, which costs less by the creature's own mana cost on the turn it entered. A creature that leaves and comes back can use it again.",
+		Rules:       []string{"702.193"},
+		Issue:       4527,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       activated(func(ab effects.ActivatedAbility) bool { return ab.PowerUp }),
+		Printed:     printedLine("power-up"),
+		Examples:    []string{"Brave Brawler", "Hulk, Gamma Goliath"},
+		EngineNotes: "**Shipped** (#4527, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-29 power-up amendment): `ActivatedAbilityShape.PowerUp`, set by `effects.PowerUp`, is the whole keyword. \"Activate this ability only once\" is `game.Game.PowerUpUsed` (`game/power_up.go`), which reads the exhaust activation record (per object and label, so a flicker refreshes it and a restore keeps it spent); `ActivateCatalogAbility` refuses with `ErrPowerUpUsed`, `internal/legal` drops the move, and `ActivatedAbilityView.power_up_used` greys the row. The reduction by the source's mana cost the turn it entered (`TurnTally.Entered`) is taken in the CR 601.2f pass and reduces coloured symbols as CR 702.193b and 118.7 say. `AbilityCostSubject.PowerUp` lets a board modifier price power-up abilities (Hulk, Gamma Goliath), `game.CostZeroAlternative` is a \"{0} rather than\" alternative (Advancing the Spirit, counted by `PlayerTurnTally.PowerUpActivations`), and `Event.PowerUp` is stamped at the announce (Marvel Boy). **Cards** (3): Brave Brawler, Hulk, Gamma Goliath, Advancing the Spirit. **Still waiting:** Wonder Man, Hollywood Hero's \"can be activated an additional time\" and Kang the Conqueror's \"power-up abilities can't be activated\" (small additions to the same gate), Quinjet Technician's power-up-only mana, and the other Marvel Super Heroes power-up cards, which are card work.",
+	},
+	{
 		Slug: "typecycling", Name: "Landcycling and typecycling", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Discard a card with landcycling or another typecycling from your hand to search your library for a card of that type.",
 		Rules:   []string{"702.29"},
@@ -3680,6 +3691,31 @@ var items = []Item{
 		Probe:    hasKeyword(game.KeywordAscend),
 		Printed:  printedKeyword("ascend"),
 		Examples: []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Tilonalli's Summoner"},
+	},
+	{
+		// #4475 (ADR 0096 amendment 2026-10-29): storied is a canonical
+		// keyword read by the same sweep as ascend
+		// (game/earned_designations.go), and the enduring story it grants
+		// is a per-player designation like the city's blessing.
+		Slug: "storied", Name: "Storied and the enduring story", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Storied gives you an enduring story for the rest of the game once you control three or more permanents that are artifacts, Sagas and/or legendary, each counted once. You keep it even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
+		Rules:    []string{"702.195"},
+		Issue:    4475,
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Keywords: []string{game.KeywordStoried},
+		Probe:    hasKeyword(game.KeywordStoried),
+		Printed:  printedKeyword("storied"),
+		Examples: []string{"Ori, Keeper of Songs", "Bombur, Gentle Dreamer", "Fíli the Pathfinder", "Bifur, Melodic Rider"},
+	},
+	{
+		// #4475: recruit is effects.Recruit, a draw and a keyed discard.
+		Slug: "recruit", Name: "Recruit", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Draw a card, then discard a card; if you discarded a nonland card, create a 1/1 white Human Soldier creature token.",
+		Rules:    []string{"701.70"},
+		Issue:    4475,
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Printed:  printedWords("recruit"),
+		Examples: []string{"Lake-town Lookout", "The Queen of Dale", "The Mountain-king's Return"},
 	},
 	{
 		Slug: "permanent-becomes-equipment", Name: "A permanent that becomes an Equipment, with a granted equip and \"equipped creature gets\"", Kind: KindSeam, Status: StatusImplemented,

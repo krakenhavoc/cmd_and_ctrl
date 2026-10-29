@@ -182,43 +182,60 @@ describe("sounds", () => {
   });
 
   describe("missing files", () => {
-    // Entries whose files Ian has not made yet (ADR 0209 §6: a manifest entry
-    // may name files that do not exist, and the cue falls back). Remove an
-    // entry from this list in the PR that adds its files; the test below fails
-    // if a listed entry's files all exist by then, so the list cannot go stale.
-    const NOT_MADE_YET = ["face_hit"] as const;
-
-    it("lists only takes that exist in public/sounds, bar the entries not made yet", async () => {
+    // Every take the manifest names must be a file in public/sounds, or the
+    // client logs a 404 for it at start (#4539). A cue whose files are not
+    // made yet lists no takes and relies on SOUND_FALLBACK.
+    it("lists only takes that exist in public/sounds", async () => {
       const m = await load();
       const exists = (u: string) =>
         existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url)));
-      const pending = new Set<string>(NOT_MADE_YET);
-      const absent = (Object.entries(m.SOUND_MANIFEST) as [string, string[]][])
-        .filter(([name]) => !pending.has(name))
-        .flatMap(([, urls]) => urls)
+      const absent = Object.values(m.SOUND_MANIFEST)
+        .flat()
         .filter((u) => !exists(u));
       expect(absent).toEqual([]);
     });
 
-    it("keeps the not-made-yet list honest: each has a fallback and no files yet", async () => {
+    // #4543: three hit sounds by how much combat damage lands, each its
+    // own cue with one take, each in the combat category, each falling back
+    // to damage.
+    const TIERS = ["face_hit_light", "face_hit_medium", "face_hit_heavy"] as const;
+
+    it.each(TIERS)("gives %s one take, in the combat category", async (tier) => {
       const m = await load();
-      for (const name of NOT_MADE_YET) {
-        expect(m.SOUND_FALLBACK[name]).toBeTruthy();
-        for (const u of m.SOUND_MANIFEST[name]) {
-          expect(existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url)))).toBe(
-            false,
-          );
-        }
-      }
+      expect(m.SOUND_MANIFEST[tier]).toEqual([`/sounds/${tier}-1.mp3`]);
+      expect(m.SOUND_CATEGORY[tier]).toBe("combat");
+      m.play(tier);
+      await settle();
+      expect(played().at(-1)?.src).toBe(`/sounds/${tier}-1.mp3`);
     });
 
-    it("plays damage when face_hit has no file", async () => {
+    it.each(TIERS)("plays damage when the file for %s is missing", async (tier) => {
       const m = await load();
-      for (const u of m.SOUND_MANIFEST.face_hit) FakeAudio.broken.add(u);
-      m.play("face_hit");
+      expect(m.SOUND_FALLBACK[tier]).toBe("damage");
+      FakeAudio.broken.add(m.SOUND_MANIFEST[tier][0]);
+      m.play(tier);
+      await settle();
+      // The first try hit the missing file; the retry plays damage.
+      expect(played().at(0)?.src).toMatch(new RegExp(`${tier}-1`));
+      expect(played().at(-1)?.src).toMatch(/damage-/);
+      // Learned: the next fire goes straight to damage.
+      tick();
+      m.play(tier);
       await settle();
       expect(played().at(-1)?.src).toMatch(/damage-/);
-      expect(m.SOUND_CATEGORY.face_hit).toBe("combat");
+    });
+
+    it("has one take for player_eliminated, in the effects category (#4449)", async () => {
+      const m = await load();
+      expect(m.SOUND_MANIFEST.player_eliminated).toEqual(["/sounds/player_eliminated-1.mp3"]);
+      expect(m.SOUND_CATEGORY.player_eliminated).toBe("effects");
+      // No fallback: a missing file is silent, not a different sound.
+      expect(m.SOUND_FALLBACK.player_eliminated).toBeUndefined();
+    });
+
+    it("keeps no untiered face_hit cue", async () => {
+      const m = await load();
+      expect(Object.keys(m.SOUND_MANIFEST)).not.toContain("face_hit");
     });
 
     it("falls back to an existing sound when every take of a cue is missing", async () => {

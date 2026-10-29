@@ -34,9 +34,7 @@ func init() {
 			Label:   "{3}{R}, {T}: Exile the top card of your library. Until the end of your next turn, you may play that card.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{3}{R}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b20ExileTopUntilEndOfNextTurn(g, item, 1)
-			},
+			Effect:  b20ExileTopUntilEndOfNextTurn,
 		}},
 	})
 }

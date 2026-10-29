@@ -63,13 +63,16 @@ func ifCase(cond Condition, then Applier, setup func(t *testing.T, g *game.Game,
 // footprinter, keyed by the type's name.
 // TestEveryFootprinterHasAConformanceCase keeps the two lists equal.
 var footprintConformanceCases = map[string]conformanceCase{
-	"GainLife":           {step: GainLife{Amount: 3}},
-	"DrawCards":          {step: DrawCards{N: 2}},
-	"MillCards":          {step: MillCards{N: 2}},
-	"Scry":               {step: Scry{N: 2}},
-	"Surveil":            {step: Surveil{N: 2}},
-	"GetEnergy":          {step: GetEnergy{N: 2}},
-	"CreateToken":        {step: CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 2}},
+	"GainLife":    {step: GainLife{Amount: 3}},
+	"DrawCards":   {step: DrawCards{N: 2}},
+	"MillCards":   {step: MillCards{N: 2}},
+	"Scry":        {step: Scry{N: 2}},
+	"Surveil":     {step: Surveil{N: 2}},
+	"GetEnergy":   {step: GetEnergy{N: 2}},
+	"CreateToken": {step: CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 2}},
+	// Ant-Man's Army (#4455): the Treasure answer; the Food answer enters
+	// with the same events.
+	"foodOrTreasureStep": {step: foodOrTreasureStep{question: "Food or Treasure?"}},
 	"BecomeTheMonarch":   {step: BecomeTheMonarch{}},
 	"CounterOnThis":      {step: CounterOnThis{Kind: game.CounterPlusOne, N: 2}},
 	"DamageEachOpponent": {step: DamageEachOpponent{N: 2}},
@@ -106,6 +109,12 @@ var footprintConformanceCases = map[string]conformanceCase{
 	"If:life-lost": ifCase(CondLifeLost{}, GainLife{Amount: 2},
 		func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID) {
 			if err := g.ChangePlayerLifeForEffect(src, me.ID, -1); err != nil {
+				t.Fatal(err)
+			}
+		}),
+	"If:cards-drawn": ifCase(CondCardsDrawn{AtLeast: 2}, GainLife{Amount: 2},
+		func(t *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
+			if err := g.DrawNForEffect(me.ID, 2); err != nil {
 				t.Fatal(err)
 			}
 		}),
@@ -299,7 +308,8 @@ func confZoneOf(fp string) string {
 }
 
 // answerConformancePrompts answers every scry or surveil prompt the
-// step opened, sending every card away, so the move it makes is seen.
+// step opened, sending every card away, so the move it makes is seen, and
+// a Food-or-Treasure pick with its first option.
 func answerConformancePrompts(t *testing.T, g *game.Game) {
 	t.Helper()
 	for i := 0; i < 8 && len(g.PendingChoices) > 0; i++ {
@@ -310,6 +320,9 @@ func answerConformancePrompts(t *testing.T, g *game.Game) {
 			err = g.ResolveScry(c.ID, c.Chooser, c.ScryCards, nil)
 		case game.PendingChoiceSurveil:
 			err = g.ResolveSurveil(c.ID, c.Chooser, c.ScryCards, nil)
+		case game.PendingChoiceOptionPick:
+			// Food or Treasure: the first answer.
+			err = g.ResolveOptionPick(c.ID, c.Chooser, 0)
 		default:
 			t.Fatalf("the step opened a %q prompt this test cannot answer", c.Kind)
 		}

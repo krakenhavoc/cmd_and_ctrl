@@ -462,6 +462,12 @@ const (
 	// ability or a clause of a resolving spell), so without a line the
 	// marker beside the player's name would appear unexplained. #2696.
 	LogCitysBlessing LogKind = "citys_blessing"
+	// LogEnduringStory — a player got an enduring story (CR 702.195).
+	// `Actor` is the player; `CardID` is the storied permanent whose
+	// check granted it. Narrated for the city's blessing's reason: storied
+	// is a static ability, so nothing else on the log says why the marker
+	// appeared. #4475.
+	LogEnduringStory LogKind = "enduring_story"
 	// LogVenture — a player moved their venture marker into a room (CR
 	// 309.4, ADR 0203). `Actor` is the player; `Label` is "<dungeon> —
 	// <room>". Narrated because the marker moves in the middle of a
@@ -2178,6 +2184,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventEnduringStory:
+		// CR 702.195. The storied permanent is public.
+		base.Kind = LogEnduringStory
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventSpeedChanged:
 		// CR 702.179, ADR 0138. Not tied to a card: the state-based
 		// action and the inherent trigger have no source.
@@ -3191,6 +3203,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("It becomes %s", e.Label)
 	case LogCitysBlessing:
 		return fmt.Sprintf("%s gets the city's blessing", actor)
+	case LogEnduringStory:
+		return fmt.Sprintf("%s has an enduring story", actor)
 	case LogVenture:
 		return fmt.Sprintf("%s ventures into %s", actor, e.Label)
 	case LogDungeonCompleted:

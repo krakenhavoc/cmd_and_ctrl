@@ -153,6 +153,23 @@ describe("the live region", () => {
     expect(liveRegion(container)?.textContent?.trim()).toBe("");
   });
 
+  // A real GameClient starts "disconnected" and the route mounts the
+  // banner before connect() runs, so that first state is not a drop.
+  it("stays silent when the client starts disconnected and then connects", () => {
+    const { container, setProps } = mount({ status: "disconnected" });
+    setProps({ status: "connecting", attempt: 0 });
+    setProps({ status: "connected", attempt: 0 });
+    expect(liveRegion(container)?.textContent?.trim()).toBe("");
+  });
+
+  it("says reconnected after a drop to disconnected", () => {
+    const { container, setProps } = mount({ status: "disconnected" });
+    setProps({ status: "connected", attempt: 0 });
+    setProps({ status: "disconnected" });
+    setProps({ status: "connected", attempt: 0 });
+    expect(liveRegion(container)?.textContent).toContain("Reconnected");
+  });
+
   it("says reconnected after a drop, however it arrived", () => {
     const { container, setProps } = mount({ status: "connected" });
     setProps({ status: "reconnecting", attempt: 1 });

@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "de1ca6ed-b275-4f62-ba05-f31b3659b352",
 		Name:         "Windgrace's Judgment",
 		Completeness: CompletenessFull,
-		Targets:      perOpponentClauses(game.MaxPlayers-1, true, "nonland permanent", Nonland()),
+		Targets:      perOpponentClauses(game.MaxPlayers-1, "nonland permanent", Nonland()),
 		OnResolve:    destroyEachLegalTarget,
 	})
 }

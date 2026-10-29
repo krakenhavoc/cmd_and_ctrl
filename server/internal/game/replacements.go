@@ -713,6 +713,12 @@ type ReplacementEvent struct {
 	// before the host is attached. A value field, like auraHost.
 	entersAsAura bool
 
+	// entersAs is the putting effect's "it's a <type> with <ability>"
+	// (ZoneEntryOptions.EntersAs, ADR 0210): registered on the permanent
+	// as it lands, and seen by the CR 614.12 look-ahead before that. A
+	// pointer the event never writes through, like FaceDownListed.
+	entersAs *EntersAs
+
 	// exchangeTextWith names the creature an "as this enters, you may
 	// exchange its text box and another creature's" choice picked (ADR
 	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
@@ -862,6 +868,14 @@ type ReplacementEvent struct {
 	// card has landed and before the life instructions
 	// (runMoveTailLocked). Unexported engine plumbing.
 	extraTurnsAfterMove []extraTurnInstruction
+
+	// reflexiveAfterMove is the list of CR 603.12 reflexive triggers a
+	// replacement declared as part of the modified move ("exile it
+	// instead. When you do, …", #4517), set only through
+	// QueueReflexiveTriggerAfterReplacedMoveForEffect. Each is created
+	// after the card has landed, if it landed where the replacement sent
+	// it (runMoveTailLocked). Unexported engine plumbing.
+	reflexiveAfterMove []reflexiveMoveInstruction
 
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
@@ -1392,6 +1406,9 @@ type ReplacementEffect struct {
 	// replacement, set by the shared constructor (#4317). Read by the
 	// card-purpose projection; never used to execute the replacement.
 	SelfEntersTapped bool
+	// SelfEntryCounters describes an unconditional fixed self-entry clause.
+	// Catalog projection only; replacement execution never reads it.
+	SelfEntryCounters *EntryCounterAmount
 
 	// ActiveWhen is ADR 0071's designation gate: the replacement exists
 	// only while the gate is satisfied by the permanent it is printed
@@ -1757,6 +1774,11 @@ type activeReplacement struct {
 	// its catalog row is gone. It is an effect that no longer applies
 	// (CR 616.1f), so no resolve path fires it.
 	lost bool
+	// departed marks a catalog effect gathered from a member of an open
+	// simultaneous exit that had already left the battlefield (#4521,
+	// simultaneous_replacements.go). Its source is the batch's pre-move
+	// copy, and a resume fires it from that copy.
+	departed bool
 }
 
 // replacementIdentity names one declared replacement effect: the
@@ -2449,7 +2471,11 @@ func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) boo
 	if !eventKindMatches(a.effect.Watches, ev.Kind) {
 		return false
 	}
-	return a.effect.AppliesTo == nil || a.effect.AppliesTo(ev, g, a.source)
+	if a.effect.AppliesTo == nil {
+		return true
+	}
+	defer g.entryOverwriteViewLocked(ev, false)()
+	return a.effect.AppliesTo(ev, g, a.source)
 }
 
 // clearReplacementEventLocked drops the per-event tracking map
@@ -2494,6 +2520,9 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 	if ev == nil {
 		return nil
 	}
+	// ADR 0210, CR 614.12: an entry that carries an overwrite is judged
+	// as the permanent it would be.
+	defer g.entryOverwriteViewLocked(ev, serials.readOnly)()
 	applied := g.replacementsAppliedThisEvent[ev.ID]
 	var out []activeReplacement
 
@@ -2586,6 +2615,18 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 			// ability (CR 614.1), so a permanent under a CR 613.1f
 			// ability-removing effect contributes none.
 			gatherFrom(card, catalogAbilityKeyOf(card))
+		}
+		// #4521, CR 608.2f / 614.4: a leg of a simultaneous exit is also
+		// replaced by the members of its batch that already left, read off
+		// the copies taken when the event began
+		// (simultaneous_replacements.go).
+		for _, c := range g.departedBatchSourcesLocked(ev) {
+			card := c
+			n := len(out)
+			gatherFrom(&card, catalogAbilityKeyOf(&card))
+			for i := n; i < len(out); i++ {
+				out[i].departed = true
+			}
 		}
 		// #4192, ADR 0109 §5: an emblem's replacement and prevention
 		// effects, after the battlefield (CR 114.4 — an emblem's
@@ -2820,6 +2861,10 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	} else if card = g.emblemWithSerialLocked(serial); card != nil {
 		// #4192: an emblem's effect, named by its object like a permanent's.
 		key = CatalogKey(*card)
+	} else if card = g.departedReplacementSourceLocked(id); card != nil {
+		// #4521: a source that left in the same simultaneous event, named
+		// by the copy its effect was gathered from.
+		key = catalogAbilityKeyOf(card)
 	} else {
 		return "", uuid.UUID{}
 	}

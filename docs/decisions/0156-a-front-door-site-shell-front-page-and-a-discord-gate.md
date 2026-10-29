@@ -113,7 +113,26 @@ These are owner actions in Discord; no code or deploy does them. Until they are 
 - **The trigger is the member's first message in the channel**, not a new onboarding role or a "Request access" button. It matches today's copy ("say hi in #account-requests"), needs no privileged intent and no extra role, and asks nothing new of the member.
 - **"A mod" is Discord's own Manage Roles,** plus the bot's admin lists, rather than a new variable.
 - **The reporter is not named in #mod-log.** Discord keeps the message for as long as a moderator leaves it there, and the person who reported is the one most at risk if it leaks; the admin Reports view has the name.
-- **Ban sync is not built.** Revoking sessions when a member is banned or loses the role, at once rather than at renewal, needs a gateway listener this ADR rejected under Consequences. It waits for an owner decision on #3325.
+- **Ban sync is not built.** Revoking sessions when a member is banned or loses the role, at once rather than at renewal, needs a gateway listener this ADR rejected under Consequences. It waits for an owner decision on #3325. (Built by the 2026-10-29 amendment below.)
+
+#### Amendment (S77, 2026-10-29, [#3325](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3325)): ban sync
+
+**Owner decision (2026-10-29): option 1.** A Discord ban, the player role taken away, or a member leaving or being kicked ends that person's CMD & CTRL sessions at once, through the gateway. This **reverses the rejection of a gateway listener** under Consequences ("A bot listening for role removals was considered and rejected"). Revocation at renewal (item 5) stays as the backstop.
+
+- **Events.** The gateway bot listens, in the community server (`CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`) only, for `GUILD_BAN_ADD`, for `GUILD_MEMBER_UPDATE` where the member no longer holds the player role, and for `GUILD_MEMBER_REMOVE`. An update from a member the bot's cache shows did not hold the role before it either (a nickname change) is ignored. A remove is held 5 seconds so that a ban's own event, which Discord may send after it, is acted on first.
+- **The bot asks; the server decides.** The bot is a separate process, so it calls a new admin route, `POST /admin/discord-members/{discord_id}/revoke-sessions` with `{"reason": "banned" | "role_removed" | "left"}`, with its admin session, as its commands already call back in. The server looks the account up by Discord id and revokes through the same code as `POST /admin/users/{id}/revoke-sessions` (the watermark, then the open sockets). It leaves alone allowlisted admins and `CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS`, exactly as the gate does; Discord users with no account (quietly: no log line, no mod log); and everything while the gate is off.
+- **Idempotent.** The refusal is recorded as the account's gate answer (`not_member` for a ban or a leave, `no_role` for the role), so the admin view shows it. An account whose last answer is already a refusal is left alone, and a sign-in records `admitted`, so a ban and the member-remove that comes with it revoke and log once, and a person let back in is caught again next time. The route is serialized, so two events for one person cannot both pass that check.
+- **Mod log.** A revocation posts "Sessions revoked by ban sync": the account's display name, why (banned, the role taken away, left or kicked) and the connections closed, with the admin view link. No Discord id or account id, as for the other entries.
+- **Off by default: `CMDCTRL_DISCORD_BAN_SYNC=1`** in the bot's environment, with the guild and `CMDCTRL_DISCORD_PLAYER_ROLE_ID`. Role changes and leaves need the **privileged Server Members intent**; asking for it before it is switched on in the Developer Portal makes Discord close the gateway with 4014, and every command would go with it. So the bot asks for it only with the flag on, and if Discord refuses it anyway, the bot logs an ERROR naming the portal switch and connects again without it: bans keep syncing (the unprivileged Guild Moderation intent) and everything else works. Bans alone are behind the same flag, so turning the feature on is one decision. CD writes the flag and the guild to `bot.env` from Actions variables, always, empty included.
+- **Owner setup.** Switch on Server Members Intent in the Developer Portal; give the bot's role **View Audit Log**, without which Discord does not send it `GUILD_BAN_ADD` (a ban then still ends sessions through its member-remove, logged as "left"); then set `CMDCTRL_DISCORD_BAN_SYNC=1` and deploy `main`.
+
+**Privacy (ADR 0149).** Nothing new is stored: the event is acted on and forgotten, and the only write is the gate answer the renewal check already records. The bot now reads membership changes in the C2 server, which the privacy page says.
+
+**Calls made here** (the owner can overturn any in review):
+
+- **The server, not the bot, holds the rules.** The exemption list and the user database live in the server, so the bot sends every qualifying event and the server answers `revoked`, `no_account`, `exempt`, `gate_off` or `already_out`.
+- **A leave revokes too.** A member who leaves loses the gate's "member" condition, and a kick arrives only as a remove.
+- **The fallback happens at connect time.** If the intent is switched off while the bot runs, discordgo's own reconnect keeps failing until the bot restarts, which then falls back. Turn the flag off, or restart the bot, after switching the intent off.
 
 ### 2. A guest practice game
 
@@ -185,6 +204,7 @@ Each page moves into the frame. Its content is unchanged except:
 - **Revocation is bounded but not instant.** Taking the role away ends access at the person's next renewal, at most half a session lifetime away, or at once through `revoke-sessions`. A bot listening for role removals was considered and rejected: it runs on prod only, and a second path to revocation is a second thing to test.
 - **Label renames break literal selectors.** "Lobby" becoming "Tables" in the header goes through `labels.ts`. The older e2e specs that select on the literal are updated in the same PR, and the nightly is run on the branch.
 - **`#/home` is gone.** This ends ADR 0092's two-portal experiment: the front page serves visitors and the header serves everyone else.
+- **Revocation is instant with ban sync on (2026-10-29 amendment).** The owner reversed the rejection of a gateway listener above: with `CMDCTRL_DISCORD_BAN_SYNC=1`, a ban, the role taken away, or a leave in the C2 server ends the person's sessions at once. Renewal stays the backstop when the flag is off, when the Server Members intent is refused, or when the bot is down.
 
 ## Slices
 

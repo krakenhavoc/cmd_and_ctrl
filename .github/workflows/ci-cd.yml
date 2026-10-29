@@ -1958,6 +1958,16 @@ jobs:
       # written, with the bot's own rules (bot.Config.Validate): each a
       # Discord id, and the channel only with the role; the bot refuses to
       # start on either.
+      #
+      # CMDCTRL_DISCORD_BAN_SYNC and CMDCTRL_DISCORD_COMMUNITY_GUILD_ID (ADR
+      # 0156, amendment 2026-10-29, #3325) are optional and ALWAYS written,
+      # empty included, in the same loop. Ban sync is on with "1" only: it
+      # asks Discord for the privileged Server Members intent, so the owner
+      # switches that on in the Developer Portal first. The guild is the
+      # server's variable of the same name ("Sync server env (community)").
+      # Checked before anything is written: the flag is empty, 0 or 1, the
+      # guild a Discord id, and "1" needs the guild and the player role
+      # (bot.Config.Validate refuses to start otherwise).
       - name: Sync bot env
         if: env.IS_DEV != 'true'
         env:
@@ -1970,6 +1980,8 @@ jobs:
           CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID }}
           CMDCTRL_DISCORD_PLAYER_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_PLAYER_ROLE_ID }}
           CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID }}
+          CMDCTRL_DISCORD_BAN_SYNC: ${{ vars.CMDCTRL_DISCORD_BAN_SYNC }}
+          CMDCTRL_DISCORD_COMMUNITY_GUILD_ID: ${{ vars.CMDCTRL_DISCORD_COMMUNITY_GUILD_ID }}
         run: |
           if [ "${BOT_TOKEN_SET}" != "true" ]; then
             echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
@@ -1980,7 +1992,7 @@ jobs:
           # fails the deploy with bot.env as it was (the bot would refuse to
           # start on it).
           for KEY in CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID CMDCTRL_DISCORD_PLAYER_ROLE_ID \
-                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID; do
+                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID CMDCTRL_DISCORD_COMMUNITY_GUILD_ID; do
             VALUE="${!KEY}"
             VALUE="${VALUE#"${VALUE%%[![:space:]]*}"}"; VALUE="${VALUE%"${VALUE##*[![:space:]]}"}"
             printf -v "${KEY}" '%s' "${VALUE}"
@@ -1991,6 +2003,18 @@ jobs:
           done
           if [ -n "${CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID}" ] && [ -z "${CMDCTRL_DISCORD_PLAYER_ROLE_ID}" ]; then
             echo "::error::CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID is set but CMDCTRL_DISCORD_PLAYER_ROLE_ID is not; the bot would refuse to start. Set the role too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          fi
+          CMDCTRL_DISCORD_BAN_SYNC="${CMDCTRL_DISCORD_BAN_SYNC//[[:space:]]/}"
+          case "${CMDCTRL_DISCORD_BAN_SYNC}" in
+            ""|0|1) ;;
+            *)
+              echo "::error::CMDCTRL_DISCORD_BAN_SYNC must be 1 (on), 0 or empty (off). Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+              ;;
+          esac
+          if [ "${CMDCTRL_DISCORD_BAN_SYNC}" = "1" ] && { [ -z "${CMDCTRL_DISCORD_COMMUNITY_GUILD_ID}" ] || [ -z "${CMDCTRL_DISCORD_PLAYER_ROLE_ID}" ]; }; then
+            echo "::error::CMDCTRL_DISCORD_BAN_SYNC is 1 but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID or CMDCTRL_DISCORD_PLAYER_ROLE_ID is not set; the bot would refuse to start. Set both, or clear the flag, in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
 
@@ -2050,7 +2074,7 @@ jobs:
           # no configured admins.
           for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS CMDCTRL_DISCORD_CARD_CHANNEL_IDS \
                      CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID CMDCTRL_DISCORD_PLAYER_ROLE_ID \
-                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID; do
+                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID CMDCTRL_DISCORD_BAN_SYNC CMDCTRL_DISCORD_COMMUNITY_GUILD_ID; do
             VALUE="${!KEY}"
             printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${BOT_ENV_FILE}"

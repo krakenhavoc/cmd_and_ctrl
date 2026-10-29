@@ -130,6 +130,7 @@ var KnownCardCounters = []string{
 	CounterAge,
 	CounterTime,
 	CounterDream,
+	CounterHone,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

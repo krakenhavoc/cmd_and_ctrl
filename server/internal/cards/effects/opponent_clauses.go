@@ -49,9 +49,10 @@ func controlledByNthOpponent(n int) CardPredicate {
 var nthOpponentWords = [...]string{"", "first", "second", "third"}
 
 // perOpponentClauses is `count` clauses (at most MaxPlayers-1), the
-// n-th matching `what` among permanents the n-th opponent controls.
-// upTo makes each "up to one"; otherwise each is exactly one.
-func perOpponentClauses(count int, upTo bool, noun string, what ...CardPredicate) *game.TargetSpec {
+// n-th matching `what` among permanents the n-th opponent controls,
+// each "up to one". The required form, one exact pick per opponent, is
+// perOpponentRequiredClauses.
+func perOpponentClauses(count int, noun string, what ...CardPredicate) *game.TargetSpec {
 	if count < 1 {
 		count = 1
 	}
@@ -61,10 +62,7 @@ func perOpponentClauses(count int, upTo bool, noun string, what ...CardPredicate
 	var out []*game.TargetSpec
 	for n := 1; n <= count; n++ {
 		spec := TargetPermanent("target "+noun+" controlled by the "+nthOpponentWords[n]+" opponent after you in turn order",
-			append([]CardPredicate{controlledByNthOpponent(n)}, what...)...)
-		if upTo {
-			spec = spec.WithCount(0, 1)
-		}
+			append([]CardPredicate{controlledByNthOpponent(n)}, what...)...).WithCount(0, 1)
 		out = append(out, spec)
 	}
 	return Clauses(out[0], out[1:]...)

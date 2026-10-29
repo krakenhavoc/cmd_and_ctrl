@@ -26,7 +26,7 @@ describe("lfgHeader", () => {
     expect(lfgHeader(table())).toEqual({
       kind: "post",
       disabled: false,
-      title: expect.stringMatching(/#lfg/),
+      title: expect.stringMatching(/#looking-for-game/),
     });
   });
 
@@ -38,13 +38,13 @@ describe("lfgHeader", () => {
   it("shows the post's state once it is posted", () => {
     expect(lfgHeader(table({ lfg: true, lfg_status: "posted" }))).toMatchObject({
       kind: "posted",
-      label: "In #lfg",
+      label: "In #looking-for-game",
     });
     expect(lfgHeader(table({ lfg: true, lfg_status: "pending" }))).toMatchObject({
       label: "Posting…",
     });
     expect(lfgHeader(table({ lfg: true, lfg_status: "unavailable" }))).toMatchObject({
-      label: "#lfg unavailable",
+      label: "#looking-for-game unavailable",
       title: expect.stringMatching(/withdraw/),
     });
   });
@@ -89,7 +89,9 @@ describe("lfgStatusLine", () => {
   });
 
   it("words each status", () => {
-    expect(lfgStatusLine(table({ lfg: true, lfg_status: "posted" }))).toMatch(/^Posted in #lfg/);
+    expect(lfgStatusLine(table({ lfg: true, lfg_status: "posted" }))).toMatch(
+      /^Posted in #looking-for-game/,
+    );
     expect(lfgStatusLine(table({ lfg: true, lfg_status: "pending" }))).toMatch(/^Posting/);
     expect(lfgStatusLine(table({ lfg: true, lfg_status: "unavailable" }))).toMatch(/unavailable/);
     expect(lfgStatusLine(table({ lfg: true }))).toMatch(/^Posting/);
