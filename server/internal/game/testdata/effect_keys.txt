@@ -1773,3 +1773,4 @@ tail through-the-forest-gate/shuffle-and-gain-8
 tail cantankerous-keepers/after-mill
 choose choose-cards/vow-to-erebor-attach
 tail gandalf-shadows-foe/return-lands-tapped
+tail then/shuffle-then-draw-n

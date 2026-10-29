@@ -109,6 +109,12 @@ var footprintConformanceCases = map[string]conformanceCase{
 				t.Fatal(err)
 			}
 		}),
+	"If:cards-drawn": ifCase(CondCardsDrawn{AtLeast: 2}, GainLife{Amount: 2},
+		func(t *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
+			if err := g.DrawNForEffect(me.ID, 2); err != nil {
+				t.Fatal(err)
+			}
+		}),
 	"If:creature-died": ifCase(CondCreatureDied{}, MillCards{N: 2},
 		func(t *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
 			if err := g.DestroyPermanentForEffect(pushBattlefieldCreature(g, me.ID)); err != nil {
