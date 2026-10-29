@@ -275,6 +275,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// #4184: Commodore Guff's Wizard, whose red mana casts only
 	// planeswalker spells.
 	printedGuffWizardToken,
+
+	// Iron Hills Blacksmith's Axe: an Equipment token with equip {2}.
+	printedAxeEquipmentToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
