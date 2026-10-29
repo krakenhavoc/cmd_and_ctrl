@@ -38,18 +38,5 @@ func init() {
 // cantankerousKeepersMilled is the clause after the mill: every milled Elf
 // card still in the graveyard goes to its owner's hand.
 var cantankerousKeepersMilled = CardTail("cantankerous-keepers/after-mill", func(ctx *Context, o game.TailOutcome) error {
-	elf := HasSubtype(ctx.TextSubtype("Elf"))
-	for _, id := range o.IDs {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !elf(ctx.Game, ctx.Controller(), c) {
-			continue
-		}
-		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return hobA11AllMilledToHand(ctx, o, HasSubtype(ctx.TextSubtype("Elf")))
 })

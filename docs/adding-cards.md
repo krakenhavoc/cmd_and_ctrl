@@ -299,7 +299,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    earlierSlot)` for Fiery Annihilation's Equipment, or
    `ControlledByTargetsController(spec, earlierSlot)` for "another target
    creature that player controls" (Breaking of the Fellowship; add
-   `Distinct` for "another"). The anchor must be a required single pick,
+   `Distinct` for "another"), or `SharesACardTypeWithTarget(spec,
+   earlierSlot)` for "two target nonland permanents that share a card type"
+   (Burglar's Plot, #4454; both on the battlefield with a card type in
+   common after the layers). The anchor must be a required single pick,
    and the dependent clause may pick at most one object. Announcement,
    resolution and all pickers share the gate; no custom resolution-only
    target check is needed. The same-controller relation reads an anchor
@@ -3344,7 +3347,12 @@ Spellbreaker and Captain America, Super-Soldier are the two cards.
 **Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
 and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
-component. `WardManaAndLife("{2}", 2)` declares one compound cost
+component. "Ward—Discard an enchantment, instant, or sorcery card" (Saruman of
+Many Colors, #4454) is a kind of card: register it once with
+`NewWardDiscardKind(key, label, match)` from a package-level var and pass
+`kind.Cost()`. The payer needs one such card in hand (else the spell is
+countered with no prompt) and the discard prompt refuses any other card; the
+kind's key is a ledgered on-disk identity. `WardManaAndLife("{2}", 2)` declares one compound cost
 (Gisa and Captain Howler, #2945, ADR 0171): one prompt requires both
 components, checks the complete mana plan and life total before charging,
 and combines mandatory life with any optional Phyrexian-symbol payment.
