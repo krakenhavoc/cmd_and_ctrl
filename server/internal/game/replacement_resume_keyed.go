@@ -606,7 +606,7 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 		// them would drop.
 		key = damageEventResumeKey(ev)
 	}
-	if !applicableRegathered(f.applicable) {
+	if !applicableRegathered(f.applicable) || frameDepartedUnregatherable(f) {
 		return ""
 	}
 	return key
