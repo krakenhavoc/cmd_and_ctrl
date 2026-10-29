@@ -60,6 +60,14 @@ var knownUnmatchedTokens = map[string]string{
 	// own token this table already carries.)
 	"2/2 colorless Spawn artifact": "no token card was ever printed for Spawning Pit's Spawn",
 
+	// The Eagles Are Coming! (The Hobbit) creates "a 4/4 white Bird
+	// Soldier creature token with flying". The dump's only 4/4 Bird
+	// Soldier token card (thob) lists no colour, but the token is what
+	// the card's oracle text makes it: white, which matters for
+	// protection and "destroy target white creature". The template
+	// follows the oracle text, as the table's header says it must.
+	"4/4 white Bird Soldier with flying": "the printed Bird Soldier token card carries no colour in the dump; the oracle text of The Eagles Are Coming! says white",
+
 	// Carrion (Visions, 1997) creates "X 0/1 black Insect creature
 	// tokens". No 0/1 Insect token card of any colour exists in the
 	// dump (a Scryfall search for t:token t:insect pow=0 tou=1 finds

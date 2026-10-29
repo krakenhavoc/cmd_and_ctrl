@@ -210,6 +210,13 @@ func PermanentsOnBattlefield(match CardPredicate) func(q game.CostQuery) int {
 // nothing (Ghalta's ruling), which also keeps the amount from ever
 // being negative.
 func TotalPowerOfCreaturesYouControl() func(q game.CostQuery) int {
+	return TotalPowerOfMatchingCreaturesYouControl(nil)
+}
+
+// TotalPowerOfMatchingCreaturesYouControl is the same total over the creatures
+// you control that `match` accepts (nil accepts them all): The Lord of the
+// Eagles' "X is the total power of creatures you control with flying".
+func TotalPowerOfMatchingCreaturesYouControl(match func(game.Card) bool) func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -217,6 +224,9 @@ func TotalPowerOfCreaturesYouControl() func(q game.CostQuery) int {
 		total := 0
 		for _, c := range q.Game.Battlefield.Cards {
 			if c.InstanceID == q.Card.InstanceID || c.Controller != q.Controller || !c.IsCreature() {
+				continue
+			}
+			if match != nil && !match(c) {
 				continue
 			}
 			total += c.CurrentPower()

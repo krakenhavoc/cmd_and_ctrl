@@ -1789,3 +1789,9 @@ choose choose-cards/roads-go-ever-ever-on-put-in-hand
 choose choose-cards/gandalf-party-guest-cast
 tail then/last-light-of-durins-day-search
 tail then/the-misty-mountains-cold-dragon
+body eagles-are-coming/birds
+choose choose-cards/silvan-reveler-discarded
+confirm confirm/uncover-the-moon-letters-draw
+drawthen silvan-reveler/discard
+payunless pay-unless/graveyard-return-this-card-to-hand
+tail tail/eagles-are-coming-birds

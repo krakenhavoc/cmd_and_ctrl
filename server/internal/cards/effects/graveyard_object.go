@@ -29,6 +29,17 @@ func cardObjectStillInGraveyard(g *game.Game, item *game.StackItem) bool {
 // mayPayForGraveyardReturn offers a resolution-time payment only for the
 // same graveyard object, and checks it again when the payment finishes.
 func mayPayForGraveyardReturn(g *game.Game, item *game.StackItem, cost, question string) error {
+	return mayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnPaid)
+}
+
+// mayPayForGraveyardReturnToHand is the same offer for a card that comes back
+// to its owner's hand (Silvan Reveler's "you may pay {1}{G}{U}. If you do,
+// return this card from your graveyard to your hand").
+func mayPayForGraveyardReturnToHand(g *game.Game, item *game.StackItem, cost, question string) error {
+	return mayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnToHandPaid)
+}
+
+func mayPayForGraveyardReturnThen(g *game.Game, item *game.StackItem, cost, question string, then game.PayUnlessElse) error {
 	if !cardObjectStillInGraveyard(g, item) {
 		return nil
 	}
@@ -36,7 +47,7 @@ func mayPayForGraveyardReturn(g *game.Game, item *game.StackItem, cost, question
 		Chooser:  item.Controller,
 		Cost:     cost,
 		Question: question,
-		Then:     graveyardReturnPaid,
+		Then:     then,
 	}.Apply(NewContext(g, item))
 }
 
@@ -47,4 +58,15 @@ var graveyardReturnPaid = PayUnlessBranches("pay-unless/graveyard-return-this-ca
 			return nil
 		}
 		return returnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
+	}, nil)
+
+// graveyardReturnToHandPaid is graveyardReturnPaid's hand twin, keyed the same
+// way (#4264): the object check is repeated once the mana is paid, so a card
+// that left the graveyard and came back is a new object (CR 400.7).
+var graveyardReturnToHandPaid = PayUnlessBranches("pay-unless/graveyard-return-this-card-to-hand",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if !cardObjectStillInGraveyard(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return returnThisCardFromYourGraveyardToHand(ctx.Game, ctx.Item)
 	}, nil)
