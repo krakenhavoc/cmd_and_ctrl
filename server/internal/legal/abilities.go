@@ -310,6 +310,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if g.AbilityExhausted(e.seat, source.InstanceID, ab) {
 			continue
 		}
+		// CR 702.193a (#4527): a power-up ability this object has
+		// already activated, the reader ActivateCatalogAbility refuses on.
+		if g.PowerUpUsed(source.InstanceID, ab) {
+			continue
+		}
 		// ADR 0155 Decision 7: a once-each-turn lent row this borrower
 		// has already used, the reader ActivateCatalogAbility refuses on.
 		if g.BorrowedRowSpentLocked(source.InstanceID, origins.At(idx)) {

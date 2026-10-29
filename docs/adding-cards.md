@@ -4879,6 +4879,38 @@ Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
 Berserker, with `ActivationCostsLessEach`). `Register` panics when the
 label prints "Boast —" without the bit or the bit without the label.
 
+**Power-up (CR 702.193, #4527):** never spell "activate only once" or
+the reduction by hand. `PowerUp(text, cost, effect)` in
+[power_up.go](../server/internal/cards/effects/power_up.go) writes the
+label ("Power-up — " + the printed line after the dash, reminder text
+left off) and sets the bit; the engine does the rest
+(`game/power_up.go`). `Game.PowerUpUsed` is the "only once" gate the
+activation path (`ErrPowerUpUsed`), the bot enumerator and the view
+(`power_up_used`) read, keyed per object and label like exhaust, so a
+flicker refreshes it and a restore keeps it. The reduction by the
+source's mana cost on the turn it entered is in the CR 601.2f pass and
+takes coloured symbols as CR 702.193b says, so the price the row shows
+is the price paid:
+
+```go
+Activated: []ActivatedAbility{
+    PowerUp("{4}{W}: Put two +1/+1 counters on this creature.",
+        ManaCost("{4}{W}"), plusOneCountersOnThis(2)),
+},
+```
+
+A card that talks ABOUT power-up abilities reads the bits the engine
+stamps: `APowerUpAbilityCost` on a cost query ("Power-up abilities of
+other creatures you control cost {3} less", Hulk, Gamma Goliath, with
+`OfAnotherCreatureYouControl`), `APowerUpAbility` on the activation
+event ("whenever you activate a power-up ability", Marvel Boy), and
+`PayZeroRatherThanThePowerUpCost(label)` for "You may pay {0} rather
+than pay the power-up cost of the first power-up ability you activate
+during each of your turns" (Advancing the Spirit, a
+`game.CostZeroAlternative` the engine takes for the player; it is never
+applied to a cost with {X}). `Register` panics when the label prints
+"Power-up —" without the bit or the bit without the label.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`

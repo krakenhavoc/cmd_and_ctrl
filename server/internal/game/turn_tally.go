@@ -80,6 +80,12 @@ type PlayerTurnTally struct {
 	// you activate each turn" (#4475, equip_cost_alternative.go).
 	// Additive within schema v9.
 	EquipActivations int `json:"equipActivations,omitempty"`
+	// PowerUpActivations counts the power-up abilities (CR 702.193)
+	// this player activated this turn, written at the announce whether
+	// or not the ability resolves: Advancing the Spirit's "the first
+	// power-up ability you activate during each of your turns" (#4527,
+	// power_up.go). Additive within schema v9.
+	PowerUpActivations int `json:"powerUpActivations,omitempty"`
 	// ArtifactsOrCreaturesSacrificed counts the artifacts and creatures
 	// this player sacrificed (ADR 0100 §3) — Dargo, the Shipwrecker's
 	// "{2} less to cast for each other artifact or creature you've

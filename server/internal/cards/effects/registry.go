@@ -78,6 +78,7 @@ func Register(spec Spec) {
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
+	checkPowerUp(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
@@ -490,6 +491,16 @@ func Register(spec Spec) {
 	for i, m := range spec.SelfCostModifiers {
 		if m.Kind == game.CostFloor {
 			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
+		}
+		if m.Kind == game.CostZeroAlternative {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostZeroAlternative — an alternative on an activation belongs in Spec.CostModifiers", spec.Name, i))
+		}
+	}
+	// #4527: a "{0} rather than" alternative prices activations only;
+	// the engine never reads it on a cast or a special action.
+	for i, m := range spec.CostModifiers {
+		if m.Kind == game.CostZeroAlternative && (!m.Activations || m.Amount != nil) {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) is a CostZeroAlternative without Activations or with an Amount — build it with PayZeroRatherThanThePowerUpCost", spec.Name, i, m.Label))
 		}
 	}
 	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
@@ -2142,6 +2153,40 @@ func checkBoast(spec Spec) {
 	}
 }
 
+// checkPowerUp is the boot-time contract of CR 702.193 (#4527), for
+// checkBoast's reasons: the label and the bit agree in both directions
+// (a printed "Power-up —" without the bit could be activated every turn
+// at full price, and a bit without the printed keyword is a rule the
+// player cannot read), two power-up abilities on one card may not share
+// a label (the record is keyed by it), and the keyword is its own
+// ability, so it is never a loyalty, equip or cycling shape. A
+// power-up cost always has mana in it, or there is nothing to reduce.
+func checkPowerUp(spec Spec) {
+	seen := map[string]bool{}
+	for i, a := range spec.Activated {
+		printed := strings.HasPrefix(a.Label, powerUpPrefix)
+		if a.PowerUp && !printed {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets PowerUp but its label does not start with %q — build it with effects.PowerUp", spec.Name, i, powerUpPrefix))
+		}
+		if printed && !a.PowerUp {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints %q and does not set PowerUp: true — without the bit it could be activated again and never costs less", spec.Name, i, powerUpPrefix))
+		}
+		if !a.PowerUp {
+			continue
+		}
+		if seen[a.Label] {
+			panic(fmt.Sprintf("effects.Register: %q has two power-up abilities labelled %q — the activation record is keyed by the label, so they would share one use", spec.Name, a.Label))
+		}
+		seen[a.Label] = true
+		if a.Cost.Loyalty != nil || a.Equip || a.Cycling || a.Exhaust || a.Boast {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d is a power-up ability with a loyalty, equip, cycling, exhaust or boast shape — power-up is its own ability", spec.Name, i))
+		}
+		if a.Cost.Mana == "" {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d is a power-up ability with no mana in its cost", spec.Name, i))
+		}
+	}
+}
+
 // checkOneExhaustAbility is the body of the three checks above, for
 // one ability of either kind. `seen` is shared across the kinds
 // because the record's key space is.
@@ -2380,8 +2425,8 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if ab.Cost.Mana == "" {
 			panic(fmt.Sprintf("effects.Register: %q %s modifies an ability with no mana cost — there is nothing to price", name, where))
 		}
-		if m.Kind == game.CostFloor {
-			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor — an ability's own cost clause increases or reduces", name, where))
+		if m.Kind == game.CostFloor || m.Kind == game.CostZeroAlternative {
+			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor or CostZeroAlternative — an ability's own cost clause increases or reduces", name, where))
 		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))

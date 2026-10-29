@@ -907,6 +907,32 @@ type ActivatedAbilityShape struct {
 	// sets both, checked in that order.
 	Boast bool
 
+	// PowerUp marks a POWER-UP ability (CR 702.193a, #4527):
+	//
+	//	Power-up — {4}{W}: Put two +1/+1 counters on this creature.
+	//	(Activate each power-up ability only once. Reduce the cost by
+	//	its mana cost if it entered this turn.)
+	//
+	// One declarative bit, built by effects.PowerUp, for the reason
+	// Exhaust and Boast are: the keyword IS two rules, and the engine
+	// enforces both in the places every activation is already priced
+	// and gated (power_up.go):
+	//
+	//   - "Activate this ability only once" is Game.PowerUpUsed, read
+	//     by ActivateCatalogAbility (ErrPowerUpUsed), internal/legal and
+	//     the view (`power_up_used`). It reads the same per-object,
+	//     per-label activation record exhaust reads, so a flicker makes
+	//     a new object that may power up again (CR 400.7) and a restore
+	//     keeps a spent one spent. Its own reader rather than Exhaust's,
+	//     because an exhaust permission (Elvish Refueler) is not a
+	//     power-up permission.
+	//   - "If this permanent entered this turn, this ability's cost is
+	//     reduced by this permanent's mana cost" is a reduction in the
+	//     CR 601.2f pass (applyCostModifiersLocked), coloured symbols
+	//     included (CR 702.193b, 118.7b–g), so the menu, the enumerator
+	//     and the payment price it from one function.
+	PowerUp bool
+
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
@@ -1515,6 +1541,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
+	}
+	// CR 702.193a (#4527): "Activate this ability only once", read from
+	// the same record and key as exhaust, before anything is paid.
+	if g.PowerUpUsed(cardID, ab) {
+		return ErrPowerUpUsed
 	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
 	// once each turn" (Mairsil). Keyed, like exhaust, before anything is
@@ -2385,6 +2416,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Equip {
 		g.bumpPlayerTally(playerID, func(p *PlayerTurnTally) { p.EquipActivations++ })
 	}
+	// #4527: "the first power-up ability you activate during each of
+	// your turns" (Advancing the Spirit) counts every power-up announce,
+	// resolved or not, as the equip count above does.
+	if ab.PowerUp {
+		g.bumpPlayerTally(playerID, func(p *PlayerTurnTally) { p.PowerUpActivations++ })
+	}
 	g.noteBorrowedActivationLocked(borrowedKey)
 	// #3779: and whether it targeted a creature of the activator's own
 	// — the record "the first activated ability you activate … that
@@ -2438,6 +2475,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Label:       ab.Label,
 		Exhaust:     ab.Exhaust,
 		Boast:       ab.Boast,
+		PowerUp:     ab.PowerUp,
 		// ADR 0109 §2: "whenever you activate a loyalty ability of
 		// enchanted planeswalker" (Elspeth's and Rowan's Talents). A
 		// loyalty ability is one with a loyalty symbol in its cost

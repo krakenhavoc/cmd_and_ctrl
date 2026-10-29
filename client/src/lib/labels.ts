@@ -948,6 +948,14 @@ export const LABEL_SPECS = {
     doc: "a table roll (ADR 0121 §5)",
   }),
 
+  powerUpUsed: label({
+    name: "already activated (power-up)",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/contextMenu.logic.ts"],
+    doc: "the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover",
+  }),
+
   rulings: label({
     name: "Rulings",
     kind: "text",

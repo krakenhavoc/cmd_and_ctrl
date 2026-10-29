@@ -116,6 +116,28 @@ const (
 	// is the only way "would cost less than three" can mean the
 	// cost the spell actually ends up at.
 	CostFloor
+
+	// CostZeroAlternative is "you may pay {0} rather than pay <the
+	// cost>" on an ACTIVATION — Advancing the Spirit's "You may pay {0}
+	// rather than pay the power-up cost of the first power-up ability
+	// you activate during each of your turns" (#4527). A CR 118.9
+	// alternative cost, so it is step 1 of CR 601.2f: while AppliesTo
+	// holds, the cost the pass starts from is {0}, and every increase
+	// and reduction still applies to it (CR 118.9d through 602.2b).
+	// Amount and Unit mean nothing on it.
+	//
+	// The engine takes it on the activator's behalf rather than asking,
+	// because declining can never help: {0} is no more than any cost in
+	// every component, the pass is monotone, and "the first … each
+	// turn" is spent by the first activation whichever cost it paid. The
+	// one exception is a cost with {X}, where taking the alternative
+	// would hold X to 0 (CR 107.3b through 602.2b), so a zero
+	// alternative is never applied to a cost with {X}.
+	//
+	// Activations only: effects.Register refuses it in any other slot
+	// or without CostModifier.Activations. Appended last so no existing
+	// kind's value moves.
+	CostZeroAlternative
 )
 
 // CostQuery is everything a cost modifier may look at. Passed by
@@ -326,6 +348,13 @@ type AbilityCostSubject struct {
 	// cost {2} less to activate" (Helitrooper). Read off the shape's
 	// keyword field rather than the label, which is prose.
 	Equip bool
+
+	// PowerUp is the power-up keyword bit (CR 702.193a, #4527): "Power-up
+	// abilities of other creatures you control cost {3} less to
+	// activate" (Hulk, Gamma Goliath) and Advancing the Spirit's {0}
+	// alternative read it. It also switches on the keyword's own
+	// reduction by the source's mana cost (power_up.go).
+	PowerUp bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation. Always false today — the mana path prices its cost
@@ -793,13 +822,31 @@ func RealTargetCount(targets []TargetRef) int {
 // Caller must hold g.mu.
 func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCost, error) {
 	mods := g.activeCostModifiersLocked(q)
+	// CR 702.193a (#4527): a power-up ability's own reduction by its
+	// source's mana cost, the turn the source entered. Coloured, so it
+	// is not one of the generic reductions below (power_up.go).
+	powerUp, err := g.powerUpReductionLocked(q)
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	if len(mods) == 0 {
 		// ADR 0135 §4: emerge's reduction is the one reduction that
 		// needs no modifier on the board.
 		// #3931: and harmonize's, the same kind of reduction.
-		return reduceGeneric(reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
+		return reduceGeneric(reduceGeneric(reduceGeneric(reduceByManaCost(base, powerUp), q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
 	}
 	cost := base
+	// CR 601.2f step 1, CR 118.9: a "{0} rather than" alternative
+	// replaces the cost the pass starts from (CostZeroAlternative).
+	for _, bm := range mods {
+		if bm.modifier.Kind != CostZeroAlternative {
+			continue
+		}
+		if zeroAlternativeApplies(bm, q, cost) {
+			cost = ParsedCost{SpendOnly: cost.SpendOnly}
+			break
+		}
+	}
 	// CR 601.2f step 3: every increase, in any order. Additive, so
 	// "any order" really is any order.
 	for _, bm := range mods {
@@ -830,6 +877,11 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			cost = reduceGeneric(cost, n)
 		}
 	}
+	// CR 702.193a/b: the power-up reduction, with the others and in
+	// any order among them (CR 601.2f). Order cannot change the result:
+	// each component is floored at zero and a coloured symbol's excess
+	// only ever reduces generic mana.
+	cost = reduceByManaCost(cost, powerUp)
 	// ADR 0135 §4, CR 702.119a: emerge's reduction by the sacrificed
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
@@ -888,6 +940,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Exhaust: ab.Exhaust,
 			Boast:   ab.Boast,
 			Equip:   ab.Equip,
+			PowerUp: ab.PowerUp,
 			own:     ab.CostModifiers,
 		},
 		Targets: targets,
