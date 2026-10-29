@@ -50,9 +50,20 @@
   // #2995: "Reconnected" is only true after a drop. A fresh table goes
   // connecting to connected and has nothing to be reconnected from, so
   // the connected line stays silent until the status has been stale.
+  //
+  // GameClient.status starts as "disconnected" before connect() dials,
+  // and the route mounts this component in that state. That pristine
+  // "disconnected" is not a drop, so it only counts once the client has
+  // left it (dialled at least once).
+  let dialed = false;
   let dropped = $state(false);
   $effect.pre(() => {
-    if (status === "reconnecting" || status === "disconnected" || status === "session_ended") {
+    if (status !== "disconnected") dialed = true;
+    if (
+      status === "reconnecting" ||
+      status === "session_ended" ||
+      (status === "disconnected" && dialed)
+    ) {
       dropped = true;
     }
   });
