@@ -136,8 +136,10 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   tap: ["/sounds/tap-1.mp3", "/sounds/tap-2.mp3"],
   untap_all: ["/sounds/untap_all-1.mp3", "/sounds/untap_all-2.mp3"],
   damage: ["/sounds/damage-1.mp3", "/sounds/damage-2.mp3"],
-  // #4432: files not made yet (ADR 0209 §6); plays damage until they land.
-  face_hit: ["/sounds/face_hit-1.mp3", "/sounds/face_hit-2.mp3"],
+  // #4432: files not made yet (ADR 0209 §6). No takes are listed, so none is
+  // fetched (a 404 per page load, #4539) and the cue plays damage through
+  // SOUND_FALLBACK. The PR that adds face_hit-1.mp3 and -2.mp3 lists them here.
+  face_hit: [],
   heal: ["/sounds/heal-1.mp3", "/sounds/heal-2.mp3"],
   attack: ["/sounds/attack-1.mp3", "/sounds/attack-2.mp3"],
   block: ["/sounds/block-1.mp3", "/sounds/block-2.mp3"],
