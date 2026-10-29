@@ -4921,6 +4921,23 @@ during each of your turns" (Advancing the Spirit, a
 applied to a cost with {X}). `Register` panics when the label prints
 "Power-up —" without the bit or the bit without the label.
 
+Three more clauses sit on the bit (#4571, ADR 0020 Decisions 72 to 74).
+"Each power-up ability of permanents you control can be activated an
+additional time" is `PowerUpExtras:
+[]game.PowerUpExtra{YourPowerUpAbilitiesActivateAnAdditionalTime(label)}`
+(Wonder Man): the entries add to the printed once, read from the
+battlefield. "During that turn, power-up abilities can't be activated"
+on an extra turn is `TakeExtraTurn{DuringThatTurn:
+PowerUpAbilitiesCantBeActivatedDuringThatTurn()}` (Kang the Conqueror),
+which the activation gate, the bot and the view's `cant_activate` all
+read. "Spend this mana only to activate power-up abilities" is the mana
+ability's `Restrictions: []string{game.ManaRestrictPowerUp}` (Quinjet
+Technician); tap the restricted row before the power-up, because the
+auto-tapper plans restricted mana for casts only. A power-up row that
+only counters itself is `powerUpAnswering(text, cost, effect)`, which
+declares the pump; any other row builds `PowerUp` and sets its own
+`Purpose`.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`

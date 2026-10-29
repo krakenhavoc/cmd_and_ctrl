@@ -21,7 +21,7 @@ func init() {
 		Name:         "Bold Biochemist",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			powerUpAnswering(game.AnswerPump, "{5}{U}: Put a +1/+1 counter on this creature and draw two cards.",
+			powerUpAnswering("{5}{U}: Put a +1/+1 counter on this creature and draw two cards.",
 				ManaCost("{5}{U}"), func(g *game.Game, item *game.StackItem) error {
 					if err := plusOneCountersOnThis(1)(g, item); err != nil {
 						return err

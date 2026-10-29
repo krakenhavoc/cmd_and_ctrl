@@ -19402,6 +19402,7 @@ pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
+pendingChoices[].assist.spend.PowerUp	bool
 pendingChoices[].assist.spend.Purpose	string
 pendingChoices[].assist.spend.SourceOnly	number:uint16
 pendingChoices[].assist.spend.Subtypes	array

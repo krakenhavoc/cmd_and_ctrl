@@ -961,12 +961,17 @@ type enumerator struct {
 	// a rider that covers only one borrow's lent rows is asked exactly as
 	// the activation asks it. A field for permType's reason.
 	rowOrigin game.AbilityOrigin
+	// rowPowerUp is whether that row is a power-up ability, for the
+	// spend context's ManaRestrictPowerUp (#4571).
+	rowPowerUp bool
 }
 
 // abilitySpend is the spend context of the activated ability row being
 // expanded: game.ManaSpendForAbilityRow with the row's origin.
 func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
-	return game.ManaSpendForAbilityRow(*source, e.rowOrigin)
+	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
+	spend.PowerUp = e.rowPowerUp
+	return spend
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

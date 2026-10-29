@@ -254,6 +254,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CostModifiers", fallback: "Cost-changing effect", ownLabel: true},
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
+	{field: "PowerUpExtras", fallback: "Power-up abilities can be activated an additional time", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
 	{field: "EquipCostAlternatives", fallback: "Equip abilities may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},

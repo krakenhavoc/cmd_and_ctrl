@@ -86,6 +86,12 @@ const (
 	// ManaRestrictActivate permits the token only on an activated
 	// ability's cost.
 	ManaRestrictActivate = "purpose:activate"
+	// ManaRestrictPowerUp permits the token only on the cost of a
+	// power-up ability (#4571, CR 702.193, CR 106.6): Quinjet Technician's
+	// "Spend this mana only to activate power-up abilities". A purpose
+	// tag, narrower than ManaRestrictActivate: it needs an activation AND
+	// that the ability is a power-up one (ManaSpendContext.PowerUp).
+	ManaRestrictPowerUp = "purpose:power_up"
 	// ManaRestrictUnlock permits the token only on an unlock cost
 	// (CR 709.5e, ADR 0103) — the "unlock doors" half of Smoky
 	// Lounge's and Creeping Peeper's restrictions. Combine it with a
@@ -300,6 +306,13 @@ type ManaSpendContext struct {
 	// abilities").
 	AbilityOrigin AbilityOrigin
 
+	// PowerUp is set when the ability being paid for is a power-up
+	// ability (CR 702.193): what ManaRestrictPowerUp reads. Set by the
+	// activation sites from ActivatedAbilityShape.PowerUp; false for a
+	// cast, a mana ability and every unnamed payment, which therefore
+	// can't spend power-up-only mana.
+	PowerUp bool
+
 	// Controller is the controller of the object whose ability is being
 	// paid for (ManaSpendForAbility), and Payer the player paying, which
 	// the any-colour reader fills in before it asks a Covers. Together
@@ -448,6 +461,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast
 	case ManaRestrictActivate:
 		return ctx.Purpose == SpendPurposeActivate
+	case ManaRestrictPowerUp:
+		return ctx.Purpose == SpendPurposeActivate && ctx.PowerUp
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:

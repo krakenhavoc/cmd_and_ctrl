@@ -79,6 +79,7 @@ func Register(spec Spec) {
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkPowerUp(spec)
+	checkPowerUpExtras(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
@@ -2149,6 +2150,23 @@ func checkBoast(spec Spec) {
 		}
 		if l.Limit < 2 {
 			panic(fmt.Sprintf("effects.Register: %q boast limit %d is %d — the printed limit is already 1, so a limit below 2 changes nothing", spec.Name, i, l.Limit))
+		}
+	}
+}
+
+// checkPowerUpExtras refuses a PowerUpExtras entry that would reach every
+// permanent of every player, has no printed clause, or adds nothing
+// (#4571). checkBoast's reasons.
+func checkPowerUpExtras(spec Spec) {
+	for i, x := range spec.PowerUpExtras {
+		if x.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d has no Applies — it would reach every permanent of every player, always", spec.Name, i))
+		}
+		if x.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+		if x.Times < 1 {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d adds %d activations — it must add at least one", spec.Name, i, x.Times))
 		}
 	}
 }

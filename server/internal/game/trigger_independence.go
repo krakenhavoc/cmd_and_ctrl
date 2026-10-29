@@ -1619,7 +1619,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
-	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
+	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
