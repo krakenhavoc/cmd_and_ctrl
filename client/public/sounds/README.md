@@ -94,6 +94,13 @@ tab it plays when the life loss shows. Commander damage is combat damage, so
 it gets a tier like any other. Other life loss (a drain, life paid,
 noncombat damage) keeps `damage`.
 
+The `combat_resolve` war cry (5 to 7 s) would bury a face hit, so on a beat
+that hits a player it starts 300 ms after the last (staggered) face hit, at
+0.6 of its volume (`WAR_CRY_AFTER_HIT_MS`, `WAR_CRY_AFTER_HIT_VOLUME` in
+`faceHit.ts`, #4560). A beat that hits no player plays it at contact, at full
+volume. The step-change fallback (motion off, reduced motion, a hidden tab)
+keeps the same order.
+
 `extort` plays once when an extort trigger resolves and drains, as the Scales
 of Souls effect starts (`ExtortScales.svelte`, #4544). The life popups on the
 drained opponents and the extort player stay quiet for that drain, so this is
