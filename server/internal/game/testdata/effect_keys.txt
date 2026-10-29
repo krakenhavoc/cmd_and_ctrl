@@ -1760,3 +1760,10 @@ payunless pay-unless/neyith-of-the-dire-hunt-double-power
 choose choose-cards/minas-tirith-garrison-tap-humans
 tail azog/amass-goblins-and-draw
 tail goblin-plate-mail/attach
+choose choose-cards/elven-passage-behold
+choose choose-cards/glamdring-cast
+tail elven-passage/behold-an-elf
+tail mirkwood-nurturer/counter
+tail then/orcrist-type-chosen
+tail then/the-black-arrow-destroy-dragon
+tail troop-of-ponies/basic-land-to-hand
