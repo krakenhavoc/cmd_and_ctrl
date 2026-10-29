@@ -33,13 +33,7 @@ func init() {
 		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(2, "The first creature spell you cast each turn costs {2} less to cast.",
-				YourSpell(), CreatureSpell(), func(q game.CostQuery) bool {
-					if q.Game == nil {
-						return false
-					}
-					t := q.Game.CastTallyFor(q.Controller)
-					return t.Total-t.Noncreature == 0
-				}),
+				YourSpell(), CreatureSpell(), NoCreatureSpellCastYetThisTurn()),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, AnOpponentCastTheirFirstNoncreatureSpellThisTurn,

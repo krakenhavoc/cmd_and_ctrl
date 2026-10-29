@@ -39,14 +39,7 @@ func init() {
 					Colors:   []string{"G"},
 				}}),
 			},
-			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !attackDeclaredByYou(ev, source.Controller) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				// "Elf" is a word of the source's text (CR 612.2, #3984).
-				return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Elf"))
-			}, "Arboreal Alliance — populate", Do(Populate{}))),
+			OncePerBatch(On(game.EventAttack, hobB6AttackWithAnElf, "Arboreal Alliance — populate", Do(Populate{}))),
 		},
 	})
 }

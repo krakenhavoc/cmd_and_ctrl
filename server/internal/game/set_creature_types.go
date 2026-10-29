@@ -59,6 +59,12 @@ func setCreatureTypesModProblem(m Mod) string {
 	return ""
 }
 
+// SetCreatureTypes is "is a <creature types>" for a static ability that
+// replaces the creature types alone (CR 205.1a, Fog on the Barrow-Downs'
+// "enchanted creature is a Spirit"): every creature type goes, the other
+// subtypes and every card type stay.
+func (c *Characteristic) SetCreatureTypes(types []string) { c.setCreatureTypes(types) }
+
 // setCreatureTypes is ModSetCreatureTypes' Apply on one characteristic:
 // every creature type goes, "is every creature type" with them, and the
 // new ones are added when the object can have creature types.

@@ -304,6 +304,23 @@ func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 	}
 }
 
+// SetAttachedCreatureTypes is "enchanted creature is a Spirit" — a layer 4
+// replacement of the creature types ALONE (CR 205.1a): it keeps every card
+// type and any non-creature subtype, which is what SetAttachedTypes does
+// not (it replaces the whole type line). Fog on the Barrow-Downs. The
+// types are words of the Aura's text, read through the source as the pass
+// applies them (CR 612.2, #3984).
+func SetAttachedCreatureTypes(subtypes ...string) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     attachedTypesLabel(nil, subtypes),
+		Layer:     game.Layer4Type,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			c.SetCreatureTypes(source.TextSubtypes(subtypes...))
+		},
+	}
+}
+
 // SetAttachedColors is "is a GREEN Elk" / "is a COLORLESS Forest
 // land" — a layer 5 colour change, and the first one in the catalog.
 // Layer 5 has been in the engine's bucket order since S16 with

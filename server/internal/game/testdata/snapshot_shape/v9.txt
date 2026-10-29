@@ -48911,6 +48911,7 @@ seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.filter.withCounter	string
+seats[].statics[].timing.firstCreatureSpellThisTurn	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
