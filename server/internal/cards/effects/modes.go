@@ -257,6 +257,17 @@ func TapTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	return TapTarget{Target: t.ID}.Apply(ctx)
 }
 
+// ReturnTheModesGraveyardTargetToHand is "return target <card> from your
+// graveyard to your hand" as a modal bullet's body — Fantastic Elasticity's
+// and Call Damage Control's bullets differ only in the clause on the option.
+func ReturnTheModesGraveyardTargetToHand(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetCard {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
+}
+
 // UntapTheModesTarget is "untap target <thing>" as a modal bullet's body —
 // Elven Raft-Steerer's creature bullet and Lost Jitte's land bullet differ
 // only in the clause on the option.

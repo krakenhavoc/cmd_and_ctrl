@@ -40,7 +40,7 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return lookAtTopAndOfferFreeCast(g, ctx.Controller(), ctx.Source(), aetherworksMarvelFreeCast, 6)
+				return lookAtTopAndOfferFreeCast(g, ctx.Controller(), ctx.Source(), aetherworksMarvelFreeCast, 6, nil)
 			},
 		}},
 	})

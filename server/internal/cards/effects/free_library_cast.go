@@ -77,7 +77,9 @@ func registerFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
 // library and asks which nonland card of them, if any, to cast free. The
 // rest go to the bottom in a random order. Nothing is queued when no
 // card of them can be cast, but the rest still go to the bottom.
-func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int) error {
+// `allowed`, when not nil, narrows the cards that can be picked (Cosmic
+// Cube's mana value cap); the rest still go to the bottom.
+func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int, allowed func(game.Card) bool) error {
 	name := offer.name
 	looked := g.LookAtTopOfLibraryForEffect(controller, n)
 	if len(looked) == 0 {
@@ -85,7 +87,7 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer
 	}
 	var eligible []uuid.UUID
 	for _, id := range looked {
-		if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
+		if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() && (allowed == nil || allowed(c)) {
 			eligible = append(eligible, id)
 		}
 	}
