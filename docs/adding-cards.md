@@ -32,6 +32,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
+  - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
@@ -2723,6 +2724,49 @@ enters under. The engine does everything else
 "Its owner" in the rest of the card's text (Pendant's "this artifact's
 owner draws a card") reads `Card.Owner`. The card's other abilities say
 "you" for the controller, as every card does.
+
+### "They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)
+
+Supper for Spiders ("They are Food artifacts with '{2}, {T}, Sacrifice
+this artifact: You gain 3 life.' (They lose all other types and
+subtypes.)") and Tom, Bert, and William ("return them to the
+battlefield. They're an artifact.") put a card onto the battlefield
+with its type line SET by the putting effect. Say it on the put, never
+as a scoped effect registered after the card has landed:
+
+```go
+ReturnFromGraveyardTogether{
+    Targets:    ids,
+    Controller: item.Controller,
+    EntersAs: &game.EntersAs{
+        Types:    []string{"Artifact"},
+        Subtypes: []string{"Food"},
+        Grants:   []string{supperForSpidersFood}, // a Spec.Grants bundle (ADR 0093)
+        Label:    "Supper for Spiders — a Food artifact",
+    },
+}.Apply(ctx)
+```
+
+`EntersAs` rides `game.ZoneEntryOptions`, so any batch door takes it.
+The engine registers one `ScopedEffect` (`SetTypesMod` in layer 4,
+`GrantAbilitiesMod` in layer 6) as the permanent lands, before the zone
+move and `EventETB`, pinned to that object by its epoch:
+
+- It is never a creature on the battlefield, so "whenever a creature
+  enters" does not trigger and a creature-only wipe does not touch it.
+- The entry window judges it as it will be (CR 614.12): an opponent's
+  Authority of the Consuls does not tap it.
+- The types are CR 205.1a's set. Subtypes of a card type it lost go,
+  `Subtypes` replace their own set, and supertypes stay (CR 205.4b).
+  The card keeps its own abilities.
+- It lasts as long as that object is on the battlefield. A flicker or a
+  reanimation is a new object without it (CR 400.7), and a copy copies
+  the printed card (CR 707.2).
+
+A "dies, if it was a creature, return it" trigger (Tom, Bert, and
+William) reads `lki.Types` in `AppliesTo`. The returned artifact was
+not a creature when it died, so it does not loop. See
+`supper_for_spiders.go` and `tom_bert_and_william.go`.
 
 ### Adding a copy effect (S16.5+)
 

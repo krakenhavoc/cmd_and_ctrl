@@ -102,6 +102,11 @@ func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 		// to see one. See Game.enteringTokens.
 		return g.enteringTokenLocked(cardID)
 	}
+	if g.entryView != nil && z.Kind != ZoneBattlefield {
+		// ADR 0210, CR 614.12: an entry replacement asking what the
+		// entering card is reads it as it would exist on the battlefield.
+		return g.viewEnteringCardLocked(z.Cards[pos]), true
+	}
 	return z.Cards[pos], true
 }
 

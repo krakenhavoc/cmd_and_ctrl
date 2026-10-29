@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -186,6 +187,11 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions) 
 }
 
 func (g *Game) startPreparedEntryBatchLocked(cards []BatchEntry, b *entryBatch) error {
+	// ADR 0210: an unsound overwrite is a programming error, caught by
+	// the first test that puts a card with it.
+	if p := b.opts.EntersAs.Problem(); p != "" {
+		panic(fmt.Sprintf("game: %s (%q)", p, b.opts.EntersAs.Label))
+	}
 	// #1997: a batch begun inside PutByEnteringPlayerForEffect, or a
 	// manifest or cloak (the player who manifests puts the card, and it
 	// enters under them, CR 701.40a, CR 701.58a), is put by the player
@@ -319,6 +325,9 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 			// replacement effect inspecting the entry sees it.
 			FaceDown:       b.opts.FaceDown,
 			FaceDownListed: b.opts.FaceDownListed,
+			// ADR 0210: "they are <types>", seeded for the reason
+			// EntersTapped is. Shared read-only, never written through.
+			entersAs: b.opts.EntersAs,
 			// #1997: who put it, for Arboria.
 			putByEntering: b.opts.PutByEnteringPlayer,
 			// #1322: the batch can be resumed, because what it still

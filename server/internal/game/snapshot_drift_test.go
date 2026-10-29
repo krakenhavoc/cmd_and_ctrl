@@ -352,6 +352,7 @@ var gameFields = plan(
 	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
 	"landingEntryCounters", dropped, "not game state: the permanent whose enters-with counters are landing inside one call, defer-cleared, so it is uuid.Nil between actions (#2123)",
 	"counterPlacerScope", dropped, "not game state: the players named as putting counters inside one mana ability or special action, pushed and popped around the call, so it is empty between actions (#3942)",
+	"entryView", dropped, "not game state: the entering card as the CR 614.12 dry run sees it while one entry window with an overwrite gathers its replacements, defer-cleared, so it is nil between actions (#4506, ADR 0210)",
 )
 
 var cardFields = plan(
