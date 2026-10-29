@@ -1646,7 +1646,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
-	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
+	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
 	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,

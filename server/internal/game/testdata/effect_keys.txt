@@ -1784,3 +1784,5 @@ tail speak-secrets/after-mill
 body dain-ironfoot/attach-axe
 body thorin-mountain-king/damage
 tail dain-ironfoot/axe-created
+body roads-go-ever-ever-on/pump-per-plains
+choose choose-cards/roads-go-ever-ever-on-put-in-hand
