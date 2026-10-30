@@ -1817,3 +1817,5 @@ confirm confirm/black-widow-counter-or-cast
 tail msh-a3/black-widow-after-exile
 tail msh-a3/doom-reigns-supreme-after-exile
 choose choose-cards/cosmic-cube-cast
+tail hellcat/loses-abilities-gains-haste
+tail hex-magic/permit-and-draw
