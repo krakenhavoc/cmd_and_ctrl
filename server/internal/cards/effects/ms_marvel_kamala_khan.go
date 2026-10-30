@@ -44,7 +44,7 @@ func init() {
 			Text: "Ms. Marvel's base power is equal to the number of cards in your hand.",
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, mshB6CastTargetingYourCreature,
+			On(game.EventCast, mshB4CastSpellTargetingYourCreature,
 				"Ms. Marvel, Kamala Khan — Embiggen Fist: draw a card, and her base power is your hand size until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
