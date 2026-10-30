@@ -41,15 +41,5 @@ func init() {
 }
 
 func nicoMinoruExile(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	return exileUntilNonlandGrantingCast(ctx, game.CastPermission{
-		Cost:        "{0}",
-		Timing:      game.TimingFlash,
-		CastOnly:    true,
-		Duration:    ctx.Game.UntilEndOfTurnDuration(),
-		LapseOnPass: game.LapseStaysInExile,
-		Source:      ctx.Source(),
-		SourceName:  "Nico Minoru, Runaway",
-		Label:       "Cast without paying its mana cost (Nico Minoru, Runaway)",
-	})
+	return exileUntilNonlandCastFree(NewContext(g, item), "Nico Minoru, Runaway")
 }

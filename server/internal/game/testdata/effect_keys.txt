@@ -1881,6 +1881,7 @@ tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
 tail vision-quest/haste
 tail volatile-fault/create-treasure
+tail wakanda-forever/hand-then-graveyard
 tail waste-management/rogue-per-creature
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep

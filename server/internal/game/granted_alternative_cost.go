@@ -76,6 +76,19 @@ type GrantedAlternativeCost struct {
 	// filter is every spell, which is Jodah's and Omniscience's.
 	Spells PermissionFilter
 
+	// SpellsAnyOf narrows Spells to a union: when set, the spell must also
+	// match AT LEAST ONE of these filters. Vision, Spectral Synthezoid's
+	// "a noncreature or Robot spell" is two filters (NoncreatureOnly, and
+	// CreatureType "Robot") under one offer and one once-each-turn claim,
+	// which two statics could not share (an offer key is declared once per
+	// card). Judged against the face being cast, like Spells. Needs
+	// SpellsText (Register panics without it).
+	SpellsAnyOf []PermissionFilter
+
+	// SpellsText words the spells a SpellsAnyOf union reaches for the
+	// ability row: "noncreature or Robot spells".
+	SpellsText string
+
 	// MaxManaValue caps the mana value of the spell the offer reaches:
 	// Primal Prayers' "with mana value 3 or less". Nil means no cap.
 	// The mana value is the card's as it is cast for this offer, which
@@ -205,6 +218,18 @@ func lifeEqualToManaValue(card Card) (int, bool) {
 func (gr GrantedAlternativeCost) covers(g *Game, caster uuid.UUID, card Card) bool {
 	if !gr.Spells.Matches(card) {
 		return false
+	}
+	if len(gr.SpellsAnyOf) > 0 {
+		reached := false
+		for _, f := range gr.SpellsAnyOf {
+			if f.Matches(card) {
+				reached = true
+				break
+			}
+		}
+		if !reached {
+			return false
+		}
 	}
 	if gr.MaxManaValue != nil && card.ManaValue() > *gr.MaxManaValue {
 		return false
