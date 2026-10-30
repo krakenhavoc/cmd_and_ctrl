@@ -50731,6 +50731,7 @@ seats[].statics[].timing.firstCreatureSpellThisTurn	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.opponentCastASpellThisTurn	bool
+seats[].statics[].timing.sourceTapped	bool
 seats[].statics[].timing.timing	string
 seats[].stickerSheetPool	array
 seats[].stickerSheetPool[]	object
