@@ -350,6 +350,7 @@ choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/finale-of-revelation-untap-lands
+choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/gert-and-old-lace-search
@@ -1715,6 +1716,7 @@ tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
+tail then/harmonized-crescendo-type-chosen
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
@@ -1760,6 +1762,7 @@ tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
+tail then/selfless-safewright-type-chosen
 tail then/shadow-mysterious-assassin-sacrificed
 tail then/shatter-the-oath-role
 tail then/shimmering-mirage-draw
@@ -1861,11 +1864,3 @@ vote vote/trial-of-a-time-lord
 vote vote/truth-or-consequences
 vote vote/tyrants-choice
 vote vote/vault-11-voters-dilemma
-confirm confirm/astonishing-spider-man-discard-hand
-choose choose-cards/msc-m1-romantic-rendezvous-draw
-payunless pay-unless/endless-ranks-of-hydra-return
-choose choose-cards/gert-and-old-lace-search
-choose choose-cards/discard-then-each-opponent-discards
-choose choose-cards/formidable-speaker-search
-tail then/harmonized-crescendo-type-chosen
-tail then/selfless-safewright-type-chosen
