@@ -1,6 +1,6 @@
 # ADR 0163 — Discord Linked Roles: CMD & CTRL stats on a member's profile
 
-**Status:** Proposed · 2026-10-13 · Backlog
+**Status:** Accepted (2026-10-30) · proposed 2026-10-13 · Backlog. The owner accepted it as written in [#3323](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3323) on 2026-10-30; building starts after launch week.
 **Issue:** [#3323](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3323)
 **Owner decisions:** the two answers of 2026-10-13 are quoted under [Owner decisions](#owner-decisions-2026-10-13). They are binding. Calls this ADR makes on its own are listed under [Calls made here](#calls-made-here) for the owner to overturn in review, before slice 2 lands.
 **Numbering:** checked with ADR 0161's sweep (12 remote heads, highest 0160). ADRs 0161 and 0162 are drafted in the same PR; this is **0163**.
