@@ -65,6 +65,7 @@ var permissionFilterDerived = map[string]string{
 	"conspicuous_snoop.go":        "standing play permission (stampStandingPermissionLocked)",
 	"deeproot_historian.go":       "standing retrace permission (stampStandingPermissionLocked)",
 	"granted_alternative_cost.go": "Rooftop Storm's granted alternative cost (grantedAlternativeCostsLocked)",
+	"blur_of_heroism.go":          "standing cast timing (castTimingVerdictLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

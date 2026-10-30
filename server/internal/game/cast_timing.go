@@ -348,6 +348,10 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 			if t.OpponentCastASpellThisTurn && !g.opponentCastASpellThisTurnLocked(src.Controller) {
 				continue
 			}
+			// A creature type the filter names is a word of the
+			// granting permanent's text (CR 612.2, #4005): Blur of
+			// Heroism's "Hero spells".
+			t.Filter = t.Filter.ThroughTextOf(src)
 			v.fold(t, card, zone)
 		}
 	}
