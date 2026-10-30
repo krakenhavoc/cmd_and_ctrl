@@ -7807,6 +7807,8 @@ devoid either.
 | "Whenever **one or more** creatures you control attack / enter / leave" (no object named) | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed |
 | "Whenever ~ / a [thing] you control **is dealt damage**, … **that much**" | `EventDealDamage` | add `AtBatchEnd: ThatMuchDamage()` (needs a `Key`). The engine emits one event per source, so without it a creature double-blocked triggers twice; with it the ability waits for the batch to settle and reads the TOTAL dealt to that object in one damage instance, in `item.Trigger.Event.Amount` (Wrathful Red Dragon, Repercussion, #3172). Hand-built test damage needs `g.RunStateChecksForTest()` before the trigger appears |
 | "Whenever you [discard / create / have enter] **one or more** …, … **that many**" | the per-object kind | wrap with `withAtBatchEnd(On(…), ThatManyEvents())` and read `settledEventAmount(item)` — one trigger per batch with the count of matching events (Cryptcaller Chariot, Magmakin Artillerist, Ingenious Artillerist) |
+| "Whenever **one or more** [creature] cards are put into your graveyard **from anywhere**" (… **that many**) | `game.EventMill`, `EventZoneMove`, `EventDiscardCard` (`graveyardArrivalKinds`) | `OncePerBatch(OnAny(graveyardArrivalKinds, graveyardArrivals{Match: …}.When(), …))` and read `InBatch(g, item.Trigger.Event.Batch, item.Controller)` as it resolves (Voracious Brood, #4721). One batch is one resolution; a token is never a card |
+| "Whenever **an artifact** is put into your graveyard from the battlefield or an artifact **card** from anywhere other than the battlefield" | the above plus `EventLTB` | `WhenAnotherArtifactIsPutIntoYourGraveyard(label, effect)` — one trigger per object, no batch; a token artifact dying counts (Ultron's Auxiliary, #4721) |
 | "Whenever **one or more** creatures you control deal combat damage to **a player**" / "whenever you attack **a player**" | the same kind as the per-creature wording | `OncePerBatchPerPlayer(...)`, or the ready-made `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature, label, effect)` — once per **player**, not once per step (#784, CR 603.2c). The clause names an object, so the guard keys on it: three creatures hitting three opponents are three triggers, two hitting one opponent are one. A card whose stack label is computed per player (Breena, Nature's Will) sets a static `Key` and lets the guard supply the player |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
@@ -11102,7 +11104,10 @@ On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mill
   "milled" payoff never sees it. "Put into your graveyard from your
   library" watches both kinds and reads the zone pair:
   `cardPutIntoYourGraveyardFromYourLibrary` and
-  `cardsPutIntoGraveyardFromLibraryInBatch` (`library_to_graveyard.go`).
+  `cardsPutIntoGraveyardFromLibraryInBatch` (`library_to_graveyard.go`), which
+  is `graveyardArrivals` (`graveyard_arrival.go`, #4721) narrowed to the
+  library. "From anywhere" widens `From`, "other than the battlefield" is
+  `Except`, and a clause that counts a dying token reads `EventLTB`.
 - **A graveyard trigger's "if this card is in your graveyard"** (Infesting
   Radroach) is `InterveningIf(CondThisInYourGraveyard{}, InGraveyard(…))`:
   the same object must still be there as it resolves, and an optional one
