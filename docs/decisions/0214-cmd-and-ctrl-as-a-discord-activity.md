@@ -1,8 +1,8 @@
 # ADR 0214 — CMD & CTRL as a Discord Activity: the table inside the voice channel
 
-**Status:** Proposed · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
+**Status:** Accepted · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
 **Issue:** [#3312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3312)
-**Owner decisions:** none yet. The owner asked for this ADR on 2026-10-13 and wants product questions put to them, not settled here. They are listed under [Open questions for the owner](#open-questions-for-the-owner), each with a recommendation. The calls this ADR makes on its own are under [Calls made here](#calls-made-here). No production code until the owner accepts it.
+**Owner decisions:** 2026-10-30. The owner read a brief of the fourteen questions under [Owner decisions](#owner-decisions) and accepted every recommendation, including verifying the production app through Stripe before Phase 2 goes to production. Question 13 stays a stop for the owner if Phase 0 hits it, and question 14 (the dev app's testers) is answered when the owner creates that app. The calls this ADR makes on its own are under [Calls made here](#calls-made-here). No production code before the owner has created the dev app.
 **Numbering:** every remote head's `docs/decisions/` was listed on 2026-10-30 after `git fetch --all --prune` (the heads are named in the PR). `develop` ends at 0211; 0212 is taken on `origin/docs/lobby-character-select` (#4656) and 0213 on `origin/docs/3313-friends-presence` (#4662), so this is **0214**.
 **Builds on:**
 - [ADR 0004](0004-discord-identity.md) (Discord identity and the bot) and [ADR 0051](0051-user-database.md) decisions 2, 3, 5 and 6 (users, sessions, the stored refresh token, revocation).
@@ -312,9 +312,9 @@ Phase 0 answers these, apart from U12 and U13, which the owner can read off the 
 - **U13.** The conflict between the gateway page and the help centre's 2026-10-26 notice on privileged intents after verification. The ADR follows the newer notice.
 - **U14.** WebSocket limits through the Worker: message size, idle timeout, and permessage-deflate.
 
-## Open questions for the owner
+## Owner decisions
 
-Each has a recommendation, the option the ADR is written for.
+Asked as open questions, each with a recommendation, the option the ADR is written for. On 2026-10-30 the owner accepted every recommendation. Questions 13 and 14 are not choices: 13 stays a stop for the owner if Phase 0 finds Bot Fight Mode challenging the proxy, and 14 is answered when the owner creates the dev app.
 
 1. **Which Discord application?** **A1, the existing app** (one consent, one identity, the bot can launch the Activity; the bot becomes public for good once verified, so it must leave servers not on its allow-list), or **A2, a separate Activity app** (the bot untouched; two consents; no launch buttons). Recommended: **A1**, with the bot leaving unlisted servers. The develop preview gets its own unverified app either way.
 2. **Will you verify the production app?** It needs your identity checked through Stripe, and it is the only way the Activity reaches C2 server members. An unverified one launches only for your developer team (up to 100) and app testers (up to 50), all your Discord friends, in servers of fewer than 25 members. Recommended: **yes, before Phase 2 goes to production.**
