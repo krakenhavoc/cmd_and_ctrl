@@ -319,7 +319,7 @@ func (e *enumerator) refCombos(cands []game.TargetRef, lo, hi, limit int, keys s
 // noteSetCut files the per-source cut for a target-set walk that had a
 // set past its limit.
 func (e *enumerator) noteSetCut(n, lo, hi, limit int, keys setRuleKeys) {
-	if keys.different == nil && keys.same == nil {
+	if !keys.any() {
 		if total := subsetCount(n, lo, hi); total > limit {
 			e.noteCut(CapPerSource, total-limit, total >= countCap)
 			return

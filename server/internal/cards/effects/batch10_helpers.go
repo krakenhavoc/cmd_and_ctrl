@@ -315,6 +315,24 @@ func b10Fight(ctx *Context, a, b uuid.UUID) error {
 	return ctx.Game.FightForEffect(ra, rb)
 }
 
+// slotZeroFightsSlotOne is "target creature [you control] fights
+// [up to one] other target creature" read off two target clauses: the
+// slot-0 creature fights the slot-1 creature, and only while both are
+// still legal targets (CR 701.14b). An "up to one" slot left empty
+// fights nothing. Ulvenwald Tracker, The Super Hero Civil War.
+func slotZeroFightsSlotOne(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	mine, ok := ctx.ClauseTarget(0)
+	if !ok || mine.Kind != game.TargetCard {
+		return nil
+	}
+	other, ok := ctx.ClauseTarget(1)
+	if !ok || other.Kind != game.TargetCard {
+		return nil
+	}
+	return b10Fight(ctx, mine.ID, other.ID)
+}
+
 // b10DestroyAllCreaturesExcept is Mount Doom's "choose up to two
 // creatures, then destroy the rest": one simultaneous destruction of
 // every creature not in `keep`.

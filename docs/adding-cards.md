@@ -237,7 +237,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    matters, as in Arc Trail) so a target that left in response is
    skipped rather than erroring.
 
-   **Rules over the chosen set (#1559, #1807).** A clause whose picks
+   **Rules over the chosen set (#1559, #1807, #4616).** A clause whose picks
    are judged against each other carries a set rule from
    [target_set.go](../server/internal/cards/effects/target_set.go),
    never a hand-written predicate. "That each have a different mana
@@ -253,6 +253,20 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    surviving picks at resolution, counts only the largest group when
    it asks whether a clause can be filled, and ships the keys so the
    picker greys what doesn't fit ([ADR 0106 §5](decisions/0106-five-small-seams-from-the-s50-rechecks.md)).
+   "With total mana value N or less" is the third rule, a ceiling on
+   the picks' sum (#4616):
+   ```go
+   Targets: TargetCreature("up to two target creatures with total mana value 6 or less").
+       WithCount(0, 2).WithTotal(TotalManaValueAtMost(6)), // The Super Hero Civil War, chapter I
+   ```
+   The engine sums the set at announce, sums the picks still legal again
+   at resolution (when they no longer fit, none of them is legal, as the
+   printed rulings say), counts the smallest values for fillability, and
+   ships each candidate's value so the picker greys what would pass the
+   ceiling. A card whose cost it cannot read fits no total. It stands
+   alone: `effects.Register` refuses it beside another set rule, an X
+   bound, a player clause or a sacrifice clause ([ADR 0019 amendment
+   2026-10-30](decisions/0019-structured-targeting.md)).
    `ExileTargetCards` (single_graveyard.go) is the shared body for
    "exile up to N target cards from a single graveyard".
 

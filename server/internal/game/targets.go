@@ -849,6 +849,17 @@ type TargetSpec struct {
 	// effects.FromASingleGraveyard.
 	Same *TargetSameness
 
+	// Total is the third set rule (#4616): the picks' total of one
+	// statistic may not exceed a ceiling — "up to two target creatures
+	// with total mana value 6 or less" (The Super Hero Civil War). The
+	// same readers answer it, each with a "total" branch: the announce
+	// gate sums the set, the CR 608.2b re-check sums the survivors
+	// (totalRuleBrokenLocked), the enumerator stops a set at the
+	// ceiling and the view ships each candidate's value. Nil — every
+	// clause but those — means no such rule. Build it with
+	// effects.TotalManaValueAtMost.
+	Total *TargetTotal
+
 	// ManaValueAtMostX is "with mana value X or less", X being the X
 	// the announcement chose at CR 601.2b — which is BEFORE targets
 	// are chosen at CR 601.2c, so the bound is known by the time any
@@ -1057,6 +1068,14 @@ func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
 // receiver, as EachDifferent does.
 func (s *TargetSpec) AllShare(r *TargetSameness) *TargetSpec {
 	s.Same = r
+	return s
+}
+
+// WithTotal attaches the total set rule to the clause (#4616) and
+// returns it — "with total mana value 6 or less". Mutates and returns
+// the receiver, as EachDifferent does.
+func (s *TargetSpec) WithTotal(r *TargetTotal) *TargetSpec {
+	s.Total = r
 	return s
 }
 
@@ -1331,7 +1350,12 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 			// picks that survived their own re-check — see
 			// setRuleConflictLocked for which reading and why.
 			// #1807: so is one whose picks must all share a key.
-			return (clause.Different == nil && clause.Same == nil) || !g.setRuleConflictLocked(item, clause, ref)
+			if (clause.Different != nil || clause.Same != nil) && g.setRuleConflictLocked(item, clause, ref) {
+				return false
+			}
+			// #4616: and one whose surviving picks must stay within a
+			// total — when they no longer do, none of them is legal.
+			return clause.Total == nil || !g.totalRuleBrokenLocked(item, clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}

@@ -292,3 +292,38 @@ func TestSetRuleKeysMatchTheGate(t *testing.T) {
 		t.Fatalf("keys = %v: the two mana-value-2 cards share one, the 1-drop differs", keys)
 	}
 }
+
+// #4616: the total rule's constructor says the printed rule, and the
+// boot checks refuse the shapes no reader handles — no statistic, a
+// clause that can pick a player, another set rule beside it, an X, and
+// a sacrifice clause.
+func TestTotalManaValueAtMostAndItsBootChecks(t *testing.T) {
+	r := TotalManaValueAtMost(6)
+	if r.Label != "have total mana value 6 or less" || r.Max != 6 || r.Stat != game.TargetTotalManaValue {
+		t.Errorf("TotalManaValueAtMost(6) = %+v", r)
+	}
+	for _, tc := range []struct {
+		name, want string
+		spec       *game.TargetSpec
+	}{
+		{"no statistic", "no statistic",
+			TargetCreature("up to two target creatures").WithCount(0, 2).WithTotal(&game.TargetTotal{Label: "x", Max: 6})},
+		{"a player", "pick a player",
+			TargetAny().WithCount(0, 2).WithTotal(TotalManaValueAtMost(6))},
+		{"beside a key rule", "another set rule",
+			TargetCreature("up to two target creatures").WithCount(0, 2).WithTotal(TotalManaValueAtMost(6)).EachDifferent(EachDifferentName())},
+		{"with an X", "an X",
+			TargetCreature("up to two target creatures").WithCount(0, 2).WithTotal(TotalManaValueAtMost(6)).WithManaValueAtMostX()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mustPanic(t, tc.want, func() {
+				Register(Spec{
+					OracleID:  "total-rule-boot-check-" + strings.ReplaceAll(tc.name, " ", "-"),
+					Name:      "Total Rule " + tc.name,
+					Targets:   tc.spec,
+					OnResolve: func(*game.StackItem, *Context) error { return nil },
+				})
+			})
+		})
+	}
+}

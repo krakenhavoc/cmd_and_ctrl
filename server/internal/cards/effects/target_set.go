@@ -97,3 +97,22 @@ func FromASingleGraveyard() *game.TargetSameness {
 func UpToCardsFromASingleGraveyard(label string, n int, preds ...CardPredicate) *game.TargetSpec {
 	return TargetCardInGraveyard(label, preds...).WithCount(0, n).AllShare(FromASingleGraveyard())
 }
+
+// TotalManaValueAtMost is "with total mana value n or less" (#4616) —
+// the third kind of set rule, attached with TargetSpec.WithTotal: the
+// picks' mana values summed may not exceed n. The Super Hero Civil
+// War's "up to two target creatures with total mana value 6 or less".
+//
+// The engine judges it at announce, sums the surviving picks again on
+// resolution (when they no longer fit, none of them is legal: the
+// printed rulings' "the entire selection of targets is illegal"), and
+// a card whose cost it cannot read fits no total. Without it the
+// clause would reach two creatures of any size, which is stronger than
+// printed.
+func TotalManaValueAtMost(n int) *game.TargetTotal {
+	return &game.TargetTotal{
+		Label: "have total mana value " + strconv.Itoa(n) + " or less",
+		Stat:  game.TargetTotalManaValue,
+		Max:   n,
+	}
+}
