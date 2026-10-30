@@ -1731,6 +1731,7 @@ tail then/jinx-delayed-draw
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen
+tail then/king-solomons-frogs-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return

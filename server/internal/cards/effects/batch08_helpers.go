@@ -136,6 +136,15 @@ func b08SacrificeAllMatching(ctx *Context, match CardPredicate) error {
 // counts first, so a counter doubler (Doubling Season) that fires on
 // the first creature cannot change what the second receives.
 func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
+	return doublePlusOneCountersOnEach(g, item, func(c game.Card) bool {
+		return c.Controller == item.Controller && c.IsCreature()
+	})
+}
+
+// doublePlusOneCountersOnEach doubles the +1/+1 counters on each
+// battlefield card `match` accepts: the shared body of Bristly Bill's
+// "each creature you control" and Hulk's "each Gamma creature you control".
+func doublePlusOneCountersOnEach(g *game.Game, item *game.StackItem, match func(c game.Card) bool) error {
 	ctx := NewContext(g, item)
 	type grow struct {
 		id uuid.UUID
@@ -143,7 +152,7 @@ func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackIte
 	}
 	var todo []grow
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != item.Controller || !c.IsCreature() {
+		if !match(c) {
 			continue
 		}
 		if n := c.Counters["+1/+1"]; n > 0 {
