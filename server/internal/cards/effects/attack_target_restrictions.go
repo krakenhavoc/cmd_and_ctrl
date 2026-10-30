@@ -137,6 +137,45 @@ func CreaturesCantAttackPlayersWhoDidNothingLastTurn() game.StaticAbility {
 	}
 }
 
+// CreaturesMatchingCantAttackYou is "<creatures matching the queries>
+// can't attack you" (CR 508.1c, #4601): the PLAYER alone, not their
+// planeswalkers or battles, so a matching creature may still attack
+// those. Storm, Windrider's "Creatures with flying can't attack you":
+//
+//	Static: []game.StaticAbility{CreaturesMatchingCantAttackYou(
+//	    "Creatures with flying can't attack you.", game.PermanentQuery{Types: []string{"creature"}, Keyword: "flying"})},
+//
+// "You" is the controller of the permanent that prints it, read when the
+// layer pass runs, so it follows a change of control. Every creature, any
+// controller's, gets the restriction with this permanent as its source
+// (it is not the creature's own ability, so it survives a creature losing
+// all abilities), and the engine decides at declaration whether the
+// attacker matches the queries (AttackTargetRestriction.OnlyAttackersMatching),
+// on its effective characteristics at that moment: a creature that
+// gains or loses flying before attackers are declared is judged as it
+// then stands. Any-of across queries.
+func CreaturesMatchingCantAttackYou(label string, attackers ...game.PermanentQuery) game.StaticAbility {
+	return game.StaticAbility{
+		Label: label,
+		Layer: game.Layer6Ability,
+		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
+			return target.IsCreature()
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			if source == nil {
+				return
+			}
+			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, game.AttackTargetRestriction{
+				Source:                source.InstanceID,
+				SourceName:            source.Name,
+				NotPlayer:             source.Controller,
+				NotPlayerOnly:         true,
+				OnlyAttackersMatching: append([]game.PermanentQuery(nil), attackers...),
+			})
+		},
+	}
+}
+
 // selfAttackTargetRestriction writes r onto the creature whose ability it
 // is, naming that creature as the source.
 func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbility {
