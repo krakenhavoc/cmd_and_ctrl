@@ -1613,6 +1613,7 @@ tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
+tail scout-the-city/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
 tail sheoldred-the-true-scriptures/flicker-this
