@@ -528,12 +528,18 @@ type Flicker struct {
 	Target     uuid.UUID
 	Controller uuid.UUID
 	Tapped     bool
+
+	// PlusOneCounters is "with a +1/+1 counter on it" (Spaceshift): the
+	// counters the card returns with. They ride the tail's N above the
+	// tapped bit, so a tail stacked before this field existed (N 0 or 1)
+	// still reads as no counters.
+	PlusOneCounters int
 }
 
 func (f Flicker) Apply(ctx *Context) error {
-	tapped := 0
+	tapped := f.PlusOneCounters << 1
 	if f.Tapped {
-		tapped = 1
+		tapped |= 1
 	}
 	return ExileTarget{
 		Target:   f.Target,
@@ -2097,10 +2103,14 @@ func SacrificeThisIfStillOnBattlefield(g *game.Game, item *game.StackItem) error
 // carry, and N is 1 for "tapped".
 var flickerReturnExiled = CardTail("flicker/return-exiled", func(ctx *Context, o game.TailOutcome) error {
 	exiled := len(o.IDs) == 1
-	f := Flicker{Target: o.Tail.Carry[0], Controller: o.Tail.Carry[1], Tapped: o.Tail.N == 1}
+	f := Flicker{Target: o.Tail.Carry[0], Controller: o.Tail.Carry[1], Tapped: o.Tail.N&1 == 1, PlusOneCounters: o.Tail.N >> 1}
 
 	if !exiled {
 		return nil
 	}
-	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+	var counters map[string]int
+	if f.PlusOneCounters > 0 {
+		counters = map[string]int{game.CounterPlusOne: f.PlusOneCounters}
+	}
+	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped, Counters: counters}.Apply(ctx)
 })
