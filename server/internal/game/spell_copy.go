@@ -606,6 +606,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// the gift cost is paid by that choice (CR 702.174a), and a copy
 	// of a promised spell gives its gift to the same opponent.
 	meta.Paid.GiftOpponent = item.Paid.GiftOpponent
+	// #4646, CR 707.10: a copy of a sneaked spell copies the sneak cost
+	// (AltCost above), and with it who the returned creature was
+	// attacking, which the token it becomes attacks (sneak.go).
+	meta.Paid.ReturnedAttacking = item.Paid.ReturnedAttacking
 	// ADR 0100 §2: the either/or branch is one of the "additional or
 	// alternative costs" CR 707.10 copies, and the discarded cards are
 	// "objects used to pay its costs", which a copy reads off the
@@ -820,9 +824,14 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	if host, ok := singleAuraHost(targets); ok && !bestowed && tmpl.IsAura() {
 		entry.AttachedTo = host
 	}
+	// CR 707.10, CR 702.190b: a copy of a sneaked permanent spell copied
+	// the sneak cost, so its token enters tapped and attacking the
+	// original's defender (sneak.go). Data on the group, so a creation
+	// paused on a CR 616 prompt is still a restore point.
+	sneakAttacking := applySneakCopyEntry(&entry, tmpl, item)
 	spec := TokenCreation{
 		Controller: item.Controller,
-		Groups:     []TokenGroup{{Template: tmpl, Count: 1, Entry: entry}},
+		Groups:     []TokenGroup{{Template: tmpl, Count: 1, Entry: entry, Attacking: sneakAttacking}},
 		Source:     item.SourceCardID,
 	}
 	// #4253 slice 6: the rest is data: the targets ride the asking item,

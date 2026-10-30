@@ -38,6 +38,13 @@ import "github.com/google/uuid"
 //     the attacking tokens share: put onto the battlefield attacking,
 //     never declared (CR 508.4), and unblocked because it arrives in
 //     the declare blockers step (CR 508.4d).
+//
+// A COPY of a sneaked permanent spell (#4646) copies the sneak cost with
+// the rest of its alternative costs (CR 707.10: "all decisions made for
+// it, including … additional or alternative costs"), so the token it
+// becomes (CR 707.10f) enters tapped and attacking the same defender.
+// createSpellCopyLocked carries AltCost and PaidCost.ReturnedAttacking;
+// resolvePermanentSpellCopyLocked reads them through applySneakCopyEntry.
 
 // sneakWindowOpenLocked reports whether it is `playerID`'s own declare
 // blockers step: the half of CR 702.190a's window that is not "any time
@@ -83,15 +90,43 @@ func (g *Game) sneakDefenderLocked(returned uuid.UUID) uuid.UUID {
 //
 // No-op for a spell cast any other way. Caller must hold g.mu.
 func (g *Game) applySneakEntryLocked(ev *ReplacementEvent, card Card, item *StackItem) {
-	if ev == nil || item == nil || item.AltCost == "" {
-		return
-	}
-	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
-	if alt == nil || !alt.Sneak {
+	if ev == nil || !sneakPaid(card, item) {
 		return
 	}
 	ev.EntersTapped = true
 	if card.IsCreature() {
 		ev.EntersAttacking = item.Paid.ReturnedAttacking
 	}
+}
+
+// sneakPaid reports whether `item` is a spell whose sneak cost was paid
+// (CR 702.190b): its AltCost names a sneak offer of `card`'s catalog row.
+// True for a copy of such a spell too, since a copy copies "additional or
+// alternative costs" paid (CR 707.10). Nil-safe.
+func sneakPaid(card Card, item *StackItem) bool {
+	if item == nil || item.AltCost == "" {
+		return false
+	}
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	return alt != nil && alt.Sneak
+}
+
+// applySneakCopyEntry is applySneakEntryLocked for the token a resolving
+// copy of a permanent spell becomes (CR 707.10f, 608.3f). The copy copied
+// the sneak cost the original paid (CR 707.10), so the token enters tapped
+// and attacking what the returned creature was attacking: CR 702.190b
+// says "a permanent spell whose sneak cost was paid", and a copy of a
+// permanent spell is one. `tmpl` is the token's template, which decides
+// the creature half (CR 506.3a). It sets entry.Tapped and returns the
+// defender for the token's group; uuid.Nil leaves it not attacking.
+// No-op for any other copy.
+func applySneakCopyEntry(entry *TokenEntryOptions, tmpl Card, item *StackItem) (attacking uuid.UUID) {
+	if entry == nil || !sneakPaid(tmpl, item) {
+		return uuid.Nil
+	}
+	entry.Tapped = true
+	if tmpl.IsCreature() {
+		return item.Paid.ReturnedAttacking
+	}
+	return uuid.Nil
 }
