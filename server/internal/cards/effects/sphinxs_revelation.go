@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "71d83fca-e40e-4d0e-956d-d0d6da9cc472",
 		Name:         "Sphinx's Revelation",
+		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: life and cards answer nothing on the stack
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

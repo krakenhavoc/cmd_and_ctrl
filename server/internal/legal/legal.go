@@ -213,6 +213,18 @@ type Move struct {
 	// CombatInteracts.
 	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
 
+	// ValueOnly is true on a cast whose announcement is declared to
+	// answer nothing (#2877, ADR 0142's amendment of 2026-10-30): the
+	// card, the chosen modes or the alternative cost declare exactly
+	// game.AnswerValue (Opt, Brainstorm, Fact or Fiction), it targets
+	// nothing on the stack, and its costs give up no creature
+	// (castValueOnly). Smart autopass does not count it as a response to
+	// an opponent's stack item unless the player asks it to; in combat
+	// and at an opponent's end step it is an instant like any other. A
+	// cast that declares nothing never sets it. Never set on an
+	// activation, whose answers are Interacts and CombatInteracts.
+	ValueOnly bool `json:"value_only,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you

@@ -1675,6 +1675,9 @@ func (e *enumerator) castMoveEmitter(
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
+	// #2877: what the face being cast declares it answers, read once;
+	// the modes vary per announcement (castAnswersOf).
+	ownAnswers := game.CardPurposeOfPtr(&card).Answers
 	permType := e.permType
 	exilePool := exileCardIDs
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
@@ -1764,6 +1767,7 @@ func (e *enumerator) castMoveEmitter(
 		// [0,2] at the same two targets).
 		label += modesLabel(modeSpec, modes)
 		label += targetLabel(g, targets)
+		targetsStack := targetsStackObject(g, targets)
 		e.add(Move{
 			Type:   TypeCastSpell,
 			Player: e.seat,
@@ -1787,10 +1791,13 @@ func (e *enumerator) castMoveEmitter(
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
 			// actually chose a stack target come back flagged.
-			TargetsStack: targetsStackObject(g, targets),
+			TargetsStack: targetsStack,
 			HasTargets:   hasTargets(targets),
-			IdleHint:     idle,
-			Value:        xv,
+			// #2877: an announcement declared to answer nothing.
+			ValueOnly: castValueOnly(g, castAnswersOf(ownAnswers, modeSpec, modes, offer), targetsStack,
+				sacs, exileIDs, altPaid),
+			IdleHint: idle,
+			Value:    xv,
 			Params: mustJSON(castParams{
 				InstanceID:        card.InstanceID.String(),
 				FromZone:          from,

@@ -252,7 +252,8 @@ type GameView struct {
 	// LegalMovesTruncated is true when capLegalMoves dropped anything
 	// from LegalMoves — the list on this frame is then one move per
 	// (source, kind, targets_stack, has_targets, interacts,
-	// combat_interacts, combat_defender_only) rather than every move
+	// combat_interacts, combat_defender_only, value_only) rather than
+	// every move
 	// (ADR 0122 §6.1). Absent otherwise. A seat that needs the rest sends a
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
@@ -5883,7 +5884,8 @@ const legalMovesWireCap = 48
 //
 // So the degraded list keeps the FIRST move of every (source, kind,
 // targets_stack, has_targets, interacts, combat_interacts,
-// combat_defender_only) tuple and drops only the alternatives.
+// combat_defender_only, value_only) tuple and drops only the
+// alternatives.
 // Every card that had a move still has one; what is lost is the choice between
 // its twelve targets, which no client consumes today (targeting is
 // driven by CardView.legal_targets, and targeting.ts stays the
@@ -5897,8 +5899,9 @@ const legalMovesWireCap = 48
 // untargeted one is two moves, and keeping only the untargeted one
 // would tell smart autopass the seat has nothing to answer with.
 // CombatInteracts and CombatDefenderOnly ride along for the same reason
-// (#2871).
-// docs/protocol.md states all five as part of the fields' contract.
+// (#2871), and so does ValueOnly (#2877): a modal spell's draw-only
+// announcement and its other modes are different answers.
+// docs/protocol.md states all six as part of the fields' contract.
 //
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
@@ -5947,6 +5950,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		interacts    bool
 		combat       bool
 		defenderOnly bool
+		valueOnly    bool
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
@@ -5957,7 +5961,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 			out = append(out, m)
 			continue
 		}
-		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
+		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly, m.ValueOnly}
 		if seen[k] {
 			continue
 		}

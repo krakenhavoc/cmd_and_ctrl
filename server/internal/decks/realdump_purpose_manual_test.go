@@ -160,14 +160,16 @@ func anyPurpose(s effects.Spec) (declared, sweep bool) {
 	}
 	// A wipe declared under Kicked or FaceUp is a declared wipe (ADR
 	// 0126's amendment of 2026-10-15, #3762): DeclaresSweep reads them.
-	note(s.Purpose.IsZero(), s.Purpose.DeclaresSweep())
+	// What a spell answers (#2877) is no amount, so a spell slot that
+	// declares only Answers still lists as undeclared here.
+	note(!declaresBeyondAnswers(s.Purpose), s.Purpose.DeclaresSweep())
 	if s.Modes != nil {
 		for _, o := range s.Modes.Options {
-			note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())
+			note(!declaresBeyondAnswers(o.Purpose), !o.Purpose.Sweep.IsZero())
 		}
 	}
 	for _, a := range s.AlternativeCosts {
-		note(a.Purpose.IsZero(), !a.Purpose.Sweep.IsZero())
+		note(!declaresBeyondAnswers(a.Purpose), !a.Purpose.Sweep.IsZero())
 	}
 	for _, a := range s.Activated {
 		note(a.Purpose.IsZero(), !a.Purpose.Sweep.IsZero())
