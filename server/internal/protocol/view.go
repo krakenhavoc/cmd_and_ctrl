@@ -1778,6 +1778,17 @@ type OptionalCostView struct {
 	Blight        int               `json:"blight,omitempty"`
 	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
 
+	// Reveal / Behold / RevealOptions are a "you may behold a Hero" offer
+	// (CR 701.4a, #4642): AdditionalCostView's three fields of the same
+	// names, off the same engine walk. RevealOptions is the viewer's
+	// cards that could pay it, hand cards first and then permanents;
+	// present-and-empty means the offer cannot be taken right now (nothing
+	// to behold). Taking it, the caster names exactly one of them on
+	// cast_spell as `reveal_ids`.
+	Reveal        bool              `json:"reveal,omitempty"`
+	Behold        bool              `json:"behold,omitempty"`
+	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
+
 	// TapCost is the waterbend clause of a "you may waterbend {N}" offer
 	// (CR 701.67, #3999): the TapCostView a hand card's own waterbend
 	// ships, sized at the offer's {N}. Taking the offer makes it the
@@ -7134,7 +7145,8 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		// (Silverquill's casualty), appended after the card's own.
 		optional = g.OptionalCostsForCastLocked(caster, live)
 	}
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
+	castUUID, _ := uuid.Parse(c.InstanceID)
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, castUUID, src, optional)
 	// ADR 0202: the cards in the caster's hand that splice onto this
 	// spell, asked of the engine's own offer walk.
 	if haveLive {
@@ -8200,7 +8212,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 // optional cost that rewrites the target clause carries the rewritten
 // clause's legal set — `src` is the spell as its own source (#662),
 // exactly as the alternative-cost stamp reads it.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
+func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
 	if len(costs) == 0 {
 		return nil
 	}
@@ -8251,6 +8263,14 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		if oc.Blight > 0 {
 			v.Blight = oc.Blight
 			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+		}
+		// #4642: "you may behold a Hero" — the engine's own walk, with the
+		// spell itself excluded, so the picker offers exactly the cards
+		// the validator accepts (#544).
+		if oc.Reveal != nil {
+			v.Reveal = true
+			v.Behold = oc.Reveal.Behold
+			v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
 		}
 		// #3999: "you may waterbend {N}" — the picker the offer opens.
 		if !oc.Waterbend.Empty() {
