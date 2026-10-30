@@ -680,6 +680,8 @@ func Register(spec Spec) {
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
 		checkAbilityCostModifiers(spec.Name, i, ab)
+		// #4566: an either/or part of the cost (checkOrCost).
+		checkOrCost(spec.Name, i, ab.Cost)
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		checkGrantorOnlyIsGranted(spec.Name, i, ab)

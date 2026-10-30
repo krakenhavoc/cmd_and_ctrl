@@ -2080,7 +2080,10 @@ type PayCardsView struct {
 // PayOptionView is one branch of an either payment (ADR 0187 §5).
 type PayOptionView struct {
 	// Action is the branch's kind: "sacrifice", "discard",
-	// "exile_graveyard", "life", "damage", "energy" or "nothing".
+	// "exile_graveyard", "life", "damage", "energy", "nothing" or — #4566,
+	// a ward with two ways to pay — "mana", answered with `pay_option`
+	// alone and paid from the pool and the auto-tapper like a plain mana
+	// pay-unless. Words then reads "pay {2}".
 	Action string `json:"action"`
 	// Count is how many cards one payment names, or the amount of life,
 	// damage or energy.
@@ -5019,6 +5022,13 @@ type ActivatedAbilityView struct {
 	// (CR 118.3 — it will already be tapped).
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// CostBranches are the ways to pay an either/or part of the cost
+	// (#4566, game.AbilityCost.Either): Bullseye, Death Dealer's
+	// "Sacrifice an artifact or discard a nonland card". The client asks
+	// which one first, then runs the chosen branch's picker exactly as it
+	// would for a row printing that clause alone, and sends the index as
+	// `cost_branch`. Absent for every other ability.
+	CostBranches []AbilityCostBranchView `json:"cost_branches,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -6729,6 +6739,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #4566: an either/or cost's discard branch lists the same hand.
+	var branchesPrivate bool
+	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
+	private = private || branchesPrivate
 	return v, private
 }
 
@@ -13048,6 +13062,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
 		}
+		// #4566: each branch of an either/or cost, off the walks the
+		// engine validates the folded cost against.
+		v.CostBranches = abilityCostBranchViews(g, caster, c.InstanceID, a.Cost)
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			// #662: an activated ability's source is the permanent
