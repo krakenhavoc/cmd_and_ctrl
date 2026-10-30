@@ -29,7 +29,7 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{4}{W}")},
 		OnResolve: ResolveSteps(
-			Instruction(putPlusOneCounterOnTheLegalTarget),
+			Instruction(func(ctx *Context) error { return PlusOneCounterOnTheTarget(ctx.Game, ctx.Item) }),
 			Instruction(func(ctx *Context) error {
 				if ctx.Item.CastFromZone != game.ZoneGraveyard {
 					return nil
