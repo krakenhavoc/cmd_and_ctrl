@@ -115,6 +115,20 @@ type WardCost struct {
 	// Poison is "ward—get N poison counters" (The Serpent Society, #4613):
 	// the payer gets that many poison counters. Always payable.
 	Poison int
+
+	// Either is a ward with two ways to pay (#4566): Titania, Rugged
+	// Rumbler's "Ward—Discard a card or pay {2}". Each branch is a ward
+	// cost of its own — mana, life, or a chosen discard — and the payer
+	// is asked once, naming the branch (an either payment, ADR 0187 §5).
+	// Build it with WardEither; no other field is set beside it.
+	Either []WardCost
+}
+
+// WardEither builds a ward with two or more ways to pay: WardEither(
+// WardDiscard(1), WardMana("{2}")) is "Ward—Discard a card or pay {2}"
+// (#4566).
+func WardEither(branches ...WardCost) WardCost {
+	return WardCost{Either: append([]WardCost(nil), branches...)}
 }
 
 // WardSacrificeCost is the "sacrifice a <thing>" half of a ward cost:
@@ -248,6 +262,10 @@ func (k *WardDiscardKind) Cost() WardCost { return WardCost{Discard: 1, DiscardK
 // from Ward() at catalog init, so a malformed card fails at boot rather
 // than charging the first component it happens to check.
 func (c WardCost) validate() {
+	if len(c.Either) > 0 {
+		c.validateEither()
+		return
+	}
 	if c.Life < 0 {
 		panic("effects: a ward life cost cannot be negative")
 	}
@@ -443,6 +461,8 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return nil
 	}
 	switch {
+	case len(cost.Either) > 0:
+		return wardEitherOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
 	case cost.Life > 0 && cost.Mana == "":
 		return wardPayLifeOrCounter(g, item.SourceCardID, payer, cost.Life, targetingItem)
 	case cost.Sacrifice != nil:

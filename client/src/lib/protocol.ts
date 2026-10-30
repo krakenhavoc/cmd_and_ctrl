@@ -3376,9 +3376,25 @@ export interface PayCardsView {
 }
 
 // One branch of an either payment (ADR 0187 §5).
+// AbilityCostBranchView is one way to pay an either/or activation cost
+// (#4566). The discard branch's options and verdict reach the
+// controller only.
+export interface AbilityCostBranchView {
+  // "Sacrifice an artifact", "Discard a nonland card".
+  label: string;
+  // Whether the activator can pay this branch now (CR 118.3).
+  payable?: boolean;
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
+  discard_cost_n?: number;
+  discard_cost_label?: string;
+  discard_cost_options?: string[];
+}
+
 export interface PayOptionView {
   // "sacrifice", "discard", "exile_graveyard", "life", "damage",
-  // "energy" or "nothing".
+  // "energy", "nothing" or — #4566, a ward with two ways to pay —
+  // "mana" (words "pay {2}"), answered with pay_option alone.
   action: string;
   // How many cards one payment names, or the amount of life, damage or
   // energy. Absent for a branch with no amount.
@@ -3703,6 +3719,11 @@ export interface ActivatedAbilityView {
   // activation's `x_value`; min / max are then unset (0 / 0).
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #4566: the branches of an either/or cost ("Sacrifice an artifact or
+  // discard a nonland card"). The client asks which branch first, runs
+  // that branch's own picker as for a row printing the clause alone, and
+  // sends the index as `cost_branch`. Absent on every other row.
+  cost_branches?: AbilityCostBranchView[];
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,

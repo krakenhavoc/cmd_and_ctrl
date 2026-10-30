@@ -77,9 +77,13 @@ type activateParams struct {
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
-	PhyrexianLife int  `json:"phyrexian_life,omitempty"`
-	Strict        bool `json:"strict,omitempty"`
-	AutoTap       bool `json:"auto_tap,omitempty"`
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #4566: the branch of an either/or cost this move pays
+	// (game.ActivateAbilityParams.CostBranch). Omitted for every
+	// ability whose cost has none.
+	CostBranch *int `json:"cost_branch,omitempty"`
+	Strict     bool `json:"strict,omitempty"`
+	AutoTap    bool `json:"auto_tap,omitempty"`
 }
 
 // activatedMoves enumerates catalog activated abilities on the
@@ -244,7 +248,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			abilities[own+k] = tw.Shape
 		}
 	}
-	for row, ab := range abilities {
+	// #4566: an either/or cost is one row per branch here, each with the
+	// branch folded into its cost (game.ChosenAbilityCost), so every gate
+	// and payment below is the ordinary one and a branch nothing can pay
+	// offers no move (CR 118.3). The move names its branch (cost_branch).
+	for _, er := range expandCostBranches(abilities) {
+		row, ab, costBranch := er.row, er.ab, er.branch
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -963,6 +972,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
 								}
 								label += sacrificeLabel(g, sacs)
+								// #4566: a discard branch names its card, as
+								// the sacrifice branch's label already does.
+								if costBranch != nil {
+									label += discardLabel(g, discardIDs)
+								}
 								label += returnLabel(g, rets)
 								label += exileLabel(g, perms)
 								label += tapLabel(g, taps)
@@ -1056,6 +1070,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 										XValue:            tapXValue,
 										Distribution:      distributionWire(dist),
 										PhyrexianLife:     phyrexianLife,
+										CostBranch:        costBranch,
 										Strict:            true,
 										AutoTap:           true,
 									}),

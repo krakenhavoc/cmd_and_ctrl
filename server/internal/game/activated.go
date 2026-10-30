@@ -620,6 +620,25 @@ type AbilityCost struct {
 	// every other cost, so it is paid last. effects.Register refuses
 	// it beside ExileFromLibraryTop, which no printed card has.
 	Mill int
+
+	// Either is an either/or part of the cost (#4566, ADR 0100's
+	// 2026-10-30 amendment): Bullseye, Death Dealer's "{3}, {T},
+	// Sacrifice an artifact or discard a nonland card:". The rest of
+	// this cost is paid as always, and exactly ONE branch is paid with
+	// it; the activator announces which as ActivateAbilityParams.
+	// CostBranch (CR 602.2b runs CR 601.2b, where the intention to pay
+	// a cost is announced). Nil means no such part, which is every other
+	// ability.
+	//
+	// A branch is plain data (AbilityCostBranch): a sacrifice or a
+	// discard, and the rest of the cost carries neither clause, which
+	// effects.Register enforces. ChosenAbilityCost builds the announced
+	// branch into the ordinary clause, so the validator, the payer, the
+	// enumerator and the view all see one ordinary cost
+	// (ability_cost_either.go). Data rather than a nested AbilityCost,
+	// whose clauses hold predicate funcs: no new route from Game to a
+	// closure (ADR 0041).
+	Either []AbilityCostBranch
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -1285,6 +1304,14 @@ type ActivateAbilityParams struct {
 	// is refused before anything is paid.
 	PhyrexianLife int
 
+	// CostBranch is the branch of an either/or cost the activator pays
+	// (#4566, AbilityCost.Either): an index into Either, on the wire as
+	// `cost_branch`. Required on an ability whose cost has branches and
+	// refused on any other, as CastSpellParams.CostBranch is (ADR 0100
+	// §2): an activation is never paid at a price the player did not
+	// name.
+	CostBranch *int
+
 	// PaperPayment mirrors CastSpellParams.PaperPayment (#3855): the
 	// answer to a *PaperPaymentRequiredError from a permissive
 	// activation whose ability reads the mana spent on it.
@@ -1460,6 +1487,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrAlternativeCostUnavailable
 		}
 		ab = equipTwinShape(ab, alt, from)
+	}
+	// #4566, CR 602.2b / 601.2b: an either/or cost is announced with the
+	// branch it pays, and from here on the row's cost IS that branch
+	// folded into the rest (ChosenAbilityCost). Before every gate below,
+	// so a missing or bad branch is refused with nothing paid, and every
+	// validator and payer reads one ordinary cost.
+	if ab.Cost, err = ChosenAbilityCost(ab.Cost, params.CostBranch); err != nil {
+		return err
 	}
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
@@ -2021,6 +2056,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// below. The effect reads the paid counter count back out of it
 	// (Context.CountersRemoved), the same way it reads X.
 	paid := PaidCost{}
+	// #4566: which branch of an either/or cost was paid, index plus one
+	// (0 is "no either/or cost"), as a cast records it (ADR 0100 §2).
+	if params.CostBranch != nil {
+		paid.CostBranch = *params.CostBranch + 1
+	}
 	// #3855: what the activator declared about a waived payment, for
 	// the activation's log line.
 	var paper paperNote
