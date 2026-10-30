@@ -184,7 +184,7 @@
   const sharedWith: Party[] = [
     {
       who: "The other people at your table",
-      what: "Your seat name and avatar, your playmat, the deck name, and everything that happens in the game. A spectator link shows the same. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one.",
+      what: "Your seat name and avatar, your playmat, the deck name, and everything that happens in the game. A spectator link shows the same. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one. Anyone signed in who has sat at a table with you also sees your display name and avatar in their invite picker, and can have the bot send you the invite link to a table they are at as a Discord direct message. You stop appearing there when you delete your account.",
     },
     {
       who: "Discord",
