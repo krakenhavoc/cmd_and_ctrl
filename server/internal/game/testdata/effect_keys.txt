@@ -1848,3 +1848,5 @@ tail msh-a8/tricksters-stratagem-connive
 payunless pay-unless/ultron-artificial-malevolence-copy
 tail msh-a9/ultron-robot-villain
 option option-pick/thanos-destroy-parity
+tail the-invincible-iron-man/attach-equipment
+tail vision-quest/haste
