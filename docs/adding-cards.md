@@ -12005,6 +12005,12 @@ the offer replaces the mana cost; casting for the printed cost stays sorcery-spe
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
+"Whenever a creature you control connives" watches `game.EventConnived` (#4641): `CardID` is the conniver and `Actor`
+its controller as it connived, so it holds for a creature that left the battlefield first (CR 701.50b). It fires once per
+creature, after the discard and the counter, whether or not a counter went on (CR 701.50f). Write it as
+`WheneverACreatureYouControlConnives(label, effect)` (Iron Monger). A card that connives in its own way must emit it:
+call `g.ConnivedForEffect(creature, controller)` from the discard continuation, as Ledger Shredder does.
+
 ### Blitz (CR 702.152, #3772)
 
 Blitz is dash's sibling: an alternative cost whose entry clause (`AlternativeCost.Blitz`, `game/blitz.go`) gives the

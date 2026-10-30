@@ -80,6 +80,10 @@ func TestRaffineConnivesXWhereXIsAttackingCreatures(t *testing.T) {
 	if me.Hand.Size() != 2 {
 		t.Errorf("hand = %d, want 2", me.Hand.Size())
 	}
+	// CR 701.50f, #4641: the target connived once, however many cards X was.
+	if evs := eventsOfKind(g, game.EventConnived); len(evs) != 1 || evs[0].CardID != a || evs[0].Actor != me.ID {
+		t.Errorf("connive events = %+v, want one for the target under its controller", evs)
+	}
 }
 
 // Raffine is not an attacker herself and does not trigger when an opponent
