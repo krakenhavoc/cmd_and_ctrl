@@ -84,8 +84,56 @@ type SplitSecondGrant struct {
 	// 2/2 creature with no text, matches nothing but "creature").
 	Spells PermissionFilter
 
+	// YouCast narrows "spells you control" to "spells you CAST" (Shadow
+	// the Hedgehog's "each spell you cast"): the grant reaches a spell
+	// whose caster controls the source, whoever controls the spell now,
+	// and never a copy, which was not cast (CR 707.10). The caster is
+	// the player the spell was put on the stack under
+	// (StackItem.BaseController, else Controller). False is "spells you
+	// control", the spell's current controller (Samut).
+	YouCast bool
+
+	// SpentFrom, when nonzero, narrows the grant to a spell that mana
+	// from a source of one of these kinds was spent to cast (#4724,
+	// Shadow the Hedgehog's "if mana from an artifact was spent to cast
+	// it"). Read off the spell's payment record (StackItem.Paid), whose
+	// tokens keep a snapshot of what each mana's source was when it was
+	// made (#1212), so a Treasure that sacrificed itself to pay still
+	// counts. The record is complete when the spell lands on the stack
+	// and never changes, so the condition is fixed at the cast; whether
+	// the source is on the battlefield to grant it is still read live.
+	// A copy spent nothing (CR 707.10) and never matches. Zero asks
+	// nothing.
+	SpentFrom ManaSourceKinds
+
 	// Label is the oracle sentence the card's ability row shows.
 	Label string
+}
+
+// reaches reports whether this grant, on a permanent controlled by
+// sourceController, reaches the spell `item` (on the stack as `spell`).
+func (gr SplitSecondGrant) reaches(sourceController uuid.UUID, item *StackItem, spell Card) bool {
+	if gr.YouCast {
+		if item.IsCopy || spellCasterOf(item) != sourceController {
+			return false
+		}
+	} else if item.Controller != sourceController {
+		return false
+	}
+	if !gr.Spells.Matches(spell) {
+		return false
+	}
+	return gr.SpentFrom == 0 || item.Paid.Spent().From(gr.SpentFrom)
+}
+
+// spellCasterOf is the player a spell was put on the stack under: its
+// base controller, which the first control change stamps, else its
+// controller (ADR 0104).
+func spellCasterOf(item *StackItem) uuid.UUID {
+	if item.BaseController != uuid.Nil {
+		return item.BaseController
+	}
+	return item.Controller
 }
 
 // CatalogSplitSecondGrants returns the split-second grants a battlefield
@@ -112,7 +160,9 @@ var CatalogSplitSecondGrants func(abilityKey string) []SplitSecondGrant
 //
 // "Spells you control" is the spell's current controller
 // (StackItem.Controller, CR 112.2), the CounterShieldYouControl
-// reading: a copy you control is a spell you control.
+// reading: a copy you control is a spell you control. "Each spell you
+// cast" (SplitSecondGrant.YouCast) is its caster instead, and a copy
+// is never one.
 //
 // Caller must hold g.mu.
 func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
@@ -123,9 +173,12 @@ func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
 	if spell == nil {
 		return false
 	}
+	caster := spellCasterOf(item)
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.Controller != item.Controller {
+		// Only the spell's controller's or its caster's permanents can
+		// grant it anything; skip the catalog read for the rest.
+		if src.Controller != item.Controller && src.Controller != caster {
 			continue
 		}
 		key := catalogAbilityKeyOf(src)
@@ -133,7 +186,7 @@ func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
 			continue
 		}
 		for _, gr := range CatalogSplitSecondGrants(key) {
-			if gr.Spells.Matches(*spell) {
+			if gr.reaches(src.Controller, item, *spell) {
 				return true
 			}
 		}

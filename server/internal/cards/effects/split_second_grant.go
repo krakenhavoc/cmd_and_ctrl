@@ -16,3 +16,19 @@ func InstantAndSorcerySpellsYouControlHaveSplitSecond() game.SplitSecondGrant {
 		Label:  "Instant and sorcery spells you control have split second.",
 	}
 }
+
+// EachSpellYouCastHasSplitSecondIfManaFrom is "each spell you cast has
+// split second if mana from a <kind> was spent to cast it" (Shadow the
+// Hedgehog's Chaos Control, #4724): every spell its controller casts,
+// read off the spell's payment record (game.SplitSecondGrant.SpentFrom,
+// #1212's source snapshot), and still read live off the battlefield. A
+// card using it declares ReadsManaSpent (ReadsYourCasts, plus
+// ReadsSourceKinds for a kind a paper payment can satisfy), so a waived
+// payment asks what paid it.
+func EachSpellYouCastHasSplitSecondIfManaFrom(kinds game.ManaSourceKinds, label string) game.SplitSecondGrant {
+	return game.SplitSecondGrant{
+		YouCast:   true,
+		SpentFrom: kinds,
+		Label:     label,
+	}
+}
