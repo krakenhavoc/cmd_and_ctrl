@@ -392,6 +392,22 @@ type AlternativeCost struct {
 	// its haste and never dies.
 	Blitz bool
 
+	// Sneak is sneak's two riders (CR 702.190, #4586), set with
+	// effects.Sneak, never by hand. The price is ManaCost plus the
+	// ReturnToHand component narrowed to an unblocked creature you
+	// control; this bit adds what the price alone cannot say:
+	//
+	//   - the window (CR 702.190a): the offer may be claimed only in its
+	//     caster's own declare blockers step, any time they could cast an
+	//     instant then. CastTimingForOfferOpenLocked reads it, so
+	//     CastSpell, the enumerator and the view agree (sneak.go);
+	//   - the entry (CR 702.190b): a permanent spell cast this way enters
+	//     tapped and attacking whatever the returned creature was
+	//     attacking. The cast reads that defender before the return
+	//     clears it and keeps it on PaidCost.ReturnedAttacking, ninjutsu's
+	//     field; the resolution seeds both onto the entry event.
+	Sneak bool
+
 	// EntersWithCounterName / EntersWithCounterCount is "this
 	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the

@@ -317,6 +317,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Blitz("{cost}")} — the haste, the draw and the end-step sacrifice ride the constructor (#3772)`,
 	},
 	{
+		Name:       "sneak",
+		Phrases:    []string{"sneak"},
+		Implements: altCost("sneak"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "sneak") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Sneak("{cost}")} — the declare-blockers window, the unblocked-attacker return and the tapped-and-attacking entry ride the constructor (#4586)`,
+	},
+	{
 		Name:       "freerunning",
 		Phrases:    []string{"freerunning"},
 		Implements: altCost("freerunning"),

@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
   - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
+  - [Sneak (CR 702.190, #4586)](#sneak-cr-702190-4586)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
@@ -12022,6 +12023,22 @@ g.ApplyBlitzRidersForEffect(tokenID, item.Controller, "Jaxis — sacrifice the t
 `CastableZones: []game.ZoneKind{game.ZoneGraveyard}`. It binds the hand offer to the hand and the graveyard offer
 (`blitz-graveyard`) to the graveyard, so the card cannot be cast from its graveyard for its mana cost. The draw is one
 shared grant bundle, `game.BlitzDrawGrant`, that `effects/blitz.go` registers once. Don't declare a per-card copy of it.
+
+### Sneak (CR 702.190, #4586)
+
+Sneak is ninjutsu as an alternative cost: cast the spell for its sneak cost in your own declare blockers step, returning an
+unblocked creature you control to its owner's hand, and a permanent cast this way enters tapped and attacking whatever that
+creature was attacking. Engine notes are in the 2026-10-30 amendment of [ADR 0025](decisions/0025-alternative-costs.md).
+
+```go
+AlternativeCosts: []game.AlternativeCost{Sneak("{1}{B}{B}")}, // Elektra, Daughter of the Hand
+```
+
+Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries the window (the offer is timed by
+`CastTimingForOfferOpenLocked`, open only in its caster's declare blockers step) and the entry, and the cost is
+`ReturnToHand` narrowed by `UnblockedAttacker`, so the picker, the enumerator and the validator agree. An instant or
+sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
+ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
 
 ### Flash if X is N or less (#3225)
 

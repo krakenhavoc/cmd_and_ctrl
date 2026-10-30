@@ -7479,13 +7479,14 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // castTimingOpenForAnyOffer is the timing half of castableNow: the
 // window is open for the cast as a whole, or for one of its offers
 // that carries its own "as though it had flash" (CR 601.3c, Primal
-// Prayers), judged as CastSpell would judge that claim.
+// Prayers) or sneak's declare-blockers window (CR 702.190a, #4586),
+// judged as CastSpell would judge that claim.
 func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []*game.AlternativeCost) bool {
 	if g.CastTimingOpenLocked(caster, card, kind, grant) {
 		return true
 	}
 	for _, o := range offers {
-		if o != nil && o.AsThoughFlash && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
+		if o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
 			return true
 		}
 	}

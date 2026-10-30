@@ -2229,6 +2229,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// is a card leaving hand while the counterspell is on the stack,
 	// and a Daze returns its Island before the spell it is answering
 	// has resolved.
+	//
+	// #4586, CR 702.190b: what the creature a sneak cost returns was
+	// attacking, read before the return clears it, onto the spell's
+	// paid-cost record, the field ninjutsu keeps it in. The resolution
+	// enters the permanent attacking it (applySneakEntryLocked).
+	if alt != nil && alt.Sneak && len(params.AltCostIDs) > 0 {
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.ReturnedAttacking = g.sneakDefenderLocked(params.AltCostIDs[0])
+		}
+	}
 	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
@@ -4284,6 +4294,9 @@ func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, ciphe
 		// doubles them — rather than an afterthought stapled on once
 		// the permanent has landed.
 		g.applyAltCostEntryCountersLocked(ev, top, item)
+		// #4586, CR 702.190b: a sneak permanent enters tapped and
+		// attacking, seeded here for the same reason.
+		g.applySneakEntryLocked(ev, top, item)
 		// #1002, CR 614.1c: the card's OWN "this permanent enters with
 		// X +1/+1 counters on it", read off the same still-reachable
 		// StackItem the line above reads. Two clauses, one entry
