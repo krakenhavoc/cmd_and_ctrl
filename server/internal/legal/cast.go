@@ -440,9 +440,16 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// the same point, which is what keeps the two answers identical.
 	//
 	// Once per (card, face, offer) rather than once per announced set
-	// of optional costs: nothing in ADR 0073's optional half can
-	// change a timing answer.
-	if !e.g.CastTimingForOfferOpenLocked(e.seat, card, kind, perm, offer) {
+	// of optional costs, with ONE exception: an optional cost that says
+	// "you may cast this spell as though it had flash if it's cast using"
+	// it (Quantum Reduction's teamwork, CR 601.3c) opens the window for
+	// the sets that announce it, so a closed answer here drops only the
+	// sets that do not (the loop below), and drops the whole walk when
+	// no cost could open it.
+	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
+	timingOpen := e.g.CastTimingForOfferOpenLocked(e.seat, card, kind, perm, offer)
+	if !timingOpen && !(game.AnyOptionalCostOpensCastWindow(optional) &&
+		e.g.CastTimingForCastOpenLocked(e.seat, card, kind, perm, offer, true)) {
 		return
 	}
 	// ADR 0073 §9: a card with optional additional costs is several
@@ -455,8 +462,12 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// optionalCostSets is [nil] for every card that offers none,
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
-	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
 	for _, chosen := range e.optionalCostSets(optional) {
+		// CR 601.3c: a closed window stays closed for a set that
+		// announces nothing which opens it.
+		if !timingOpen && !game.OptionalCostsOpenCastWindow(optional, chosen) {
+			continue
+		}
 		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
 		// seat has energy for (with the offer's own, Nissa's eight) is
 		// a cast the engine refuses, so it is never offered.

@@ -7502,7 +7502,32 @@ func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, k
 			return true
 		}
 	}
+	// CR 601.3c: an optional cost that opens the window (Quantum
+	// Reduction's teamwork) makes the card castable here for the caster
+	// who announces it; the announce path holds the cast to it.
+	if game.AnyOptionalCostOpensCastWindow(payableOpeningCosts(g, caster, card)) {
+		for _, o := range offers {
+			if g.CastTimingForCastOpenLocked(caster, card, kind, grant.ForClaim(o), o, true) {
+				return true
+			}
+		}
+	}
 	return false
+}
+
+// payableOpeningCosts is the card's optional costs that open the
+// instant-speed window (AdditionalCost.AsThoughFlash, CR 601.3c) and that
+// the caster could announce right now: a teamwork cost the untapped
+// creatures cannot reach opens nothing, as the enumerator, which drops
+// the unpayable set, agrees.
+func payableOpeningCosts(g *game.Game, caster uuid.UUID, card game.Card) []game.AdditionalCost {
+	var out []game.AdditionalCost
+	for _, oc := range g.OptionalCostsForCastLocked(caster, card) {
+		if oc.AsThoughFlash && (oc.Teamwork == 0 || g.TeamworkPayableForEffect(caster, oc.Teamwork)) {
+			out = append(out, oc)
+		}
+	}
+	return out
 }
 
 // viewOfCastPrices prices every offer a cast out of `kind` may claim —

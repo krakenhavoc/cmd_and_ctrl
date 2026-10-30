@@ -471,10 +471,50 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 // and is then shut everywhere but its caster's own declare blockers step
 // (sneak.go).
 func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
+	return g.CastTimingForCastOpenLocked(playerID, card, zone, perm, offer, false)
+}
+
+// CastTimingForCastOpenLocked is CastTimingForOfferOpenLocked for a cast
+// that also announces optional additional costs: `optionalFlash` is
+// OptionalCostsOpenCastWindow of the card's costs and the ones announced
+// (Quantum Reduction's "as though it had flash if it's cast using
+// teamwork", CR 601.3c). The grant joins the offer's own at step 2b, so
+// the per-player restrictions still close it (CR 101.2). False is
+// CastTimingForOfferOpenLocked exactly.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastTimingForCastOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost, optionalFlash bool) bool {
 	if offer != nil && offer.Sneak && !g.sneakWindowOpenLocked(playerID) {
 		return false
 	}
-	return g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow(), true)
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow() || optionalFlash, true)
+}
+
+// OptionalCostsOpenCastWindow reports whether one of the optional costs
+// the caster announced (`chosen`, positions in `optional`) says "you may
+// cast this spell as though it had flash if it's cast using" it
+// (AdditionalCost.AsThoughFlash, CR 601.3c). Out-of-range positions are
+// ignored: validateOptionalCostChoice refuses them elsewhere.
+func OptionalCostsOpenCastWindow(optional []AdditionalCost, chosen []int) bool {
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) && optional[i].AsThoughFlash {
+			return true
+		}
+	}
+	return false
+}
+
+// AnyOptionalCostOpensCastWindow reports whether the card offers an
+// optional cost that would open the instant-speed window if announced:
+// what the view's castable_here and the enumerator ask before they know
+// which costs the caster will announce (CR 601.3c).
+func AnyOptionalCostOpensCastWindow(optional []AdditionalCost) bool {
+	for i := range optional {
+		if optional[i].AsThoughFlash {
+			return true
+		}
+	}
+	return false
 }
 
 // ownFlash is false only for castUsesOwnFlashLocked's question: would

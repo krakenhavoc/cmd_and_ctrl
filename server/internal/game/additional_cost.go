@@ -218,6 +218,18 @@ type AdditionalCost struct {
 	// cost keyed TeamworkKey.
 	Teamwork int
 
+	// AsThoughFlash is "You may cast this spell as though it had flash if
+	// it's cast using <this cost>" (Quantum Reduction, CR 601.3c):
+	// announcing this optional cost opens the instant-speed window for
+	// THIS cast and no other. Only an optional cost has the clause; the
+	// caster announces it before timing is judged (CR 601.2b precedes the
+	// timing gate here), and CastSpell, the legal-move enumerator and the
+	// view's castable_here all read it through OptionalCostsOpenCastWindow.
+	// Like an offer's AsThoughFlash (CR 601.3c) it joins the card's own
+	// timing before the per-player restrictions, so a Teferi, Time Raveler
+	// still closes it (CR 101.2). False is every cost written before this.
+	AsThoughFlash bool
+
 	// Blight is "blight N" paid as a cost (CR 701.68a): put N -1/-1
 	// counters on a creature you control. The caster names the one
 	// creature in CastSpellParams.BlightIDs. The counters go through

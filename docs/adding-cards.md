@@ -12358,6 +12358,12 @@ ctx.SourcePermanent()                                                           
   `CastKindAsThoughFlash(game.PermissionFilter{AuraOrEquipmentOnly: true}, label)` (Sigarda's Aid).
 - **"You may cast this spell as though it had flash if <board condition>"** is an `AlternativeCost` at the printed cost
   with `AsThoughFlash: true` and a `Condition` (Fated Clash: a creature attacking and a creature blocking).
+- **"You may cast this spell as though it had flash if it's cast using teamwork"** is the optional cost with
+  `AsThoughFlash` set, `OptionalCosts: []game.AdditionalCost{TeamworkOpeningFlash(2)}` (Quantum Reduction). Announcing
+  the cost opens the window for that cast only (CR 601.3c); a per-player sorcery restriction still closes it.
+- **"A Hero or noncreature spell"** is `PermissionFilter{NoncreatureOrCreatureType: "Hero"}`; "from among cards exiled
+  with <this>" is a `ScopeCards` permission over `g.ExiledWithForEffect(ref)` offered through
+  `OfferResolutionCastForEffect` (Scarlet Witch, Chaotic Avenger).
 - **"When the chosen player loses the game"** watches `game.EventPlayerEliminated` and compares `ev.Actor` with the
   permanent's `ChosenPlayer` (Shinryu, Transcendent Rival). A concession is a loss too (CR 104.3a).
 - **"Choose a creature an opponent controls" on a resolving trigger, remembered for a later "when the chosen creature
