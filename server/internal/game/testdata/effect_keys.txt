@@ -702,6 +702,7 @@ confirm confirm/end-the-turn
 confirm confirm/endling-pump
 confirm confirm/entrust-the-spark-sacrifice
 confirm confirm/exiled-creature-battlefield-or-hand
+confirm confirm/expedited-inheritance-exile
 confirm confirm/expel-from-orazca-top-or-hand
 confirm confirm/explore-graveyard
 confirm confirm/fabricate
