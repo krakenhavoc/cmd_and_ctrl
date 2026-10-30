@@ -1857,3 +1857,4 @@ confirm confirm/astonishing-spider-man-discard-hand
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 payunless pay-unless/endless-ranks-of-hydra-return
 choose choose-cards/gert-and-old-lace-search
+choose choose-cards/discard-then-each-opponent-discards
