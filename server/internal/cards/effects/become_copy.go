@@ -164,6 +164,12 @@ func (b BecomeCopy) ApplyReports(ctx *Context) (bool, error) {
 // only one, and the CR 608.2b re-check has already countered the
 // ability if it is illegal.
 func selfBecomesCopyOfTarget(label string) func(g *game.Game, item *game.StackItem) error {
+	return selfBecomesCopyOfTargetExcept(label, nil)
+}
+
+// selfBecomesCopyOfTargetExcept is selfBecomesCopyOfTarget with an "except"
+// clause on the copied values (Impossible Man: "except his name is ...").
+func selfBecomesCopyOfTargetExcept(label string, except func(v *game.PrintedValues)) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		targets := ctx.LegalTargets()
@@ -172,6 +178,6 @@ func selfBecomesCopyOfTarget(label string) func(g *game.Game, item *game.StackIt
 		}
 		// "This permanent" is the source; BecomeCopy leaves it alone if
 		// it has left, or come back as a new object (#1432).
-		return BecomeCopy{Targets: []uuid.UUID{ctx.Source()}, Of: targets[0].ID, Label: label}.Apply(ctx)
+		return BecomeCopy{Targets: []uuid.UUID{ctx.Source()}, Of: targets[0].ID, Except: except, Label: label}.Apply(ctx)
 	}
 }
