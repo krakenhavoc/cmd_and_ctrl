@@ -1664,3 +1664,14 @@ func PlusOneCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// eachOpponentSacrificesACreature is "each opponent sacrifices a creature
+// of their choice": every other player chooses and sacrifices their own
+// (Ultimo, Civilization's End; Origin of Black Widow's chapter I).
+func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
+	return EachPlayerSacrifices{
+		ExceptController: true,
+		Match:            Creature(),
+		Label:            "a creature",
+	}.Apply(NewContext(g, item))
+}

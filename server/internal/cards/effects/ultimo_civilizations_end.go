@@ -35,13 +35,3 @@ func init() {
 		}},
 	})
 }
-
-// eachOpponentSacrificesACreature is "each opponent sacrifices a creature
-// of their choice": every other player chooses and sacrifices their own.
-func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
-	return EachPlayerSacrifices{
-		ExceptController: true,
-		Match:            Creature(),
-		Label:            "a creature",
-	}.Apply(NewContext(g, item))
-}
