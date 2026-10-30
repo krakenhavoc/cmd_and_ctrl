@@ -6,6 +6,12 @@
   // recording is "Record loop" in the ⋯ menu (ADR 0193's first
   // amendment), not a chip on the toggles row, which has no room for it.
   // The state is lib/loopShortcut.ts's loopControl; this only draws it.
+  //
+  // The 2026-10-30 amendment (#4736): a recording asked for partway
+  // through a resolution, or without priority, is armed and begins at
+  // the recorder's next priority; a Stop without priority ends the
+  // iteration there; and a proposal waits for the recorder's priority
+  // (CR 732.2a). Each says so here, so nothing waits silently.
   import type { LoopControlState } from "../../loopShortcut";
   import { L } from "../../labels";
 
@@ -17,21 +23,37 @@
   }
 
   const { state, onStop, onCancel, onPropose }: Props = $props();
+  const stepsText = $derived(`${state.steps} ${state.steps === 1 ? "step" : "steps"}`);
 </script>
 
-{#if state.mode === "recording"}
+{#if state.mode === "armed"}
   <span class="loop-line" role="status">
-    <span class="loop-text"
-      >Recording a loop · {state.steps} {state.steps === 1 ? "step" : "steps"}</span
-    >
+    <span class="loop-text">Loop recording starts when you next hold priority</span>
     <button
       type="button"
       class="loop-btn"
-      aria-label={L.stopLoop}
-      title="Stop: the server checks the board came back to where it started"
-      disabled={state.steps === 0}
-      onclick={onStop}>stop</button
+      aria-label={L.cancelLoop}
+      title="Do not record a loop"
+      onclick={onCancel}>✕</button
     >
+  </span>
+{:else if state.mode === "recording"}
+  <span class="loop-line" role="status">
+    <span class="loop-text"
+      >Recording a loop · {stepsText}{state.stopping
+        ? " · stops when you next hold priority"
+        : ""}</span
+    >
+    {#if !state.stopping}
+      <button
+        type="button"
+        class="loop-btn"
+        aria-label={L.stopLoop}
+        title="Stop: at your priority the server checks the board came back to where it started"
+        disabled={state.steps === 0}
+        onclick={onStop}>stop</button
+      >
+    {/if}
     <button
       type="button"
       class="loop-btn"
@@ -42,11 +64,18 @@
   </span>
 {:else if state.mode === "ready"}
   <span class="loop-line" role="status">
-    <span class="loop-text">Loop ready · {state.steps} {state.steps === 1 ? "step" : "steps"}</span>
+    <span class="loop-text"
+      >Loop ready · {stepsText}{state.canPropose
+        ? ""
+        : " · propose when you next hold priority"}</span
+    >
     <button
       type="button"
       class="loop-btn on"
-      title="Choose how many more times to repeat it"
+      title={state.canPropose
+        ? "Choose how many more times to repeat it"
+        : "Only the player with priority may propose a shortcut (CR 732.2a)"}
+      disabled={!state.canPropose}
       onclick={onPropose}>propose…</button
     >
     <button

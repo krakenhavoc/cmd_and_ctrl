@@ -449,14 +449,14 @@ export const LABEL_SPECS = {
     kind: "text",
     role: "menuitem",
     owners: [`${BOARD}GameMenu.svelte`],
-    doc: "the dock's ⋯ menu entry while you hold priority (ADR 0193 first amendment, CR 732.2a): every action from now on, any seat's, is one iteration of a loop; once recording, Stop and Cancel are the dock's status line",
+    doc: "the ⋯ menu entry (ADR 0193 first amendment, CR 732.2a), never hidden (2026-10-30 amendment, #4736): any seat in an active game may start one, partway through a resolution too, and it begins at their next priority with nothing open; every action from then on, any seat's, is one iteration of a loop. Disabled with a one-line reason for a spectator, a game not active, or a loop already standing; once recording, Stop and Cancel are the dock's status line",
   }),
   stopLoop: label({
     name: "Stop recording the loop",
     kind: "aria",
     role: "button",
     owners: [`${BOARD}LoopControl.svelte`],
-    doc: "ends the demonstration (ADR 0193): the server checks the board came back, keeps the loop to propose, or discards it and says why in the log",
+    doc: "ends the demonstration (ADR 0193): at your priority, the next one if you do not hold it now (#4736), the server checks the board came back, keeps the loop to propose, or discards it and says why in the log",
   }),
   cancelLoop: label({
     name: "Cancel the loop",

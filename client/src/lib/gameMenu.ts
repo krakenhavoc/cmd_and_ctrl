@@ -13,6 +13,7 @@
 // the two small rules it applies.
 
 import type { HandSort } from "./handOrder";
+import type { RecordLoopEntry } from "./loopShortcut";
 import { L } from "./labels";
 import type { SpectatorLine } from "./api";
 import type { ReportTarget } from "./moderation";
@@ -60,10 +61,13 @@ export interface GameMenuOptions {
   // matching the server's rate, and the items are disabled until then.
   tableRoll?: { ready: boolean } | null;
   onTableRoll?: (die: TableDie) => void;
-  // ADR 0193 §9 (first amendment): "Record loop", in the Table group,
-  // while the seat holds priority with no recording standing
-  // (loopControl's "record" mode). Absent or false hides it.
-  recordLoop?: boolean;
+  // ADR 0193 §9 (first amendment): "Record loop", in the Table group.
+  // Since the 2026-10-30 amendment (#4736) it is drawn for every viewer,
+  // a spectator included: enabled for a seat still in an active game
+  // with no loop standing (a prompt partway through a resolution
+  // included), else disabled with its one-line reason
+  // (loopShortcut.ts recordLoopEntry). Absent hides it.
+  recordLoop?: RecordLoopEntry | null;
   onRecordLoop?: () => void;
   // #3016 (ADR 0018's eighth amendment): how many trigger orders the
   // viewer's seat asked to reuse this game. Above zero, the Table group

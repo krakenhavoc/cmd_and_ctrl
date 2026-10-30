@@ -694,3 +694,91 @@ func TestLoopRecordingIsOnTheWire(t *testing.T) {
 		}
 	}
 }
+
+// passUntilChoice passes priority, whoever holds it, until seat owes a
+// prompt.
+func (lt *loopTable) passUntilChoice(t *testing.T, seat uuid.UUID) {
+	t.Helper()
+	for range 20 {
+		moves := legal.EnumerateFor(lt.g, seat)
+		if len(moves) > 0 && moves[0].Kind == legal.KindChoice {
+			return
+		}
+		lt.move(t, lt.holder(), func(m legal.Move) bool { return m.Kind == legal.KindPass })
+	}
+	t.Fatalf("no prompt for %v", seat)
+}
+
+func isDecline(m legal.Move) bool { return m.Kind == legal.KindChoice && !isPay(m) }
+
+// #4736, the owner's report: "I was in the middle of resolving an
+// ability and could not demo my loop." Rings of Brighthearth's trigger
+// is resolving and its "pay {2}?" is open to the recorder, the case the
+// old gate refused (a prompt open). The request is armed; the answer
+// that finishes the resolution is not a step; and the recording starts
+// at the recorder's next priority with nothing open, where the
+// Monolith's untap ability is still waiting. The iteration from that
+// point (it resolves, the Monolith is tapped and activated again, the
+// Rings ask again) comes back to the same point, closes, and replays
+// like any other loop. The game package's tests cover a resolution
+// paused on a blocking prompt.
+func TestLoopRecordingAskedMidResolutionStartsAtTheNextPriorityAndReplays(t *testing.T) {
+	lt := newLoopTable(t, loopTableOpts{rings: true})
+	me := lt.seats[0]
+	lt.move(t, me, func(m legal.Move) bool { return m.Kind == legal.KindMana && m.Source == lt.monolith })
+	lt.move(t, me, func(m legal.Move) bool { return m.Kind == legal.KindActivate && m.Source == lt.monolith })
+	lt.passUntilChoice(t, me)
+	if got := lt.g.LoopPendingShape(); len(got) != 1 || !strings.HasPrefix(got[0], string(game.PendingChoicePayUnless)+"@") {
+		t.Fatalf("setup: open prompts %v, want the Rings' pay prompt", got)
+	}
+
+	if err := lt.act(me, actions.TypeLoopRecordStart, nil); err != nil {
+		t.Fatalf("loop_record_start during the Rings prompt: %v", err)
+	}
+	if r := lt.g.CurrentLoopRecording(); r == nil || r.Status != game.LoopStatusArmed {
+		t.Fatalf("recording %+v, want armed", r)
+	}
+	if v := protocol.FilterViewFor(lt.view(), lt.seats[1].String()); v.LoopRecording == nil || v.LoopRecording.Status != "armed" {
+		t.Errorf("the table does not see the armed recording: %+v", v.LoopRecording)
+	}
+	lt.move(t, me, isDecline)
+	r := lt.g.CurrentLoopRecording()
+	if r == nil || r.Status != game.LoopStatusRecording || len(r.Steps) != 0 {
+		t.Fatalf("after the resolution finished: %+v, want an empty recording", r)
+	}
+	if lt.holder() != me || lt.stackSize() != 1 || !lt.monolithTapped() {
+		t.Fatalf("the recording started at holder %v, stack %d, tapped %v; want my priority over the untap ability",
+			lt.holder(), lt.stackSize(), lt.monolithTapped())
+	}
+
+	// One iteration from there, back to the same point.
+	lt.move(t, me, func(m legal.Move) bool { return m.Kind == legal.KindPass })
+	lt.move(t, lt.seats[1], func(m legal.Move) bool { return m.Kind == legal.KindPass })
+	if lt.monolithTapped() || lt.stackSize() != 0 {
+		t.Fatal("the untap ability did not resolve")
+	}
+	lt.move(t, me, func(m legal.Move) bool { return m.Kind == legal.KindMana && m.Source == lt.monolith })
+	lt.move(t, me, func(m legal.Move) bool { return m.Kind == legal.KindActivate && m.Source == lt.monolith })
+	lt.passUntilChoice(t, me)
+	lt.move(t, me, isDecline)
+	if err := lt.act(me, actions.TypeLoopRecordStop, nil); err != nil {
+		t.Fatalf("loop_record_stop: %v", err)
+	}
+	r = lt.g.CurrentLoopRecording()
+	if r == nil || r.Status != game.LoopStatusReady {
+		t.Fatalf("the iteration did not close: %+v\n%s", r, lt.logText())
+	}
+
+	if err := lt.act(me, actions.TypeLoopPropose, map[string]int{"count": 3}); err != nil {
+		t.Fatalf("loop_propose: %v", err)
+	}
+	lt.answerAll(t)
+	line := lastLine(lt.loopLines())
+	if !strings.Contains(line, "×3") || strings.Contains(line, "stopped") {
+		t.Errorf("replay line %q\n%s", line, lt.logText())
+	}
+	if lt.holder() != me || lt.stackSize() != 1 || !lt.monolithTapped() {
+		t.Errorf("after the replay: holder %v, stack %d, tapped %v; want the point the loop started from",
+			lt.holder(), lt.stackSize(), lt.monolithTapped())
+	}
+}

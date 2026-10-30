@@ -18,9 +18,15 @@ import (
 // changes once it closed.
 type LoopRecordingView struct {
 	Recorder string `json:"recorder"`
-	// Status is "recording", "ready" or "proposed".
+	// Status is "armed" (asked for while the recorder could not start;
+	// it starts at their next priority with nothing open, #4736),
+	// "recording", "ready" or "proposed".
 	Status string `json:"status"`
 	Steps  int    `json:"steps"`
+	// Stopping is set while recording when the recorder asked to stop
+	// without priority: the closure check runs at their next priority
+	// with nothing open, and the steps keep counting until then.
+	Stopping bool `json:"stopping,omitempty"`
 	// Name is the loop as the log names it ("Basalt Monolith ⇄ Rings
 	// of Brighthearth").
 	Name string `json:"name,omitempty"`
@@ -79,9 +85,10 @@ func viewOfLoopRecording(g *game.Game) *LoopRecordingView {
 		Status:        string(r.Status),
 		Steps:         len(r.Steps),
 		Name:          r.Name(),
+		Stopping:      r.StopAtPriority,
 		MaxIterations: game.MaxLoopShortcutIterations,
 	}
-	if r.Status != game.LoopStatusRecording {
+	if r.Status != game.LoopStatusRecording && r.Status != game.LoopStatusArmed {
 		v.Net = g.LoopNetTextLocked(r, 1)
 		v.Iteration = loopStepViews(r)
 	}

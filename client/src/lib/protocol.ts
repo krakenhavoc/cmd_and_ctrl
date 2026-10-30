@@ -715,8 +715,12 @@ export interface LoopNoticeView {
 // set) or "proposed" (count more iterations, ending at end).
 export interface LoopRecordingView {
   recorder: string;
+  // "armed" | "recording" | "ready" | "proposed" (docs/protocol.md).
   status: string;
   steps: number;
+  // #4736: recording, and the recorder asked to stop without priority;
+  // the closure check runs at their next priority with nothing open.
+  stopping?: boolean;
   name?: string;
   net?: string;
   iteration?: LoopStepView[];

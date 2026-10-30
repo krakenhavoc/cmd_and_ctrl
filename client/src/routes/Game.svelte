@@ -105,6 +105,7 @@
     acceptParams,
     loopControl,
     loopProposalFor,
+    recordLoopEntry,
     shortenParams,
     type LoopDockProps,
   } from "../lib/loopShortcut";
@@ -725,6 +726,12 @@
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.
       loopSuspended,
+      // ADR 0193 (#4736): the viewer is demonstrating a loop by hand —
+      // armed, recording, or ready and needing priority to propose.
+      loopDemo:
+        !!view?.loop_recording &&
+        view.loop_recording.recorder === realViewerID &&
+        view.loop_recording.status !== "proposed",
       step,
       autopassToggle: autopassEnabled,
       viewerIsActive,
@@ -1288,19 +1295,21 @@
   const loopState = $derived(
     view ? loopControl(view, viewerID, actingHasPriority && actingID === viewerID) : null,
   );
+  // The sheet opens once each time the loop is ready AND the viewer may
+  // propose (CR 732.2a: the player with priority), so a ready loop whose
+  // recorder lacks priority opens it when they next hold priority.
   let loopProposeOpen = $state(false);
-  let loopWasReady = false;
+  let loopWasProposable = false;
   $effect(() => {
-    const ready = loopState?.mode === "ready";
-    if (ready && !loopWasReady) loopProposeOpen = true;
-    if (!ready) loopProposeOpen = false;
-    loopWasReady = ready;
+    const proposable = loopState?.mode === "ready" && loopState.canPropose;
+    if (proposable && !loopWasProposable) loopProposeOpen = true;
+    if (!proposable) loopProposeOpen = false;
+    loopWasProposable = proposable;
   });
   const loopDock = $derived<LoopDockProps | undefined>(
     loopState && viewerID
       ? {
           state: loopState,
-          onRecord: () => sendAction("loop_record_start", undefined, viewerID ?? undefined),
           onStop: () => sendAction("loop_record_stop", undefined, viewerID ?? undefined),
           onCancel: () => sendAction("loop_record_cancel", undefined, viewerID ?? undefined),
           onPropose: () => (loopProposeOpen = true),
@@ -2976,6 +2985,17 @@
     }
   }
 
+  // ADR 0193's 2026-10-30 amendment (#4736): the ⋯ menu's "Record loop",
+  // drawn for every viewer, enabled for a seat in an active game with no
+  // loop standing (a prompt partway through a resolution included).
+  const recordLoop = $derived(
+    recordLoopEntry(view, viewerID, {
+      seated: dockShown,
+      eliminated: viewerEliminated,
+      controlled: !!controlledBy,
+      viewerHasPriority: actingHasPriority && actingID === viewerID,
+    }),
+  );
   const menuOptions = $derived<GameMenuOptions>({
     seated: dockShown,
     eliminated: viewerEliminated,
@@ -3014,9 +3034,12 @@
     // ADR 0167 §4: no sandbox for either player of a controlled turn.
     sandbox: !sandboxClosed,
     onTableRoll: rollAtTable,
-    // ADR 0193 §9: start a loop recording, from the menu.
-    recordLoop: dockShown && loopDock?.state.mode === "record",
-    onRecordLoop: () => loopDock?.onRecord(),
+    // ADR 0193 §9: start a loop recording, from the menu (#4736: never
+    // hidden; disabled with its reason where nobody could).
+    recordLoop,
+    onRecordLoop: () => {
+      if (recordLoop.enabled && viewerID) sendAction("loop_record_start", undefined, viewerID);
+    },
     // #3016: forget every trigger order this seat asked to reuse.
     forgetTriggerOrders:
       dockShown && view?.state === "active" ? (viewerSeat?.trigger_order_memory_count ?? 0) : 0,
@@ -3768,7 +3791,7 @@
       <!-- ADR 0193 §9: the recorder's propose sheet and the other seats'
            answer to a proposal. -->
       <LoopProposeSheet
-        recording={loopProposeOpen && loopState?.mode === "ready"
+        recording={loopProposeOpen && loopState?.mode === "ready" && loopState.canPropose
           ? (view.loop_recording ?? null)
           : null}
         onPropose={(count) => {
