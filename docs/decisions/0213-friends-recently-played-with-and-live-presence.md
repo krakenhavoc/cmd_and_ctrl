@@ -1,8 +1,8 @@
 # ADR 0213 — Friends, recently played with, and live presence
 
-**Status:** Proposed · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
+**Status:** Accepted · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
 **Issue:** [#3313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3313)
-**Owner decisions:** none yet. The brief is the owner's request of 2026-10-13, quoted in the issue body. Every product choice below is a recommendation. Each one is listed under [Open questions](#open-questions-for-the-owner), recommended option first. The smaller calls this ADR makes on its own are listed under [Calls made here](#calls-made-here). Building starts only after the owner answers.
+**Owner decisions:** 2026-10-30. The owner read a brief of the twelve questions under [Owner decisions](#owner-decisions) and the [Calls made here](#calls-made-here), and accepted every recommendation as written. Each *Recommended* below is now the decision; the options not taken stay for the record. The brief behind it all is the owner's request of 2026-10-13, quoted in the issue body.
 **Numbering:** checked on 2026-10-30. `develop` ends at 0211. `git ls-tree` over every remote head's `docs/decisions/` shows one file above it: `docs/lobby-character-select` (PR #4656) holds 0212 for the lobby card redesign. This was drafted as 0212 and renumbered before it was pushed. The heads checked are listed in the PR. This is **0213**.
 **Builds on:**
 - [ADR 0051](0051-user-database.md): decision 5 (DM invites sent with the bot token) and decision 8 (tablemates are a query, not a table).
@@ -124,7 +124,7 @@ Changes to `GET /me/tablemates`:
 - removes each person from the other's Played with, friends and presence;
 - refuses friend requests, DM invites and in-app invites between them, in either direction. The refusal reads like any other refusal ("can't send this to that person"), so the blocked person is not told. When the blocker sends, the message says they blocked this person.
 
-**Open question:** should a personal block also keep the blocked person out of tables the blocker hosts? The list would then act as a standing `table_blocks` entry on every table the blocker hosts, checked at join and at the invite link. **Recommended: yes.** At someone else's table, that host's tools apply (ADR 0075 §2.6).
+**Decided (owner, 2026-10-30): yes.** Asked as: should a personal block also keep the blocked person out of tables the blocker hosts? The list would then act as a standing `table_blocks` entry on every table the blocker hosts, checked at join and at the invite link. **Recommended: yes.** At someone else's table, that host's tools apply (ADR 0075 §2.6).
 
 **Moderation hooks:**
 
@@ -211,7 +211,7 @@ A friend entry has the same wire shape either way. Moving from poll to push late
   - The status.
   - For a **Playing** activity (type 0) only, its name, cut to 64 characters.
   - Never a custom status's text, Listening (Spotify), Streaming, or any `details` or `state`.
-  - Open question: show the status only, with no "Playing".
+  - Asked whether to show the status only, with no "Playing"; the owner kept "Playing" (2026-10-30).
 - **The server** keeps a map in memory. An entry expires after 15 minutes without a refresh. It is never written to the database, never logged (the log carries counts only) and never put in a metric.
 - **Production only.** The bot never runs from `develop`.
 - **The client knows** from `GET /community`, which gains `"discord_presence": true|false`.
@@ -347,9 +347,9 @@ Each of these is overturnable in review:
 
 Slices 5 and 6 are independent of each other. Every client slice attaches screenshots at 1440 px and 820 px.
 
-## Open questions for the owner
+## Owner decisions
 
-Each question lists the recommended option first.
+Asked as open questions, each with the recommended option first. On 2026-10-30 the owner accepted option (a) for all twelve.
 
 1. **The friend model:** (a) mutual, request and accept; (b) one-way follow; (c) private favourites plus mutual friends.
 2. **Who sees presence by default:** (a) friends only, with "people I've played with" and "nobody" as settings; (b) friends and people I've played with by default; (c) everyone signed in.
