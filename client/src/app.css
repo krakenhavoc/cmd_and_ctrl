@@ -1037,7 +1037,15 @@ textarea::placeholder {
    does. .seat-self is your own seat; .seat-turn is whoever's turn it
    is, edged in the priority gold. It changes on a turn boundary and is
    static, so reduced motion has nothing to stop. */
+/* #4651: a soft, static glow in the seat colour, on every board (your own
+   included): a faint inset bloom along the edge and a low outer halo. Both
+   are low-opacity and sit well under the turn highlight, which stays the
+   only strong edge. Names and avatars still identify the seat, so the
+   colour is a cue and never the only one. */
 .seat-panel {
+  --seat-glow:
+    inset 0 0 26px color-mix(in srgb, var(--seat-color, var(--fg-dim)) 13%, transparent),
+    0 0 14px color-mix(in srgb, var(--seat-color, var(--fg-dim)) 20%, transparent);
   background:
     radial-gradient(
       90% 70% at 100% 0%,
@@ -1053,6 +1061,7 @@ textarea::placeholder {
   border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 24%, var(--border));
   box-shadow:
     inset 0 1px 0 var(--overlay),
+    var(--seat-glow),
     0 10px 28px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
   transition:
     border-color 240ms var(--ease),
@@ -1069,6 +1078,7 @@ textarea::placeholder {
     inset 0 1px 0 var(--overlay),
     inset 0 0 0 1px color-mix(in srgb, var(--priority) 45%, transparent),
     inset 0 0 40px color-mix(in srgb, var(--priority) 10%, transparent),
+    0 0 14px color-mix(in srgb, var(--seat-color, var(--fg-dim)) 20%, transparent),
     0 10px 28px color-mix(in srgb, var(--shadow-ink) 35%, transparent);
 }
 
