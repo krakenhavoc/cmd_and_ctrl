@@ -159,6 +159,7 @@ body miracle/offer
 body modular/move-counters
 body monarch/crown
 body monarch/draw
+body msc-m5/origin-of-thor-counter
 body narset-of-the-ancient-way/damage
 body necropotence/deliver-exiled
 body new-way-forward/prevented
