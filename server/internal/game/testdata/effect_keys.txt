@@ -1853,3 +1853,4 @@ tail vision-quest/haste
 choose choose-cards/winter-soldier-icy-assassin-attach
 tail thunderbolts-conspiracy/hero
 tail winter-soldier-icy-assassin/attach
+confirm confirm/astonishing-spider-man-discard-hand
