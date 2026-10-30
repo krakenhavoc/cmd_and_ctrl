@@ -148,6 +148,116 @@ func TestPrebuiltDecksRequiresASession(t *testing.T) {
 	}
 }
 
+// commanderIndex puts every pre-built deck's commander in an index
+// with the identity the deck declares. The first deck's commander has
+// no image anywhere (so its row keeps a name and no id), the second's
+// image is on a face (a double-faced commander), and the rest have a
+// plain art crop. Every image URL is on example.test so a test can
+// look for one in a body.
+func commanderIndex(t *testing.T) (*cards.Index, map[string]uuid.UUID) {
+	t.Helper()
+	idx := cards.NewIndex()
+	ids := map[string]uuid.UUID{}
+	for i, d := range decks.All() {
+		id := uuid.New()
+		ids[d.ID] = id
+		c := cards.Card{ID: id, OracleID: uuid.New(), Name: d.Commander.Name, TypeLine: "Legendary Creature"}
+		for _, ch := range d.Commander.Identity {
+			c.ColorIdentity = append(c.ColorIdentity, string(ch))
+		}
+		switch i {
+		case 0:
+		case 1:
+			c.CardFaces = []cards.CardFace{{Name: d.Commander.Name, ImageURIs: map[string]string{"art_crop": "https://example.test/face.jpg"}}}
+		default:
+			c.ImageURIs = map[string]string{"art_crop": "https://example.test/" + d.ID + ".jpg"}
+		}
+		idx.Put(c)
+	}
+	return idx, ids
+}
+
+// TestPrebuiltDecksCarryTheirCommanders pins ADR 0212 phase B1 on GET
+// /decks: each deck's commander resolved as GET /me/decks resolves a
+// saved deck's, so the picker's tile can draw its art. An id and an
+// identity, never an image URL; a commander with no image keeps its row
+// with no id, so the tile washes rather than showing a broken image.
+func TestPrebuiltDecksCarryTheirCommanders(t *testing.T) {
+	idx, ids := commanderIndex(t)
+	srv, _, a, _ := newTestHTTPStackWithCards(t, idx)
+
+	resp := doGet(t, srv, "/decks", adminSession(t, a))
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var out prebuiltDecksResponse
+	if err := json.Unmarshal(raw, &out); err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /decks: %d, decode %v (%s)", resp.StatusCode, err, raw)
+	}
+	if len(out.Decks) != len(decks.All()) {
+		t.Fatalf("listed %d decks, registry has %d", len(out.Decks), len(decks.All()))
+	}
+	for i, got := range out.Decks {
+		want := decks.All()[i]
+		if len(got.CommanderCards) != 1 {
+			t.Fatalf("%s: commander_cards = %+v, want the one commander", got.ID, got.CommanderCards)
+		}
+		c := got.CommanderCards[0]
+		if c.Name != want.Commander.Name {
+			t.Errorf("%s: commander %q, want %q", got.ID, c.Name, want.Commander.Name)
+		}
+		if i == 0 {
+			if c.ScryfallID != "" {
+				t.Errorf("%s: an imageless commander must carry no id, got %q", got.ID, c.ScryfallID)
+			}
+		} else if c.ScryfallID != ids[got.ID].String() {
+			t.Errorf("%s: scryfall_id %q, want %q", got.ID, c.ScryfallID, ids[got.ID])
+		}
+		// The identity the tile's pips and wash read: the deck's own colours.
+		if strings.Join(c.ColorIdentity, "") != want.Identity {
+			t.Errorf("%s: commander identity %v, want %q", got.ID, c.ColorIdentity, want.Identity)
+		}
+	}
+	// The field is printing ids, not art: no image URL rides on the route.
+	if strings.Contains(string(raw), "example.test") || strings.Contains(string(raw), "art_crop") {
+		t.Errorf("GET /decks leaks an image URL: %s", raw)
+	}
+}
+
+// With no card index there is nothing to resolve: the field is absent
+// (not empty), as on GET /me/decks, and the route still answers.
+func TestPrebuiltDecksOmitCommandersWithoutACardIndex(t *testing.T) {
+	srv, _, a := newTestHTTPStack(t)
+	resp := doGet(t, srv, "/decks", adminSession(t, a))
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /decks: %d (%s)", resp.StatusCode, raw)
+	}
+	if strings.Contains(string(raw), "commander_cards") {
+		t.Errorf("commander_cards without a card index: %s", raw)
+	}
+}
+
+// Card art is kept from a visitor with no session (ADR 0092 decision
+// 1). The commanders ride routes that want one, so a visitor gets no
+// printing id; the image route they are drawn through wants one too
+// (cmd/server's TestCatalogIsPublicAndCardsStayGated).
+func TestCommanderCardsNeedASession(t *testing.T) {
+	idx, _ := commanderIndex(t)
+	srv, _, _, _ := newBotHTTPStack(t, idx, fakeDeckSource{})
+	for _, path := range []string{"/decks", "/bot/options"} {
+		resp := doGet(t, srv, path, "")
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("GET %s with no session: got %d, want 401", path, resp.StatusCode)
+		}
+		if strings.Contains(string(raw), "scryfall_id") || strings.Contains(string(raw), "commander_cards") {
+			t.Errorf("GET %s with no session leaks a commander: %s", path, raw)
+		}
+	}
+}
+
 // The end-to-end claim: a player picks a deck by ID and their seat is
 // holding it, having gone through the same validator a pasted list
 // goes through.

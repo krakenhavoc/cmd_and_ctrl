@@ -79,6 +79,7 @@
     seatLine,
     seatName,
     seatPreview,
+    seatTileArt,
     seatTileText,
     statusChip,
     whenLabel,
@@ -1745,7 +1746,7 @@
                         seat={p.seat}
                         {p}
                         text={pv?.text ?? seatTileText(p, botDeckOf(p))}
-                        art={pv?.art ?? []}
+                        art={pv?.art ?? seatTileArt(p, botDeckOf(p))}
                         preview={pv?.preview ?? false}
                         you={myNo === p.seat}
                         botChip={p.is_bot ? botChipText(p, botOptions?.tiers ?? []) : ""}

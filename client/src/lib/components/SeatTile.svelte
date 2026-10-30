@@ -2,11 +2,12 @@
   // SeatTile — one seat of a table in the lobby, drawn as a character
   // select (ADR 0212 §1): the seat's colour along the top edge and as a
   // faint wash, a "Seat N" badge, an art slot, then who sits there, what
-  // they play and whether they are ready. The art slot draws the seat's
-  // wash until the seats carry their commanders (phase B); your own seat
-  // already shows the deck you are browsing in the picker, art and all,
-  // marked Preview and "Not seated yet" (§1), since nothing is sent until
-  // you sit down.
+  // they play and whether they are ready. The art slot draws the
+  // commander's crop where the page has one: a bot's pre-built deck (ADR
+  // 0212 phase B1), and your own seat while you browse the picker, art and
+  // all, marked Preview and "Not seated yet" (§1), since nothing is sent
+  // until you sit down. Without a crop, or until a person's seat carries
+  // its commanders (B2), it is the seat's wash.
   //
   //   - A taken seat: the avatar, the name, the host / you tags (a bot's
   //     dashed chip with its tier; an agent's AgentChip), the deck, then a

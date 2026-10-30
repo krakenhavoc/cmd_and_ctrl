@@ -4177,7 +4177,7 @@ type botOptionsResponse struct {
 	Tiers []aiseat.TierInfo `json:"tiers"`
 	// Decks is the curated catalog. Empty when no deck source is
 	// configured — the picker then falls back to pasting a decklist.
-	Decks []aiseat.DeckInfo `json:"decks"`
+	Decks []botDeckOption `json:"decks"`
 	// Enabled is false when this server has no bot host at all, in
 	// which case the client hides the Add-bot control rather than
 	// offering a button that 503s.
@@ -4195,9 +4195,27 @@ type botOptionsResponse struct {
 	OwnKey *ownKeyOption `json:"own_key,omitempty"`
 }
 
+// botDeckOption is one deck of GET /bot/options: the aiseat.DeckInfo
+// the bot host's catalog gives, plus the commander resolved against the
+// card index (ADR 0212 phase B1). The bot seat's tile and the Add bot
+// picker's grid draw it as a saved deck's commander is drawn. The
+// commander lives here and not on aiseat.DeckInfo because resolving it
+// needs the card index, which a DeckSource does not hold.
+type botDeckOption struct {
+	aiseat.DeckInfo
+	// CommanderCards is built by the same code as a pre-built deck's on
+	// GET /decks and a saved deck's on GET /me/decks. Omitted with no
+	// card index or no commander.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+}
+
 // botOptions handles GET /bot/options. Added in S31 sub-PR 4.
+//
+// Session-gated, like GET /decks: the printing ids in commander_cards
+// are drawn through /cards/{id}/image, which is session-gated too, so
+// a visitor with no session gets neither (ADR 0092 decision 1).
 func botOptions(c Config, w http.ResponseWriter, r *http.Request) error {
-	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []aiseat.DeckInfo{}, Enabled: c.Bots != nil}
+	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []botDeckOption{}, Enabled: c.Bots != nil}
 	if c.Bots != nil {
 		// The host is the authority on what can actually play, so
 		// reconcile the declared catalog against it rather than
@@ -4224,8 +4242,11 @@ func botOptions(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if c.BotDecks != nil {
-		if decks := c.BotDecks.List(); len(decks) > 0 {
-			out.Decks = decks
+		for _, d := range c.BotDecks.List() {
+			out.Decks = append(out.Decks, botDeckOption{
+				DeckInfo:       d,
+				CommanderCards: catalogCommanderCards(c.Cards, d.Commander),
+			})
 		}
 	}
 	if c.BotBudget != nil {

@@ -14,6 +14,8 @@
 // picker at all, because the player would find out one surprise at a
 // time instead of once, up front.
 
+import type { MyDeckCommander } from "./myDecks";
+
 /** One card the engine does not carry out in full. */
 export interface ImperfectCard {
   name: string;
@@ -54,6 +56,13 @@ export interface PrebuiltDeck {
   commander?: string;
   /** WUBRG letters. */
   colors?: string[];
+  /**
+   * The commander resolved against the card index (ADR 0212 phase B1),
+   * as a saved deck's are: a printing to draw through /cards/{id}/image
+   * and the colour identity. Absent when the server has no card index,
+   * and an older server never sends it.
+   */
+  commander_cards?: MyDeckCommander[];
   /** Physical size, counting every copy of a basic land. 100. */
   card_count: number;
   /** The whole list, commander first, for the shop links (ADR 0179 §7). */

@@ -1807,6 +1807,9 @@ deck, not an empty picker implying there are none.
       "summary": "...",
       "commander": "Purphoros, God of the Forge",
       "colors": ["R"],
+      "commander_cards": [
+        { "name": "Purphoros, God of the Forge", "scryfall_id": "<uuid>", "color_identity": ["R"] }
+      ],
       "card_count": 100,
       "cards": [{ "name": "Purphoros, God of the Forge", "count": 1 }, { "name": "Mountain", "count": 30 }],
       "coverage": {
@@ -1825,6 +1828,24 @@ deck, not an empty picker implying there are none.
   ]
 }
 ```
+
+`commander_cards` ([ADR 0212](decisions/0212-a-new-tables-lobby-card-as-a-character-select.md)
+phase B1) is the deck's commander resolved against the card index, in the
+shape `GET /me/decks` gives a saved deck's (below) and by the same code
+(`libraryCommanders`): `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`, and is absent when the name did not
+resolve or no printing has an image; `color_identity` is `[]` for a
+colourless commander and `null` when the name did not resolve. A catalog
+deck names no printing, so it takes the index's default one. The picker's
+Pre-built tiles and the Add bot grid draw the art from it. The field is
+absent when the server has no card index, and an older server never sends
+it; the client then washes the tile in the deck's `colors`. It is additive:
+a client that does not know it ignores it.
+
+The field is a printing id and never an image URL. The art itself is the
+image route's, and `GET /cards/{id}/image` wants a session, as does this
+route, so a visitor with no session gets neither the id nor the art (ADR
+0092 decision 1). The signed-out Decks page does not ask for this route.
 
 `cards` is the whole list, commander first, one row per distinct card
 with its copies. It feeds the optional "Play this deck in paper" shop
@@ -1876,13 +1897,21 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong (experimental)", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
-    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
+    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge",
+      "commander_cards": [{ "name": "Purphoros, God of the Forge", "scryfall_id": "<uuid>", "color_identity": ["R"] }] },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
     { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
   ]
 }
 ```
+
+Each deck's `commander_cards` (shown on the first deck above) is
+the same field, resolved by the same code, as on `GET /decks` (ADR 0212
+phase B1): the printing the Add bot grid and a bot seat's tile draw as
+the commander's art, and its colour identity. It is absent when the
+server has no card index. Like the rest of this route it needs a session,
+as does the image it is drawn through.
 
 When the model tiers are off because a spend cap is used up or an admin
 switched model calls off (#2980), the response also carries `model_note`,
