@@ -25,7 +25,7 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(
 			// The phasing waits for a prompt the counter asks (CR 608.2c, #4155).
-			Instruction(putPlusOneCounterOnTheLegalTarget),
+			Instruction(func(ctx *Context) error { return PlusOneCounterOnTheTarget(ctx.Game, ctx.Item) }),
 			Instruction(func(ctx *Context) error {
 				targets := legalTargetCards(ctx.Item, ctx.Game)
 				if len(targets) == 0 {

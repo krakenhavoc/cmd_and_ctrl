@@ -1000,6 +1000,9 @@ type enumerator struct {
 	// rowPowerUp is whether that row is a power-up ability, for the
 	// spend context's ManaRestrictPowerUp (#4571).
 	rowPowerUp bool
+	// rowEquip is whether that row is an equip ability, for the spend
+	// context's ManaRestrictEquip (#4600).
+	rowEquip bool
 }
 
 // abilitySpend is the spend context of the activated ability row being
@@ -1007,6 +1010,7 @@ type enumerator struct {
 func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 	spend.PowerUp = e.rowPowerUp
+	spend.Equip = e.rowEquip
 	return spend
 }
 

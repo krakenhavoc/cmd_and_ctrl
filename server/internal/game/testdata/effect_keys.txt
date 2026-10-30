@@ -157,6 +157,7 @@ body magma-pummeler/remove-counters
 body magma-pummeler/strike
 body mana-drain/refund
 body mana-rider/dispatch
+body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
 body merry-bards/young-hero-role
 body miracle/offer
@@ -253,6 +254,7 @@ body tether-technician/strike
 body the-falcon-airship-restored/return
 body the-mindskinner/each-opponent-mills
 body the-ring/sacrifice-blocker-at-end-of-combat
+body the-thing/double-counters
 body thorin-mountain-king/damage
 body time-to-feed/gain-three-life
 body transformers/convert-this
@@ -340,6 +342,7 @@ choose choose-cards/discard-two-unless-artifact
 choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/disturbing-mirth-sacrifice
+choose choose-cards/doomfall-exile
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
@@ -384,6 +387,8 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/klaw-sonic-subjugator-discard
+choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/last-march-of-the-ents-put
 choose choose-cards/last-rites-reveal
 choose choose-cards/last-voyage-of-the-blank-return
@@ -702,6 +707,7 @@ confirm confirm/end-the-turn
 confirm confirm/endling-pump
 confirm confirm/entrust-the-spark-sacrifice
 confirm confirm/exiled-creature-battlefield-or-hand
+confirm confirm/expedited-inheritance-exile
 confirm confirm/expel-from-orazca-top-or-hand
 confirm confirm/explore-graveyard
 confirm confirm/fabricate
@@ -794,6 +800,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
 drawinstead dredge-2
 drawinstead dredge-3
@@ -1034,6 +1041,7 @@ payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/mana-vault-untap
+payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
@@ -1058,9 +1066,11 @@ payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/springheart-nantuko-copy-or-insect
+payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
+payunless pay-unless/the-thing-double-counters
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/unassuming-sage-sorcerer-role
@@ -1500,6 +1510,7 @@ tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/lion-sash-counter
+tail if-it-was/mastermind-plum-treasure
 tail if-it-was/scavenging-ooze-grow
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
@@ -1594,6 +1605,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail put-from-library/rest-into-graveyard
+tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
 tail quintorius-kand/mana-and-cast-from-exiled
 tail rabble-rousing/offer-the-exiled-card

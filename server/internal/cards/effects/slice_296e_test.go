@@ -275,6 +275,10 @@ func TestLedgerShredderConnivesOnTheCasterSecondSpellPuttingACounterOnANonlandDi
 	if got := c.CurrentPower(); got != 2 {
 		t.Errorf("Ledger Shredder power after discarding a nonland card = %d, want 2 (a +1/+1 counter)", got)
 	}
+	// CR 701.50f, #4641: it connived once, and said so.
+	if evs := eventsOfKind(g, game.EventConnived); len(evs) != 1 || evs[0].CardID != shredder || evs[0].Actor != me.ID {
+		t.Errorf("connive events = %+v, want one for the Shredder under its controller", evs)
+	}
 }
 
 // --- The Gitrog Monster ------------------------------------------------

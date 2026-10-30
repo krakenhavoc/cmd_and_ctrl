@@ -3187,7 +3187,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
-| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
+| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)). A permanent that GIVES it to spells declares `Spec.SplitSecondGrants`, read live: Samut's `InstantAndSorcerySpellsYouControlHaveSplitSecond()`, or `EachSpellYouCastHasSplitSecondIfManaFrom(kinds, label)` for "each spell you cast has split second if mana from a … was spent to cast it" (ADR 0007 amendments 2026-10-14 and 2026-10-30) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 | `"cipher"` | Cipher (CR 702.99) — #3867, a SPELL's keyword read as it RESOLVES: once every prompt the spell's own text opened is answered, the engine asks its controller to exile it encoded on a creature they control (`game/cipher.go`, a keyed option pick). The creature then has a granted "whenever this creature deals combat damage to a player" trigger, one per encoded card, that offers its controller a free copy of the card; the copy runs the card's OnResolve again with new targets. Declare `PrintedKeywords: []string{game.KeywordCipher}` on the instant or sorcery and write only the rest of its text: never exile the card yourself. ([ADR 0093's 2026-10-16 amendment](decisions/0093-abilities-granted-to-other-permanents.md)) |
 | `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
@@ -5019,6 +5019,17 @@ auto-tapper plans restricted mana for casts only. A power-up row that
 only counters itself is `powerUpAnswering(text, cost, effect)`, which
 declares the pump; any other row builds `PowerUp` and sets its own
 `Purpose`.
+
+**Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
+to cast Equipment spells or activate equip abilities" is
+`Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,
+game.ManaRestrictSubtype("Equipment")}, []string{game.ManaRestrictEquip})}`
+(Ronin, Shadow Stalker). `ManaRestrictEquip` matches
+`ManaSpendContext.Equip`, set from the equip bit of the row being paid
+for; the source's types can't say it, because an Equipment's other
+abilities are not equip abilities. A mana ability whose cost is life and
+no {T} is never planned by the auto-tapper, so the player fires it first
+and the mana floats; the top-up then spends it only where the tag allows.
 
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
@@ -8682,6 +8693,24 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+**"Target player reveals N cards from their hand. You choose one of them. That player exiles/discards it."**
+(Taster of Wares, Klaw, Sonic Subjugator; ADR 0116's 2026-10-30 amendment, #4588) is not the shape above: the
+revealing player picks which N cards to show and only those are revealed. Declare the pair of keyed prompts once
+and call it where N is known:
+
+```go
+var klawReveal = NewRevealFromHandPick("Klaw, Sonic Subjugator", "discards",
+	"choose-cards/klaw-sonic-subjugator-reveal", "choose-cards/klaw-sonic-subjugator-discard",
+	func(ctx *Context, owner, card uuid.UUID) error {
+		return ctx.Game.DiscardCardsKeyedForEffect(owner, []uuid.UUID{card}, ctx.Source(), game.KeyedTail{})
+	})
+// in the trigger: return klawReveal.Ask(ctx, TargetedPlayer(ctx), 1+creatureCardsInYourGraveyard)
+```
+
+`DiscardCardsKeyedForEffect` is the one exported "discard these specific cards from P's hand" verb for a
+choice P did not make (it takes a `then` tail told the cards that landed); append both keys to the ledger with
+`-update-effect-keys`.
+
 ### Controlling another player (ADR 0166, #2164, CR 723)
 
 Word of Command is the one card: a look-only, keep-the-card pick, then
@@ -12009,6 +12038,12 @@ that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the pr
 the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
+
+"Whenever a creature you control connives" watches `game.EventConnived` (#4641): `CardID` is the conniver and `Actor`
+its controller as it connived, so it holds for a creature that left the battlefield first (CR 701.50b). It fires once per
+creature, after the discard and the counter, whether or not a counter went on (CR 701.50f). Write it as
+`WheneverACreatureYouControlConnives(label, effect)` (Iron Monger). A card that connives in its own way must emit it:
+call `g.ConnivedForEffect(creature, controller)` from the discard continuation, as Ledger Shredder does.
 
 ### Blitz (CR 702.152, #3772)
 

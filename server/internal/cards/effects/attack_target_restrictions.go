@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -155,11 +157,31 @@ func CreaturesCantAttackPlayersWhoDidNothingLastTurn() game.StaticAbility {
 // gains or loses flying before attackers are declared is judged as it
 // then stands. Any-of across queries.
 func CreaturesMatchingCantAttackYou(label string, attackers ...game.PermanentQuery) game.StaticAbility {
+	return CreaturesMatchingCantAttackYouWhile(label, nil, attackers...)
+}
+
+// CreaturesMatchingCantAttackYouWhile is CreaturesMatchingCantAttackYou
+// that applies only while `while` holds of the printing permanent's
+// controller: Queen Mother Ramonda's "As long as you're the monarch,
+// creatures with power 2 or less can't attack you" (#4659):
+//
+//	CreaturesMatchingCantAttackYouWhile("…", YoureTheMonarch,
+//	    game.PermanentQuery{Types: []string{"creature"}}.WithPowerAtMost(2))
+//
+// The condition is a layer input, read when the layer pass runs, so what
+// it reads must invalidate the layers when it changes (the crown does:
+// EventMonarchChanged). The attackers' power is a different thing: it is
+// judged at declaration, on the attacker's effective power then (see
+// game.PermanentQuery.PowerAtMost). A nil `while` is unconditional.
+func CreaturesMatchingCantAttackYouWhile(label string, while func(g *game.Game, you uuid.UUID) bool, attackers ...game.PermanentQuery) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer6Ability,
-		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-			return target.IsCreature()
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			if !target.IsCreature() {
+				return false
+			}
+			return while == nil || (source != nil && while(g, source.Controller))
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			if source == nil {
