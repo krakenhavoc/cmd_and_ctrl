@@ -65,6 +65,8 @@ linters:
         - metamage
         # Captain Mar-Vell, Space-Born (Marvel Super Heroes) is a printed card name.
         - vell
+        # Lady Spider, Maybelle Reilly (Marvel Super Heroes Commander) is a printed card name.
+        - maybelle
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is

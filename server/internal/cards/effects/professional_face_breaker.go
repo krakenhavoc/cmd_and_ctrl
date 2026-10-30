@@ -49,17 +49,8 @@ func init() {
 					N:        1,
 				})),
 		},
-		Activated: []ActivatedAbility{{
-			Label:   "Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.",
-			Purpose: game.Purpose{Answers: game.AnswerValue, Impulse: 1},
-			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("a Treasure", isTreasure)},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return ExileTopWithPermission{
-					From:    item.Controller,
-					GrantTo: item.Controller,
-					N:       1,
-				}.Apply(NewContext(g, item))
-			},
-		}},
+		Activated: []ActivatedAbility{
+			sacrificeATreasureToPlayTheTop("Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn."),
+		},
 	})
 }
