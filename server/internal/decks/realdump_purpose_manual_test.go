@@ -105,6 +105,7 @@ func declaresTargetEntry(s effects.Spec) bool {
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
 var reviewedNotAWipe = map[string]string{
+	"Hex Magic":  "exiles the cards in its caster's own hand, not a board",
 	"Armageddon": "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent.
