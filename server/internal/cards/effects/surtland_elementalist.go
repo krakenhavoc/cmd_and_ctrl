@@ -34,11 +34,12 @@ func init() {
 
 // surtlandElementalistOfferFreeCast is "you may cast an instant or
 // sorcery spell from your hand without paying its mana cost" —
-// Kari Zev's Expertise's free cast with the predicate swapped from
-// "mana value 2 or less" to "instant or sorcery".
+// Kari Zev's Expertise's free cast with the clause swapped from
+// "mana value 2 or less" to "instant or sorcery", judged on the face being
+// cast (#4509): Bonecrusher Giant is offered, and cast free as Stomp.
 func surtlandElementalistOfferFreeCast(ctx *Context, controller uuid.UUID) error {
 	offerFreeHandCast(ctx, controller, surtlandElementalistFreeCast,
-		"an instant or sorcery spell", Or(Instant(), Sorcery()))
+		"an instant or sorcery spell", freeInstantOrSorcery())
 	return nil
 }
 

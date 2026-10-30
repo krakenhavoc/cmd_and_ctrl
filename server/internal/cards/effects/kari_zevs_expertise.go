@@ -18,7 +18,9 @@ import (
 // Or(Creature(), Subtype("Vehicle")) — and the free cast is Rishkar's
 // Expertise's second sentence with the mana-value ceiling lowered from
 // five to two: a choose_cards pick over the hand, floor zero ("you
-// MAY"), filtered to nonland cards with mana value 2 or less, then the
+// MAY"), over the cards with a spell of mana value 2 or less (judged on
+// the face being cast, #4509: Valki, God of Lies is cast free as Valki and
+// never as Tibalt, Cosmic Impostor), then the
 // pass-closed free cast over whichever card was picked (offerFreeHandCast,
 // #3270): the cast opens at once and ignores timing, CR 608.2g.
 //
@@ -62,7 +64,7 @@ func init() {
 // ceiling lowered to two.
 func kariZevsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
 	offerFreeHandCast(ctx, controller, kariZevsExpertiseFreeCast,
-		"a spell with mana value 2 or less", ManaValueLE(2))
+		"a spell with mana value 2 or less", spellWithManaValueAtMost(2))
 	return nil
 }
 

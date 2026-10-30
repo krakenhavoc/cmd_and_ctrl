@@ -21,7 +21,9 @@ import (
 // trigger resolves, from the creatures that are attacking then
 // (CR 608.2h: the greatest power is the one of the creatures now in
 // combat; with none left the cap is 0, so only a mana value 0 spell
-// qualifies). A land is not a spell and is never offered.
+// qualifies). A land is not a spell and is never offered. The cap is the
+// spell's, judged on the face being cast (#4509): a modal DFC whose back
+// face costs more is cast only as its front.
 //
 // No simplification.
 func init() {
@@ -37,7 +39,7 @@ func init() {
 				ctx := NewContext(g, item)
 				limit := cosmicCubeGreatestAttackingPower(g, ctx.Controller())
 				return lookAtTopAndOfferFreeCast(g, ctx.Controller(), ctx.Source(), cosmicCubeFreeCast, 6,
-					func(c game.Card) bool { return c.ManaValue() <= limit })
+					spellWithManaValueAtMost(limit))
 			})),
 		},
 	})

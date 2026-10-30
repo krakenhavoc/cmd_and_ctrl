@@ -18,8 +18,9 @@ import (
 // #4454, S76. The pump is PumpAttachedPer over Fandaniel's graveyard count,
 // read on every recompute from the Glamdring controller's graveyard (the
 // "your" of the text). The free cast is Buster Sword's offer: the damage
-// dealt rides the trigger event, the candidates are the instant and sorcery
-// cards in hand at most that mana value, and the cast is the engine's own,
+// dealt rides the trigger event, the candidates are the cards in hand with
+// an instant or sorcery spell of at most that mana value (judged on the
+// face being cast, #4509: an Adventure counts), and the cast is the engine's own,
 // so its targets, modes and X are chosen as it goes on the stack.
 //
 // No simplification.
@@ -45,7 +46,7 @@ func init() {
 					damage := thatDamage(ctx.Item)
 					offerFreeHandCast(ctx, ctx.Controller(), glamdringFreeCast,
 						"an instant or sorcery spell with mana value "+strconv.Itoa(damage)+" or less",
-						And(Or(Instant(), Sorcery()), ManaValueLE(damage)))
+						freeInstantOrSorcery().withManaValueAtMost(damage))
 					return nil
 				}),
 			),

@@ -340,16 +340,11 @@ var madWizardsLairAfterDraw = game.RegisterDrawThen("dungeon/mad-wizards-lair", 
 		Reason: "Dungeon of the Mad Mage — Mad Wizard's Lair: reveal the drawn cards",
 		Cards:  drawn,
 	})
-	var candidates []uuid.UUID
-	for _, id := range drawn {
-		if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-			candidates = append(candidates, id)
-		}
-	}
 	// The keyed free-cast offer (free_hand_cast.go, #4246), so a table
-	// waiting on it is a restore point.
+	// waiting on it is a restore point. It offers the drawn cards with a
+	// spell to cast, face by face (#4509): a land is never one.
 	offerFreeHandCastOver(g, d.Player, d.Source, madWizardsLairFreeCast,
-		"Mad Wizard's Lair — cast one of them without paying its mana cost?", candidates)
+		"Mad Wizard's Lair — cast one of them without paying its mana cost?", anySpell, drawn)
 	return nil
 })
 

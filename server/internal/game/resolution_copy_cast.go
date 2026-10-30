@@ -219,13 +219,17 @@ func (g *Game) OfferResolutionCastForEffect(o ResolutionCastOffer) bool {
 		g.stampResolutionCastPermissionLocked(o.Chooser, *o.Permission, o.Cards)
 	}
 	// A land is played, never cast (CR 116.2a, CR 305.9), so it is never
-	// on a cast offer, whatever the permission names.
+	// on a cast offer, whatever the permission names. #4509: asked face by
+	// face, of the faces the permission opens: a Town whose Adventure is
+	// a sorcery is a land card with a spell to cast (CR 715.3a), and a
+	// creature card whose Adventure is an instant is a spell Bilbo's
+	// "instant or sorcery spell" offers.
 	var candidates []uuid.UUID
 	for _, id := range o.Cards {
 		if slices.Contains(candidates, id) {
 			continue
 		}
-		if c, _, ok := g.ResolutionCastCandidateLocked(o.Chooser, id); ok && !c.IsLand() {
+		if c, _, ok := g.ResolutionCastCandidateLocked(o.Chooser, id); ok && g.resolutionCastOffersASpellLocked(o.Chooser, c) {
 			candidates = append(candidates, id)
 		}
 	}
@@ -351,6 +355,25 @@ func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneK
 		}
 	}
 	return Card{}, "", false
+}
+
+// resolutionCastOffersASpellLocked reports whether one of chooser's
+// stored permissions naming c (the ones ResolutionCastCandidateLocked
+// finds) could open a spell of it: a face that is not a land, that the
+// permission's filter admits and that is within its mana value cap
+// (CastPermission.OffersASpell, #4509). Caller must hold g.mu.
+func (g *Game) resolutionCastOffersASpellLocked(chooser uuid.UUID, c Card) bool {
+	p := g.playerByIDLocked(chooser)
+	if p == nil {
+		return false
+	}
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.Scope == ScopeCards && perm.NamesCard(c) && perm.OffersASpell(c) {
+			return true
+		}
+	}
+	return false
 }
 
 // ResolutionCastClaimLocked is the alternative-cost claim a cast of the
