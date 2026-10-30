@@ -102,7 +102,8 @@ const (
 	// CostReduction is "spells you cast cost {N} less to cast" —
 	// Goblin Electromancer, Heartless Summoning, Animar. Amount is
 	// the generic mana removed, floored at the cost's generic
-	// component; coloured requirements are never touched.
+	// component; coloured requirements are never touched unless the
+	// modifier carries a Unit (#4707), which names the mana it removes.
 	CostReduction
 
 	// CostFloor is a cost-SETTING effect: "each spell that would
@@ -441,12 +442,18 @@ type CostModifier struct {
 	// of {1}{W}, so an Amount of 2 adds {2}{W}{W}. Nil — every other
 	// modifier — means one generic mana per point.
 	//
-	// Increases only (ADR 0048 addendum, open question 3). A
-	// reduction still spends generic mana and nothing else (§3), and
-	// a Unit on any other kind, or a Unit carrying {X}, a hybrid or a
-	// Phyrexian symbol, refuses the cast rather than guessing what it
-	// meant (§16). effects.Register refuses the same shapes at boot;
-	// both read UnitProblem.
+	// Increases (ADR 0048 addendum, open question 3) and, from #4707,
+	// reductions: on a CostReduction a Unit is what one point of Amount
+	// takes OFF, so Flying Drone's "This ability costs {1}{U} less to
+	// activate" is Amount 1 with a Unit of {1}{U}. It is spent by
+	// reduceByManaCost (CR 118.7): a coloured symbol takes one mana of
+	// its colour off the cost, or one generic when the cost has none left,
+	// and nothing goes below {0} (CR 601.2f). A reduction with no Unit
+	// still spends generic mana and nothing else (§3). A Unit on any other
+	// kind, or a Unit carrying {X}, a hybrid or a Phyrexian symbol,
+	// refuses the cast rather than guessing what it meant (§16).
+	// effects.Register refuses the same shapes at boot; both read
+	// UnitProblem.
 	Unit *ParsedCost
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
@@ -516,8 +523,8 @@ type CostModifier struct {
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
-// when it can: no Unit, or a Unit on an increase made only of generic
-// mana and single-colour symbols. ADR 0048 addendum §16: no printed
+// when it can: no Unit, or a Unit on an increase or a reduction made
+// only of generic mana and single-colour symbols. ADR 0048 addendum §16: no printed
 // increase adds {X}, a hybrid or a Phyrexian symbol, and §3 keeps
 // every other kind generic-only, so each of those shapes is a card
 // file mistake. One function, so the boot guard and the cast-time
@@ -527,8 +534,8 @@ func (m CostModifier) UnitProblem() string {
 	if u == nil {
 		return ""
 	}
-	if m.Kind != CostIncrease {
-		return "a mana unit on something other than an increase"
+	if m.Kind != CostIncrease && m.Kind != CostReduction {
+		return "a mana unit on something other than an increase or a reduction"
 	}
 	if u.XSlots > 0 {
 		return "a mana unit carrying {X}"
@@ -874,7 +881,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			return ParsedCost{}, err
 		}
 		if ok {
-			cost = reduceGeneric(cost, n)
+			cost = reduceBy(cost, n, bm.modifier.Unit)
 		}
 	}
 	// CR 702.193a/b: the power-up reduction, with the others and in
@@ -1274,8 +1281,8 @@ func amountFor(bm boundCostModifier, q CostQuery, cost ParsedCost) (int, bool, e
 	if !bm.modifier.ReadsTargets {
 		q.Targets = nil
 	}
-	// A Unit is an increase's shape (open question 3). On any other
-	// kind, or carrying an {X} no announcement could size, or a hybrid
+	// A Unit is an increase's or a reduction's shape (open question 3,
+	// #4707). On any other kind, or carrying an {X} no announcement could size, or a hybrid
 	// or Phyrexian symbol whose payment no printed increase defines
 	// (§16), there is no honest price: refuse, as for a negative
 	// amount.
@@ -1324,6 +1331,20 @@ func increaseBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 	// through UnitProblem before the increase pass runs.
 	out.HasSnow = cost.HasSnow || unit.HasSnow
 	return out
+}
+
+// reduceBy takes `n` units of a reduction off a cost: `n` generic mana when
+// unit is nil, and otherwise `n` times the unit's mana, spent by
+// reduceByManaCost (CR 118.7) so a coloured symbol takes its own colour
+// first. The coloured twin of increaseBy (#4707, Flying Drone).
+func reduceBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
+	if unit == nil {
+		return reduceGeneric(cost, n)
+	}
+	for i := 0; i < n; i++ {
+		cost = reduceByManaCost(cost, *unit)
+	}
+	return cost
 }
 
 // reduceGeneric spends `n` generic mana out of a cost, stopping at

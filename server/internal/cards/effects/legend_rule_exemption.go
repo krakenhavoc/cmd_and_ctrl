@@ -14,6 +14,17 @@ func LegendRuleDoesntApplyToYours() []game.LegendRuleExemption {
 	}}
 }
 
+// LegendRuleDoesntApplyToYourCreatures is "The "legend rule" doesn't apply
+// to creatures you control." (Council of Reeds, #4707). Narrower than
+// LegendRuleDoesntApplyToYours: a legendary noncreature permanent you
+// control, and an opponent's legend, still answer to CR 704.5j.
+func LegendRuleDoesntApplyToYourCreatures() []game.LegendRuleExemption {
+	return []game.LegendRuleExemption{{
+		Label: "The \"legend rule\" doesn't apply to creatures you control.",
+		Whose: game.LegendRuleExemptYourCreatures,
+	}}
+}
+
 // LegendRuleDoesntApply is "The "legend rule" doesn't apply." — every
 // player's permanents (Mirror Gallery).
 func LegendRuleDoesntApply() []game.LegendRuleExemption {

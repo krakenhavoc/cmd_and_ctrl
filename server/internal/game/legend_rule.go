@@ -79,7 +79,7 @@ func (g *Game) legendRuleChoicesLocked() map[uuid.UUID][]uuid.UUID {
 		if !c.IsLegendary() {
 			continue
 		}
-		if exempt.covers(c.Controller) {
+		if exempt.coversPermanent(&c) {
 			continue
 		}
 		name := c.Effective().Name
