@@ -254,6 +254,23 @@ describe("the deck pickers preselect the last deck", () => {
     expect(checked?.value).toBe("deep");
   });
 
+  it("tags only the row whose deck has gaps", async () => {
+    setSession(sess("player", NIL));
+    const gappy = {
+      ...prebuilt("gap", "Gappy"),
+      coverage: { ...prebuilt("x", "x").coverage, unregistered: 2 },
+    };
+    routes = { "GET /decks": () => ({ decks: [prebuilt("raid", "Raid"), gappy] }) };
+    stubServer();
+    const { container } = render(
+      PrebuiltDeckPicker as never,
+      { gameID: GAME, playerID: "p1" } as never,
+    );
+    await settle();
+    const tags = [...container.querySelectorAll("ul.rows .cov")].map((e) => e.textContent?.trim());
+    expect(tags).toEqual(["2 not implemented"]);
+  });
+
   it("checks the last library deck, and ignores one that has gone", async () => {
     setSession(sess("player", USER));
     const deck = (id: string, name: string) => ({
@@ -315,7 +332,7 @@ describe("the deck pickers preselect the last deck", () => {
     );
     await settle();
     const play = [...container.querySelectorAll("button")].find((b) =>
-      /play/.test(b.textContent ?? ""),
+      /^Sit down with this deck/.test(b.textContent ?? ""),
     );
     click(play!);
     await settle();
@@ -347,7 +364,9 @@ describe("the deck pickers stay one screen with many decks", () => {
   const radios = (c: HTMLElement) =>
     [...c.querySelectorAll<HTMLInputElement>('input[name="your-deck"]')].map((r) => r.value);
   const playButton = (c: HTMLElement) =>
-    [...c.querySelectorAll("button")].find((b) => /^play /.test(b.textContent ?? ""));
+    [...c.querySelectorAll("button")].find((b) =>
+      /^Sit down with this deck/.test(b.textContent ?? ""),
+    );
 
   it("offers no filter for a short list", async () => {
     const { container } = setup(3);
@@ -356,13 +375,13 @@ describe("the deck pickers stay one screen with many decks", () => {
     expect(radios(container)).toHaveLength(3);
   });
 
-  it("filters a long list by name or commander, and names the deck on the button", async () => {
+  it("filters a long list by name or commander, and keeps the button label fixed", async () => {
     const { container } = setup(30);
     await settle();
     const filter = container.querySelector<HTMLInputElement>('input[type="search"]')!;
     expect(filter.getAttribute("aria-label")).toBe("filter your decks");
     expect(radios(container)).toHaveLength(30);
-    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+    expect(playButton(container)?.textContent?.trim()).toBe("Sit down with this deck");
 
     filter.value = "leyline";
     filter.dispatchEvent(new Event("input", { bubbles: true }));
@@ -375,7 +394,7 @@ describe("the deck pickers stay one screen with many decks", () => {
     expect(radios(container)).toEqual([]);
     expect(container.textContent).toContain("No deck matches");
     // The pick survives a filter that hides it.
-    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+    expect(playButton(container)?.textContent?.trim()).toBe("Sit down with this deck");
   });
 });
 

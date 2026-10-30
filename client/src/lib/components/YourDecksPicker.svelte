@@ -160,7 +160,7 @@
         }}>Sideboard</button
       >
       <button class="primary" onclick={seat} disabled={busy || !selected}>
-        {busy ? "seating…" : current ? `play ${current.name}` : "play this deck"}
+        {busy ? "Seating…" : "Sit down with this deck"}
       </button>
     </div>
 
@@ -215,8 +215,8 @@
     justify-content: flex-end;
     margin-top: 10px;
   }
-  /* "play <deck name>": a long name ellipsises rather than widening
-     the button past the panel. */
+  /* A short fixed label, but never let it widen the button past the
+     panel. */
   .row-actions button.primary {
     max-width: min(100%, 22rem);
     overflow: hidden;
