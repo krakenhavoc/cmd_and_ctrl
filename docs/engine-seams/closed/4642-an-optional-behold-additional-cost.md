@@ -1,0 +1,6 @@
+---
+title: "An optional behold additional cost"
+date: 2026-10-30
+issues: [4642]
+---
+**An optional behold additional cost** (#4642, [ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)'s 2026-10-30 amendment, CR 701.4) — "As an additional cost to cast this spell, you may behold a Hero" had no shape: behold existed only as a branch of a mandatory either/or cost, and `Register` refused it anywhere else. It is now an optional cost keyed `behold` (`effects.OptionalBehold(article, subtype)`, `game.BeholdKey`) carrying the same `RevealCost{Behold}` component: the cast plan already finds a reveal component on any entry, so the caster names the card on `reveal_ids`, a hand card is revealed and a permanent is not. The paid record is the existing optional-cost index, so snapshots, undo and copies carry it; `ctx.WasBeheld()` reads it at resolution without looking at the chosen card (CR 701.4b). A target that exists only when it was paid is `WhenPaid(OptionalBehold(...), clause)`, Falling Timber's shape. The view gained `reveal` / `behold` / `reveal_options` on `optional_costs[]` (additive), the client's reveal prompt opens from a ticked offer, and the enumerator offers the beholding form only to a seat with a card to name. **Cards:** Hulk's Thunderclap, Hyperion's Atomic Vision (both `full`).

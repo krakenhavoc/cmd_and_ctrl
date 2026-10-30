@@ -5093,8 +5093,9 @@ one move per payable branch. A resolution that cares which branch was
 paid reads `ctx.PaidCostBranch("modified")` (Lethal Throwdown). Register
 refuses fewer than two branches, a branch without a unique `Key`, an
 empty, optional, repeating or nested branch, a variable sacrifice in a
-branch, and components on the branched cost itself. Reveal, behold,
-"tap an untapped artifact", "exile two cards from your graveyard" and
+branch, and components on the branched cost itself. Reveal and behold
+branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
+`OptionalBehold` (#4642). "tap an untapped artifact", "exile two cards from your graveyard" and
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
@@ -8823,6 +8824,15 @@ less, where X is this creature's power" is the bundle ability's own
 An optional "you may waterbend {N}" additional cost is
 `OptionalCosts: []game.AdditionalCost{OptionalWaterbend("{N}")}`; read
 whether it was paid with `ctx.OptionalCostTimes(game.WaterbendKey) > 0`.
+
+An optional "you may behold a Hero" additional cost (#4642, CR 701.4) is
+`OptionalCosts: []game.AdditionalCost{OptionalBehold("a", "Hero")}`; read
+"if a Hero was beheld" / "if this spell's additional cost was paid" with
+`ctx.WasBeheld()`. The caster names the Hero (a permanent they control, or a
+card in hand) on `reveal_ids`. A target that exists only when it was paid
+wraps it: `WhenPaid(OptionalBehold("a", "Gamma"), Clauses(…printed clauses…,
+extra))` (Hulk's Thunderclap). A mandatory "behold a Merfolk or pay {2}" is
+still `BeholdOrPay`.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 

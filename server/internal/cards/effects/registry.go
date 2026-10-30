@@ -297,6 +297,8 @@ func Register(spec Spec) {
 	checkReplicate(spec)
 	// #3999: an optional "you may waterbend {N}".
 	checkOptionalWaterbend(spec)
+	// #4642: an optional "you may behold a <type>".
+	checkOptionalBehold(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}

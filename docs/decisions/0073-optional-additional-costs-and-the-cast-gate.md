@@ -1651,3 +1651,55 @@ Tests: `cards/effects/hama_chain_test.go`, `game/tap_cost_chain_test.go`. Back-o
 ## Amendment (2026-10-23, #1997): a second card name, and a cast and land-play ban by name
 
 §8 left "can't cast for a chosen card name" out because there was no card-name prompt. #1210 built that prompt, and Null Chamber now uses it twice: "you and an opponent each choose a card name other than a basic land card name. Spells with the chosen names can't be cast and lands with the chosen names can't be played." `CardNamePrompt.SecondName` stores the opponent's answer as `Card.ChosenSecondName`. `CardNamePrompt.NotBasicLandName` refuses a basic land card's name (CR 201.4a). The ban is an ordinary catalog `CastRestriction` and `LandPlayRestriction` that reads both names live (`game.ChosenNamesOn`) and compares the face being cast or played (`game.SpellOrLandHasName`, CR 709.3b, 712.11c). The gate itself is unchanged. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the detail.
+
+## Amendment 2026-10-30: an optional behold (#4642)
+
+Hulk's Thunderclap and Hyperion's Atomic Vision: "As an additional cost to
+cast this spell, you may behold a Gamma creature / a Hero", read back as "if
+this spell's additional cost was paid" / "if a Hero was beheld". Behold
+(CR 701.4a) was only a branch of a mandatory either/or cost (ADR 0100's
+2026-10-07 amendment); `Register` refused it anywhere else.
+
+**The shape.** `AdditionalCost.Reveal` (a `RevealCost` with `Behold` set) on
+an optional cost keyed `behold` (`game.BeholdKey`), built with
+`effects.OptionalBehold("a", "Hero")`. Nothing new in the engine's cast path:
+the plan already walks every entry for its reveal component, so a taken offer
+is validated by `validateRevealLocked` (exactly one card, from
+`RevealCostOptionsForEffect`: a matching card in the caster's hand, or a
+matching permanent they control) and paid by `payRevealLocked` (a hand card is
+revealed to the table with the spell on the stack, a permanent is not). The
+caster names the card on the existing `reveal_ids`.
+
+**Reading it.** The announcement is the record: `PaidCost.OptionalCosts`
+holds the offer's index like any kicker, so snapshots, undo and a CR 707.10
+copy already carry it. `ctx.WasBeheld()` (`OptionalCostTimes(BeholdKey) > 0`)
+is the read. It is deliberately not a look at the chosen card: CR 701.4b says
+"if a [quality] was beheld" is true whatever the card has become by
+resolution, and the engine does not store which card was chosen.
+
+**The target that exists only when paid.** Thunderclap's third target is
+`WhenPaid(OptionalBehold(...), clause)`, Falling Timber's shape: the paid cast
+is announced against the printed two clauses plus the extra one (CR 601.2c),
+and an unpaid cast cannot name it.
+
+**Register refuses** an optional reveal under any key but `behold`, a malformed
+behold (no reveal, not a behold, no creature type, a colour quality, a repeat,
+mana or any other component beside it), two optional beholds on one card and
+one beside a mandatory reveal / behold branch (a cast has one `reveal_ids`).
+
+**Wire and client.** `OptionalCostView` gained `reveal`, `behold` and
+`reveal_options` (additive), the same fields and the same engine walk as
+`AdditionalCostView`'s; present-and-empty `reveal_options` means nothing to
+behold and the offer is greyed (`optionalCostPayOptions`). Ticking the offer
+opens the board's existing one-card reveal prompt (`castRevealCost` reads a
+chosen optional offer as well as a chosen branch).
+
+**The bot.** `revealPayment` takes the announced optional costs too: the
+beholding form of a card is one more announced set, offered only to a seat with
+a card to name, and it names the same card the branch form does (a permanent
+before a hand card). The plain form is always walked on its own.
+
+**Snapshot impact.** None: no new persisted field.
+
+Tests: `cards/effects/optional_behold_test.go`, `legal/optional_behold_test.go`,
+`protocol/optional_behold_view_test.go`, `client/src/lib/revealCost.test.ts`.
