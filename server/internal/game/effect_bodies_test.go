@@ -72,6 +72,20 @@ func TestEveryPersistedEffectKeyResolves(t *testing.T) {
 	}
 }
 
+// TestEffectKeyLedgerIsSorted: the ledger's key lines stay in sorted
+// order, so two branches that each add a key insert at different places
+// and merge without a conflict. After a hand merge, rerun the update.
+func TestEffectKeyLedgerIsSorted(t *testing.T) {
+	ok, err := EffectKeyLedgerIsSorted(filepath.Join("testdata", "effect_keys.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Error("testdata/effect_keys.txt is not in sorted order — rewrite it with " +
+			"go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys")
+	}
+}
+
 func TestEffectKeysAreShapedAndUnique(t *testing.T) {
 	for _, bad := range []string{"NoSlash", "a/B", "a//b", "/b", "a/", "batch 1/x"} {
 		func() {
