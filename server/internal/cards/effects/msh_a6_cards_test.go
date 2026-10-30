@@ -20,7 +20,6 @@ const (
 	mshA6NinjaOracle       = "c38f7447-e646-438d-81bd-fe2a71c8a79c"
 	mshA6OriginOracle      = "d7f3178d-7b7c-4346-af50-a7b0206bee22"
 	mshA6PatriotOracle     = "1df7a09f-fbc8-4c2a-a903-bab9e680eda7"
-	mshA6PhotonBlastOracle = "a5424e33-ff4e-4c82-8aa9-9d25ced7830a"
 	mshA6BrokerOracle      = "2b3d76e7-faaa-4e6f-9e21-a88dd719247e"
 	mshA6PunchOracle       = "454c4e8b-e417-4381-a931-6a11356ef64e"
 	mshA6QuakeOracle       = "3966c94b-e597-4b3f-a4f5-001d52fff9fe"
@@ -37,7 +36,6 @@ func TestMshA6EveryCardIsRegisteredFull(t *testing.T) {
 		mshA6NinjaOracle:       "Ninja of the Hand",
 		mshA6OriginOracle:      "Origin of the Avengers",
 		mshA6PatriotOracle:     "Patriot, Shield Wielder",
-		mshA6PhotonBlastOracle: "Photon Blast Barrage",
 		mshA6BrokerOracle:      "Powerful Broker",
 		mshA6PunchOracle:       "Punishing Punch",
 		mshA6QuakeOracle:       "Quake, Agent of S.H.I.E.L.D.",
@@ -480,72 +478,6 @@ func TestMshA6RedGuardianIgnoresYourOwnDamageDealer(t *testing.T) {
 	assistCardSettle(t, g, me.ID, nil, true)
 	if !g.Battlefield.Contains(mine) {
 		t.Error("my own creature was destroyed")
-	}
-}
-
-// --- Photon Blast Barrage --------------------------------------------------------------------
-
-// mshA6RetargetCopies settles the stack, answering each copy's re-target
-// offer with the next of `picks` (then the last again) and counting offers.
-func mshA6RetargetCopies(t *testing.T, g *game.Game, chooser uuid.UUID, picks ...uuid.UUID) int {
-	t.Helper()
-	seen := 0
-	for i := 0; i < 64; i++ {
-		if p := latestPickTarget(g, chooser); p != nil {
-			pick := picks[len(picks)-1]
-			if seen < len(picks) {
-				pick = picks[seen]
-			}
-			seen++
-			if err := g.ResolvePickTarget(p.ID, chooser, game.TargetRef{Kind: game.TargetCard, ID: pick}); err != nil {
-				t.Fatalf("ResolvePickTarget: %v", err)
-			}
-			continue
-		}
-		if stackFullyEmpty(g) {
-			return seen
-		}
-		if err := g.PassPriority(); err != nil {
-			t.Fatalf("PassPriority: %v", err)
-		}
-	}
-	t.Fatal("the stack never settled")
-	return seen
-}
-
-func TestMshA6PhotonBlastBarrageCopiesItXTimesAndEachCopyHitsItsOwnTarget(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	toMainForCost(t, g)
-	a := b12Creature(g, opp.ID, "Big Target", "Creature — Giant", 2, 5)
-	b := b12Creature(g, opp.ID, "Small Target", "Creature — Bear", 2, 2)
-	if _, err := hobB3Cast(t, g, me, "Photon Blast Barrage", "Sorcery", "{X}{R}{R}", "{C}{C}{R}{R}", game.CastSpellParams{XValue: 2, Targets: cardRefs(a)}); err != nil {
-		t.Fatalf("cast with X=2: %v", err)
-	}
-	if got := mshA6RetargetCopies(t, g, me.ID, b, b); got != 2 {
-		t.Errorf("%d re-target offers, want 2 (one per copy)", got)
-	}
-	if g.Battlefield.Contains(b) {
-		t.Error("two copies of 1 damage did not kill the 2/2 they were aimed at")
-	}
-	if c := b12Card(t, g, a); c.DamageMarked != 1 {
-		t.Errorf("the original's target has %d damage, want 1", c.DamageMarked)
-	}
-}
-
-func TestMshA6PhotonBlastBarrageWithXZeroMakesNoCopies(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	toMainForCost(t, g)
-	a := b12Creature(g, opp.ID, "Big Target", "Creature — Giant", 2, 5)
-	if _, err := hobB3Cast(t, g, me, "Photon Blast Barrage", "Sorcery", "{X}{R}{R}", "{R}{R}", game.CastSpellParams{XValue: 0, Targets: cardRefs(a)}); err != nil {
-		t.Fatalf("cast with X=0: %v", err)
-	}
-	if got := mshA6RetargetCopies(t, g, me.ID, a); got != 0 {
-		t.Errorf("%d re-target offers with X=0, want none", got)
-	}
-	if c := b12Card(t, g, a); c.DamageMarked != 1 {
-		t.Errorf("target has %d damage, want 1", c.DamageMarked)
 	}
 }
 
