@@ -1838,3 +1838,5 @@ payunless pay-unless/speed-young-avenger-unblockable
 body fight-for-the-throne/monarch
 condition dies/that-creature-you-control-your-commander
 tail eerie-gravestone/after-mill
+castfollowup msc6/helmut-zemo-mastermind-counter
+tail msc6/daredevil-fearless-fighter-exiled
