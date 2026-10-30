@@ -10,31 +10,6 @@ import (
 // fra-misc-a slice of the Reality Fracture set (surveil cards and lands).
 // Every package-level name carries the rfMiscA prefix.
 
-// rfMiscAFinalityExile is the second half of a finality counter (CR
-// 122.1b): "if a creature with a finality counter on it would die,
-// exile it instead". Grim Repriser spells the same replacement out
-// inline; this is the reusable body, written for a card's own
-// Replacements slot.
-func rfMiscAFinalityExile(label string) game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-			return ev.Kind == game.RepEventMove && ev.OldZone == game.ZoneBattlefield &&
-				ev.NewZone == game.ZoneGraveyard && src != nil && ev.CardID == src.InstanceID &&
-				src.Counters[rfCreatureBFinalityCounter] > 0
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.NewZone = game.ZoneExile
-			ev.NewZoneOwner = uuid.Nil
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			return src.Controller
-		},
-		Label: label,
-	}
-}
-
 // rfMiscAEyeOfJaceUpkeep is Eye of Jace's upkeep trigger: surveil 1,
 // then — once the surveil has settled, because the card may have gone
 // to the graveyard — if the controller's graveyard holds seven or more
