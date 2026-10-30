@@ -3954,7 +3954,7 @@ type LandTypeEffectView struct {
 
 type NoUntapView struct {
 	Static bool `json:"static,omitempty"`
-	// Never is "can't become untapped" (#4574, CR 614.17b): no untap of
+	// Never is "can't become untapped" (#4574, CR 614.17): no untap of
 	// any kind will work on it, not only the untap step, so the client
 	// offers none. Always set together with Static.
 	Never bool     `json:"never,omitempty"`

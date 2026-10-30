@@ -1157,7 +1157,7 @@ as you control Spider-Woman") are stronger than "doesn't untap during its
 controller's untap step": an untap EFFECT must do nothing too. Every untap in
 the engine already reaches `untapPermanentLocked` (this ADR's premise), so the
 gate is one line there, ahead of the stun replacement: an untap that does
-not happen does not remove a stun counter either (CR 614.17b).
+not happen does not remove a stun counter either (CR 614.17c).
 
 - **Two spellings, one reader.** `UntapStepRestriction.CantBecomeUntapped` is
   the static form (Frozen in Ice: `enchantedCantBecomeUntapped()`).

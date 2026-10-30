@@ -10,7 +10,7 @@ import (
 )
 
 // cant_become_untapped_cards_test.go — #4574: "can't become untapped"
-// (CR 614.17b), proven on Frozen in Ice and Spider-Woman, Secret Agent. Act
+// (CR 614.17), proven on Frozen in Ice and Spider-Woman, Secret Agent. Act
 // of Heroism ("Untap target creature") is the untap effect that must do
 // nothing to a locked creature.
 

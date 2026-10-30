@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// untap_cant_test.go — #4574: "can't become untapped" (CR 614.17b). The
+// untap_cant_test.go — #4574: "can't become untapped" (CR 614.17). The
 // primitive every untap goes through refuses it, whoever asks.
 
 // lockWhileYouControl records a "can't become untapped for as long as

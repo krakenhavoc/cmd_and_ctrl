@@ -157,7 +157,7 @@ type UntapStepPermission struct {
 // untapping during that permanent's controller's own untap step.
 //
 // With CantBecomeUntapped set it is the stronger "can't become untapped"
-// (CR 614.17b, #4574): the permanent stays tapped through EVERY untap, not
+// (CR 614.17, #4574): the permanent stays tapped through EVERY untap, not
 // only its controller's untap step, so an untap effect, a sandbox untap
 // and another player's Seedborn Muse step all do nothing to it.
 // untapPermanentLocked reads it live from the source on the battlefield,
@@ -188,7 +188,7 @@ type UntapStepRestriction struct {
 //
 // CantBecomeUntapped (hold only, #4574) widens a hold from "doesn't untap
 // during its controller's untap step" to "can't become untapped" (CR
-// 614.17b): it keeps the permanent tapped through every untap, whoever's
+// 614.17): it keeps the permanent tapped through every untap, whoever's
 // step or effect asks. Spider-Woman, Secret Agent. It is read at the
 // untap primitive, so it needs no controller key.
 //
@@ -308,7 +308,7 @@ func (g *Game) untapPermanentLocked(c *Card) {
 	if c == nil || !c.Tapped {
 		return
 	}
-	// "Can't become untapped" (CR 614.17b, #4574): the untap does not
+	// "Can't become untapped" (CR 614.17, 614.17c, #4574): the untap does not
 	// happen, so neither does a stun counter's replacement of it. This is
 	// the ONE gate for the untap step, an effect, a sandbox untap and
 	// anything else that reaches here.
@@ -423,7 +423,7 @@ func (g *Game) HoldUntappedForEffect(cardID uuid.UUID, d Duration) error {
 }
 
 // CantUntapForEffect records "<it> can't become untapped for as long as
-// <d>" on a battlefield permanent (#4574, CR 614.17b): Spider-Woman,
+// <d>" on a battlefield permanent (#4574, CR 614.17): Spider-Woman,
 // Secret Agent. Unlike HoldUntappedForEffect the permanent stays tapped
 // through EVERY untap, so an untap effect does nothing to it either. The
 // caller builds `d` exactly as for a hold and records nothing when the
@@ -511,7 +511,7 @@ func (g *Game) CantBecomeUntappedHoldLocked(c *Card) bool {
 }
 
 // CantBecomeUntappedLocked reports whether `c` can't become untapped right
-// now (CR 614.17b, #4574): a live hold from a resolved ability
+// now (CR 614.17, #4574): a live hold from a resolved ability
 // (CantUntapForEffect), or a static source on the battlefield
 // (UntapStepRestriction.CantBecomeUntapped; Frozen in Ice). Read live at
 // every untap, so an effect that ended has no say. Caller holds g.mu; it

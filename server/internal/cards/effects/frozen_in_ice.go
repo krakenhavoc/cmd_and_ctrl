@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Infinite Coursework's shape with the stronger lock (#4574): "can't
 // become untapped" holds against every untap, not only the controller's
 // untap step, so an untap effect does nothing to the creature either (CR
-// 614.17b). It is an UntapStepRestriction with CantBecomeUntapped, read
+// 614.17). It is an UntapStepRestriction with CantBecomeUntapped, read
 // live from the Aura, so it ends the moment the Aura leaves. The entry
 // trigger reads the Aura's attachment as it resolves
 // (tapEnchantedCreatureOnEntry); the tap itself does not end with the

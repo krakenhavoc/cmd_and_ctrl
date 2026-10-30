@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Dungeon Geists' shape with a stronger lock (#4574): the creature stays
 // tapped through every untap, so an untap effect does nothing to it either
-// (CR 614.17b). The lock is a "can't become untapped" hold timed by CR
+// (CR 614.17). The lock is a "can't become untapped" hold timed by CR
 // 611.2b's "for as long as you control ~": if Spider-Woman has already left
 // or changed control by the time the trigger resolves, the creature is
 // tapped and nothing more (TapAndLockWhileYouControlThis).

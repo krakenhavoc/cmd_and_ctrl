@@ -19,7 +19,7 @@ func enchantedDoesntUntap() game.UntapStepRestriction {
 }
 
 // enchantedCantBecomeUntapped is "enchanted creature can't become
-// untapped" (CR 614.17b, #4574): Frozen in Ice. Stronger than
+// untapped" (CR 614.17, #4574): Frozen in Ice. Stronger than
 // enchantedDoesntUntap: an untap effect does nothing to the creature
 // either, for as long as the Aura is on it.
 func enchantedCantBecomeUntapped() game.UntapStepRestriction {
@@ -102,7 +102,7 @@ func (d DoesntUntapWhile) Apply(ctx *Context) error {
 }
 
 // CantBecomeUntappedWhile records "it can't become untapped for as long
-// as <Duration>" on each target (#4574, CR 614.17b, CR 611.2b). Unlike
+// as <Duration>" on each target (#4574, CR 614.17, CR 611.2b). Unlike
 // DoesntUntapWhile the permanent stays tapped through EVERY untap, not
 // only its controller's untap step. Build Duration as for DoesntUntapWhile
 // and apply nothing when it says false.
