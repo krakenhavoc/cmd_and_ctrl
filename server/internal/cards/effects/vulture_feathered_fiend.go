@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -14,14 +12,18 @@ import (
 //	 damage to a player, put a +1/+1 counter on each of those creatures
 //	 and draw a card."
 //
-// Mu Yanling's batch trigger (one per player hit in a combat damage step,
-// CR 603.2c, flying read off each creature as it deals its damage). "Each
-// of those creatures" is the roster of that batch: the engine emits one
-// damage event per creature, so the effect reads the event log for the
-// flying creatures of the controller that dealt combat damage to the same
-// player in the same batch (CountersYouPutInTheSameBatch's scan). A
-// creature that has left the battlefield by then gets no counter; the draw
-// is not conditional on it.
+// One printed ability, two rows. The draw is Mu Yanling's batch trigger
+// (one per player hit in a combat damage step, CR 603.2c). "Each of those
+// creatures" must be the creatures that dealt the damage while they had
+// flying, fixed when the ability triggers: a collapsed batch trigger keeps
+// only its first event, so the counters are a row per damaging creature
+// (the subject is the event's source, SubjectIsEventSource), whose
+// condition reads flying as the damage is dealt. A creature that loses
+// flying in response still gets its counter, one without flying that also
+// connected gets none, and a creature that has left the battlefield by
+// resolution gets nothing (the counter cannot be put on it). The two rows' effects are independent, so their order and number
+// on the stack change nothing a player could observe except a response
+// aimed at one row.
 //
 // No simplification.
 func init() {
@@ -32,38 +34,25 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(HasKeyword("flying"),
-				"Vulture, Feathered Fiend — put a +1/+1 counter on each of those creatures and draw a card",
-				vultureCountersAndDraw),
+				"Vulture, Feathered Fiend — draw a card", Do(DrawCards{N: 1})),
+			{
+				Watches: []game.EventKind{game.EventDealDamage},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+					if !combatDamageToPlayerBy(ev, source.Controller, g) {
+						return false
+					}
+					c, ok := g.LookupCardForEffect(ev.Source)
+					return ok && HasKeyword("flying")(g, source.Controller, game.ThroughTextOf(source, c))
+				},
+				Key:                  "Vulture, Feathered Fiend — put a +1/+1 counter on that flying creature",
+				SubjectIsEventSource: true,
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					if item.Trigger == nil || !onBattlefield(g, item.Trigger.Event.Source) {
+						return nil
+					}
+					return AddCounter{Target: item.Trigger.Event.Source, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
+				},
+			},
 		},
 	})
-}
-
-func vultureCountersAndDraw(g *game.Game, item *game.StackItem) error {
-	if item.Trigger == nil {
-		return nil
-	}
-	ctx := NewContext(g, item)
-	ev := item.Trigger.Event
-	seen := map[uuid.UUID]bool{}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		e := g.Events[i]
-		if e.Batch < ev.Batch {
-			break
-		}
-		if e.Batch != ev.Batch || e.Target != ev.Target || seen[e.Source] || !combatDamageToPlayerBy(e, item.Controller, g) {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(e.Source)
-		if !ok || !HasKeyword("flying")(g, item.Controller, c) {
-			continue
-		}
-		seen[e.Source] = true
-		if !onBattlefield(g, e.Source) {
-			continue
-		}
-		if err := (AddCounter{Target: e.Source, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 }

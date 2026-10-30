@@ -831,6 +831,23 @@ func TestMscM12PhotonOnlyTriggersOnCombatDamageToAPlayer(t *testing.T) {
 	}
 }
 
+// mscM12Settle resolves the stack, answering the CR 603.3b order prompt the
+// two Vulture rows raise when they trigger together (their order is moot).
+func mscM12Settle(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 8; i++ {
+		if triggerOrderPrompt(g) != nil {
+			answerTriggerOrderInOfferedOrder(t, g)
+			continue
+		}
+		if stackFullyEmpty(g) {
+			return
+		}
+		passPriorityAroundTable(t, g)
+	}
+	t.Fatal("the stack did not settle")
+}
+
 // --- Vulture, Feathered Fiend -------------------------------------------------------------------------
 
 func mscM12VultureTable(t *testing.T) (g *game.Game, me *game.Player, vulture, flyer, ground uuid.UUID) {
@@ -851,7 +868,7 @@ func TestMscM12VultureCountersEachFlyingDamagerOnceAndDrawsOnce(t *testing.T) {
 	g, me, vulture, flyer, ground := mscM12VultureTable(t)
 	hand := me.Hand.Size()
 	attackWith(t, g, g.Seats[1].ID, vulture, flyer, ground)
-	passPriorityAroundTable(t, g)
+	mscM12Settle(t, g)
 	if got := hobA4Power(t, g, vulture); got != 3 {
 		t.Errorf("Vulture power %d, want 3 (one counter)", got)
 	}
@@ -877,7 +894,7 @@ func TestMscM12VultureTriggersOncePerPlayerHit(t *testing.T) {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
 	advanceTo(t, g, game.StepCombatDamage)
-	passPriorityAroundTable(t, g)
+	mscM12Settle(t, g)
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("hand %d -> %d, want a card for each player hit", hand, me.Hand.Size())
 	}
@@ -893,15 +910,39 @@ func TestMscM12VultureIgnoresGroundDamageAndNoncombatDamage(t *testing.T) {
 	g, me, _, _, ground := mscM12VultureTable(t)
 	hand := me.Hand.Size()
 	attackWith(t, g, g.Seats[1].ID, ground)
-	passPriorityAroundTable(t, g)
+	mscM12Settle(t, g)
 	flyer := b12Creature(g, me.ID, "Second Bird", "Creature — Bird", 1, 1)
 	mscM12SetFlying(t, g, flyer)
 	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(flyer, g.Seats[1].ID, 1) })
-	passPriorityAroundTable(t, g)
+	mscM12Settle(t, g)
 	if me.Hand.Size() != hand {
 		t.Errorf("hand %d -> %d, want no draw", hand, me.Hand.Size())
 	}
 	if got := hobA4Power(t, g, flyer); got != 1 {
 		t.Errorf("Bird power %d, want 1", got)
+	}
+}
+
+func TestMscM12VultureCounterGoesToTheCreatureThatHadFlyingWhenItDealtDamage(t *testing.T) {
+	g, me, _, flyer, ground := mscM12VultureTable(t)
+	hand := me.Hand.Size()
+	attackWith(t, g, g.Seats[1].ID, flyer, ground)
+	// The triggers are on the stack; the Bird loses flying in response.
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(flyer),
+			[]game.Mod{game.RemoveKeywordsMod("flying")}, g.UntilEndOfTurnDuration(), "test — loses flying")
+	})
+	if containsString(effectiveAbilities(t, g, flyer), "flying") {
+		t.Fatal("the Bird still has flying")
+	}
+	mscM12Settle(t, g)
+	if got := hobA4Power(t, g, flyer); got != 2 {
+		t.Errorf("Bird power %d, want 2: it had flying when it dealt the damage", got)
+	}
+	if got := hobA4Power(t, g, ground); got != 2 {
+		t.Errorf("Bear power %d, want 2: it never had flying", got)
+	}
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d -> %d, want one card", hand, me.Hand.Size())
 	}
 }
