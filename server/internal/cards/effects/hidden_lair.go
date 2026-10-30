@@ -1,11 +1,5 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
-
 // Hidden Lair — Land (Marvel Super Heroes, #4455):
 //
 //	"{T}: Add {C}.
@@ -16,7 +10,8 @@ import (
 // its Condition, read when the ability is activated: the land's own entry
 // is the turn tally (game.EnteredThisTurn, CR 400.7), not summoning
 // sickness, and "a basic land" is the Basic supertype on a permanent you
-// control (Hidden Lair itself is not basic).
+// control (Hidden Lair itself is not basic). The gated row is Gathering
+// Place's (mshA3GatedDual).
 //
 // No simplification.
 func init() {
@@ -26,19 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			colorlessTapRow(),
-			mshA4GatedDual("U", "B"),
+			mshA3GatedDual("U", "B"),
 		},
 	})
-}
-
-// mshA4GatedDual is a "{T}: Add {A} or {B}. Activate only if this land
-// entered this turn or if you control a basic land" row.
-func mshA4GatedDual(a, b string) ManaAbility {
-	row := dualManaAbility(a, b)
-	row.Label += ". Activate only if this land entered this turn or if you control a basic land."
-	basic := ControlsAtLeast(1, IsBasicLand)
-	row.Condition = func(g *game.Game, controller, source uuid.UUID) bool {
-		return g.EnteredThisTurn(source) || basic(g, controller, source)
-	}
-	return row
 }
