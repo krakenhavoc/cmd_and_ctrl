@@ -225,7 +225,7 @@ func TestADroppedPromptInASingleCardRouteStillRunsThen(t *testing.T) {
 // unanswerable — the move it asks about can never happen — and #605
 // withdraws it. The rest of the sweep and the "for each" clause are
 // still owed, and the card that left is not counted: it was never put
-// into a graveyard, so by CR 701.7a it was not destroyed.
+// into a graveyard, so by CR 701.8a it was not destroyed.
 func TestAPrunedWipePromptStillFinishesTheSweep(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -248,7 +248,7 @@ func TestAPrunedWipePromptStillFinishesTheSweep(t *testing.T) {
 	}
 	if !idsEqual(*got, []uuid.UUID{bear}) {
 		t.Errorf("destroyed this way = %v, want just %v — a permanent that left to exile was never "+
-			"put into a graveyard (CR 701.7a)", *got, bear)
+			"put into a graveyard (CR 701.8a)", *got, bear)
 	}
 	if !g.Exile.Contains(commander) {
 		t.Error("the flickered commander is in exile")

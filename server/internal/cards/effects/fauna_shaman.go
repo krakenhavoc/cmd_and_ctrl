@@ -30,7 +30,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     that it is in hand and that it is a creature card.
 //
 // The search is the plain "reveal it, put it into your hand, then
-// shuffle" — an unsuccessful search still shuffles (CR 701.19).
+// shuffle" — an unsuccessful search still shuffles (CR 701.23).
 func init() {
 	Register(Spec{
 		OracleID:     "35b8fa77-4e85-418b-b335-cd1af127075c",

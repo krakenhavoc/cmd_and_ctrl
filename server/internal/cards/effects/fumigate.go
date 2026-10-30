@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // this line (#815).
 //
 // A destruction a replacement rewrote into an EXILE is the case that
-// looks the same and is counted the other way: CR 701.7a defines
+// looks the same and is counted the other way: CR 701.8a defines
 // destroying a permanent as moving it to its owner's GRAVEYARD, so a
 // permanent that was exiled instead was never destroyed, however
 // thoroughly it left. See ADR 0013 §5i.

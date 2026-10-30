@@ -13,7 +13,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// search_decline_test.go — #4134, CR 701.19: a "you may search" can be
+// search_decline_test.go — #4134, CR 701.23: a "you may search" can be
 // declined outright. Declining is not "find nothing": it skips the look,
 // the shuffle, EventSearchLibrary (so "whenever a player searches"
 // triggers stay quiet) and an Opposition Agent's control.
@@ -255,7 +255,7 @@ func searchApplyMoves(g *game.Game, seat uuid.UUID) (yes, no int) {
 	return
 }
 
-// An optional search asks BEFORE it looks (CR 701.19: looking through the
+// An optional search asks BEFORE it looks (CR 701.23a: looking through the
 // library is searching). The wire shows the question with no candidates;
 // only "Search" reveals the list, and from then on there is no decline.
 func TestOptionalSearchIsAskedBeforeItLooks(t *testing.T) {

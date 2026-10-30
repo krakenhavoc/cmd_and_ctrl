@@ -366,7 +366,7 @@
   // #4134: "you may search" has an answer beside "Find nothing": not
   // searching at all, which skips the shuffle and the search event. It is
   // only on the table BEFORE the search begins (looking at the list is
-  // searching, CR 701.19), so the server sends search_optional only on the
+  // searching, CR 701.23a), so the server sends search_optional only on the
   // undecided prompt.
   const searchOptional = $derived(isSearch && active?.search_optional === true);
   // #4134: an optional search asks first, with no candidate list.

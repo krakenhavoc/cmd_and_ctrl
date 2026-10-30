@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The "may" is a real one (#4134): the prompt carries "Don't search",
 // which skips the search outright (no look, no shuffle, no "whenever a
 // player searches" trigger), as well as "find nothing", which is a search
-// that came up empty and still shuffles (CR 701.19).
+// that came up empty and still shuffles (CR 701.23).
 //
 // The card is revealed, so every seat sees what went on top; the
 // shuffle has already buried the rest of the order.
