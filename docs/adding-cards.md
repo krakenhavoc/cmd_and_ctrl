@@ -8897,6 +8897,28 @@ mandatory actions that comes round unchanged gets no prompt, its notice
 is marked `mandatory`, and one more unchanged time round is a draw (ADR
 0055's amendment of 2026-10-15).
 
+### A creature becoming tapped (#4534, #4576)
+
+"Becomes tapped" is two event kinds, because the engine taps an attacker
+without an `EventTapCard`: watch `game.EventTapCard` and `game.EventAttack`
+and use `ThisBecameTapped` or `b32CreatureYouControlBecameTapped`, which read
+an attacker as tapped only when it is (a vigilance attacker did not become
+tapped). Two seams sit on top:
+
+- **The cause.** `Event.TapCause` says why a tap happened when a card asks. The
+  teamwork payment stamps `game.TapCauseTeamwork`, and
+  `effects.ThisTappedToPayTeamwork` is the When for "becomes tapped to pay a
+  teamwork cost" (Agent Maria Hill). Every other tap leaves it empty. A new
+  cause is a new constant on the tapping path; the string is on disk inside
+  a trigger's context, so it is never renamed or reused.
+- **Once per object per turn.** `Game.TimesBecameTappedThisTurn(id)` is how many
+  times that OBJECT has become tapped this turn (CR 400.7: a flickered or
+  bounced permanent is new and reads 0; the turn boundary flushes it). The
+  tally listener runs before the trigger harvester, so a predicate reads `== 1`
+  for "the first time it has become tapped this turn" (Captain America, Living
+  Legend). It counts the `EventTapCard` and the attack that tapped; a permanent
+  that enters tapped, or a regenerating one (no event), is not counted.
+
 ### Untapping in another player's untap step (#74)
 
 "Untap all permanents you control during each other player's untap

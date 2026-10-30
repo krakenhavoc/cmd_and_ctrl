@@ -332,6 +332,15 @@ func ThisBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, _
 	return false
 }
 
+// ThisTappedToPayTeamwork — "whenever this creature becomes tapped to
+// pay a teamwork cost" (CR 702.194a; Agent Maria Hill). Reads the cause
+// the teamwork payment stamps on its EventTapCard (Event.TapCause), so
+// an ordinary tap, an attack and a crew tap are all silent. Watch
+// game.EventTapCard.
+func ThisTappedToPayTeamwork(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventTapCard && ev.CardID == source.InstanceID && ev.TapCause == game.TapCauseTeamwork
+}
+
 // EnchantedPermanentBecameTapped — "whenever enchanted land becomes
 // tapped" (CR 701.26a; Contaminated Ground), for any reason: for mana,
 // by an effect, or by attacking, which taps without an EventTapCard (so
