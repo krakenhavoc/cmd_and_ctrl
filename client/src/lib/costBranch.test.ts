@@ -5,6 +5,7 @@ import {
   payableCostBranches,
   withCostBranch,
 } from "./costBranch";
+import { abilityBlocked } from "./contextMenu.logic";
 import { branchLabel, branchNamesCards, branchReady, branchWhyNot } from "./payEither";
 import type { ActivatedAbilityView, PayOptionView } from "./protocol";
 
@@ -59,6 +60,17 @@ describe("either/or activation costs", () => {
     expect(disc.discard_cost_label).toBe("a nonland card");
     expect(disc.sacrifice_options).toBeUndefined();
     expect(withCostBranch(row, 5)).toBe(row);
+  });
+
+  it("greys the row in the menu only when no branch can be paid", () => {
+    expect(abilityBlocked(row, false, false)).toBe("");
+    const none = {
+      ...row,
+      cost_branches: row.cost_branches!.map((b) => ({ ...b, payable: false })),
+    };
+    expect(abilityBlocked(none, false, false)).toBe(
+      "needs: sacrifice an artifact or discard a nonland card",
+    );
   });
 });
 
