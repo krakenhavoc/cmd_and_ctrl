@@ -566,6 +566,45 @@ func TestMsc16LiberatorMakesASoldierForEachEquipmentAttachedToHim(t *testing.T) 
 	}
 }
 
+func msc16Equip(g *game.Game, owner, host uuid.UUID) uuid.UUID {
+	return pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Test Equipment", TypeLine: "Artifact — Equipment",
+		Owner: owner, Controller: owner, AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: host},
+	})
+}
+
+func TestMsc16LiberatorCountsEquipmentAttachedInResponse(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cap := b12Push(g, me.ID, "Captain America, Liberator", "Legendary Creature — Human Soldier Hero", msc16LiberatorOracle, 5, 5)
+	msc16Equip(g, me.ID, cap)
+
+	declareAttack(t, g, opp.ID, cap)
+	msc16Equip(g, me.ID, cap) // attached while the trigger is on the stack
+	passPriorityAroundTable(t, g)
+	if got := len(msc16TokensNamed(g, "Soldier")); got != 2 {
+		t.Errorf("%d Soldier tokens, want 2 (one attached before and one in response)", got)
+	}
+}
+
+func TestMsc16LiberatorUsesLastKnownInformationWhenHeIsGone(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cap := b12Push(g, me.ID, "Captain America, Liberator", "Legendary Creature — Human Soldier Hero", msc16LiberatorOracle, 5, 5)
+	msc16Equip(g, me.ID, cap)
+	msc16Equip(g, me.ID, cap)
+
+	declareAttack(t, g, opp.ID, cap)
+	b27Kill(g, cap)
+	passPriorityAroundTable(t, g)
+	if findBattlefieldCardForTest(g, cap) != nil {
+		t.Fatal("Captain America is still on the battlefield")
+	}
+	if got := len(msc16TokensNamed(g, "Soldier")); got != 2 {
+		t.Errorf("%d Soldier tokens, want 2 (two Equipment were attached as he last existed)", got)
+	}
+}
+
 func TestMsc16LiberatorMakesNoSoldiersWithoutEquipment(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
