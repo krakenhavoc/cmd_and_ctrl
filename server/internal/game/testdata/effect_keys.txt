@@ -1860,3 +1860,4 @@ choose choose-cards/gert-and-old-lace-search
 choose choose-cards/discard-then-each-opponent-discards
 choose choose-cards/the-ruinous-wrecking-crew-draw
 tail chrome-dome/haste-and-sacrifice-copy
+tail emeritus-of-truce/then-prepare

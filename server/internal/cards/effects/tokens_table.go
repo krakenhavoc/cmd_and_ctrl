@@ -179,6 +179,7 @@ var tokenTable = map[string]game.Card{
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
 	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
 	"2/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 2, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
+	"1/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}}, // Secrets of Strixhaven (#4456)
 	"2/2 black Rogue":                                                  {Name: "Rogue", TypeLine: "Token Creature — Rogue", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 colorless Wizard Soldier named Cadet":                         {Name: "Cadet", TypeLine: "Token Creature — Wizard Soldier", Power: 2, Toughness: 2},
 	"2/2 black Zombie":                                                 {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
