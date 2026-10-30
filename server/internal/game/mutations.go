@@ -2347,6 +2347,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	for i := range g.Stack.Cards {
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
 			ch := SourceCharacteristics(sc)
+			tally = tally.withSpellColors(ch.Colors)
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++

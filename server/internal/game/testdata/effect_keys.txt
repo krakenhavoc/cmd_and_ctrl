@@ -340,6 +340,7 @@ choose choose-cards/discard-two-unless-artifact
 choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/disturbing-mirth-sacrifice
+choose choose-cards/doomfall-exile
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
@@ -1596,6 +1597,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail put-from-library/rest-into-graveyard
+tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
 tail quintorius-kand/mana-and-cast-from-exiled
 tail rabble-rousing/offer-the-exiled-card
