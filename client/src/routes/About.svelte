@@ -113,7 +113,7 @@
             class="btn discord"
             href={$community.invite_url}
             target="_blank"
-            rel="noopener noreferrer">Join the C2 Discord</a
+            rel="noopener noreferrer">Join the CMD & CTRL Discord</a
           >
           <span>Chat with the people who play here.</span>
         </p>
