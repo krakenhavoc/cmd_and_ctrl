@@ -52,6 +52,7 @@ body blitz/sacrifice
 body bolg-of-the-north/damage
 body breeches/blast
 body breeches/copy-that-spell
+body bullseye-death-dealer/damage
 body cait-sith/boost
 body cascade/bottom-if-not-cast
 body casualty/copy
@@ -978,9 +979,11 @@ payunless pay-unless/assimilate-essence-incubate
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/consuls-shieldguard-indestructible
+payunless pay-unless/contract-hero-pump
 payunless pay-unless/counter-guarded
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cyclops-superconductor-damage
@@ -1055,6 +1058,7 @@ payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
 payunless pay-unless/veinwitch-coven-return
+payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
