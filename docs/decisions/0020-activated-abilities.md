@@ -3842,3 +3842,60 @@ three packages' tests; dropping `riderCtx.PowerUp` in the activation fails
 `TestQuinjetTechnicianPowerUpManaPaysNothingElse` and the matcher table; dropping the bit from the view's
 `ActivationAbility` fails `TestPowerUpAdditionalTimeAndBanAreProjected`; dropping `DuringThatTurn` from Kang fails his
 two ban tests.
+
+## Amendment 2026-10-30 ([#4600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4600)): equip-only mana, a second purpose bit
+
+Ronin, Shadow Stalker's "Spend this mana only to cast Equipment spells or activate equip abilities" needs the payer to
+say that the ability being paid for is an equip ability. The source cannot say it: the spend context for an activation
+is built from the source card alone (`ManaSpendForAbility`), so an Equipment's equip ability and its other abilities
+(Shadowspear's "{1}: Permanents your opponents control lose hexproof and indestructible") look identical. This is
+Decision 74's shape, one keyword over. CR text checked against the 2026-09-25 edition (CR 106.6, 702.6a, 702.6d, 119.4).
+
+### Decision 75: equip-only mana is a purpose tag the payer sets
+
+`game.ManaRestrictEquip` (`"purpose:equip"`) is a purpose tag beside `ManaRestrictPowerUp`, matched against
+`ManaSpendContext.Equip`, a new bool: true when the ability being paid for is an equip ability
+(`ActivatedAbilityShape.Equip`, CR 702.6a). It is set at the same three places `PowerUp` is, and for the same reason
+each one builds its own context: `ActivateCatalogAbility` (`riderCtx.Equip = ab.Equip`), the legal-move enumerator
+(`enumerator.rowEquip`, read by `abilitySpend`) and the `?ability=` cost preview in `lobby/http.go`. The {0} twin of an
+equip ability (Decision on #4475) is a copy of the row, so it carries the bit through the enumerator unchanged. The
+tag matches only an activation with the bit; a cast, an unlock, a mana ability's own cost and a payment that names no
+purpose all refuse it, so a context that forgot the bit makes the mana weaker than printed, never stronger.
+
+The "Equipment spell" half is not new: it is `ManaRestrictCast` with `ManaRestrictSubtype("Equipment")`. Ronin's clause
+is the two halves joined by `ManaRestrictAnyOf`, the shape Creeping Peeper uses for its three-way restriction. The
+#2059 guard accepts it (the tag is a `purpose:` one and the `anyof:` wrapper counts as naming a purpose).
+
+Two consequences are existing rules rather than choices. The auto-tapper plans restricted mana for casts only, so it
+does not plan the activation half; and it never plans a mana ability whose cost is life with no {T} (the only
+costless shape it takes is the bounded, wholly costless `OncePerTurn`, `autoTapFreeOncePerTurn`), so the player fires
+Ronin's ability first and the mana floats, exactly as with every other "Pay N life" mana ability that does not tap.
+The auto-tap top-up and the pool solver then read the floating mana through the same `ManaSpendContext.allows`, so
+the equip is finished with it and a creature spell or the Equipment's other ability is not. "Activate only once each
+turn" is the existing `ManaAbility.OncePerTurn` bit (#1621), per object and label.
+
+### Cards
+
+Ronin, Shadow Stalker (Full). His second ability, "{T}, Sacrifice an Equipment attached to Ronin: Target creature gets
+-4/-4 until end of turn. Activate only as a sorcery.", is the existing `AttachedToThis` sacrifice clause
+(Faunsbane Troll) with `HarmUntilEOT(0, -4, -4)`.
+
+### Snapshot, closure and ledger
+
+One addition, additive within v9: `ManaSpendContext` is stored in an assist prompt (`pendingChoices[].assist.spend`),
+so its new `Equip` bool is a new key there, recorded in `snapshot_shape/v9.txt`. A file written without it restores as
+"not an equip ability", the only direction an older file can mean, since no earlier binary could produce equip-only
+mana. No `Game` route to a func is added, so the closure counts do not move, and no keyed body or mod kind is added,
+so the effect-key ledger takes none.
+
+### Tests and back-outs
+
+`game/equip_mana_test.go` (the tag's matcher table, Ronin's whole clause as a table, and the pool solver),
+`cards/effects/ronin_shadow_stalker_test.go` (the mana paying an Equipment spell and an equip ability, and paying
+nothing else: not a creature spell, a plain artifact spell, an instant, or Shadowspear's non-equip ability; the
+auto-tap top-up; once per turn; the -4/-4 needing an attached Equipment, killing a 4/4, and sorcery speed),
+`legal/equip_mana_test.go` and `lobby/auto_tap_preview_equip_mana_test.go`. Dropping `riderCtx.Equip` in the activation
+fails the equip-ability tests in `effects`; dropping the enumerator's `rowEquip` fails
+`TestEquipOnlyManaMakesAnEquipAbilityAMoveAndNothingElse`; dropping the preview's bit fails
+`TestAutoTapPreviewAbilityReadsTheEquipBitOfTheRow`; matching the tag on any activation fails the matcher tables and
+`TestRoninManaPaysNothingButEquipmentSpellsAndEquipAbilities`.
