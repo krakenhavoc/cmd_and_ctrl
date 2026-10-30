@@ -1,0 +1,6 @@
+---
+title: "Melee"
+date: 2026-10-30
+issues: [4722]
+---
+**Melee** (#4722, CR 702.121) — melee is a canonical keyword now, the sixth whose trigger the engine derives from the ability list, after prowess, evolve, annihilator, exalted and decayed (renown and modular are the numbered siblings). `melee` joins `canonicalKeywords` as a cumulative token (CR 702.121b: each instance triggers separately), so a printed melee (stamped by the deck importer from Scryfall's keywords array), a token's and a layer-6 grant ("Other creatures you control have melee") all trigger with no catalog entry, and a creature that prints melee has two instances under a granter. "Whenever this creature attacks" watches the creature's own declaration (CR 508.3a), pins it by instance and object epoch, and resolves through the new keyed body `melee/pump`. The opponent count is read as the ability resolves: the distinct players the controller attacked with any creature in the current combat phase, read from `TurnTally.Attacks` (`Game.OpponentsAttackedThisCombat`), so a creature that attacked and has since left combat still counts, an additional combat is its own count, and an attack on a planeswalker or battle counts no player. Melee triggers commute, so a batch of them asks no ordering prompt. **Cards:** Titania, Proud Pummeler — Full.

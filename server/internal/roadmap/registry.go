@@ -373,6 +373,15 @@ var items = []Item{
 		Examples: []string{"Noble Hierarch", "Ignoble Hierarch"},
 	},
 	{
+		Slug: "melee", Name: "Melee", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature with melee attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat, counted as the trigger resolves. Melee another permanent gives works, and each instance triggers separately.",
+		Rules:    []string{"702.121", "113.2c"},
+		Issue:    4722,
+		Keywords: []string{game.KeywordMelee},
+		Printed:  printedKeyword("melee"),
+		Examples: []string{"Titania, Proud Pummeler"},
+	},
+	{
 		Slug: "decayed", Name: "Decayed", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "A creature with decayed can't block, and when it attacks it is sacrificed at end of combat. Decayed tokens, decayed another permanent gives and decayed counters all work.",
 		Rules:    []string{"702.147", "122.1b"},
