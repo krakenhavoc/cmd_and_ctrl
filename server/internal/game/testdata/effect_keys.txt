@@ -1854,3 +1854,4 @@ choose choose-cards/winter-soldier-icy-assassin-attach
 tail thunderbolts-conspiracy/hero
 tail winter-soldier-icy-assassin/attach
 confirm confirm/astonishing-spider-man-discard-hand
+choose choose-cards/msc-m1-romantic-rendezvous-draw
