@@ -65,6 +65,18 @@ func CastFirstCreatureSpellAsThoughFlash(label string) game.CastTimingRule {
 	return rule
 }
 
+// CastAsThoughFlashWhileAnOpponentHasCast is "As long as an opponent has
+// cast a spell this turn, you may cast spells as though they had flash" —
+// Captain Mar-Vell, Space-Born. CastAsThoughFlash gated on
+// CastTimingRule.OpponentCastASpellThisTurn, read live from the other
+// players' cast tallies. `label` is the printed clause.
+func CastAsThoughFlashWhileAnOpponentHasCast(label string) game.CastTimingRule {
+	rule := CastAsThoughFlash()
+	rule.Label = label
+	rule.OpponentCastASpellThisTurn = true
+	return rule
+}
+
 // OpponentsCastAtSorcerySpeed is "Each opponent can cast spells only
 // any time they could cast a sorcery" — Teferi, Time Raveler and
 // Teferi, Mage of Zhalfir.

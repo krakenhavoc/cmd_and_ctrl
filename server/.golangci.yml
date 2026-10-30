@@ -63,6 +63,8 @@ linters:
         - compleated
         # Theorix Metamage (Reality Fracture) is a printed card name.
         - metamage
+        # Captain Mar-Vell, Space-Born (Marvel Super Heroes) is a printed card name.
+        - vell
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is
