@@ -3931,6 +3931,7 @@ Opened at the 2026-10-30 triage of every open issue, on the morning of the soft 
 
 - [ ] [#4326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4326): select several attackers, then one target for all of them (player report)
 - [ ] [#4327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4327): show staged attack intent before the declaration, in the attacker's colour (player report)
+- [ ] [#4651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4651): a soft glow on each player's board in their avatar colour (in progress)
 - [ ] [#4430](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4430): the token-group attack picker pre-checks other creatures, and the Phyrexian tax ignores the kept stage
 - [ ] [#4497](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4497): skipping an "up to one" first target files the next target under slot 0
 - [ ] [#4537](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4537): at 1280×720 the opening-hands panel covers the opponent's name and clips their commander
