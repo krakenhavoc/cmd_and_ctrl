@@ -23,19 +23,11 @@ func init() {
 		Name:         name,
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			ChapterTrigger(1, SagaChapterLabel(name, 1, "each opponent sacrifices a creature"), originOfBlackWidowEdict),
+			ChapterTrigger(1, SagaChapterLabel(name, 1, "each opponent sacrifices a creature"), eachOpponentSacrificesACreature),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "creatures you control gain deathtouch until end of turn"), originOfBlackWidowDeathtouch),
 			ChapterTrigger(3, SagaChapterLabel(name, 3, "each opponent loses 1 life for each creature card in their graveyard"), oneRingDrain),
 		},
 	})
-}
-
-func originOfBlackWidowEdict(g *game.Game, item *game.StackItem) error {
-	return EachPlayerSacrifices{
-		ExceptController: true,
-		Match:            Creature(),
-		Label:            "a creature",
-	}.Apply(NewContext(g, item))
 }
 
 func originOfBlackWidowDeathtouch(g *game.Game, item *game.StackItem) error {
