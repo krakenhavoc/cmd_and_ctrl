@@ -157,7 +157,7 @@ describe("the site header's menu button", () => {
     expect(menuButton(container).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("carries the C2 Discord as a labelled row in the panel only when the server names an invite", async () => {
+  it("carries the CMD & CTRL Discord as a labelled row in the panel only when the server names an invite", async () => {
     const none = render(SiteHeader as never, {} as never);
     await settle();
     expect(panel(none.container).querySelector(".panel-util")).toBeNull();
@@ -169,7 +169,7 @@ describe("the site header's menu button", () => {
     const row = panel(container).querySelector<HTMLAnchorElement>(
       `.panel-util a[href="${INVITE}"]`,
     );
-    expect(row?.textContent?.trim()).toBe("C2 Discord");
+    expect(row?.textContent?.trim()).toBe("CMD & CTRL Discord");
     expect(row?.getAttribute("rel")).toContain("noopener");
   });
 });

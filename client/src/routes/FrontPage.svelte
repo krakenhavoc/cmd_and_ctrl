@@ -14,7 +14,7 @@
   //     side by side, Try a practice game under them; beside them, the
   //     table.
   //   - The steps to an account, as a band under the hero. With the gate
-  //     on (GET /community's `gate`) those are join the C2 Discord,
+  //     on (GET /community's `gate`) those are join the CMD & CTRL Discord,
   //     request access, sign in; with it off, only the last, and a line
   //     inviting people to the server.
   //   - Below: Have an invite? as a band of its own, then Check a deck,
@@ -186,33 +186,34 @@
     {#if gate}
       <ol class="steps">
         <li class="step-item">
-          <h2>Join the C2 Discord</h2>
+          <h2>Join the CMD & CTRL Discord</h2>
           <p>That’s where pods form, bugs get reported and new cards are announced.</p>
         </li>
         <li class="step-item">
           <h2>Request account access</h2>
           <p>
-            Answer yes to “request account access” in the server’s onboarding, and a mod gives you
-            the Elder Dragon Highlander role.
+            Answer yes to “request account access” in the server’s onboarding, then say hi in
+            <span class="nowrap">#account-requests</span>. A mod gives you the Elder Dragon
+            Highlander role.
           </p>
         </li>
         <li class="step-item last">
           <h2>Sign in and sit down</h2>
-          <p>Create a table, invite your pod, or start a practice game against bots.</p>
+          <p>Create a table, invite your pod, or start a practice game against a bot.</p>
         </li>
       </ol>
     {:else}
       <div class="solo">
         <div>
           <h2>Sign in and sit down</h2>
-          <p>Create a table, invite your pod, or start a practice game against bots.</p>
+          <p>Create a table, invite your pod, or start a practice game against a bot.</p>
         </div>
         {#if invite}
           <p class="invite-line">
             <Icon name="discord" size={18} />
             <span
               >Looking for a pod? <a href={invite} target="_blank" rel="noopener noreferrer"
-                >Come and say hello on the C2 Discord.</a
+                >Come and say hello on the CMD & CTRL Discord.</a
               ></span
             >
           </p>
@@ -518,6 +519,9 @@
     text-transform: none;
     text-wrap: balance;
     color: var(--fg);
+  }
+  .nowrap {
+    white-space: nowrap;
   }
   .step-item.last h2 {
     color: var(--accent-strong);

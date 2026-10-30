@@ -94,7 +94,7 @@ describe("the about page", () => {
     const block = shown.container.querySelector('[data-testid="about-discord"]')!;
     const a = block.querySelector("a.btn.discord")!;
     expect(a.getAttribute("href")).toBe("https://discord.gg/example");
-    expect(a.textContent).toContain("Join the C2 Discord");
+    expect(a.textContent).toContain("Join the CMD & CTRL Discord");
     // Not in the Feedback list any more.
     expect(shown.container.querySelector("ul a[href='https://discord.gg/example']")).toBeNull();
     cleanup();

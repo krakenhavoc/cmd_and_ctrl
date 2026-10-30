@@ -55,13 +55,43 @@ describe("the getting-started guide", () => {
     const { container } = render(Guide as never, {} as never);
     await settle();
     const text = container.textContent!.replace(/\s+/g, " ");
-    for (const s of ["What it is", "Getting in", "Playing a game", "At the table", "Decks"]) {
+    for (const s of [
+      "Three ways to start",
+      "Getting an account",
+      "Your first game",
+      "At the table",
+      "Decks",
+    ]) {
       expect(text).toContain(s);
     }
-    expect(text).toContain("Elder Dragon Highlander");
-    expect(text).toContain("Create a voice room");
     const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
     for (const h of ["#/practice", "#/decks", "#/roadmap", "#/about"]) expect(hrefs).toContain(h);
+  });
+
+  it("names the account steps, the voice room and the LFG post only when the server has them", async () => {
+    _setCommunityForTests({
+      invite_url: "https://discord.gg/example",
+      gate: true,
+      voice: true,
+      lfg: true,
+    });
+    const on = render(Guide as never, {} as never);
+    await settle();
+    const onText = on.container.textContent!.replace(/\s+/g, " ");
+    expect(onText).toContain("Elder Dragon Highlander");
+    expect(onText).toContain("Say hi in #account-requests");
+    expect(onText).toContain("Create a voice room");
+    expect(onText).toContain("Post to the CMD & CTRL Discord (#looking-for-game)");
+    cleanup();
+
+    _resetCommunityForTests();
+    const off = render(Guide as never, {} as never);
+    await settle();
+    const offText = off.container.textContent!.replace(/\s+/g, " ");
+    expect(offText).not.toContain("Elder Dragon Highlander");
+    expect(offText).not.toContain("Create a voice room");
+    expect(offText).not.toContain("#looking-for-game");
+    expect(offText).toContain("Sign in with Discord");
   });
 
   it("shows the Discord section and buttons only when the server names an invite", async () => {

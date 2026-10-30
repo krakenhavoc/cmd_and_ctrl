@@ -13,7 +13,7 @@
   <span
     class="ping {$serverPing.state}"
     class:compact
-    title="Your round trip to the C2 server, checked every 30 seconds"
+    title="Your round trip to the CMD & CTRL server, checked every 30 seconds"
   >
     <span class="dot" aria-hidden="true"></span>
     <span class="text">{label}</span>
