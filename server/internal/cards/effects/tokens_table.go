@@ -70,6 +70,7 @@ func TokenKeys() []string {
 
 var tokenTable = map[string]game.Card{
 	"1/1 green and white Citizen":                                      {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"1/1 green and white Kithkin":                                      {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 blue Faerie Dragon with flying":                               {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Djinn Monk with flying":                                  {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"0/0 black Phyrexian Germ":                                         {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
@@ -238,6 +239,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 colorless Phyrexian Wurm artifact":                            {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 3, Toughness: 3},
 	"3/3 green Dinosaur with trample":                                  {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"3/3 green Elephant":                                               {Name: "Elephant", TypeLine: "Token Creature — Elephant", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"3/4 green Treefolk with reach":                                    {Name: "Treefolk", TypeLine: "Token Creature — Treefolk", Power: 3, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"3/3 red Ogre":                                                     {Name: "Ogre", TypeLine: "Token Creature — Ogre", Power: 3, Toughness: 3, Colors: []string{"R"}},
 	"3/3 black Dalek artifact with menace":                             {Name: "Dalek", TypeLine: "Token Artifact Creature — Dalek", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"3/3 black Wraith with menace":                                     {Name: "Wraith", TypeLine: "Token Creature — Wraith", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace"}},

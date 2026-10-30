@@ -1861,3 +1861,11 @@ vote vote/trial-of-a-time-lord
 vote vote/truth-or-consequences
 vote vote/tyrants-choice
 vote vote/vault-11-voters-dilemma
+confirm confirm/astonishing-spider-man-discard-hand
+choose choose-cards/msc-m1-romantic-rendezvous-draw
+payunless pay-unless/endless-ranks-of-hydra-return
+choose choose-cards/gert-and-old-lace-search
+choose choose-cards/discard-then-each-opponent-discards
+choose choose-cards/formidable-speaker-search
+tail then/harmonized-crescendo-type-chosen
+tail then/selfless-safewright-type-chosen
