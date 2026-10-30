@@ -1918,9 +1918,16 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 // never reaches the wire on its own, but every GameMeta a handler
 // serializes should still pass through here rather than rely on that
 // alone.
+//
+// It is also the one place a seat's commanders reach the wire (ADR 0212
+// phase B2, owner decision 3): for the table's own people (its seats,
+// its spectators, its creator and the admin) each seat's commander_cards
+// and color_identity are filled in, and for anyone else both are left
+// off, though deck_name and deck_power stay (seat_commanders.go).
 func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) GameMeta {
 	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
 	meta.CreatedBy = uuid.Nil
+	meta = withSeatCommanders(meta, tablesOwnPeople(p, admin, meta.IsCreator, id, meta))
 	// The game's creator keeps both invites wherever they are (ADR
 	// 0110 §5 item 4): sharing them is what a creator is for, and
 	// rotating them (CanRotateInvites) would hand over fresh ones
@@ -3442,8 +3449,11 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: libraryDeckID})
 	}
 
+	// Through redactMetaFor like GET /games, so the seat sees its own
+	// commanders the moment it is seated (ADR 0212 phase B2): the page
+	// draws the tile from this answer before it lists the tables again.
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		DeckName:      list.Name,
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        deckID,
@@ -3658,8 +3668,11 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	for _, cc := range list.Commanders {
 		commanders = append(commanders, cc.Name)
 	}
+	// Through redactMetaFor like GET /games, so the seat sees its own
+	// commanders the moment it is seated (ADR 0212 phase B2): the page
+	// draws the tile from this answer before it lists the tables again.
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		DeckName:      list.Name,
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        saved.ID.String(),
@@ -4344,8 +4357,11 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// Through redactMetaFor, as a seated deck's answer is: the bot's
+	// commanders for the table's own people (ADR 0212 phase B2).
+	p, _ := auth.PrincipalFromContext(r.Context())
 	return writeJSON(w, http.StatusCreated, addBotResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		PlayerID:      playerID,
 		DeckName:      list.Name,
 		Warnings:      warnings,
@@ -4371,7 +4387,8 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, meta)
+	p, _ := auth.PrincipalFromContext(r.Context())
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // logout asks the authenticator to revoke the caller's credential and

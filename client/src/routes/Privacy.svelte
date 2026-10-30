@@ -50,7 +50,7 @@
     {
       what: "Your decks",
       details:
-        "Each saved deck’s name, the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown to the table you seat it at).",
+        "Each saved deck’s name, the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown with the deck’s name when you seat it at a table).",
       why: "So you can seat a deck without pasting it again.",
       howLong: "Until you delete the deck or your account.",
       source: "migrations 0005, 0008, 0027",
@@ -184,7 +184,7 @@
   const sharedWith: Party[] = [
     {
       who: "The other people at your table",
-      what: "Your seat name and avatar, your playmat, the deck name, and everything that happens in the game. A spectator link shows the same. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one. Anyone signed in who has sat at a table with you also sees your display name and avatar in their invite picker, and can have the bot send you the invite link to a table they are at as a Discord direct message. You stop appearing there when you delete your account.",
+      what: "Your seat name and avatar, your playmat, the deck name and its commanders, and everything that happens in the game. A spectator link shows the same, and the table’s creator sees the same seats on the Tables page. Anyone else signed in, or seated as a guest at another table, can list the open tables there, with each seat’s name and avatar, its deck’s name and the deck’s power level once rated, but not its commanders. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one. Anyone signed in who has sat at a table with you also sees your display name and avatar in their invite picker, and can have the bot send you the invite link to a table they are at as a Discord direct message. You stop appearing there when you delete your account.",
     },
     {
       who: "Discord",

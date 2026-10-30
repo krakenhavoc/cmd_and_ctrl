@@ -16,12 +16,14 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -190,6 +192,31 @@ type SeatInfo struct {
 	// (vs. the placeholder). Start refuses to transition the game
 	// until every seat has DeckUploaded == true.
 	DeckUploaded bool `json:"deck_uploaded"`
+
+	// CommanderCards is the seated deck's commanders (ADR 0212 phase
+	// B2), in the shape GET /me/decks, GET /decks and GET /bot/options
+	// give a deck's and resolved by the same code (libraryCommanders):
+	// a printing with an image for /cards/{id}/image, never an image
+	// URL, and each one's colour identity. ColorIdentity is their union
+	// in WUBRG order, as on a saved deck. The lobby card draws them as
+	// the seat's art and pips.
+	//
+	// Unlike deck_name, they are served only to the table's own people
+	// (owner decision 3): its seats, its spectators, its creator and
+	// the admin. So they are never set on the lobby's own copy of a
+	// seat: the lobby keeps them in commanders, below, and only
+	// redactMetaFor copies them here, for a viewer who may see them.
+	// A path that serializes a seat without it (the invite preview, a
+	// join or spectate answer) sends neither field.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+	ColorIdentity  []string          `json:"color_identity,omitempty"`
+	// commanders is the lobby's record of them: set when a deck is
+	// seated (SetDeck, a bot, a rematch seat, the practice table) and
+	// read again from the restored game after a restart (loadEntry).
+	// Nil before a deck is in, with no card index, and for a deck with
+	// no commander. Replaced, never mutated, so copies of a SeatInfo
+	// may share it.
+	commanders *seatCommanders
 
 	// DiscordID + DiscordAvatarHash are populated for seats claimed
 	// via the OAuth flow (S12.5). The client uses DiscordID to build
@@ -395,6 +422,11 @@ type Lobby struct {
 	// events is told when a table fills or starts (ADR 0162, notify.go).
 	// Set once at boot by SetTableEvents; nil tells nobody.
 	events TableEvents
+	// cardIndex resolves a seated deck's commanders (seat_commanders.go,
+	// ADR 0212 phase B2). Set once at boot by SetCardIndex, before
+	// RestoreFromDisk; nil gives no seat any commanders. Atomic because
+	// the restore pass reads it without l.mu.
+	cardIndex atomic.Pointer[cards.Index]
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -1228,6 +1260,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 
 	seat.DeckName = deckName
 	seat.DeckUploaded = true
+	// ADR 0212 phase B2: the new deck's commanders replace the old
+	// deck's, or clear them when this one has none the index knows.
+	seat.commanders = l.commandersOf(cards)
 	l.persistSeatsLocked(entry)
 	return copyMeta(entry.meta), nil
 }
@@ -1526,6 +1561,7 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 		BotOwnKey:    keyOwner != uuid.Nil,
 		BotKeyOwner:  keyOwner,
 		BotKeyModel:  modelID,
+		commanders:   l.commandersOf(cards),
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)

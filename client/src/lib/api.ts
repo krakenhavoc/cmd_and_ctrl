@@ -137,6 +137,16 @@ export interface SeatInfo {
   // The seat's life total while the game is in play (ADR 0158 §1 item
   // 4). GET /games only; absent in the lobby and once the game ends.
   life?: number;
+  // The seated deck's commanders (ADR 0212 phase B2), in the shape a
+  // saved deck's are (GET /me/decks), resolved by the same server code:
+  // a printing to draw through /cards/{id}/image, never an image URL,
+  // and each one's identity; color_identity is their union. Sent only to
+  // the table's own people (its seats, spectators, creator and the
+  // admin; owner decision 3), so a table someone else is at, the invite
+  // preview and an older server have neither, and the tile says the
+  // deck's name over the seat's wash.
+  commander_cards?: MyDeckCommander[];
+  color_identity?: string[];
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,

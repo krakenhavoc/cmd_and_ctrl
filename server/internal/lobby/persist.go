@@ -462,9 +462,10 @@ func (l *Lobby) adoptRestored(log *slog.Logger, o ws.RestoreOutcome) bool {
 //
 // The rows hold what ADR 0051 decision 4 gives a column. The rest of
 // SeatInfo — whether a real deck is loaded, the Discord avatar and
-// display name, the curated bot deck, the agent badge (ADR 0122 §7) —
-// rides the engine snapshot on game.Player already, so it is read
-// back from there rather than duplicated into seats.
+// display name, the curated bot deck, the agent badge (ADR 0122 §7),
+// the deck's commanders (ADR 0212 phase B2) — rides the engine
+// snapshot on game.Player already, so it is read back from there
+// rather than duplicated into seats.
 //
 // The agent badge also has a column since migration 0010 (ADR 0124
 // §6), for the admin views of a table whose restore point is gone.
@@ -527,6 +528,13 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		info.BotOwnKey = info.BotKeyOwner != uuid.Nil
 		if p := room.Game.PlayerByID(s.PlayerID); p != nil {
 			info.DeckUploaded = p.DeckImported
+			// ADR 0212 phase B2: the seat's commanders are the game's
+			// own commander cards, read back from the restored game
+			// like the rest of the deck rather than kept in a column
+			// (seat_commanders.go). A placeholder deck has none.
+			if p.DeckImported {
+				info.commanders = l.commandersOf(room.Game.CommandersOf(s.PlayerID))
+			}
 			if p.DiscordID != "" {
 				info.DiscordID = p.DiscordID
 			}

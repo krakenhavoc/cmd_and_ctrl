@@ -1329,6 +1329,51 @@ game that has ended carries neither. They are read fresh from the
 engine on each list and never stored, and `GET /games/{id}` does not
 carry them. Additive: an older client ignores them.
 
+**A seat's commanders** ([ADR 0212](decisions/0212-a-new-tables-lobby-card-as-a-character-select.md)
+phase B2). Once a deck is seated (pasted, from the library or
+pre-built) or a bot is added, its `players[]` entry carries the deck's
+commanders, which the lobby card draws as the seat's art and pips:
+
+```json
+{
+  "player_id": "<uuid>", "name": "Alice", "seat": 0, "deck_uploaded": true, "deck_name": "Blood and Thunder",
+  "commander_cards": [
+    { "name": "Tymna the Weaver", "scryfall_id": "<uuid>", "color_identity": ["W", "B"] },
+    { "name": "Kraum, Ludevic's Opus", "scryfall_id": "<uuid>", "color_identity": ["U", "R"] }
+  ],
+  "color_identity": ["W", "U", "B", "R"]
+}
+```
+
+`commander_cards` is the shape `GET /me/decks` gives a saved deck's,
+resolved by the same code (`libraryCommanders`), with the printing the
+seat holds as the hint: `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`, never an image URL, and is absent
+when none resolves; `color_identity` is `[]` for a colourless commander
+and `null` for a name the card index does not know. The seat's
+`color_identity` is their union in WUBRG order, absent for a colourless
+deck. Neither is sent with no card index, or before a deck is in.
+
+**Who gets them** (owner decision 3): only the table's own people, its
+seats (a player session of this table, or a signed-in person holding a
+seat here through another session), its spectators, its creator and the
+admin, before the game starts and after. Every other caller of `GET
+/games` and `GET /games/{id}` still gets `deck_name` and `deck_power`,
+but no commander. They go out only through the redaction every listed
+meta passes (`redactMetaFor`), so the routes that answer with a table
+without it never carry them: the invite preview (`GET
+/games/{id}/preview`, read before a session exists), the join, spectate
+and session answers, start and archive. The deck and bot routes
+(`POST /games/{id}/decks`, `POST /games/{id}/decks/{deck_id}`, `POST`
+and `DELETE /games/{id}/seats/bot…`) answer through it, so the seat
+sees its own at once. The board's own view of the command zone over
+the WebSocket is unchanged.
+
+They survive a restart without a column: the lobby reads them again
+from the restored game's commander cards (the command zone in the
+lobby, wherever they are once the game is under way), as it reads
+`deck_uploaded`. Additive: an older client ignores them.
+
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
