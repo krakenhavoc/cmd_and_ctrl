@@ -24,6 +24,15 @@ func mshB4ControlsAnotherHero(g *game.Game, controller, self uuid.UUID, hero str
 // the source's controller, and at least one of the spell's targets is a
 // creature on the battlefield under that player's control.
 func mshB4CastSpellTargetingYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return castSpellTargetingACreature(ev, source, g, true)
+}
+
+// castSpellTargetingACreature is the shared body of "whenever you cast a
+// spell that targets a creature [you control]": the cast is by the source's
+// controller and at least one target is a creature on the battlefield,
+// under that player's control when yoursOnly is set (Hawkeye, Bowslinger
+// does not set it).
+func castSpellTargetingACreature(ev game.Event, source *game.Card, g *game.Game, yoursOnly bool) bool {
 	if ev.Actor != source.Controller {
 		return false
 	}
@@ -35,7 +44,7 @@ func mshB4CastSpellTargetingYourCreature(ev game.Event, source *game.Card, _ gam
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && c.Controller == source.Controller && onBattlefield(g, t.ID) {
+		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && (!yoursOnly || c.Controller == source.Controller) && onBattlefield(g, t.ID) {
 			return true
 		}
 	}
