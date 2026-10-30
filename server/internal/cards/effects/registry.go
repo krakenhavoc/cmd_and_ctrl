@@ -58,6 +58,7 @@ func Register(spec Spec) {
 		if spec.Modes.AtRandom {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
+		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -110,6 +111,7 @@ func Register(spec Spec) {
 			}
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
+			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 			}
@@ -148,6 +150,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
+			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -2045,6 +2048,31 @@ func checkAtRandom(name string, ms *game.ModeSpec) {
 	}
 	if ms.Min != 1 || ms.Max != 1 || ms.Repeatable || ms.RaisedMax != 0 || ms.NotChosen != game.ModeMemoryNone {
 		panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" that is not a plain choose-one — build it with ChooseOneAtRandom", name))
+	}
+}
+
+// checkUpToCastX validates "choose up to X" read off the spell's X
+// (#4617, game.ModeSpec.UpToCastX). `t` is the trigger that owns the
+// spec, or nil for a spell's or an activated ability's modes, which
+// are refused: CR 107.3m gives the spell's X only to the permanent's
+// ENTERS trigger, a spell announces its own X with its modes, and no
+// printed activated ability says it. On a trigger it must watch
+// EventETB and nothing else, start at zero, cap at its bullets and
+// carry no repeat, raise, random pick or "hasn't been chosen" memory,
+// none of which the count reads.
+func checkUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbility) {
+	if ms == nil || !ms.UpToCastX {
+		return
+	}
+	if t == nil {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" on %s — only an enters trigger reads the X its spell was cast for (CR 107.3m)", name, owner))
+	}
+	if len(t.Watches) != 1 || t.Watches[0] != game.EventETB {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" on a trigger that is not an enters trigger — CR 107.3m gives the spell's X to an enters trigger only", name))
+	}
+	if ms.Min != 0 || ms.Max != len(ms.Options) || ms.Repeatable || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() ||
+		ms.AtRandom || ms.NotChosen != game.ModeMemoryNone {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" that is not a plain up-to count — build it with ChooseUpToX", name))
 	}
 }
 

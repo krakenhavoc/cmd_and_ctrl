@@ -1194,7 +1194,10 @@
   const isModePick = $derived(active?.kind === "mode_pick");
   const modeLabels = $derived(active?.mode_options ?? []);
   const modeIndexes = $derived(active?.mode_indexes ?? []);
-  const modeMin = $derived(active?.mode_min ?? 1);
+  // The wire omits a zero `mode_min` (omitempty), so an absent one is a
+  // "choose up to" prompt that may be answered with no bullet (#4617,
+  // CR 700.2b), not a choose-one.
+  const modeMin = $derived(active?.mode_min ?? 0);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
   // ADR 0097 (#1749): every bullet in printed order, the ones this
@@ -1225,7 +1228,9 @@
   );
   function toggleMode(idx: number): void {
     if (modeSingle) {
-      modePicks = [idx];
+      // "Choose up to one": a second click takes the bullet back, so
+      // choosing none stays reachable after a pick.
+      modePicks = modeMin === 0 && modePicks[0] === idx ? [] : [idx];
       return;
     }
     if (!modeRepeatable && modePicks.includes(idx)) {
@@ -1989,12 +1994,15 @@
       };
     }
     if (isModePick) {
+      // An empty answer is a real one on an up-to prompt (#4617): say
+      // so, rather than offer "Choose" with nothing chosen.
+      const verb = modeMin === 0 && modePicks.length === 0 ? "Choose none" : "Choose";
       return {
         label: triggerSourceName(c.source),
         src: c.reason || "choose one",
         count: `${modePicks.length} / ${modeMax > 0 ? modeMax : "any"}`,
         width: 560,
-        primary: confirmAction("Choose", answerModes, { disabled: !canConfirmModes }),
+        primary: confirmAction(verb, answerModes, { disabled: !canConfirmModes }),
         secondary: [],
       };
     }
@@ -2669,6 +2677,10 @@
         603.3c), and any targets it asks for come after.
         {#if modeRepeatable}
           You may choose the same mode more than once.
+        {/if}
+        {#if modeMin === 0}
+          You may choose up to {modeMax > 0 ? modeMax : "any number"}, or none; with none, the
+          ability does nothing.
         {/if}
       </p>
       <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>

@@ -200,6 +200,33 @@ type ModeSpec struct {
 	// effects.Register refuses the others. Build it with
 	// effects.ChooseOneAtRandom.
 	AtRandom bool
+
+	// UpToCastX is "choose up to X —" where X is the X paid for the
+	// spell that became the ability's source (The Ruinous Wrecking
+	// Crew, #4617). CR 107.3m: "If an object's enters-the-battlefield
+	// triggered ability … refers to X, and the spell that became that
+	// object as it resolved had a value of X chosen for any of its
+	// costs, the value of X for that ability is the same as the value
+	// of X for that spell." The engine reads it off the entering
+	// object's CastProvenance.X (Card.CastX), in modeBoundsLocked, as
+	// the trigger is put on the stack (CR 603.3c), through
+	// ModeCountQuery.X.
+	//
+	// The upper bound is that X, capped at the printed bullets because
+	// no bullet may be chosen twice (CR 700.2d); Max holds the printed
+	// ceiling, len(Options), so a reader that never asks
+	// modeBoundsLocked still sees a bounded count. The lower bound
+	// stays Min, which is 0. At X = 0, and for a permanent that was not
+	// cast (a reanimated or blinked one, CR 107.3m's "that spell"), no
+	// mode can be chosen, so the ability is removed with no prompt (CR
+	// 700.2b, CR 603.3c).
+	//
+	// A triggered ability that watches only EventETB, never Repeatable,
+	// raised, at random or "that hasn't been chosen": effects.Register
+	// refuses every other owner and pairing, because CR 107.3m gives
+	// only an enters trigger the spell's X. Build it with
+	// effects.ChooseUpToX.
+	UpToCastX bool
 }
 
 // EscalateCost is the price of CR 702.120a's escalate: what ONE mode
@@ -292,6 +319,14 @@ type ModeCountQuery struct {
 	// permanent's CastProvenance for an ability of a permanent that
 	// entered kicked.
 	OptionalCosts []int
+
+	// X is the value of X the choice reads, for a ModeSpec.UpToCastX
+	// count (#4617): the X paid for the spell that became the source,
+	// which CR 107.3m hands to that object's enters trigger. Set only
+	// by the trigger's mode_pick (queueModePickLocked), and zero
+	// everywhere else, which is also CR 107.3m's "the value of X for
+	// that permanent is 0" for any other ability of it.
+	X int
 }
 
 // OptionalCostTimes counts how many times the optional cost keyed
@@ -390,12 +425,20 @@ func (ms *ModeSpec) AnyNumberIf(cond ModeCountCondition) *ModeSpec {
 // modeBoundsLocked is the lower and upper bound on how many options
 // may be picked from `ms` for the choice `q` describes: the raised
 // bounds while the spec's condition holds, Min / Max otherwise
-// (#1590, #1655). A hi of 0 still means unbounded, as Max always has.
+// (#1590, #1655). A hi of 0 still means unbounded, as Max always has,
+// with one exception: an UpToCastX spec's hi is q.X capped at its
+// bullets (#4617), and a 0 there means no mode can be chosen.
+// queueModePickLocked, its one reader, removes the ability on it
+// (CR 700.2b) before any 0 could be taken for "unbounded".
 //
 // Caller must hold g.mu.
 func (g *Game) modeBoundsLocked(ms *ModeSpec, q ModeCountQuery) (lo, hi int) {
 	if ms == nil {
 		return 0, 0
+	}
+	if ms.UpToCastX {
+		// CR 107.3m for X; CR 700.2d caps it at the printed bullets.
+		return ms.Min, min(max(q.X, 0), len(ms.Options))
 	}
 	if ms.RaisedMax > ms.Max && ms.RaiseMaxIf.holds(g, q) {
 		return max(ms.Min, ms.RaisedMin), ms.RaisedMax

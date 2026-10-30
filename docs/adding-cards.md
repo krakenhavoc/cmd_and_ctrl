@@ -391,6 +391,19 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"When this enters, choose up to X" (#4617, CR 107.3m)** is
+   `ChooseUpToX(…)` on the **enters trigger's** `Modes` (The Ruinous
+   Wrecking Crew), where X is the X paid for the spell that became the
+   permanent. The engine reads it off the entering object as the
+   trigger goes on the stack, asks for up to that many bullets (never
+   more than the card prints, CR 700.2d), and at X = 0, or for a
+   permanent that was not cast, removes the trigger without asking (CR
+   700.2b). Choosing no bullet is a legal answer and removes it too.
+   `Register` refuses it on a spell, an activated ability, a granted
+   ability and any trigger that watches more than `EventETB`. A
+   "choose up to X" whose X is something else (Riku of Many Paths,
+   Bumi, King of Three Trials) is not this.
+
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
    `ChosenAtRandom(TargetPlayer("target opponent chosen at random",

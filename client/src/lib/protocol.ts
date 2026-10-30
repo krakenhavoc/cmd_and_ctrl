@@ -2195,6 +2195,10 @@ export interface PendingChoiceView {
   // ModeSpec index each label belongs to and that is what the answer
   // sends back: `resolve_choice {choice_id, modes: [i, …]}`.
   // Repeats are legal only when mode_repeatable (CR 700.2d).
+  // mode_min is absent when it is 0: a "choose up to" prompt, answered
+  // with `modes: []` to choose none, which removes the ability (CR
+  // 700.2b). "Choose up to X" (#4617) sends the X paid for the spell,
+  // capped at the bullets offered, as mode_max, and the X in `reason`.
   mode_options?: string[];
   mode_indexes?: number[];
   mode_min?: number;
