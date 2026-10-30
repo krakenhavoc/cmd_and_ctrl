@@ -3856,8 +3856,9 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// side). That is CR 603.3d's "no legal targets" too, and a
 		// prompt for it could never be answered. #1807: so can one
 		// whose picks must share a key, when no key group is big
-		// enough.
-		if (clause.Different != nil || clause.Same != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
+		// enough. #4616: and one whose picks must stay within a total,
+		// when not enough of them fit together.
+		if (clause.Different != nil || clause.Same != nil || clause.Total != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
 			return
 		}
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {

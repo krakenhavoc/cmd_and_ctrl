@@ -2413,9 +2413,12 @@ func (e *enumerator) legalTargetSetsFrom(spec *game.TargetSpec, budget int, lt g
 	// engine refuses that set at announce, and offering it is #544.
 	// #1807: nor one whose picks hold two keys under a sameness rule
 	// ("from a single graveyard"), so every set stays in one group.
+	// #4616: nor one whose picks' values total more than a total rule
+	// allows ("total mana value 6 or less").
 	keys := setRuleKeys{
 		different: e.g.TargetDifferenceKeysForEffect(spec, lt.Cards),
 		same:      e.g.TargetSamenessKeysForEffect(spec, lt.Cards),
+		total:     totalBudgetOf(spec.Total, e.g.TargetTotalValuesForEffect(spec, lt.Cards)),
 	}
 	lo, hi := e.g.ClauseMinForEffect(e.seat, spec), spec.Max
 	if hi <= 0 || hi > len(cands) {
@@ -2467,18 +2470,57 @@ func (e *enumerator) legalTargetSetsFrom(spec *game.TargetSpec, budget int, lt g
 
 // setRuleKeys is a clause's set-rule keys, per legal card: `different`
 // for a rule no two picks may share a key under (#1559), `same` for
-// one every pick must share a key under (#1807). Either is nil when
-// the clause has no such rule.
+// one every pick must share a key under (#1807), `total` for one whose
+// picks' values may not exceed a ceiling (#4616). Each is nil when the
+// clause has no such rule.
 type setRuleKeys struct {
 	different map[uuid.UUID]string
 	same      map[uuid.UUID]string
+	total     *totalBudget
+}
+
+// totalBudget is a total rule's ceiling and each legal card's value
+// under it (#4616). A card absent from values has none the engine can
+// read, and fits no total.
+type totalBudget struct {
+	max    int
+	values map[uuid.UUID]int
+}
+
+// totalBudgetOf is the enumerator's copy of a clause's total rule, or
+// nil when it has none.
+func totalBudgetOf(r *game.TargetTotal, values map[uuid.UUID]int) *totalBudget {
+	if r == nil {
+		return nil
+	}
+	return &totalBudget{max: r.Max, values: values}
 }
 
 // breaks reports whether adding cand to cur would give a set the
 // engine's announce gate refuses.
 func (k setRuleKeys) breaks(cur []game.TargetRef, cand game.TargetRef) bool {
 	return (k.different != nil && sharesSetKey(k.different, cur, cand)) ||
-		(k.same != nil && leavesSetKey(k.same, cur, cand))
+		(k.same != nil && leavesSetKey(k.same, cur, cand)) ||
+		(k.total != nil && k.total.exceeds(cur, cand))
+}
+
+// any reports whether the clause has a set rule of any kind.
+func (k setRuleKeys) any() bool {
+	return k.different != nil || k.same != nil || k.total != nil
+}
+
+// exceeds reports whether adding cand to cur would take the set's total
+// past the ceiling, or cand has no value to add (#4616). The picks in
+// cur were each admitted by this check, so each has a value.
+func (b *totalBudget) exceeds(cur []game.TargetRef, cand game.TargetRef) bool {
+	v, ok := b.values[cand.ID]
+	if !ok {
+		return true
+	}
+	for _, p := range cur {
+		v += b.values[p.ID]
+	}
+	return v > b.max
 }
 
 // sharesSetKey reports whether cand's set-rule key is already held by

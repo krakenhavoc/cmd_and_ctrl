@@ -147,6 +147,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"withoutPicked":                           "a pick option's Cards",
 		"retargetAlternatives":                    "a retarget option's Cards",
 		"withoutSetRuleConflictsLocked":           "a retarget option's Cards, narrowed by a set rule (#1559)",
+		"withinTotalLocked":                       "a retarget option's Cards, narrowed by a total rule (#4616)",
 		"specMatchesLocked":                       "a target match's Cards",
 		"copyStepCandidatesLocked":                "a copy re-target offer's Cards (#2622)",
 	}

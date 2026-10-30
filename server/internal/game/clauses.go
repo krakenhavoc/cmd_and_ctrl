@@ -319,6 +319,11 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 		waived bool
 	}
 	sameKeys := make([][]heldKey, len(steps))
+	// #4616: per step, the total of its picks' values under a total
+	// rule, and whether any pick of the step was not waived — only a
+	// set this announcement (or retarget) changed is judged.
+	totals := make([]int, len(steps))
+	totalChanged := make([]bool, len(steps))
 	cursor := 0
 	for i, t := range targets {
 		if t.Kind == TargetSelf || t.Kind == TargetNone {
@@ -415,11 +420,30 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 			}
 			sameKeys[idx] = append(sameKeys[idx], heldKey{key: k, waived: waived})
 		}
+		// #4616, CR 601.2c: the total rule — the picks' values summed
+		// may not exceed the printed ceiling ("total mana value 6 or
+		// less"). A card whose value cannot be read fits no total. An
+		// unchanged retarget slot is counted as it is now but not
+		// refused on its own (CR 115.7d), and the sum is judged over
+		// the final list (CR 115.7e).
+		if clause.Total != nil && t.Kind == TargetCard {
+			v, ok := g.targetTotalValueLocked(clause, t)
+			if !ok && !waived {
+				return targetTotalError(clause.Total)
+			}
+			totals[idx] += v
+			if !waived {
+				totalChanged[idx] = true
+			}
+		}
 	}
 	for i := range steps {
 		c := &steps[i].Clause
 		if counts[i] < g.clauseMinLocked(src.Controller, c) || (c.Max > 0 && counts[i] > c.Max) {
 			return ErrInvalidParam
+		}
+		if c.Total != nil && totalChanged[i] && totals[i] > c.Total.Max {
+			return targetTotalError(c.Total)
 		}
 	}
 	return nil

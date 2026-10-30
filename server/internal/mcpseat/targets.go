@@ -306,6 +306,9 @@ func targetsText(v *protocol.GameView, w *window, n int) (string, error) {
 		if c.Different != nil || c.Same != nil {
 			b.WriteString("  the picks must also satisfy the clause's set rule; the server checks it\n")
 		}
+		if c.Total != nil {
+			fmt.Fprintf(&b, "  the picks must %s; the server checks it\n", c.Total.Label)
+		}
 		for _, id := range c.Players {
 			fmt.Fprintf(&b, "  player %s — id %s\n", targetRef(v, me, "player", id), id)
 		}

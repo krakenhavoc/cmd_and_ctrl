@@ -1312,6 +1312,10 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	case spec.Total != nil:
+		// #4616: the total rule is read by the target readers only; no
+		// sacrifice payer or cost picker sums one.
+		panic(fmt.Sprintf("effects.Register: %q %s has a total rule on its sacrifice clause — only a target clause reads one", card, where))
 	}
 	checkSacrificeSetRule(card, where, spec)
 	checkSacrificeDifferentRule(card, where, spec)
@@ -1759,6 +1763,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if s := spec.Clause(i).Same; s != nil && (s.Key == game.TargetShareNone || s.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a sameness rule with no Key or no Label — build it with FromASingleGraveyard", name, i))
 		}
+		checkTotalRule(name, i, spec.Clause(i))
 		// #1723: "mana value X or less" and "mana value X" are
 		// different clauses — no printed card is both, and a spec
 		// that set both would have the second WithManaValue...X()
@@ -1786,6 +1791,32 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 	}
 }
 
+// checkTotalRule is #4616's guard for TargetSpec.Total, the "total mana
+// value N or less" set rule. The rule needs a statistic, a Label and a
+// ceiling that is not negative. It sums CARDS, so a clause that can
+// pick a player is refused (a player has no mana value). And it stands
+// alone: the fillability count and the enumerator answer one set rule
+// per clause, and no printed card has a total beside a key rule or an
+// X bound.
+func checkTotalRule(name string, i int, c *game.TargetClause) {
+	r := c.Total
+	if r == nil {
+		return
+	}
+	switch {
+	case r.Stat == game.TargetTotalNone || r.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule with no statistic or no Label — build it with TotalManaValueAtMost", name, i))
+	case r.Max < 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule with a negative ceiling", name, i))
+	case c.Players:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d sums a total over a clause that can pick a player", name, i))
+	case c.Different != nil || c.Same != nil || len(c.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule beside another set rule — no reader searches for a set under both", name, i))
+	case c.CountFromX || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
+	}
+}
+
 // checkOpponentChoice validates an "of an opponent's choice" clause
 // (#2055, ADR 0019's 2026-10-16 amendment). "They control" means nothing
 // without an opponent choosing; and the clause is a plain one: chosen by
@@ -1806,7 +1837,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 		switch {
 		case c.ChosenByOpponent:
 			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen both by an opponent and by the triggering player", name, i))
-		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 			panic(fmt.Sprintf("effects.Register: %q target clause %d is the triggering player's choice and is random, divided or related — no printed card is", name, i))
 		}
 	}
@@ -1814,7 +1845,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 		return
 	}
 	switch {
-	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
 	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))

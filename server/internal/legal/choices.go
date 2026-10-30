@@ -611,7 +611,19 @@ func (e *enumerator) choiceMoves() bool {
 			if d := game.PickTargetDivideForEffect(c); d != nil && hi > d.TotalFor(0) {
 				hi = d.TotalFor(0)
 			}
-			if lo == 0 && hi == 1 || lo == 1 && hi == 1 {
+			// #1559: a clause with a set rule offers only the sets the
+			// engine accepts, pruned inside the expansion so the budget
+			// is never spent on a refused set.
+			// #1807: a sameness rule too.
+			_, diffKeys := g.PickTargetSetRuleForEffect(c)
+			_, sameKeys := g.PickTargetSameRuleForEffect(c)
+			// #4616: and a total rule, which judges even a lone pick (a
+			// card over the ceiling fits no set), so a prompt with one
+			// candidate takes the set walk below rather than the
+			// single-slot answers, and keeps its "choose nothing".
+			totalRule, totalValues := g.PickTargetTotalRuleForEffect(c)
+			setKeys := setRuleKeys{different: diffKeys, same: sameKeys, total: totalBudgetOf(totalRule, totalValues)}
+			if (lo == 0 && hi == 1 || lo == 1 && hi == 1) && setKeys.total == nil {
 				// Single-slot prompt: the resolver reads `target`.
 				for _, t := range cands {
 					p := base()
@@ -621,13 +633,6 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				continue
 			}
-			// #1559: a clause with a set rule offers only the sets the
-			// engine accepts, pruned inside the expansion so the budget
-			// is never spent on a refused set.
-			// #1807: a sameness rule too.
-			_, diffKeys := g.PickTargetSetRuleForEffect(c)
-			_, sameKeys := g.PickTargetSameRuleForEffect(c)
-			setKeys := setRuleKeys{different: diffKeys, same: sameKeys}
 			for _, set := range e.refCombos(cands, lo, hi, e.opts.MaxExpansionPerSource, setKeys) {
 				p := base()
 				p.Targets = wireTargets(set)
@@ -2499,9 +2504,9 @@ func KillingSet(cost, value []int, power int) []bool {
 
 // combinationsRefs is combinations over TargetRefs, including the
 // empty set when lo is 0. `keys` is a clause's set-rule keys: no set
-// with two picks sharing a difference key (#1559), or holding two
-// sameness keys (#1807), is built. Zero for every clause without a
-// rule.
+// with two picks sharing a difference key (#1559), holding two
+// sameness keys (#1807) or totalling more than a total rule allows
+// (#4616) is built. Zero for every clause without a rule.
 func combinationsRefs(cands []game.TargetRef, lo, hi, limit int, keys setRuleKeys) [][]game.TargetRef {
 	var out [][]game.TargetRef
 	if lo == 0 {

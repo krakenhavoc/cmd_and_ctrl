@@ -4168,6 +4168,11 @@ export interface LegalTargetsView {
   // candidate whose key differs from a pick of THIS clause, and says
   // the rule. A card missing from `keys` fits any group.
   same?: TargetDifferenceView;
+  // #4616: the third rule — the picks' values may total no more than
+  // `max` ("total mana value 6 or less"). The picker greys a candidate
+  // whose value would take THIS clause's picks past `max`, and says the
+  // rule. A card missing from `values` fits no total.
+  total?: TargetTotalView;
   // #1559: "with mana value X or less", X the announced X. Like
   // count_from_x, the server built this legal set before X was chosen,
   // so it is a superset: the picker drops every card whose
@@ -4227,6 +4232,16 @@ export interface DivideView {
 export interface TargetDifferenceView {
   label: string;
   keys?: Record<string, string>;
+}
+
+// TargetTotalView is LegalTargetsView.total (#4616): `label` completes
+// "those targets must …" ("have total mana value 6 or less"), `max` is
+// the inclusive ceiling, and `values` maps each legal card to what it
+// adds to the total.
+export interface TargetTotalView {
+  label: string;
+  max: number;
+  values?: Record<string, number>;
 }
 
 // TargetSharesView is LegalTargetsView.shares (ADR 0137's amendment):

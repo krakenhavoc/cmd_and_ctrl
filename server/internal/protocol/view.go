@@ -1195,6 +1195,14 @@ type LegalTargetsView struct {
 	// shape as Different; absent on every clause without one.
 	Same *TargetDifferenceView `json:"same,omitempty"`
 
+	// Total is the third set rule (#4616): the picks' values may total
+	// no more than `max` — "total mana value 6 or less" (The Super Hero
+	// Civil War). `values` is each legal card's value; a card with no
+	// entry fits no total. The picker greys a candidate whose value
+	// would take the picks past `max`, and says the rule in its banner.
+	// Absent on every clause without one.
+	Total *TargetTotalView `json:"total,omitempty"`
+
 	// ManaValueAtMostX marks a clause bounded by the announced X —
 	// "with mana value X or less" (#1559). Like CountFromX, the
 	// server builds this legal set before X is chosen, so it is a
@@ -1314,6 +1322,33 @@ func divideView(d *game.DivideSpec) *DivideView {
 type TargetDifferenceView struct {
 	Label string            `json:"label"`
 	Keys  map[string]string `json:"keys,omitempty"`
+}
+
+// TargetTotalView is LegalTargetsView.Total, the wire shape of
+// game.TargetTotal (#4616): the printed rule, completing "those targets
+// must …", the inclusive ceiling, and each legal card's value by wire
+// id. A card with no value (an unreadable cost) is absent, and fits no
+// total.
+type TargetTotalView struct {
+	Label  string         `json:"label"`
+	Max    int            `json:"max"`
+	Values map[string]int `json:"values,omitempty"`
+}
+
+// totalRuleView projects a total rule and its values, by wire id. Nil
+// for no rule.
+func totalRuleView(r *game.TargetTotal, values map[uuid.UUID]int) *TargetTotalView {
+	if r == nil {
+		return nil
+	}
+	v := &TargetTotalView{Label: r.Label, Max: r.Max}
+	if len(values) > 0 {
+		v.Values = make(map[string]int, len(values))
+		for id, n := range values {
+			v.Values[id.String()] = n
+		}
+	}
+	return v
 }
 
 // setRuleView projects a set rule's label and its keys, by wire id.
@@ -7720,6 +7755,8 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	if s := spec.Same; s != nil {
 		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
+	// #4616: the total rule, with each legal card's value.
+	v.Total = totalRuleView(spec.Total, g.TargetTotalValuesForEffect(spec, cards))
 	// #1559, ADR 0109 §9: the X bound and the values the client
 	// narrows the superset with.
 	stat := game.BoundStatisticForEffect(spec)
@@ -10017,6 +10054,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if s, keys := g.PickTargetSameRuleForEffect(c); s != nil {
 				pt.Same = setRuleView(s.Label, keys)
 			}
+			// #4616: and its total rule, with each candidate's value.
+			pt.Total = totalRuleView(g.PickTargetTotalRuleForEffect(c))
 			// #1563: a divided trigger clause asks for the shares
 			// with the picks.
 			pt.Divide = divideView(game.PickTargetDivideForEffect(c))
