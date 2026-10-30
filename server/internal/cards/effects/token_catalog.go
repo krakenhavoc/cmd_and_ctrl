@@ -222,6 +222,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
+	// Mole Man, Moloid Master's Moloid (#4455).
+	printedMshB6MoloidToken,
+
 	// ADR 0114 PR 5: There and Back Again's Smaug.
 	printedSmaugToken,
 
