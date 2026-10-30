@@ -286,9 +286,18 @@ describe("the lobby card (ADR 0212)", () => {
     setSession(seated(HOST));
     hostRoutes();
     let seatedDeck = "";
+    // The answer carries the table with the deck in; the list is read
+    // again after it.
+    const after = meta({
+      players: [
+        { ...meta().players[0], deck_uploaded: true, deck_name: "Deep Waters" },
+        meta().players[1],
+      ],
+    });
     routes[`POST /games/${GAME}/decks`] = (b) => {
       seatedDeck = (b as { deck?: string }).deck ?? "";
-      return { game: meta(), deck_name: "Deep Waters", card_count: 100, commanders: [] };
+      routes["GET /games"] = () => ({ games: [after] });
+      return { game: after, deck_name: "Deep Waters", card_count: 100, commanders: [] };
     };
     stubServer();
     const { container } = render(Lobby as never, {} as never);
@@ -317,9 +326,10 @@ describe("the lobby card (ADR 0212)", () => {
     await settle();
     expect(posted.map((p) => p.url)).toEqual([`/games/${GAME}/decks`]);
     expect(seatedDeck).toBe("deep");
-    // Seated: the picker closes, and the seat no longer previews.
+    // Seated: the picker closes, and the seat says Ready.
     expect(picker(container)).toBeNull();
     expect(mine().textContent).not.toMatch(/Preview/);
+    expect(mine().textContent).toMatch(/Deep Waters.*Ready/s);
   });
 
   it("makes the primary Upload deck on Paste a list, disabled until there is a list", async () => {

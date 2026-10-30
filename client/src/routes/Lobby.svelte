@@ -28,6 +28,7 @@
     type GameMeta,
     type ReclaimTicket,
     type SeatInfo,
+    type UploadDeckResponse,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate, route } from "../lib/router";
   import { L } from "../lib/labels";
@@ -116,10 +117,10 @@
   //     settings summary in its head, four seat tiles, the deck picker
   //     (or the bot picker) under the seats, and a footer with the
   //     readiness line, Open table, the Invite menu and one primary that
-  //     follows the table's state. A table in play keeps its primary in the head (Resume or
-  //     Open), its seats with life totals and a rules line. A
-  //     right-click on either opens every action, and the admin's, as a
-  //     menu; there is no ⋯ on a card.
+  //     follows the table's state. A table in play keeps its primary in
+  //     the head (Resume or Open), its seats with life totals and a rules
+  //     line. A right-click on either opens every action, and the
+  //     admin's, as a menu; there is no ⋯ on a card.
   //   - History: every table they sat at that has ended or been
   //     archived (GET /me/games minus Now), one compact row each, with
   //     client-side filters. My games used to be its own page.
@@ -1221,8 +1222,11 @@
   // After a deck is seated the picker closes and your tile says Ready,
   // unless the picker has more to say about the deck just seated (its
   // warnings, or a pasted list's unimplemented cards and library note),
-  // which stays open to be read.
-  function onSeated(g: GameMeta, more: boolean): void {
+  // which stays open to be read. The answer carries the table's seats,
+  // so the tile turns Ready before the list is read again.
+  function onSeated(g: GameMeta, res: UploadDeckResponse, more: boolean): void {
+    const seats = res.game?.players;
+    if (seats) games = games.map((x) => (x.id === g.id ? { ...x, players: seats } : x));
     panelChoice = { ...panelChoice, [g.id]: more ? "deck" : null };
     void refresh();
   }
@@ -1810,7 +1814,7 @@
                     shopLinks
                     actions="external"
                     onchange={(st) => (pickerState = st)}
-                    onSuccess={(_res, more) => onSeated(g, more)}
+                    onSuccess={(res, more) => onSeated(g, res, more)}
                   />
                 </div>
               {/if}
