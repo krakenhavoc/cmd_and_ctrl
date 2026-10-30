@@ -92,6 +92,16 @@ const (
 	// tag, narrower than ManaRestrictActivate: it needs an activation AND
 	// that the ability is a power-up one (ManaSpendContext.PowerUp).
 	ManaRestrictPowerUp = "purpose:power_up"
+	// ManaRestrictEquip permits the token only on the cost of an equip
+	// ability (#4600, CR 702.6, CR 106.6): the "activate equip abilities"
+	// half of Ronin, Shadow Stalker's "Spend this mana only to cast
+	// Equipment spells or activate equip abilities". A purpose tag like
+	// ManaRestrictPowerUp, narrower than ManaRestrictActivate: it needs an
+	// activation AND that the ability is an equip one
+	// (ManaSpendContext.Equip), which the source's characteristics cannot
+	// say (an Equipment has other abilities that are not equip). Combine
+	// it with the cast clause through ManaRestrictAnyOf.
+	ManaRestrictEquip = "purpose:equip"
 	// ManaRestrictUnlock permits the token only on an unlock cost
 	// (CR 709.5e, ADR 0103) — the "unlock doors" half of Smoky
 	// Lounge's and Creeping Peeper's restrictions. Combine it with a
@@ -313,6 +323,14 @@ type ManaSpendContext struct {
 	// can't spend power-up-only mana.
 	PowerUp bool
 
+	// Equip is set when the ability being paid for is an equip ability
+	// (CR 702.6): what ManaRestrictEquip reads. Set by the same sites as
+	// PowerUp, from ActivatedAbilityShape.Equip; false for a cast, a mana
+	// ability and every unnamed payment, which therefore can't spend
+	// equip-only mana. The {0} twin of an equip ability (#4475) is a
+	// mirrored row and carries the bit.
+	Equip bool
+
 	// Controller is the controller of the object whose ability is being
 	// paid for (ManaSpendForAbility), and Payer the player paying, which
 	// the any-colour reader fills in before it asks a Covers. Together
@@ -463,6 +481,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate
 	case ManaRestrictPowerUp:
 		return ctx.Purpose == SpendPurposeActivate && ctx.PowerUp
+	case ManaRestrictEquip:
+		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:

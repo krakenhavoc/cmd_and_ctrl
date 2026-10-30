@@ -1410,6 +1410,9 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
   // present-and-empty is an offer the board cannot pay right now.
   if (offer.teamwork_options) return offer.teamwork_options.cards ?? [];
   if (offer.blight_options) return offer.blight_options.cards ?? [];
+  // #4642: "you may behold a Hero" — nothing to behold is an offer that
+  // cannot be taken now.
+  if (offer.reveal_options) return offer.reveal_options.cards ?? [];
   // #4092: a replicate cost that taps — too few to tap is an offer that
   // cannot be taken now.
   if (offer.tap_others_options) {
@@ -1506,6 +1509,18 @@ export function castRevealCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedRevealCost | undefined {
+  // #4642: or a ticked "you may behold a Hero" offer, which asks the same
+  // question over its own options.
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer?.reveal) {
+      return {
+        label: offer.label ?? (offer.behold ? "Behold" : "Reveal a card from your hand"),
+        behold: offer.behold === true,
+        options: offer.reveal_options?.cards ?? [],
+      };
+    }
+  }
   const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
   if (!branch?.reveal) return undefined;
   return {

@@ -11,6 +11,11 @@ import (
 // from your hand or pay {3}", Silvergill Mentor's "behold a Merfolk or
 // pay {2}".
 //
+// An optional "you may behold a <type>" additional cost (#4642, BeholdKey)
+// is the same component on an optional entry of the cast's plan: the
+// caster who takes it names the card on RevealIDs, and the plan walk below
+// finds it wherever it sits.
+//
 // The caster names the ONE card on CastSpellParams.RevealIDs. Paying
 // the cost reveals it (RevealForEffect: the whole table sees it, and
 // nothing moves — CR 701.20b); a beholding caster may instead name a

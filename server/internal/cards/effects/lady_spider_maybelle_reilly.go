@@ -19,7 +19,7 @@ func init() {
 	t := On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return discardedByYou(ev, source)
 	}, label, func(g *game.Game, item *game.StackItem) error {
-		return putPlusOneCounterOnTheLegalTarget(NewContext(g, item))
+		return PlusOneCounterOnTheTarget(g, item)
 	})
 	t.Targets = TargetPermanent("target Spider you control", OfSubtype("Spider"), YouControl())
 	Register(Spec{

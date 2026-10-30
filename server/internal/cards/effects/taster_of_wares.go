@@ -50,89 +50,26 @@ func init() {
 
 func tasterOfWaresEnters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	opp := TargetedPlayer(ctx)
-	p := g.PlayerByIDForEffect(opp)
-	if p == nil || p.Hand == nil {
-		return nil
-	}
-	controller := item.Controller
 	// "Goblin" is a word of the source's text (CR 612.2, #3984).
 	goblin := ctx.TextSubtype("Goblin")
 	x := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype(goblin) {
+		if c.Controller == item.Controller && c.HasSubtype(goblin) {
 			x++
 		}
 	}
-	hand := make([]uuid.UUID, 0, len(p.Hand.Cards))
-	for _, c := range p.Hand.Cards {
-		hand = append(hand, c.InstanceID)
-	}
-	if x <= 0 || len(hand) == 0 {
-		return nil
-	}
-	if x >= len(hand) {
-		return tasterOfWaresRevealAndPick(ctx, controller, opp, hand)
-	}
-	// Keyed (#4253): both prompts carry the trigger as data, so a table
-	// waiting on either is a restore point.
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    opp,
-		FromPlayer: opp,
-		Source:     item.SourceCardID,
-		Question:   "Taster of Wares — reveal cards from your hand",
-		Cards:      hand,
-		Min:        x,
-		Max:        x,
-		LiveZone:   game.ZoneHand,
-		ThenKey:    tasterOfWaresRevealed,
-		Asked:      game.NewAskedItem(item),
-	})
-	return nil
+	return tasterOfWaresReveal.Ask(ctx, TargetedPlayer(ctx), x)
 }
 
-// tasterOfWaresRevealed is the opponent's X cards chosen: they are revealed
-// and the Taster's controller picks one. An on-disk key: never renamed,
+// tasterOfWaresReveal is the shared reveal-N-and-pick flow (RevealFromHandPick):
+// the opponent's X cards are revealed, the Taster's controller picks one and
+// its owner exiles it. Both keys are on-disk identities: never renamed,
 // never reused.
-var tasterOfWaresRevealed = askedPick("choose-cards/taster-of-wares-reveal", func(ctx *Context, r game.CardsChosen) error {
-	return tasterOfWaresRevealAndPick(ctx, ctx.Controller(), r.Chooser, r.Picked)
-})
-
-// tasterOfWaresRevealAndPick reveals the cards and asks the Taster's
-// controller to choose one of them.
-func tasterOfWaresRevealAndPick(ctx *Context, controller, opp uuid.UUID, revealed []uuid.UUID) error {
-	if len(revealed) == 0 {
-		return nil
-	}
-	g := ctx.Game
-	g.RevealForEffect(game.RevealSpec{
-		Player: opp,
-		Source: ctx.Source(),
-		Reason: "Taster of Wares — reveal cards from your hand",
-		Cards:  revealed,
+var tasterOfWaresReveal = NewRevealFromHandPick("Taster of Wares", "exiles",
+	"choose-cards/taster-of-wares-reveal", "choose-cards/taster-of-wares-exile",
+	func(ctx *Context, _, card uuid.UUID) error {
+		return tasterOfWaresExile(ctx.Game, ctx.Item, card)
 	})
-	_, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
-		Chooser:  controller,
-		Owner:    opp,
-		Source:   ctx.Source(),
-		Question: "Taster of Wares — choose one of those cards; that player exiles it",
-		Cards:    revealed,
-		Min:      1,
-		Max:      1,
-		ThenKey:  tasterOfWaresChosen,
-		Asked:    game.NewAskedItem(ctx.Item),
-	})
-	return err
-}
-
-// tasterOfWaresChosen is the controller's pick: its owner exiles it. An
-// on-disk key: never renamed, never reused.
-var tasterOfWaresChosen = askedPick("choose-cards/taster-of-wares-exile", func(ctx *Context, r game.CardsChosen) error {
-	if len(r.Picked) == 0 {
-		return nil
-	}
-	return tasterOfWaresExile(ctx.Game, ctx.Item, r.Picked[0])
-})
 
 // tasterOfWaresExile is "that player exiles it", and the cast permission
 // when an instant or sorcery card lands in exile.

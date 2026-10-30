@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	enters := WhenThisEnters("Foggy Nelson — +1/+1 counter and hexproof on another creature you control",
-		Do(Instruction(putPlusOneCounterOnTheLegalTarget), Instruction(msc10HexproofTheLegalTarget)))
+		Do(Instruction(func(ctx *Context) error { return PlusOneCounterOnTheTarget(ctx.Game, ctx.Item) }), Instruction(msc10HexproofTheLegalTarget)))
 	enters.Targets = Another(TargetCreature("another target creature you control", YouControl()))
 	Register(Spec{
 		OracleID:        "734fc893-b736-448a-b851-826976031754",

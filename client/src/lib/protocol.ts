@@ -3187,6 +3187,14 @@ export interface OptionalCostView {
   // cast_spell as `blight_ids`.
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #4642: a "you may behold a Hero" offer (CR 701.4a) — AdditionalCostView's
+  // `reveal` / `behold` / `reveal_options`. `reveal_options` is your cards
+  // that could pay it (hand cards first, then permanents); present-and-empty
+  // means there is nothing to behold and the offer cannot be taken. Taken, it
+  // asks for exactly one, which rides cast_spell as `reveal_ids`.
+  reveal?: boolean;
+  behold?: boolean;
+  reveal_options?: LegalTargetsView;
   // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
   // cast's tap cost: the board opens the tap picker from it and sends
   // the picks as `tap_ids` (lib/targeting.ts tapCostFor).

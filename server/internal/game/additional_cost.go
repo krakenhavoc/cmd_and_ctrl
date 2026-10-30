@@ -315,8 +315,11 @@ type AdditionalCost struct {
 	// Reveal is "reveal a <type> card from your hand" or "behold a
 	// <type>" (CR 701.20, ADR 0100 amendment 2026-10-07): the caster
 	// names one card on CastSpellParams.RevealIDs and paying shows it to
-	// the table. Only as a branch of an either/or cost, beside a mana
-	// branch — every printed card pairs it with mana.
+	// the table. As a branch of an either/or cost, beside a mana branch
+	// (every printed mandatory one pairs it with mana), or — behold only —
+	// on an optional cost keyed BeholdKey ("you may behold a Hero",
+	// effects.OptionalBehold, #4642), which names its card on the same
+	// reveal_ids when the caster takes it.
 	Reveal *RevealCost
 
 	// ExilePermanents is "As an additional cost to cast this spell, exile
@@ -526,6 +529,12 @@ const (
 	// Waterbend clause (optional_waterbend.go); "if this spell's
 	// additional cost was paid" is ctx.OptionalCostTimes(WaterbendKey).
 	WaterbendKey = "waterbend"
+	// BeholdKey is an optional "you may behold a <type>" additional cost
+	// (#4642, Hulk's Thunderclap, Hyperion's Atomic Vision). The cost is
+	// the Reveal component on an optional entry; "if this spell's
+	// additional cost was paid" / "if a Hero was beheld" is
+	// ctx.OptionalCostTimes(BeholdKey) > 0.
+	BeholdKey = "behold"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose

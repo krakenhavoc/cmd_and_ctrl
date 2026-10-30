@@ -20053,6 +20053,7 @@ pendingChoices[].assist.spend.CastFrom	string
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
+pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
 pendingChoices[].assist.spend.PowerUp	bool
@@ -50731,6 +50732,7 @@ seats[].statics[].timing.firstCreatureSpellThisTurn	bool
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.opponentCastASpellThisTurn	bool
+seats[].statics[].timing.sourceTapped	bool
 seats[].statics[].timing.timing	string
 seats[].stickerSheetPool	array
 seats[].stickerSheetPool[]	object

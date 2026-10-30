@@ -173,6 +173,15 @@ type CastTimingRule struct {
 	// Declaration-only, like FirstCreatureSpellThisTurn: a stored grant
 	// never carries it.
 	OpponentCastASpellThisTurn bool `json:"opponentCastASpellThisTurn,omitempty"`
+
+	// SourceTapped narrows a DECLARATION to the time its source permanent is
+	// tapped: Quicksilver, Speedster's "as long as Quicksilver is tapped,
+	// you may cast spells as though they had flash". It reads the
+	// permanent's tapped status LIVE, on every query, so the window opens
+	// the moment it taps (an attacker without vigilance, a mana ability) and
+	// shuts the moment it untaps or leaves the battlefield. Declaration-only,
+	// like FirstCreatureSpellThisTurn: a stored grant never carries it.
+	SourceTapped bool `json:"sourceTapped,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -243,6 +252,7 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	rule.Label = ""
 	rule.FirstCreatureSpellThisTurn = false
 	rule.OpponentCastASpellThisTurn = false
+	rule.SourceTapped = false
 	p.Statics = append(p.Statics, PlayerStatic{
 		Timing:   rule,
 		Source:   source,
@@ -346,6 +356,9 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 				}
 			}
 			if t.OpponentCastASpellThisTurn && !g.opponentCastASpellThisTurnLocked(src.Controller) {
+				continue
+			}
+			if t.SourceTapped && !src.Tapped {
 				continue
 			}
 			// A creature type the filter names is a word of the

@@ -1121,7 +1121,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// ADR 0100 amendment 2026-10-07: a reveal / behold branch names one
 	// card. A seat with none is not offered the branch.
-	revealIDs, ok := e.revealPayment(card.InstanceID, addCost)
+	revealIDs, ok := e.revealPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}

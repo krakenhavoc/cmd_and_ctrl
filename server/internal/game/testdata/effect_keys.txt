@@ -157,6 +157,7 @@ body magma-pummeler/remove-counters
 body magma-pummeler/strike
 body mana-drain/refund
 body mana-rider/dispatch
+body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
 body merry-bards/young-hero-role
 body miracle/offer
@@ -253,6 +254,7 @@ body tether-technician/strike
 body the-falcon-airship-restored/return
 body the-mindskinner/each-opponent-mills
 body the-ring/sacrifice-blocker-at-end-of-combat
+body the-thing/double-counters
 body thorin-mountain-king/damage
 body time-to-feed/gain-three-life
 body transformers/convert-this
@@ -341,6 +343,7 @@ choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
+choose choose-cards/doomsday-search
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
@@ -373,6 +376,7 @@ choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/heart-shaped-herb-sacrifice
+choose choose-cards/heroes-hangout-play
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
@@ -385,6 +389,8 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/klaw-sonic-subjugator-discard
+choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/last-march-of-the-ents-put
 choose choose-cards/last-rites-reveal
 choose choose-cards/last-voyage-of-the-blank-return
@@ -607,6 +613,7 @@ choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
+choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yuffie-materia-hunter-attach
@@ -796,6 +803,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
 drawinstead dredge-2
 drawinstead dredge-3
@@ -971,6 +979,7 @@ option option-pick/villainous-sycorax-commander
 option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
+option option-pick/viper-cruel-conspirator-keyword
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
@@ -1036,6 +1045,7 @@ payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/mana-vault-untap
+payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
@@ -1060,9 +1070,11 @@ payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/springheart-nantuko-copy-or-insect
+payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
+payunless pay-unless/the-thing-double-counters
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/unassuming-sage-sorcerer-role
@@ -1675,6 +1687,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tchaka/after-mill
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
 tail tetzin-gnome-champion/after-mill
@@ -1723,6 +1736,8 @@ tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
 tail then/do-or-die-destroy-pile
 tail then/doomsday-excruciator-next-exile
+tail then/doomsday-lose-half-your-life
+tail then/doomsday-put-on-top
 tail then/dragons-approach-search
 tail then/drain-power-add-lost-mana
 tail then/draw-a-card
@@ -1745,6 +1760,7 @@ tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
+tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
@@ -1771,6 +1787,7 @@ tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
 tail then/patriarchs-bidding-type-chosen
+tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again

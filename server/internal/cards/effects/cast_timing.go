@@ -77,6 +77,19 @@ func CastAsThoughFlashWhileAnOpponentHasCast(label string) game.CastTimingRule {
 	return rule
 }
 
+// CastAsThoughFlashWhileSourceTapped is "As long as <this permanent> is
+// tapped, you may cast spells as though they had flash" — Quicksilver,
+// Speedster. The window follows the permanent's tapped status live (a
+// declaration the battlefield derives on every query, like Captain
+// Mar-Vell's), so it is open from the moment the permanent taps and gone
+// when it untaps, loses its abilities or leaves.
+func CastAsThoughFlashWhileSourceTapped(label string) game.CastTimingRule {
+	rule := CastAsThoughFlash()
+	rule.Label = label
+	rule.SourceTapped = true
+	return rule
+}
+
 // OpponentsCastAtSorcerySpeed is "Each opponent can cast spells only
 // any time they could cast a sorcery" — Teferi, Time Raveler and
 // Teferi, Mage of Zhalfir.

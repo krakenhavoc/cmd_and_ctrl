@@ -5020,6 +5020,17 @@ only counters itself is `powerUpAnswering(text, cost, effect)`, which
 declares the pump; any other row builds `PowerUp` and sets its own
 `Purpose`.
 
+**Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
+to cast Equipment spells or activate equip abilities" is
+`Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,
+game.ManaRestrictSubtype("Equipment")}, []string{game.ManaRestrictEquip})}`
+(Ronin, Shadow Stalker). `ManaRestrictEquip` matches
+`ManaSpendContext.Equip`, set from the equip bit of the row being paid
+for; the source's types can't say it, because an Equipment's other
+abilities are not equip abilities. A mana ability whose cost is life and
+no {T} is never planned by the auto-tapper, so the player fires it first
+and the mana floats; the top-up then spends it only where the tag allows.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`
@@ -5082,8 +5093,9 @@ one move per payable branch. A resolution that cares which branch was
 paid reads `ctx.PaidCostBranch("modified")` (Lethal Throwdown). Register
 refuses fewer than two branches, a branch without a unique `Key`, an
 empty, optional, repeating or nested branch, a variable sacrifice in a
-branch, and components on the branched cost itself. Reveal, behold,
-"tap an untapped artifact", "exile two cards from your graveyard" and
+branch, and components on the branched cost itself. Reveal and behold
+branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
+`OptionalBehold` (#4642). "tap an untapped artifact", "exile two cards from your graveyard" and
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
@@ -8680,6 +8692,24 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+**"Target player reveals N cards from their hand. You choose one of them. That player exiles/discards it."**
+(Taster of Wares, Klaw, Sonic Subjugator; ADR 0116's 2026-10-30 amendment, #4588) is not the shape above: the
+revealing player picks which N cards to show and only those are revealed. Declare the pair of keyed prompts once
+and call it where N is known:
+
+```go
+var klawReveal = NewRevealFromHandPick("Klaw, Sonic Subjugator", "discards",
+	"choose-cards/klaw-sonic-subjugator-reveal", "choose-cards/klaw-sonic-subjugator-discard",
+	func(ctx *Context, owner, card uuid.UUID) error {
+		return ctx.Game.DiscardCardsKeyedForEffect(owner, []uuid.UUID{card}, ctx.Source(), game.KeyedTail{})
+	})
+// in the trigger: return klawReveal.Ask(ctx, TargetedPlayer(ctx), 1+creatureCardsInYourGraveyard)
+```
+
+`DiscardCardsKeyedForEffect` is the one exported "discard these specific cards from P's hand" verb for a
+choice P did not make (it takes a `then` tail told the cards that landed); append both keys to the ledger with
+`-update-effect-keys`.
+
 ### Controlling another player (ADR 0166, #2164, CR 723)
 
 Word of Command is the one card: a look-only, keep-the-card pick, then
@@ -8792,6 +8822,15 @@ less, where X is this creature's power" is the bundle ability's own
 An optional "you may waterbend {N}" additional cost is
 `OptionalCosts: []game.AdditionalCost{OptionalWaterbend("{N}")}`; read
 whether it was paid with `ctx.OptionalCostTimes(game.WaterbendKey) > 0`.
+
+An optional "you may behold a Hero" additional cost (#4642, CR 701.4) is
+`OptionalCosts: []game.AdditionalCost{OptionalBehold("a", "Hero")}`; read
+"if a Hero was beheld" / "if this spell's additional cost was paid" with
+`ctx.WasBeheld()`. The caster names the Hero (a permanent they control, or a
+card in hand) on `reveal_ids`. A target that exists only when it was paid
+wraps it: `WhenPaid(OptionalBehold("a", "Gamma"), Clauses(…printed clauses…,
+extra))` (Hulk's Thunderclap). A mandatory "behold a Merfolk or pay {2}" is
+still `BeholdOrPay`.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 
