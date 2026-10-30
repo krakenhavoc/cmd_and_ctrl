@@ -27,11 +27,6 @@ func init() {
 		},
 		Targets: TargetCreature("target creature"),
 		Purpose: ForTargets(DamageToTarget(0, 4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 4}.Apply(ctx)
-		},
+		OnResolve: damageToFirstTarget(4),
 	})
 }
