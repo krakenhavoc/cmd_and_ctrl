@@ -15,7 +15,8 @@ import type { ActivatedAbilityView, PayOptionView } from "./protocol";
 const row: ActivatedAbilityView = {
   index: 0,
   ref: "r0",
-  label: "{3}, {T}, Sacrifice an artifact or discard a nonland card: Bullseye deals 2 damage to any target.",
+  label:
+    "{3}, {T}, Sacrifice an artifact or discard a nonland card: Bullseye deals 2 damage to any target.",
   mana_cost: "{3}",
   tap_cost: true,
   cost_branches: [
@@ -46,7 +47,10 @@ describe("either/or activation costs", () => {
     const spec = costBranchModeSpec(row);
     expect(spec.min).toBe(1);
     expect(spec.max).toBe(1);
-    expect(spec.options.map((o) => o.label)).toEqual(["Sacrifice an artifact", "Discard a nonland card"]);
+    expect(spec.options.map((o) => o.label)).toEqual([
+      "Sacrifice an artifact",
+      "Discard a nonland card",
+    ]);
     expect(spec.options.map((o) => o.used)).toEqual([false, true]);
   });
 

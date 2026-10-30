@@ -2266,7 +2266,10 @@
   let abilityCostBranch: number | undefined = undefined;
   const abilityBranchCard = $derived(
     abilityBranchPrompt
-      ? ({ ...abilityBranchPrompt.card, modes: costBranchModeSpec(abilityBranchPrompt.ability) } as CardView)
+      ? ({
+          ...abilityBranchPrompt.card,
+          modes: costBranchModeSpec(abilityBranchPrompt.ability),
+        } as CardView)
       : null,
   );
   function confirmAbilityBranch(modes: number[]): void {
