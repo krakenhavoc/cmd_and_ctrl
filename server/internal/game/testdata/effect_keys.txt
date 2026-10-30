@@ -1850,3 +1850,6 @@ tail msh-a9/ultron-robot-villain
 option option-pick/thanos-destroy-parity
 tail the-invincible-iron-man/attach-equipment
 tail vision-quest/haste
+choose choose-cards/winter-soldier-icy-assassin-attach
+tail thunderbolts-conspiracy/hero
+tail winter-soldier-icy-assassin/attach
