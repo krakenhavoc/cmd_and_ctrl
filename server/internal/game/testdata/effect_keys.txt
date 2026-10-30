@@ -776,6 +776,7 @@ confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/wandering-archaic-copy
 confirm confirm/ward-discard
+confirm confirm/ward-get-poison
 confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
