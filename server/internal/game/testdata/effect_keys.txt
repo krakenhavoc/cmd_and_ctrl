@@ -602,6 +602,7 @@ choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
+choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yuffie-materia-hunter-attach
@@ -961,6 +962,7 @@ option option-pick/villainous-sycorax-commander
 option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
+option option-pick/viper-cruel-conspirator-keyword
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
@@ -1659,6 +1661,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tchaka/after-mill
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
 tail tetzin-gnome-champion/after-mill
@@ -1754,6 +1757,7 @@ tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
 tail then/patriarchs-bidding-type-chosen
+tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
