@@ -5019,6 +5019,17 @@ only counters itself is `powerUpAnswering(text, cost, effect)`, which
 declares the pump; any other row builds `PowerUp` and sets its own
 `Purpose`.
 
+**Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
+to cast Equipment spells or activate equip abilities" is
+`Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,
+game.ManaRestrictSubtype("Equipment")}, []string{game.ManaRestrictEquip})}`
+(Ronin, Shadow Stalker). `ManaRestrictEquip` matches
+`ManaSpendContext.Equip`, set from the equip bit of the row being paid
+for; the source's types can't say it, because an Equipment's other
+abilities are not equip abilities. A mana ability whose cost is life and
+no {T} is never planned by the auto-tapper, so the player fires it first
+and the mana floats; the top-up then spends it only where the tag allows.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`
