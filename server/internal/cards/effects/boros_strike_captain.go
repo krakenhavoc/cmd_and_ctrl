@@ -27,9 +27,7 @@ func init() {
 		Name:         "Boros Strike-Captain",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclared(ev, source) && attackersYouControlOtherThan(g, source.Controller, source.InstanceID) >= 2
-			}, "Boros Strike-Captain — exile the top card of your library (battalion)", func(g *game.Game, item *game.StackItem) error {
+			On(game.EventAttack, battalionAttack, "Boros Strike-Captain — exile the top card of your library (battalion)", func(g *game.Game, item *game.StackItem) error {
 				return ExileTopWithPermission{
 					From: item.Controller, GrantTo: item.Controller, N: 1,
 					WhileExiled: true,
