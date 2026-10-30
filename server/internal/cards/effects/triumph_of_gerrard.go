@@ -22,9 +22,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Triumph of Gerrard — I: +1/+1 counter on your biggest creature",
-				targetGreatestPowerYouControl(), plusOneCounterOnChosen),
+				targetGreatestPowerYouControl(), PlusOneCounterOnTheTarget),
 			ChapterTriggerTargeting(2, "Triumph of Gerrard — II: +1/+1 counter on your biggest creature",
-				targetGreatestPowerYouControl(), plusOneCounterOnChosen),
+				targetGreatestPowerYouControl(), PlusOneCounterOnTheTarget),
 			ChapterTriggerTargeting(3, "Triumph of Gerrard — III: flying, first strike and lifelink",
 				targetGreatestPowerYouControl(), gerrardKeywords),
 		},
