@@ -7,6 +7,8 @@ export interface TierChoice {
   label: string;
   description: string;
   available: boolean;
+  /** Why an unavailable tier is unavailable, from the server. */
+  reason?: string;
 }
 
 export const RANDOM_TIER = "random";
@@ -19,11 +21,31 @@ export function defaultBotTier(tiers: readonly TierChoice[]): string {
   return (available.find((t) => t.tier === DEFAULT_BOT_TIER) ?? available[0])?.tier ?? "";
 }
 
-// tierOptionLabel appends the testing mark to random's server label.
-export function tierOptionLabel(t: TierChoice): string {
-  const base = t.tier === RANDOM_TIER ? `${t.label} (testing only)` : t.label;
-  return t.available ? base : `${base} — not built yet`;
+// tierLabel is a tier's segment in the bot picker (ADR 0212 owner
+// decision 8): the server's label, with the testing mark on random. An
+// unavailable tier is a disabled segment, and unavailableNotes says why.
+export function tierLabel(t: TierChoice): string {
+  return t.tier === RANDOM_TIER ? `${t.label} (testing only)` : t.label;
 }
+
+// unavailableNotes is the line under the tier control for the tiers it
+// cannot offer, one per reason the server gave: "Assisted and Strong:
+// this server has no model API key". A tier with no reason is "not
+// available on this server".
+export function unavailableNotes(tiers: readonly TierChoice[]): string[] {
+  const byReason = new Map<string, string[]>();
+  for (const t of tiers) {
+    if (t.available) continue;
+    const why = t.reason?.trim() || "not available on this server";
+    byReason.set(why, [...(byReason.get(why) ?? []), tierLabel(t)]);
+  }
+  return [...byReason].map(([why, labels]) => `${andList(labels)}: ${why}`);
+}
+
+const andList = (names: readonly string[]): string =>
+  names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 export const RANDOM_TIER_WARNING =
   "Random picks any legal move. It's the engine's test fuzzer, not an opponent.";

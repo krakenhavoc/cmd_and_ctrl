@@ -156,8 +156,9 @@
           <div class="body">
             <h3>Fill empty seats with bots</h3>
             <p>
-              Commander is best at four. Press <span class="ui">Add bot</span> on an open seat, then pick
-              how strong it plays and which deck it brings.
+              Commander is best at four. Press <span class="ui">{L.addBot}</span> on an open seat,
+              pick how strong it plays and which deck it brings, then press
+              <span class="ui">{L.addBot}</span> again at the foot of the table.
             </p>
           </div>
         </li>
@@ -166,13 +167,15 @@
           <div class="body">
             <h3>Choose your deck</h3>
             <p>
-              Your seat opens the deck picker. Pick a pre-built deck or one of your saved decks, or
-              paste an Archidekt link or a plain-text decklist. From Moxfield, open the deck, choose <strong
-                >Export</strong
-              >
+              Your seat opens the deck picker: one of your saved decks under
+              <span class="ui">{L.myDecksTab}</span>, a ready-made one under
+              <span class="ui">{L.prebuiltTab}</span>, or an Archidekt link or a plain-text decklist
+              under <span class="ui">{L.pasteListTab}</span>. From Moxfield, open the deck, choose
+              <strong>Export</strong>
               then
-              <strong>Copy plain text</strong>, and paste that. Every deck is checked against the
-              Commander rules: 100 cards, singleton, colour identity.
+              <strong>Copy plain text</strong>, and paste that. Your seat shows the deck you pick;
+              <span class="ui">{L.sitDownWithThisDeck}</span> seats it. Every deck is checked against
+              the Commander rules: 100 cards, singleton, colour identity.
             </p>
           </div>
         </li>

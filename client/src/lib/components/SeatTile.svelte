@@ -3,7 +3,10 @@
   // select (ADR 0212 §1): the seat's colour along the top edge and as a
   // faint wash, a "Seat N" badge, an art slot, then who sits there, what
   // they play and whether they are ready. The art slot draws the seat's
-  // wash until the seats carry their commanders (phase B).
+  // wash until the seats carry their commanders (phase B); your own seat
+  // already shows the deck you are browsing in the picker, art and all,
+  // marked Preview and "Not seated yet" (§1), since nothing is sent until
+  // you sit down.
   //
   //   - A taken seat: the avatar, the name, the host / you tags (a bot's
   //     dashed chip with its tier; an agent's AgentChip), the deck, then a
@@ -18,9 +21,11 @@
   // confirm, which the page owns.
   import { avatarURL, type SeatInfo } from "../api";
   import { seatColor } from "../colors";
+  import type { DeckArt } from "../deckGrid";
   import { L } from "../labels";
   import { seatName, type SeatTileText } from "../tablesPage";
   import AgentChip from "./AgentChip.svelte";
+  import CommanderArt from "./decks/CommanderArt.svelte";
   import DeckPowerBadge from "./DeckPowerBadge.svelte";
   import Icon from "./Icon.svelte";
   import IdentityPips from "./IdentityPips.svelte";
@@ -32,6 +37,10 @@
     p: SeatInfo | null;
     /** What a taken seat's tile says (tablesPage.seatTileText). */
     text?: SeatTileText;
+    /** The commanders' art crops, partners side by side; the seat's wash without. */
+    art?: DeckArt[];
+    /** Your seat shows the deck selected in the picker, not seated yet. */
+    preview?: boolean;
     /** The seat this session holds. */
     you?: boolean;
     /** A bot seat's chip: its tier, and "(own key)". */
@@ -51,6 +60,8 @@
     seat,
     p,
     text,
+    art = [],
+    preview = false,
     you = false,
     botChip = "",
     pick,
@@ -64,6 +75,10 @@
   const avatar = $derived(p ? avatarURL(p.discord_id, p.discord_avatar_hash) : null);
   const power = $derived(p && !p.is_bot && p.deck_uploaded ? (p.deck_power ?? 0) : 0);
   const initial = $derived(p ? seatName(p).trim().slice(0, 1).toUpperCase() || "?" : "");
+
+  // Crops that failed to load; when every one has, the slot is the wash.
+  let failed = $state<string[]>([]);
+  const crops = $derived(art.filter((a) => !failed.includes(a.scryfallId)));
 </script>
 
 <li
@@ -71,7 +86,8 @@
   class:you
   class:open={p === null}
   class:bot={p?.is_bot === true}
-  class:empty={you && p !== null && !ready}
+  class:empty={you && p !== null && !ready && !preview}
+  class:has-x={remove !== undefined}
   style:--seat={seatColor(seat)}
   aria-label={L.seatTile(seat + 1, p ? seatName(p) : "open")}
 >
@@ -85,12 +101,12 @@
       title={ready ? "change the deck in your seat" : "choose a deck for your seat"}
       onclick={pick.onclick}
     >
-      {@render art()}
+      {@render slot()}
       {@render info()}
     </button>
   {:else}
     <div class="face">
-      {@render art()}
+      {@render slot()}
       {@render info()}
     </div>
   {/if}
@@ -109,14 +125,25 @@
 </li>
 
 <!-- Spans only: on your seat these sit inside a button. -->
-{#snippet art()}
-  <span class="art">
-    <span class="seatno"><i aria-hidden="true"></i>Seat {seat + 1}</span>
-    {#if p === null}
+{#snippet slot()}
+  <span class="art" class:crop={crops.length > 0}>
+    {#if crops.length > 0}
+      <span class="crops">
+        {#each crops as a (a.scryfallId)}
+          <CommanderArt
+            scryfallId={a.scryfallId}
+            name={a.name}
+            onfail={() => (failed = [...failed, a.scryfallId])}
+          />
+        {/each}
+      </span>
+    {:else if p === null}
       <span class="ghost-av" aria-hidden="true"></span>
-    {:else if you && !ready}
+    {:else if you && !ready && !preview}
       <span class="bigplus" aria-hidden="true"><Icon name="plus" size={20} /></span>
     {/if}
+    <span class="seatno"><i aria-hidden="true"></i>Seat {seat + 1}</span>
+    {#if preview}<span class="preview-mark">Preview</span>{/if}
   </span>
 {/snippet}
 
@@ -144,11 +171,13 @@
       {#if p.is_agent && !p.is_bot}
         <span class="agent"><AgentChip seat={p} /></span>
       {/if}
-      <span class="what" class:muted={!ready}>{text?.what ?? ""}</span>
+      <span class="what" class:muted={!ready && !preview}>{text?.what ?? ""}</span>
       {#if text?.second}<span class="second">{text.second}</span>{/if}
       <span class="srow">
         <span class="ident"><IdentityPips colors={text?.colors} /><DeckPowerBadge {power} /></span>
-        {#if ready}
+        {#if preview}
+          <span class="pending">Not seated yet</span>
+        {:else if ready}
           <span class="ready"
             ><span class="ck" aria-hidden="true"
               ><Icon name="check" size={12} strokeWidth={2.6} /></span
@@ -183,7 +212,8 @@
               disabled={addBot.disabled}
               onclick={addBot.onclick}
             >
-              <Icon name="robot" size={13} /> Add bot
+              <Icon name="robot" size={13} />
+              {L.addBot}
             </button>
           {/if}
         </span>
@@ -275,7 +305,47 @@
   .tile.empty .art {
     background: color-mix(in srgb, var(--seat) 6%, transparent);
   }
+  /* A commander's crop (partners side by side), faded into the tile at
+     its foot, as the Decks grid does. */
+  .crops {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .art.crop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 52%,
+      color-mix(in srgb, var(--seat) 9%, var(--surface-sunken))
+    );
+    pointer-events: none;
+  }
+  /* The × sits in the top-right corner, so the artist's credit moves
+     under it. */
+  .tile.has-x .crops :global(.art-credit) {
+    top: 34px;
+  }
+  .preview-mark {
+    position: absolute;
+    left: 9px;
+    bottom: 9px;
+    z-index: 1;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--accent-line);
+    background: color-mix(in srgb, var(--bg) 66%, transparent);
+    color: var(--accent-strong);
+    font: 700 9.5px/1 var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
   .seatno {
+    z-index: 1;
     position: absolute;
     top: 9px;
     left: 9px;

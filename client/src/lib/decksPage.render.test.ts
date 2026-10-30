@@ -26,7 +26,7 @@ import CHECK_HINT from "../routes/Decks.hint";
 import LIBRARY_HINT from "../routes/DecksLibrary.hint";
 
 import Decks from "../routes/Decks.svelte";
-import YourDecksPicker from "./components/YourDecksPicker.svelte";
+import DeckPicker from "./components/DeckPicker.svelte";
 import type { CoverageReport } from "./deckcheck";
 import { AFTER_SIGN_IN_KEY, AFTER_SIGN_IN_TEXT_KEY, takeAfterSignIn } from "./decksPage";
 import type { MyDeckInfo } from "./myDecks";
@@ -632,17 +632,15 @@ describe("#/decks: pre-built decks (owner answer 4)", () => {
   });
 });
 
-describe("the lobby's deck picker", () => {
-  it("shows the playable count on each saved deck's row", async () => {
-    const { container } = render(
-      YourDecksPicker as never,
-      { gameID: "g1", playerID: "p1" } as never,
-    );
+describe("the lobby's deck picker (ADR 0212 §3)", () => {
+  it("flags each saved deck's gap on its tile, and says it in full for the selected one", async () => {
+    const { container } = render(DeckPicker as never, { gameID: "g1", playerID: "p1" } as never);
     await settle();
-    const text = container.textContent ?? "";
-    // Every row carries the short figure; the selected deck says it in full.
-    expect(text).toContain("95/98 as printed");
-    expect(text).toContain("30/40 as printed");
-    expect(text).toContain("95 of 98 cards play as printed");
+    const flags = [...container.querySelectorAll(".gapflag")].map((f) => f.textContent?.trim());
+    expect(flags).toEqual(["3 not as printed", "10 not as printed"]);
+    const detail = container.querySelector(".detail")?.textContent?.replace(/\s+/g, " ") ?? "";
+    expect(detail).toContain("95 of 98 cards play as printed");
+    // The Decks page and the picker name the saved decks alike.
+    expect(container.querySelector('[role="radiogroup"][aria-label="your decks"]')).not.toBeNull();
   });
 });

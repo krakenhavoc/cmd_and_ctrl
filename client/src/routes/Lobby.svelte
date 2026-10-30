@@ -2,7 +2,6 @@
   import { onMount, tick } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import {
-    addBotSeat,
     archiveGame,
     createGame,
     deleteGame,
@@ -64,6 +63,7 @@
     readiness,
     seatLine,
     seatName,
+    seatPreview,
     seatTileText,
     statusChip,
     whenLabel,
@@ -73,9 +73,10 @@
   } from "../lib/tablesPage";
   import type { TableSettingsView } from "../lib/protocol";
   import { settingsSummary, type TableSettingsPatch } from "../lib/tableSettings";
-  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import DeckPicker from "../lib/components/DeckPicker.svelte";
+  import BotPicker from "../lib/components/BotPicker.svelte";
+  import type { PickerCommit, PickerState } from "../lib/deckPicker";
   import GameCardsPanel from "../lib/components/GameCardsPanel.svelte";
-  import ShopLinks from "../lib/components/ShopLinks.svelte";
   import { visibleShops } from "../lib/shopLinksStore";
   import type { PrebuiltDeck } from "../lib/prebuiltDecks";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
@@ -105,13 +106,6 @@
   import DeckPowerBadge from "../lib/components/DeckPowerBadge.svelte";
   import Page from "../lib/components/Page.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
-  import {
-    defaultBotTier,
-    ownKeyTierChoices,
-    tierForOwnKey,
-    tierNote,
-    tierOptionLabel,
-  } from "../lib/botTier";
 
   // Tables, the signed-in home (ADR 0112 §1, ADR 0158 §1). The page
   // head holds the join box and + New table. Under it, two sections:
@@ -119,10 +113,10 @@
   //   - Now: the tables in the lobby or in play that this person sits
   //     at or created (every table for an admin), one card each. A
   //     table in the lobby is a character select (ADR 0212): the
-  //     settings summary in its head, four seat tiles, the deck panel
-  //     under your seat, and a footer with the readiness line, Open
-  //     table, the Invite menu and one primary that follows the table's
-  //     state. A table in play keeps its primary in the head (Resume or
+  //     settings summary in its head, four seat tiles, the deck picker
+  //     (or the bot picker) under the seats, and a footer with the
+  //     readiness line, Open table, the Invite menu and one primary that
+  //     follows the table's state. A table in play keeps its primary in the head (Resume or
   //     Open), its seats with life totals and a rules line. A
   //     right-click on either opens every action, and the admin's, as a
   //     menu; there is no ⋯ on a card.
@@ -275,18 +269,16 @@
   // --- bot seats (S31, ADR 0033 §9) -------------------------------
   //
   // Bots take real seats out of the same four, so the control lives on
-  // the open seats. The option catalog is fetched once; `enabled` false
-  // means this server has no bot host, and Add bot is not offered.
+  // the open seats: Add bot opens the bot picker under the seats (ADR
+  // 0212 owner decision 8, BotPicker.svelte), and the footer's primary
+  // adds it. The option catalog is fetched once; `enabled` false means
+  // this server has no bot host, and Add bot is not offered.
   let botOptions = $state<BotOptions | null>(null);
   let botPickerFor = $state<string | null>(null);
-  let botTier = $state("");
-  let botDeck = $state("");
-  let botBusy = $state(false);
-  let botError = $state("");
-  // ADR 0182: "run on my model key", offered when GET /bot/options says
-  // this person has a key saved in Settings › AI opponents.
-  let botOwnKey = $state(false);
-  let botModel = $state("");
+  // What the open bot picker would add, for the footer's primary.
+  let botCommit = $state<PickerCommit | null>(null);
+  let botPicker = $state<{ commit: () => Promise<void> } | undefined>();
+  const botBusy = $derived(botCommit?.busy === true);
 
   const botTiersAvailable = $derived((botOptions?.tiers ?? []).filter((t) => t.available));
   const botsOfferable = $derived(
@@ -294,14 +286,6 @@
       (botTiersAvailable.length > 0 || botOptions?.own_key !== undefined) &&
       (botOptions?.decks.length ?? 0) > 0,
   );
-  const botTierChoices = $derived(
-    botOwnKey ? ownKeyTierChoices(botOptions?.tiers ?? []) : (botOptions?.tiers ?? []),
-  );
-
-  function onOwnKeyToggle(on: boolean): void {
-    botOwnKey = on;
-    botTier = on ? tierForOwnKey(botTier) : defaultBotTier(botOptions?.tiers ?? []);
-  }
 
   // canManageBots: admin, or a player seated at this table. Mirrors
   // the server gate; the endpoint is authoritative.
@@ -431,35 +415,26 @@
     return isAdmin || g.is_creator === true;
   }
 
-  function openBotPicker(gameID: string): void {
-    botError = "";
-    botPickerFor = gameID;
-    botOwnKey = false;
-    botModel = botOptions?.own_key?.model ?? "";
-    botTier = defaultBotTier(botOptions?.tiers ?? []);
-    // A server with no tier of its own to offer starts on the key.
-    if (!botTier && botOptions?.own_key?.games_left) onOwnKeyToggle(true);
-    botDeck = botOptions?.decks[0]?.id ?? "";
+  // openBotPicker is an open seat's Add bot. The bot picker takes the
+  // region under the seats, so the deck picker or the tablemate picker
+  // there closes, and focus moves into it.
+  async function openBotPicker(g: GameMeta): Promise<void> {
+    botPickerFor = g.id;
+    panelChoice = { ...panelChoice, [g.id]: null };
+    await tick();
+    const region = document.getElementById(botPickerID(g.id));
+    region?.scrollIntoView?.({ block: "nearest" });
+    region?.focus({ preventScroll: true });
   }
 
-  async function onAddBot(gameID: string): Promise<void> {
-    if (!botTier || !botDeck) return;
-    botBusy = true;
-    botError = "";
-    try {
-      await addBotSeat(
-        gameID,
-        botOwnKey
-          ? { tier: botTier, deck: botDeck, own_key: true, model: botModel.trim() || undefined }
-          : { tier: botTier, deck: botDeck },
-      );
-      botPickerFor = null;
-      await refresh();
-    } catch (err) {
-      botError = lobbyErrorMessage(err, "could not add the bot");
-    } finally {
-      botBusy = false;
-    }
+  function botPickerID(gameID: string): string {
+    return `bot-picker-${gameID}`;
+  }
+
+  // The seat a bot takes: the first open one, as the server seats it.
+  function botSeatFor(g: GameMeta): number {
+    const open = lobbySlots(g).findIndex((p) => p === null);
+    return open >= 0 ? open : g.players.length;
   }
 
   // --- removing a seat (#2785, #3494) -----------------------------
@@ -514,15 +489,10 @@
     return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
   }
 
-  const botTierNote = $derived(tierNote(botOptions?.tiers ?? [], botTier));
-  const botDeckDescription = $derived(
-    botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
-  );
-
   // The bot decks are the pre-built decks, so GET /decks holds each
-  // one's list for "Play this deck in paper" (ADR 0179 §7).
+  // one's coverage for the bot picker's tiles and its list for "Play
+  // this deck in paper" (ADR 0179 §7).
   let prebuiltDecks = $state<PrebuiltDeck[]>([]);
-  const botDeckCards = $derived(prebuiltDecks.find((d) => d.id === botDeck)?.cards ?? []);
 
   // --- archiving and deleting (admin) ------------------------------
   //
@@ -856,6 +826,8 @@
       takesSeat: takesSeat(g),
       mayStart: mayStart(g),
       spectator: watchesHere(g),
+      picking: pickerOpen(g) ? (pickerState?.commit ?? null) : null,
+      addingBot: botPickerFor === g.id ? botCommit : null,
     });
     switch (p.kind) {
       case "open":
@@ -869,6 +841,10 @@
         };
       case "choose":
         return { ...p, run: () => void openPicker(g) };
+      case "sit":
+        return { ...p, run: () => void deckPicker?.commit() };
+      case "bot":
+        return { ...p, run: () => void botPicker?.commit() };
       case "start":
         return { ...p, run: () => void onStart(g.id) };
       case "watch":
@@ -969,7 +945,7 @@
       }
     }
     const seat = mySeat(g);
-    if (seat && offersDeck(g) && primary.kind !== "choose") {
+    if (seat && offersDeck(g) && primary.kind !== "choose" && primary.kind !== "sit") {
       items.push({ label: deckLabel(seat), onclick: () => void openPicker(g) });
     }
     if (canInvite(g)) {
@@ -1200,10 +1176,11 @@
 
   // The panels under the seats: invite a tablemate (from the Invite
   // menu), and your deck (your seat's tile, or Choose your deck). The
-  // deck panel opens on its own while your seat has no deck, the table
+  // deck picker opens on its own while your seat has no deck, the table
   // you just made included (ADR 0212 owner decision 2); Invite by DM
   // opens first on a new table where you are not seated. Either stays
-  // as the person last left it.
+  // as the person last left it. They share the region under the seats
+  // with the bot picker, so opening one closes it.
   let panelChoice = $state<Record<string, "invite" | "deck" | null>>({});
 
   function panelFor(g: GameMeta): "invite" | "deck" | null {
@@ -1215,21 +1192,47 @@
   }
 
   function togglePanel(g: GameMeta, which: "invite" | "deck"): void {
-    panelChoice = { ...panelChoice, [g.id]: panelFor(g) === which ? null : which };
+    const next = panelFor(g) === which ? null : which;
+    if (next && botPickerFor === g.id) botPickerFor = null;
+    panelChoice = { ...panelChoice, [g.id]: next };
   }
 
   // showPanel opens one from a menu, where a second click closing it
   // again would be a surprise.
   function showPanel(g: GameMeta, which: "invite" | "deck"): void {
+    if (botPickerFor === g.id) botPickerFor = null;
     panelChoice = { ...panelChoice, [g.id]: which };
   }
 
-  // The deck panel's id, for the seat tile's aria-controls.
+  // --- the deck picker (ADR 0212 §3) --------------------------------
+  //
+  // One at most is open, since a session holds one seat. It reports what
+  // is selected, which your seat's tile previews, and what committing it
+  // says, which the footer's primary becomes (§2 rule 4): "Sit down with
+  // this deck", or Upload / Import deck on Paste a list. The primary
+  // calls its commit().
+  let pickerState = $state<PickerState | null>(null);
+  let deckPicker = $state<{ commit: () => Promise<void> } | undefined>();
+
+  function pickerOpen(g: GameMeta): boolean {
+    return panelFor(g) === "deck" && offersDeck(g);
+  }
+
+  // After a deck is seated the picker closes and your tile says Ready,
+  // unless the picker has more to say about the deck just seated (its
+  // warnings, or a pasted list's unimplemented cards and library note),
+  // which stays open to be read.
+  function onSeated(g: GameMeta, more: boolean): void {
+    panelChoice = { ...panelChoice, [g.id]: more ? "deck" : null };
+    void refresh();
+  }
+
+  // The deck picker's id, for the seat tile's aria-controls.
   function pickerID(gameID: string): string {
     return `deck-picker-${gameID}`;
   }
 
-  // openPicker is Choose your deck: open the deck panel, or bring the
+  // openPicker is Choose your deck: open the deck picker, or bring the
   // open one into view, and put focus on it.
   async function openPicker(g: GameMeta): Promise<void> {
     if (panelFor(g) !== "deck") showPanel(g, "deck");
@@ -1622,10 +1625,17 @@
                   {#each lobbySlots(g) as p, i (p?.player_id ?? `open-${i}`)}
                     {#if p}
                       {@const own = !p.is_bot && isOwnSeat(p, { isAdmin, mySeat: seat })}
+                      <!-- Your seat previews the deck selected in the open picker (§1). -->
+                      {@const pv =
+                        seat?.player_id === p.player_id && pickerOpen(g)
+                          ? seatPreview(p, pickerState?.preview ?? null)
+                          : null}
                       <SeatTile
                         seat={p.seat}
                         {p}
-                        text={seatTileText(p, botDeckOf(p))}
+                        text={pv?.text ?? seatTileText(p, botDeckOf(p))}
+                        art={pv?.art ?? []}
+                        preview={pv?.preview ?? false}
                         you={myNo === p.seat}
                         botChip={p.is_bot ? botChipText(p, botOptions?.tiers ?? []) : ""}
                         pick={seat?.player_id === p.player_id && offersDeck(g)
@@ -1655,7 +1665,7 @@
                           : undefined}
                         inviteExpanded={inviteMenu?.gameID === g.id && inviteMenu.from === i}
                         addBot={canManageBots(g) && botPickerFor !== g.id
-                          ? { disabled: botBusy, onclick: () => openBotPicker(g.id) }
+                          ? { disabled: botBusy, onclick: () => void openBotPicker(g) }
                           : undefined}
                       />
                     {/if}
@@ -1712,89 +1722,7 @@
                 </ul>
               {/if}
 
-              {#if botPickerFor === g.id}
-                <div class="bot-picker">
-                  <label>
-                    <span>tier</span>
-                    <select bind:value={botTier} disabled={botBusy}>
-                      {#each botTierChoices as t (t.tier)}
-                        <option value={t.tier} disabled={!t.available} title={t.description}>
-                          {tierOptionLabel(t)}
-                        </option>
-                      {/each}
-                    </select>
-                  </label>
-                  <label>
-                    <span>deck</span>
-                    <select bind:value={botDeck} disabled={botBusy}>
-                      {#each botOptions?.decks ?? [] as d (d.id)}
-                        <option value={d.id} title={d.description}>{d.name}</option>
-                      {/each}
-                    </select>
-                  </label>
-                  {#if botOptions?.own_key}
-                    <label class="own-key">
-                      <input
-                        type="checkbox"
-                        checked={botOwnKey}
-                        disabled={botBusy || (!botOptions.own_key.games_left && !botOwnKey)}
-                        onchange={(e) => onOwnKeyToggle(e.currentTarget.checked)}
-                      />
-                      <span>Run on my model key ({botOptions.own_key.provider_label})</span>
-                    </label>
-                    {#if !botOptions.own_key.games_left}
-                      <p class="deck-desc tier-warning">
-                        Your model key has played all the games you allowed it today (Settings › AI
-                        opponents).
-                      </p>
-                    {/if}
-                    {#if botOwnKey}
-                      <label>
-                        <span>model</span>
-                        <input
-                          type="text"
-                          autocomplete="off"
-                          spellcheck="false"
-                          maxlength="128"
-                          placeholder={botOptions.own_key.model}
-                          bind:value={botModel}
-                          disabled={botBusy}
-                        />
-                      </label>
-                    {/if}
-                  {/if}
-                  {#if botTierNote}
-                    <p class="deck-desc" class:tier-warning={botTierNote.warning}>
-                      {botTierNote.text}
-                    </p>
-                  {/if}
-                  {#if botDeckDescription}
-                    <p class="deck-desc">{botDeckDescription}</p>
-                  {/if}
-                  {#if botDeckCards.length > 0}
-                    <ShopLinks list={botDeckCards} label="Play this deck in paper" />
-                  {/if}
-                  <div class="bot-actions">
-                    <button
-                      class="primary"
-                      disabled={botBusy || !botTier || !botDeck}
-                      onclick={() => onAddBot(g.id)}
-                    >
-                      {botBusy ? "adding…" : "add bot"}
-                    </button>
-                    <button class="ghost" disabled={botBusy} onclick={() => (botPickerFor = null)}>
-                      cancel
-                    </button>
-                  </div>
-                  {#if botError}<div class="bot-error">{botError}</div>{/if}
-                  <p class="hint">
-                    A bot takes a real seat, arrives with its deck already loaded, and starts
-                    playing when the game starts.
-                  </p>
-                </div>
-              {:else if botError}
-                <div class="bot-error">{botError}</div>
-              {:else if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
+              {#if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
                 <div class="bot-error" role="alert">{lfgError}</div>
               {/if}
 
@@ -1837,30 +1765,52 @@
                 </div>
               {/if}
 
-              {#if panel === "invite" && canInvite(g)}
+              <!-- The region under the seats: the bot picker (owner decision
+                   8), the tablemate picker, or the deck picker (§3), with a
+                   notch at the seat it is for. -->
+              {#if botPickerFor === g.id && lobby && botOptions}
+                {@const botSeat = botSeatFor(g)}
+                <div
+                  class="picker bot"
+                  id={botPickerID(g.id)}
+                  tabindex="-1"
+                  style:--notch={Math.min(botSeat, 3)}
+                >
+                  <BotPicker
+                    bind:this={botPicker}
+                    gameID={g.id}
+                    seat={botSeat}
+                    options={botOptions}
+                    prebuilt={prebuiltDecks}
+                    onchange={(c) => (botCommit = c)}
+                    oncancel={() => (botPickerFor = null)}
+                    onadded={() => {
+                      botPickerFor = null;
+                      void refresh();
+                    }}
+                  />
+                </div>
+              {:else if panel === "invite" && canInvite(g)}
                 <div class="invite-picker">
                   <TablematePicker gameID={g.id} lastTable={lastSetup?.tablemates ?? []} />
                 </div>
               {:else if panel === "deck" && seat && offersDeck(g) && $session?.playerID}
-                <!-- Today's deck panel, under the seats with a notch at
-                     yours, until the picker grid replaces it (ADR 0212 §3). -->
                 <div
-                  class="deck-upload"
+                  class="picker"
                   id={pickerID(g.id)}
                   role="region"
-                  aria-label="choose your deck"
+                  aria-label={L.deckPicker}
                   tabindex="-1"
                   style:--notch={seat.seat}
                 >
-                  <p class="hint">
-                    Every deck is validated against Commander rules — 100-card singleton, color
-                    identity, format legality — whichever way it arrives.
-                  </p>
-                  <DeckUploadForm
+                  <DeckPicker
+                    bind:this={deckPicker}
                     gameID={g.id}
                     playerID={$session.playerID}
                     shopLinks
-                    onSuccess={() => void refresh()}
+                    actions="external"
+                    onchange={(st) => (pickerState = st)}
+                    onSuccess={(_res, more) => onSeated(g, more)}
                   />
                 </div>
               {/if}
@@ -2738,23 +2688,27 @@
   .caret.up {
     transform: translateY(1px) rotate(-135deg);
   }
-  .deck-upload,
   .invite-picker {
     padding: 12px 14px;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--surface-sunken);
   }
-  .deck-upload .hint {
-    margin-top: 0;
-  }
-  /* The deck panel's notch points at your seat's tile: the middle of
-     column --notch of four, 12px apart. */
-  .deck-upload {
+  /* The picker region under the seats (§3): the deck picker, its tab bar
+     edge to edge, or the bot picker. Its notch points at the seat it is
+     for: the middle of column --notch of four, 12px apart. */
+  .picker {
+    --picker-pad: 14px;
     position: relative;
-    border-color: var(--border-strong);
+    padding: 0 var(--picker-pad) var(--picker-pad);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
   }
-  .deck-upload::before {
+  .picker.bot {
+    padding-top: 12px;
+  }
+  .picker::before {
     content: "";
     position: absolute;
     top: -7px;
@@ -2766,10 +2720,10 @@
     border-left: 1px solid var(--border-strong);
     border-top: 1px solid var(--border-strong);
   }
-  .deck-upload:focus {
+  .picker:focus {
     outline: none;
   }
-  .deck-upload:focus-visible {
+  .picker:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
   }
@@ -2948,71 +2902,6 @@
   .hint.warn {
     margin: 0;
     color: var(--fg);
-  }
-  .bot-picker {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 10px;
-    padding: 12px;
-    border: 1px dashed var(--border-strong);
-    border-radius: 10px;
-    background: var(--surface-sunken);
-  }
-  .bot-picker label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-    color: var(--fg-muted);
-    min-width: 150px;
-  }
-  /* ADR 0182: the own-key switch takes its own line, as a row. */
-  .bot-picker label.own-key {
-    flex: 1 0 100%;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--fg);
-    min-width: 0;
-  }
-  .bot-picker input[type="text"] {
-    font: inherit;
-    font-size: 12.5px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-raised);
-    color: var(--fg);
-    min-width: 0;
-    max-width: 100%;
-  }
-  .bot-picker select {
-    font: inherit;
-    font-size: 12.5px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-raised);
-    color: var(--fg);
-  }
-  .bot-actions {
-    display: flex;
-    gap: 8px;
-  }
-  .bot-picker .hint {
-    flex: 1 0 100%;
-    margin: 0;
-  }
-  .deck-desc {
-    flex: 1 0 100%;
-    margin: 0;
-    font-size: 12px;
-    color: var(--fg-muted);
-  }
-  .deck-desc.tier-warning {
-    color: var(--danger);
   }
   .bot-error {
     color: var(--danger);

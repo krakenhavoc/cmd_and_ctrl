@@ -16,6 +16,9 @@ import Hand from "./components/board/Hand.svelte";
 import HoverZoomOverlay from "./components/board/HoverZoomOverlay.svelte";
 import StackLaneFan from "./components/board/StackLaneFan.svelte";
 import DeckCard from "./components/decks/DeckCard.svelte";
+import DeckGrid from "./components/DeckGrid.svelte";
+import SeatTile from "./components/SeatTile.svelte";
+import { libraryTile } from "./deckPicker";
 import { artistOf, creditText } from "./artistCredit.svelte";
 import type { CardMeta } from "./cardMetaCache";
 import { hoveredCard } from "./cardTypes";
@@ -363,5 +366,112 @@ describe("the Decks grid's commander art", () => {
     await settle();
     expect(container.querySelector(".band img")).not.toBeNull();
     expect(container.querySelector(".art-credit")).toBeNull();
+  });
+});
+
+// ADR 0212: the deck picker's tiles and your seat's tile are led by the
+// commander's art crop too, so each crop carries the credit.
+describe("the deck picker's tiles and your seat's tile", () => {
+  // An observer that reports every node in view at once, and one that
+  // never does (a tile scrolled far out of the grid).
+  class SeesAll {
+    constructor(private cb: (e: { isIntersecting: boolean }[]) => void) {}
+    observe(): void {
+      this.cb([{ isIntersecting: true }]);
+    }
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  let saved: unknown;
+  beforeEach(() => {
+    saved = (globalThis as Record<string, unknown>).IntersectionObserver;
+  });
+  afterEach(() => {
+    (globalThis as Record<string, unknown>).IntersectionObserver = saved;
+  });
+
+  function tile(...ids: string[]) {
+    return libraryTile({
+      id: "d1",
+      name: "Partners",
+      commanders: ids.map((_, i) => `Commander ${i}`),
+      card_count: 100,
+      updated_at: "2026-10-01T00:00:00Z",
+      commander_cards: ids.map((id, i) => ({
+        name: `Commander ${i}`,
+        scryfall_id: id,
+        color_identity: ["W"],
+      })),
+      color_identity: ["W"],
+    });
+  }
+
+  it("credits each crop on a picker tile once it scrolls into view", async () => {
+    (globalThis as Record<string, unknown>).IntersectionObserver = SeesAll;
+    const a = newID();
+    const b = newID();
+    metaByID.set(a, { artist: "Winona Nelson" });
+    metaByID.set(b, { artist: "Jason Rainville" });
+    const { container } = render(
+      DeckGrid as never,
+      {
+        tiles: [tile(a, b)],
+        name: "your-deck",
+        label: "your decks",
+        selected: "d1",
+      } as never,
+    );
+    await settle();
+    const crops = [...container.querySelectorAll<HTMLElement>(".dtile .crop")];
+    expect(crops.map((c) => c.querySelector(".art-credit")?.textContent)).toEqual([
+      "Illus. Winona Nelson",
+      "Illus. Jason Rainville",
+    ]);
+  });
+
+  it("loads nothing for a tile not yet in view", async () => {
+    (globalThis as Record<string, unknown>).IntersectionObserver = FakeObserver;
+    const id = newID();
+    metaByID.set(id, { artist: "Winona Nelson" });
+    const { container } = render(
+      DeckGrid as never,
+      {
+        tiles: [tile(id)],
+        name: "your-deck",
+        label: "your decks",
+        selected: "",
+      } as never,
+    );
+    await settle();
+    expect(container.querySelector(".dtile img")).toBeNull();
+    expect(requested).toEqual([]);
+  });
+
+  it("credits the crop in your seat's preview, clear of the ×", async () => {
+    const id = newID();
+    metaByID.set(id, { artist: "Kieran Yanner" });
+    const { container } = render(
+      SeatTile as never,
+      {
+        seat: 0,
+        p: { player_id: "p1", name: "Luke", seat: 0, deck_uploaded: false },
+        text: {
+          what: "Kenrith, the Returned King",
+          second: "Kenrith's court",
+          colors: ["W"],
+          ready: false,
+        },
+        art: [{ name: "Kenrith, the Returned King", scryfallId: id }],
+        preview: true,
+        you: true,
+        remove: { label: "leave your seat", title: "", disabled: false, onclick: () => {} },
+      } as never,
+    );
+    await settle();
+    const li = container.querySelector("li.tile")!;
+    expect(li.classList.contains("has-x")).toBe(true);
+    expect(li.querySelector(".crop .art-credit")?.textContent).toBe("Illus. Kieran Yanner");
+    expect(li.textContent).toMatch(/Preview/);
+    expect(li.textContent).toMatch(/Not seated yet/);
   });
 });
