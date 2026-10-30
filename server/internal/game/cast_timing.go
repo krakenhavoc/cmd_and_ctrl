@@ -453,8 +453,15 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 // per-offer walk and the view's per-offer `timing_closed`.
 //
 // Caller must hold g.mu (read or write).
+//
+// A sneak offer (CR 702.190a, #4586) opens the same instant-speed window
+// and is then shut everywhere but its caster's own declare blockers step
+// (sneak.go).
 func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
-	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash, true)
+	if offer != nil && offer.Sneak && !g.sneakWindowOpenLocked(playerID) {
+		return false
+	}
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow(), true)
 }
 
 // ownFlash is false only for castUsesOwnFlashLocked's question: would

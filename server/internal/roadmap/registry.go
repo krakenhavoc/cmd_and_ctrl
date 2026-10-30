@@ -465,6 +465,12 @@ var items = []Item{
 		Mechanic: "blitz",
 	},
 	{
+		Slug: "sneak", Name: "Sneak", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "During your declare blockers step, cast a spell for its sneak cost by returning an unblocked attacker you control to hand; a permanent cast this way enters tapped and attacking.",
+		Rules:    []string{"702.190"},
+		Mechanic: "sneak",
+	},
+	{
 		Slug: "freerunning", Name: "Freerunning", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cast a spell for its freerunning cost if an Assassin or a commander you controlled dealt combat damage to a player this turn.",
 		Rules:    []string{"702.173"},
