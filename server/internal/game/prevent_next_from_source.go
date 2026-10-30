@@ -218,6 +218,11 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 			Colors:     copyStrings(q.Colors),
 			Keyword:    q.Keyword,
 			Enchanted:  q.Enchanted,
+
+			HasPowerAtMost:  q.HasPowerAtMost,
+			PowerAtMost:     q.PowerAtMost,
+			HasPowerAtLeast: q.HasPowerAtLeast,
+			PowerAtLeast:    q.PowerAtLeast,
 		}
 	}
 	return out
@@ -503,9 +508,10 @@ func queriesMatchCharacteristic(qs []PermanentQuery, ch *Characteristic) bool {
 // matchesCharacteristic is matchesLocked over a characteristics snapshot
 // rather than a live permanent — a spell on the stack, or a source as it
 // last existed (CR 608.2h). Enchanted is a fact about the battlefield and
-// never matches here.
+// never matches here, and neither does a power bound: a snapshot of a
+// Characteristic has no counters, so it can't say the permanent's power.
 func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
-	if ch == nil || q.Enchanted {
+	if ch == nil || q.Enchanted || q.boundsPower() {
 		return false
 	}
 	fold := func(have []string) func(string) bool {
