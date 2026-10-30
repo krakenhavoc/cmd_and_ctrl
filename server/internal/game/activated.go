@@ -1544,7 +1544,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	// CR 702.193a (#4527): "Activate this ability only once", read from
 	// the same record and key as exhaust, before anything is paid.
-	if g.PowerUpUsed(cardID, ab) {
+	if g.PowerUpUsed(source, ab) {
 		return ErrPowerUpUsed
 	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
@@ -2035,6 +2035,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// "spend mana as though any color to activate those abilities"
 		// rider can cover the rows one borrow lent and nothing else.
 		riderCtx.AbilityOrigin = origins.At(index)
+		// CR 702.193 (#4571): "spend this mana only to activate power-up
+		// abilities" is asked of the row being paid for.
+		riderCtx.PowerUp = ab.PowerUp
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.

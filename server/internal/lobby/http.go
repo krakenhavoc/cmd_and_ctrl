@@ -2492,6 +2492,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// function.
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
+		spend.PowerUp = price.Ability.PowerUp
 		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian, nil)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn

@@ -351,7 +351,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModPreventNextCombatFromSource: true,
 		// ADR 0109 §4: the land-play gate. Its cases are in
 		// land_play_gate_test.go.
-		ModCantPlayLands: true,
+		ModCantPlayLands: true, ModCantActivatePowerUp: true,
 		// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 		// both gates. Its cases are in hand_play_ban_test.go.
 		ModCantPlayFromHand: true,

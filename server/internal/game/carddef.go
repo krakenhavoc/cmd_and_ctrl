@@ -168,6 +168,11 @@ type CardDef struct {
 	// Birgi, God of Storytelling. Read from the battlefield through
 	// Game.BoastLimitFor.
 	BoastLimits []BoastLimit
+	// PowerUpExtras are the "each power-up ability of permanents you
+	// control can be activated an additional time" statics this
+	// permanent contributes (CR 702.193, #4571) — Wonder Man, Hollywood
+	// Hero. Read from the battlefield through Game.PowerUpLimitFor.
+	PowerUpExtras []PowerUpExtra
 	// AttackTaxes are the "creatures can't attack you unless their
 	// controller pays {N}" statics this permanent contributes
 	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
@@ -849,6 +854,12 @@ func init() {
 	CatalogBoastLimits = func(key string) []BoastLimit {
 		if d := catalogDef(key); d != nil {
 			return d.BoastLimits
+		}
+		return nil
+	}
+	CatalogPowerUpExtras = func(key string) []PowerUpExtra {
+		if d := catalogDef(key); d != nil {
+			return d.PowerUpExtras
 		}
 		return nil
 	}

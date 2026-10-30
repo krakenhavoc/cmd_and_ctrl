@@ -851,6 +851,15 @@ type Spec struct {
 	// (CR 113.6). Nil for every other card.
 	BoastLimits []game.BoastLimit
 
+	// PowerUpExtras is "each power-up ability of permanents you control
+	// can be activated an additional time" (CR 702.193, #4571) — Wonder
+	// Man, Hollywood Hero. Build the entries with
+	// YourPowerUpAbilitiesActivateAnAdditionalTime in power_up.go. Each
+	// entry adds to the printed limit of one (two Wonder Men make it
+	// three). Read from the battlefield only (CR 113.6). Nil for every
+	// other card.
+	PowerUpExtras []game.PowerUpExtra
+
 	// AttackTaxes is the CR 508.1h attack tax: "creatures can't attack
 	// you unless their controller pays {2} for each creature they
 	// control that's attacking you" — Propaganda, Ghostly Prison,

@@ -232,7 +232,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// protection against. Never the seat: a red player's colourless
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
-	defer func() { e.rowOrigin = game.AbilityOrigin{} }()
+	defer func() { e.rowOrigin, e.rowPowerUp = game.AbilityOrigin{}, false }()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
 	// with the mirrored row's origin for every gate below.
@@ -251,6 +251,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			idx, wireIndex, wireRef = tw.Of, tw.Index, tw.Ref
 		}
 		e.rowOrigin = origins.At(idx)
+		e.rowPowerUp = ab.PowerUp
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -312,7 +313,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		}
 		// CR 702.193a (#4527): a power-up ability this object has
 		// already activated, the reader ActivateCatalogAbility refuses on.
-		if g.PowerUpUsed(source.InstanceID, ab) {
+		if g.PowerUpUsed(source, ab) {
 			continue
 		}
 		// ADR 0155 Decision 7: a once-each-turn lent row this borrower

@@ -12852,7 +12852,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
-		v.PowerUpUsed = g.PowerUpUsed(c.InstanceID, a)
+		v.PowerUpUsed = g.PowerUpUsed(&c, a)
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true
@@ -12867,7 +12867,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// the whole card, because almost no board restricts anything.
 		if restricted {
 			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
-				game.ActivationAbility{Label: a.Label})
+				game.ActivationAbility{Label: a.Label, PowerUp: a.PowerUp})
 		}
 		// ADR 0129 §8: the energy component, and the refusal's own text
 		// when the controller is short of the printed part (CR 118.3),
