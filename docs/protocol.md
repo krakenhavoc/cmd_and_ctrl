@@ -513,6 +513,12 @@ The computed `life_cost_unpayable: true` marks an unaffordable or locked life
 payment; the client disables Pay while keeping decline available. Both fields
 are omitted when zero/false. Existing answer payloads are unchanged.
 
+**Poison ward (#4613):** a `confirm` pending choice may carry `poison_cost`, the
+poison counters its accept branch gives the chooser (The Serpent Society's
+"Ward—Get five poison counters"). It is always payable, so there is no
+unpayable twin; the tenth counter loses the game. The accepting move carries
+the same number as `cost.poison`. Both are omitted when zero.
+
 **Loop hint (#2040):** a `confirm` pending choice may carry
 `decline_ends_loop: true` when accepting would continue a loop the table is
 already in. Channel Harm sets it when it is asked to deal damage it prevented

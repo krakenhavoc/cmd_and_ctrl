@@ -1051,6 +1051,14 @@ type PendingChoice struct {
 	// affordability when it runs, because life can move between the question and the answer.
 	LifeCost int
 
+	// PoisonCost is the poison counters a PendingChoiceConfirm's ACCEPT branch
+	// gives the chooser (#4613, "Ward—Get five poison counters"). It is
+	// LifeCost's sibling, on the choice and the wire for the same reason: a
+	// policy holding only the wire payload would otherwise price "get five
+	// poison counters" like "shuffle your library". The engine does not
+	// place them here; the frame's accept branch does. Zero is no counters.
+	PoisonCost int
+
 	// DeclineEndsLoop marks a confirm whose ACCEPT would continue a loop
 	// the table is already in (#2040): Channel Harm asked to deal damage
 	// that it prevented from another Channel Harm. Declining is how the

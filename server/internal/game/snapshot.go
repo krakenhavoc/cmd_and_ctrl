@@ -1915,6 +1915,7 @@ type pendingChoiceSnapshot struct {
 	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel          string      `json:"acceptLabel,omitempty"`
 	LifeCost             int         `json:"lifeCost,omitempty"`
+	PoisonCost           int         `json:"poisonCost,omitempty"`
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
 	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
 	DeclineLabel    string `json:"declineLabel,omitempty"`
@@ -3371,6 +3372,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		PoisonCost:            c.PoisonCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		Private:               c.private,
 		OwedInStep:            c.OwedInStep,
@@ -4453,6 +4455,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		PoisonCost:            c.PoisonCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		private:               c.Private,
 		OwedInStep:            c.OwedInStep,

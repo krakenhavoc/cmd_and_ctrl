@@ -1001,6 +1001,8 @@ events[].last_known_all_creature_types	bool
 events[].last_known_colors	array
 events[].last_known_colors[]	string
 events[].last_known_controller	custom(uuid.UUID)
+events[].last_known_keywords	array
+events[].last_known_keywords[]	string
 events[].last_known_subtypes	array
 events[].last_known_subtypes[]	string
 events[].last_known_supertypes	array
@@ -1745,6 +1747,8 @@ followUpParks[].then.asked.trigger.Event.last_known_all_creature_types	bool
 followUpParks[].then.asked.trigger.Event.last_known_colors	array
 followUpParks[].then.asked.trigger.Event.last_known_colors[]	string
 followUpParks[].then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+followUpParks[].then.asked.trigger.Event.last_known_keywords	array
+followUpParks[].then.asked.trigger.Event.last_known_keywords[]	string
 followUpParks[].then.asked.trigger.Event.last_known_subtypes	array
 followUpParks[].then.asked.trigger.Event.last_known_subtypes[]	string
 followUpParks[].then.asked.trigger.Event.last_known_supertypes	array
@@ -2320,6 +2324,8 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_all_creatu
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -2875,6 +2881,8 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_supertypes	array
@@ -3421,6 +3429,8 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_supertypes	array
@@ -4120,6 +4130,8 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_all_creatur
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -4772,6 +4784,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_supertypes	array
@@ -5378,6 +5392,8 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_supertypes	array
@@ -5924,6 +5940,8 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_all_creatur
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_supertypes	array
@@ -6502,6 +6520,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_kn
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_supertypes	array
@@ -7068,6 +7088,8 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_all_c
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_supertypes	array
@@ -8021,6 +8043,8 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_all_
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -8584,6 +8608,8 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_all_crea
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_supertypes	array
@@ -9133,6 +9159,8 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_all_creature_
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -10451,6 +10479,8 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_all_creat
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_supertypes	array
@@ -10995,6 +11025,8 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_all_creature_
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -11867,6 +11899,8 @@ frozenEntries[].event.stackItem.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors	array
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.stackItem.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.stackItem.trigger.Event.last_known_keywords	array
+frozenEntries[].event.stackItem.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.stackItem.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.stackItem.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.stackItem.trigger.Event.last_known_supertypes	array
@@ -12428,6 +12462,8 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_all_creature
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -13750,6 +13786,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_kno
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_supertypes	array
@@ -14328,6 +14366,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.la
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_supertypes	array
@@ -14872,6 +14912,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_al
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -15436,6 +15478,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -16065,6 +16109,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords	array
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -18084,6 +18130,8 @@ lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
 lastKnownStack[].item.trigger.Event.last_known_colors	array
 lastKnownStack[].item.trigger.Event.last_known_colors[]	string
 lastKnownStack[].item.trigger.Event.last_known_controller	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.last_known_keywords	array
+lastKnownStack[].item.trigger.Event.last_known_keywords[]	string
 lastKnownStack[].item.trigger.Event.last_known_subtypes	array
 lastKnownStack[].item.trigger.Event.last_known_subtypes[]	string
 lastKnownStack[].item.trigger.Event.last_known_supertypes	array
@@ -18547,6 +18595,8 @@ pausedModeWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedModeWalk.item.trigger.Event.last_known_colors	array
 pausedModeWalk.item.trigger.Event.last_known_colors[]	string
 pausedModeWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.last_known_keywords	array
+pausedModeWalk.item.trigger.Event.last_known_keywords[]	string
 pausedModeWalk.item.trigger.Event.last_known_subtypes	array
 pausedModeWalk.item.trigger.Event.last_known_subtypes[]	string
 pausedModeWalk.item.trigger.Event.last_known_supertypes	array
@@ -18861,6 +18911,8 @@ pausedResolutionTail.item.trigger.Event.last_known_all_creature_types	bool
 pausedResolutionTail.item.trigger.Event.last_known_colors	array
 pausedResolutionTail.item.trigger.Event.last_known_colors[]	string
 pausedResolutionTail.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Event.last_known_keywords	array
+pausedResolutionTail.item.trigger.Event.last_known_keywords[]	string
 pausedResolutionTail.item.trigger.Event.last_known_subtypes	array
 pausedResolutionTail.item.trigger.Event.last_known_subtypes[]	string
 pausedResolutionTail.item.trigger.Event.last_known_supertypes	array
@@ -19169,6 +19221,8 @@ pausedStepWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedStepWalk.item.trigger.Event.last_known_colors	array
 pausedStepWalk.item.trigger.Event.last_known_colors[]	string
 pausedStepWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedStepWalk.item.trigger.Event.last_known_keywords	array
+pausedStepWalk.item.trigger.Event.last_known_keywords[]	string
 pausedStepWalk.item.trigger.Event.last_known_subtypes	array
 pausedStepWalk.item.trigger.Event.last_known_subtypes[]	string
 pausedStepWalk.item.trigger.Event.last_known_supertypes	array
@@ -19348,6 +19402,8 @@ pendingChoices[].asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].asked.trigger.Event.last_known_colors	array
 pendingChoices[].asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].asked.trigger.Event.last_known_keywords	array
+pendingChoices[].asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].asked.trigger.Event.last_known_supertypes	array
@@ -20460,6 +20516,8 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_all_creature_ty
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_supertypes	array
@@ -21570,6 +21628,8 @@ pendingChoices[].copyWalk.item.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors	array
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors[]	string
 pendingChoices[].copyWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.trigger.Event.last_known_keywords	array
+pendingChoices[].copyWalk.item.trigger.Event.last_known_keywords[]	string
 pendingChoices[].copyWalk.item.trigger.Event.last_known_subtypes	array
 pendingChoices[].copyWalk.item.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].copyWalk.item.trigger.Event.last_known_supertypes	array
@@ -22339,6 +22399,8 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_all_creature_types
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_supertypes	array
@@ -23226,6 +23288,8 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_all_creat
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_supertypes	array
@@ -23772,6 +23836,8 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_all_creat
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_supertypes	array
@@ -24324,6 +24390,8 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_all_creature_t
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_supertypes	array
@@ -24926,6 +24994,8 @@ pendingChoices[].nameThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].nameThen.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].nameThen.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].nameThen.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].nameThen.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].nameThen.asked.trigger.Event.last_known_supertypes	array
@@ -25478,6 +25548,8 @@ pendingChoices[].ordered.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors	array
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].ordered.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].ordered.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].ordered.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].ordered.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].ordered.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].ordered.asked.trigger.Event.last_known_supertypes	array
@@ -25912,6 +25984,8 @@ pendingChoices[].pickTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].pickTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].pickTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].pickTail.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].pickTail.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].pickTail.asked.trigger.Event.last_known_supertypes	array
@@ -26378,6 +26452,7 @@ pendingChoices[].pickTargetPlayers[]	custom(uuid.UUID)
 pendingChoices[].pickThen	string
 pendingChoices[].pickWords	array
 pendingChoices[].pickWords[]	string
+pendingChoices[].poisonCost	number:int
 pendingChoices[].private	bool
 pendingChoices[].promptRun	custom(uuid.UUID)
 pendingChoices[].reason	string
@@ -26500,6 +26575,8 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.la
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -27055,6 +27132,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_supertypes	array
@@ -27601,6 +27680,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_supertypes	array
@@ -28300,6 +28381,8 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.las
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -28952,6 +29035,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_supertypes	array
@@ -29558,6 +29643,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_supertypes	array
@@ -30104,6 +30191,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.las
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_supertypes	array
@@ -30682,6 +30771,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_supertypes	array
@@ -31248,6 +31339,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_supertypes	array
@@ -32201,6 +32294,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -32764,6 +32859,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_supertypes	array
@@ -33313,6 +33410,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -34631,6 +34730,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.l
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_supertypes	array
@@ -35175,6 +35276,8 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -36047,6 +36150,8 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_all_
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_supertypes	array
@@ -36608,6 +36713,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_supertypes	array
@@ -37930,6 +38037,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_supertypes	array
@@ -38508,6 +38617,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_supertypes	array
@@ -39052,6 +39163,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -39616,6 +39729,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -40245,6 +40360,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_supertypes	array
@@ -41204,6 +41321,8 @@ pendingChoices[].scryThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].scryThen.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].scryThen.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].scryThen.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].scryThen.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].scryThen.asked.trigger.Event.last_known_supertypes	array
@@ -41795,6 +41914,8 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_all_c
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_keywords	array
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_supertypes	array
@@ -43055,6 +43176,8 @@ pendingChoices[].targetWalk.frame.trigger.Event.last_known_all_creature_types	bo
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors	array
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors[]	string
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.trigger.Event.last_known_keywords	array
+pendingChoices[].targetWalk.frame.trigger.Event.last_known_keywords[]	string
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_subtypes	array
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_supertypes	array
@@ -43713,6 +43836,8 @@ pendingChoices[].triggerFrame.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors	array
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors[]	string
 pendingChoices[].triggerFrame.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].triggerFrame.trigger.Event.last_known_keywords	array
+pendingChoices[].triggerFrame.trigger.Event.last_known_keywords[]	string
 pendingChoices[].triggerFrame.trigger.Event.last_known_subtypes	array
 pendingChoices[].triggerFrame.trigger.Event.last_known_subtypes[]	string
 pendingChoices[].triggerFrame.trigger.Event.last_known_supertypes	array
@@ -44029,6 +44154,8 @@ pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
 pendingTriggers[].trigger.Event.last_known_colors	array
 pendingTriggers[].trigger.Event.last_known_colors[]	string
 pendingTriggers[].trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.last_known_keywords	array
+pendingTriggers[].trigger.Event.last_known_keywords[]	string
 pendingTriggers[].trigger.Event.last_known_subtypes	array
 pendingTriggers[].trigger.Event.last_known_subtypes[]	string
 pendingTriggers[].trigger.Event.last_known_supertypes	array
@@ -44612,6 +44739,8 @@ promptRuns[].asked.trigger.Event.last_known_all_creature_types	bool
 promptRuns[].asked.trigger.Event.last_known_colors	array
 promptRuns[].asked.trigger.Event.last_known_colors[]	string
 promptRuns[].asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+promptRuns[].asked.trigger.Event.last_known_keywords	array
+promptRuns[].asked.trigger.Event.last_known_keywords[]	string
 promptRuns[].asked.trigger.Event.last_known_subtypes	array
 promptRuns[].asked.trigger.Event.last_known_subtypes[]	string
 promptRuns[].asked.trigger.Event.last_known_supertypes	array
@@ -45328,6 +45457,8 @@ resolving.item.trigger.Event.last_known_all_creature_types	bool
 resolving.item.trigger.Event.last_known_colors	array
 resolving.item.trigger.Event.last_known_colors[]	string
 resolving.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+resolving.item.trigger.Event.last_known_keywords	array
+resolving.item.trigger.Event.last_known_keywords[]	string
 resolving.item.trigger.Event.last_known_subtypes	array
 resolving.item.trigger.Event.last_known_subtypes[]	string
 resolving.item.trigger.Event.last_known_supertypes	array
@@ -50192,6 +50323,8 @@ stackMeta[].trigger.Event.last_known_all_creature_types	bool
 stackMeta[].trigger.Event.last_known_colors	array
 stackMeta[].trigger.Event.last_known_colors[]	string
 stackMeta[].trigger.Event.last_known_controller	custom(uuid.UUID)
+stackMeta[].trigger.Event.last_known_keywords	array
+stackMeta[].trigger.Event.last_known_keywords[]	string
 stackMeta[].trigger.Event.last_known_subtypes	array
 stackMeta[].trigger.Event.last_known_subtypes[]	string
 stackMeta[].trigger.Event.last_known_supertypes	array

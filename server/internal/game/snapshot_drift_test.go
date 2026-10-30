@@ -1190,6 +1190,7 @@ var pendingChoiceFields = plan(
 	// it would render a question nobody can answer.
 	"AcceptLabel", carried, "",
 	"LifeCost", carried, "",
+	"PoisonCost", carried, "",
 	"DeclineEndsLoop", carried, "",
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",

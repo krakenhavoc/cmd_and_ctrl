@@ -887,7 +887,7 @@ func (e *enumerator) choiceMoves() bool {
 						Label:  reason + ": " + verb,
 						Source: c.Source,
 						Params: mustJSON(p),
-						Cost:   moveCost(c.LifeCost, 0),
+						Cost:   confirmAcceptCost(c),
 					})
 					continue
 				}

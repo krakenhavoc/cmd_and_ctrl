@@ -2141,6 +2141,10 @@ export interface PendingChoiceView {
   life_cost?: number;
   // Computed affordability of the mandatory life, including life locks.
   life_cost_unpayable?: boolean;
+  // #4613: populated for kind "confirm" — the poison counters the ACCEPT
+  // branch gives the chooser (a ward of "Get five poison counters"). Absent
+  // when it gives none. Always payable; the label already says it.
+  poison_cost?: number;
   // #2040: a "confirm" whose accept would continue a loop the table is
   // already in (Channel Harm against Channel Harm). A hint for bots;
   // both answers stay legal and the client need not show it.

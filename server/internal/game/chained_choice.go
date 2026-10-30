@@ -196,6 +196,12 @@ type ConfirmPrompt struct {
 	// for the bot's pricing. The branch itself still performs (and
 	// re-checks) the payment — this is a declaration, not a deduction.
 	LifeCost int
+	// PoisonCost is the poison counters the accept branch gives the chooser,
+	// declared the way LifeCost declares life (#4613, "Ward—Get five poison
+	// counters"). The branch itself still places them; this is the wire's and
+	// the bot's price, and it is never refused for lack of a total, since a
+	// player can always get counters (the tenth one loses, CR 704.5c).
+	PoisonCost int
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040): accepting
 	// would continue a loop the table is already in.
 	DeclineEndsLoop bool

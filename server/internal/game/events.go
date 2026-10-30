@@ -2087,6 +2087,14 @@ type Event struct {
 	// See ADR 0027's 2026-09-28 amendment (#1689).
 	LastKnownColors []string `json:"last_known_colors,omitempty"`
 
+	// LastKnownKeywords is the same permanent's keyword abilities as it
+	// last existed on the battlefield (#4613, CR 603.10a): the post-layer
+	// ability tokens, so a keyword an effect gave it counts and one an
+	// effect took away does not. Read it through WasKeyword. Engine-internal,
+	// like LastKnownTypes. Additive within the snapshot schema: omitted when
+	// empty.
+	LastKnownKeywords []string `json:"last_known_keywords,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

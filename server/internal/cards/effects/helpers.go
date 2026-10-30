@@ -517,6 +517,21 @@ func leftAsColor(ev game.Event, c game.Card, color string) bool {
 	return c.HasColor(color)
 }
 
+// leftWithKeyword is leftAsType for a KEYWORD (#4613, CR 603.10a): whether
+// the permanent an EventLTB names had `keyword` ("deathtouch") as it last
+// existed on the battlefield — Event.LastKnownKeywords, the post-layer
+// abilities the exit read with the card still in play. A creature that had
+// deathtouch only through an effect (a Gift of the Viper, a lord) had it on
+// the battlefield and is a plain creature in the graveyard. c is the card as
+// it sits now, consulted only for an event that carries no last-known
+// information.
+func leftWithKeyword(ev game.Event, c game.Card, keyword string) bool {
+	if was, known := ev.WasKeyword(keyword); known {
+		return was
+	}
+	return game.HasKeyword(&c, keyword)
+}
+
 // diedWhileAttacking resolves the creature that just died from a dies
 // event when it was ATTACKING as it died — "whenever an attacking
 // creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".

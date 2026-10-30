@@ -442,6 +442,15 @@ type MoveCost struct {
 	// free. Always positive when present: the enumerator has already
 	// checked the library holds that many (CR 118.3).
 	LibraryExile int `json:"library_exile,omitempty"`
+
+	// Poison is the poison counters the move gives the seat (#4613,
+	// CR 122.1f): a ward payment, "Ward—Get five poison counters". The
+	// params name no amount, so without it a policy would read the accept
+	// branch as free and pay it at nine poison. Always positive when
+	// present. Always payable: the enumerator gates nothing on it, and a
+	// payment that would reach ten loses the game (CR 704.5c), which a
+	// policy prices as such.
+	Poison int `json:"poison,omitempty"`
 }
 
 // withLibraryExile adds an "Exile the top N cards of your library"
@@ -538,6 +547,21 @@ type CounterPrice struct {
 	Counter string `json:"counter"`
 	// N is how many, always positive.
 	N int `json:"n"`
+}
+
+// confirmAcceptCost is what a confirm's accept branch charges: the life it
+// declares (#547) and the poison counters it gives (#4613). Nil when it
+// charges neither.
+func confirmAcceptCost(c *game.PendingChoice) *MoveCost {
+	cost := moveCost(c.LifeCost, 0)
+	if c.PoisonCost <= 0 {
+		return cost
+	}
+	if cost == nil {
+		cost = &MoveCost{}
+	}
+	cost.Poison = c.PoisonCost
+	return cost
 }
 
 // moveCost returns the MoveCost for a set of components, or nil when
