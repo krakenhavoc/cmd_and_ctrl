@@ -294,6 +294,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValue != nil && *gr.MaxManaValue < 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative MaxManaValue", name, o.Key))
 		}
+		if len(gr.SpellsAnyOf) > 0 && gr.SpellsText == "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a SpellsAnyOf and no SpellsText — the ability row words it", name, o.Key))
+		}
 		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}

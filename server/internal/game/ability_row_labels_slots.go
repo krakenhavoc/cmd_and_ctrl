@@ -118,6 +118,9 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	case gr.Spells.NonLandPermanentOnly:
 		subject = "permanent spells"
 	}
+	if gr.SpellsText != "" {
+		subject = gr.SpellsText
+	}
 	o := gr.Offer
 	if gr.PricedAtManaCost || o.Sacrifice != nil {
 		return "Each " + strings.TrimSuffix(subject, "s") + " you cast can be cast by sacrificing a creature, reducing its cost by that creature's mana value."
