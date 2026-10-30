@@ -304,6 +304,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// The Coming of Galactus's Galactus: flying, trample, destroys a land
 	// when he attacks.
 	printedGalactusToken,
+
+	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
+	printedVibraniumToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

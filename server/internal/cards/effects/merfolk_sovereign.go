@@ -49,22 +49,7 @@ func init() {
 			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target Merfolk creature", HasSubtype("Merfolk")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				// CR 608.2b: a target that left or stopped being a
-				// Merfolk in response is skipped, not an error.
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					return RestrictUntilEOT{
-						Target:       t.ID,
-						Restrictions: game.CantBeBlocked,
-						Label:        "Merfolk Sovereign — can't be blocked",
-					}.Apply(ctx)
-				}
-				return nil
-			},
+			Effect:  msc17CantBeBlockedTheTarget("Merfolk Sovereign — can't be blocked"),
 		}},
 	})
 }

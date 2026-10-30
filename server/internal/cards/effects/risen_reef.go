@@ -66,12 +66,16 @@ func risenReefLook(g *game.Game, item *game.StackItem) error {
 // risenReefRestToHand is the rider as a keyed tail (#4253 slice 6): the
 // card that was not put onto the battlefield goes into your hand. An
 // on-disk key.
-var risenReefRestToHand = PutFromLibraryTail("risen-reef/rest-into-hand", func(ctx *Context, res PutFromLibraryResult) error {
+var risenReefRestToHand = PutFromLibraryTail("risen-reef/rest-into-hand", putRestIntoHand)
+
+// putRestIntoHand is "put the rest into your hand" for a look-at-the-top
+// pick (Risen Reef, Genesis Ultimatum): every card still in the library
+// goes to its owner's hand. A token tucked into the library earlier can't
+// move to a hand (CR 111.8); it stays where it is.
+func putRestIntoHand(ctx *Context, res PutFromLibraryResult) error {
 	g := ctx.Game
 	for _, id := range res.Rest {
 		if c, ok := g.LookupCardForEffect(id); ok && IsToken(c) {
-			// A token tucked into the library earlier can't
-			// move to a hand (CR 111.8); it stays on top.
 			continue
 		}
 		if err := g.BounceToHandForEffect(id); err != nil {
@@ -79,4 +83,4 @@ var risenReefRestToHand = PutFromLibraryTail("risen-reef/rest-into-hand", func(c
 		}
 	}
 	return nil
-})
+}
