@@ -298,4 +298,9 @@ var tokenTable = map[string]game.Card{
 	// #2038: Hostility's and Worldspine Wurm's tokens.
 	"3/1 red Elemental Shaman with haste": {Name: "Elemental Shaman", TypeLine: "Token Creature — Elemental Shaman", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	"5/5 green Wurm with trample":         {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}},
+
+	// #4457: Teenage Mutant Ninja Turtles' Robot, Mutant and Dinosaur Soldier.
+	"1/1 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1},
+	"2/2 red Mutant":               {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 2, Toughness: 2, Colors: []string{"R"}},
+	"2/2 white Dinosaur Soldier":   {Name: "Dinosaur Soldier", TypeLine: "Token Creature — Dinosaur Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}},
 }

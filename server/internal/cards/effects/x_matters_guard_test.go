@@ -73,6 +73,7 @@ var xMattersAllowlist = map[string]string{
 	"the_scarlet_witch.go The Scarlet Witch":                      "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X she was cast for",
 	"the_goose_mother.go The Goose Mother":                        "2/2 flying body and an attack trigger that never reads X",
 	"thryx_the_sudden_storm.go Thryx, the Sudden Storm":           "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X Thryx was cast for",
+	"triceraton_commander.go Triceraton Commander":                "2/2 flying body and an attack trigger that never reads X",
 	"tyvars_stand.go Tyvar's Stand":                               "the hexproof and indestructible half never reads X: at X=0 the target gets +0/+0 and still gains both until end of turn",
 	"venarian_glimmer.go Venarian Glimmer":                        "the reveal never reads X: at X=0 the whole hand is still revealed to the table, and a nonland card with mana value 0 can still be chosen",
 	"way_of_the_mind_sculptor.go Way of the Mind Sculptor":        "no X of its own: its trigger reads the X ANOTHER loyalty ability announced, to count the counters a −X removed (#1944)",
