@@ -9,8 +9,9 @@ import "github.com/google/uuid"
 // commanderZoneReplacement (CR 903.9), refactored from S13.1's inline
 // applyCommanderZoneReplacementLocked, regenerationShieldReplacement
 // (CR 701.19), protectionPreventsDamageReplacement (CR 702.16e),
-// lifeTotalCantChangeReplacement (CR 119.7) and the two shield-counter
-// effects (CR 122.1c, shield_counters.go). Future built-ins
+// lifeTotalCantChangeReplacement (CR 119.7), the two shield-counter
+// effects (CR 122.1c, shield_counters.go) and the finality counter's
+// (CR 122.1h, finality_counters.go). Future built-ins
 // (e.g. the "if a card would be exiled by an effect that replaces it
 // with something else" meta-replacement) would live here too.
 //

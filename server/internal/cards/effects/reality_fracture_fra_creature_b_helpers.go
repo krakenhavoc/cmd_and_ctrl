@@ -178,9 +178,10 @@ func rfCreatureBFblthpImpossiblyLostResolve(g *game.Game, item *game.StackItem) 
 }
 
 // rfCreatureBFinalityCounter is the counter kind of a finality counter
-// (CR 122.1): a creature with one that would die is exiled instead. The
-// replacement lives on Grim Repriser, the only card that makes one.
-const rfCreatureBFinalityCounter = "finality"
+// (CR 122.1h). The "exile it instead" half is the engine's own
+// replacement (game.CounterFinality, finality_counters.go), so these
+// cards only have to put the counter on.
+const rfCreatureBFinalityCounter = game.CounterFinality
 
 // rfCreatureBAnOpponentWasDealtNoncombatDamage is Grim Repriser's
 // activation condition: this turn some opponent of `controller` was

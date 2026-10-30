@@ -1321,6 +1321,8 @@ func NewGame() *Game {
 		// names a built-in by its index here.
 		shieldCounterDestroyReplacement,
 		shieldCounterPreventsDamageReplacement,
+		// #4575, CR 122.1h. Appended, never inserted, for the same reason.
+		finalityCounterReplacement,
 	)
 	return g
 }

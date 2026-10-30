@@ -1,0 +1,6 @@
+---
+title: "Finality counters as an engine rule"
+date: 2026-10-29
+issues: [4575]
+---
+**Finality counters as an engine rule** (#4575, [ADR 0013 amendment 2026-10-29 (#4575)](decisions/0013-replacement-effects.md), CR 122.1h) — "If this permanent would be put into a graveyard from the battlefield, exile it instead" was a self-replacement on each of the two cards that print a finality counter, so a counter put on a permanent by any other card did nothing. It is now an engine-owned built-in (`game/finality_counters.go`, `game.CounterFinality`), registered once beside the shield counter's two effects. It applies to any permanent with the counter, however it is put into a graveyard, and the permanent's controller orders it against Rest in Peace, Liesa, a regeneration shield, umbra armor or a Darksteel Colossus (CR 616.1); after another replacement has moved the event it no longer applies (CR 616.1f). `ZoneEntryOptions.EntersWithCounters` puts the counter on as a card enters, through the put-attacking door (`putAttackingWithFinality`). **Cards:** Grim Reaper, Lethal Legionnaire (Full). Grim Repriser and Proctor of Potential move onto the rule and keep only their "enters with a finality counter from a graveyard" half.
