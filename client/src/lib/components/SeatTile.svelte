@@ -19,10 +19,16 @@
   //
   // The × (remove a seat, leave your own) stays on the tile with its
   // confirm, which the page owns.
+  //
+  // While the table's ready-check moment plays (ADR 0212 §2, `moment`),
+  // a ready tile's check pops in seat order and the tile whose deck just
+  // landed gets one brief ring. The page sets `moment` only under full
+  // motion; a still moment draws nothing here.
   import { avatarURL, type SeatInfo } from "../api";
   import { seatColor } from "../colors";
   import type { DeckArt } from "../deckGrid";
   import { L } from "../labels";
+  import { readyDelayMs } from "../readyMoment";
   import { seatName, type SeatTileText } from "../tablesPage";
   import AgentChip from "./AgentChip.svelte";
   import CommanderArt from "./decks/CommanderArt.svelte";
@@ -45,6 +51,8 @@
     you?: boolean;
     /** A bot seat's chip: its tier, and "(own key)". */
     botChip?: string;
+    /** The ready-check moment is playing: `landed` is the seat whose deck came in last. */
+    moment?: { landed: boolean };
     /** Your seat: the tile opens the deck picker under the seats. */
     pick?: { expanded: boolean; controls: string; onclick: () => void };
     /** The ×, when this person may remove the seat or leave it. */
@@ -64,6 +72,7 @@
     preview = false,
     you = false,
     botChip = "",
+    moment,
     pick,
     remove,
     oninvite,
@@ -88,7 +97,10 @@
   class:bot={p?.is_bot === true}
   class:empty={you && p !== null && !ready && !preview}
   class:has-x={remove !== undefined}
+  class:moment={moment !== undefined}
+  class:landed={moment?.landed === true}
   style:--seat={seatColor(seat)}
+  style:--wave="{readyDelayMs(seat)}ms"
   aria-label={L.seatTile(seat + 1, p ? seatName(p) : "open")}
 >
   {#if p && pick}
@@ -533,6 +545,60 @@
     padding: 0 9px;
     gap: 5px;
     font-size: 12px;
+  }
+
+  /* The ready-check moment (ADR 0212 §2): the check pops in seat order and
+     the tile whose deck landed last gets one brief ring in mint, after its
+     own check. The ring is outside the tile (a tile's own box-shadow is not
+     clipped by its overflow); the keyframes repeat the resting shadow so
+     the tile keeps its edge. The last frame is the resting look. */
+  .tile.moment .ck {
+    animation: ck-land 480ms var(--ease) both;
+    animation-delay: var(--wave, 0ms);
+  }
+  .tile.landed {
+    animation: tile-ring 1500ms var(--ease) both;
+    animation-delay: var(--wave, 0ms);
+  }
+  @keyframes ck-land {
+    from {
+      transform: scale(0.4);
+      opacity: 0.2;
+    }
+    60% {
+      transform: scale(1.18);
+      opacity: 1;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes tile-ring {
+    0% {
+      box-shadow:
+        inset 0 3px 0 var(--seat),
+        inset 0 0 0 1px color-mix(in srgb, var(--seat) 30%, transparent),
+        0 0 0 0 color-mix(in srgb, var(--mint) 0%, transparent);
+    }
+    25% {
+      box-shadow:
+        inset 0 3px 0 var(--seat),
+        inset 0 0 0 1px color-mix(in srgb, var(--seat) 30%, transparent),
+        0 0 0 3px color-mix(in srgb, var(--mint) 60%, transparent);
+    }
+    100% {
+      box-shadow:
+        inset 0 3px 0 var(--seat),
+        inset 0 0 0 1px color-mix(in srgb, var(--seat) 30%, transparent),
+        0 0 0 6px color-mix(in srgb, var(--mint) 0%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile.moment .ck,
+    .tile.landed {
+      animation: none;
+    }
   }
 
   .seat-x {

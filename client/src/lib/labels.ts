@@ -1221,6 +1221,21 @@ export const LABEL_SPECS = {
     owners: ["routes/Lobby.svelte"],
     doc: "a lobby table's readiness line, in its footer: how many of the seated players have a deck in (ADR 0212 §2)",
   }),
+  everyDeckIn: dynamicLabel({
+    stem: "Every deck is in",
+    match: "prefix",
+    shape:
+      "Every deck is in[ at <table>]. You can start the game. (or: Waiting for <host> to start.)",
+    make: (startable: boolean, host: string, table?: string) =>
+      `Every deck is in${table ? ` at ${table}` : ""}. ${
+        startable ? "You can start the game." : `Waiting for ${host} to start.`
+      }`,
+    example: [true, "Luke"],
+    kind: "text",
+    role: "status",
+    owners: ["lib/readyMoment.ts"],
+    doc: "the lobby page's polite live region, said once when this client sees a lobby table go from not-all-ready to two or more seated with every deck in (ADR 0212 §2, lib/readyMoment.ts); the table's name follows only when you take part in more than one lobby table",
+  }),
   chooseYourDeck: label({
     name: "Choose your deck",
     kind: "text",
