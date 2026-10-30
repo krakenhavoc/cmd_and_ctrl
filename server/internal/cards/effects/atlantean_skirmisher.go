@@ -27,12 +27,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, ThisAttacked,
 				"Atlantean Skirmisher — it connives",
-				Do(Instruction(atlanteanSkirmisherConnives))),
+				Do(Instruction(sourceConnives))),
 		},
 	})
 }
 
-// atlanteanSkirmisherConnives makes the attacking Skirmisher connive.
-func atlanteanSkirmisherConnives(ctx *Context) error {
+// sourceConnives makes the ability's source connive (CR 701.50): shared
+// by A.I.M. Scientists' enter trigger and the Skirmisher's attack trigger.
+func sourceConnives(ctx *Context) error {
 	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{ctx.Item.SourceCardID}}.Apply(ctx)
 }
