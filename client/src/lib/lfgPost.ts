@@ -42,10 +42,10 @@ export type LFGHeader =
   | { kind: "post"; disabled: boolean; title: string }
   | { kind: "posted"; label: string; title: string };
 
-// lfgHeader is the table card's #lfg control, beside Copy invite, for a
-// host or admin of a table waiting to start; null when there is none.
-// Unposted, it is a button that posts. Posted, it is a status, and the
-// ⋯ menu's "Withdraw from #lfg" takes the post down.
+// lfgHeader is the table card's #lfg item in its Invite menu (ADR 0212
+// §4), for a host or admin of a table waiting to start; null when there
+// is none. Unposted, it posts. Posted, its state is the line under
+// "Withdraw from #looking-for-game", which takes the post down.
 export function lfgHeader(g: GameMeta): LFGHeader | null {
   if (g.state !== "lobby" || g.archived_at) return null;
   if (!g.lfg) {

@@ -8,6 +8,7 @@
   import DeckRadioList from "./DeckRadioList.svelte";
   import SideboardList from "./decks/SideboardList.svelte";
   import Icon from "./Icon.svelte";
+  import { L } from "../labels";
 
   // YourDecksPicker is the deck-library half of the deck panel (ADR
   // 0051 decision 7, S34 sub-PR 5): pick a deck you've pasted before
@@ -160,7 +161,7 @@
         }}>Sideboard</button
       >
       <button class="primary" onclick={seat} disabled={busy || !selected}>
-        {busy ? "Seating…" : "Sit down with this deck"}
+        {busy ? "Seating…" : L.sitDownWithThisDeck}
       </button>
     </div>
 

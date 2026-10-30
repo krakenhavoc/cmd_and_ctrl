@@ -431,7 +431,7 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     location.hash = "#/lobby";
     const { container } = render(Lobby as never, {} as never);
     await settle();
-    click(buttonNamed(container, /^\s*Open\s*$/)!);
+    click(buttonNamed(container, /^\s*Open table\s*$/)!);
     await settle();
     expect(currentSession()?.gameID).toBe(G4);
     expect(location.hash).toBe("#/lobby");

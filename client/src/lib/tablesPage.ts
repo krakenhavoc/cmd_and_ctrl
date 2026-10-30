@@ -1,11 +1,14 @@
-import type { GameMeta, SeatInfo } from "./api";
+import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
+import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
+import { orderedColors } from "./prebuiltDecks";
 
 // tablesPage.ts is the pure half of the Tables page (ADR 0158 §1): which
 // tables are Now, the History rows and their filters, the status chip,
-// the card's line of context and the seat's second line. No DOM and no
-// fetch, so all of it is unit-tested (tablesPage.test.ts); Lobby.svelte
-// only renders the answers.
+// the card's line of context and the seat's second line, and for a table
+// in the lobby its seat tiles, readiness line and primary (ADR 0212). No
+// DOM and no fetch, so all of it is unit-tested (tablesPage.test.ts);
+// Lobby.svelte only renders the answers.
 
 // HISTORY_HASH opens Tables scrolled to History. #/my-games redirects
 // here (§1 item 5), so a bookmark to the old page still lands.
@@ -98,6 +101,204 @@ export function seatLine(
   }
   const power = !p.is_bot && p.deck_uploaded ? (p.deck_power ?? 0) : 0;
   return { text: [deck, life].filter(Boolean).join(" · "), pending: false, power };
+}
+
+// --- A table in the lobby: a character select (ADR 0212) -------------
+
+// A table seats four; there is no table-size setting (ADR 0212 owner
+// decision 5), so a lobby card always draws four tiles.
+export const TABLE_SEATS = 4;
+
+// lobbySlots is a lobby table's four seats by seat number, null where a
+// seat is open. The lobby renumbers seats when one leaves, so the open
+// ones are the last; a seat number out of range is kept, at the end,
+// rather than dropped.
+export function lobbySlots(g: GameMeta): (SeatInfo | null)[] {
+  const slots: (SeatInfo | null)[] = Array.from({ length: TABLE_SEATS }, () => null);
+  const extra: SeatInfo[] = [];
+  for (const p of [...g.players].sort((a, b) => a.seat - b.seat)) {
+    if (p.seat >= 0 && p.seat < TABLE_SEATS && slots[p.seat] === null) slots[p.seat] = p;
+    else extra.push(p);
+  }
+  return [...slots, ...extra];
+}
+
+// seatReady: a seat with its deck in, which is what Start waits for
+// (owner decision 4: no Ready toggle). A bot arrives with its deck.
+export function seatReady(p: SeatInfo): boolean {
+  return p.is_bot === true || p.deck_uploaded;
+}
+
+// SeatTileText is what a taken seat's tile says under its name (§1):
+// the commander, a quieter second line only when it adds something,
+// the colour identity as WUBRG letters, and whether it is ready.
+export interface SeatTileText {
+  what: string;
+  second: string;
+  colors: string[];
+  ready: boolean;
+}
+
+// seatTileText reads a seat's tile. Until the seats carry their
+// commanders (phase B2), a person's tile names the deck once; a bot's
+// names its pre-built deck's commander, then "Pre-built · <deck>", with
+// the deck's colours from GET /bot/options.
+export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): SeatTileText {
+  if (p.is_bot) {
+    const deck = botDeck?.name || p.deck_name || "";
+    return {
+      what: botDeck?.commander || deck || "Pre-built deck",
+      second: deck ? `Pre-built · ${deck}` : "",
+      colors: orderedColors(botDeck?.colors),
+      ready: true,
+    };
+  }
+  if (!p.deck_uploaded) return { what: "No deck yet", second: "", colors: [], ready: false };
+  return { what: p.deck_name || "Deck ready", second: "", colors: [], ready: true };
+}
+
+// botChipText is a bot seat's chip: its tier's name, and "(own key)"
+// when it plays on the model key of the player who added it (ADR 0182).
+export function botChipText(p: SeatInfo, tiers: readonly BotTierInfo[]): string {
+  const tier = tiers.find((t) => t.tier === p.bot_tier)?.label || p.bot_tier || "Bot";
+  return p.bot_own_key ? `${tier} (own key)` : tier;
+}
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// A readiness segment per seat, in seat order (§2): filled when ready,
+// outlined while choosing, dashed when open.
+export type SegmentState = "ready" | "choosing" | "open";
+
+export interface Readiness {
+  ready: number;
+  // Seated players, bots included: open seats do not block Start, so
+  // the line counts against these, not four.
+  seated: number;
+  segments: { seat: number; state: SegmentState }[];
+  // The sentence's two halves: the open seats, then what the table is
+  // waiting on. The first one present starts with a capital.
+  lead: string;
+  status: string;
+}
+
+// readiness is a lobby table's readiness line (§2): "READY 2/3", the
+// segments, and "1 seat open · waiting on your deck". `bots` says
+// whether this person can add a bot, for the advice at fewer than two.
+export function readiness(g: GameMeta, me: SeatInfo | null, opts: { bots: boolean }): Readiness {
+  const slots = lobbySlots(g);
+  const segments = slots.map((p, seat) => ({
+    seat: p?.seat ?? seat,
+    state: (p === null ? "open" : seatReady(p) ? "ready" : "choosing") as SegmentState,
+  }));
+  const seated = g.players.length;
+  const ready = g.players.filter(seatReady).length;
+  const open = Math.max(0, TABLE_SEATS - seated);
+  const choosing = g.players.filter((p) => !seatReady(p));
+  let status: string;
+  if (me && !seatReady(me)) status = "waiting on your deck";
+  else if (choosing.length === 1) status = `waiting on ${seatName(choosing[0])}'s deck`;
+  else if (choosing.length > 1) status = `waiting on ${choosing.length} decks`;
+  else if (seated < 2) status = opts.bots ? "invite someone or add a bot" : "invite someone";
+  else status = "every deck is in";
+  const lead = open > 0 ? plural(open, "seat") + " open" : "";
+  return { ready, seated, segments, lead, status: lead ? status : capitalise(status) };
+}
+
+// What the card's one primary does (§2). The page wires each kind to its
+// action: open (the board, or reclaiming a seat held elsewhere), take a
+// seat, choose a deck, start, or watch; a wait is disabled.
+export type LobbyPrimaryKind = "open" | "take" | "choose" | "wait" | "start" | "watch";
+
+export interface LobbyPrimary {
+  kind: LobbyPrimaryKind;
+  label: string;
+  disabled: boolean;
+  // The tooltip: what it does, or why it is disabled (DESIGN.md §6).
+  title: string;
+}
+
+export interface LobbyViewer {
+  // The seat this session holds at the table, or null.
+  me: SeatInfo | null;
+  // This person holds a seat here through another session.
+  heldElsewhere: boolean;
+  // The creator, not seated, holding the invite to sit down with.
+  takesSeat: boolean;
+  // This person may start the table: a seated host or creator, or the
+  // admin, as the server's gate.
+  mayStart: boolean;
+  // A spectator session of this table (owner decision 6).
+  spectator: boolean;
+}
+
+// lobbyPrimary picks a lobby table's one primary: the first rule of
+// ADR 0212 §2 that applies wins. Rule 4, "Sit down with this deck" on
+// the card's footer, comes with the picker grid (A2); until then the
+// deck panel under the seats has its own buttons, and the primary stays
+// Choose your deck while it is open.
+export function lobbyPrimary(g: GameMeta, v: LobbyViewer): LobbyPrimary {
+  const open = (title: string): LobbyPrimary => ({
+    kind: "open",
+    label: L.openTable,
+    disabled: false,
+    title,
+  });
+  const wait = (who: string, title: string): LobbyPrimary => ({
+    kind: "wait",
+    label: L.waitingFor(who),
+    disabled: true,
+    title,
+  });
+  const choosing = g.players.filter((p) => !seatReady(p));
+  const start = (): LobbyPrimary => {
+    const n = g.players.length;
+    return {
+      kind: "start",
+      label: L.startGame(n),
+      disabled: false,
+      title:
+        n < TABLE_SEATS
+          ? `start the game with ${n} players; the open ${n === TABLE_SEATS - 1 ? "seat closes" : "seats close"}`
+          : "start the game",
+    };
+  };
+  if (v.heldElsewhere) return open("open your seat at this table");
+  if (v.takesSeat) {
+    return { kind: "take", label: "Take a seat", disabled: false, title: "sit down at your table" };
+  }
+  if (v.me) {
+    if (!seatReady(v.me)) {
+      return {
+        kind: "choose",
+        label: L.chooseYourDeck,
+        disabled: false,
+        title: "pick a deck for your seat",
+      };
+    }
+    if (choosing.length > 0) {
+      return wait(
+        plural(choosing.length, "player"),
+        choosing.length === 1
+          ? `waiting on ${seatName(choosing[0])}'s deck`
+          : `waiting on ${choosing.length} decks`,
+      );
+    }
+    if (g.players.length < 2) {
+      return wait("players", "a game needs two players: invite someone or add a bot");
+    }
+    if (v.mayStart) return start();
+    const host = g.players.find((p) => p.is_host);
+    return wait(
+      host ? `${seatName(host)} to start` : "the host to start",
+      "only the table's host can start the game",
+    );
+  }
+  if (v.mayStart && choosing.length === 0 && g.players.length >= 2) return start();
+  if (v.spectator) {
+    return { kind: "watch", label: "Watch", disabled: false, title: "watch this table" };
+  }
+  return open("open this table");
 }
 
 // --- History (§1 item 3) ---------------------------------------------

@@ -8,6 +8,7 @@
   import { prebuiltRow } from "../deckPicker";
   import DeckRadioList from "./DeckRadioList.svelte";
   import Icon from "./Icon.svelte";
+  import { L } from "../labels";
   import ShopLinks from "./ShopLinks.svelte";
 
   // PrebuiltDeckPicker is the "I just want to play" path: decks whose
@@ -206,7 +207,7 @@
           <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
         {/if}
         <button class="primary" onclick={install} disabled={busy || !selected}>
-          {busy ? "Seating…" : "Sit down with this deck"}
+          {busy ? "Seating…" : L.sitDownWithThisDeck}
         </button>
       </div>
 

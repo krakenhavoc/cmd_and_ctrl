@@ -160,15 +160,22 @@ describe("the lobby's create flow for a signed-in player", () => {
 
     expect(posted).toContainEqual({ url: "/games", body: { name: "Friday", setup: "last" } });
     expect(container.textContent).toMatch(/Last setup: table settings applied, 1 bot added\./);
-    // The creator's own table: links to share, a seat to take, and the
-    // tablemate picker already open, with the last table's people first.
-    expect(container.textContent).toMatch(/Copy invite/);
+    // The creator's own table: a seat to take as its primary (ADR 0212
+    // §2), the links in its Invite menu, and the tablemate picker already
+    // open, with the last table's people first.
     // The form closed on success.
     expect(container.querySelector("form.new-table")).toBeNull();
-    // #3499: the card's toolbar, no ⋯ menu.
-    expect(container.querySelector('[aria-label="tools for Friday"]')?.textContent).toMatch(
-      /Take a seat/,
-    );
+    const foot = container.querySelector<HTMLElement>("li.tcard .tfoot")!;
+    expect(foot.querySelector(".btn.primary")?.textContent?.trim()).toBe("Take a seat");
+    const invite = [...foot.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent?.trim() === "Invite",
+    )!;
+    click(invite);
+    await settle();
+    const menu = document.querySelector('[role="menu"][aria-label="invite to Friday"]');
+    expect(menu?.textContent).toMatch(/Copy invite/);
+    menu!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    flushSync();
     expect(container.querySelector(".invite-picker")).not.toBeNull();
     const mates = [...container.querySelectorAll(".mates li")].map((li) => li.textContent ?? "");
     expect(mates).toHaveLength(2);
@@ -201,7 +208,7 @@ describe("the lobby's create flow for a signed-in player", () => {
     expect(container.querySelector("form.new-table")).not.toBeNull();
     expect(container.querySelector(".use-setup")).toBeNull();
 
-    // Take a seat is on the card's toolbar (#3499).
+    // Take a seat is the card's primary (ADR 0212 §2).
     const seat = [...container.querySelectorAll("button")].find((b) =>
       /Take a seat/.test(b.textContent ?? ""),
     );

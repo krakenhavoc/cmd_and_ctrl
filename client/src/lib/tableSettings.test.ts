@@ -11,16 +11,17 @@ import {
   undoBlockedReason,
 } from "./tableSettings";
 
-// #3499: the table card's rules line names only what differs.
+// ADR 0212 §5: the table card's settings summary always names the
+// starting life and the undos, then what else differs.
 describe("settingsSummary", () => {
-  it("says Standard rules for the defaults", () => {
-    expect(settingsSummary(DEFAULT_TABLE_SETTINGS)).toBe("Standard rules");
+  it("says standard rules after life and undos for the defaults", () => {
+    expect(settingsSummary(DEFAULT_TABLE_SETTINGS)).toBe("40 life · 1 undo · standard rules");
     expect(settingsSummary({ ...DEFAULT_TABLE_SETTINGS, free_mulligans: undefined })).toBe(
-      "Standard rules",
+      "40 life · 1 undo · standard rules",
     );
   });
 
-  it("lists each change in a fixed order", () => {
+  it("always prints the first two parts, then each other change in a fixed order", () => {
     expect(
       settingsSummary({
         ...DEFAULT_TABLE_SETTINGS,
@@ -30,16 +31,22 @@ describe("settingsSummary", () => {
         bot_pace: "slow",
       }),
     ).toBe("30 life · no undos · slow pace · spawning on");
+    expect(settingsSummary({ ...DEFAULT_TABLE_SETTINGS, starting_life: 20 })).toBe(
+      "20 life · 1 undo · standard rules",
+    );
   });
 
   it("words the undo budget and mulligans", () => {
     const s = DEFAULT_TABLE_SETTINGS;
-    expect(settingsSummary({ ...s, undo_limit: UNDO_UNLIMITED })).toBe("unlimited undos");
-    expect(settingsSummary({ ...s, undo_limit: 3 })).toBe("3 undos a turn");
-    expect(settingsSummary({ ...s, undo_scope: "host_any" })).toBe("host can undo anyone");
-    expect(settingsSummary({ ...s, free_mulligans: 1 })).toBe("1 free mulligan");
-    expect(settingsSummary({ ...s, free_mulligans: -1 })).toBe("every mulligan free");
-    expect(settingsSummary({ ...s, commander_damage: 15 })).toBe("15 commander damage");
+    const rest = (t: string) => `40 life · 1 undo · ${t}`;
+    expect(settingsSummary({ ...s, undo_limit: UNDO_UNLIMITED })).toBe(
+      "40 life · unlimited undos · standard rules",
+    );
+    expect(settingsSummary({ ...s, undo_limit: 3 })).toBe("40 life · 3 undos · standard rules");
+    expect(settingsSummary({ ...s, undo_scope: "host_any" })).toBe(rest("host can undo anyone"));
+    expect(settingsSummary({ ...s, free_mulligans: 1 })).toBe(rest("1 free mulligan"));
+    expect(settingsSummary({ ...s, free_mulligans: -1 })).toBe(rest("every mulligan free"));
+    expect(settingsSummary({ ...s, commander_damage: 15 })).toBe(rest("15 commander damage"));
   });
 });
 

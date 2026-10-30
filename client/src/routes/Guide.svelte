@@ -139,7 +139,8 @@
           <div class="body">
             <h3>Invite your pod</h3>
             <p>
-              Press <span class="ui">{L.copyInvite}</span> and send the link to your friends.
+              Press <span class="ui">{L.inviteButton}</span>, then
+              <span class="ui">{L.copyInvite}</span>, and send the link to your friends.
               {#if lfg}
                 Short of players? When you create the table, tick
                 <strong>Post to the CMD & CTRL Discord (#looking-for-game)</strong> and anyone on the
@@ -165,8 +166,11 @@
           <div class="body">
             <h3>Choose your deck</h3>
             <p>
-              Pick a pre-built deck or one of your saved decks, or paste an Archidekt link or a
-              plain-text decklist. From Moxfield, open the deck, choose <strong>Export</strong> then
+              Your seat opens the deck picker. Pick a pre-built deck or one of your saved decks, or
+              paste an Archidekt link or a plain-text decklist. From Moxfield, open the deck, choose <strong
+                >Export</strong
+              >
+              then
               <strong>Copy plain text</strong>, and paste that. Every deck is checked against the
               Commander rules: 100 cards, singleton, colour identity.
             </p>
@@ -176,7 +180,11 @@
           <span class="n hot" aria-hidden="true">5</span>
           <div class="body">
             <h3>Start</h3>
-            <p>Once every seat has a deck, the host presses <span class="ui">Start</span>.</p>
+            <p>
+              Once every seated player has a deck, the host presses <span class="ui"
+                >Start game</span
+              >.
+            </p>
           </div>
         </li>
       </ol>
