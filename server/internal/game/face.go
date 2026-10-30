@@ -345,11 +345,25 @@ func (c Card) CastableFaces() []int {
 // move the announce path refuses or a picker row with nothing behind
 // it — and until #992 the view did not walk faces at all, which is
 // the second of those.
+//
+// #4509: and a grant whose filter is about the SPELL narrows to the
+// faces it admits, judged face by face (CastPermission.spellFaces): the
+// Adventure half of a creature card under "instant or sorcery spells",
+// the creature half alone under "creature spells", a modal DFC's land
+// face under "play lands". ForSpell holds the announced face to the
+// same rule. Not for a HAND grant: a card in hand is castable without
+// one (CR 601.2), and a hand grant only prices its own claim (ForClaim),
+// so its filter narrows that claim's offer (validateCastPathLocked)
+// rather than the faces.
 func CastableFacesUnder(c Card, perm *CastPermission, player uuid.UUID) []int {
-	if faces, ok := perm.GrantsFaces(player); ok {
-		return faces
+	faces, ok := perm.GrantsFaces(player)
+	if !ok {
+		faces = c.CastableFaces()
 	}
-	return c.CastableFaces()
+	if perm != nil && perm.Player == player && perm.Zone != ZoneHand {
+		faces = perm.spellFaces(c, faces)
+	}
+	return faces
 }
 
 // faceCastable reports whether face i is a legal announce-time choice

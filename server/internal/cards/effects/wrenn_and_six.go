@@ -48,8 +48,10 @@ func init() {
 			Label: "Wrenn and Six emblem",
 			Text:  "Instant and sorcery cards in your graveyard have retrace.",
 			CastPermissions: []game.CastPermission{{
-				Zone:            game.ZoneGraveyard,
-				Filter:          game.PermissionFilter{InstantOrSorceryOnly: true},
+				Zone: game.ZoneGraveyard,
+				// "Instant and sorcery CARDS in your graveyard": the card in
+				// the graveyard, not the spell (CR 715.4, 712.8a; #4509).
+				Filter:          game.PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true},
 				AltCostKey:      game.AltCostKeyRetrace,
 				DiscardLandCard: true,
 				Label:           "Retrace — discard a land card (Wrenn and Six emblem)",

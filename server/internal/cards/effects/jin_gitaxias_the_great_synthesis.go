@@ -135,7 +135,7 @@ const jinGitaxiasOracleID = "b70c3adb-64ba-49ea-bcf6-6406a58cb453"
 // returned Jin-Gitaxias does not see the free spells cast.
 func greatSynthesisChapterThree(g *game.Game, item *game.StackItem) error {
 	offerFreeHandCastsOf(g, item.Controller, item.SourceCardID, "The Great Synthesis",
-		freeCastHandCandidates(g, item.Controller, nil),
+		freeCastHandCandidates(g, item.Controller, anySpell),
 		func(id uuid.UUID) bool { return greatSynthesisGrant(g, item, id) }, greatSynthesisFlicker)
 	return nil
 }

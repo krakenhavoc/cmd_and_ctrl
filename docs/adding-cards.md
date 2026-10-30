@@ -7055,6 +7055,24 @@ Siege's grant is `Faces: []int{1}` and CR 715.4's Adventure grant is
 `Faces: []int{0}`, which is why it is a list: zero cannot mean both
 "no opinion" and "the front face".
 
+**A filter is about the spell unless it says `CardInZone` (#4509).**
+"Cast an instant or sorcery SPELL", "creature SPELLS from the top of
+your library" and "play LANDS from your graveyard" judge the face being
+cast or played (CR 601.3e, 709.3a, 712.11c, 715.3a): Bonecrusher Giant
+in a graveyard is offered for Stomp under the first and only as the
+Giant under the second, and a modal DFC whose back is a land is played
+as that face under the third. That is the zero value; write nothing.
+"Each instant and sorcery CARD in your graveyard has flashback" and
+"nonland permanent CARDS in your graveyard have retrace" pick cards as
+they are in the zone (CR 715.4, 712.8a, 709.4), so set
+`Filter: game.PermissionFilter{CardInZone: true, ...}`; the keyword then
+says which faces it casts. A card that builds its own offer picks the
+cards with `perm.OffersASpell(c)` on the permission it is about to
+stamp (Bilbo, Thief in the Night), never with a type check on the card,
+which reads only its front face. A free cast's "a spell [with mana value
+N or less]" is a `freeCastSpell` clause (`freeInstantOrSorcery()`,
+`spellWithManaValueAtMost(n)`) that the permission carries.
+
 **"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
 permission over a set good for one spell: the first cast it is the
 reason for spends it (Locke, Treasure Hunter). Zero is no limit. When a

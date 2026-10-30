@@ -15,10 +15,13 @@ import (
 // Avatar Kyoshi's mana ability and Orcish Siegemaster's trigger read.
 // The free cast is a `choose_cards` pick over the hand — the same
 // door Brainstorm's tuck-back and Malcolm's discard offer use —
-// filtered to nonland cards with mana value 5 or less, floor zero
+// over the cards with a spell of mana value 5 or less, floor zero
 // ("you MAY cast"), then the pass-closed free cast over whichever card
 // was picked (offerFreeHandCast, #3270): the cast opens at once and
-// ignores timing, CR 608.2g.
+// ignores timing, CR 608.2g. The cap is the SPELL's, judged on the face
+// being cast (#4509): a modal DFC whose back face costs more is cast free
+// only as its front, and an Adventure that fits is cast free though its
+// creature does not.
 //
 // No simplification.
 func init() {
@@ -41,11 +44,11 @@ func init() {
 //
 // Not handCardsMatching: that helper is put_from_hand.go's "permanent
 // card" filter, and "a spell" reaches instants and sorceries too —
-// allHandCardIDs (brainstorm.go) is the type-agnostic list, filtered
-// here against "nonland, mana value 5 or less".
+// allHandCardIDs (brainstorm.go) is the type-agnostic list, narrowed to
+// the cards with a spell of mana value 5 or less (#4509).
 func rishkarsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
 	offerFreeHandCast(ctx, controller, rishkarsExpertiseFreeCast,
-		"a spell with mana value 5 or less", ManaValueLE(5))
+		"a spell with mana value 5 or less", spellWithManaValueAtMost(5))
 	return nil
 }
 

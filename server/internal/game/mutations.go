@@ -783,16 +783,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card moves: CR 406.3a turns a foretold card face up as it is
 	// cast, which ADR 0069 decision 5 makes MoveCard's business.
 	foretold := CardIsForetold(card)
-	// CR 702.62a (#659): a permanent cast from a suspended card has
-	// haste. It is the PERMISSION that says so, not the card, so it is
-	// read here where the permission is consumed and registered
-	// against the object the cast produces. See
-	// grantHasteForCastLocked for the layer-6 grant and its declared
-	// duration simplification.
-	grantsHaste := grant != nil && grant.GrantsHaste
-	// #3768: the permission's other riders on the permanent this cast
-	// produces, copied out for the same reason.
-	castGains := permissionCastGainsOf(grant)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -810,6 +800,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// gates were judged against.
 	params.Face = face
 	card.SetFace(params.Face)
+	// #4509: a permission whose filter is about the spell ("cast an
+	// instant or sorcery spell from your graveyard", "creature spells
+	// from the top of your library") judges the face just settled
+	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
+	// permission for this cast, from here down: the path gate refuses a
+	// zone nothing else opens, and a hand cast is an ordinary one.
+	grant = grant.ForSpell(card)
+	// CR 702.62a (#659): a permanent cast from a suspended card has
+	// haste. It is the PERMISSION that says so, not the card, so it is
+	// read here where the permission is consumed and registered
+	// against the object the cast produces. See
+	// grantHasteForCastLocked for the layer-6 grant and its declared
+	// duration simplification.
+	grantsHaste := grant != nil && grant.GrantsHaste
+	// #3768: the permission's other riders on the permanent this cast
+	// produces, copied out for the same reason.
+	castGains := permissionCastGainsOf(grant)
 	// ADR 0103, CR 702.102a: a FUSED cast announces both halves of a
 	// split card with fuse, from hand, and the spell is both at once
 	// (CR 702.102b). Materialised here, on the copy every gate below
@@ -3700,7 +3707,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// of the precedence would be two chances to disagree about which
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
-	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
+	// #4509: `card` is the face being cast, so a permission whose filter
+	// does not admit it prices nothing, as CastSpell casts nothing
+	// through it (ForSpell).
+	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost).ForSpell(card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err

@@ -27,6 +27,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cost was the only one offered, so the card's declared Full was not
 // true; it is now.
 //
+// "Each instant and sorcery CARD in your graveyard" picks cards as they
+// are in the graveyard, not spells (#4509): an adventurer card there is
+// a creature card (CR 715.4), and a modal DFC has only its front face's
+// characteristics (CR 712.8a), so Bonecrusher Giant gains no flashback
+// for Stomp, and a creature card whose back face is a sorcery gains none
+// either. A split card has both halves' types (CR 709.4c). Granted
+// flashback then casts only an instant or sorcery spell (CR 702.34a),
+// and every face of a card in the locked set is one or is a land, so the
+// grant needs no face filter of its own.
+//
 // No simplification.
 func init() {
 	Register(Spec{

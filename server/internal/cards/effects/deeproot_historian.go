@@ -30,8 +30,10 @@ func init() {
 		Name:         "Deeproot Historian",
 		Completeness: CompletenessFull,
 		CastPermissions: []game.CastPermission{{
-			Zone:            game.ZoneGraveyard,
-			Filter:          game.PermissionFilter{CreatureTypesAny: [2]string{"Merfolk", "Druid"}},
+			Zone: game.ZoneGraveyard,
+			// "Merfolk and Druid CARDS in your graveyard": the card in the
+			// graveyard, not the spell (CR 715.4, 712.8a; #4509).
+			Filter:          game.PermissionFilter{CardInZone: true, CreatureTypesAny: [2]string{"Merfolk", "Druid"}},
 			AltCostKey:      game.AltCostKeyRetrace,
 			DiscardLandCard: true,
 			Label:           "Retrace — discard a land card (Deeproot Historian)",

@@ -745,6 +745,9 @@ func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone Zo
 	if key == "" {
 		return nil, nil
 	}
+	// #4509: `card` is the face being cast, and a permission whose filter
+	// does not admit that spell offers it nothing to claim (ForSpell).
+	grant = grant.ForSpell(card)
 	if base, ok := grantedInstanceClaim(key); ok {
 		return grantedInstanceOffer(card, grant, base, key, targets)
 	}

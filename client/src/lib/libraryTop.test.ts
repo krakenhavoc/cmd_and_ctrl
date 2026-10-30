@@ -119,6 +119,39 @@ describe("libraryTopActionLabel", () => {
     expect(libraryTopActionLabel(library([land]))).toBe("play");
   });
 
+  // #4509: Oracle of Mul Daya opens a modal DFC on top as its land
+  // back face and not as its sorcery front, so the server stamps the
+  // back face playable and not the card. The pile still offers it, and
+  // says "play".
+  it("plays a modal DFC whose land back face is the face the server opened", () => {
+    const mdfc = card({
+      name: "Emeria's Call",
+      type_line: "Sorcery",
+      layout: "modal_dfc",
+      known_by_you: true,
+      faces: [
+        { name: "Emeria's Call", type_line: "Sorcery", mana_cost: "{4}{W}{W}{W}" },
+        {
+          name: "Emeria, Shattered Skyclave",
+          type_line: "Land",
+          mana_cost: "",
+          castable_here: true,
+        },
+      ],
+    } as Partial<CardView>);
+    expect(libraryTopPlayable(library([mdfc]))).toBe(true);
+    expect(libraryTopActionLabel(library([mdfc]))).toBe("play");
+    const neither = card({
+      ...mdfc,
+      faces: [
+        { name: "Emeria's Call", type_line: "Sorcery", mana_cost: "{4}{W}{W}{W}" },
+        { name: "Emeria, Shattered Skyclave", type_line: "Land", mana_cost: "" },
+      ],
+    } as Partial<CardView>);
+    expect(libraryTopPlayable(library([neither]))).toBe(false);
+    expect(libraryTopActionLabel(library([neither]))).toBeNull();
+  });
+
   it("says cast for anything else", () => {
     const spell = card({
       name: "Top Sorcery",
