@@ -2937,6 +2937,14 @@ every legal multiset of the bullets the prompt carries, capped by the
 same budget, and labels each move with the bullets rather than their
 indexes so the decision log reads.
 
+A "choose up to" prompt (`ModeMin` 0) offers the empty answer first,
+and the empty answer removes the ability (CR 700.2b). "Choose up to X"
+(#4617, The Ruinous Wrecking Crew) carries the X paid for the spell as
+the prompt's `ModeMax`, so the bot is offered no selection of more than
+X bullets, and at X = 0 it is not asked at all. The heuristic does not
+value bullets yet, so it takes the first selection offered, which on an
+"up to" prompt is none.
+
 ## Enumerating an optional additional cost (#664)
 
 A card with kicker, multikicker or buyback is not one cast, it is

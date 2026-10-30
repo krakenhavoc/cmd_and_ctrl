@@ -1794,3 +1794,99 @@ Tests: `effects/resolution_steps_state_test.go`. Rhys across a strict
 restore before each of three questions and on an undo. The Ur-Sphinx across
 a strict restore before each of four offers, a milled land not offered. Cecily on a dredge offer, live and on an undo.
 Flamewar's marking step on the live table, an undo and a restored table.
+
+## Amendment 2026-10-30: "choose up to X", where X is the spell's X (#4617)
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first. Seam
+found during #4455 (Marvel Super Heroes).
+
+The Ruinous Wrecking Crew ({X}{B}{R}): "When The Ruinous Wrecking Crew
+enters, choose up to X —" with four bullets. Every count before this was a
+printed `Min..Max`, raised by a condition at most (the 2026-09-27 and
+2026-09-28 (c) amendments). This one is a number, and the number is a
+payment. CR 107.3m: "If an object's enters-the-battlefield triggered ability
+or replacement effect refers to X, and the spell that became that object as
+it resolved had a value of X chosen for any of its costs, the value of X for
+that ability is the same as the value of X for that spell, although the value
+of X for that permanent is 0."
+
+### Decision: `ModeSpec.UpToCastX`, read by the one bounds reader
+
+- **The flag.** `ModeSpec.UpToCastX`, built with `effects.ChooseUpToX(…)`:
+  `Min` 0 and `Max` the printed bullets, so a reader that never asks for the
+  bounds still sees a bounded count. `ModeCountQuery` gains `X`, and
+  `modeBoundsLocked` answers `0..min(q.X, len(Options))` for the flag. The
+  cap is CR 700.2d: no bullet may be chosen twice, so X = 6 is all four.
+- **Where X comes from.** `queueModePickLocked` sets `q.X` from the source's
+  `CastProvenance.X` (`Card.CastX`, #1312), which the entry finisher stamps
+  before `EventETB`, so the dispatch's copy of the entering permanent already
+  carries it. It is read once, as the trigger is put on the stack (CR
+  603.3c), and the prompt carries the bound (`ModeMax`), so the answer gate,
+  the bot's enumerator, a restore point and an undo all see one number. A
+  permanent that was not cast (a reanimation, a blink) has no spell X and
+  reads 0, which is CR 107.3m's "the spell that became that object".
+- **X = 0 asks nothing.** "Choose up to 0" can choose no mode, and CR 700.2b
+  / 603.3c say a modal triggered ability with no mode chosen is removed from
+  the stack. `queueModePickLocked` returns false, as it does for too few
+  choosable bullets, and no prompt is queued. The bound's 0 never reaches a
+  reader that would take it for "unbounded".
+- **The prompt says the X.** Its reason is the printed prompt with the X:
+  "Choose up to X (X is 2)". `ModeMax` is also capped at the bullets on offer
+  (a bullet whose target can't be chosen is not offered, CR 700.2a), so the
+  picker's count says what is reachable.
+- **Register** (`checkUpToCastX`) keeps it to an enters trigger: refused on a
+  spell's and an activated ability's modes, on a trigger that watches
+  anything but `EventETB` (CR 107.3m names only the enters trigger), on a
+  granted trigger (CR 107.3j: a gained ability's X is its own, or 0), and
+  beside `Repeatable`, a raised count, `AtRandom` or `NotChosen`.
+
+### Decision: an empty answer removes the ability
+
+`ResolveModePick` passed the chosen modes on to `buildOrPickTriggerLocked`,
+which reads a nil list as "not asked yet". An empty answer to a "choose up
+to" prompt became nil and the same question was asked again, for every
+"choose up to one" trigger already in the catalog (Ertai Resurrected,
+Hullbreaker Horror, Ravager Wurm). The empty answer now removes the ability
+(CR 603.3c, CR 700.2b): it records no mode, is never built, and never reaches
+the stack.
+
+### Wire and client
+
+No field is added. `mode_min` is omitted at 0 (as it always was), so the
+client's picker now reads an absent `mode_min` as 0 instead of 1: before,
+nobody could answer a "choose up to" prompt with no bullet. With a minimum of
+0 the dock's button reads "Choose none" until a bullet is picked, the hint
+says up to how many, and a single-bullet picker takes a bullet back on a
+second click. `docs/protocol.md` documents the absent `mode_min` and the X in
+`reason`.
+
+### Bots
+
+`legal` offers every selection of the prompt's bullets from none up to
+`ModeMax`, the same `ModePickSelections` walk as any `mode_pick`, so a bot is
+never offered more than X and is never asked at X = 0. The heuristic still
+answers a mode_pick with the enumerator's first selection, which for an
+"up to" prompt is none. Valuing bullets is a bot change of its own.
+
+### Out of scope, stated
+
+- **Other "choose up to X" counts.** Riku of Many Paths ("where X is the
+  number of times you chose a mode for that spell") reads the triggering
+  spell, and Bumi, King of Three Trials ("the number of Lesson cards in your
+  graveyard") reads the board. Neither is in the catalog. Either would be a
+  keyed count beside this flag, read in the same `modeBoundsLocked`.
+- **A copy of the spell.** A token copy of a permanent spell enters with no
+  `CastProvenance.X` (`resolvePermanentSpellCopyLocked` carries the optional
+  costs and the gift, not X), so its "enters with X counters" and its "choose
+  up to X" both read 0. CR 707.10 copies the value of X. That gap is every X
+  creature's, not this count's.
+
+Tests: `game/up_to_cast_x_test.go` (the bound at X = 0, 1, 2, 4 and 6; no
+prompt and no item at X = 0; the reason; the cap at the bullets on offer; an
+empty answer to "up to X" and "up to one" removes the ability),
+`cards/effects/the_ruinous_wrecking_crew_test.go` (X = 0, 2 and 6 through the
+engine, choosing none, a Crew that was not cast, a restore and an undo, and
+the `Register` refusals) and `legal/up_to_cast_x_test.go` (the enumerator
+offers up to X and every move dispatches; nothing owed at X = 0).
+
+Proof card: The Ruinous Wrecking Crew (Full).
