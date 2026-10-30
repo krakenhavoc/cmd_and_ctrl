@@ -300,6 +300,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// White Tiger's The Tiger God: a legendary 4/4 Cat God that can't be
 	// blocked by more than one creature.
 	printedTigerGodToken,
+
+	// The Coming of Galactus's Galactus: flying, trample, destroys a land
+	// when he attacks.
+	printedGalactusToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

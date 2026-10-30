@@ -70,6 +70,7 @@ var xMattersAllowlist = map[string]string{
 	"pull_from_tomorrow.go Pull from Tomorrow":                    "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
 	"spiteful_banditry.go Spiteful Banditry":                      "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":                      "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
+	"the_scarlet_witch.go The Scarlet Witch":                      "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X she was cast for",
 	"the_goose_mother.go The Goose Mother":                        "2/2 flying body and an attack trigger that never reads X",
 	"thryx_the_sudden_storm.go Thryx, the Sudden Storm":           "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X Thryx was cast for",
 	"tyvars_stand.go Tyvar's Stand":                               "the hexproof and indestructible half never reads X: at X=0 the target gets +0/+0 and still gains both until end of turn",
