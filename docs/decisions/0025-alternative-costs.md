@@ -508,3 +508,27 @@ attacking (`TestElektraSneaksInTappedAndAttackingTheSamePlayer`). Drop `applySne
 and not attacking.
 
 Tests: `cards/effects/sneak_test.go`.
+
+## Amendment (2026-10-30, [#4641](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4641)): a "connives" event, for "whenever a creature you control connives"
+
+Connive entered this ADR with Lethal Scheme (#3172, above) as a catalog helper that drew, discarded and countered but said
+nothing to the rest of the table. Iron Monger, Sadistic Tycoon ("Whenever a creature you control connives, put a +1/+1
+counter on each Villain you control") needs a thing to watch, so connive gets the event explore has.
+
+`game.EventConnived` (`game/connive.go`) is emitted once per conniving permanent, by `Game.ConnivedForEffect(creature,
+controller)`, when the process of CR 701.50a is complete (CR 701.50f): after the discard and the counter, on every branch,
+an empty hand and a permanent that has left the battlefield included. `CardID` is the permanent, `Actor` its controller as
+it connived. A permanent that left was told to connive as its last controller's (CR 701.50b), so the card side judges
+"a creature you control" by `Actor`, not by where the creature is now (`effects.ACreatureYouControlConnived`,
+`WheneverACreatureYouControlConnives`). Several permanents conniving together connive one after another (CR 701.50c),
+which is how `ConniveEach` already ran, so each is its own event and the trigger fires once per creature. Connive 0 is
+no connive (CR 701.50e): `ConniveX` with X of 0 returns before the draw and emits nothing. The four ways the catalog
+connives each emit it from their own discard continuation: `ConniveEach`, `ConniveX`, Ledger Shredder and Cyclonus. The
+event is silent in the public log (the draw, the discard and the counter are already lines) and persists nothing, so no
+snapshot field and no closure change.
+
+Back-out: remove the `ConnivedForEffect` call from `conniveDiscarded` and `TestIronMongerTriggersOnTheConniveNotTheCounter`,
+`TestIronMongerTriggersOncePerConnivingCreature` and `TestIronMongerTriggersForACreatureThatLeftBeforeItConnived` fail.
+
+Tests: `cards/effects/iron_monger_sadistic_tycoon_test.go`; the event assertions in `raffine_a_test.go`,
+`slice_296e_test.go` (Ledger Shredder) and `cyclonus_the_saboteur_test.go`.
