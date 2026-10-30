@@ -1261,6 +1261,19 @@
                   Instants and flash
                   {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
                 </label>
+                <!-- #2877: a narrowing of the instants above, so it does
+                     nothing (and is disabled) while they are off. -->
+                <label class="response-sub">
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondValueInstants}
+                    disabled={!$settings.gameplay.respondInstants}
+                    onchange={(e) =>
+                      change("gameplay", "respondValueInstants", e.currentTarget.checked)}
+                  />
+                  {L.respondValueInstantsToggle}
+                  {#if isFresh("gameplay.respondValueInstants")}<span class="saved">✓</span>{/if}
+                </label>
                 <label>
                   <input
                     type="checkbox"
@@ -1295,7 +1308,9 @@
                 <p class="help">
                   Auto-pass stops for an opponent's spell, an attack or an opponent's end step only
                   when you have one of these. Mana abilities and land drops never count. In combat,
-                  crewing, animating a land or granting a keyword counts as a targeted ability.
+                  crewing, animating a land or granting a keyword counts as a targeted ability. A
+                  value instant, like Opt or Brainstorm, counts in combat and at an opponent's end
+                  step, and on an opponent's spell only when you tick it above.
                 </p>
               </fieldset>
 
@@ -2089,6 +2104,10 @@
   }
   .step-stops {
     margin-top: 12px;
+  }
+  /* #2877: a response category that narrows the one above it. */
+  .response-sub {
+    padding-inline-start: 1.5em;
   }
   /* ADR 0143 §3.1: the Gameplay tab's sections and its Advanced
      <details>. */

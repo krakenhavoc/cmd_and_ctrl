@@ -47,6 +47,13 @@ export const BLUFF_PASS_REASON = "bluff timer ended";
 /** What the chip says when the stack hold ran out. */
 export const HOLD_PASS_REASON = "stack hold ended, nothing to respond with";
 
+/**
+ * #2877: the stack pass's reason when the viewer held only a value
+ * instant (Opt, Brainstorm), which does not stop auto-pass on an
+ * opponent's spell unless they ask in Settings.
+ */
+export const VALUE_INSTANT_PASS_REASON = "only a value instant to respond with";
+
 /** The reason for a pass that is the second half of the player's own click. */
 export const ATTACK_PASS_REASON = "attackers declared";
 export const NO_BLOCKS_PASS_REASON = "no blocks declared";
@@ -66,7 +73,7 @@ export function autopassReason(g: AutopassGates): string {
   if (g.autopassToggle) return "skipping to your turn";
   if (!g.stackEmpty) {
     if (g.ownsEveryStackItem) return "everything on the stack is yours";
-    return "nothing to respond with";
+    return g.heldValueInstant ? VALUE_INSTANT_PASS_REASON : "nothing to respond with";
   }
   const step = stepLabel(g.step);
   const where = step ? ` in ${step}` : "";
@@ -91,7 +98,10 @@ export function timedPassReason(
   g: AutopassGates,
 ): string {
   if (isBluff(verdict)) return BLUFF_PASS_REASON;
-  return kind === "hold" ? HOLD_PASS_REASON : autopassReason(g);
+  if (kind === "hold") {
+    return g.heldValueInstant ? `stack hold ended, ${VALUE_INSTANT_PASS_REASON}` : HOLD_PASS_REASON;
+  }
+  return autopassReason(g);
 }
 
 // ---- the notice -------------------------------------------------------------

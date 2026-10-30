@@ -1576,6 +1576,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/AutoAnswersSettings.svelte"],
     doc: "removes one standing answer in Settings → Gameplay, so its prompt is asked again",
   }),
+  respondValueInstantsToggle: label({
+    name: "Value instants (Opt, Brainstorm) on an opponent's spell",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Gameplay → Advanced, What counts as a response: off by default, so a value instant does not stop you on an opponent's spell; it still does in combat and at an opponent's end step, gameplay.respondValueInstants (#2877)",
+  }),
   useThisOrderAgain: label({
     name: "Use this order again",
     kind: "text",

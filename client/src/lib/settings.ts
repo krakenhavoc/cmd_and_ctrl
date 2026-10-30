@@ -296,8 +296,18 @@ export interface Settings {
     //                                fetch land, cycling). Off by
     //                                default: not interaction.
     //   respondSpecialActions      — foretell, suspend, turning face up
+    //   respondValueInstants       — #2877 (schema v31): a value
+    //                                instant (Opt, Brainstorm: a cast
+    //                                the server marks value_only) also
+    //                                counts on an opponent's stack item.
+    //                                Off by default (owner, 2026-10-30,
+    //                                option (a)); it counts in combat
+    //                                and at an opponent's end step
+    //                                either way, and never without
+    //                                respondInstants.
     respondCounterspells: boolean;
     respondInstants: boolean;
+    respondValueInstants: boolean;
     respondAbilities: boolean;
     respondUntargetedAbilities: boolean;
     respondSpecialActions: boolean;
@@ -416,7 +426,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 30;
+export const SETTINGS_VERSION = 31;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -595,6 +605,9 @@ export function defaultSettings(): Settings {
       // untargeted ability, which is not interaction.
       respondCounterspells: true,
       respondInstants: true,
+      // #2877 default: off. A value instant has nothing to answer on the
+      // stack; the stops in combat and at an opponent's end step stay.
+      respondValueInstants: false,
       respondAbilities: true,
       respondUntargetedAbilities: false,
       respondSpecialActions: true,
@@ -743,6 +756,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     stepStopsOnlyWhenCanAct: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
+    respondValueInstants: "synced",
     respondAbilities: "synced",
     respondUntargetedAbilities: "synced",
     respondSpecialActions: "synced",
@@ -1325,6 +1339,22 @@ function migrate(raw: unknown): Settings {
   // account copy from a newer client.
   if (!isEffectsMode(merged.animations.effects)) {
     merged.animations.effects = DEFAULT_EFFECTS_MODE;
+  }
+  // v30 → v31 (#2877, ADR 0142's amendment of 2026-10-30):
+  // gameplay.respondValueInstants. The owner chose option (a): a value
+  // instant (Opt, Brainstorm) no longer stops you on an opponent's
+  // stack item unless you ask, so the default (off) changes behaviour
+  // for a player who touched nothing, as v22 did for value abilities.
+  // A player who ticked "Value abilities" (respondUntargetedAbilities,
+  // off by default since v22) asked to be stopped for value plays, so a
+  // blob from before v31 with it on keeps value instants stopping too.
+  // An account copy from an older client goes through here as well
+  // (applySyncedCopy). From v31 on, the stored choice stands, and
+  // anything but a boolean is the default.
+  if (storedVersion < 31) {
+    gp.respondValueInstants = gp.respondUntargetedAbilities === true;
+  } else if (typeof gp.respondValueInstants !== "boolean") {
+    gp.respondValueInstants = d.gameplay.respondValueInstants;
   }
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
