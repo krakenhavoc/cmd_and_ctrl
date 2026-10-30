@@ -139,11 +139,13 @@ body immortal-coil/exile-per-prevented
 body initiative/take
 body initiative/venture
 body inkshield/inklings
+body invisible-woman/pump
 body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
+body lockjaw/unblockable
 body ltb/sacrifice-the-source
 body madness/graveyard-if-not-cast
 body madness/offer
@@ -706,6 +708,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
@@ -1007,6 +1010,7 @@ payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/inalla-archmage-ritualist-copy
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
+payunless pay-unless/invisible-woman-pump
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jolted-awake-return
