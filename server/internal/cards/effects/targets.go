@@ -231,7 +231,12 @@ func PowerGE(n int) CardPredicate {
 // Murdock's Crusade's "target creature with toughness 4 or greater"
 // (#1703).
 func ToughnessGE(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.CurrentToughness() >= n }
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if g != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+			return g.ToughnessAnywhereForEffect(c) >= n
+		}
+		return c.CurrentToughness() >= n
+	}
 }
 
 // ManaValueLE passes when the card's mana value is ≤ n (Swan Song
