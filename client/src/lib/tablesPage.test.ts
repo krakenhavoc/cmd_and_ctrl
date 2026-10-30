@@ -13,10 +13,12 @@ import {
   nowTables,
   readiness,
   seatLine,
+  seatPreview,
   seatTileText,
   statusChip,
   type LobbyViewer,
 } from "./tablesPage";
+import type { PickerCommit } from "./deckPicker";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-10-13T12:00:00Z");
@@ -283,6 +285,92 @@ describe("a lobby table's one primary (ADR 0212 §2)", () => {
       kind: "watch",
       label: "Watch",
     });
+  });
+
+  // Rule 4, and owner decision 8: the pickers under the seats commit
+  // from the footer, so the card keeps one primary.
+  const sit: PickerCommit = {
+    label: "Sit down with this deck",
+    disabled: false,
+    title: "sit down with Elf ball",
+    busy: false,
+  };
+  const emptyPaste: PickerCommit = {
+    label: "Upload deck",
+    disabled: true,
+    title: "paste a decklist or a deck link first",
+    busy: false,
+    empty: true,
+  };
+
+  it("seats the picker's deck from the footer while the picker holds one", () => {
+    const me = seat(1, { deck_uploaded: false });
+    const g = meta({ players: [host, me] });
+    expect(lobbyPrimary(g, viewer({ me, picking: sit }))).toMatchObject({
+      kind: "sit",
+      label: "Sit down with this deck",
+      disabled: false,
+      title: "sit down with Elf ball",
+    });
+    // Nothing selected: Choose your deck, which brings the picker into view.
+    expect(lobbyPrimary(g, viewer({ me, picking: null })).kind).toBe("choose");
+    // Changing a deck already in: the commit still wins over Start.
+    const ready = meta({ players: [host, seat(1)] });
+    expect(lobbyPrimary(ready, viewer({ me: host, mayStart: true, picking: sit })).kind).toBe(
+      "sit",
+    );
+  });
+
+  it("lets an empty Paste a list box lead only a seat with no deck", () => {
+    const me = seat(1, { deck_uploaded: false });
+    expect(
+      lobbyPrimary(meta({ players: [host, me] }), viewer({ me, picking: emptyPaste })),
+    ).toMatchObject({ kind: "sit", label: "Upload deck", disabled: true });
+    const ready = meta({ players: [host, seat(1)] });
+    expect(
+      lobbyPrimary(ready, viewer({ me: host, mayStart: true, picking: emptyPaste })).kind,
+    ).toBe("start");
+  });
+
+  it("adds the bot picker's bot from the footer", () => {
+    const add: PickerCommit = { label: "Add bot", disabled: false, title: "seat it", busy: false };
+    const g = meta({ players: [host, seat(1, { deck_uploaded: false })] });
+    expect(lobbyPrimary(g, viewer({ me: host, addingBot: add, picking: sit }))).toMatchObject({
+      kind: "bot",
+      label: "Add bot",
+    });
+    // The admin, not seated, adds bots too.
+    expect(lobbyPrimary(g, viewer({ mayStart: true, addingBot: add })).kind).toBe("bot");
+    // A seat held elsewhere is reclaimed first.
+    expect(lobbyPrimary(g, viewer({ heldElsewhere: true, addingBot: add })).kind).toBe("open");
+  });
+});
+
+describe("your seat while you browse the picker (ADR 0212 §1)", () => {
+  const pv = {
+    name: "Elf ball",
+    text: {
+      what: "Marwyn, the Nurturer",
+      second: "Pre-built · Elf ball",
+      colors: ["G"],
+      ready: false,
+    },
+    art: [{ name: "Marwyn, the Nurturer", scryfallId: "m1" }],
+  };
+
+  it("previews the selected deck, not ready, with its art", () => {
+    const p = seatPreview(seat(0, { deck_uploaded: false }), pv);
+    expect(p).toEqual({ text: pv.text, art: pv.art, preview: true });
+    // Another deck than the one seated is a preview too.
+    expect(seatPreview(seat(0, { deck_name: "Raid" }), pv)?.preview).toBe(true);
+  });
+
+  it("draws the deck already in the seat as ready, and nothing with nothing selected", () => {
+    const p = seatPreview(seat(0, { deck_name: "elf ball" }), pv);
+    expect(p?.preview).toBe(false);
+    expect(p?.text.ready).toBe(true);
+    expect(p?.art).toEqual(pv.art);
+    expect(seatPreview(seat(0), null)).toBeNull();
   });
 });
 

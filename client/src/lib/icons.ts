@@ -205,6 +205,22 @@ export const ICONS = {
   newLink: [p("M12 8v8"), p("M8 12h8"), c(12, 12, 9)],
   // ADR 0212 §1: your seat with no deck yet, the tile that opens the picker.
   plus: [p("M12 5v14"), p("M5 12h14")],
+  // ADR 0212 §3: a deck tile's flag for cards that do not play as
+  // printed. A caution, not a signal colour: it carries the words.
+  warn: [
+    p("M10.3 4.2 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"),
+    p("M12 9.5v4"),
+    p("M12 17h.01"),
+  ],
+  // A deck's sideboard (ADR 0191), under the picker's grid.
+  list: [
+    p("M9 6h11"),
+    p("M9 12h11"),
+    p("M9 18h11"),
+    p("M4.5 6h.01"),
+    p("M4.5 12h.01"),
+    p("M4.5 18h.01"),
+  ],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

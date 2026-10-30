@@ -1,4 +1,6 @@
 import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
+import type { DeckArt } from "./deckGrid";
+import { sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
 import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
 import { orderedColors } from "./prebuiltDecks";
@@ -157,6 +159,25 @@ export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): Sea
   return { what: p.deck_name || "Deck ready", second: "", colors: [], ready: true };
 }
 
+// SeatPreview is your own tile while the deck picker is open (§1).
+export interface SeatPreview {
+  text: SeatTileText;
+  art: DeckArt[];
+  // Marked "Preview" and "Not seated yet".
+  preview: boolean;
+}
+
+// seatPreview: your tile shows the deck selected in the picker, art and
+// all, marked Preview and not ready, since nothing is sent until you sit
+// down. The deck already in your seat (the same name: the last deck you
+// seated is preselected) is drawn ready, with its art. null with nothing
+// selected, and your tile says what it says without the picker.
+export function seatPreview(p: SeatInfo, pv: DeckPreview | null): SeatPreview | null {
+  if (!pv) return null;
+  const seated = p.deck_uploaded && sameName(p.deck_name ?? "", pv.name);
+  return { text: { ...pv.text, ready: seated }, art: pv.art, preview: !seated };
+}
+
 // botChipText is a bot seat's chip: its tier's name, and "(own key)"
 // when it plays on the model key of the player who added it (ADR 0182).
 export function botChipText(p: SeatInfo, tiers: readonly BotTierInfo[]): string {
@@ -207,8 +228,17 @@ export function readiness(g: GameMeta, me: SeatInfo | null, opts: { bots: boolea
 
 // What the card's one primary does (§2). The page wires each kind to its
 // action: open (the board, or reclaiming a seat held elsewhere), take a
-// seat, choose a deck, start, or watch; a wait is disabled.
-export type LobbyPrimaryKind = "open" | "take" | "choose" | "wait" | "start" | "watch";
+// seat, choose a deck, sit down with the deck the picker holds, add the
+// bot the bot picker holds, start, or watch; a wait is disabled.
+export type LobbyPrimaryKind =
+  | "open"
+  | "take"
+  | "choose"
+  | "sit"
+  | "bot"
+  | "wait"
+  | "start"
+  | "watch";
 
 export interface LobbyPrimary {
   kind: LobbyPrimaryKind;
@@ -230,13 +260,22 @@ export interface LobbyViewer {
   mayStart: boolean;
   // A spectator session of this table (owner decision 6).
   spectator: boolean;
+  // The deck picker is open, and this is what committing it says (§2
+  // rule 4): Sit down with this deck, or Upload / Import deck. null when
+  // the open tab holds no deck.
+  picking?: PickerCommit | null;
+  // The bot picker is open (owner decision 8), and this adds its bot.
+  addingBot?: PickerCommit | null;
 }
 
 // lobbyPrimary picks a lobby table's one primary: the first rule of
-// ADR 0212 §2 that applies wins. Rule 4, "Sit down with this deck" on
-// the card's footer, comes with the picker grid (A2); until then the
-// deck panel under the seats has its own buttons, and the primary stays
-// Choose your deck while it is open.
+// ADR 0212 §2 that applies wins. The pickers under the seats hold no
+// commit of their own: while the deck picker is open with a deck, the
+// primary seats it (rule 4), and while the bot picker is open it adds
+// the bot (owner decision 8), so the card keeps one primary. An empty
+// Paste a list box takes the primary only from a seat with no deck yet,
+// where Upload deck, disabled, says what to do; a seat that has one
+// keeps waiting or starting.
 export function lobbyPrimary(g: GameMeta, v: LobbyViewer): LobbyPrimary {
   const open = (title: string): LobbyPrimary => ({
     kind: "open",
@@ -263,11 +302,19 @@ export function lobbyPrimary(g: GameMeta, v: LobbyViewer): LobbyPrimary {
           : "start the game",
     };
   };
+  const commit = (kind: "sit" | "bot", c: PickerCommit): LobbyPrimary => ({
+    kind,
+    label: c.label,
+    disabled: c.disabled,
+    title: c.title,
+  });
   if (v.heldElsewhere) return open("open your seat at this table");
+  if (v.addingBot) return commit("bot", v.addingBot);
   if (v.takesSeat) {
     return { kind: "take", label: "Take a seat", disabled: false, title: "sit down at your table" };
   }
   if (v.me) {
+    if (v.picking && !(v.picking.empty && seatReady(v.me))) return commit("sit", v.picking);
     if (!seatReady(v.me)) {
       return {
         kind: "choose",

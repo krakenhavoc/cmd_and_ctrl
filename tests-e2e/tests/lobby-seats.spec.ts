@@ -11,9 +11,10 @@ import {
 // ADR 0212: a table in the lobby as a character select. The seats are
 // four tiles, a seat with its deck in says Ready, the footer's readiness
 // line counts the seated players, and its one primary follows the
-// table's state: Choose your deck, Waiting for …, Start game. The lobby
-// has no socket, so a deck seated elsewhere arrives with the next read
-// (a poll every 5s, or on focus, which these tests use).
+// table's state: Sit down with this deck while the picker is open,
+// Waiting for …, Start game. The lobby has no socket, so a deck seated
+// elsewhere arrives with the next read (a poll every 5s, or on focus,
+// which these tests use).
 
 async function joinInBrowser(
   page: Page,
@@ -76,27 +77,32 @@ test.describe("lobby seats (ADR 0212)", () => {
       seats.getByRole("listitem", { name: "seat 1: Hal" }),
     ).toContainText("Ready");
     const mine = seats.getByRole("listitem", { name: "seat 2: Gil" });
-    await expect(mine).toContainText("No deck yet");
+    // The picker opened on its own, so the seat previews its deck.
+    await expect(mine).toContainText("Not seated yet");
     await expect(
       card.getByRole("group", { name: "ready 1 of 2" }),
     ).toContainText("2 seats open · waiting on your deck");
     const primary = card.locator(".tfoot .btn.primary");
-    await expect(primary).toHaveText("Choose your deck");
 
     // Seated without a deck, the picker is open under the seats. A guest
-    // has no library, so the pre-built decks are listed.
+    // has no library, so it opens on Pre-built with a deck selected, and
+    // the footer's primary seats it.
     const picker = card.getByRole("region", { name: "choose your deck" });
     await expect(picker).toBeVisible();
-    await picker.locator('input[name="prebuilt-deck"]').first().check();
     await picker
-      .getByRole("button", { name: "Sit down with this deck" })
-      .click();
+      .getByRole("radiogroup", { name: "pre-built decks" })
+      .locator('input[name="prebuilt-deck"]')
+      .first()
+      .check();
+    await expect(primary).toHaveText("Sit down with this deck");
+    await primary.click();
 
     await expect(
       card.getByRole("group", { name: "ready 2 of 2" }),
     ).toContainText("2 seats open · every deck is in", { timeout: 15_000 });
     await expect(mine).toContainText("Ready");
-    // Gil does not host: Hal starts.
+    // Seated, the picker closes. Gil does not host: Hal starts.
+    await expect(picker).toHaveCount(0);
     await expect(primary).toHaveText("Waiting for Hal to start");
     await expect(primary).toBeDisabled();
     // Their tile still opens the picker, to change the deck.
@@ -113,7 +119,8 @@ test.describe("lobby seats (ADR 0212)", () => {
     await joinInBrowser(page, game, "Hal");
     const card = cardOf(page, game.name);
     const primary = card.locator(".tfoot .btn.primary");
-    await expect(primary).toHaveText("Choose your deck");
+    // The picker opens on its own, so the primary seats its deck.
+    await expect(primary).toHaveText("Sit down with this deck");
 
     const me = await page.evaluate(
       () =>

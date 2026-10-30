@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 //
 // ADR 0212: a lobby table's card as a character select. Four seat tiles,
-// the settings summary in the head, and a footer with the readiness
-// line, Open table, the Invite menu (both links, Invite by DM and the
-// two new links) and one primary that follows the table's state. The
-// right-click menu (#3499) carries the same actions plus the admin's.
+// the settings summary in the head, the deck picker or the bot picker
+// under the seats, and a footer with the readiness line, Open table, the
+// Invite menu (both links, Invite by DM and the two new links) and one
+// primary that follows the table's state, the pickers' commits included.
+// The right-click menu (#3499) carries the same actions plus the admin's.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -100,9 +101,24 @@ async function settle(): Promise<void> {
   }
 }
 
+const prebuilt = (id: string, name: string, commander: string, colors: string[]) => ({
+  id,
+  name,
+  commander,
+  colors,
+  card_count: 100,
+  coverage: { cards: 60, full: 60, caveats: 0, unreviewed: 0, basics: 2, unregistered: 0 },
+});
+
 function hostRoutes(over: Record<string, unknown> = {}): void {
   routes = {
     "GET /games": () => ({ games: [meta(over)] }),
+    "GET /decks": () => ({
+      decks: [
+        prebuilt("raid", "Raid and Ransack", "Gishath, Sun's Avatar", ["R", "G", "W"]),
+        prebuilt("deep", "Deep Waters", "Talrand, Sky Summoner", ["U"]),
+      ],
+    }),
     "GET /me": () => ({ admin: false }),
     "GET /me/setup": () => ({ setup: null }),
     [`GET /games/${GAME}`]: () => ({
@@ -166,6 +182,10 @@ afterEach(() => {
   localStorage.clear();
 });
 
+function picker(c: HTMLElement): HTMLElement | null {
+  return c.querySelector<HTMLElement>('[role="region"][aria-label="choose your deck"]');
+}
+
 function footer(c: HTMLElement): HTMLElement {
   return c.querySelector<HTMLElement>(".tfoot")!;
 }
@@ -218,7 +238,8 @@ describe("the lobby card (ADR 0212)", () => {
     // The readiness line counts the seated players and says what it waits on.
     const ready = footer(c).querySelector('[role="group"][aria-label="ready 1 of 2"]');
     expect(ready?.textContent).toMatch(/2 seats open · waiting on your deck/);
-    expect(primary(c).textContent?.trim()).toBe("Choose your deck");
+    // The picker opened on its own, so the primary seats its deck.
+    expect(primary(c).textContent?.trim()).toBe("Sit down with this deck");
     expect(button(footer(c), /^\s*Open table\s*$/)).toBeDefined();
 
     // The settings summary names life and undos, and opens the panel.
@@ -234,29 +255,109 @@ describe("the lobby card (ADR 0212)", () => {
     expect(c.querySelector(".tsettings")).not.toBeNull();
   });
 
-  it("opens your deck panel from your seat's tile and from Choose your deck", async () => {
+  it("opens your deck picker from your seat's tile and from Choose your deck", async () => {
     setSession(seated(HOST));
     hostRoutes();
     stubServer();
     const { container } = render(Lobby as never, {} as never);
     await settle();
 
-    // Seated without a deck: the panel opens on its own.
+    // Seated without a deck: the picker opens on its own.
     const tile = card(container).querySelector<HTMLButtonElement>(
       'button[aria-label="choose a deck for your seat"]',
     )!;
     expect(tile.getAttribute("aria-expanded")).toBe("true");
-    expect(card(container).querySelector(".deck-upload")).not.toBeNull();
+    expect(picker(container)).not.toBeNull();
     click(tile);
     await settle();
     expect(tile.getAttribute("aria-expanded")).toBe("false");
-    expect(card(container).querySelector(".deck-upload")).toBeNull();
+    expect(picker(container)).toBeNull();
+    // Closed, the primary opens it.
+    expect(primary(card(container)).textContent?.trim()).toBe("Choose your deck");
 
     click(primary(card(container)));
     await settle();
-    const panel = card(container).querySelector<HTMLElement>(".deck-upload")!;
-    expect(panel).not.toBeNull();
-    expect(document.activeElement).toBe(panel);
+    expect(picker(container)).not.toBeNull();
+    expect(document.activeElement).toBe(picker(container));
+    expect(primary(card(container)).textContent?.trim()).toBe("Sit down with this deck");
+  });
+
+  it("previews the selected deck in your seat, and sits down from the footer", async () => {
+    setSession(seated(HOST));
+    hostRoutes();
+    let seatedDeck = "";
+    // The answer carries the table with the deck in; the list is read
+    // again after it.
+    const after = meta({
+      players: [
+        { ...meta().players[0], deck_uploaded: true, deck_name: "Deep Waters" },
+        meta().players[1],
+      ],
+    });
+    routes[`POST /games/${GAME}/decks`] = (b) => {
+      seatedDeck = (b as { deck?: string }).deck ?? "";
+      routes["GET /games"] = () => ({ games: [after] });
+      return { game: after, deck_name: "Deep Waters", card_count: 100, commanders: [] };
+    };
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    // A signed-in person with no saved decks gets no My decks tab and
+    // opens on Pre-built, the first deck selected.
+    const tabs = [...picker(container)!.querySelectorAll('[role="tab"]')].map((t) =>
+      t.textContent?.replace(/\s+/g, " ").trim(),
+    );
+    expect(tabs).toEqual(["Pre-built 2", "Paste a list"]);
+    const mine = () =>
+      card(container).querySelector<HTMLElement>('li[aria-label="seat 2: Alice"]')!;
+    expect(mine().textContent).toMatch(/Preview/);
+    expect(mine().textContent).toMatch(/Gishath, Sun's Avatar/);
+    expect(mine().textContent).toMatch(/Pre-built · Raid and Ransack/);
+    expect(mine().textContent).toMatch(/Not seated yet/);
+    expect(mine().textContent).not.toMatch(/Ready/);
+    // Nothing is sent by choosing.
+    click(picker(container)!.querySelector<HTMLInputElement>('input[value="deep"]')!);
+    await settle();
+    expect(mine().textContent).toMatch(/Talrand, Sky Summoner/);
+    expect(posted).toEqual([]);
+
+    click(primary(card(container)));
+    await settle();
+    expect(posted.map((p) => p.url)).toEqual([`/games/${GAME}/decks`]);
+    expect(seatedDeck).toBe("deep");
+    // Seated: the picker closes, and the seat says Ready.
+    expect(picker(container)).toBeNull();
+    expect(mine().textContent).not.toMatch(/Preview/);
+    expect(mine().textContent).toMatch(/Deep Waters.*Ready/s);
+  });
+
+  it("makes the primary Upload deck on Paste a list, disabled until there is a list", async () => {
+    setSession(seated(HOST));
+    hostRoutes();
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    const paste = [...picker(container)!.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+      (t) => t.textContent?.trim() === "Paste a list",
+    )!;
+    click(paste);
+    await settle();
+    expect(primary(card(container)).textContent?.trim()).toBe("Upload deck");
+    expect(primary(card(container)).disabled).toBe(true);
+    // Nothing selected in the grid now: the seat says it has no deck.
+    expect(card(container).querySelector('li[aria-label="seat 2: Alice"]')?.textContent).toMatch(
+      /No deck yet/,
+    );
+    const box = picker(container)!.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="decklist source"]',
+    )!;
+    box.value = "https://archidekt.com/decks/1";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    await settle();
+    expect(primary(card(container)).textContent?.trim()).toBe("Import deck");
+    expect(primary(card(container)).disabled).toBe(false);
   });
 
   it("offers the host Start game once every deck is in, naming the count", async () => {
@@ -420,7 +521,7 @@ describe("the card's right-click menu", () => {
     expect(menu()).not.toBeNull();
     expect(menuItems()).toEqual(
       expect.arrayContaining([
-        "Choose your deck",
+        "Sit down with this deck",
         "Open table",
         "Copy invite",
         "New invite link…",
@@ -510,13 +611,114 @@ describe("the card's right-click menu", () => {
     const { container } = render(Lobby as never, {} as never);
     await settle();
 
-    // The deck panel is open while the deck is pending; its fields are
-    // where someone pastes a list.
-    const field = card(container).querySelector("textarea, input")!;
+    // The deck picker is open while the deck is pending; Paste a list is
+    // where someone pastes one.
+    click(
+      [...card(container).querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+        (t) => t.textContent?.trim() === "Paste a list",
+      )!,
+    );
+    await settle();
+    const field = card(container).querySelector("textarea")!;
     expect(field).not.toBeNull();
     const e = rightClick(field);
     expect(e.defaultPrevented).toBe(false);
     expect(menu()).toBeNull();
+  });
+});
+
+// Owner decision 8: Add bot opens the bot picker in the deck picker's
+// place under the seats, and the footer's primary adds the bot.
+describe("the bot picker", () => {
+  const options = {
+    enabled: true,
+    tiers: [
+      { tier: "random", label: "Random", description: "Any legal move.", available: true },
+      { tier: "heuristic", label: "Heuristic", description: "Scores the board.", available: true },
+      {
+        tier: "strong",
+        label: "Strong",
+        description: "A model.",
+        available: false,
+        reason: "this server has no model API key",
+      },
+    ],
+    decks: [
+      { id: "raid", name: "Raid and Ransack", commander: "Gishath, Sun's Avatar", colors: ["R"] },
+      { id: "deep", name: "Deep Waters", commander: "Talrand, Sky Summoner", colors: ["U"] },
+    ],
+  };
+
+  it("titles the seat it fills, offers the tiers and the pre-built grid, and adds from the footer", async () => {
+    setSession(seated(HOST));
+    hostRoutes({
+      players: [
+        { player_id: HOST, name: "Alice", seat: 0, deck_uploaded: true, is_host: true },
+        { player_id: BOB, name: "Bob", seat: 1, deck_uploaded: true, deck_name: "Atraxa" },
+      ],
+    });
+    routes["GET /bot/options"] = () => options;
+    routes[`POST /games/${GAME}/seats/bot`] = () => ({
+      game: meta(),
+      player_id: "bot",
+      deck_name: "",
+    });
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    const c = card(container);
+    expect(primary(c).textContent?.trim()).toBe("Start game · 2 players");
+    click(button(c.querySelector('li[aria-label="seat 4: open"]')!, /Add bot/)!);
+    await settle();
+
+    // The first open seat is the one a bot takes.
+    const region = c.querySelector<HTMLElement>("section[aria-labelledby]")!;
+    expect(region.querySelector("h4")?.textContent).toBe("Add a bot to seat 3");
+    expect(picker(container)).toBeNull();
+    const tiers = region.querySelector('[role="radiogroup"][aria-label="bot tier"]')!;
+    const radio = (v: string) => tiers.querySelector<HTMLInputElement>(`input[value="${v}"]`)!;
+    expect(radio("heuristic").checked).toBe(true);
+    expect(radio("strong").disabled).toBe(true);
+    expect(region.textContent).toContain("Strong: this server has no model API key");
+    // No <select> any more: the decks are the pre-built grid.
+    expect(region.querySelector("select")).toBeNull();
+    const grid = region.querySelector('[role="radiogroup"][aria-label="pre-built decks"]')!;
+    click(grid.querySelector<HTMLInputElement>('input[value="deep"]')!);
+    click(radio("random"));
+    await settle();
+    expect(region.textContent).toMatch(/not an opponent/i);
+
+    // One primary: the footer's adds the bot.
+    expect(primary(c).textContent?.trim()).toBe("Add bot");
+    click(primary(c));
+    await settle();
+    expect(posted).toContainEqual({
+      url: `/games/${GAME}/seats/bot`,
+      body: { tier: "random", deck: "deep" },
+    });
+    expect(c.querySelector("section[aria-labelledby]")).toBeNull();
+  });
+
+  it("closes the deck picker to open, and Cancel gives the region back", async () => {
+    setSession(seated(HOST));
+    hostRoutes();
+    routes["GET /bot/options"] = () => options;
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    const c = card(container);
+    expect(picker(container)).not.toBeNull();
+    click(button(c.querySelector('li[aria-label="seat 1: open"]')!, /Add bot/)!);
+    await settle();
+    expect(picker(container)).toBeNull();
+    expect(c.querySelector("section[aria-labelledby] h4")?.textContent).toBe("Add a bot to seat 1");
+    click(button(c.querySelector("section[aria-labelledby]")!, /^\s*Cancel\s*$/)!);
+    await settle();
+    expect(c.querySelector("section[aria-labelledby]")).toBeNull();
+    // Your deck is still to choose.
+    expect(primary(c).textContent?.trim()).toBe("Choose your deck");
   });
 });
 

@@ -152,7 +152,7 @@ registered, or when this file is stale.
 | `previewUpdate` | `Preview changes` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's first step: read the new list and show the diff, writing nothing (#2036) |
 | `saveUpdate` | `Save update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's confirm: commits the previewed list (#2036) |
 | `cancelUpdate` | `Cancel update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | closes the update sheet without saving (#2036) |
-| `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte` | a signed-in person's saved decks; the decks.library hint points at it |
+| `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte`<br>`lib/components/DeckPicker.svelte` | a signed-in person's saved decks: the Decks page's grid (the decks.library hint points at it) and the deck picker's My decks grid |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
@@ -160,7 +160,6 @@ registered, or when this file is stale.
 | `seatTile` | `seat <n>: <name>` (starts with `seat `) | listitem | aria | `lib/components/SeatTile.svelte` | a lobby table's seat tile, numbered from 1 as people count; an open one is `seat <n>: open` (ADR 0212 §1) |
 | `readinessLine` | `ready <n> of <seated>` (starts with `ready `) | group | aria | `routes/Lobby.svelte` | a lobby table's readiness line, in its footer: how many of the seated players have a deck in (ADR 0212 §2) |
 | `chooseYourDeck` | `Choose your deck` | button | text | `lib/tablesPage.ts`<br>`routes/Lobby.svelte` | a lobby table's primary while your seat has no deck: opens the deck picker under the seats (ADR 0212 §2) |
-| `sitDownWithThisDeck` | `Sit down with this deck` | button | text | `lib/components/YourDecksPicker.svelte`<br>`lib/components/PrebuiltDeckPicker.svelte` | seats the deck picked in the saved-deck or the pre-built list (#4655) |
 | `startGame` | `Start game · <n> players` (starts with `Start game`) | button | text | `lib/tablesPage.ts` | a lobby table's primary once every seated player has a deck, for whoever may start it; plain Start game at four (ADR 0212 §2) |
 | `waitingFor` | `Waiting for <who>` (starts with `Waiting for `) | button | text | `lib/tablesPage.ts` | a lobby table's disabled primary: Waiting for 2 players, Waiting for players, Waiting for <host> to start (ADR 0212 §2) |
 | `openTable` | `Open table` | button | text | `lib/tablesPage.ts`<br>`routes/Lobby.svelte` | opens a lobby table on the board: the primary for a seat held elsewhere and for the admin, otherwise a ghost button in the footer and a right-click item |
@@ -172,6 +171,18 @@ registered, or when this file is stale.
 | `newSpectatorLink` | `New spectator link…` | menuitem | text | `routes/Lobby.svelte` | mints a new spectator link after a confirm, then copies it; the current link stops working |
 | `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's settings summary, life and undos and then what else differs: opens the table settings panel (read-only for a non-host) |
 | `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
+| `deckPicker` | `choose your deck` | region | aria | `routes/Lobby.svelte` | the deck picker under a lobby table's seats, its notch at your seat: the tabs, the grid and the detail line (ADR 0212 §3) |
+| `myDecksTab` | `My decks` | tab | text | `lib/components/DeckPicker.svelte` | the deck picker's tab of saved decks, with their count; absent for a guest or an empty library (owner decision 7) |
+| `prebuiltTab` | `Pre-built` | tab | text | `lib/components/DeckPicker.svelte` | the deck picker's tab of pre-built decks, with their count; where a guest opens |
+| `pasteListTab` | `Paste a list` | tab | text | `lib/components/DeckPicker.svelte` | the deck picker's tab with the decklist box: an Archidekt or Moxfield link, or a plain-text list |
+| `prebuiltDecks` | `pre-built decks` | radiogroup | aria | `lib/components/DeckPicker.svelte`<br>`lib/components/BotPicker.svelte`<br>`routes/Decks.svelte` | the Pre-built grid, a radio group of deck tiles, in the deck picker and the Add bot picker; the Decks page's read-only list of them |
+| `decklistSource` | `decklist source` | textbox | aria | `lib/components/DeckPicker.svelte` | Paste a list's box: a deck link, or a plain-text decklist |
+| `sitDownWithThisDeck` | `Sit down with this deck` | button | text | `lib/components/DeckPicker.svelte` | seats the deck selected in My decks or Pre-built (#4655): the lobby card's footer primary while the picker is open, or the deck dialog's button (ADR 0212 §2) |
+| `uploadDeck` | `Upload deck` | button | text | `lib/components/DeckPicker.svelte` | seats the decklist pasted in Paste a list: the footer primary, or the deck dialog's button |
+| `importDeck` | `Import deck` | button | text | `lib/components/DeckPicker.svelte` | what Upload deck says when Paste a list holds a deck link |
+| `addBot` | `Add bot` | button | text | `lib/components/SeatTile.svelte`<br>`lib/components/BotPicker.svelte` | an open seat's Add bot, which opens the bot picker; then the footer primary that seats the bot (owner decision 8) |
+| `addBotTo` | `Add a bot to seat <n>` (starts with `Add a bot to seat `) | region | text | `lib/components/BotPicker.svelte` | the bot picker under the seats, named by its title: the tier, your own model key, and the Pre-built grid (owner decision 8) |
+| `botTier` | `bot tier` | radiogroup | aria | `lib/components/BotPicker.svelte` | the bot picker's tier control; a tier the server cannot run is disabled, and the line under it says why |
 | `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `siteMenu` | `Site menu` | button | aria | `lib/components/SiteHeader.svelte` | the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877) |

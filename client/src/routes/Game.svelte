@@ -23,7 +23,7 @@
     switchAdminMode,
   } from "../lib/admin";
   import { seatColor } from "../lib/colors";
-  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import BugReportDraftPill from "../lib/components/BugReportDraftPill.svelte";
   import { currentBugDraft } from "../lib/bugReportDraft.svelte";
@@ -3276,15 +3276,9 @@
           Choose your deck
           <span class="prompt-src" aria-hidden="true">before the game starts</span>
         </h2>
-        <p class="prompt-hint">
-          Every deck is validated against Commander rules — 100-card singleton, color identity,
-          format legality — whichever way it arrives.
-        </p>
-        <DeckUploadForm
-          {gameID}
-          playerID={viewerID}
-          onSuccess={() => (deckImportDismissed = true)}
-        />
+        <!-- The lobby card's deck picker (ADR 0212 §3), with its own
+             Sit down button: there is no card footer here. -->
+        <DeckPicker {gameID} playerID={viewerID} onSuccess={() => (deckImportDismissed = true)} />
         <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
@@ -4739,8 +4733,11 @@
     z-index: 50;
     padding: 1rem;
   }
+  /* Wide enough for four of the picker's tiles; its tab bar runs to the
+     dialog's edges. */
   .deck-import-modal {
-    width: min(640px, 100%);
+    --picker-pad: 22px;
+    width: min(760px, 100%);
   }
   .import-hint {
     margin-top: 4px;

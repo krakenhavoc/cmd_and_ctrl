@@ -418,7 +418,7 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     expect(location.hash).toBe(`#/games/${G3}`);
   });
 
-  it("opens a held seat at a table still in the lobby on the Lobby, with its deck panel", async () => {
+  it("opens a held seat at a table still in the lobby on the Lobby, with its deck picker", async () => {
     setSession(sess("identified", USER));
     routes["GET /games"] = () => ({
       games: [meta(G4, { players: [{ player_id: "p4", name: "Alice", seat: 0 }] })],
@@ -435,8 +435,10 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     await settle();
     expect(currentSession()?.gameID).toBe(G4);
     expect(location.hash).toBe("#/lobby");
-    // Seated now, with no deck yet: the deck panel is open.
-    expect(container.querySelector(".deck-upload")).not.toBeNull();
+    // Seated now, with no deck yet: the deck picker is open.
+    expect(
+      container.querySelector('[role="region"][aria-label="choose your deck"]'),
+    ).not.toBeNull();
   });
 
   it("shows the admin token every table", async () => {
