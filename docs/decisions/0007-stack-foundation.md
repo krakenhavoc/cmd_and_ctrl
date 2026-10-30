@@ -679,3 +679,29 @@ Tests: `TestCouncilsJudgmentResolvesAfterTheVote` and
 `TestFabricateResolvesAfterItsChoice` (log order, stack zone, stack
 lane), and the nine existing tests that had pinned the spell in the
 graveyard while its own prompt was open, now pinning the reverse.
+
+## Amendment 2026-10-30 — a grant read off the mana spent, to the spells you cast (#4724)
+
+**Context.** Shadow the Hedgehog prints "Each spell you cast has split
+second if mana from an artifact was spent to cast it." Decision 16's
+grant reaches every spell its source's controller controls that its
+`PermissionFilter` matches. This one is narrower twice: the spell must
+have been cast by that player, and its payment must include mana from
+an artifact.
+
+**Decision 18. Two optional narrowings on `SplitSecondGrant`.**
+`YouCast` makes the grant reach the spells its source's controller CAST
+(`StackItem.BaseController`, else `Controller`) rather than the ones they
+control, and never a copy, which was not cast (CR 707.10). `SpentFrom` is
+a set of `ManaSourceKinds`: the grant reaches a spell only when mana from
+a source of one of those kinds was spent to cast it, read off
+`StackItem.Paid` through `ManaSpent.From`. Each mana keeps a snapshot of
+its source (#1212), so a Treasure that sacrificed itself to pay counts
+as an artifact. The payment record is complete when the spell lands on
+the stack and never changes, so the condition is settled at the cast;
+the grant itself stays live under decision 16, so the source leaving
+still takes split second off the spell. Both fields are zero for Samut,
+whose behaviour is unchanged. `effects.EachSpellYouCastHasSplitSecondIfManaFrom`
+builds the grant, and a card using it declares `ReadsManaSpent`
+(`ReadsYourCasts | ReadsSourceKinds` for artifact mana), so a waived
+payment asks the caster which of the mana an artifact made.
