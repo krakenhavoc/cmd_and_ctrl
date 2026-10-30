@@ -7640,10 +7640,14 @@ func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []Att
 		// #3400: a fixed player the creature can't attack, and their
 		// planeswalkers (Promise of Loyalty). Not the creature's own
 		// controller, whom CR 506.2 already forbids.
-		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller {
+		//
+		// A restriction with an attacker filter (#4601, Storm, Windrider)
+		// needs the board to know whether it binds this creature now, so
+		// stampDefenderRefusals adds its row and this one leaves it out.
+		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller && len(r.OnlyAttackersMatching) == 0 {
 			out = append(out, AttackTargetRestrictionView{
 				Player:        r.NotPlayer.String(),
-				Planeswalkers: true,
+				Planeswalkers: !r.NotPlayerOnly,
 				Source:        r.SourceName,
 			})
 		}

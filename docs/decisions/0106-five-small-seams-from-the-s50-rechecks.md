@@ -553,3 +553,16 @@ Cards: Weathered Sentinels, Hightide Hermit (Full).
 Snapshot impact: none. The flag is catalog data.
 
 Cards: Spider-Punk (Full). Its riot, "Other Spiders you control have riot" and "Damage can't be prevented" already worked (ADR 0109 §10, ADR 0107 §5). The riot grant is not narrowed to creatures: "Spiders" names a creature type, which a kindred permanent shares (CR 205.3m). No other Commander-legal card prints "abilities can't be countered".
+
+## Amendment (2026-10-29): "creatures with flying can't attack you" (#4601)
+
+§2's restriction list had a fixed-player clause (`NotPlayer`, #3400) that also covers the player's planeswalkers, and a per-player static for the Arboria shape (`PlayerMustHaveActedLastTurn`, #1997) that filters nothing about the attacker. Storm, Windrider prints "Creatures with flying can't attack you": the player alone, and only attackers with a characteristic. No registered card said it. This extends the same list rather than adding a second mechanism, so every declaration-time reader (both verbs, the CR 508.1d search, the enumerator and the bot's attack targets, the digest) follows with no new call site.
+
+- **`NotPlayerOnly bool`** narrows `NotPlayer` to the player alone. A planeswalker or battle that player controls stays a legal target.
+- **`OnlyAttackersMatching []PermanentQuery`** makes the whole restriction bind only an attacker that matches any query, judged on its effective characteristics when attackers are declared (CR 508.1c). The static writes the restriction onto every creature, any controller's, and this filter chooses, rather than the static's `AppliesTo`, which runs inside the layer pass where a granted keyword may not have landed yet. A creature that gains or loses flying before the declaration is judged as it then stands. Plain data, so the characteristic stays snapshot-safe.
+- **`effects.CreaturesMatchingCantAttackYou(label, queries...)`** is the card-side constructor. "You" is the controller of the printing permanent, read when the layers run. The source is that permanent, so the restriction ends with it, and a creature losing all abilities keeps it.
+- **The view.** `viewOfAttackTargetRestrictions` leaves a filtered restriction out, because it needs the board. `DefenderRefusalsForEffect` adds its row (player only, reason "it's a creature with flying") only while the filter binds that creature, so a creature that loses flying drops the chip.
+
+Snapshot impact: two additive fields on `AttackTargetRestriction` (`NotPlayerOnly`, `OnlyAttackersMatching`), recorded with `-update-shape` under the current version. A file written before restores with both zero, which is the old behaviour.
+
+Cards: Storm, Windrider (Full). Its block clause is Chaosphere's blocker-side rule scoped to the controller's creatures, and its cast trigger records the targeted creatures as objects, as Orvar does.
