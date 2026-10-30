@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// Rivaz of the Claw — Legendary Creature — Lizard Warlock {1}{B}{R}, 1/3
+// Rivaz of the Claw — Legendary Creature — Lizard Warlock {1}{B}{R}, 3/3
 // (Dominaria United; deck request #4724):
 //
 //	"Menace

@@ -2,7 +2,8 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Blazing Sunsteel — Artifact — Equipment {1}{R} (deck request #4724):
+// Blazing Sunsteel — Artifact — Equipment {1}{R} (Commander Legends;
+// deck request #4724):
 //
 //	"Equipped creature gets +1/+0 for each opponent you have.
 //	 Whenever equipped creature is dealt damage, it deals that much

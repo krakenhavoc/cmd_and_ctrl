@@ -8,7 +8,8 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// Expedited Inheritance — Enchantment {R}{R} (deck request #4724):
+// Expedited Inheritance — Enchantment {R}{R} (Murders at Karlov Manor;
+// deck request #4724):
 //
 //	"Whenever a creature is dealt damage, its controller may exile that
 //	 many cards from the top of their library. They may play those cards
