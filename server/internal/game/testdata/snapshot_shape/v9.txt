@@ -5426,6 +5426,7 @@ frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[]	object
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[].CardType	string
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[].Counter	string
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[].N	number:int
+frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[].Subtype	string
 frozenEntries[].event.entryTail.batch.opts.entersWithCounters{}	number:int
 frozenEntries[].event.entryTail.batch.opts.faceDown	string
 frozenEntries[].event.entryTail.batch.opts.faceDownListed	object
@@ -30268,6 +30269,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCounters
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[].CardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[].Counter	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[].N	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[].Subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.opts.faceDown	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.faceDownListed	object
