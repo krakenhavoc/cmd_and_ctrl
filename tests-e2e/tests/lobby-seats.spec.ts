@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { L } from "../../client/src/lib/labels";
 import { makeCommanderDeck } from "./deck-fixture";
 import {
   adminLogin,
@@ -14,7 +15,8 @@ import {
 // table's state: Sit down with this deck while the picker is open,
 // Waiting for …, Start game. The lobby has no socket, so a deck seated
 // elsewhere arrives with the next read (a poll every 5s, or on focus,
-// which these tests use).
+// which these tests use). The ready-check moment (§2) is the page's polite
+// live region saying "Every deck is in. …" once, when the last deck lands.
 
 async function joinInBrowser(
   page: Page,
@@ -143,6 +145,9 @@ test.describe("lobby seats (ADR 0212)", () => {
     await expect(
       card.getByRole("group", { name: "ready 1 of 2" }),
     ).toContainText("waiting on Olive's deck");
+    // Nothing is ready to announce yet.
+    const live = page.locator('p.sr-only[role="status"]');
+    await expect(live).toHaveText("");
 
     await uploadDeckAs(
       request,
@@ -153,6 +158,12 @@ test.describe("lobby seats (ADR 0212)", () => {
     );
     await reread(page);
     await expect(primary).toHaveText("Start game · 2 players");
+    // The last deck landed under this page's eyes: the live region says so,
+    // and Hal, the host, may start. Further reads leave it alone.
+    await expect(live).toHaveText(L.everyDeckIn(true, "Hal"));
+    await reread(page);
+    await expect(primary).toHaveText("Start game · 2 players");
+    await expect(live).toHaveText(L.everyDeckIn(true, "Hal"));
     await primary.click();
     // In play, the card keeps its primary in its head.
     await expect(card.getByText(/^In play/)).toBeVisible({ timeout: 15_000 });

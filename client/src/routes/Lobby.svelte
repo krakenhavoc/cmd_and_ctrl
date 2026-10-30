@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
+  import { get } from "svelte/store";
   import {
     archiveGame,
     createGame,
@@ -41,6 +42,19 @@
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
+  import { settings } from "../lib/settings";
+  import {
+    NO_MEMORY,
+    READY_ANNOUNCE_HOLD_MS,
+    READY_MOMENT_MS,
+    READY_PRIMARY_DELAY_MS,
+    observeReady,
+    readyAnnouncement,
+    readyDelayMs,
+    readyMotion,
+    type ReadyMemory,
+    type ReadyMoment,
+  } from "../lib/readyMoment";
   import { canInviteTablemates } from "../lib/tablemates";
   import {
     canCreateTables,
@@ -1381,6 +1395,92 @@
     };
   });
 
+  // --- the ready-check moment (ADR 0212 §2, lib/readyMoment.ts) -----------
+  //
+  // The page keeps no socket, so "the last deck landed" is two reads of
+  // the same table. This effect hands observeReady the tables Now shows
+  // after every write to `games`: the 5 s poll, a focus re-read, the
+  // sit-down answer. observeReady fires only on the edge from not-all-ready
+  // to all-ready between two reads, so it is silent on a first read and on
+  // every repeat poll. The memory is a plain variable on purpose: writing
+  // it must not re-run the effect.
+  let readyMemory: ReadyMemory = NO_MEMORY;
+  // The tables whose moment is on screen, and which seat landed (null:
+  // none to ring). Cleared READY_MOMENT_MS later. Left empty under reduced
+  // motion, where the checks, the counter and the primary simply change.
+  let readyShown = $state<Record<string, { landed: number | null }>>({});
+  // The polite live region's line: said once per moment, then cleared.
+  let announcement = $state("");
+  const readyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  let announceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    const seen = observeReady(readyMemory, now);
+    readyMemory = seen.memory;
+    for (const m of seen.moments) untrack(() => showReadyMoment(m));
+  });
+
+  onMount(() => () => {
+    for (const t of readyTimers.values()) clearTimeout(t);
+    clearTimeout(announceTimer);
+  });
+
+  function osReducesMotion(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }
+
+  // takesPart: this person sits at the table, created it, or watches it.
+  // The live region speaks for those tables only; an admin scrolling a
+  // long list of other people's tables gets the card's change, not a line
+  // per table.
+  function takesPart(g: GameMeta): boolean {
+    return mySeatNumber(g) !== null || g.is_creator === true || watchesHere(g);
+  }
+
+  function showReadyMoment(m: ReadyMoment): void {
+    const g = now.find((x) => x.id === m.gameID);
+    if (!g) return;
+    const s = get(settings);
+    const motion = readyMotion({
+      enabled: s.animations.enabled,
+      reduceMotion: s.accessibility.reduceMotion,
+      osReduceMotion: osReducesMotion(),
+    });
+    if (motion === "full") {
+      readyShown = { ...readyShown, [g.id]: { landed: m.landed } };
+      clearTimeout(readyTimers.get(g.id));
+      readyTimers.set(
+        g.id,
+        setTimeout(() => {
+          const rest = { ...readyShown };
+          delete rest[g.id];
+          readyShown = rest;
+          readyTimers.delete(g.id);
+        }, READY_MOMENT_MS),
+      );
+    }
+    if (!takesPart(g)) return;
+    const mine = now.filter((x) => x.state === "lobby" && takesPart(x));
+    void say(readyAnnouncement(g, { startable: mayStart(g), named: mine.length > 1 }));
+  }
+
+  // say sets the live region's line. When it already holds one, it is
+  // emptied for a render first, so the next line is a new insertion that
+  // a screen reader announces even when the words are the same.
+  async function say(text: string): Promise<void> {
+    clearTimeout(announceTimer);
+    if (announcement) {
+      announcement = "";
+      await tick();
+    }
+    announcement = text;
+    announceTimer = setTimeout(() => (announcement = ""), READY_ANNOUNCE_HOLD_MS);
+  }
+
   // #/lobby?show=history (and the old #/my-games, which redirects
   // there) scrolls to History once the lists have loaded.
   let scrolledToHistory = false;
@@ -1444,6 +1544,10 @@
 >
   <section class="lobby">
     <RemovedNotice />
+
+    <!-- The ready-check moment's line (ADR 0212 §2): a polite live region
+         that is always mounted, so the line is announced when it is set. -->
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
 
     {#if modeNotice}
       <div class="mode-notice" role="status">
@@ -1569,6 +1673,7 @@
             {@const myNo = mySeatNumber(g)}
             {@const chip = statusChip(g)}
             {@const primary = primaryFor(g)}
+            {@const shown = readyShown[g.id]}
             {@const panel = panelFor(g)}
             {@const rules = cardSettings.get(g.id)}
             {@const rulesText = rules ? settingsSummary(rules) : null}
@@ -1580,6 +1685,8 @@
               class:lobby
               class:mine={myNo !== null}
               class:menu-open={cardMenu?.gameID === g.id}
+              class:moment={shown !== undefined}
+              style:--ring-delay="{READY_PRIMARY_DELAY_MS}ms"
               use:contextMenuTrigger={(at, opener) => openCardMenu(g, at, opener)}
             >
               <div class="thead">
@@ -1642,6 +1749,7 @@
                         preview={pv?.preview ?? false}
                         you={myNo === p.seat}
                         botChip={p.is_bot ? botChipText(p, botOptions?.tiers ?? []) : ""}
+                        moment={shown ? { landed: shown.landed === p.seat } : undefined}
                         pick={seat?.player_id === p.player_id && offersDeck(g)
                           ? {
                               expanded: panel === "deck",
@@ -2060,7 +2168,11 @@
                     <span class="rcount" aria-hidden="true">{ready.ready}/{ready.seated}</span>
                     <span class="segs" aria-hidden="true">
                       {#each ready.segments as sg (sg.seat)}
-                        <i class="sg {sg.state}" style:--c={seatColor(sg.seat)}></i>
+                        <i
+                          class="sg {sg.state}"
+                          style:--c={seatColor(sg.seat)}
+                          style:--wave="{readyDelayMs(sg.seat)}ms"
+                        ></i>
                       {/each}
                     </span>
                     <span class="rtext"
@@ -2090,6 +2202,7 @@
                     <button
                       type="button"
                       class="btn primary sm wide"
+                      class:ringed={shown !== undefined && primary.kind === "start"}
                       disabled={primary.disabled}
                       title={primary.title}
                       onclick={primary.run}
@@ -2808,6 +2921,77 @@
     font-size: 12px;
     color: var(--mint);
     white-space: nowrap;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* --- the ready-check moment (ADR 0212 §2) ---
+     .moment is on the card only while lib/readyMoment.ts says so: for
+     READY_MOMENT_MS after this client sees the last deck land, and never
+     under reduced motion (the page decides that from the setting, the
+     animations switch and the OS signal). The seat tiles' own part, the
+     checks and the ring on the seat that landed, is in SeatTile. Here:
+     the counter's segments fill in seat order, the number settles, and
+     Start game gets one soft ring that fades. Each keyframe's last frame
+     is the resting look, so nothing jumps when the class goes. */
+  .tcard.moment .sg.ready {
+    transform-origin: left center;
+    animation: sg-fill 420ms var(--ease) both;
+    animation-delay: var(--wave, 0ms);
+  }
+  .tcard.moment .rcount {
+    transform-origin: left center;
+    animation: count-settle 520ms var(--ease) both;
+    animation-delay: var(--ring-delay, 440ms);
+  }
+  .tacts .btn.primary.ringed {
+    animation: start-ring 1500ms var(--ease) both;
+    animation-delay: var(--ring-delay, 440ms);
+  }
+  @keyframes sg-fill {
+    from {
+      transform: scaleX(0.15);
+      opacity: 0.4;
+    }
+    to {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+  @keyframes count-settle {
+    from {
+      transform: scale(1.35);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  @keyframes start-ring {
+    0% {
+      box-shadow: 0 0 0 0 var(--accent-soft);
+    }
+    30% {
+      box-shadow: 0 0 0 5px var(--accent-soft);
+    }
+    100% {
+      box-shadow: 0 0 0 10px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tcard.moment .sg.ready,
+    .tcard.moment .rcount,
+    .tacts .btn.primary.ringed {
+      animation: none;
+    }
   }
 
   /* --- the card's inset panels: settings, confirmations, new links --- */

@@ -258,6 +258,11 @@ flight does not).
 The table's effect cues (ADR 0209) follow it: with any of the three signals, or
 `animations.effects` Off, a cue draws a still badge where the permanent was and
 no motion, and a click or Escape skips a cue that is playing.
+The lobby card's ready-check moment (ADR 0212 §2, `lib/readyMoment.ts`) follows
+it too: the seat checks pop in seat order, the tile whose deck landed and the
+Start game primary each get one ring that fades, and with any of the three
+signals none of it is drawn (the page never puts the classes on) while the
+counter, the checks, the button and the live-region line change all the same.
 
 ## 5. Layout and screens
 

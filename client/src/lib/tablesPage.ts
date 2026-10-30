@@ -131,6 +131,15 @@ export function seatReady(p: SeatInfo): boolean {
   return p.is_bot === true || p.deck_uploaded;
 }
 
+// allDecksIn: a lobby table with two or more seated, every one of them
+// ready. It is the state the readiness line calls "Every deck is in" and
+// the one where the primary stops waiting on a deck (§2), and the one the
+// ready-check moment fires on entering (readyMoment.ts). Fewer than two
+// seated is not it: a game needs two.
+export function allDecksIn(g: GameMeta): boolean {
+  return g.state === "lobby" && g.players.length >= 2 && g.players.every(seatReady);
+}
+
 // SeatTileText is what a taken seat's tile says under its name (§1):
 // the commander, a quieter second line only when it adds something,
 // the colour identity as WUBRG letters, and whether it is ready.
