@@ -8691,6 +8691,24 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+**"Target player reveals N cards from their hand. You choose one of them. That player exiles/discards it."**
+(Taster of Wares, Klaw, Sonic Subjugator; ADR 0116's 2026-10-30 amendment, #4588) is not the shape above: the
+revealing player picks which N cards to show and only those are revealed. Declare the pair of keyed prompts once
+and call it where N is known:
+
+```go
+var klawReveal = NewRevealFromHandPick("Klaw, Sonic Subjugator", "discards",
+	"choose-cards/klaw-sonic-subjugator-reveal", "choose-cards/klaw-sonic-subjugator-discard",
+	func(ctx *Context, owner, card uuid.UUID) error {
+		return ctx.Game.DiscardCardsKeyedForEffect(owner, []uuid.UUID{card}, ctx.Source(), game.KeyedTail{})
+	})
+// in the trigger: return klawReveal.Ask(ctx, TargetedPlayer(ctx), 1+creatureCardsInYourGraveyard)
+```
+
+`DiscardCardsKeyedForEffect` is the one exported "discard these specific cards from P's hand" verb for a
+choice P did not make (it takes a `then` tail told the cards that landed); append both keys to the ledger with
+`-update-effect-keys`.
+
 ### Controlling another player (ADR 0166, #2164, CR 723)
 
 Word of Command is the one card: a look-only, keep-the-card pick, then
