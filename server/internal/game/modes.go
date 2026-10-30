@@ -201,6 +201,15 @@ type ModeSpec struct {
 	// effects.ChooseOneAtRandom.
 	AtRandom bool
 
+	// NotRandomIf is "choose one at random. If <condition>, you choose
+	// one instead" (Typhoid Mary, Fractured): while it holds for the
+	// ability's controller as the trigger is put on the stack, the pick
+	// is theirs, an ordinary mode_pick prompt, and not the engine's.
+	// Only with AtRandom (effects.Register refuses it alone). Like
+	// RaiseMaxIf it is a registered KEY, not a func, so a ModeSpec
+	// carries no closure route from Game.
+	NotRandomIf ModeCountCondition
+
 	// UpToCastX is "choose up to X —" where X is the X paid for the
 	// spell that became the ability's source (The Ruinous Wrecking
 	// Crew, #4617). CR 107.3m: "If an object's enters-the-battlefield
@@ -411,6 +420,15 @@ func (ms *ModeSpec) OrUpToIf(n int, cond ModeCountCondition) *ModeSpec {
 // with the maximum, so one bullet is no longer an answer (#1655).
 func (ms *ModeSpec) InsteadIf(n int, cond ModeCountCondition) *ModeSpec {
 	ms.RaisedMax, ms.RaisedMin, ms.RaiseMaxIf = n, n, cond
+	return ms
+}
+
+// ChosenByYouInsteadIf declares "If <condition>, you choose one instead"
+// on a spec built by effects.ChooseOneAtRandom: while the condition
+// holds as the trigger is put on the stack, its controller picks the
+// mode (NotRandomIf).
+func (ms *ModeSpec) ChosenByYouInsteadIf(cond ModeCountCondition) *ModeSpec {
+	ms.NotRandomIf = cond
 	return ms
 }
 

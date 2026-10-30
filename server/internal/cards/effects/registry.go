@@ -2048,6 +2048,9 @@ func checkActivatedAtRandom(name string, spec *game.TargetSpec) {
 // raise or "hasn't been chosen" memory, none of which a random pick
 // can honour.
 func checkAtRandom(name string, ms *game.ModeSpec) {
+	if ms != nil && !ms.AtRandom && !ms.NotRandomIf.IsZero() {
+		panic(fmt.Sprintf("effects.Register: %q declares \"you choose one instead\" without \"choose one at random\" — build it with ChooseOneAtRandom(…).ChosenByYouInsteadIf(…)", name))
+	}
 	if ms == nil || !ms.AtRandom {
 		return
 	}

@@ -83,6 +83,13 @@ var DeliriumForModes = game.ModeCondition("delirium", func(g *game.Game, chooser
 	return b16CardTypesInGraveyard(g, chooser) >= 4
 })
 
+// YouDiscardedACardThisTurn is "If you discarded a card this turn, you choose
+// one instead" (Typhoid Mary, Fractured): the chooser's discard tally for the
+// turn, read as the trigger is put on the stack.
+var YouDiscardedACardThisTurn = game.ModeCondition("you-discarded-a-card-this-turn", func(g *game.Game, chooser uuid.UUID) bool {
+	return g.TurnTallyFor(chooser).CardsDiscarded > 0
+})
+
 // ChooseOne — "Choose one —".
 func ChooseOne(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Choose one", Options: options, Min: 1, Max: 1}

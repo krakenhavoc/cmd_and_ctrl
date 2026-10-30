@@ -73,11 +73,15 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	// removed, so a raised minimum asks for no more than the bullets
 	// actually on offer. The printed Min keeps its old meaning, which
 	// EnoughChoosableModes has already enforced above.
-	if ms.AtRandom {
+	q := g.modeQueryForSourceLocked(source, source.Controller)
+	// "Choose one at random. If <condition>, you choose one instead":
+	// while the condition holds the controller picks, and the prompt
+	// below is the ordinary "Choose one".
+	chosenInstead := ms.AtRandom && ms.NotRandomIf.holds(g, q)
+	if ms.AtRandom && !chosenInstead {
 		g.pickModeAtRandomLocked(tc, source, lki, t, doubledBy, options)
 		return true
 	}
-	q := g.modeQueryForSourceLocked(source, source.Controller)
 	if ms.UpToCastX {
 		// #4617, CR 107.3m: "choose up to X" in an enters trigger reads
 		// the X paid for the spell that became the source. `source` is
@@ -106,7 +110,7 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		labels = append(labels, ms.Options[i].Label)
 	}
 	prompt := ms.Prompt
-	if prompt == "" {
+	if prompt == "" || chosenInstead {
 		prompt = "Choose one"
 	}
 	if ms.UpToCastX {

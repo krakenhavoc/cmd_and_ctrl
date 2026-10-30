@@ -1565,6 +1565,12 @@ type SourceStat string
 const (
 	SourcePower     SourceStat = "power"
 	SourceToughness SourceStat = "toughness"
+	// SourceManaValueVsPower compares the CANDIDATE's mana value with the
+	// SOURCE's power: "target creature card with mana value less than or
+	// equal to this creature's power" (Winter Soldier, Reborn Avenger).
+	// The source's power is its live value while it stands and its
+	// last-known value once it has left (CR 608.2h), as for SourcePower.
+	SourceManaValueVsPower SourceStat = "mana_value_vs_power"
 )
 
 // SourceCmp is how the candidate's stat compares with the source's.
@@ -1589,8 +1595,11 @@ type SourceComparison struct {
 // the source's power and toughness.
 func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 	cand, src := c.PowerForComparison(), srcPower
-	if sc.Stat == SourceToughness {
+	switch sc.Stat {
+	case SourceToughness:
 		cand, src = c.CurrentToughness(), srcToughness
+	case SourceManaValueVsPower:
+		cand = c.ManaValue()
 	}
 	switch sc.Cmp {
 	case CmpLess:
