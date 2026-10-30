@@ -114,13 +114,6 @@ func hawkeyeTrickArrowsModes(_ uuid.UUID, p game.EffectParams) *game.ModeSpec {
 				}
 				return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
 			}),
-		ModeDoing("Boomerang — Discard a card, then draw a card.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-					Player: item.Controller,
-					Source: item.SourceCardID,
-					N:      1,
-				}, theRuinousWreckingCrewDraw, nil)
-			}),
+		discardThenDrawBullet("Boomerang — Discard a card, then draw a card."),
 	)
 }
