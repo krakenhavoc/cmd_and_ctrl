@@ -791,6 +791,22 @@ func (g *Game) ResolvedThisTurn(source uuid.UUID, label string) int {
 	return sumTally(g.TurnTally.Resolved, g.objectTallyPrefixLocked(source), label)
 }
 
+// discardedThisTurnLabel is the TurnTally.Resolved label under which
+// the turn tally records that a card was discarded into a graveyard
+// (#4628). Reserved: no card file writes it with NoteDoneThisTurn.
+const discardedThisTurnLabel = "discarded"
+
+// DiscardedThisTurn reports whether the card object `cardID` names was
+// discarded this turn and is the object that landed in the graveyard
+// (CR 702.187b, mayhem). Per OBJECT (CR 400.7): a card that was
+// discarded, left the graveyard and came back is a new object, and a
+// card put into the graveyard some other way (a mill, a destroyed
+// permanent) was never discarded. Flushed with the rest of the turn
+// tally, so "this turn" ends with the turn. Caller must hold g.mu.
+func (g *Game) DiscardedThisTurn(cardID uuid.UUID) bool {
+	return cardID != uuid.Nil && g.ResolvedThisTurn(cardID, discardedThisTurnLabel) > 0
+}
+
 // NoteDoneThisTurn records that the instruction the ability labelled
 // `label` from `source` carries out ("Do this only once each turn")
 // has been performed, for ResolvedThisTurn to read under that same
@@ -1731,6 +1747,15 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
 	case EventDiscardCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
+		// #4628, CR 702.187b: mayhem's "you discarded this card this
+		// turn". Written for the card that landed in a graveyard, under
+		// the epoch the move gave it (zone.go bumps it before the event
+		// fires), so it names the OBJECT in the graveyard and nothing
+		// that leaves and returns later. A discard replaced to another
+		// zone leaves a card mayhem cannot cast from there anyway.
+		if ev.NewZone == ZoneGraveyard && ev.CardID != uuid.Nil {
+			g.NoteDoneThisTurn(ev.CardID, discardedThisTurnLabel)
+		}
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:

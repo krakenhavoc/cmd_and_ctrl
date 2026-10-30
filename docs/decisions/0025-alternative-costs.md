@@ -418,3 +418,50 @@ controller (`TestBlitzedCreatureStolenIsNotSacrificed`). Drop the hand binding a
 graveyard (`TestSabinCastsFromGraveyardOnlyUsingBlitz`).
 
 Tests: `cards/effects/blitz_test.go` (the clause, the zones, the wire), `cards/effects/blitz_cards_test.go` (every card).
+
+## Amendment (2026-10-30, [#4628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4628)): mayhem, a graveyard price that needs a discard this turn
+
+Mayhem (CR 702.187b) is "As long as you discarded this card this turn, you may cast it from your graveyard by paying
+[cost] rather than paying its mana cost", an alternative cost (CR 601.2b, 601.2f-h). It is flashback's place and price
+without flashback's exile, behind a condition that is about one object.
+
+**The record.** `Game.DiscardedThisTurn(cardID)` is a cell of the turn tally the discard event writes. The tally's
+listener, on `EventDiscardCard` with `NewZone` graveyard, calls `NoteDoneThisTurn(ev.CardID, "discarded")`. That is a
+`TurnTally.Resolved` entry keyed by `ObjectTallyKey(card, epoch, label)`, and the epoch is read after the move has bumped
+it (`zone.go`), so the key names the object that landed in the graveyard. Nothing else changes: `Resolved` is an existing
+snapshot field, so there is no new shape. CR 400.7 comes with the key: a card that is discarded, leaves the graveyard and
+returns is a new object, and a card that was milled, destroyed or countered was never discarded. The tally is flushed
+with the turn, so "this turn" needs no clock of its own. A discard that a replacement sends somewhere other than a graveyard
+records nothing, and nothing mayhem could cast is there.
+
+**The permission.** It is the card's own and conditional, so it rides `Spec.CastableZonesIf` (ADR 0066 amendment
+2026-10-13, Lightwheel Enhancements): `effects.MayhemCastableZone()` opens the owner's graveyard while `DiscardedThisTurn`
+holds. Every consumer already asks `cardOpensZoneLocked`: the engine, the view's `castable_here`, the bot's enumerator
+and the delve ordering. None of them needed a change.
+
+**The price.** `effects.Mayhem(cost)` is a graveyard-bound offer, key `mayhem`, an on-disk identity. It has no
+`ExileOnLeavingStack`: a mayhem spell goes to the graveyard when it resolves and is castable again the next time it is
+discarded. The zone's bound offer makes the price mandatory out of the graveyard, as for flashback (rule 3 of
+`validateCastPathLocked`), so the printed cost is not available there. Timing is the spell's own ("timing rules still
+apply"): Swarm, Being of Bees has flash, Abomination does not.
+
+**The gate on the price.** `AlternativeCost.RequiresDiscardedThisTurn` is checked by `validateCastPathLocked` beside
+`RequiresGrant`. Without it the card's own zone condition would be the only guard, and rule 4 of that function lets a
+stored permission that opens the graveyard (Yawgmoth's Will) claim any offer bound to the zone, so a milled card could be
+cast for the cheap price. It is one flag read by the one gate the engine, the view and the enumerator share. It is a bool
+rather than a `func(Game, Card)` so that `AlternativeCost` stays data and the closure ratchet does not move.
+
+**Not done.** Mayhem without a cost (CR 702.187c, "You may play this card from your graveyard if you discarded it this
+turn") has no card in the catalog and no door for a land: lands are played from a graveyard only under a permission
+(Crucible of Worlds), not from a card's own declaration. It waits for its first card. The bot prices a mayhem offer as an
+ordinary price, as it does flashback, and does not choose to discard so as to cast.
+
+Back-out: drop the `NoteDoneThisTurn` line in the tally listener and nothing is ever recorded
+(`TestMayhemDiscardedThisTurnCastsFromTheGraveyardForTheMayhemCost`). Drop the zone condition (return true) and a milled
+card opens the zone (`TestMayhemMilledCardIsNotCastable`). Drop the `RequiresDiscardedThisTurn` check and the price can be
+claimed under another permission (`TestMayhemPriceIsRefusedUnderAnotherPermissionWithoutADiscard`). Key the record by card
+ID without the epoch and a card that came back is still "discarded" (`TestMayhemCardThatLeftTheGraveyardAndReturnedIsNew`).
+
+Tests: `game/mayhem_test.go` (the record, the flush, the gate against stubs), `cards/effects/mayhem_cards_test.go` (the
+seam against the real catalog), `cards/effects/mayhem_seven_cards_test.go` (every card), `legal/mayhem_test.go` (the
+enumerator, dispatched), `protocol/mayhem_view_test.go` (`castable_here` and `alternative_costs`).

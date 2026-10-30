@@ -450,6 +450,23 @@ type AlternativeCost struct {
 	// nor accepted. See miracle.go.
 	RequiresGrant bool
 
+	// RequiresDiscardedThisTurn makes this printed offer claimable only
+	// while the player discarded THIS card object this turn — Mayhem's
+	// "as long as you discarded this card this turn, you may cast it
+	// from your graveyard by paying [cost]" (CR 702.187b, #4628). The
+	// record is Game.DiscardedThisTurn: per object (CR 400.7), so a card
+	// that left the graveyard and came back is a new object that was not
+	// discarded, and flushed with the turn tally.
+	//
+	// Checked by validateCastPathLocked beside RequiresGrant, so it
+	// holds for the engine, the view's offer stamp and the bot's offer
+	// list alike, and under a permission that opens the same zone (a
+	// Yawgmoth's Will in front of a card that was milled) too. The card
+	// still opens its own graveyard through Spec.CastableZonesIf with
+	// effects.MayhemCastableZone; this flag is what keeps the PRICE from
+	// being claimed where only another permission opens the zone.
+	RequiresDiscardedThisTurn bool
+
 	// CastsFace is the face this offer casts — disturb's "you may cast
 	// this card TRANSFORMED from your graveyard" (CR 702.146a, ADR 0107
 	// §4). Zero, the overwhelming majority, casts the face the caster
