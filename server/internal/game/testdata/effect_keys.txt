@@ -1828,3 +1828,4 @@ option option-pick/put-attacking-from-graveyard-finality
 payunless pay-unless/grim-reaper-lethal-legionnaire-return
 tail bob-reluctant-hydra-agent/drain
 option option-pick/mister-hyde-remove-a-counter
+tail msh-a7/rick-jones-after-mill
