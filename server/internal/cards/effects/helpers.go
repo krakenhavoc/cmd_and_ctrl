@@ -8,6 +8,18 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// exileTheFirstTargetIfLegal is "Exile target <thing>" for a spell or
+// ability whose first target is the one exiled (Baleful Mastery, Fall to
+// Earth). It re-checks the target against the item's own targets rather
+// than a captured slice, for undo safety, and does nothing for a target
+// that is no longer legal (CR 608.2b).
+func exileTheFirstTargetIfLegal(ctx *Context) error {
+	if ctx.Item == nil || len(ctx.Item.Targets) == 0 || !ctx.IsTargetLegal(ctx.Item.Targets[0]) {
+		return nil
+	}
+	return ExileTarget{Target: ctx.Item.Targets[0].ID}.Apply(ctx)
+}
+
 // returnLegalGraveyardTargetsToHand returns every still-legal graveyard
 // target to its owner's hand, in announce order — the body of the
 // "return N target cards from your graveyard to your hand" spells whose
