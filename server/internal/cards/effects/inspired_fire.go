@@ -25,8 +25,8 @@ func init() {
 				return q.Game.TurnTallyFor(q.Controller).CardsDrawn
 			}, "This spell costs {1} less to cast for each card you've drawn this turn."),
 		},
-		Targets: TargetCreature("target creature"),
-		Purpose: ForTargets(DamageToTarget(0, 4)),
+		Targets:   TargetCreature("target creature"),
+		Purpose:   ForTargets(DamageToTarget(0, 4)),
 		OnResolve: damageToFirstTarget(4),
 	})
 }
