@@ -64,10 +64,16 @@ for (const layout of ["quadrant", "row", "focus"]) {
         `Target reach 4435 ${Date.now()}`,
       );
       if (!game.invite_token) throw new Error("invite token missing");
+      // Tips off from the start (#4675): a first-use hint card can open
+      // over the caster's avatar once targeting starts, which rightly turns
+      // the row on (the avatar is covered), and be gone by the time the
+      // measurement below finds every avatar clear. Pressing "Hide tips"
+      // once a card showed raced it: a hint that came later was missed.
       for (const name of NAMES) {
         players.push(
           await joinAsPlayer(browser, game.id, game.invite_token, name, {
             display: { tableLayout: layout },
+            help: { tipsOff: true },
           }),
         );
       }
@@ -132,10 +138,6 @@ for (const layout of ["quadrant", "row", "focus"]) {
         .instance_id;
 
       const page = caster.page;
-      await page
-        .getByRole("button", { name: "Hide tips" })
-        .click({ timeout: 5_000 })
-        .catch(() => undefined);
       const dialog = page.getByRole("dialog", { name: /Select target for/ });
 
       const sizes = SIZES;
