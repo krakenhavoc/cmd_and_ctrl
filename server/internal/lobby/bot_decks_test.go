@@ -45,6 +45,7 @@ func newBotHTTPStack(t *testing.T, idx *cards.Index, decks aiseat.DeckSource) (*
 	log := discardLogger()
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
+	l.SetCardIndex(idx)
 	host := newFakeBotHost()
 	l.SetBotHost(host)
 	a := newTestAuth()
