@@ -1288,6 +1288,8 @@ tail assemble-the-legion/muster
 tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
+tail attacking-tokens/living-laser-exile-the-tokens
+tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
 tail attacking-tokens/mobilize-sacrifice-the-warriors
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
