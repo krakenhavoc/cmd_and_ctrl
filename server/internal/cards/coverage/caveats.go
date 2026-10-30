@@ -217,6 +217,16 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Harmonize("{cost}") — see harmonize_keyword.go`,
 	},
 	{
+		// #4628, CR 702.187: a graveyard offer claimable only for a card
+		// its owner discarded this turn.
+		Name:       "mayhem",
+		Phrases:    []string{"mayhem"},
+		Implements: altCost("mayhem"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "mayhem") resolves`,
+		Confidence: Exact,
+		Adopt:      `CastableZonesIf: []game.ConditionalCastZone{MayhemCastableZone()} plus Mayhem("{cost}") — see mayhem_keyword.go`,
+	},
+	{
 		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
 		// cost, declared with one bit. Sub-PR 2 added the second bit, a
 		// permanent's "Spells you cast have delve" (Teval).

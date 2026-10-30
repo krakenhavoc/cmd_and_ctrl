@@ -6883,6 +6883,32 @@ mana cost", Songcrafter Mage) is `GrantHarmonizeToCard`, Snapcaster's
 `GrantFlashbackToCard` under the `harmonize` key, so the granted offer
 taps and reduces exactly as a printed one does.
 
+**Mayhem (#4628, CR 702.187, ADR 0025 amendment 2026-10-30):** a card
+that prints "Mayhem {cost}" may be cast from its owner's graveyard for
+that cost only if it was discarded this turn. It needs two lines, the
+zone and the price:
+
+```go
+CastableZonesIf:  []game.ConditionalCastZone{MayhemCastableZone()},   // Sadistic Slash
+AlternativeCosts: []game.AlternativeCost{Mayhem("{1}{B}")},
+```
+
+`MayhemCastableZone()` is Gravecrawler's conditional zone with the
+condition `Game.DiscardedThisTurn(card)`: a per-object record (CR 400.7)
+written when a card is discarded into a graveyard and flushed with the
+turn. A milled card, a card discarded last turn, and a card that was
+discarded, left the graveyard and came back are all "no". `Mayhem` is
+flashback's graveyard price without the exile, so the spell lands back
+in the graveyard and mayhems again the next time it is discarded. Never
+hand-roll the struct: `RequiresDiscardedThisTurn` is what stops another
+permission that opens the graveyard from claiming the cheap price for a
+card that was not discarded. Timing is the spell's own ("timing rules
+still apply"), so a flash creature goes at instant speed and the rest at
+sorcery speed. Read "if it was cast from your graveyard" on a mayhem
+card's enters trigger with `source.Provenance.FromZone == game.ZoneGraveyard`
+(Rocket-Powered Goblin Glider). Mayhem without a cost (CR 702.187c) has
+no card yet.
+
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:
 `Card.Provenance` is a `CastProvenance{AltCost, FromZone}` written at
