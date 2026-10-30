@@ -290,6 +290,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Ka-Zar's Zabu: a legendary Cat that grows on landfall.
 	printedZabuToken,
+
+	// The Sentry, Golden Guardian's The Void (#4455).
+	printedMshA8VoidToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
