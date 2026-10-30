@@ -1832,3 +1832,6 @@ tail msh-a7/rick-jones-after-mill
 body red-hulk/damage
 body rewrite-history/return
 tail rapid-rescue/after-mill
+body speed-young-avenger/unblockable
+body spider-man-to-the-rescue/indestructible
+payunless pay-unless/speed-young-avenger-unblockable
