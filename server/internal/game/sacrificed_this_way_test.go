@@ -119,7 +119,7 @@ func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 
 // TestASacrificeAReplacementExiledIsStillSacrificed is the rule that
 // parts company with destroy, stated on its own because it is a
-// judgement rather than an obvious bug. CR 701.7a defines a
+// judgement rather than an obvious bug. CR 701.8a defines a
 // DESTRUCTION by the graveyard, so a permanent sent to exile instead
 // was not destroyed; CR 701.17a's sacrifice is the controller's move
 // OFF the battlefield, and Rest in Peace taking the card does not undo

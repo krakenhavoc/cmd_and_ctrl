@@ -288,7 +288,7 @@ type zoneRoute struct {
 	// exit already had. #815.
 	ViaBattlefieldLeave bool
 
-	// Destruction marks this exit as a DESTRUCTION (CR 701.7a) rather
+	// Destruction marks this exit as a DESTRUCTION (CR 701.8a) rather
 	// than a sacrifice, a legend-rule death, an illegally attached
 	// Aura or a zero-counter state-based action, all of which take the
 	// same ViaBattlefieldLeave exit. It rides onto

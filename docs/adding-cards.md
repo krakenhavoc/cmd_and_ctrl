@@ -5919,7 +5919,7 @@ card. The fire-and-forget `g.DestroyPermanentsForEffect(ids)` keeps
 its `int` for a sweep nothing is waiting on; it cannot include a leg
 that paused, so never read it as "destroyed this way".
 
-What counts as destroyed is CR 701.7a — "move it from the battlefield
+What counts as destroyed is CR 701.8a — "move it from the battlefield
 to its owner's graveyard". A permanent the CR 614 window saved is not
 destroyed (it never left), and neither is one a replacement sent to
 exile, a hand or a library instead (it left, but not to a graveyard).
@@ -6034,7 +6034,7 @@ reads the result — "draw that many cards", "for each permanent
 sacrificed this way" — because a leg can stop on a replacement's
 prompt and the number is not knowable on the next line. A sacrifice
 is NOT a destruction (CR 701.17a: indestructible and regeneration do
-not apply), and the two "this way" rules differ in one row: CR 701.7a
+not apply), and the two "this way" rules differ in one row: CR 701.8a
 defines a destruction by the graveyard, so a permanent an "exile it
 instead" replacement took was not destroyed, while CR 701.17a's
 sacrifice is the controller's move OFF the battlefield and that same

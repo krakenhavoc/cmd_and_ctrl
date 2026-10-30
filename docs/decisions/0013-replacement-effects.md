@@ -762,7 +762,7 @@ on the CR 903.9 prompt and has not happened yet. Every card that reads
 Bane of Progress, Blood Money, The Battle of Bywater — was paid for
 permanents that were still standing.
 
-**1. The rule is CR 701.7a, read off the landed outcome.** "To destroy
+**1. The rule is CR 701.8a, read off the landed outcome.** "To destroy
 a permanent, move it from the battlefield to its owner's graveyard."
 So `destroyedThisWayLocked` asks where the permanent actually ended up:
 
@@ -776,7 +776,7 @@ So `destroyedThisWayLocked` asks where the permanent actually ended up:
 The exile row is the judgement, and it is the one the issue left open.
 A permanent that an "exile it instead" replacement removed really did
 leave the battlefield, and it is tempting to call that destroyed
-because the destruction is what moved it. CR 701.7a names the
+because the destruction is what moved it. CR 701.8a names the
 graveyard, so the engine does not: it was never put into one, so it
 was not destroyed. The consequence is deliberate and small —
 Fumigate gains nothing for it, Deadly Tempest charges nobody for it,
@@ -784,7 +784,7 @@ and a "whenever a creature dies" trigger never saw it either, because
 it did not die.
 
 The command-zone row is a **declared carry-over**, not something
-CR 701.7a compels: by the letter of the same sentence a commander put
+CR 701.8a compels: by the letter of the same sentence a commander put
 into the command zone was not put into a graveyard either. The engine
 has counted it since S23 on the stated grounds that "CR 903.9 replaces
 the zone change, not the destruction" (simultaneous.go's header), the
@@ -955,7 +955,7 @@ were both counted as having moved. Settle the Wreckage
 synchronously, so it handed its victim a basic land for every attacking
 creature whose owner had been *asked* about the command zone.
 
-**1. The rule for these two is CR 400.7, not CR 701.7a.** A card that
+**1. The rule for these two is CR 400.7, not CR 701.8a.** A card that
 changes zones becomes a new object in the zone it arrives in, so "for
 each card exiled this way" means the cards that reached EXILE.
 `landedInZoneLocked` (simultaneous.go) asks exactly that, against the
@@ -1730,7 +1730,7 @@ and this is where sacrifice parts company with destroy:
 | still on the battlefield (cancelled, or the prompt abandoned — §5j) | no | no |
 
 The two rules are why, and the difference is not an inconsistency.
-CR 701.7a defines a DESTRUCTION by the graveyard — "move it from the
+CR 701.8a defines a DESTRUCTION by the graveyard — "move it from the
 battlefield to its owner's graveyard" is what the word means, so a
 permanent an "exile it instead" replacement took was never destroyed
 however thoroughly it left, and the command zone is destroy's one
@@ -2608,7 +2608,7 @@ same decision for the COUNT.
 | the command zone — CR 903.9 | yes |
 | still in the hand — the CR 614 window cancelled it, or the prompt was abandoned (§5j) | no |
 
-Destroy remains the odd one out (§5i): CR 701.7a defines a destruction
+Destroy remains the odd one out (§5i): CR 701.8a defines a destruction
 by the graveyard it arrives in.
 
 The landed list is accumulated by `discardBatchLocked`, carried

@@ -2440,7 +2440,7 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceSearchLibrary:
-				// #4134, CR 701.19: "you may search" — apply:false is
+				// #4134, CR 701.23: "you may search" — apply:false is
 				// "I don't search" (no look, no shuffle, no search
 				// event), which is not the empty card list: that is a
 				// search that finds nothing. apply:true begins a search
