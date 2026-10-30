@@ -30,14 +30,7 @@ func init() {
 			AppliesTo: Self,
 			Key:       "Mind Meanderer — it fights up to one target creature an opponent controls",
 			Targets:   TargetCreature("up to one target creature an opponent controls", OpponentControls()).WithCount(0, 1),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return b10Fight(ctx, item.SourceCardID, id)
-			},
+			Effect:    itFightsTheFirstTarget,
 		}},
 	})
 }

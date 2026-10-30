@@ -71,10 +71,13 @@ import "github.com/google/uuid"
 // animated planeswalker hit by infect damage gets -1/-1 counters AND
 // loses loyalty — the clauses stay additive.
 //
+// `inst` is the damage instance the damage belongs to; what it marks is
+// recorded for heal-on-damage (heal_damage.go).
+//
 // Returns ok=false when the card is not on the battlefield.
 //
 // Caller must hold g.mu.
-func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource) (ok bool, minusOneCounters int) {
+func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource, inst DamageInstance) (ok bool, minusOneCounters int) {
 	if amount <= 0 {
 		return false, 0
 	}
@@ -100,6 +103,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 		// CR 120.3d / 120.3e: counters or marked damage, never both.
 		counters, marked := result.DamageToCreature(amount)
 		c.DamageMarked += marked
+		c.noteMarkedDamageInstance(inst, marked)
 		minusOneCounters = counters
 		if t.deathtouch {
 			c.MarkedLethalByDeathtouch = true
@@ -178,5 +182,6 @@ func clearBattlefieldDamage(c *Card) {
 		return
 	}
 	c.DamageMarked = 0
+	c.damageInstance, c.damageInstanceMarked = 0, 0
 	c.MarkedLethalByDeathtouch = false
 }

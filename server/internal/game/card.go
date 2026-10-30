@@ -383,6 +383,15 @@ type Card struct {
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
 
+	// damageInstance and damageInstanceMarked are what the latest damage
+	// instance (DamageInstance, damage_instance.go) marked on this
+	// creature: the instance's ID and how much of DamageMarked it wrote.
+	// Heal-on-damage (heal_damage.go, Wolverine, Fierce Fighter) reads
+	// them so simultaneous damage is not "damage already dealt". Not in a
+	// snapshot; cleared with DamageMarked. Added in #4614.
+	damageInstance       DamageInstance
+	damageInstanceMarked int
+
 	// RegenerationShields is how many regeneration shields (CR
 	// 701.19a) this permanent is carrying. Each one replaces the next
 	// destruction of this permanent THIS TURN — tap it, remove all
