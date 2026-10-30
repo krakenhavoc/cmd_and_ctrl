@@ -1,6 +1,6 @@
 # ADR 0212 — A new table's lobby card as a character select
 
-**Status:** Proposed · 2026-10-30 · S78 — Launch week. The owner approved the direction; this record is for review, and its open questions are unanswered.
+**Status:** Accepted · 2026-10-30 · S78 — Launch week. The owner approved the direction, then accepted every recommendation under [Owner decisions](#owner-decisions) the same day.
 **Issue:** relates to [#4648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4648) (the S78 tracker). [#4655](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4655) fixes the picker's overflowing button, its lowercase labels and the "as printed" noise separately; nothing here repeats it.
 **Numbering:** every remote head's `docs/decisions/` was listed on 2026-10-30. The highest number anywhere was **0211**, so this is **0212**.
 **Builds on:** [ADR 0158](0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) (Tables, Now and History, the deck grid and its commander art), [ADR 0075](0075-table-settings-and-host-controls.md) (table settings and the host), [ADR 0161](0161-an-lfg-board-in-discord.md) (#looking-for-game), [ADR 0182](0182-your-own-model-key-for-ai-seats.md) (a bot on your own model key), [ADR 0191](0191-a-sideboard-is-the-outside-the-game-pool.md) (the sideboard), [ADR 0105](0105-legal-action-highlights.md) (what `--ready` means), [ADR 0125](0125-a-walkthrough-that-keeps-up.md) (labels and hints), DESIGN.md.
@@ -138,9 +138,9 @@ The head's right side holds one quiet pill: a gear and **"40 life · 1 undo · s
 - **The invite preview** (`#/games/{id}/join`): it is seen before a session exists and stays text-only, with no art.
 - The server's rules: who may start, who may add a bot, who may see a link, and the deck validation.
 
-## Open questions for the owner
+## Owner decisions
 
-Each has a recommendation, which is the more rules-faithful or complete option where one exists.
+Asked as open questions, each with a recommendation (the more rules-faithful or complete option where one exists). On 2026-10-30 the owner accepted every recommendation, so each *Recommend* below is now part of the decision; the options not taken stay for the record.
 
 1. **Inline picker, or a sheet over your seat?** Inline keeps the seats on screen, so the preview in your tile reads, and keeps one surface; a sheet (`.prompt-modal`) would give the grid more room at tablet width. *Recommend inline.*
 2. **Does the picker open by itself?** Today the deck panel opens on its own when you are seated without a deck, except on a table you have just created, where Invite by DM opens first. *Recommend:* open the picker on its own whenever you are seated without a deck, the just-created table included, since Invite is now one click in the footer.
@@ -185,9 +185,9 @@ Each client slice attaches before and after screenshots at 820 and 1440 px and r
 | B1 | **Pre-built and bot decks carry their commanders** | `GET /decks` and `GET /bot/options` decks gain `commander_cards[]` (`name`, `scryfall_id`, `color_identity`), resolved by the same code as `GET /me/decks`. Pre-built tiles and bot seats get art. docs/lobby.md and the route tests | Sonnet |
 | B2 | **Seats carry their commanders** | `SeatInfo` gains `commander_cards[]` and `color_identity`, set when a deck is seated (paste, library or pre-built) or a bot is added, and kept across a restart: a `seats` column with a migration, or derived from the restored game's command zone (the slice picks one and says why). Visibility as question 3 decides, in `redactMetaFor`. If it is a new column, check it against ADR 0149's inventory (it is deck data, like `deck_name`, which `seats` already holds) and bump the privacy schema version if AGENTS.md's rule applies. Human seats get art and pips | Opus |
 
-### Phase C: only if the owner answers yes
+### Phase C: not planned
 
-An explicit Ready toggle (question 4), a "reveal commanders at the start" setting (question 3c), or a table-size setting (question 5). Each would be its own slice with a server change.
+The owner took the recommendations, so there is no explicit Ready toggle (question 4) and no table-size setting (question 5). A "reveal commanders at the start" setting (question 3c) stays a possible later slice, with a server change, if the owner asks for it.
 
 ### Labels, hints and tests that change
 
