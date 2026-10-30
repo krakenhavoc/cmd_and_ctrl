@@ -293,6 +293,13 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// The Sentry, Golden Guardian's The Void (#4455).
 	printedMshA8VoidToken,
+
+	// U.S.Agent's Sturdy Shield: an Equipment token, +1/+2, equip {2}.
+	printedSturdyShieldToken,
+
+	// White Tiger's The Tiger God: a legendary 4/4 Cat God that can't be
+	// blocked by more than one creature.
+	printedTigerGodToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
