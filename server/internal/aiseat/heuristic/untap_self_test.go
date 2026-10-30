@@ -47,6 +47,19 @@ func TestTheBotDoesNotUntapAMonolithForNoNetMana(t *testing.T) {
 	}
 }
 
+// #4574: a Monolith that can't become untapped is not worth any untap.
+func TestTheBotDoesNotUntapASourceThatCantBecomeUntapped(t *testing.T) {
+	c := monolith(cardID(1), 0, "Cheap Monolith", "{1}")
+	c.NoUntap = &protocol.NoUntapView{Static: true, Never: true}
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(c, land(cardID(10), 0)))
+	move := untapMove(t, 0, cardID(1), "{1}: Untap Cheap Monolith")
+	in := input(0, v, passMove(0), move)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != passMove(0).Label {
+		t.Errorf("the bot chose %q: an untap of a source that can't become untapped does nothing", got)
+	}
+}
+
 // The control: the rule is about the row's net, not about untaps. A
 // self-untap that costs less than the source makes still pays.
 func TestTheBotStillUntapsASourceThatNetsMana(t *testing.T) {

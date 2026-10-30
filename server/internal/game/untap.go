@@ -155,9 +155,18 @@ type UntapStepPermission struct {
 
 // UntapStepRestriction is a static effect that keeps a permanent from
 // untapping during that permanent's controller's own untap step.
+//
+// With CantBecomeUntapped set it is the stronger "can't become untapped"
+// (CR 614.17b, #4574): the permanent stays tapped through EVERY untap, not
+// only its controller's untap step, so an untap effect, a sandbox untap
+// and another player's Seedborn Muse step all do nothing to it.
+// untapPermanentLocked reads it live from the source on the battlefield,
+// so the clause ends the moment the source leaves.
 type UntapStepRestriction struct {
 	Restricts func(target *Card, g *Game, source *Card) bool
 	Label     string
+	// CantBecomeUntapped makes the restriction hold for every untap.
+	CantBecomeUntapped bool
 }
 
 // UntapSkip is one reason a permanent does not untap during an untap
@@ -177,6 +186,12 @@ type UntapStepRestriction struct {
 // shares the pointer with every undo snapshot, exactly as Clone shares
 // ScopedEffect.Duration by value.
 //
+// CantBecomeUntapped (hold only, #4574) widens a hold from "doesn't untap
+// during its controller's untap step" to "can't become untapped" (CR
+// 614.17b): it keeps the permanent tapped through every untap, whoever's
+// step or effect asks. Spider-Woman, Secret Agent. It is read at the
+// untap primitive, so it needs no controller key.
+//
 // Extra counts the untap steps the marker still skips AFTER the next
 // one (ADR 0058's 2026-10-08 amendment, #2029): "doesn't untap during
 // its controller's next two untap steps" is Extra 1. Each matching step
@@ -186,6 +201,8 @@ type UntapSkip struct {
 	Player uuid.UUID
 	While  *Duration
 	Extra  int
+	// CantBecomeUntapped marks a hold as "can't become untapped" (#4574).
+	CantBecomeUntapped bool
 }
 
 type untapSkipSnapshot struct {
@@ -197,6 +214,10 @@ type untapSkipSnapshot struct {
 	// Extra is the marker's remaining steps beyond the next (#2029).
 	// A file without the key restores one-shot markers.
 	Extra int `json:"extra,omitempty"`
+	// CantBecomeUntapped is a hold's "can't become untapped" bit
+	// (#4574). A file without the key restores the controller-keyed
+	// hold, which is all such a file could hold.
+	CantBecomeUntapped bool `json:"cantBecomeUntapped,omitempty"`
 }
 
 func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
@@ -207,6 +228,7 @@ func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
 	for i := range in {
 		out[i].Player = in[i].Player
 		out[i].Extra = in[i].Extra
+		out[i].CantBecomeUntapped = in[i].CantBecomeUntapped
 		if in[i].While != nil {
 			d := *in[i].While
 			out[i].While = &d
@@ -223,6 +245,7 @@ func restoreUntapSkips(in []untapSkipSnapshot) []UntapSkip {
 	for i := range in {
 		out[i].Player = in[i].Player
 		out[i].Extra = in[i].Extra
+		out[i].CantBecomeUntapped = in[i].CantBecomeUntapped
 		if in[i].While != nil {
 			d := *in[i].While
 			out[i].While = &d
@@ -283,6 +306,13 @@ type boundUntapRestriction struct {
 // Caller must hold g.mu in write mode.
 func (g *Game) untapPermanentLocked(c *Card) {
 	if c == nil || !c.Tapped {
+		return
+	}
+	// "Can't become untapped" (CR 614.17b, #4574): the untap does not
+	// happen, so neither does a stun counter's replacement of it. This is
+	// the ONE gate for the untap step, an effect, a sandbox untap and
+	// anything else that reaches here.
+	if g.CantBecomeUntappedLocked(c) {
 		return
 	}
 	if c.Counters[CounterStun] > 0 {
@@ -389,13 +419,34 @@ func (g *Game) HoldUntappedForEffect(cardID uuid.UUID, d Duration) error {
 	if !ok {
 		return nil
 	}
+	return holdUntapped(c, d, false)
+}
+
+// CantUntapForEffect records "<it> can't become untapped for as long as
+// <d>" on a battlefield permanent (#4574, CR 614.17b): Spider-Woman,
+// Secret Agent. Unlike HoldUntappedForEffect the permanent stays tapped
+// through EVERY untap, so an untap effect does nothing to it either. The
+// caller builds `d` exactly as for a hold and records nothing when the
+// duration never starts. A card that is not on the battlefield is a
+// no-op. Caller already holds g.mu.
+func (g *Game) CantUntapForEffect(cardID uuid.UUID, d Duration) error {
+	c, ok := g.battlefieldCardLocked(cardID)
+	if !ok {
+		return nil
+	}
+	return holdUntapped(c, d, true)
+}
+
+// holdUntapped appends one hold unless an identical one (same duration,
+// same strength) is already there.
+func holdUntapped(c *Card, d Duration, cant bool) error {
 	for _, skip := range c.NextUntapSkips {
-		if skip.While != nil && skip.Player == uuid.Nil && skip.While.Equal(d) {
+		if skip.While != nil && skip.Player == uuid.Nil && skip.CantBecomeUntapped == cant && skip.While.Equal(d) {
 			return nil
 		}
 	}
 	held := d
-	c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{While: &held})
+	c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{While: &held, CantBecomeUntapped: cant})
 	return nil
 }
 
@@ -415,6 +466,9 @@ func (g *Game) untapHoldLiveLocked(skip UntapSkip) bool {
 // step because of a one-shot marker or a live hold. Caller holds g.mu.
 func (g *Game) untapSkippedForLocked(c *Card, player uuid.UUID) bool {
 	for _, skip := range c.NextUntapSkips {
+		if skip.CantBecomeUntapped && g.untapHoldLiveLocked(skip) {
+			return true
+		}
 		if !untapSkipKeyedTo(c, skip, player) {
 			continue
 		}
@@ -434,11 +488,42 @@ func (g *Game) UntapHeldLocked(c *Card) bool {
 		return false
 	}
 	for _, skip := range c.NextUntapSkips {
-		if skip.While != nil && untapSkipKeyedTo(c, skip, c.Controller) && g.untapHoldLiveLocked(skip) {
+		if skip.While != nil && (skip.CantBecomeUntapped || untapSkipKeyedTo(c, skip, c.Controller)) && g.untapHoldLiveLocked(skip) {
 			return true
 		}
 	}
 	return false
+}
+
+// CantBecomeUntappedHoldLocked reports whether a live "can't become
+// untapped" hold (CantUntapForEffect) keeps `c` tapped. The cheap half of
+// CantBecomeUntappedLocked. Caller holds g.mu (read is enough).
+func (g *Game) CantBecomeUntappedHoldLocked(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, skip := range c.NextUntapSkips {
+		if skip.CantBecomeUntapped && g.untapHoldLiveLocked(skip) {
+			return true
+		}
+	}
+	return false
+}
+
+// CantBecomeUntappedLocked reports whether `c` can't become untapped right
+// now (CR 614.17b, #4574): a live hold from a resolved ability
+// (CantUntapForEffect), or a static source on the battlefield
+// (UntapStepRestriction.CantBecomeUntapped; Frozen in Ice). Read live at
+// every untap, so an effect that ended has no say. Caller holds g.mu; it
+// deliberately does not recompute layers.
+func (g *Game) CantBecomeUntappedLocked(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	if g.CantBecomeUntappedHoldLocked(c) {
+		return true
+	}
+	return untapStepRestrictedBy(c, g, g.activeUntapStepRestrictionsLocked(), true)
 }
 
 // sweepUntapHoldsLocked drops every hold whose duration has run out.
@@ -506,11 +591,16 @@ func (g *Game) activeUntapStepRestrictionsLocked() []boundUntapRestriction {
 	return out
 }
 
-func untapStepRestrictedBy(c *Card, g *Game, restrictions []boundUntapRestriction) bool {
+// untapStepRestrictedBy asks whether any bound restriction holds `c`;
+// cantOnly narrows the question to the "can't become untapped" ones.
+func untapStepRestrictedBy(c *Card, g *Game, restrictions []boundUntapRestriction, cantOnly bool) bool {
 	if c == nil {
 		return false
 	}
 	for _, bound := range restrictions {
+		if cantOnly && !bound.restriction.CantBecomeUntapped {
+			continue
+		}
 		if bound.restriction.Restricts(c, g, bound.source) {
 			return true
 		}
@@ -521,7 +611,7 @@ func untapStepRestrictedBy(c *Card, g *Game, restrictions []boundUntapRestrictio
 // UntapStepRestrictedLocked is the pure static half of the untap-step set.
 // Caller holds g.mu; it deliberately does not recompute layers.
 func (g *Game) UntapStepRestrictedLocked(c *Card) bool {
-	return untapStepRestrictedBy(c, g, g.activeUntapStepRestrictionsLocked())
+	return untapStepRestrictedBy(c, g, g.activeUntapStepRestrictionsLocked(), false)
 }
 
 // UntapStepRestrictedCheckerLocked is UntapStepRestrictedLocked for a
@@ -540,7 +630,18 @@ func (g *Game) UntapStepRestrictedLocked(c *Card) bool {
 func (g *Game) UntapStepRestrictedCheckerLocked() func(c *Card) bool {
 	restrictions := g.activeUntapStepRestrictionsLocked()
 	return func(c *Card) bool {
-		return untapStepRestrictedBy(c, g, restrictions)
+		return untapStepRestrictedBy(c, g, restrictions, false)
+	}
+}
+
+// CantBecomeUntappedCheckerLocked is CantBecomeUntappedLocked for a
+// caller asking about MANY permanents at one instant, as
+// UntapStepRestrictedCheckerLocked is for the step (#1261). Caller holds
+// g.mu; it deliberately does not recompute layers.
+func (g *Game) CantBecomeUntappedCheckerLocked() func(c *Card) bool {
+	restrictions := g.activeUntapStepRestrictionsLocked()
+	return func(c *Card) bool {
+		return g.CantBecomeUntappedHoldLocked(c) || untapStepRestrictedBy(c, g, restrictions, true)
 	}
 }
 
@@ -697,7 +798,7 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		}
 		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
-			if untapStepRestrictedBy(c, g, restrictions) || g.untapSkippedForLocked(c, activePlayer) ||
+			if untapStepRestrictedBy(c, g, restrictions, false) || g.untapSkippedForLocked(c, activePlayer) ||
 				g.playerUntapSkippedLocked(c, activePlayer) {
 				continue
 			}
@@ -708,7 +809,8 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		// untapping, as a player-keyed marker does: Blinding Beam's
 		// "Creatures don't untap during target player's next untap
 		// step" keeps a Seedborn Muse's creatures tapped too.
-		if g.untapSkippedForLocked(c, activePlayer) || g.playerUntapSkippedLocked(c, activePlayer) {
+		if g.untapSkippedForLocked(c, activePlayer) || g.playerUntapSkippedLocked(c, activePlayer) ||
+			untapStepRestrictedBy(c, g, restrictions, true) {
 			continue
 		}
 		for _, bp := range permissions {

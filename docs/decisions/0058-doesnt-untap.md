@@ -1148,3 +1148,32 @@ is a rule read at the step.
   the same lands clause and waits on its other one, "you may cast any
   number of spells with mana value 5 or less from among them without
   paying their mana costs" (#4021).
+
+## Amendment (2026-10-30, #4574): "can't become untapped"
+
+Frozen in Ice ("Enchanted creature loses all abilities and can't become untapped")
+and Spider-Woman, Secret Agent ("That creature can't become untapped for as long
+as you control Spider-Woman") are stronger than "doesn't untap during its
+controller's untap step": an untap EFFECT must do nothing too. Every untap in
+the engine already reaches `untapPermanentLocked` (this ADR's premise), so the
+gate is one line there, ahead of the stun replacement: an untap that does
+not happen does not remove a stun counter either (CR 614.17b).
+
+- **Two spellings, one reader.** `UntapStepRestriction.CantBecomeUntapped` is
+  the static form (Frozen in Ice: `enchantedCantBecomeUntapped()`).
+  `UntapSkip.CantBecomeUntapped` marks a hold, written by
+  `Game.CantUntapForEffect(card, duration)` (Spider-Woman:
+  `TapAndLockWhileYouControlThis`, `CantBecomeUntappedWhile`). Both are read
+  live by `Game.CantBecomeUntappedLocked`, so the source leaving, or the
+  duration ending, lifts the lock with no bookkeeping. A hold with the bit
+  needs no controller key: it also holds in another player's step (a Seedborn
+  Muse), and the untap step set excludes the permanent.
+- **Snapshot.** One additive field, `nextUntapSkips[].cantBecomeUntapped`;
+  a file without it restores the controller-keyed hold, as before.
+- **The wire and the bots.** `no_untap.never` is sent with `no_untap.static`,
+  so the existing badge and the bots' `WontUntap` keep working. The client
+  words the footer line "can't become untapped" and disables the sandbox
+  Untap item; the heuristic prices a self-untap of such a source at nothing.
+- **No `{Q}` cost yet.** The engine has no untap-symbol cost; when one is
+  added it must go through `untapPermanentLocked` and read the same gate.
+- Proof cards: **Frozen in Ice** and **Spider-Woman, Secret Agent** (`Full`).

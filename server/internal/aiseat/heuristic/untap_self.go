@@ -29,5 +29,10 @@ func (st *state) idleSelfUntap(src *protocol.CardView, cp activateParams) bool {
 	if row == nil || !row.UntapSelf {
 		return false
 	}
+	// #4574: a source that can't become untapped gains nothing from any
+	// untap at any price.
+	if src.Tapped && src.NoUntap != nil && src.NoUntap.Never {
+		return true
+	}
 	return repeatableMana(src)-manaValue(row.ManaCost, 0) <= 0
 }

@@ -1071,7 +1071,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
-				Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions) || g.untapSkippedForLocked(&c, controller)),
+				Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions, false) || g.untapSkippedForLocked(&c, controller)),
 				Wanted:             wanted,
 				Sacrifices:         picked.SacrificeCost,
 				SacrificesCreature: picked.SacrificeCost && c.IsCreature(),
