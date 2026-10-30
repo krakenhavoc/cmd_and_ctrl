@@ -2537,6 +2537,14 @@ same person signed in in another tab).
 resolves the Discord account from `identities` itself, so a snowflake
 appears on the wire in neither direction.
 
+An ordinary caller may name only a **tablemate**: someone who is in the
+caller's own [`GET /me/tablemates`](#get-metablemates-adr-0051-decision-8-s34-sub-pr-6)
+list, so the picker and the route agree about who counts. Anyone else,
+including a stranger, a deleted account and an id that names nobody, is
+the same **404** (`no such tablemate`): a 403 would confirm that the
+account exists. The bot's shared token and an allowlisted person in
+admin mode skip this check and may name any account.
+
 `discord_id` is accepted as an alternative — a raw Discord snowflake,
 exactly one of the two fields — but **only for an admin session**. It
 exists for #613's `/c2-invite-dm @user`, which holds a mention and
@@ -2591,7 +2599,7 @@ link the table has already shared, which is a startling side effect of
 | 400 | neither or both of `user_id` / `discord_id`, or `user_id` is not a uuid |
 | 401 | unauthenticated |
 | 403 | not seated here, not the creator, not the admin — or `discord_id` from a non-admin |
-| 404 | no such game, no such user, or Discord has no user with that id |
+| 404 | no such game; for an ordinary caller, a `user_id` that is not one of their tablemates (or names nobody, or a deleted account); for an admin, no such user; or Discord has no user with that id |
 | 409 | this process no longer holds the table's invite plaintext (rotate first) |
 | 422 | the target has no Discord identity here, or Discord refused the DM (no shared server / DMs closed) |
 | 429 | rate-limited, by us or by Discord |
@@ -3004,8 +3012,10 @@ with a non-nil `user_id`. No credential is **401**; every other caller is
 **403**, including a guest's seat session, an admin (a credential, not
 a person) and everyone on a deployment with no database.
 
-Excluded, always: the caller themselves, and any seat with no user — a
-guest, a bot, or a Discord seat still waiting on its `users` row.
+Excluded, always: the caller themselves, any seat with no user — a
+guest, a bot, or a Discord seat still waiting on its `users` row — and
+a deleted account (its seats stay, as "Deleted player", but there is no
+one left to invite).
 
 **Response 200**
 
