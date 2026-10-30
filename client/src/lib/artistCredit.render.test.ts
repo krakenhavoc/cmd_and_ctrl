@@ -19,6 +19,7 @@ import DeckCard from "./components/decks/DeckCard.svelte";
 import DeckGrid from "./components/DeckGrid.svelte";
 import SeatTile from "./components/SeatTile.svelte";
 import { botDeckTile, libraryTile, prebuiltTile } from "./deckPicker";
+import { seatTileArt, seatTileText } from "./tablesPage";
 import { artistOf, creditText } from "./artistCredit.svelte";
 import type { CardMeta } from "./cardMetaCache";
 import { hoveredCard } from "./cardTypes";
@@ -521,6 +522,44 @@ describe("the deck picker's tiles and your seat's tile", () => {
     expect(li.querySelector(".crop .art-credit")?.textContent).toBe("Illus. Slawomir Maniak");
     expect(li.textContent).toMatch(/Purphoros, God of the Forge/);
     expect(li.textContent).toMatch(/Ready/);
+  });
+
+  // ADR 0212 phase B2: a person's seat carries its commanders, so its
+  // tile is led by the crop too, drawn by the page's own rules.
+  it("credits the crop on a person's seat tile, partners side by side", async () => {
+    const tymna = newID();
+    const kraum = newID();
+    metaByID.set(tymna, { artist: "Winona Nelson" });
+    metaByID.set(kraum, { artist: "Svetlin Velinov" });
+    const p = {
+      player_id: "a1",
+      name: "Alice",
+      seat: 0,
+      deck_uploaded: true,
+      deck_name: "Blood and thunder",
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: tymna, color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", scryfall_id: kraum, color_identity: ["U", "R"] },
+      ],
+      color_identity: ["W", "U", "B", "R"],
+    };
+    const { container } = render(
+      SeatTile as never,
+      { seat: 0, p, text: seatTileText(p, undefined), art: seatTileArt(p, undefined) } as never,
+    );
+    await settle();
+    const li = container.querySelector("li.tile")!;
+    const imgs = [...li.querySelectorAll(".crop img")].map((i) => i.getAttribute("src"));
+    expect(imgs).toEqual([
+      `/cards/${tymna}/image?size=art_crop`,
+      `/cards/${kraum}/image?size=art_crop`,
+    ]);
+    expect([...li.querySelectorAll(".crop .art-credit")].map((c) => c.textContent)).toEqual([
+      "Illus. Winona Nelson",
+      "Illus. Svetlin Velinov",
+    ]);
+    expect(li.textContent).toMatch(/Tymna the Weaver · Kraum, Ludevic's Opus/);
+    expect(li.textContent).toMatch(/Blood and thunder/);
   });
 
   it("loads nothing for a tile not yet in view", async () => {
