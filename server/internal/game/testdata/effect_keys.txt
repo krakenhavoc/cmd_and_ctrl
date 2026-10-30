@@ -1845,3 +1845,5 @@ tail msh-a6/nick-fury-after-put
 tail msh-a6/origin-of-the-avengers-draw
 confirm confirm/msh-a8-kingpin-pay-life
 tail msh-a8/tricksters-stratagem-connive
+payunless pay-unless/ultron-artificial-malevolence-copy
+tail msh-a9/ultron-robot-villain
