@@ -1500,6 +1500,7 @@ tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/lion-sash-counter
+tail if-it-was/mastermind-plum-treasure
 tail if-it-was/scavenging-ooze-grow
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
