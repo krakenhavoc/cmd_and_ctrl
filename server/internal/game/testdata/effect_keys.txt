@@ -68,10 +68,12 @@ body copy/the-ability-you-just-activated
 body copy/the-spell-you-just-cast
 body copy/the-spell-you-just-cast-twice
 body counter/plus-one-and-haste-for-the-payload
+body counter/plus-one-on-the-payload-creature
 body curse-of-the-werefox/fight
 body cyclops-superconductor/damage
 body dain-ironfoot/attach-axe
 body dalkovan-encampment/warriors
+body damage/that-much-to-each-other-opponent
 body dash/return
 body death-to-our-enemies/divided-damage
 body decayed/sacrifice
@@ -368,6 +370,7 @@ choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
 choose choose-cards/great-intelligences-plan-cast
+choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
@@ -645,6 +648,8 @@ condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
 condition combat/your-creature-hit-the-player
 condition damage/each-creature-dealt-damage
+condition damage/that-creature-combat-to-opponent
+condition damage/that-creature-combat-to-player
 condition dies/each-creature
 condition dies/that-creature
 condition dies/that-creature-you-control-your-commander
@@ -1013,6 +1018,7 @@ payunless pay-unless/hashaton-scarabs-fist-zombie-copy
 payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
+payunless pay-unless/human-torch-share-damage
 payunless pay-unless/inalla-archmage-ritualist-copy
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
@@ -1728,6 +1734,7 @@ tail then/get-energy
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
+tail then/heart-shaped-herb-return-and-monarch
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
