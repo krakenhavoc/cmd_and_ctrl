@@ -385,19 +385,32 @@
           <Icon name="drop" size={15} /> Life history
         </button>
       {/if}
-      {#if props.seated && props.recordLoop && props.onRecordLoop}
+      {#if props.recordLoop && props.onRecordLoop}
         <!-- ADR 0193 §9, first amendment: starting a loop recording lives
-             here, off the dock's crowded toggles row. Offered only while
-             the seat holds priority with nothing recording; once one
-             stands, its Stop and Cancel are the dock's status line. -->
+             here, off the dock's crowded toggles row. Its 2026-10-30
+             amendment (#4736): never hidden. Any seat in an active game
+             may ask, partway through a resolution too, and the line under
+             the name says when it begins; where nobody could, it is
+             disabled and the line says why. Once one stands, its Stop and
+             Cancel are the dock's status line. -->
+        {@const entry = props.recordLoop}
         <button
-          class="mi"
+          class="mi has-note"
           role="menuitem"
+          disabled={!entry.enabled}
+          aria-describedby={entry.note ? "record-loop-note" : undefined}
           onclick={via(props.onRecordLoop)}
-          title="Record a loop (CR 732.2a): play one iteration by hand, then propose repeating it"
+          title={entry.enabled
+            ? "Record a loop (CR 732.2a): play one iteration by hand, then propose repeating it"
+            : entry.note}
         >
           <Icon name="undo" size={15} />
-          {L.recordLoop}
+          <span class="mi-two">
+            <span>{L.recordLoop}</span>
+            {#if entry.note}
+              <span class="mi-note" id="record-loop-note" aria-hidden="true">{entry.note}</span>
+            {/if}
+          </span>
         </button>
       {/if}
       {#if props.seated && (props.forgetTriggerOrders ?? 0) > 0 && props.onForgetTriggerOrders}
@@ -860,6 +873,26 @@
   }
   .mi-row {
     cursor: default;
+  }
+  /* A name with a one-line note under it: why the entry is disabled, or
+     when it takes effect (#4736). */
+  .mi-two {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    padding: 5px 0;
+  }
+  .mi-note {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--fg-muted);
+    white-space: normal;
+  }
+  /* Disabled, its reason must still read: muted, not faded. */
+  .mi.has-note:disabled {
+    opacity: 1;
+    color: var(--fg-muted);
   }
   .mi-row input {
     width: 44px;

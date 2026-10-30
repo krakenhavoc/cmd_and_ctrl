@@ -793,6 +793,12 @@ describe("demonstrating a loop", () => {
   const buttonNamed = (c: ParentNode, name: string): HTMLButtonElement | undefined =>
     [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) => accessibleName(b) === name);
 
+  // The entry's one-line note: its accessible description.
+  const noteOf = (el: HTMLElement): string => {
+    const id = el.getAttribute("aria-describedby");
+    return id ? (el.ownerDocument.getElementById(id)?.textContent ?? "") : "";
+  };
+
   it("records, stops and cancels from the dock", async () => {
     const c = await mountGame("player");
     // ADR 0193 first amendment: not a chip on the toggles row, an entry in
@@ -800,7 +806,10 @@ describe("demonstrating a loop", () => {
     const toggles = dockOf(c)!.querySelector('[role="group"][aria-label="priority controls"]')!;
     expect(buttonNamed(toggles, L.recordLoop)).toBeUndefined();
     await open(moreButtons(c)[0]!);
-    click(item(c, L.recordLoop)!);
+    const entry = item(c, L.recordLoop)! as HTMLButtonElement;
+    expect(entry.disabled).toBe(false);
+    expect(noteOf(entry)).toBe("");
+    click(entry);
     expect(FakeSocket.last!.last("loop_record_start")).toBeTruthy();
     cleanup();
 
@@ -816,6 +825,130 @@ describe("demonstrating a loop", () => {
     expect(FakeSocket.last!.actions()).toEqual(
       expect.arrayContaining(["loop_record_stop", "loop_record_cancel"]),
     );
+  });
+
+  // #4736 (owner report, 2026-10-30): "I was in the middle of resolving
+  // an ability and could not demo my loop as it was hidden."
+  it("offers Record loop partway through the viewer's own resolution prompt", async () => {
+    const c = await mountGame(
+      "player",
+      view({
+        stack_items: [
+          { id: "s-1", kind: "activated", controller: ME, label: "Basalt Monolith — untap" },
+        ],
+        pending_choices: [
+          {
+            id: "q-1",
+            kind: "confirm",
+            chooser: ME,
+            from_player: ME,
+            count: 1,
+            reason: "Rings of Brighthearth — pay {2} to copy that ability?",
+          },
+        ],
+      } as unknown as Partial<GameView>),
+    );
+    await open(moreButtons(c)[0]!);
+    const entry = item(c, L.recordLoop)! as HTMLButtonElement;
+    expect(entry, "Record loop is in the menu mid-resolution").toBeTruthy();
+    expect(entry.disabled).toBe(false);
+    expect(noteOf(entry)).toBe("Starts when you next hold priority");
+    click(entry);
+    expect(FakeSocket.last!.last("loop_record_start")).toBeTruthy();
+  });
+
+  it("shows Record loop disabled, with the reason, where it cannot be used", async () => {
+    const watching = await mountGame(
+      "player",
+      view({
+        loop_recording: { recorder: OPP, status: "recording", steps: 1, max_iterations: 1000 },
+      }),
+    );
+    await open(moreButtons(watching)[0]!);
+    const theirs = item(watching, L.recordLoop)! as HTMLButtonElement;
+    expect(theirs.disabled).toBe(true);
+    expect(noteOf(theirs)).toBe("Opp is recording a loop");
+    cleanup();
+
+    const ended = await mountGame("player", view({ state: "ended" } as Partial<GameView>));
+    await open(moreButtons(ended)[0]!);
+    const over = item(ended, L.recordLoop)! as HTMLButtonElement;
+    expect(over.disabled).toBe(true);
+    expect(noteOf(over)).toBe("The game is over");
+    cleanup();
+
+    const spectator = await mountGame("spectator");
+    await open(moreButtons(spectator.querySelector("header.bar")!)[0]!);
+    const watcher = item(spectator, L.recordLoop)! as HTMLButtonElement;
+    expect(watcher.disabled).toBe(true);
+    expect(noteOf(watcher)).toBe("Only a player at the table can record a loop");
+  });
+
+  it("says when an armed recording begins, when a stop lands, and when a proposal waits", async () => {
+    const armed = await mountGame(
+      "player",
+      view({ loop_recording: { recorder: ME, status: "armed", steps: 0, max_iterations: 1000 } }),
+    );
+    expect(dockOf(armed)!.textContent).toContain(
+      "Loop recording starts when you next hold priority",
+    );
+    expect(buttonNamed(armed, L.stopLoop)).toBeUndefined();
+    click(buttonNamed(armed, L.cancelLoop)!);
+    expect(FakeSocket.last!.last("loop_record_cancel")).toBeTruthy();
+    cleanup();
+
+    const stopping = await mountGame(
+      "player",
+      view({
+        loop_recording: {
+          recorder: ME,
+          status: "recording",
+          steps: 3,
+          stopping: true,
+          max_iterations: 1000,
+        },
+      }),
+    );
+    expect(dockOf(stopping)!.textContent).toContain(
+      "Recording a loop · 3 steps · stops when you next hold priority",
+    );
+    expect(buttonNamed(stopping, L.stopLoop)).toBeUndefined();
+    cleanup();
+
+    // CR 732.2a: only the player with priority may propose. The other seat
+    // holds it, so the sheet stays shut and propose… is disabled.
+    const waiting = await mountGame(
+      "player",
+      view({
+        turn: {
+          seq: 3,
+          number: 3,
+          active_seat: 0,
+          priority_holder: 1,
+          phase: "precombat_main",
+          step: "precombat_main",
+        },
+        loop_recording: {
+          recorder: ME,
+          status: "ready",
+          steps: 2,
+          name: "Basalt Monolith",
+          net: "Me: library -1",
+          iteration: [
+            { actor: ME, label: "Me activates Basalt Monolith" },
+            { actor: OPP, label: "Opp passes" },
+          ],
+          max_iterations: 1000,
+        },
+      } as unknown as Partial<GameView>),
+    );
+    await settle();
+    expect(dockOf(waiting)!.textContent).toContain(
+      "Loop ready · 2 steps · propose when you next hold priority",
+    );
+    expect(waiting.querySelector(`[role="dialog"][aria-label="${L.proposeLoop}"]`)).toBeNull();
+    const propose = buttonNamed(waiting, "propose…")!;
+    expect(propose.disabled).toBe(true);
   });
 
   it("opens the propose sheet once the loop closes, and proposes the count", async () => {

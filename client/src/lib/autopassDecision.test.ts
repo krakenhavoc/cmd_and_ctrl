@@ -200,6 +200,12 @@ describe("autopassDecision — guards above every toggle", () => {
     expect(autopassDecision(gates({ owesFreeCast: false }))).toBe("pass");
   });
 
+  it("holds while the viewer demonstrates a loop by hand (ADR 0193, #4736)", () => {
+    expect(autopassDecision(gates({ loopDemo: true }))).toBe("hold");
+    expect(autopassDecision(gates({ loopDemo: true, autopassToggle: true }))).toBe("hold");
+    expect(autopassDecision(gates({ loopDemo: false }))).toBe("pass");
+  });
+
   it("holds while the CR 732 loop breaker is up (#628)", () => {
     expect(autopassDecision(gates({ loopSuspended: true, autopassToggle: true }))).toBe("hold");
   });

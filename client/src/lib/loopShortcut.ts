@@ -4,16 +4,25 @@
 // reads GameView.loop_recording and a loop_proposal prompt and builds
 // the params the five loop actions take.
 
-import type { GameView, LoopPointView, LoopProposalView, PendingChoiceView } from "./protocol";
+import type {
+  GameView,
+  LoopPointView,
+  LoopProposalView,
+  LoopRecordingView,
+  PendingChoiceView,
+} from "./protocol";
 
 // What the dock's loop control shows for the viewer right now.
-//   none      nothing (no priority, or a prompt is open)
-//   record    the viewer may start recording
+//   none      nothing stands
+//   armed     the viewer asked to record where they could not begin
+//             (partway through a resolution, or without priority); the
+//             recording begins at their next priority with nothing open
 //   recording the viewer is recording; Stop and Cancel
 //   ready     the viewer's recording closed; Propose (the sheet)
 //   proposed  the viewer's proposal is waiting on the other seats
 //   watching  another seat is recording or proposing
-export type LoopControlMode = "none" | "record" | "recording" | "ready" | "proposed" | "watching";
+// Starting a recording is the ⋯ menu's "Record loop" (recordLoopEntry).
+export type LoopControlMode = "none" | "armed" | "recording" | "ready" | "proposed" | "watching";
 
 export interface LoopControlState {
   mode: LoopControlMode;
@@ -21,6 +30,14 @@ export interface LoopControlState {
   steps: number;
   // The "watching" line: "Ann is recording a loop".
   text: string;
+  // recording: the viewer asked to stop without priority, so the server
+  // checks the loop at their next priority with nothing open (CR 732.2a
+  // ends a shortcut where a player has priority).
+  stopping: boolean;
+  // ready: the viewer may propose now, holding priority with no prompt
+  // open (CR 732.2a: "the player with priority may suggest a shortcut").
+  // Otherwise the proposal waits for their next priority.
+  canPropose: boolean;
 }
 
 // seatName is a seat's display name, or "A player".
@@ -29,42 +46,109 @@ function seatName(view: GameView, id: string | undefined): string {
   return s?.display_name || s?.name || "A player";
 }
 
+// quiet: no prompt open and no trigger waiting to go on the stack, the
+// state a recording begins and ends in (with the recorder's priority).
+function quiet(view: GameView): boolean {
+  return (view.pending_choices?.length ?? 0) === 0 && (view.pending_triggers?.length ?? 0) === 0;
+}
+
+// What another seat's loop reads as, for every other seat (CR 732.1a).
+function watchingText(view: GameView, lr: LoopRecordingView): string {
+  const who = seatName(view, lr.recorder);
+  switch (lr.status) {
+    case "armed":
+      return `${who} will record a loop from their next priority`;
+    case "recording":
+      return `${who} is recording a loop`;
+    case "proposed":
+      return `${who} proposes repeating ${lr.name ?? "a loop"} ${lr.count ?? 0} more times`;
+    default:
+      return `${who} recorded a loop`;
+  }
+}
+
 export function loopControl(
   view: GameView,
   viewerID: string | null,
   viewerHasPriority: boolean,
 ): LoopControlState {
   const lr = view.loop_recording;
-  if (!lr) {
-    const quiet = (view.pending_choices?.length ?? 0) === 0 && view.state === "active";
-    return { mode: viewerHasPriority && quiet && viewerID ? "record" : "none", steps: 0, text: "" };
-  }
+  const base = { steps: lr?.steps ?? 0, text: "", stopping: false, canPropose: false };
+  if (!lr) return { ...base, mode: "none" };
   if (viewerID && lr.recorder === viewerID) {
     switch (lr.status) {
+      case "armed":
+        return { ...base, mode: "armed" };
       case "recording":
-        return { mode: "recording", steps: lr.steps, text: "" };
+        return { ...base, mode: "recording", stopping: lr.stopping === true };
       case "ready":
-        return { mode: "ready", steps: lr.steps, text: "" };
+        return {
+          ...base,
+          mode: "ready",
+          canPropose: viewerHasPriority && quiet(view) && view.state === "active",
+        };
       default:
-        return { mode: "proposed", steps: lr.steps, text: "" };
+        return { ...base, mode: "proposed" };
     }
   }
-  const who = seatName(view, lr.recorder);
-  const text =
-    lr.status === "recording"
-      ? `${who} is recording a loop`
-      : lr.status === "proposed"
-        ? `${who} proposes repeating ${lr.name ?? "a loop"} ${lr.count ?? 0} more times`
-        : `${who} recorded a loop`;
-  return { mode: "watching", steps: lr.steps, text };
+  return { ...base, mode: "watching", text: watchingText(view, lr) };
+}
+
+// RecordLoopEntry is the ⋯ menu's "Record loop" (ADR 0193's amendment
+// of 2026-10-30, #4736). It is always drawn: enabled with an optional
+// hint, or disabled with the one-line reason, never hidden.
+export interface RecordLoopEntry {
+  enabled: boolean;
+  // The line under the name: why it is disabled, or, enabled, when the
+  // recording will begin. "" for none.
+  note: string;
+}
+
+export interface RecordLoopContext {
+  // A seat of the viewer's own at this table (not a spectator).
+  seated: boolean;
+  eliminated: boolean;
+  // ADR 0166: another player makes the viewer's decisions.
+  controlled: boolean;
+  // The viewer holds priority now (as themselves).
+  viewerHasPriority: boolean;
+}
+
+// recordLoopEntry: any seat still in an active game may ask to record
+// while no loop stands, a prompt of theirs partway through a resolution
+// included. Recording only captures what happens next; the proposal is
+// what needs priority (CR 732.2a). Where they cannot begin now, the
+// server arms it for their next priority with nothing open.
+export function recordLoopEntry(
+  view: GameView | null | undefined,
+  viewerID: string | null,
+  ctx: RecordLoopContext,
+): RecordLoopEntry {
+  const no = (note: string): RecordLoopEntry => ({ enabled: false, note });
+  if (!view || !viewerID || !ctx.seated) return no("Only a player at the table can record a loop");
+  if (ctx.eliminated) return no("You have left the game");
+  if (view.state === "ended") return no("The game is over");
+  if (view.state !== "active") return no("The game has not started");
+  if (view.mulligans_open || view.opening_roll) return no("Not until every opening hand is kept");
+  if (ctx.controlled) return no("Not while another player makes your decisions");
+  const lr = view.loop_recording;
+  if (lr) {
+    return no(
+      lr.recorder === viewerID
+        ? "You have a loop going: its controls are on the dock"
+        : watchingText(view, lr),
+    );
+  }
+  if (ctx.viewerHasPriority && quiet(view)) return { enabled: true, note: "" };
+  return { enabled: true, note: "Starts when you next hold priority" };
 }
 
 // LoopDockProps is what the action dock's loop control takes
-// (LoopControl.svelte, the status line); Game.svelte builds it. onRecord
-// is not the dock's: "Record loop" is a ⋯ menu entry (GameMenu.svelte).
+// (LoopControl.svelte, the status line); Game.svelte builds it. Starting
+// a recording is not the dock's: "Record loop" is a ⋯ menu entry
+// (GameMenu.svelte, recordLoopEntry).
 export interface LoopDockProps {
   state: LoopControlState;
-  onRecord: () => void;
   onStop: () => void;
   onCancel: () => void;
   onPropose: () => void;

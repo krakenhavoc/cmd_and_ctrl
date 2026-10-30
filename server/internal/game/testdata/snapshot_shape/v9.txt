@@ -18734,6 +18734,7 @@ loopRecording.steps[].pending[]	string
 loopRecording.steps[].player	custom(uuid.UUID)
 loopRecording.steps[].source	string
 loopRecording.steps[].type	string
+loopRecording.stopAtPriority	bool
 loopRecording.totals	object
 loopRecording.totals.players	array
 loopRecording.totals.players[]	object

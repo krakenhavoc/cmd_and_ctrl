@@ -29,8 +29,14 @@ func loopHeadLines(v *protocol.GameView, me string, nw nameWrapper) []string {
 	}
 	var out []string
 	switch lr.Status {
+	case "armed":
+		out = append(out, fmt.Sprintf("LOOP (CR 732.2): %s will record a loop from their next priority with nothing open. Every action from then on, yours included, is a step.", who))
 	case "recording":
-		out = append(out, fmt.Sprintf("LOOP (CR 732.2): %s is recording a loop, %d steps so far. Every action, yours included, is a step.", who, lr.Steps))
+		line := fmt.Sprintf("LOOP (CR 732.2): %s is recording a loop, %d steps so far. Every action, yours included, is a step.", who, lr.Steps)
+		if lr.Stopping {
+			line += " It ends at their next priority with nothing open."
+		}
+		out = append(out, line)
 	case "ready":
 		out = append(out, fmt.Sprintf("LOOP (CR 732.2): %s recorded %s, %d steps; each time: %s.", who, nw.apply(lr.Name), lr.Steps, nw.apply(lr.Net)))
 	case "proposed":

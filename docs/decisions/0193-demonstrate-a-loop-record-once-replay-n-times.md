@@ -212,3 +212,49 @@ Owner decision 11 put "Record loop" in the action dock. Shipped as a chip on the
 - **While a loop stands** the dock shows it on the status row, for every seat, exactly as §9 says: the recorder's step count with Stop and Cancel, "propose…" once the loop closed, "waiting for answers" once proposed, and the strip other seats read. Those controls are not in the menu, because the player needs them in one click while they are playing the iteration.
 - **Unchanged.** The state machine, the five loop actions, the sheets and the labels for Stop, Cancel and the sheets. No keyboard shortcut.
 - **The row itself.** Moving the chip alone was not enough at a tablet-width dock, so the toggles row also lets Undo (now an icon with its count, named by its `aria-label`) and ⋯ wrap together onto a second row, instead of every label shrinking until it clips. The dock keeps one row at 1920×1080 and 2344×1377 and wraps at 1024×768 or when bluff and Skip to my turn are both at their widest.
+
+## Amendment (#4736, owner report, 2026-10-30): start recording at any point; the proposal keeps priority
+
+> "I was in the middle of resolving an ability and could not demo my loop as it was hidden. That should not be the case." (owner, 2026-10-30)
+
+Owner decision 11 and the first amendment offered "Record loop" only while the player held priority with no prompt open, and the server agreed: `loop_record_start` refused without priority (`ErrLoopNeedsPriority`) and with any prompt or waiting trigger (`ErrLoopPromptOpen`). Partway through a resolution there is always a prompt open (it is what paused the resolution), so the entry was simply gone, with nothing saying why. The owner decided the design below; every choice in it is the most CR-faithful one on offer.
+
+**The rule it rests on.** CR 732.2a: "At any point in the game, the player with priority may suggest a shortcut … The ending point of this sequence must be a place where a player has priority". Priority belongs to *suggesting* the shortcut, which is `loop_propose`. Recording is not a shortcut: it only captures what happens next, so nothing in CR 732 limits when a player may start one.
+
+### Decisions
+
+1. **Any seat may ask to record, at any point of an active game.** `loop_record_start` is accepted from a seat still in a game past its opening roll and mulligans, while no recording stands: with a prompt of their own open partway through a resolution, with another player's prompt open, or while another seat holds priority. Spectators, eliminated seats and a player another player controls (ADR 0166) still cannot.
+2. **The recording itself runs from one quiet priority of the recorder's to the next.** "Quiet" is holding priority with no prompt open and no trigger waiting. When the request comes there, recording begins at once, as before. Otherwise it is **armed** (`status: "armed"`): it captures nothing, survives the step changing, and begins at the recorder's next quiet priority (`TendLoopRecording`, after every commit).
+   - **Why not begin at the prompt.** Starting the iteration at a pending choice, so that it runs from that choice to the same choice recurring, is not sound. CR 732.2a requires the sequence to end where a player has priority, and nobody has priority partway through a resolution. A choice-to-choice iteration has no priority point at either end to propose from, replay to or shorten to. It would also need the closure check (§3) to compare a half-resolved stack item and its continuation, which the signature cannot see. The proposal and the closure check both already stand on the recorder's priority, so the recording does too.
+   - **What that captures is one honest iteration.** The answer that finishes the current resolution is not a step. The iteration begins where the recorder next holds priority, whatever is still waiting on the stack, and it closes only when the board comes back to exactly that point (§3, unchanged). Recording that starts on the Rings of Brighthearth's "pay {2}?" begins over the Basalt Monolith's untap ability still on the stack, and the iteration from there (it resolves, the Monolith is tapped and activated again, the Rings asks again) closes and replays like any other loop.
+3. **Stop ends the iteration at the recorder's quiet priority too.** A stop asked for there runs the closure check at once, as before. One asked for without priority, or with a prompt open, sets `stopping`. The recording goes on, capturing every step, and the check runs at the recorder's next quiet priority, the earliest ending point CR 732.2a allows. Before this amendment such a stop was refused without priority, and with priority but a prompt open it was discarded as "a prompt is still waiting for an answer".
+4. **Proposing still needs priority** (CR 732.2a), unchanged on the server: `loop_propose` is refused without priority (`ErrLoopNeedsPriority`), with a prompt open, and on a board that is not the one the iteration started from. A ready recording whose recorder does not hold priority waits. The dock's line reads "Loop ready · N steps · propose when you next hold priority", with propose… disabled, and the propose sheet opens when they next hold priority.
+5. **The menu entry is never hidden.** "Record loop" is drawn for every viewer, the command bar's spectator menu included. It is enabled for a seat that may ask, with a line under it, "Starts when you next hold priority", when it will be armed. Otherwise it is disabled, with a one-line reason as its visible note and accessible description: a spectator ("Only a player at the table can record a loop"), a seat that left, a game not active or still in its opening hands, a controlled player, another player's loop ("Ann is recording a loop") or the viewer's own ("You have a loop going: its controls are on the dock").
+6. **The dock says what is waiting.** An armed recording reads "Loop recording starts when you next hold priority" with Cancel. A stopping one reads "Recording a loop · N steps · stops when you next hold priority" and has no Stop. Other seats read "Ann will record a loop from their next priority" (CR 732.1a).
+7. **Smart auto-pass holds for the recorder's own demonstration.** While the viewer's loop is armed, recording or ready, nothing passes priority for them (`autopassDecision`'s `loopDemo`, rule 1). An armed recording begins at the priority it was waiting for, the iteration is played by hand (§1), and a ready loop needs that priority to propose. An auto-pass there would record a pass nobody chose, or end the step and discard the loop.
+
+### Starting during another player's choice
+
+Allowed. It is the same request, and nothing is captured until the asker next holds priority: the other player's answer is not a step, and their resolution finishes as it would have. Refusing it would only make the asker wait for a moment the server can wait for itself. Two recordings still cannot stand at once (`ErrLoopAlreadyRecording`).
+
+### Unchanged
+
+The closure signature, the proposal and its CR 732.2b answers, the replay, the bounds and the log. Owner decision 3 still holds for the captured iteration: it starts and stops in the same step, at the recorder's priority both times. Only the armed request may outlive a step. `internal/legal` still offers the recording verbs to an agent seat only in its priority windows, so a record move never makes a window it has nothing else to do in into a decision. The server accepts the request from an agent at any time.
+
+### Wire
+
+`loop_recording.status` gains `"armed"` (`steps` 0), and `loop_recording.stopping` (omitempty) is new. `Game.LoopRecording` gains `stopAtPriority` (`StopAtPriority`), additive within the snapshot version (#522). Both are in `docs/protocol.md`.
+
+### Tests
+
+- `server/internal/game/loop_recording_test.go`:
+  - starting during the recorder's own paused resolution prompt, and the loop closing;
+  - starting during another player's prompt;
+  - an armed request outliving a step;
+  - a stop without priority closing at the next priority;
+  - a stop over a changed stack being discarded;
+  - a proposal refused without priority and over a changed board, then accepted once priority is held;
+  - cancelling an armed request;
+  - refusals outside an active game.
+- `server/internal/ws/loop_replay_test.go`: the Rings of Brighthearth case end to end, recorded mid-resolution and replayed ×3.
+- Client: `loopShortcut.test.ts`, `autopassDecision.test.ts` and `gameMenu.render.test.ts` (the entry mid-resolution, disabled with its reasons, and the three status lines).

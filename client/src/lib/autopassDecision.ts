@@ -22,7 +22,8 @@
 //     what the viewer *may* do: no priority, mulligans open, game
 //     over, eliminated, an open pending choice, an owed
 //     declare-blockers decision (#328), an owed attack requirement
-//     (#1571), an owed free cast (#3490), the CR 732 loop breaker (#628). None of these can be out-voted by any toggle.
+//     (#1571), an owed free cast (#3490), the CR 732 loop breaker (#628),
+//     the viewer's own loop demonstration (ADR 0193, #4736). None of these can be out-voted by any toggle.
 //  2. The safety belt (ADR 0009 §7, always on since ADR 0143 §4.2): entering the viewer's
 //     own precombat_main clears Skip to my turn instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
@@ -105,6 +106,13 @@ export interface AutopassGates {
   owesFreeCast: boolean;
   // #628 / CR 732: the server suspended automatic passing table-wide.
   loopSuspended: boolean;
+  // ADR 0193's 2026-10-30 amendment (#4736): the viewer's own loop
+  // recording is armed, being recorded or ready to propose. They play
+  // the iteration by hand (ADR 0193 §1), an armed one begins at the
+  // priority it is waiting for, and a ready one needs that priority to
+  // propose (CR 732.2a), so nothing passes it away for them. Absent is
+  // false.
+  loopDemo?: boolean;
   // The snapshot's current step, or null/undefined if unknown.
   step: string | null | undefined;
   // The session autopass toggle.
@@ -188,6 +196,7 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   if (g.owesAttackRequirement) return "hold";
   if (g.owesFreeCast) return "hold";
   if (g.loopSuspended) return "hold";
+  if (g.loopDemo) return "hold";
   if (!g.step) return "hold";
 
   // 2. The safety belt (ADR 0009 §7), built in since ADR 0143 §4.2:

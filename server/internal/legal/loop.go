@@ -15,6 +15,11 @@ import (
 //     list does not carry them either: the client drives the dock
 //     control from GameView.loop_recording, and a move kind the client
 //     does not know would stop its smart autopass on every window.
+//     The server accepts loop_record_start from any seat in the game
+//     and arms it when the seat cannot start now (#4736); an agent is
+//     still offered it only in its priority windows, so a record move
+//     never turns a window it has nothing else to do in into a
+//     decision.
 //   - The loop_proposal prompt is answered by every seat. Accept is
 //     first and always legal, so a bot takes it; a bot seat is offered
 //     nothing else (owner decision 9: bot opponents always accept).
@@ -65,6 +70,8 @@ func (e *enumerator) loopMoves() {
 	if r == nil {
 		if len(g.PendingChoices) == 0 && len(g.PendingTriggers) == 0 {
 			add(TypeLoopRecordStart, "Record a loop (CR 732.2a): every action from now is one iteration", nil)
+		} else {
+			add(TypeLoopRecordStart, "Record a loop (CR 732.2a): every action from your next priority with nothing open is one iteration", nil)
 		}
 		return
 	}
@@ -73,7 +80,7 @@ func (e *enumerator) loopMoves() {
 	}
 	switch r.Status {
 	case game.LoopStatusRecording:
-		if len(r.Steps) > 0 {
+		if len(r.Steps) > 0 && !r.StopAtPriority {
 			add(TypeLoopRecordStop, fmt.Sprintf("Stop recording the loop (%d steps)", len(r.Steps)), nil)
 		}
 	case game.LoopStatusReady:
