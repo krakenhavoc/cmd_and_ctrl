@@ -14,6 +14,7 @@ import {
   readiness,
   seatLine,
   seatPreview,
+  seatTileArt,
   seatTileText,
   statusChip,
   type LobbyViewer,
@@ -160,6 +161,26 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Elf ball",
       ready: true,
     });
+  });
+
+  it("draws a bot's pre-built deck's commander art, and a person's seat none (phase B1)", () => {
+    const bot = seat(3, { is_bot: true, bot_tier: "heuristic", bot_deck: "elves" });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["G"],
+      commander_cards: [
+        { name: "Marwyn, the Nurturer", scryfall_id: "m1", color_identity: ["G"] },
+        { name: "No printing", color_identity: null },
+      ],
+    };
+    // Only a commander with a printing is drawn; the rest of the seat is the wash.
+    expect(seatTileArt(bot, deck)).toEqual([{ name: "Marwyn, the Nurturer", scryfallId: "m1" }]);
+    expect(seatTileArt(bot, { ...deck, commander_cards: undefined })).toEqual([]);
+    expect(seatTileArt(bot, undefined)).toEqual([]);
+    // A person's seat takes no art from a deck; their preview supplies it (seatPreview).
+    expect(seatTileArt(seat(0), deck)).toEqual([]);
   });
 
   it("names a bot's tier, and a player's own key", () => {

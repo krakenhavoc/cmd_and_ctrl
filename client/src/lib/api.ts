@@ -20,7 +20,7 @@ import { splicePaymentsWire } from "./targeting";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
-import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
+import type { MyDeckCommander, MyDeckInfo, MyDecksResponse } from "./myDecks";
 import type { CoverageReport, DeckCheckRequest } from "./deckcheck";
 import type { SaveDeckResponse } from "./decksPage";
 import type { DeckUpdateConfirm, DeckUpdateInput, DeckUpdatePreview } from "./deckUpdate";
@@ -157,13 +157,18 @@ export interface BotTierInfo {
   reason?: string;
 }
 
-// BotDeckInfo mirrors aiseat.DeckInfo — one curated bot deck.
+// BotDeckInfo mirrors lobby.botDeckOption — one curated bot deck:
+// aiseat.DeckInfo plus its commander resolved against the card index.
 export interface BotDeckInfo {
   id: string;
   name: string;
   description?: string;
   colors?: string[];
   commander?: string;
+  // The commander's printing to draw and its identity (ADR 0212 phase
+  // B1), as GET /decks gives a pre-built deck's. Absent when the server
+  // has no card index, and an older server never sends it.
+  commander_cards?: MyDeckCommander[];
 }
 
 // BotOptions is GET /bot/options: what the Add-bot picker renders.

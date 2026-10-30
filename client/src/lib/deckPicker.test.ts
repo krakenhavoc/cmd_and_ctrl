@@ -118,6 +118,48 @@ describe("a tile's pips, art and wash", () => {
     expect(prebuiltTile(prebuilt({}, { colors: undefined })).identity).toBeNull();
   });
 
+  it("draws a pre-built deck's commander, and washes it when there is no printing (phase B1)", () => {
+    const withArt = prebuiltTile(
+      prebuilt(
+        {},
+        {
+          colors: ["R"],
+          commander_cards: [
+            { name: "Purphoros, God of the Forge", scryfall_id: "p1", color_identity: ["R"] },
+          ],
+        },
+      ),
+    );
+    expect(withArt.art).toEqual([{ name: "Purphoros, God of the Forge", scryfallId: "p1" }]);
+    // The wash still stands behind the crop, for a crop that fails to load.
+    expect(withArt.identity).toEqual(["R"]);
+    // A commander the index has no image for, or an older server: no art, never an empty id.
+    const noImage = prebuiltTile(
+      prebuilt(
+        {},
+        { commander_cards: [{ name: "Purphoros, God of the Forge", color_identity: ["R"] }] },
+      ),
+    );
+    expect(noImage.art).toEqual([]);
+    expect(prebuiltTile(prebuilt({}, { commander_cards: undefined })).art).toEqual([]);
+  });
+
+  it("draws a pre-built deck's partner pair side by side", () => {
+    const t = prebuiltTile(
+      prebuilt(
+        {},
+        {
+          commander: "Tymna the Weaver",
+          commander_cards: [
+            { name: "Tymna the Weaver", scryfall_id: "t1", color_identity: ["W", "B"] },
+            { name: "Kraum, Ludevic's Opus", scryfall_id: "k1", color_identity: ["U", "R"] },
+          ],
+        },
+      ),
+    );
+    expect(t.art.map((a) => a.scryfallId)).toEqual(["t1", "k1"]);
+  });
+
   it("draws a saved deck's commanders that have a printing, partners side by side", () => {
     const t = libraryTile(
       saved({
@@ -144,6 +186,21 @@ describe("a tile's pips, art and wash", () => {
     expect(plain.sub).toBe("Purphoros, God of the Forge");
     expect(plain.colors).toEqual(["R"]);
     expect(plain.flag).toBe("");
+  });
+
+  it("takes a bot deck's art from GET /decks, or from GET /bot/options without it", () => {
+    const cmd = (id: string) => [
+      { name: "Purphoros, God of the Forge", scryfall_id: id, color_identity: ["R"] },
+    ];
+    const bot = { id: "fury", name: "Fury", commander: "Purphoros, God of the Forge" };
+    const both = botDeckTile(
+      { ...bot, commander_cards: cmd("o1") },
+      prebuilt({}, { commander_cards: cmd("d1") }),
+    );
+    expect(both.art).toEqual([{ name: "Purphoros, God of the Forge", scryfallId: "d1" }]);
+    const alone = botDeckTile({ ...bot, commander_cards: cmd("o1") });
+    expect(alone.art).toEqual([{ name: "Purphoros, God of the Forge", scryfallId: "o1" }]);
+    expect(botDeckTile(bot).art).toEqual([]);
   });
 });
 

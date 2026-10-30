@@ -1,5 +1,5 @@
 import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
-import type { DeckArt } from "./deckGrid";
+import { deckArt, type DeckArt } from "./deckGrid";
 import { sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
 import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
@@ -166,6 +166,16 @@ export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): Sea
   }
   if (!p.deck_uploaded) return { what: "No deck yet", second: "", colors: [], ready: false };
   return { what: p.deck_name || "Deck ready", second: "", colors: [], ready: true };
+}
+
+// seatTileArt is the art a taken seat's tile draws: a bot's pre-built
+// deck's commander crop, partners side by side (ADR 0212 phase B1, from
+// GET /bot/options). A person's seat has none until the seats carry
+// their commanders (B2), except while the picker previews a deck, which
+// seatPreview supplies. Empty is the seat's colour wash, never a broken
+// image.
+export function seatTileArt(p: SeatInfo, botDeck: BotDeckInfo | undefined): DeckArt[] {
+  return p.is_bot && botDeck ? deckArt(botDeck) : [];
 }
 
 // SeatPreview is your own tile while the deck picker is open (§1).
