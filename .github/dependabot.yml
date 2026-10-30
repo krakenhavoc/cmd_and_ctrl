@@ -11,6 +11,11 @@
 # Go and npm are left to Dependabot security updates, which the owner
 # turns on in the repository settings. Version-update PRs for those
 # would be noise.
+#
+# Security updates ignore target-branch: they always open against the
+# default branch, main. .github/workflows/dependabot-retarget.yml moves
+# them to develop and starts CI there (#4661, docs/environments.md,
+# Dependabot PRs).
 version: 2
 updates:
   - package-ecosystem: github-actions

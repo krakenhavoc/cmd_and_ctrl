@@ -96,8 +96,8 @@ Where things are:
 `develop` is the integration branch; `main` is the release branch. Feature PRs
 target **`develop`**, which auto-deploys to `https://cmd-dev.labxp.io`. Always pass
 `--base develop` to `gh pr create`: `main` is still the default branch, and a
-feature PR into `main` fails the required `promotion-guard` check. Promotion is a
-`develop` → `main` PR. Matrix and runbook: [docs/environments.md](docs/environments.md);
+feature PR into it fails the required `promotion-guard` check (Dependabot's are
+moved for you). Promotion is a `develop` → `main` PR. Matrix and runbook: [docs/environments.md](docs/environments.md);
 [ADR 0023](docs/decisions/0023-develop-environment.md).
 
 Two rules that are easy to get wrong:
