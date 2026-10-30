@@ -931,7 +931,7 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 	// ADR 0108 §10: a battlefield static can make the damage dealt as
 	// though its source had wither (Everlasting Torment), read as it
 	// lands (damage_as_though.go).
-	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t))
+	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
 	if !ok {
 		return 0, ErrCardNotFound
 	}
