@@ -1829,6 +1829,7 @@ tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
 tail then/the-black-arrow-destroy-dragon
 tail then/the-falcon-when-you-do
+tail then/the-fantasticar-constructs
 tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
 tail then/the-ring-goes-south-reveal
