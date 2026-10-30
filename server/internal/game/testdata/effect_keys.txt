@@ -1840,3 +1840,6 @@ condition dies/that-creature-you-control-your-commander
 tail eerie-gravestone/after-mill
 castfollowup msc6/helmut-zemo-mastermind-counter
 tail msc6/daredevil-fearless-fighter-exiled
+confirm confirm/msh-a6-nick-fury-transform
+tail msh-a6/nick-fury-after-put
+tail msh-a6/origin-of-the-avengers-draw

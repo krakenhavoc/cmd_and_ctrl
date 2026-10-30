@@ -135,3 +135,10 @@ var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discard
 	}
 	return g.AddCounterForEffect(creature, game.CounterPlusOne, nonland)
 })
+
+// WhenThisEntersItConnives is "When this creature enters, it connives"
+// (A.I.M. Scientists, Red Room Recruit): ConniveEach for the one creature
+// that entered (sourceConnives, shared with Atlantean Skirmisher).
+func WhenThisEntersItConnives(label string) game.TriggeredAbility {
+	return WhenThisEnters(label, Do(Instruction(sourceConnives)))
+}
