@@ -75,6 +75,19 @@ func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	return Flicker{Target: id, Controller: item.Controller}.Apply(ctx)
 }
 
+// flickerFirstLegalTargetUnderOwner is flickerFirstLegalTarget for the
+// printings that say "under its OWNER's control" (The Mind Stone, Photon,
+// Lady of Light): Controller is left at its zero value, so the card comes
+// back for its owner, not for the player whose ability blinked it.
+func flickerFirstLegalTargetUnderOwner(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Flicker{Target: id}.Apply(ctx)
+}
+
 // exileTargetsThenScheduleReturn exiles every still-legal card target
 // on the resolving item as ONE event and, from that exile's
 // continuation, schedules the delayed trigger that returns the cards
