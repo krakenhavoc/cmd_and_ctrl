@@ -129,6 +129,7 @@ body glacial-dragonhunt/damage
 body gloom-surgeon/exile-that-many
 body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
+body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-your-control
 body grim-reaper-lethal-legionnaire/return
@@ -626,6 +627,7 @@ coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/krark-the-thumbless
+coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/plasma-caster
@@ -636,6 +638,7 @@ condition attach/this-aura-left
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
+condition attack/that-creature-attacks-the-monarch
 condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
@@ -1562,6 +1565,7 @@ tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
 tail myriad/exile-tokens-at-end-of-combat
 tail necropotence/schedule-delivery
+tail negative-zone-portal/after-exile
 tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
 tail nicol-bolas-god-pharaoh/after-mill
