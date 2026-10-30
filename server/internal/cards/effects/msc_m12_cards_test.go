@@ -923,6 +923,23 @@ func TestMscM12VultureIgnoresGroundDamageAndNoncombatDamage(t *testing.T) {
 	}
 }
 
+func TestMscM12VultureGivesNoCounterToACreatureThatLeftButStillDraws(t *testing.T) {
+	g, me, vulture, flyer, _ := mscM12VultureTable(t)
+	hand := me.Hand.Size()
+	attackWith(t, g, g.Seats[1].ID, vulture, flyer)
+	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(flyer) })
+	mscM12Settle(t, g)
+	if got := hobA4Power(t, g, vulture); got != 3 {
+		t.Errorf("Vulture power %d, want 3", got)
+	}
+	if g.Battlefield.Contains(flyer) {
+		t.Fatal("the Bird is still on the battlefield")
+	}
+	if me.Hand.Size() != hand+2 {
+		t.Errorf("hand %d -> %d, want the draw plus the bounced Bird", hand, me.Hand.Size())
+	}
+}
+
 func TestMscM12VultureCounterGoesToTheCreatureThatHadFlyingWhenItDealtDamage(t *testing.T) {
 	g, me, _, flyer, ground := mscM12VultureTable(t)
 	hand := me.Hand.Size()
