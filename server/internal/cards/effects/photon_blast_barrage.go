@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	cast := WhenYouCastThisSpell("Photon Blast Barrage — copy it X times", photonBlastBarrageCopies)
+	cast := WhenYouCastThisSpell("Photon Blast Barrage — copy it X times", replicateEffect)
 	build := cast.Build
 	cast.Build = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
 		item := build(ev, source, lki, g)
@@ -36,18 +36,4 @@ func init() {
 		Triggered:    []game.TriggeredAbility{cast},
 		OnResolve:    damageToFirstTarget(1),
 	})
-}
-
-// photonBlastBarrageCopies copies the spell once for each X.
-func photonBlastBarrageCopies(g *game.Game, item *game.StackItem) error {
-	if item.XValue <= 0 {
-		return nil
-	}
-	return CopySpell{
-		StackID:          item.SourceCardID,
-		Controller:       item.Controller,
-		Count:            item.XValue,
-		ChooseNewTargets: true,
-		FromLastKnown:    true,
-	}.Apply(NewContext(g, item))
 }

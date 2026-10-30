@@ -38,11 +38,7 @@ func init() {
 					return target.InstanceID == source.InstanceID
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-					n := 0
-					if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
-						n = p.Hand.Size()
-					}
-					c.Power = n
+					c.Power = cardsInHand(g, source.Controller)
 				},
 			}},
 			Text: "Ms. Marvel's base power is equal to the number of cards in your hand.",

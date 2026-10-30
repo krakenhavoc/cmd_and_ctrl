@@ -98,7 +98,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue Fish":                                                    {Name: "Fish", TypeLine: "Token Creature — Fish", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Squid with islandwalk":                                   {Name: "Squid", TypeLine: "Token Creature — Squid", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"islandwalk"}},
 	"1/1 blue Merfolk":                                                 {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}},
-	"1/1 blue Merfolk with hexproof":                                  {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
+	"1/1 blue Merfolk with hexproof":                                   {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"1/1 white and blue Merfolk":                                       {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"W", "U"}},
 	"1/1 blue Tentacle":                                                {Name: "Tentacle", TypeLine: "Token Creature — Tentacle", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Thopter artifact with flying":                            {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},

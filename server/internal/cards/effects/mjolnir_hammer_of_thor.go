@@ -55,7 +55,7 @@ func init() {
 				Label:   "{2}{R}, Discard this card: It deals 2 damage to each creature.",
 				Cost:    game.AbilityCost{Mana: "{2}{R}", DiscardSelf: true},
 				Zones:   []game.ZoneKind{game.ZoneHand},
-				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}},
+				Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return damageEachMatching(NewContext(g, item), Creature(), 2)
 				},
