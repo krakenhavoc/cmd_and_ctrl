@@ -22,6 +22,8 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 	mana := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Tap"}
 	land := legal.Move{Type: "play_land", Kind: legal.KindLand, Label: "Play Forest"}
 	instant := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Deadly Rollick", Source: card}
+	// #2877: a value instant (Opt), declared to answer nothing.
+	opt := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Opt", Source: card, ValueOnly: true}
 	value := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Cycle", Source: card}
 	targeted := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Zap", Source: card, HasTargets: true}
 	outlet := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Sacrifice", Source: card, Interacts: true}
@@ -102,6 +104,10 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 		{"their spell, nothing to answer with", view(1, "precombat_main", oppSpell), []legal.Move{pass, mana}, true},
 		{"their spell, a pure value ability", view(1, "precombat_main", oppSpell), []legal.Move{pass, value}, true},
 		{"their spell, an instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, instant}, false},
+		{"their spell, a value instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, opt}, true},
+		{"their spell, a value instant and an instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, opt, instant}, false},
+		{"their end step, a value instant", view(1, "end", nil), []legal.Move{pass, opt}, false},
+		{"their attack, a value instant", view(1, "declare_attackers", attackerInPlay), []legal.Move{pass, opt}, false},
 		{"their spell, a counterspell", view(1, "precombat_main", oppSpell), []legal.Move{pass, counter}, false},
 		{"their spell, a targeted ability", view(1, "precombat_main", oppSpell), []legal.Move{pass, targeted}, false},
 		{"their spell, a sacrifice outlet", view(1, "precombat_main", oppSpell), []legal.Move{pass, outlet}, false},

@@ -940,6 +940,51 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
     }
   });
 
+  // #2877 (owner, 2026-10-30, option (a)): a value instant does not stop
+  // you on an opponent's spell, and still stops you at their end step
+  // and in their attack, where it is cast. The setting brings the stack
+  // stop back, and Careful sees every spell anyway.
+  it("a value instant passes an opponent's spell and stops at their end step and attack", () => {
+    const opt = mv("cast", { source: "opt", value_only: true });
+    const divination: StackItemView = {
+      id: "s",
+      kind: "spell",
+      controller: "p1",
+      owner: "p1",
+      source_card_id: "c",
+      label: "Divination",
+    };
+    const onStack = frame({
+      step: "precombat_main",
+      active: 1,
+      moves: [...quiet, opt],
+      stack: [divination],
+    });
+    expect(decide(onStack, false)).toBe("pass");
+    expect(
+      decide(onStack, false, {
+        hasResponse: hasResponse(onStack, me, { ...DEFAULT_RESPONSES, valueInstant: true }),
+      }),
+    ).toBe("hold");
+    expect(decide(onStack, false, { passMode: "careful" })).toBe("hold");
+    // A real instant beside it still stops you.
+    const both = frame({
+      step: "precombat_main",
+      active: 1,
+      moves: [...quiet, opt, instant],
+      stack: [divination],
+    });
+    expect(decide(both, false)).toBe("hold");
+    expect(decide(frame({ step: "end", active: 1, moves: [...quiet, opt] }), false)).toBe("hold");
+    const attack = frame({
+      step: "declare_attackers",
+      active: 1,
+      moves: [...quiet, opt],
+      attacking: true,
+    });
+    expect(decide(attack, false)).toBe("hold");
+  });
+
   // Owner answer: a creature-token maker counts only for a player who
   // is being attacked; crew and manlands count for everyone.
   it("a token maker stops you when you are attacked, not when another player is", () => {

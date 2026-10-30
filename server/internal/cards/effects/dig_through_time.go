@@ -23,7 +23,7 @@ func init() {
 		OracleID:     "f8b17b89-26ce-4208-874a-9e1d66514640",
 		Name:         "Dig Through Time",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Tutors: 2},
+		Purpose:      game.Purpose{Tutors: 2, Answers: game.AnswerValue}, // #2877: answers nothing on the stack
 		Delve:        true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			player := ctx.Controller()

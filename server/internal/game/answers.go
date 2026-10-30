@@ -16,7 +16,10 @@ import "strings"
 // never derived. The engine never reads it. internal/legal reads it to
 // set a move's interacts and combat_interacts flags (untargetedFlags),
 // and counts a row that declares none as interacting (ADR 0142 owner
-// answer 3).
+// answer 3). On a spell, a mode or an alternative cost it reads it for
+// a cast's value_only (castAnswersOf, #2877): only a cast declared
+// exactly AnswerValue changes anything there; any other declaration,
+// and none, keeps the cast an instant that stops you.
 
 // Answers is a set of declared answers. The zero value is "not
 // declared".

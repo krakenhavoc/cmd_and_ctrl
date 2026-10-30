@@ -688,11 +688,14 @@
     const cats: ResponseCategories = {
       counter: gp.respondCounterspells,
       instant: gp.respondInstants,
+      // #2877: a value instant on an opponent's stack item.
+      valueInstant: gp.respondValueInstants,
       ability: gp.respondAbilities,
       untargeted: gp.respondUntargetedAbilities,
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
+    const respond = hasResponse(view, viewerID, cats);
     return {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated || !!controlledBy,
@@ -742,8 +745,14 @@
       // ADR 0143 §2.3: the column for whoever is active.
       stepStop: stepStopFor(gp, step, viewerIsActive),
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
-      hasResponse: hasResponse(view, viewerID, cats),
+      hasResponse: respond,
       hasPlay: hasPlay(view, viewerID, cats),
+      // #2877: only for the pass chip's wording, never the verdict.
+      heldValueInstant:
+        !respond &&
+        !cats.valueInstant &&
+        !stackEmpty(view) &&
+        hasResponse(view, viewerID, { ...cats, valueInstant: true }),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.
       engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,

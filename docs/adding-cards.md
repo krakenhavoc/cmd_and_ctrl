@@ -1666,8 +1666,12 @@ both where both are true; neither is derived from the other.
 **What `effects.Register` refuses:**
 
 - `AnswerValue` beside any other answer;
-- `Answers` on a spell, a mode, an alternative cost or a triggered row
-  (nothing reads it there yet);
+- `Answers` on an activated or triggered ability's mode, inside
+  `Purpose.Kicked` or `Purpose.FaceUp`, or on a triggered row (except
+  `AnswerRemove`, an edict);
+- on a spell, `AnswerValue` in any slot when its additional cost
+  sacrifices or exiles a creature, or on an alternative cost that
+  sacrifices or returns one;
 - `Answers` on a sorcery-speed or loyalty row, or on a row whose every
   announcement has a target;
 - a crew row without `AnswerAnimate`;
@@ -1692,6 +1696,47 @@ A "Sacrifice this creature: …" row needs no special declaration for the
 moment its creature is threatened: the enumerator sets `interacts` while
 an opponent's stack item targets it, and `combat_interacts` while it
 attacks or blocks, from the game state (ADR 0142 owner answer 4).
+
+**Spells (#2877, ADR 0142's amendment of 2026-10-30).** A spell
+declares what it answers too: on the card (`Spec.Purpose.Answers`), on a
+mode (`ModeWithPurpose`) or on an alternative cost (`Purpose` on the
+`AlternativeCost`). The one reading that changes anything is
+`AnswerValue`: a cast declared exactly `value` (Opt, Brainstorm, Fact or
+Fiction, Entomb) carries `value_only`, and smart autopass does not stop
+for it on an opponent's spell unless the player asks; it still does in
+combat and at an opponent's end step. Any other declaration, and none,
+keeps the cast an instant that stops you, so declare the real answer
+where there is one:
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerValue},                   // Opt: "Scry 1. Draw a card."
+Purpose: game.Purpose{Draws: 2, Answers: game.AnswerSacOutlet},     // Altar's Reap: its cost sacrifices a creature
+ModeWithPurpose(ModeDoing("Draw a card.", nil, draw), game.Purpose{Draws: 1, Answers: game.AnswerValue}), // Mystic Confluence's third mode
+```
+
+- A mode that declares nothing is covered by the card's declaration;
+  with none there, a cast choosing it counts as answering. A mode's own
+  declaration replaces the card's for that mode.
+- An alternative cost that changes what the spell does (overload, a
+  face-down cast, bestow, its own clause list) declares for itself, or
+  the cast counts as answering. One that only changes the price
+  (flashback, a pitch cost) needs nothing.
+- A kicker adds nothing: declare the union of the kicked and unkicked
+  effect on the card (sweep ruling 4).
+- A creature with flash is a blocker (sweep ruling 7: `makes_blocker`),
+  so it is never `value`. A spell that targets the stack is a counter
+  whatever it declares.
+- A cost that gives up a creature (Altar's Reap, Deadly Dispute) is a
+  sacrifice outlet; the guard refuses `value` beside it, and the
+  enumerator never sets `value_only` on a cast that sacrifices, exiles or
+  returns a creature.
+
+There is no CI ratchet for spells: a `Spec` has no type line, and CI has
+no Scryfall dump. `go test ./internal/decks/ -run RealDumpSpellAnswers
+-v` with `CMDCTRL_SCRYFALL_DUMP` lists every instant and flash card that
+declares nothing yet; a sweep batch declares a slice of it and quotes the
+count before and after. An undeclared spell stops you as every instant
+did before, so a card left off the list costs a click, never a window.
 
 Declare what a row answers, not when it should stop a player. The
 enumerator gates `protect`, `survive`, `pump`, `prevent` and `sac_outlet` itself:

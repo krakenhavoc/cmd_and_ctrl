@@ -802,6 +802,102 @@ Mardu edict, Witch of the Moors' and Winter's enters trigger as stops, and
 Barrensteppe Siege's Abzan counters and the seat's own Witch of the Moors as
 not.
 
+## Amendment: a value instant does not stop you on an opponent's spell (#2877)
+
+**Status:** Accepted · 2026-10-30 · Sprint S78
+
+Since #2853 an untargeted value ability (Mind Stone, cycling) does not stop
+you on an opponent's stack item, but every castable instant still did,
+however little it had to say. ADR 0142's Q5 kept that question apart. A
+2026-10-14 bot arena replay (eight seeded four-seat games, 32 seat-games,
+every priority window through `autopassDecision` on default settings)
+counted about 75 stops whose only responses were value instants: Altar's
+Reap 16 on opponent stack items and 4 in combat, none acted on; Entomb 10 on
+the stack (none acted on) and 6 at an opponent's end step (2 acted on);
+Frantic Search 8 on the stack (none) and 11 in combat or at an end step (6);
+Dig Through Time 19, none. Real answers (Pongify, Counterspell, Swan Song,
+Absorb, Force of Negation) were acted on far more often.
+
+**Owner decision (2026-10-30): option (a).** A castable "value" instant
+(Opt, Brainstorm) does not stop smart auto-pass on an opponent's stack item
+by default, and a setting turns the stop back on. The combat and
+opponent's-end-step stops stay: those are rule 7's windows, and they are
+where a value instant is cast.
+
+### What changed
+
+- **The server says which casts answer nothing.** A cast move whose
+  announcement is declared exactly `value` (ADR 0142's
+  [2026-10-30 amendment](0142-declared-answers-on-catalog-abilities.md#amendment-2026-10-30--spells-declare-what-they-answer-2877--accepted))
+  carries `value_only`. It never does on a cast that targets the stack, that
+  gives up a creature as a cost (Altar's Reap is a sacrifice outlet), or
+  that declares nothing; an undeclared instant stops you as before.
+- **A new class.** `classifyMove` reads a `value_only` cast as
+  `valueInstant` while the stack holds something, and as `instant` with the
+  stack empty:
+
+  | Move | Class |
+  |---|---|
+  | `cast` with `value_only`, stack not empty (not `targets_stack`, not the sorcery window) | valueInstant |
+  | `cast` with `value_only`, stack empty | instant |
+
+  The stack question is only asked with an opponent's item on it (a stack of
+  your own is #323's, rule 6), and that item is what a value instant has no
+  answer to. After it resolves you get priority again with the stack empty,
+  and in combat or at an opponent's end step rule 7 holds for the instant.
+- **A sixth "What counts as a response" category.**
+  `gameplay.respondValueInstants`, labelled **Value instants (Opt,
+  Brainstorm) on an opponent's spell** (`L.respondValueInstantsToggle`), off
+  by default, under **Instants and flash** in Settings → Gameplay →
+  Advanced. It narrows that category: a `valueInstant` counts only when both
+  are on, and the checkbox is disabled while instants are off. The list's
+  help adds: "A value instant, like Opt or Brainstorm, counts in combat and
+  at an opponent's end step, and on an opponent's spell only when you tick
+  it above."
+- **The pass says why.** When rule 6 passes an opponent's item and the
+  viewer held only a value instant, the dock's chip reads "Passed for you:
+  only a value instant to respond with" (or "stack hold ended, only a value
+  instant to respond with"), with the chip's Undo as usual
+  (`passReason.ts`, gate `heldValueInstant`, which the decision never
+  reads).
+- **The MCP seat's smart pass** (`mcpseat/smart.go`) mirrors the default:
+  a `value_only` cast is no response while the stack holds something.
+
+The precedence list is unchanged. Careful stops at every opponent item
+anyway, Manual holds everywhere, and Skip to my turn passes everything.
+
+### No missed window
+
+Only the client's automatic pass changes: priority is given exactly as
+before (CR 117.3d), and the cast is legal and offered as before. A player who
+wants Opt in response to a particular spell has, in that window, the stack
+hold's countdown with its **wait** button (ADR 0119 §2, the table's pace),
+the hold key `h`, a phase pin, or the pass chip's Undo; for every spell,
+the setting. In combat and at an opponent's end step nothing changes.
+
+### The settings migration (schema v31)
+
+A blob from before v31 takes `respondValueInstants` from
+`respondUntargetedAbilities`: a player who ticked "Value abilities" (off by
+default since v22) asked to be stopped for value plays, so value instants
+keep stopping them. Everyone else gets the new default, off. An account
+copy from a v30 client goes through the same migrate (`applySyncedCopy`).
+From v31 on, the stored value stands, and a non-boolean falls back to the
+default.
+
+### Costs
+
+- A value instant cast *in response* for its own sake (Brainstorm to hide
+  cards from a discard spell, a cantrip to dig for an answer to the spell on
+  the stack) no longer stops you by default. Tick the setting, or use wait,
+  hold or a pin.
+- Until ADR 0142's spell sweep reaches it, an instant that answers nothing
+  but declares nothing still stops you (about 946 instants and 151 flash
+  cards on 2026-10-30). That is a pointless stop, not a missed window.
+- A spell's other declared answers are not tiered or threat-gated: Altar's
+  Reap (`sac_outlet`) still stops you on every opponent spell, as #3555's Q2
+  kept for instants. Gating them would be a decision of its own.
+
 ## Context
 
 S13 shipped the per-step "stops" grid and a global `autoPassPriority`

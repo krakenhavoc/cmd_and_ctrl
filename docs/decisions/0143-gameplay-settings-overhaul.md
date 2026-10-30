@@ -300,6 +300,10 @@ Each question lists the recommended option first. The owner chose (a), the recom
 6. **Q6: (a).** A collapsed Advanced section at the bottom of Gameplay, holding the list in §3.1.
 7. **Q7: (a).** Passing stays client-side for now. Only the stack hold reads a table setting (§6).
 
+## Amendment 2026-10-30 — value instants on an opponent's spell (#2877)
+
+The owner decided [#2877](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2877) on 2026-10-30 (option (a)): a value instant (Opt, Brainstorm) no longer stops Smart on an opponent's stack item by default. §3.1's "What counts as a response" list gains a sixth checkbox under Instants and flash, `gameplay.respondValueInstants` (schema v31, synced, off by default): **Value instants (Opt, Brainstorm) on an opponent's spell**. It narrows Instants and flash and is disabled while that is off, so §2.5's "read in every mode, never greyed out" stays true of every control that is read. §3.2's help for the list gains one sentence: "A value instant, like Opt or Brainstorm, counts in combat and at an opponent's end step, and on an opponent's spell only when you tick it above." §2.2's promise is unchanged: combat and an opponent's end step still stop for a value instant. The rules are in [ADR 0009's #2877 amendment](0009-smart-priority-autopass.md#amendment-a-value-instant-does-not-stop-you-on-an-opponents-spell-2877).
+
 ## Appendix: the audit
 
 This is the audit behind the Context. It was taken on `origin/develop` at ee35531a4, plus PR #2879. Line numbers are develop's unless marked `PR 2879`. "Read at" lists runtime reads only. It leaves out each field's own declaration, its Settings control and its tests. Every `gameplay` field is synced (`SYNCED_FIELDS`, `settings.ts:575-659`).

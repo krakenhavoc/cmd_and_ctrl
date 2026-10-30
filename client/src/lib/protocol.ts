@@ -953,6 +953,15 @@ export interface LegalMoveView {
   // viewer is a defending player in this combat. Only ever set beside
   // combat_interacts.
   combat_defender_only?: boolean;
+  // #2877 (ADR 0142's amendment of 2026-10-30): true on a cast whose
+  // announcement is declared to answer nothing: Opt, Brainstorm, Fact
+  // or Fiction. It targets nothing on the stack and gives up no
+  // creature as a cost. Smart autopass does not count it as a response
+  // to an opponent's stack item unless gameplay.respondValueInstants
+  // is on; in combat and at an opponent's end step it is an instant
+  // like any other. Never on an activation. Absent on older servers
+  // and on every cast that declares something else or nothing.
+  value_only?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never

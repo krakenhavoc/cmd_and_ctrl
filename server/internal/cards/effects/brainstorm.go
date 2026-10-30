@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "36cd2364-d113-47d1-b2c4-b088d9eb88dd",
 		Name:         "Brainstorm",
+		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: card selection answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return ctx.Game.DrawNThenForEffect(item.Controller, 3, game.DrawThen{

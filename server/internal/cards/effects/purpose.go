@@ -54,9 +54,12 @@ import (
 //     2026-10-08) that names no clause of its statement, names one
 //     twice, says nothing, or says what the clause's pick cannot be
 //     given (checkTargetPurposes).
-//   - Answers (ADR 0142) off an activated row, other than AnswerRemove on
-//     a triggered one (an edict, #3882), or a declaration
-//     answers.go refuses (checkActivatedAnswers, checkManaAnswers).
+//   - Answers (ADR 0142) anywhere but an activated row, the card, a
+//     spell's mode or an alternative cost (#2877, ADR 0142's amendment
+//     of 2026-10-30), other than AnswerRemove on a triggered one (an
+//     edict, #3882); inside Kicked or FaceUp; or a declaration
+//     answers.go refuses (checkActivatedAnswers, checkManaAnswers,
+//     checkSpellAnswers).
 //   - Kicked or FaceUp (ADR 0126's amendment of 2026-10-15, #3762) off
 //     the card, on a card with no single kicker / no face-down cast
 //     offer, or whose inner purpose is empty, nests another, or
@@ -67,7 +70,13 @@ type purposeSlot int
 
 const (
 	purposeOnCard purposeSlot = iota
+	// purposeOnMode is a bullet of an activated or triggered ability's
+	// mode clause.
 	purposeOnMode
+	// purposeOnSpellMode is a bullet of a modal spell (Spec.Modes). It
+	// may declare Answers, which a cast choosing it reads (#2877); an
+	// ability's bullet may not, since its row declares for it.
+	purposeOnSpellMode
 	purposeOnAltCost
 	purposeOnActivated
 	purposeOnAnyPlayerActivated
@@ -154,8 +163,8 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
-	if p.Answers != 0 && !onActivated(slot) && !(slot == purposeOnTriggered && p.Answers == game.AnswerRemove) {
-		fail("declares Answers off an activated row, other than AnswerRemove (an edict) on a triggered one — nothing reads it there yet (ADR 0142 §2, ADR 0009 #3882)")
+	if p.Answers != 0 && !answersSlot(slot) && !(slot == purposeOnTriggered && p.Answers == game.AnswerRemove) {
+		fail("declares Answers off an activated row, the card, a spell's mode or an alternative cost, other than AnswerRemove (an edict) on a triggered one — nothing reads it there (ADR 0142 §2 and its amendment of 2026-10-30, ADR 0009 #3882)")
 	}
 	checkAnswerBits(p.Answers, fail)
 	checkSaves(p, slot, fail)
@@ -176,10 +185,21 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 }
 
-// onActivated reports whether a slot is an activated row, the one slot
-// Answers may be declared on (ADR 0142 §2).
+// onActivated reports whether a slot is an activated row.
 func onActivated(slot purposeSlot) bool {
 	return slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+}
+
+// answersSlot reports whether Answers may be declared in a slot: an
+// activated row (ADR 0142 §2), and since #2877 the card, a spell's mode
+// and an alternative cost, which a cast reads (ADR 0142's amendment of
+// 2026-10-30; internal/legal's castAnswersOf).
+func answersSlot(slot purposeSlot) bool {
+	switch slot {
+	case purposeOnCard, purposeOnSpellMode, purposeOnAltCost:
+		return true
+	}
+	return onActivated(slot)
 }
 
 // checkSaves is checkPurpose's half for a declared Saves (#2939 gap 3):
@@ -281,15 +301,15 @@ func checkSweep(s game.Sweep, fail func(string)) {
 }
 
 // checkModePurposes checks every bullet of a mode clause. A bullet is
-// a mode slot whatever owns it: a spell, an activated or a triggered
-// ability.
-func checkModePurposes(name, where string, m *game.ModeSpec) {
+// a mode slot whatever owns it: a spell (purposeOnSpellMode), an
+// activated or a triggered ability (purposeOnMode).
+func checkModePurposes(name, where string, slot purposeSlot, m *game.ModeSpec) {
 	if m == nil {
 		return
 	}
 	for i, o := range m.Options {
 		mw := fmt.Sprintf("%s mode %d", where, i)
-		checkPurpose(name, mw, purposeOnMode, o.Purpose)
+		checkPurpose(name, mw, slot, o.Purpose)
 		checkTargetPurposes(name, mw, o.Purpose, o.Targets, true)
 	}
 }
@@ -307,7 +327,8 @@ func checkSpecPurposes(spec Spec) {
 	}
 	checkTargetPurposes(name, "card", spec.Purpose, spec.Targets, true)
 	checkConditionalPurposes(spec)
-	checkModePurposes(name, "spell", spec.Modes)
+	checkModePurposes(name, "spell", purposeOnSpellMode, spec.Modes)
+	checkSpellAnswers(spec)
 	for _, a := range spec.AlternativeCosts {
 		where := fmt.Sprintf("alternative cost %q", a.Key)
 		checkPurpose(name, where, purposeOnAltCost, a.Purpose)
@@ -369,6 +390,12 @@ func checkConditionalPurposes(spec Spec) {
 			fail("declares Targets — a conditional purpose has no clause list of its own")
 		case p.Aura != "" || p.ExtraLandDrops != 0 || p.LandfallExtraTriggers != 0 || p.FlashCleanupSacrifice:
 			fail("declares Aura, ExtraLandDrops, LandfallExtraTriggers or FlashCleanupSacrifice, which are the card's own")
+		case p.Answers != 0:
+			// #2877: what a spell answers is declared on the card, as the
+			// union of everything it can do (ADR 0142 sweep ruling 4), so
+			// a kicked cast is read like any other. A turn face up is a
+			// special action, which nothing asks.
+			fail("declares Answers — declare what the card answers on the card, the union of its kicked and unkicked effect (ADR 0142's amendment of 2026-10-30)")
 		}
 		slot := purposeOnCard
 		if which == "face up" {
@@ -407,7 +434,7 @@ func checkActivatedPurpose(name, where string, a ActivatedAbility, instantLoyalt
 	checkPurpose(name, where, slot, a.Purpose)
 	checkActivatedAnswers(name, where, activatedShapeOf(a), instantLoyalty)
 	checkTargetPurposes(name, where, a.Purpose, a.Targets, true)
-	checkModePurposes(name, where, a.Modes)
+	checkModePurposes(name, where, purposeOnMode, a.Modes)
 }
 
 // checkTriggeredPurpose checks one triggered row's purpose and its
@@ -417,7 +444,7 @@ func checkActivatedPurpose(name, where string, a ActivatedAbility, instantLoyalt
 func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 	checkPurpose(name, where, purposeOnTriggered, t.Purpose)
 	checkTargetPurposes(name, where, t.Purpose, t.Targets, t.Targets != nil || t.TargetsFrom == nil)
-	checkModePurposes(name, where, t.Modes)
+	checkModePurposes(name, where, purposeOnMode, t.Modes)
 }
 
 // checkTargetPurposes is the guard for Purpose.Targets (ADR 0126's
