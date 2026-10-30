@@ -26,7 +26,6 @@ func init() {
 		OracleID:     "bd49a05c-ed51-4d69-ab9b-11192442ec17",
 		Name:         "Stature, Size Shifter",
 		Completeness: CompletenessFull,
-		XMatters:     true,
 		BlockRules: []game.BlockRule{
 			CantBeBlockedWhile(OnSelf(), PowerLE(1)),
 		},
