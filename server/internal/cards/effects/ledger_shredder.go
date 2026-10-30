@@ -63,6 +63,16 @@ func ledgerShredderConnive(g *game.Game, item *game.StackItem) error {
 // for a nonland card really discarded. Keyed (#4253): the Shredder is the
 // prompt's source.
 var ledgerShredderDiscarded = game.RegisterDiscardThen("choose-cards/ledger-shredder-connive", func(g *game.Game, r game.DiscardsDone) error {
+	if err := ledgerShredderCounter(g, r); err != nil {
+		return err
+	}
+	// CR 701.50f, #4641: the Shredder has connived whatever the discard was.
+	g.ConnivedForEffect(r.Source, r.Player)
+	return nil
+})
+
+// ledgerShredderCounter is the +1/+1 counter for a nonland card discarded.
+func ledgerShredderCounter(g *game.Game, r game.DiscardsDone) error {
 	discarded := r.Discarded.Cards()
 	if len(discarded) == 0 {
 		return nil
@@ -72,4 +82,4 @@ var ledgerShredderDiscarded = game.RegisterDiscardThen("choose-cards/ledger-shre
 		return nil
 	}
 	return AddCounter{Target: r.Source, Kind: game.CounterPlusOne, N: 1}.Apply(keyedContext(g, r.Player, r.Source))
-})
+}

@@ -1918,9 +1918,16 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 // never reaches the wire on its own, but every GameMeta a handler
 // serializes should still pass through here rather than rely on that
 // alone.
+//
+// It is also the one place a seat's commanders reach the wire (ADR 0212
+// phase B2, owner decision 3): for the table's own people (its seats,
+// its spectators, its creator and the admin) each seat's commander_cards
+// and color_identity are filled in, and for anyone else both are left
+// off, though deck_name and deck_power stay (seat_commanders.go).
 func redactMetaFor(p auth.Principal, admin bool, id uuid.UUID, meta GameMeta) GameMeta {
 	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
 	meta.CreatedBy = uuid.Nil
+	meta = withSeatCommanders(meta, tablesOwnPeople(p, admin, meta.IsCreator, id, meta))
 	// The game's creator keeps both invites wherever they are (ADR
 	// 0110 §5 item 4): sharing them is what a creator is for, and
 	// rotating them (CanRotateInvites) would hand over fresh ones
@@ -2494,6 +2501,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
 		spend.PowerUp = price.Ability.PowerUp
+		spend.Equip = price.Ability.Equip
 		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian, nil)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
@@ -3442,8 +3450,11 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		recordLastDeck(r.Context(), c, p, id, body.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: libraryDeckID})
 	}
 
+	// Through redactMetaFor like GET /games, so the seat sees its own
+	// commanders the moment it is seated (ADR 0212 phase B2): the page
+	// draws the tile from this answer before it lists the tables again.
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		DeckName:      list.Name,
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        deckID,
@@ -3658,8 +3669,11 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	for _, cc := range list.Commanders {
 		commanders = append(commanders, cc.Name)
 	}
+	// Through redactMetaFor like GET /games, so the seat sees its own
+	// commanders the moment it is seated (ADR 0212 phase B2): the page
+	// draws the tile from this answer before it lists the tables again.
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		DeckName:      list.Name,
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        saved.ID.String(),
@@ -4177,7 +4191,7 @@ type botOptionsResponse struct {
 	Tiers []aiseat.TierInfo `json:"tiers"`
 	// Decks is the curated catalog. Empty when no deck source is
 	// configured — the picker then falls back to pasting a decklist.
-	Decks []aiseat.DeckInfo `json:"decks"`
+	Decks []botDeckOption `json:"decks"`
 	// Enabled is false when this server has no bot host at all, in
 	// which case the client hides the Add-bot control rather than
 	// offering a button that 503s.
@@ -4195,9 +4209,27 @@ type botOptionsResponse struct {
 	OwnKey *ownKeyOption `json:"own_key,omitempty"`
 }
 
+// botDeckOption is one deck of GET /bot/options: the aiseat.DeckInfo
+// the bot host's catalog gives, plus the commander resolved against the
+// card index (ADR 0212 phase B1). The bot seat's tile and the Add bot
+// picker's grid draw it as a saved deck's commander is drawn. The
+// commander lives here and not on aiseat.DeckInfo because resolving it
+// needs the card index, which a DeckSource does not hold.
+type botDeckOption struct {
+	aiseat.DeckInfo
+	// CommanderCards is built by the same code as a pre-built deck's on
+	// GET /decks and a saved deck's on GET /me/decks. Omitted with no
+	// card index or no commander.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+}
+
 // botOptions handles GET /bot/options. Added in S31 sub-PR 4.
+//
+// Session-gated, like GET /decks: the printing ids in commander_cards
+// are drawn through /cards/{id}/image, which is session-gated too, so
+// a visitor with no session gets neither (ADR 0092 decision 1).
 func botOptions(c Config, w http.ResponseWriter, r *http.Request) error {
-	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []aiseat.DeckInfo{}, Enabled: c.Bots != nil}
+	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []botDeckOption{}, Enabled: c.Bots != nil}
 	if c.Bots != nil {
 		// The host is the authority on what can actually play, so
 		// reconcile the declared catalog against it rather than
@@ -4224,8 +4256,11 @@ func botOptions(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if c.BotDecks != nil {
-		if decks := c.BotDecks.List(); len(decks) > 0 {
-			out.Decks = decks
+		for _, d := range c.BotDecks.List() {
+			out.Decks = append(out.Decks, botDeckOption{
+				DeckInfo:       d,
+				CommanderCards: catalogCommanderCards(c.Cards, d.Commander),
+			})
 		}
 	}
 	if c.BotBudget != nil {
@@ -4323,8 +4358,11 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// Through redactMetaFor, as a seated deck's answer is: the bot's
+	// commanders for the table's own people (ADR 0212 phase B2).
+	p, _ := auth.PrincipalFromContext(r.Context())
 	return writeJSON(w, http.StatusCreated, addBotResponse{
-		Game:          meta,
+		Game:          redactMetaFor(p, c.isAdmin(p), id, meta),
 		PlayerID:      playerID,
 		DeckName:      list.Name,
 		Warnings:      warnings,
@@ -4350,7 +4388,8 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, meta)
+	p, _ := auth.PrincipalFromContext(r.Context())
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, c.isAdmin(p), id, meta))
 }
 
 // logout asks the authenticator to revoke the caller's credential and

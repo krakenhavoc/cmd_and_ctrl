@@ -14,6 +14,7 @@ import {
   readiness,
   seatLine,
   seatPreview,
+  seatTileArt,
   seatTileText,
   statusChip,
   type LobbyViewer,
@@ -128,7 +129,7 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
     expect(lobbySlots(meta({ players: [seat(0), seat(6)] }))).toHaveLength(5);
   });
 
-  it("names a person's deck once, until the seats carry commanders", () => {
+  it("names a person's deck once when the seat carries no commanders", () => {
     expect(seatTileText(seat(0, { deck_name: "Kenrith's court" }), undefined)).toEqual({
       what: "Kenrith's court",
       second: "",
@@ -139,6 +140,107 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "No deck yet",
       ready: false,
     });
+  });
+
+  // ADR 0212 phase B2: a person's seat carries its commanders, for the
+  // table's own people. The tile names the commander, the deck only when
+  // it is not the commander's, and the seat's identity as pips.
+  it("names a person's commander, then the deck when it is not the commander's (phase B2)", () => {
+    const krenko = {
+      deck_name: "Goblin storm",
+      commander_cards: [{ name: "Krenko, Mob Boss", scryfall_id: "k1", color_identity: ["R"] }],
+      color_identity: ["R"],
+    };
+    expect(seatTileText(seat(0, krenko), undefined)).toEqual({
+      what: "Krenko, Mob Boss",
+      second: "Goblin storm",
+      colors: ["R"],
+      ready: true,
+    });
+    // A deck named for its commander says it once.
+    expect(
+      seatTileText(seat(0, { ...krenko, deck_name: "krenko, mob boss" }), undefined),
+    ).toMatchObject({
+      what: "Krenko, Mob Boss",
+      second: "",
+    });
+    // A partner pair is one line, its identity the union in WUBRG order.
+    const pair = seat(1, {
+      deck_name: "Tymna / Kraum",
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: "t1", color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", scryfall_id: "k2", color_identity: ["U", "R"] },
+      ],
+      color_identity: ["R", "W", "B", "U"],
+    });
+    expect(seatTileText(pair, undefined)).toEqual({
+      what: "Tymna the Weaver · Kraum, Ludevic's Opus",
+      second: "Tymna / Kraum",
+      colors: ["W", "U", "B", "R"],
+      ready: true,
+    });
+    // A colourless commander has no pips; an unresolved one keeps its name.
+    expect(
+      seatTileText(
+        seat(2, {
+          deck_name: "Eldrazi",
+          commander_cards: [{ name: "Kozilek", color_identity: [] }],
+        }),
+        undefined,
+      ),
+    ).toMatchObject({ what: "Kozilek", second: "Eldrazi", colors: [] });
+    // No deck in yet: the commanders, if any were left, are not read.
+    expect(seatTileText(seat(0, { ...krenko, deck_uploaded: false }), undefined)).toMatchObject({
+      what: "No deck yet",
+      colors: [],
+    });
+  });
+
+  it("draws a person's commander art, partners side by side, and a wash without a printing (phase B2)", () => {
+    const pair = seat(1, {
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: "t1", color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", color_identity: ["U", "R"] },
+      ],
+    });
+    expect(seatTileArt(pair, undefined)).toEqual([{ name: "Tymna the Weaver", scryfallId: "t1" }]);
+    // A table this person is not at sends no commanders: the seat's wash.
+    expect(seatTileArt(seat(0, { deck_name: "Goblin storm" }), undefined)).toEqual([]);
+  });
+
+  it("draws a bot seated with a pasted list from its own seat, and prefers it to the catalog's", () => {
+    const own = [{ name: "Krenko, Mob Boss", scryfall_id: "k1", color_identity: ["R"] }];
+    const pasted = seat(2, {
+      is_bot: true,
+      bot_tier: "random",
+      deck_name: "Goblins",
+      commander_cards: own,
+      color_identity: ["R"],
+    });
+    expect(seatTileArt(pasted, undefined)).toEqual([
+      { name: "Krenko, Mob Boss", scryfallId: "k1" },
+    ]);
+    expect(seatTileText(pasted, undefined)).toEqual({
+      what: "Krenko, Mob Boss",
+      second: "Goblins",
+      colors: ["R"],
+      ready: true,
+    });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["G"],
+      commander_cards: [{ name: "Marwyn, the Nurturer", scryfall_id: "m1", color_identity: ["G"] }],
+    };
+    const catalog = seat(3, {
+      is_bot: true,
+      bot_deck: "elves",
+      commander_cards: [{ name: "Marwyn, the Nurturer", scryfall_id: "m2", color_identity: ["G"] }],
+    });
+    expect(seatTileArt(catalog, deck)).toEqual([
+      { name: "Marwyn, the Nurturer", scryfallId: "m2" },
+    ]);
   });
 
   it("gives a bot its pre-built deck's commander, the deck, and its colours", () => {
@@ -160,6 +262,26 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Elf ball",
       ready: true,
     });
+  });
+
+  it("draws a bot's pre-built deck's commander art, and a person's seat none without its own (phase B1)", () => {
+    const bot = seat(3, { is_bot: true, bot_tier: "heuristic", bot_deck: "elves" });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["G"],
+      commander_cards: [
+        { name: "Marwyn, the Nurturer", scryfall_id: "m1", color_identity: ["G"] },
+        { name: "No printing", color_identity: null },
+      ],
+    };
+    // Only a commander with a printing is drawn; the rest of the seat is the wash.
+    expect(seatTileArt(bot, deck)).toEqual([{ name: "Marwyn, the Nurturer", scryfallId: "m1" }]);
+    expect(seatTileArt(bot, { ...deck, commander_cards: undefined })).toEqual([]);
+    expect(seatTileArt(bot, undefined)).toEqual([]);
+    // A person's seat takes no art from a deck; their preview supplies it (seatPreview).
+    expect(seatTileArt(seat(0), deck)).toEqual([]);
   });
 
   it("names a bot's tier, and a player's own key", () => {

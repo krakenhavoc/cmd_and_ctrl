@@ -1,6 +1,6 @@
 import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
-import type { DeckArt } from "./deckGrid";
-import { sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
+import { deckArt, type DeckArt } from "./deckGrid";
+import { COMMANDER_JOIN, sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
 import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
 import { orderedColors } from "./prebuiltDecks";
@@ -150,22 +150,66 @@ export interface SeatTileText {
   ready: boolean;
 }
 
-// seatTileText reads a seat's tile. Until the seats carry their
-// commanders (phase B2), a person's tile names the deck once; a bot's
-// names its pre-built deck's commander, then "Pre-built · <deck>", with
-// the deck's colours from GET /bot/options.
+// seatCommander names a seat's commanders on one line, a partner pair
+// or a commander with a Background joined as the picker joins them; ""
+// when the seat carries none (no deck yet, a table this person is not
+// at, or an older server).
+export function seatCommander(p: SeatInfo): string {
+  return (p.commander_cards ?? [])
+    .map((c) => c.name.trim())
+    .filter(Boolean)
+    .join(COMMANDER_JOIN);
+}
+
+// seatTileText reads a seat's tile (§1). A person's seat names its
+// commander (ADR 0212 phase B2), then the deck's name on the second line
+// only when it is not the commander's, with the seat's identity pips; a
+// seat that carries no commanders names the deck once. A bot's names its
+// pre-built deck's commander, then "Pre-built · <deck>", with the deck's
+// colours from GET /bot/options; a bot seated with a pasted list has no
+// pre-built deck and reads from its own seat's commanders, as a
+// person's seat does.
 export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): SeatTileText {
+  const commander = seatCommander(p);
   if (p.is_bot) {
     const deck = botDeck?.name || p.deck_name || "";
+    const what = botDeck?.commander || commander || deck || "Pre-built deck";
+    // bot_deck is empty for a bot seated with a pasted list: that deck is
+    // not a pre-built one, and is named as a person's is.
+    const prebuilt = !!botDeck || !!p.bot_deck;
+    let second = "";
+    if (prebuilt && deck) second = `Pre-built · ${deck}`;
+    else if (!prebuilt && deck && !sameName(deck, what)) second = deck;
     return {
-      what: botDeck?.commander || deck || "Pre-built deck",
-      second: deck ? `Pre-built · ${deck}` : "",
-      colors: orderedColors(botDeck?.colors),
+      what,
+      second,
+      colors: orderedColors(botDeck?.colors ?? p.color_identity),
       ready: true,
     };
   }
   if (!p.deck_uploaded) return { what: "No deck yet", second: "", colors: [], ready: false };
-  return { what: p.deck_name || "Deck ready", second: "", colors: [], ready: true };
+  const deck = p.deck_name ?? "";
+  if (commander) {
+    return {
+      what: commander,
+      second: deck && !sameName(deck, commander) ? deck : "",
+      colors: orderedColors(p.color_identity),
+      ready: true,
+    };
+  }
+  return { what: deck || "Deck ready", second: "", colors: [], ready: true };
+}
+
+// seatTileArt is the art a taken seat's tile draws: the seat's own
+// commanders' crops, partners side by side (ADR 0212 phase B2), and for
+// a bot whose seat carries none, its pre-built deck's from GET
+// /bot/options (B1). Only a commander with a printing is drawn; empty is
+// the seat's colour wash, never a broken image. Your seat while the
+// picker is open draws the previewed deck instead (seatPreview).
+export function seatTileArt(p: SeatInfo, botDeck: BotDeckInfo | undefined): DeckArt[] {
+  const own = deckArt(p);
+  if (own.length > 0 || !p.is_bot || !botDeck) return own;
+  return deckArt(botDeck);
 }
 
 // SeatPreview is your own tile while the deck picker is open (§1).

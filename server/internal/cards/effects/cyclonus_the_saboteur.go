@@ -90,14 +90,18 @@ const cyclonusConniveRecord = "cyclonus/connive-discarded"
 var cyclonusConniveRest = RegisterThenSteps("then-steps/cyclonus-connive-rest",
 	Instruction(func(ctx *Context) error {
 		g, source := ctx.Game, ctx.Item.SourceCardID
-		if !onBattlefield(g, source) {
-			return nil
-		}
-		if discarded := ctx.StepRecord(cyclonusConniveRecord).IDs; len(discarded) > 0 {
-			if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() {
-				return g.AddCounterForEffect(source, game.CounterPlusOne, 1)
+		if onBattlefield(g, source) {
+			if discarded := ctx.StepRecord(cyclonusConniveRecord).IDs; len(discarded) > 0 {
+				if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() {
+					if err := g.AddCounterForEffect(source, game.CounterPlusOne, 1); err != nil {
+						return err
+					}
+				}
 			}
 		}
+		// CR 701.50f, #4641: connived once the counter step is done,
+		// whether or not Cyclonus is still there to take it.
+		g.ConnivedForEffect(source, ctx.Controller())
 		return nil
 	}),
 	Instruction(func(ctx *Context) error {

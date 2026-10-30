@@ -1403,3 +1403,28 @@ Back-out: skip the total in the announce gate and `TestTotalRefusesASetOverTheTo
 `TestTheSuperHeroCivilWarChapterITakesNothingWhenTheTotalGrows` fail; drop `setRuleKeys.total` and
 `TestSuperHeroCivilWarEnumeratesOnlySetsWithinTheTotal` fails; let a lone candidate take the single-slot answers and
 `TestSuperHeroCivilWarLoneCandidateOverTheTotalStillHasAnAnswer` fails.
+
+## Amendment (2026-10-30, #4707): "that player controls", where that player is the event's Actor
+
+`TargetSpec.ControlledByThatPlayer` (the 2026-10-16 amendment's second decision) reads the triggering event's **Target**:
+the player a Dragon just damaged. Black Bolt, Inhuman King (Marvel Super Heroes, #4455) prints the other reading:
+"Whenever Black Bolt becomes the target of a spell or ability an opponent controls, destroy target nonland permanent that
+player controls". On `EventBecomesTarget` the Target is Black Bolt; "that player" is the controller of the targeting spell
+or ability, which `emitBecameTargetLocked` stamps as the event's **Actor**. Every claim here was checked on
+`origin/develop` at `9c223b6b9`.
+
+`TargetSpec.ControlledByEventActor` (bool, built with `effects.ControlledByThatEventActor(spec)`) is the clause. It is
+`ControlledByThatPlayer`'s twin in every respect but the field it reads: data, not a closure, judged in `sourceAdmits`
+(`eventActorAdmits`, through the same `triggerActorOf` that `ChosenByTriggerActor` uses) against `TargetSource.Trigger`,
+so the legal set, the announce check (CR 601.2c), the resolution re-check (CR 608.2b, a permanent that changes hands
+before the ability resolves is no longer a legal target), the picker and the bot's moves are one answer. A walk with no
+fired trigger, or an event with no Actor, admits NOTHING, never everything. The ability's controller still chooses the
+target; it is the candidates, not the chooser, that the event narrows (contrast `ChosenByTriggerActor`, where the event's
+player chooses). No snapshot or wire change: the field rides the catalog's spec, as `ControlledByThatPlayer` does, and
+`closure_fields.txt` is untouched.
+
+Tests: `TestMsc4707BlackBoltDestroysAPermanentOfTheOpponentWhoTargetedIt`,
+`TestMsc4707BlackBoltNamesTheTargetingPlayerNotJustAnyOpponent` and
+`TestMsc4707BlackBoltIgnoresItsOwnControllersTargeting` (`internal/cards/effects`).
+
+Back-out: drop `eventActorAdmits` from `sourceAdmits` and the first test offers every permanent on the table.

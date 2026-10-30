@@ -327,7 +327,15 @@ func (e *enumerator) choiceMoves() bool {
 				// decline always is.
 				for i := range action.Either {
 					branch := action.Either[i]
-					if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
+					if branch.Kind == game.PayActionMana {
+						// #4566: a mana branch is affordable as a plain
+						// mana pay-unless is (zero spend context, #352),
+						// through the one probe every mana move asks.
+						cost, err := game.ParseCost(branch.Mana)
+						if err != nil || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+							continue
+						}
+					} else if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
 						continue
 					}
 					option := i

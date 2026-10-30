@@ -90,6 +90,14 @@ const (
 	// creature, so a creature that came under its controller's control
 	// this turn may pay (CR 302.6 restricts only its own {T} abilities).
 	PayActionTap PayActionKind = "tap"
+	// PayActionMana is a mana payment as a BRANCH of an Either (#4566):
+	// Titania, Rugged Rumbler's "Ward—Discard a card or pay {2}". A
+	// plain mana pay-unless carries no PayAction at all (PayCost is the
+	// cost); this kind exists only so an Either can name mana beside a
+	// card payment. Mana is the cost string. It names no cards, and it
+	// is paid through the prompt's own mana path (pool, then the
+	// auto-tapper), so an unfundable "yes" is a decline as always.
+	PayActionMana PayActionKind = "mana"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -100,7 +108,7 @@ func (a *PayAction) NamesNothing() bool {
 		return false
 	}
 	switch a.Kind {
-	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing:
+	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing, PayActionMana:
 		return true
 	}
 	return false
@@ -146,6 +154,11 @@ func (g *Game) payActionPayableLocked(chooser uuid.UUID, a *PayAction) bool {
 		return g.CanPayLifeLocked(p, a.Count)
 	case PayActionDamage, PayActionNothing:
 		return true
+	case PayActionMana:
+		// #4566: what payCostLocked would pay now, asked of a clone so
+		// the answer is the payer's own (canPayCostLocked).
+		cost, err := ParseCost(a.Mana)
+		return err == nil && g.canPayCostLocked(p, cost, uuid.Nil)
 	}
 	return false
 }
@@ -208,6 +221,14 @@ type PayAction struct {
 	// in the move list ("sacrifice two lands", "take 5 damage"). Empty
 	// falls back to PayActionPhrase. Unused outside an Either.
 	Words string
+	// Nonland narrows a discard to nonland cards (#4566): Bullseye,
+	// Death Dealer's "discard a nonland card". Only a nonland card in the
+	// payer's hand is an option, so a hand of lands can't pay (CR
+	// 118.3). Unused by every other kind.
+	Nonland bool `json:",omitempty"`
+	// Mana is a PayActionMana branch's cost ("{2}"), parsed when it is
+	// paid (#4566). Unused by every other kind.
+	Mana string `json:",omitempty"`
 }
 
 // PayActionPhrase is the verb phrase for one payment when its card gives
@@ -232,6 +253,8 @@ func PayActionPhrase(a PayAction) string {
 		return "sacrifice " + n + " permanents"
 	case PayActionTap:
 		return "tap " + n + " untapped permanents"
+	case PayActionMana:
+		return "pay " + a.Mana
 	case PayActionExileFromGraveyard:
 		return "exile " + n + " cards from your graveyard"
 	case PayActionNothing:
@@ -287,6 +310,10 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 			return nil
 		}
 		for _, c := range p.Hand.Cards {
+			// #4566: "discard a nonland card" takes no land.
+			if a.Nonland && c.IsLand() {
+				continue
+			}
 			out = append(out, c.InstanceID)
 		}
 	case PayActionExileFromGraveyard:
@@ -368,9 +395,11 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 // Caller must hold g.mu in write mode and must have validated `picked`.
 func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked []uuid.UUID, then KeyedTail) error {
 	switch a.Kind {
-	case PayActionEither:
+	case PayActionEither, PayActionMana:
 		// Never paid whole: the chosen branch is paid, as its own
-		// PayAction (ADR 0187 §5). Reaching here is a caller bug.
+		// PayAction (ADR 0187 §5). A mana branch is paid by the prompt's
+		// mana path (answerPayUnlessLocked, #4566). Reaching here is a
+		// caller bug.
 		return ErrInvalidParam
 	case PayActionDiscard:
 		return g.discardCardsLocked(chooser, picked, discardOptions{

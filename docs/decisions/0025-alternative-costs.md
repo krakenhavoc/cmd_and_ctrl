@@ -465,3 +465,70 @@ ID without the epoch and a card that came back is still "discarded" (`TestMayhem
 Tests: `game/mayhem_test.go` (the record, the flush, the gate against stubs), `cards/effects/mayhem_cards_test.go` (the
 seam against the real catalog), `cards/effects/mayhem_seven_cards_test.go` (every card), `legal/mayhem_test.go` (the
 enumerator, dispatched), `protocol/mayhem_view_test.go` (`castable_here` and `alternative_costs`).
+
+## Amendment (2026-10-30, [#4586](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4586)): sneak
+
+CR 702.190a: "Sneak [cost]" means "Any time you could cast an instant during your declare blockers step, you may cast
+this spell by paying [cost] and returning an unblocked creature you control to its owner's hand rather than paying this
+spell's mana cost." CR 702.190b: a permanent spell whose sneak cost was paid enters tapped and attacking the same player,
+planeswalker or battle as the returned creature (CR 506.3a: a noncreature permanent enters but is never attacking).
+Marvel Super Heroes prints it (Elektra, Daughter of the Hand) and TMNT prints more.
+
+It is ninjutsu (CR 702.49) moved from an activated ability onto a cast, and it reuses ninjutsu's pieces rather than
+adding new ones:
+
+- **The price** is an ordinary offer: `ManaCost` plus the `ReturnToHand` component Daze uses, narrowed by
+  `effects.UnblockedAttacker`, the predicate ninjutsu's cost reads. The view's `pay_options`, the enumerator's
+  `alt_cost_ids` and the announce validator share one candidate walk, so a blocked attacker, a creature at home and an
+  attacker whose defender is still declaring (#1279) are offered by none of them. The return goes to the owner's hand
+  through the existing payer, with the spell already on the stack.
+- **The window** is one bit, `AlternativeCost.Sneak`, read by `CastTimingForOfferOpenLocked`, the function CastSpell,
+  the enumerator, the view's per-offer `timing_closed` and `castable_here` already ask. A sneak claim opens instant-speed
+  timing for itself, as `AsThoughFlash` does (CR 601.3c), and is shut everywhere but its caster's own declare blockers
+  step (`sneakWindowOpenLocked`). A per-player "only as a sorcery" still shuts it, since the caster could not cast an
+  instant then. The printed cost keeps the card's own timing, so the picker in combat shows the sneak row alone.
+- **The defender** is read in the cast, before the return clears `Card.AttackingTarget`, and kept on the spell's
+  `PaidCost.ReturnedAttacking`: ninjutsu's field, already in every snapshot and undo clone, so no schema change. The
+  resolution seeds `EntersTapped` and `EntersAttacking` onto the permanent's entry event before the CR 614 pipeline
+  (`applySneakEntryLocked`, beside the escape counters), and `stampEntryAttackerLocked` makes it an attacker that was
+  never declared (CR 508.4) and is unblocked (CR 508.4d), the door ninjutsu and the attacking tokens share. A defender
+  that has become unattackable leaves the creature tapped and not attacking (CR 506.3c), that door's existing posture.
+
+An instant or sorcery with sneak takes the same constructor: the window and the cost apply and there is no entry.
+`effects.Sneak(cost)` is the only way to declare it; the key `sneak` is an on-disk identity on `StackItem.AltCost`. A
+granted offer may not carry `Sneak` (`checkGrantedAlternativeCosts`), and `onlyMana` treats it as more than a price.
+
+Not done: a copy of a sneaked permanent spell copies the alternative cost paid (CR 707.10) but resolves through the
+copy path (CR 707.10f), which does not read this entry clause, so the token enters untapped and not attacking. The bot prices a sneak offer as an ordinary price and does not weigh the attacker it
+returns.
+
+Back-out: drop the `Sneak` check in `CastTimingForOfferOpenLocked` and the offer is castable at instant speed in any step
+(`TestSneakIsCastableOnlyInYourDeclareBlockersStep` fails). Drop the stamp in CastSpell and Elektra enters tapped and not
+attacking (`TestElektraSneaksInTappedAndAttackingTheSamePlayer`). Drop `applySneakEntryLocked` and she enters untapped
+and not attacking.
+
+Tests: `cards/effects/sneak_test.go`.
+
+## Amendment (2026-10-30, [#4641](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4641)): a "connives" event, for "whenever a creature you control connives"
+
+Connive entered this ADR with Lethal Scheme (#3172, above) as a catalog helper that drew, discarded and countered but said
+nothing to the rest of the table. Iron Monger, Sadistic Tycoon ("Whenever a creature you control connives, put a +1/+1
+counter on each Villain you control") needs a thing to watch, so connive gets the event explore has.
+
+`game.EventConnived` (`game/connive.go`) is emitted once per conniving permanent, by `Game.ConnivedForEffect(creature,
+controller)`, when the process of CR 701.50a is complete (CR 701.50f): after the discard and the counter, on every branch,
+an empty hand and a permanent that has left the battlefield included. `CardID` is the permanent, `Actor` its controller as
+it connived. A permanent that left was told to connive as its last controller's (CR 701.50b), so the card side judges
+"a creature you control" by `Actor`, not by where the creature is now (`effects.ACreatureYouControlConnived`,
+`WheneverACreatureYouControlConnives`). Several permanents conniving together connive one after another (CR 701.50c),
+which is how `ConniveEach` already ran, so each is its own event and the trigger fires once per creature. Connive 0 is
+no connive (CR 701.50e): `ConniveX` with X of 0 returns before the draw and emits nothing. The four ways the catalog
+connives each emit it from their own discard continuation: `ConniveEach`, `ConniveX`, Ledger Shredder and Cyclonus. The
+event is silent in the public log (the draw, the discard and the counter are already lines) and persists nothing, so no
+snapshot field and no closure change.
+
+Back-out: remove the `ConnivedForEffect` call from `conniveDiscarded` and `TestIronMongerTriggersOnTheConniveNotTheCounter`,
+`TestIronMongerTriggersOncePerConnivingCreature` and `TestIronMongerTriggersForACreatureThatLeftBeforeItConnived` fail.
+
+Tests: `cards/effects/iron_monger_sadistic_tycoon_test.go`; the event assertions in `raffine_a_test.go`,
+`slice_296e_test.go` (Ledger Shredder) and `cyclonus_the_saboteur_test.go`.

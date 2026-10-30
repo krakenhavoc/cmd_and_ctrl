@@ -106,8 +106,49 @@ back-merge to squash.
 
 The rulesets enforce this. `main` requires `promotion-guard`, which
 fails any PR whose head is not `develop` or `hotfix/*`. If it fires on
-yours, retarget it: `gh pr edit <n> --base develop`. Neither branch
-accepts direct pushes.
+yours, retarget it: `gh pr edit <n> --base develop`. Dependabot's PRs
+are moved for you; see [Dependabot PRs](#dependabot-prs). Neither
+branch accepts direct pushes.
+
+### Dependabot PRs
+
+Dependabot opens two kinds of PR. Version updates, which only bump the
+GitHub Actions pins, go to `develop` because `.github/dependabot.yml`
+sets `target-branch`. Security updates for Go and npm ignore that
+setting and always open against the default branch, `main`, where
+`promotion-guard` fails them (#4553).
+
+`dependabot-retarget.yml` moves them (#4661). When Dependabot opens or
+reopens a PR into `main`, the workflow changes its base to `develop`,
+pushes an empty commit to the PR's branch and leaves a comment. The
+empty commit gives the PR a new head, and the `synchronize` it fires
+runs `ci-cd.yml` against `develop`. Without it, the only `cmdctrl-ci`
+result would be the one from `main`. The commit message carries
+`[dependabot skip]`, so this commit is never what stops Dependabot
+from rebasing the PR.
+
+GitHub holds runs started by a workflow's own token. Someone with write
+access opens the PR and clicks **Awaiting approval**, then **Approve
+workflows to run**. Once `cmdctrl-ci` is green, the PR merges like any
+other.
+
+If the workflow's comment reports a failure, or no run is waiting for
+approval, run `gh pr update-branch <n>` from a maintainer's login. It
+merges `develop` into the branch, and the push starts CI with no
+approval needed.
+
+Two things that look like fixes but aren't:
+
+- **Closing and reopening the PR.** Closing records an ignore for that
+  version, and Dependabot deletes the closed PR's branch within seconds.
+  Once the branch is gone the PR can't be reopened.
+- **`gh run rerun`.** It replays the original event, base `main`
+  included, so `promotion-guard` fails again.
+
+The workflow runs on `pull_request_target`, which reads the file from
+`main`, so a change to it takes effect at the next promotion. It holds
+a write token, so it never checks out or runs the PR's code. Its
+header lists the other ways of starting CI and why each one fails.
 
 ## The host is Terraform
 

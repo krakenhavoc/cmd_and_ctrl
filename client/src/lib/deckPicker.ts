@@ -93,12 +93,13 @@ export function libraryTile(deck: MyDeckInfo): DeckTile {
 }
 
 /**
- * prebuiltTile is a pre-built deck's tile. Pre-built decks carry no
- * printing to draw until ADR 0212 phase B1, so the art slot washes in
- * the deck's colours. A card with no implementation at all is said as
- * such; otherwise the flag counts the cards that are simplified or not
- * yet reviewed, which is everything the summariser does not call "as
- * printed".
+ * prebuiltTile is a pre-built deck's tile. Its art is the commander's
+ * crop (ADR 0212 phase B1), the same as a saved deck's; with no printing
+ * to draw (an older server, or a commander with no image) the art slot
+ * washes in the deck's colours. A card with no implementation at all is
+ * said as such; otherwise the flag counts the cards that are simplified
+ * or not yet reviewed, which is everything the summariser does not call
+ * "as printed".
  */
 export function prebuiltTile(deck: PrebuiltDeck): DeckTile {
   const commander = (deck.commander ?? "").trim();
@@ -116,7 +117,7 @@ export function prebuiltTile(deck: PrebuiltDeck): DeckTile {
     commander,
     colors,
     identity: deck.colors ? colors : null,
-    art: [],
+    art: deckArt(deck),
     ...(c.unregistered > 0
       ? flagged(
           c.unregistered,
@@ -151,7 +152,7 @@ export function botDeckTile(deck: BotDeckInfo, prebuilt?: PrebuiltDeck): DeckTil
     commander,
     colors,
     identity: deck.colors ? colors : null,
-    art: [],
+    art: deckArt(deck),
     flag: "",
     flagTitle: "",
     haystack: [deck.name, commander, deck.description ?? ""].join(" ").toLowerCase(),

@@ -36,7 +36,7 @@ func bardCounterAndLifelink(ctx *Context) error {
 	if !ok {
 		return nil
 	}
-	if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+	if err := PlusOneCounterOnTheTarget(ctx.Game, ctx.Item); err != nil {
 		return err
 	}
 	return GrantKeywordUntilEOT{Target: id, Keywords: []string{"lifelink"}, Label: "Bard the Bowman — lifelink"}.Apply(ctx)

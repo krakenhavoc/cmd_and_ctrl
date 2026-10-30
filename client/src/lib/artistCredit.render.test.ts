@@ -18,7 +18,8 @@ import StackLaneFan from "./components/board/StackLaneFan.svelte";
 import DeckCard from "./components/decks/DeckCard.svelte";
 import DeckGrid from "./components/DeckGrid.svelte";
 import SeatTile from "./components/SeatTile.svelte";
-import { libraryTile } from "./deckPicker";
+import { botDeckTile, libraryTile, prebuiltTile } from "./deckPicker";
+import { seatTileArt, seatTileText } from "./tablesPage";
 import { artistOf, creditText } from "./artistCredit.svelte";
 import type { CardMeta } from "./cardMetaCache";
 import { hoveredCard } from "./cardTypes";
@@ -427,6 +428,138 @@ describe("the deck picker's tiles and your seat's tile", () => {
       "Illus. Winona Nelson",
       "Illus. Jason Rainville",
     ]);
+  });
+
+  // ADR 0212 phase B1: a pre-built deck's tile, and the same deck in the
+  // Add bot grid, are led by the commander's crop and credit it too.
+  function preDeck(id: string) {
+    return {
+      id: "fury",
+      name: "Forge and Fury",
+      commander: "Purphoros, God of the Forge",
+      colors: ["R"],
+      card_count: 100,
+      commander_cards: [
+        { name: "Purphoros, God of the Forge", scryfall_id: id, color_identity: ["R"] },
+      ],
+      coverage: { cards: 73, full: 73, caveats: 0, unreviewed: 0, basics: 1, unregistered: 0 },
+    };
+  }
+
+  it("credits a pre-built tile's commander crop, in the picker and in the Add bot grid", async () => {
+    (globalThis as Record<string, unknown>).IntersectionObserver = SeesAll;
+    const id = newID();
+    metaByID.set(id, { artist: "Slawomir Maniak" });
+    const grids = [
+      [prebuiltTile(preDeck(id))],
+      [botDeckTile({ id: "fury", name: "Fury", commander: "Purphoros" }, preDeck(id))],
+    ];
+    for (const tiles of grids) {
+      const { container } = render(
+        DeckGrid as never,
+        { tiles, name: "prebuilt-deck", label: "pre-built decks", selected: "fury" } as never,
+      );
+      await settle();
+      const crop = container.querySelector<HTMLElement>(".dtile .crop")!;
+      expect(crop.querySelector("img")?.getAttribute("src")).toBe(
+        `/cards/${id}/image?size=art_crop`,
+      );
+      expect(crop.querySelector("img")?.getAttribute("loading")).toBe("lazy");
+      expect(crop.querySelector(".art-credit")?.textContent).toBe("Illus. Slawomir Maniak");
+      cleanup();
+    }
+  });
+
+  it("washes a pre-built tile whose commander has no printing, and asks for nothing", async () => {
+    (globalThis as Record<string, unknown>).IntersectionObserver = SeesAll;
+    const { container } = render(
+      DeckGrid as never,
+      {
+        tiles: [
+          prebuiltTile({ ...preDeck(""), commander_cards: [{ name: "X", color_identity: ["R"] }] }),
+        ],
+        name: "prebuilt-deck",
+        label: "pre-built decks",
+        selected: "",
+      } as never,
+    );
+    await settle();
+    expect(container.querySelector(".dtile img")).toBeNull();
+    expect(container.querySelector(".dtile .art.wash")).not.toBeNull();
+    expect(requested).toEqual([]);
+  });
+
+  it("credits the crop on a bot seat's tile", async () => {
+    const id = newID();
+    metaByID.set(id, { artist: "Slawomir Maniak" });
+    const { container } = render(
+      SeatTile as never,
+      {
+        seat: 3,
+        p: {
+          player_id: "b1",
+          name: "Bot 1",
+          seat: 3,
+          deck_uploaded: true,
+          is_bot: true,
+          bot_tier: "heuristic",
+        },
+        text: {
+          what: "Purphoros, God of the Forge",
+          second: "Pre-built · Forge and Fury",
+          colors: ["R"],
+          ready: true,
+        },
+        art: [{ name: "Purphoros, God of the Forge", scryfallId: id }],
+        botChip: "Medium",
+      } as never,
+    );
+    await settle();
+    const li = container.querySelector("li.tile")!;
+    expect(li.querySelector(".crop img")?.getAttribute("src")).toBe(
+      `/cards/${id}/image?size=art_crop`,
+    );
+    expect(li.querySelector(".crop .art-credit")?.textContent).toBe("Illus. Slawomir Maniak");
+    expect(li.textContent).toMatch(/Purphoros, God of the Forge/);
+    expect(li.textContent).toMatch(/Ready/);
+  });
+
+  // ADR 0212 phase B2: a person's seat carries its commanders, so its
+  // tile is led by the crop too, drawn by the page's own rules.
+  it("credits the crop on a person's seat tile, partners side by side", async () => {
+    const tymna = newID();
+    const kraum = newID();
+    metaByID.set(tymna, { artist: "Winona Nelson" });
+    metaByID.set(kraum, { artist: "Svetlin Velinov" });
+    const p = {
+      player_id: "a1",
+      name: "Alice",
+      seat: 0,
+      deck_uploaded: true,
+      deck_name: "Blood and thunder",
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: tymna, color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", scryfall_id: kraum, color_identity: ["U", "R"] },
+      ],
+      color_identity: ["W", "U", "B", "R"],
+    };
+    const { container } = render(
+      SeatTile as never,
+      { seat: 0, p, text: seatTileText(p, undefined), art: seatTileArt(p, undefined) } as never,
+    );
+    await settle();
+    const li = container.querySelector("li.tile")!;
+    const imgs = [...li.querySelectorAll(".crop img")].map((i) => i.getAttribute("src"));
+    expect(imgs).toEqual([
+      `/cards/${tymna}/image?size=art_crop`,
+      `/cards/${kraum}/image?size=art_crop`,
+    ]);
+    expect([...li.querySelectorAll(".crop .art-credit")].map((c) => c.textContent)).toEqual([
+      "Illus. Winona Nelson",
+      "Illus. Svetlin Velinov",
+    ]);
+    expect(li.textContent).toMatch(/Tymna the Weaver · Kraum, Ludevic's Opus/);
+    expect(li.textContent).toMatch(/Blood and thunder/);
   });
 
   it("loads nothing for a tile not yet in view", async () => {

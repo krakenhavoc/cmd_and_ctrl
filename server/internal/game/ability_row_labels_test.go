@@ -34,7 +34,7 @@ func TestSlotKindsLeftOnFallbacksAreWordedFromTheirFields(t *testing.T) {
 		"slots": {
 			AnyColorSpend: []AnyColorSpendStatic{{Whose: AnyColorSpendYou}, {Whose: AnyColorSpendEveryPlayer}},
 			LegendRuleExemptions: []LegendRuleExemption{
-				{Whose: LegendRuleExemptYours}, {Whose: LegendRuleExemptEveryone},
+				{Whose: LegendRuleExemptYours}, {Whose: LegendRuleExemptEveryone}, {Whose: LegendRuleExemptYourCreatures},
 			},
 			DamageCantBePrevented: []UnpreventableDamageStatic{
 				{Scope: UnpreventableAll}, {Scope: UnpreventableCombat},
@@ -75,6 +75,7 @@ func TestSlotKindsLeftOnFallbacksAreWordedFromTheirFields(t *testing.T) {
 		"Players may spend mana as though it were mana of any color.",
 		"The legend rule doesn't apply to permanents you control.",
 		"The legend rule doesn't apply.",
+		"The legend rule doesn't apply to creatures you control.",
 		"Play a land or cast a spell from the top of your library",
 		"You may cast spells from your hand without paying their mana costs.",
 		"You may pay {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast.",

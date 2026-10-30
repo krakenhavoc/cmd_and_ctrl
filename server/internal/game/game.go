@@ -1972,6 +1972,12 @@ type CastTally struct {
 	// spell cast face down is colourless. Read through
 	// CastInstantOrSorceryOfColor.
 	InstantSorceryColors string `json:"instantSorceryColors,omitempty"`
+	// Colors is the colours of EVERY spell the player cast this turn, as
+	// colour letters in WUBRG order, read off the spell as it became cast
+	// (CR 601.2i) like InstantSorceryColors: First Family's "colors among
+	// spells you've cast this turn" (#4455). Additive within the snapshot
+	// version.
+	Colors string `json:"colors,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
@@ -2022,14 +2028,37 @@ func (t CastTally) CastInstantOrSorceryOfColor(letter string) bool {
 // withInstantSorceryColors adds a cast instant or sorcery spell's
 // colours to the set, kept in WUBRG order.
 func (t CastTally) withInstantSorceryColors(colors []string) CastTally {
+	t.InstantSorceryColors = unionColorLetters(t.InstantSorceryColors, colors)
+	return t
+}
+
+// withSpellColors adds a cast spell's colours to Colors.
+func (t CastTally) withSpellColors(colors []string) CastTally {
+	t.Colors = unionColorLetters(t.Colors, colors)
+	return t
+}
+
+// unionColorLetters is the set of colour letters in `have` and `colors`,
+// in WUBRG order.
+func unionColorLetters(have string, colors []string) string {
 	var b strings.Builder
 	for _, l := range []string{"W", "U", "B", "R", "G"} {
-		if strings.Contains(t.InstantSorceryColors, l) || slices.Contains(colors, l) {
+		if strings.Contains(have, l) || slices.Contains(colors, l) {
 			b.WriteString(l)
 		}
 	}
-	t.InstantSorceryColors = b.String()
-	return t
+	return b.String()
+}
+
+// SpellColorsCast is the distinct colours of the spells the player cast
+// this turn, as colour letters in WUBRG order ("UR"); a colourless spell
+// adds none. First Family's "colors among spells you've cast this turn".
+func (t CastTally) SpellColorsCast() []string {
+	out := make([]string, 0, len(t.Colors))
+	for _, r := range t.Colors {
+		out = append(out, string(r))
+	}
+	return out
 }
 
 // CastTallyFor returns p's tally for the current turn (zero value

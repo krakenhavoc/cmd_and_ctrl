@@ -48,6 +48,7 @@ func newTestHTTPStackWithAuth(t *testing.T, idx *cards.Index, a auth.Authenticat
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
+	l.SetCardIndex(idx)
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&WSAuthorizer{Auth: a})

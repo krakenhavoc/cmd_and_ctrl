@@ -4574,6 +4574,18 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if frame == nil {
 		return
 	}
+	// #4566: a mana branch of an either payment (Titania's "Ward—Discard
+	// a card or pay {2}") is paid as the prompt's own mana is, at the
+	// branch's cost, so the pool, the auto-tapper and an unfundable
+	// "yes" all behave as they do for a plain mana pay-unless.
+	manaCost := frame.cost
+	if action != nil && action.Kind == PayActionMana {
+		parsed, err := ParseCost(action.Mana)
+		if err != nil {
+			apply = false
+		}
+		manaCost, action = parsed, nil
+	}
 	if choice.GuardsStackItem != uuid.Nil && g.StackItemForEffect(choice.GuardsStackItem) == nil {
 		g.runStateChecksLocked()
 		return
@@ -4604,7 +4616,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	paid := false
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
+			cost := WaterbendReduced(manaCost, 0, len(tapIDs))
 			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)

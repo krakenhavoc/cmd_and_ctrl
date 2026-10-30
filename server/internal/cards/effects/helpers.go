@@ -38,17 +38,6 @@ func returnLegalGraveyardTargetsToHand(ctx *Context) error {
 	return nil
 }
 
-// putPlusOneCounterOnTheLegalTarget puts a +1/+1 counter on the spell's
-// still-legal creature target (CR 608.2b: one that left in response gets
-// none). The first sentence of Slip Out the Back and Moment of Glory.
-func putPlusOneCounterOnTheLegalTarget(ctx *Context) error {
-	targets := legalTargetCards(ctx.Item, ctx.Game)
-	if len(targets) == 0 {
-		return nil
-	}
-	return AddCounter{Target: targets[0], Kind: "+1/+1", N: 1}.Apply(ctx)
-}
-
 // cardDied reports whether an EventLTB marks `source` going to the
 // graveyard from the battlefield — i.e. it "died" (CR 700.4) — as
 // opposed to being exiled, bounced, or tucked into the library.
@@ -900,20 +889,6 @@ func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-}
-
-// plusOneCounterOnChosen is "put a +1/+1 counter on target creature" as
-// a trigger or ability Effect — Triumph of Gerrard's first two chapters
-// and Pridemalkin's enters trigger.
-func plusOneCounterOnChosen(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
-	}
-	return AddCounter{
-		Target: item.Targets[0].ID,
-		Kind:   game.CounterPlusOne,
-		N:      1,
-	}.Apply(NewContext(g, item))
 }
 
 // regenerateTheTargetPermanent is the whole Effect of "{cost}:

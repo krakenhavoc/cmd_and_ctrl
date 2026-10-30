@@ -173,6 +173,15 @@ type CastTimingRule struct {
 	// Declaration-only, like FirstCreatureSpellThisTurn: a stored grant
 	// never carries it.
 	OpponentCastASpellThisTurn bool `json:"opponentCastASpellThisTurn,omitempty"`
+
+	// SourceTapped narrows a DECLARATION to the time its source permanent is
+	// tapped: Quicksilver, Speedster's "as long as Quicksilver is tapped,
+	// you may cast spells as though they had flash". It reads the
+	// permanent's tapped status LIVE, on every query, so the window opens
+	// the moment it taps (an attacker without vigilance, a mana ability) and
+	// shuts the moment it untaps or leaves the battlefield. Declaration-only,
+	// like FirstCreatureSpellThisTurn: a stored grant never carries it.
+	SourceTapped bool `json:"sourceTapped,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -243,6 +252,7 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	rule.Label = ""
 	rule.FirstCreatureSpellThisTurn = false
 	rule.OpponentCastASpellThisTurn = false
+	rule.SourceTapped = false
 	p.Statics = append(p.Statics, PlayerStatic{
 		Timing:   rule,
 		Source:   source,
@@ -346,6 +356,9 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 				}
 			}
 			if t.OpponentCastASpellThisTurn && !g.opponentCastASpellThisTurnLocked(src.Controller) {
+				continue
+			}
+			if t.SourceTapped && !src.Tapped {
 				continue
 			}
 			// A creature type the filter names is a word of the
@@ -453,8 +466,15 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 // per-offer walk and the view's per-offer `timing_closed`.
 //
 // Caller must hold g.mu (read or write).
+//
+// A sneak offer (CR 702.190a, #4586) opens the same instant-speed window
+// and is then shut everywhere but its caster's own declare blockers step
+// (sneak.go).
 func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
-	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash, true)
+	if offer != nil && offer.Sneak && !g.sneakWindowOpenLocked(playerID) {
+		return false
+	}
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow(), true)
 }
 
 // ownFlash is false only for castUsesOwnFlashLocked's question: would

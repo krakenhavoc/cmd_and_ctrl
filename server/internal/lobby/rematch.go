@@ -548,6 +548,7 @@ func (l *Lobby) seatRematch(id uuid.UUID, spec rematchSeatSpec) (uuid.UUID, erro
 		DeckUploaded: true,
 		DeckID:       spec.deckID,
 		DeckPower:    spec.deckPower,
+		commanders:   l.commandersOf(spec.cards),
 	}
 	if spec.identity.Populated() {
 		seat.DiscordID = spec.identity.ID

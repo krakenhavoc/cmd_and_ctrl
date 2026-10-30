@@ -187,8 +187,8 @@
     background: linear-gradient(to bottom, transparent 55%, var(--surface));
     pointer-events: none;
   }
-  /* No art (a pre-built deck until phase B1, or a crop that failed): the
-     deck's colours as a wash, never a broken image. */
+  /* No art (a commander with no printing, an older server, or a crop that
+     failed): the deck's colours as a wash, never a broken image. */
   .art.wash {
     background:
       linear-gradient(
