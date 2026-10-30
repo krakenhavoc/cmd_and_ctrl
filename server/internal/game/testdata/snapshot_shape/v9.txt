@@ -1922,6 +1922,7 @@ followUpParks[].then.permission.filter.artifactInstantOrSorceryOnly	bool
 followUpParks[].then.permission.filter.artifactOrColorlessOnly	bool
 followUpParks[].then.permission.filter.auraOrEquipmentOnly	bool
 followUpParks[].then.permission.filter.cardType	string
+followUpParks[].then.permission.filter.colorsAny	string
 followUpParks[].then.permission.filter.creatureOnly	bool
 followUpParks[].then.permission.filter.creatureType	string
 followUpParks[].then.permission.filter.creatureTypesAny	array
@@ -2495,6 +2496,7 @@ frozenEntries[].event.counterTail.then.permission.filter.artifactInstantOrSorcer
 frozenEntries[].event.counterTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.cardType	string
+frozenEntries[].event.counterTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.counterTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.creatureType	string
 frozenEntries[].event.counterTail.then.permission.filter.creatureTypesAny	array
@@ -3048,6 +3050,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.artifactInstantOrSo
 frozenEntries[].event.damageTail.each.each.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.cardType	string
+frozenEntries[].event.damageTail.each.each.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureTypesAny	array
@@ -3592,6 +3595,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.artifactInstantOrSo
 frozenEntries[].event.damageTail.each.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.cardType	string
+frozenEntries[].event.damageTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureTypesAny	array
@@ -4289,6 +4293,7 @@ frozenEntries[].event.damageTail.then.permission.filter.artifactInstantOrSorcery
 frozenEntries[].event.damageTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.cardType	string
+frozenEntries[].event.damageTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.then.permission.filter.creatureTypesAny	array
@@ -4939,6 +4944,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.artifa
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny	array
@@ -5543,6 +5549,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.artifactInstantOrSo
 frozenEntries[].event.entryTail.batch.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardType	string
+frozenEntries[].event.entryTail.batch.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureTypesAny	array
@@ -6087,6 +6094,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.artifactInstantOrSorcery
 frozenEntries[].event.entryTail.keyed.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.cardType	string
+frozenEntries[].event.entryTail.keyed.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureTypesAny	array
@@ -6663,6 +6671,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.artifactI
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardType	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny	array
@@ -7227,6 +7236,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.artifactInstantOrS
 frozenEntries[].event.entryTail.tokens.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardType	string
+frozenEntries[].event.entryTail.tokens.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureTypesAny	array
@@ -8178,6 +8188,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.artifactInstantOr
 frozenEntries[].event.keywordActionTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardType	string
+frozenEntries[].event.keywordActionTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureTypesAny	array
@@ -8739,6 +8750,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.artifactInstantOrSorc
 frozenEntries[].event.lifeTail.each.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardType	string
+frozenEntries[].event.lifeTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureTypesAny	array
@@ -9286,6 +9298,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.artifactInstantOrSorceryOn
 frozenEntries[].event.lifeTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.cardType	string
+frozenEntries[].event.lifeTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.creatureType	string
 frozenEntries[].event.lifeTail.then.permission.filter.creatureTypesAny	array
@@ -10602,6 +10615,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.artifactInstantOrSorce
 frozenEntries[].event.millTail.run.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.cardType	string
+frozenEntries[].event.millTail.run.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.creatureType	string
 frozenEntries[].event.millTail.run.then.permission.filter.creatureTypesAny	array
@@ -11144,6 +11158,7 @@ frozenEntries[].event.millTail.then.permission.filter.artifactInstantOrSorceryOn
 frozenEntries[].event.millTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.cardType	string
+frozenEntries[].event.millTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.creatureType	string
 frozenEntries[].event.millTail.then.permission.filter.creatureTypesAny	array
@@ -12575,6 +12590,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.artifactInstantOrSorceryO
 frozenEntries[].event.tokenTail.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.cardType	string
+frozenEntries[].event.tokenTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.creatureType	string
 frozenEntries[].event.tokenTail.then.permission.filter.creatureTypesAny	array
@@ -13895,6 +13911,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.artifactIn
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny	array
@@ -14471,6 +14488,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.arti
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny	array
@@ -15013,6 +15031,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.artifactInstant
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardType	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny	array
@@ -15575,6 +15594,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.artifactInsta
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardType	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny	array
@@ -16202,6 +16222,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.artifactInst
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrColorlessOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny	array
@@ -20595,6 +20616,7 @@ pendingChoices[].attackSplit.tail.permission.filter.artifactInstantOrSorceryOnly
 pendingChoices[].attackSplit.tail.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.cardType	string
+pendingChoices[].attackSplit.tail.permission.filter.colorsAny	string
 pendingChoices[].attackSplit.tail.permission.filter.creatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.creatureType	string
 pendingChoices[].attackSplit.tail.permission.filter.creatureTypesAny	array
@@ -22472,6 +22494,7 @@ pendingChoices[].diceRoll.then.permission.filter.artifactInstantOrSorceryOnly	bo
 pendingChoices[].diceRoll.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.cardType	string
+pendingChoices[].diceRoll.then.permission.filter.colorsAny	string
 pendingChoices[].diceRoll.then.permission.filter.creatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.creatureType	string
 pendingChoices[].diceRoll.then.permission.filter.creatureTypesAny	array
@@ -23357,6 +23380,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.artifactInstantOrSorce
 pendingChoices[].divideShield.walk.each.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.cardType	string
+pendingChoices[].divideShield.walk.each.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.creatureType	string
 pendingChoices[].divideShield.walk.each.permission.filter.creatureTypesAny	array
@@ -23901,6 +23925,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.artifactInstantOrSorce
 pendingChoices[].divideShield.walk.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.cardType	string
+pendingChoices[].divideShield.walk.then.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.creatureType	string
 pendingChoices[].divideShield.walk.then.permission.filter.creatureTypesAny	array
@@ -24451,6 +24476,7 @@ pendingChoices[].libraryOrder.then.permission.filter.artifactInstantOrSorceryOnl
 pendingChoices[].libraryOrder.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.cardType	string
+pendingChoices[].libraryOrder.then.permission.filter.colorsAny	string
 pendingChoices[].libraryOrder.then.permission.filter.creatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.creatureType	string
 pendingChoices[].libraryOrder.then.permission.filter.creatureTypesAny	array
@@ -25051,6 +25077,7 @@ pendingChoices[].nameThen.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].nameThen.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].nameThen.permission.filter.cardType	string
+pendingChoices[].nameThen.permission.filter.colorsAny	string
 pendingChoices[].nameThen.permission.filter.creatureOnly	bool
 pendingChoices[].nameThen.permission.filter.creatureType	string
 pendingChoices[].nameThen.permission.filter.creatureTypesAny	array
@@ -26035,6 +26062,7 @@ pendingChoices[].pickTail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].pickTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].pickTail.permission.filter.cardType	string
+pendingChoices[].pickTail.permission.filter.colorsAny	string
 pendingChoices[].pickTail.permission.filter.creatureOnly	bool
 pendingChoices[].pickTail.permission.filter.creatureType	string
 pendingChoices[].pickTail.permission.filter.creatureTypesAny	array
@@ -26621,6 +26649,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.arti
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureTypesAny	array
@@ -27174,6 +27203,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureTypesAny	array
@@ -27718,6 +27748,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureTypesAny	array
@@ -28415,6 +28446,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.artif
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureTypesAny	array
@@ -29065,6 +29097,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny	array
@@ -29669,6 +29702,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureTypesAny	array
@@ -30213,6 +30247,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.artif
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureTypesAny	array
@@ -30789,6 +30824,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny	array
@@ -31353,6 +31389,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureTypesAny	array
@@ -32304,6 +32341,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureTypesAny	array
@@ -32865,6 +32903,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ar
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureTypesAny	array
@@ -33412,6 +33451,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.artifac
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureTypesAny	array
@@ -34728,6 +34768,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.art
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureTypesAny	array
@@ -35270,6 +35311,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.artifac
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureTypesAny	array
@@ -36701,6 +36743,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.artifa
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureTypesAny	array
@@ -38021,6 +38064,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny	array
@@ -38597,6 +38641,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny	array
@@ -39139,6 +39184,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny	array
@@ -39701,6 +39747,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny	array
@@ -40328,6 +40375,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny	array
@@ -41285,6 +41333,7 @@ pendingChoices[].scryThen.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].scryThen.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].scryThen.permission.filter.cardType	string
+pendingChoices[].scryThen.permission.filter.colorsAny	string
 pendingChoices[].scryThen.permission.filter.creatureOnly	bool
 pendingChoices[].scryThen.permission.filter.creatureType	string
 pendingChoices[].scryThen.permission.filter.creatureTypesAny	array
@@ -41874,6 +41923,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.artifactInstantOrS
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardType	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureTypesAny	array
@@ -45984,6 +46034,7 @@ seats[].castPermissions[].filter.artifactInstantOrSorceryOnly	bool
 seats[].castPermissions[].filter.artifactOrColorlessOnly	bool
 seats[].castPermissions[].filter.auraOrEquipmentOnly	bool
 seats[].castPermissions[].filter.cardType	string
+seats[].castPermissions[].filter.colorsAny	string
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.creatureTypesAny	array
@@ -49218,6 +49269,7 @@ seats[].statics[].cantBeCountered.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.artifactOrColorlessOnly	bool
 seats[].statics[].cantBeCountered.filter.auraOrEquipmentOnly	bool
 seats[].statics[].cantBeCountered.filter.cardType	string
+seats[].statics[].cantBeCountered.filter.colorsAny	string
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
@@ -49249,6 +49301,7 @@ seats[].statics[].castBan.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.artifactOrColorlessOnly	bool
 seats[].statics[].castBan.filter.auraOrEquipmentOnly	bool
 seats[].statics[].castBan.filter.cardType	string
+seats[].statics[].castBan.filter.colorsAny	string
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.creatureTypesAny	array
@@ -49326,6 +49379,7 @@ seats[].statics[].nextSpell.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.artifactOrColorlessOnly	bool
 seats[].statics[].nextSpell.filter.auraOrEquipmentOnly	bool
 seats[].statics[].nextSpell.filter.cardType	string
+seats[].statics[].nextSpell.filter.colorsAny	string
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
 seats[].statics[].nextSpell.filter.creatureTypesAny	array
@@ -49361,6 +49415,7 @@ seats[].statics[].timing.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].timing.filter.artifactOrColorlessOnly	bool
 seats[].statics[].timing.filter.auraOrEquipmentOnly	bool
 seats[].statics[].timing.filter.cardType	string
+seats[].statics[].timing.filter.colorsAny	string
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.creatureTypesAny	array

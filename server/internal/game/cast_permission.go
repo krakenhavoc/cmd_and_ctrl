@@ -215,6 +215,19 @@ type PermissionFilter struct {
 	// a plain artifact or enchantment does not.
 	AuraOrEquipmentOnly bool `json:"auraOrEquipmentOnly,omitempty"`
 
+	// ColorsAny is World War Hulk's "the next RED OR GREEN creature spell
+	// you cast": a card qualifies when it has AT LEAST ONE of the named
+	// colours (CR 105.1, CR 105.2). Colour letters in the card's own
+	// vocabulary, upper case ("RG"), so one comparable string covers any
+	// union and a filter without the clause still writes nothing. Read
+	// off the card's effective colours (Card.HasColor), so the spell is
+	// judged as it was cast: a layered or copied colour counts, a
+	// colourless spell never does, a multicoloured one needs only one
+	// match (CR 105.2b). Empty constrains nothing. It composes with every
+	// other clause as a further AND (CreatureOnly narrows "red or green"
+	// to a creature spell).
+	ColorsAny string `json:"colorsAny,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -344,6 +357,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
+	if f.ColorsAny != "" && !cardHasAnyColor(c, f.ColorsAny) {
+		return false
+	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
 		return false
 	}
@@ -363,6 +379,18 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	return true
+}
+
+// cardHasAnyColor reports whether the card is at least one of the colours
+// named in letters ("RG": red or green). A colourless card has none, and a
+// letter that is not a colour matches nothing.
+func cardHasAnyColor(c Card, letters string) bool {
+	for _, l := range letters {
+		if c.HasColor(string(l)) {
+			return true
+		}
+	}
+	return false
 }
 
 // CastPermission is one granted permission to cast or play cards from

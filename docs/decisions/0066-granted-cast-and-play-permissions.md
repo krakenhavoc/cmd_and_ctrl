@@ -4726,3 +4726,24 @@ resolution finishes, a decline leaves the card in exile, a strict restore mid-pr
 restored table) and the updated `guile_test.go`; `aiseat/guile_resolution_cast_bot_test.go` (the bot answers for a hard counter,
 a declined Pierce, a ward and Hinder). Back-outs: asking no prompt in `finishCounterSpellLocked` fails every one of those;
 dropping the pass-closed fallback fails `TestAReplacedCounterWithNoResolutionOpenKeepsThePassClosedGrant`.
+
+## Amendment — 2026-10-30 (#4615): `PermissionFilter.ColorsAny`, an any-of colour clause
+
+World War Hulk's chapter I ("The next red or green creature spell you cast this turn can be cast without paying its mana
+cost") is Apex Observatory's free-cast promise with a colour on the spell. The filter had a card-type clause and no colour one.
+
+- **The clause.** `PermissionFilter.ColorsAny` is a string of colour letters in the card's own vocabulary (`"RG"`): a card
+  qualifies when it has at least one of them (CR 105.2b: a multicoloured object is each of its colours). It is read through
+  `Card.HasColor`, the card's effective colours, so a spell is judged by its characteristics as it is cast; a colourless
+  card has no colour and never matches (CR 105.2c). It is a further AND beside every other clause, so `CreatureOnly` plus `"RG"`
+  is "red or green creature spell", and empty constrains nothing. It is a string rather than the two-slot array
+  `CreatureTypesAny` uses because the filter must stay comparable and a one-field string writes nothing when empty (`omitempty`),
+  where an array is always written; it also covers a third colour with no widening.
+- **Who sees it.** The clause lives in `PermissionFilter.Matches`, the one predicate every consumer already calls: the promise's
+  flash, price and free-cast reads (`NextSpellPromise.Filter`), the granted-cost offers the view and `CastSpell` read, and the
+  enumerator the bot plays from. No consumer was changed, and `legal/coloured_next_spell_promise_test.go` pins the move list.
+- **Snapshot.** Additive: `colorsAny` (omitempty) under every path that reaches a `PermissionFilter`, recorded in
+  `testdata/snapshot_shape/v9.txt` with `-update-shape`. An older binary drops the key and reads the filter without the colour clause, which
+  widens a restored promise to every creature spell for the rest of that turn; promises end at end of turn.
+- **Cards.** World War Hulk (Full). Tests: `game/permission_filter_colors_test.go`, `cards/effects/world_war_hulk_test.go`,
+  `legal/coloured_next_spell_promise_test.go`. Back-out: dropping the `ColorsAny` line in `Matches` fails all three.
