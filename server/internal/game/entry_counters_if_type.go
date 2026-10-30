@@ -69,23 +69,12 @@ type EntryCountersIfType struct {
 // Caller must hold g.mu (write): the look-ahead's dry pass assigns
 // layer caches on a copy of the battlefield.
 func (g *Game) seedEntryCountersIfTypeLocked(clauses []EntryCountersIfType, ev *ReplacementEvent) {
-	if len(clauses) == 0 || ev == nil || ev.Canceled || ev.Kind != RepEventMove ||
-		ev.NewZone != ZoneBattlefield || ev.FaceDown != FaceDownNone {
+	if len(clauses) == 0 || !entryTypeClauseApplies(ev) {
 		return
 	}
-	perm, ok := g.entryCharacteristicsLocked(ev)
+	perm, ok := g.entryPermanentForTypeClausesLocked(ev)
 	if !ok {
-		// No dry run (the card cannot be found, or the pass computed
-		// nothing for it): the card as it is now, with the copy it
-		// was told to enter as.
-		c, found := g.LookupCardForEffect(ev.CardID)
-		if !found {
-			return
-		}
-		if ev.EntersAsCopyOf != nil {
-			c.applyCopy(*ev.EntersAsCopyOf, Card{})
-		}
-		perm = c
+		return
 	}
 	for _, cl := range clauses {
 		if cl.N <= 0 || cl.Counter == "" || (cl.CardType == "" && cl.Subtype == "") {
@@ -94,6 +83,58 @@ func (g *Game) seedEntryCountersIfTypeLocked(clauses []EntryCountersIfType, ev *
 		if (cl.CardType == "" || perm.HasCardType(cl.CardType)) &&
 			(cl.Subtype == "" || perm.HasSubtype(cl.Subtype)) {
 			ev.AddCounterAtETB(cl.Counter, cl.N)
+		}
+	}
+}
+
+// entryTypeClauseApplies reports whether a putting effect's per-card type
+// clauses read this settled event: a live move onto the battlefield, face
+// up.
+func entryTypeClauseApplies(ev *ReplacementEvent) bool {
+	return ev != nil && !ev.Canceled && ev.Kind == RepEventMove &&
+		ev.NewZone == ZoneBattlefield && ev.FaceDown == FaceDownNone
+}
+
+// entryPermanentForTypeClausesLocked is what the entering card would be on
+// the battlefield (CR 614.12), for the typed clauses to read.
+func (g *Game) entryPermanentForTypeClausesLocked(ev *ReplacementEvent) (Card, bool) {
+	perm, ok := g.entryCharacteristicsLocked(ev)
+	if ok {
+		return perm, true
+	}
+	// No dry run (the card cannot be found, or the pass computed
+	// nothing for it): the card as it is now, with the copy it
+	// was told to enter as.
+	c, found := g.LookupCardForEffect(ev.CardID)
+	if !found {
+		return Card{}, false
+	}
+	if ev.EntersAsCopyOf != nil {
+		c.applyCopy(*ev.EntersAsCopyOf, Card{})
+	}
+	return c, true
+}
+
+// seedEntryTappedIfTypeLocked folds the putting effect's "if a <type> enters
+// this way, it enters tapped" into one member's settled entry event (Silver
+// Surfer, Cosmic Voyager's land clause): a member that would be one of the
+// card types on the battlefield (CR 614.12) enters tapped, and the others
+// are untouched. It stays one batch for the same reason the counters
+// clause does (CR 603.6a).
+//
+// Caller must hold g.mu (write), as seedEntryCountersIfTypeLocked does.
+func (g *Game) seedEntryTappedIfTypeLocked(types []string, ev *ReplacementEvent) {
+	if len(types) == 0 || ev == nil || ev.EntersTapped || !entryTypeClauseApplies(ev) {
+		return
+	}
+	perm, ok := g.entryPermanentForTypeClausesLocked(ev)
+	if !ok {
+		return
+	}
+	for _, t := range types {
+		if t != "" && perm.HasCardType(t) {
+			ev.EntersTapped = true
+			return
 		}
 	}
 }

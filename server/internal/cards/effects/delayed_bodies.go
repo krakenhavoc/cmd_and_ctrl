@@ -42,6 +42,11 @@ var (
 	returnExiledWithAdditionalCountersBody = game.SimpleDelayedBody(
 		"flicker/return-exiled-with-additional-counters", returnExiledCardsWithAdditionalCounters)
 
+	// The same return, with "if a land enters this way, it enters
+	// tapped" (Silver Surfer, Cosmic Voyager).
+	returnExiledLandsTappedBody = game.SimpleDelayedBody(
+		"flicker/return-exiled-lands-tapped", returnExiledCardsLandsTapped)
+
 	// Exile the listed cards (unearth, Whip of Erebos, Saheeli Rai and
 	// friends: "exile it at the beginning of the next end step").
 	exileListedCardsBody = game.SimpleDelayedBody("exile/listed-cards", b06ExileListedCards)

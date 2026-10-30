@@ -5420,6 +5420,8 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.types	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.types[]	string
+frozenEntries[].event.entryTail.batch.opts.entersTappedIfType	array
+frozenEntries[].event.entryTail.batch.opts.entersTappedIfType[]	string
 frozenEntries[].event.entryTail.batch.opts.entersWithCounters	map:string
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType	array
 frozenEntries[].event.entryTail.batch.opts.entersWithCountersIfType[]	object
@@ -30263,6 +30265,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes	
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersTappedIfType	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersTappedIfType[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCounters	map:string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersWithCountersIfType[]	object

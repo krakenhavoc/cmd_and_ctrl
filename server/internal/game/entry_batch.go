@@ -398,6 +398,7 @@ func (g *Game) recordEntryBatchMemberLocked(b *entryBatch, i int, out *Replaceme
 	// judged now that this member's window has settled (so after any
 	// copy it was told to enter as) and before anything lands.
 	g.seedEntryCountersIfTypeLocked(b.opts.EntersWithCountersIfType, out)
+	g.seedEntryTappedIfTypeLocked(b.opts.EntersTappedIfType, out)
 	b.members[i].out = out
 }
 

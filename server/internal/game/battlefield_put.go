@@ -128,6 +128,15 @@ type ZoneEntryOptions struct {
 	// Read-only, nil for every other caller.
 	EntersWithCountersIfType []EntryCountersIfType
 
+	// EntersTappedIfType are the card types ("land") whose members of the
+	// batch enter tapped: "if a land enters this way, it enters tapped"
+	// (Silver Surfer, Cosmic Voyager). Judged per member by what it would
+	// be on the battlefield (CR 614.12), once its own CR 614 window has
+	// settled, like EntersWithCountersIfType; see
+	// entry_counters_if_type.go. Lowercase, as Card.HasCardType reads it.
+	// Read-only, nil for every other caller.
+	EntersTappedIfType []string
+
 	// AttachedTo is the host the putting effect names — "return … to
 	// the battlefield attached to enchanted creature" (Mantle of the
 	// Ancients, #3158). Seeded onto every card's entry event: each card
