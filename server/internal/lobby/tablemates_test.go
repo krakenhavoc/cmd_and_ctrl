@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
@@ -126,6 +127,52 @@ func TestTablematesInBothStores(t *testing.T) {
 				t.Errorf("empty user id = %+v, %v; want none", got, err)
 			}
 		})
+	}
+}
+
+// TestTablematesSkipsADeletedAccount: account deletion keeps the users
+// row as a tombstone and leaves its seats pointing at it, so the join
+// finds a "Deleted player" unless it leaves deleted accounts out. The
+// deletion here is the real one, not a hand-set column.
+func TestTablematesSkipsADeletedAccount(t *testing.T) {
+	d := openTestDB(t, t.TempDir())
+	us := users.NewSQLStore(d, nil)
+	var ids [3]string
+	for i, who := range []discord.User{
+		{ID: "d-me", Username: "me", GlobalName: "Me"},
+		{ID: "d-bob", Username: "bob", GlobalName: "Bob"},
+		{ID: "d-cara", Username: "cara", GlobalName: "Cara"},
+	} {
+		u, err := us.UpsertFromDiscord(context.Background(), who, "", "identify")
+		if err != nil {
+			t.Fatalf("UpsertFromDiscord: %v", err)
+		}
+		ids[i] = u.ID.String()
+	}
+	me, bob, cara := ids[0], ids[1], ids[2]
+	store := NewSQLStore(d)
+	tablemateFixture(t, store, me, bob, cara)
+
+	before, err := store.Tablemates(context.Background(), me)
+	if err != nil || len(before) != 2 {
+		t.Fatalf("before the deletion: %+v, %v; want Cara and Bob", before, err)
+	}
+
+	// Every fixture table is ended, so the active-table rule lets it through.
+	if _, err := accountdelete.NewSQLStore(d).Delete(context.Background(), uuid.MustParse(bob)); err != nil {
+		t.Fatalf("delete Bob: %v", err)
+	}
+	got, err := store.Tablemates(context.Background(), me)
+	if err != nil {
+		t.Fatalf("Tablemates: %v", err)
+	}
+	if len(got) != 1 || got[0].UserID != cara {
+		t.Fatalf("Tablemates = %+v, want just Cara: the deleted account is not offered", got)
+	}
+	// A deleted caller has no tablemates to offer either way, and the
+	// survivors still see each other.
+	if got, err := store.Tablemates(context.Background(), cara); err != nil || len(got) != 1 || got[0].UserID != me {
+		t.Errorf("Cara's tablemates = %+v, %v; want just me (Bob is deleted)", got, err)
 	}
 }
 

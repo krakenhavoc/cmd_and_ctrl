@@ -233,8 +233,8 @@ type Store interface {
 	// Tablemates lists the people userID has shared a table with —
 	// ADR 0051 decision 8's self-join of seats — most recently shared
 	// table first. The caller is excluded, and so is every seat with
-	// no user (a guest, a bot, a Discord seat still pending). See
-	// tablemates.go.
+	// no user (a guest, a bot, a Discord seat still pending) and every
+	// deleted account. See tablemates.go.
 	Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error)
 
 	// AddBlock records that a table will not seat an identity again

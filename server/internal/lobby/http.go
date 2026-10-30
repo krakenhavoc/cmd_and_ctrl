@@ -592,7 +592,8 @@ func Handler(c Config) http.Handler {
 	// Direct-message invites (ADR 0051 decision 5, S34 sub-PR 6): the
 	// server DMs a tablemate the game's ORDINARY player invite through
 	// Discord's REST API. Session-gated, then authorised in the
-	// handler (seated at the table, the game's creator, or admin).
+	// handler (seated at the table, the game's creator, or admin; and
+	// an ordinary caller may name only one of their tablemates).
 	//
 	// Two buckets, both of which have to allow the request. The IP
 	// bucket is the one every other invite-adjacent route rides. The
