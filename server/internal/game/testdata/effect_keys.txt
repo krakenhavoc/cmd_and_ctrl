@@ -1829,3 +1829,6 @@ payunless pay-unless/grim-reaper-lethal-legionnaire-return
 tail bob-reluctant-hydra-agent/drain
 option option-pick/mister-hyde-remove-a-counter
 tail msh-a7/rick-jones-after-mill
+body red-hulk/damage
+body rewrite-history/return
+tail rapid-rescue/after-mill
