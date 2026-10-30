@@ -62,6 +62,7 @@ body caveat-h2/vizkopa-guildmage-drain
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
+body clone-saga/copy-creature-spell-not-legendary
 body combat/untap-and-remove-the-payload
 body construct-a-cosmic-cube/control
 body copy/the-ability-you-just-activated
@@ -113,6 +114,7 @@ body fatal-fissure/earthbend-4
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
 body flash/cleanup-sacrifice
+body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
 body flicker/return-exiled-to-owners-tapped
 body flicker/return-exiled-with-additional-counters
@@ -266,6 +268,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undying/return
 body until/return-to-battlefield
+body villainous-syndication/return
 body vronos/phase-out-the-objects
 body warp/exile
 body weeping-angel/owner-shuffles-it-in
@@ -659,6 +662,7 @@ condition cast/you-next-cast
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
 condition caveat-h2/vizkopa-guildmage-you-gain-life
+condition clone-saga/named-creature-combat-damage-to-player
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
@@ -1733,6 +1737,7 @@ tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
 tail then/change-life
 tail then/chaos-warp-shuffle-reveal
+tail then/clone-saga-named
 tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/created-gain-keyword-until-eot

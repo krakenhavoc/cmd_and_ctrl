@@ -163,6 +163,19 @@ func returnExiledCardsWithAdditionalCounters(g *game.Game, item *game.StackItem)
 	}.Apply(NewContext(g, item))
 }
 
+// returnExiledCardsLandsTapped is Silver Surfer, Cosmic Voyager's return: the
+// listed cards come back together under their owners' control, and a card
+// that is a land as it enters comes in tapped (CR 614.12), judged card by card.
+func returnExiledCardsLandsTapped(g *game.Game, item *game.StackItem) error {
+	var ids []uuid.UUID
+	for _, t := range item.Targets {
+		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
+			ids = append(ids, t.ID)
+		}
+	}
+	return ReturnFromExileTogether{Targets: ids, TappedIfType: []string{"land"}}.Apply(NewContext(g, item))
+}
+
 // exileTargetsThenReturnOnOwnersEndStep is "exile <targets>. Return
 // that card to the battlefield under its owner's control at the
 // beginning of that player's next end step" (The Eternal Wanderer's

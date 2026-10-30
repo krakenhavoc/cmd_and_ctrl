@@ -150,6 +150,9 @@ type ReturnFromExileTogether struct {
 	Controller     uuid.UUID
 	Tapped         bool
 	CountersIfType []game.EntryCountersIfType
+	// TappedIfType are the card types that enter tapped, card by card:
+	// "if a land enters this way, it enters tapped" is {"land"}.
+	TappedIfType []string
 	// ThenTail and ThenN are ReturnFromGraveyardTogether's.
 	ThenTail game.TailRef
 	ThenN    int
@@ -160,6 +163,7 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 		Controller:               r.Controller,
 		Tapped:                   r.Tapped,
 		EntersWithCountersIfType: r.CountersIfType,
+		EntersTappedIfType:       r.TappedIfType,
 	}, r.ThenTail, r.ThenN)
 }
 
