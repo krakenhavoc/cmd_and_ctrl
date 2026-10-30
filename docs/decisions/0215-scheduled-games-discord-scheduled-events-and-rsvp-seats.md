@@ -1,8 +1,8 @@
 # ADR 0215 — Scheduled games: Discord Scheduled Events with RSVP seats
 
-**Status:** Proposed · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
+**Status:** Accepted · 2026-10-30 · S77 — Discord and social: voice, friends, mod tools and events
 **Issue:** [#3321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3321)
-**Owner decisions:** none yet. The product questions are under [Owner decisions](#owner-decisions), each with the recommended option first. The calls this ADR makes on its own are under [Calls made here](#calls-made-here), for the owner to overturn in review. No production code before the owner has answered.
+**Owner decisions:** 2026-10-30. The owner read a brief of the sixteen questions under [Owner decisions](#owner-decisions) and accepted option (a) for every one, as the ADR is written. The calls this ADR makes on its own are under [Calls made here](#calls-made-here). Building waits for the owner to ask for a slice.
 **Numbering:** checked on 2026-10-30 after `git fetch --all --prune`. `develop` ends at 0214 (ADR 0214 merged in #4665 while this was drafted), and `git ls-tree` over every remote head's `docs/decisions/` shows nothing above it. The heads checked are listed in the PR. This is **0215**.
 **Builds on:**
 - [ADR 0004](0004-discord-identity.md) (the bot, its install with `permissions=0`) and [ADR 0051](0051-user-database.md) decision 5 (the server's own bot-token REST calls).
@@ -367,7 +367,7 @@ Slices 4 and 6 are independent of each other. Slice 2 is the smallest useful one
 
 ## Owner decisions
 
-Open questions, each with the recommended option first, (a). The ADR is written for (a) throughout.
+Asked as open questions, each with the recommended option first, (a). The ADR is written for (a) throughout, and on 2026-10-30 the owner accepted (a) for all sixteen.
 
 1. **Before the start:** (a) a plan that becomes an ordinary lobby table when doors open, 15 minutes before; (b) a lobby table from the moment it is scheduled, with a start time; (c) a new engine state.
 2. **Who may schedule:** (a) anyone who can create a table (an account that passes the gate), within §12's limits; (b) only accounts that have finished a game; (c) mods only.
