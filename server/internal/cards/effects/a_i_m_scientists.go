@@ -24,7 +24,7 @@ func init() {
 		Name:         "A.I.M. Scientists",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("A.I.M. Scientists — it connives", Do(Instruction(sourceConnives))),
+			WhenThisEntersItConnives("A.I.M. Scientists — it connives"),
 		},
 		Activated: []ActivatedAbility{BasicLandcycling("{2}")},
 	})
