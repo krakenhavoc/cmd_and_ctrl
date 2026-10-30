@@ -51578,6 +51578,10 @@ turnTally.diedSubtypes{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int
+turnTally.enteredFliers	array
+turnTally.enteredFliers[]	object
+turnTally.enteredFliers[].card	custom(uuid.UUID)
+turnTally.enteredFliers[].controller	custom(uuid.UUID)
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int

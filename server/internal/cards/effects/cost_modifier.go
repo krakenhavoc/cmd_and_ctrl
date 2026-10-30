@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cost_modifier.go — S28: constructors for Spec.CostModifiers, the
 // "spells cost {N} more / {N} less to cast" static (CR 601.2f). The
@@ -76,8 +80,9 @@ func CostsMoreEach(amount func(q game.CostQuery) int, label string, when ...Cost
 //
 // The reduction spends against GENERIC mana only and stops at zero;
 // that rule lives in the engine (game.reduceGeneric) so no card file
-// can get it wrong. A card that wants to reduce a coloured
-// requirement is not this — no card does, and CR 601.2f is why.
+// can get it wrong. A card that reduces a coloured requirement is not
+// this: ActivationCostsLessMana is the one that does (Flying Drone's
+// "{1}{U} less", #4707), by CR 118.7.
 func CostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
 	return CostsLessEach(func(game.CostQuery) int { return n }, label, when...)
 }
@@ -185,6 +190,35 @@ func ActivationCostsLessIfItTargets(n int, label string, match CardPredicate, wh
 	m := ActivationCostsLess(n, label, preds...)
 	m.ReadsTargets = true
 	return m
+}
+
+// ActivationCostsLessMana is "This ability costs {1}{U} less to activate
+// if <when>" (Flying Drone, #4707): ActivationCostsLess for a reduction
+// that is not plain generic mana. `unit` is the mana taken off, spent
+// by CR 118.7: each coloured symbol removes one mana of its colour from
+// the cost, or one generic when the cost has none of it left, and the
+// cost never goes below {0} (CR 601.2f). Panics at init on a string the
+// parser rejects or one carrying {X}, a hybrid or a Phyrexian symbol,
+// which no printed reduction does here.
+func ActivationCostsLessMana(unit string, label string, when ...CostPredicate) game.CostModifier {
+	u, err := game.ParseCost(unit)
+	if err != nil || u.XSlots > 0 || u.ManaValue() == 0 {
+		panic(fmt.Sprintf("effects.ActivationCostsLessMana: %q is not a fixed mana amount (%v)", unit, err))
+	}
+	m := ActivationCostsLess(1, label, when...)
+	m.Unit = &u
+	return m
+}
+
+// AnotherFlierEnteredUnderYourControlThisTurn passes while a creature other
+// than the modifier's source entered the battlefield under the activator's
+// control this turn having flying as it entered (#4707, Flying Drone's
+// "another creature with flying entered the battlefield under your control
+// this turn"). Reads TurnTally.EnteredFliers, written at each entry.
+func AnotherFlierEnteredUnderYourControlThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && q.Game.EnteredFlierUnderThisTurn(q.Controller, q.Source.InstanceID)
+	}
 }
 
 // ActivatedDuringYourTurn passes when the activator is the active

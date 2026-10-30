@@ -654,6 +654,22 @@ func ControlledByThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ControlledByThatEventActor narrows a TRIGGERED ability's clause to what
+// the player who caused the triggering event controls (Black Bolt, Inhuman
+// King's "destroy target nonland permanent that player controls" after
+// "becomes the target of a spell or ability an opponent controls", #4707).
+// ControlledByThatPlayer's twin: that one reads the event's Target (the
+// player hit), this reads its Actor (on EventBecomesTarget, the controller
+// of the targeting spell or ability). Data on the clause
+// (game.TargetSpec.ControlledByEventActor), judged in the one shared walk;
+// on a spell, an activation or an event with no Actor it admits nothing.
+//
+//	ControlledByThatEventActor(TargetPermanent("target nonland permanent that player controls", Nonland()))
+func ControlledByThatEventActor(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByEventActor = true
+	return spec
+}
+
 // OfAnOpponentsChoice is "target … of an opponent's choice" (#2055, ADR
 // 0019's 2026-10-16 amendment): as the spell or ability is put on the
 // stack, its controller chooses an opponent and THAT opponent chooses

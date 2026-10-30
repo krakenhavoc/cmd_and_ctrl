@@ -153,6 +153,14 @@ type PlayerTurnTally struct {
 	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
 }
 
+// EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
+type EnteredFlierRecord struct {
+	// Controller is the player the creature entered under.
+	Controller uuid.UUID `json:"controller"`
+	// Card is the instance the entry produced.
+	Card uuid.UUID `json:"card"`
+}
+
 // TurnTally is the per-turn record on Game. Reset on turn advance.
 type TurnTally struct {
 	// Players holds each player's tally; a player with nothing
@@ -228,6 +236,16 @@ type TurnTally struct {
 	// because every other cell of the tally is, and because "how many
 	// times" is the question the next card asks.
 	Entered map[uuid.UUID]int `json:"entered,omitempty"`
+	// EnteredFliers lists the creatures that entered the battlefield this
+	// turn WITH FLYING (#4707, Flying Drone's "another creature with flying
+	// entered the battlefield under your control this turn"), one record per
+	// entry, in order, each naming the controller it entered under and the
+	// instance it entered as. Judged as the creature entered, after the
+	// layers (EnteredSubtypes' reading), so one that has since died, lost
+	// flying or changed hands still answers. The object dimension is what
+	// "another" needs: the source's own entry is skipped by instance id.
+	// Read through Game.EnteredFlierUnderThisTurn. Additive.
+	EnteredFliers []EnteredFlierRecord `json:"enteredFliers,omitempty"`
 	// AttackedSubtypes is the subtype tally of the creatures each player
 	// declared as attackers this turn, per subtype they had as they
 	// attacked (#3192): Robber of the Rich's "during any turn you attacked
@@ -1449,6 +1467,32 @@ func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
 	}
 }
 
+// recordEnteredFlierLocked records an entering creature that has flying as
+// it enters under `controller` (TurnTally.EnteredFliers).
+func (g *Game) recordEnteredFlierLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil || !c.IsCreature() || !HasKeyword(c, "flying") {
+		return
+	}
+	g.TurnTally.EnteredFliers = append(g.TurnTally.EnteredFliers, EnteredFlierRecord{Controller: controller, Card: c.InstanceID})
+}
+
+// EnteredFlierUnderThisTurn reports whether a creature other than
+// `except` (uuid.Nil for any) entered the battlefield under playerID's
+// control this turn having flying as it entered (#4707, Flying Drone).
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredFlierUnderThisTurn(playerID, except uuid.UUID) bool {
+	if playerID == uuid.Nil {
+		return false
+	}
+	for _, r := range g.TurnTally.EnteredFliers {
+		if r.Controller == playerID && r.Card != except {
+			return true
+		}
+	}
+	return false
+}
+
 // recordEnteredSubtypesLocked adds one entering permanent to
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
@@ -1620,6 +1664,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
+	out.EnteredFliers = append([]EnteredFlierRecord(nil), t.EnteredFliers...)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
@@ -1875,8 +1920,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if controller == uuid.Nil {
 			controller = ev.Actor
 		}
-		g.recordEnteredSubtypesLocked(controller, g.enteredWithLayersLocked(c))
-		g.recordEnteredCardTypesLocked(controller, g.enteredWithLayersLocked(c))
+		entered := g.enteredWithLayersLocked(c)
+		g.recordEnteredSubtypesLocked(controller, entered)
+		g.recordEnteredCardTypesLocked(controller, entered)
+		g.recordEnteredFlierLocked(controller, entered)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return
