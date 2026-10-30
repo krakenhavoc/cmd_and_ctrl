@@ -3953,8 +3953,12 @@ type LandTypeEffectView struct {
 }
 
 type NoUntapView struct {
-	Static bool     `json:"static,omitempty"`
-	Next   []string `json:"next,omitempty"`
+	Static bool `json:"static,omitempty"`
+	// Never is "can't become untapped" (#4574, CR 614.17): no untap of
+	// any kind will work on it, not only the untap step, so the client
+	// offers none. Always set together with Static.
+	Never bool     `json:"never,omitempty"`
+	Next  []string `json:"next,omitempty"`
 }
 
 // CastSurfaceView is the announce-time cast surface of ONE CASTABLE
@@ -9251,6 +9255,7 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 	// #1261: the board's restrictions gathered once for the whole
 	// battlefield, not once per permanent.
 	restricted := g.UntapStepRestrictedCheckerLocked()
+	cant := g.CantBecomeUntappedCheckerLocked()
 	for i := range view.Cards {
 		if i >= len(g.Battlefield.Cards) {
 			break
@@ -9260,12 +9265,13 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 		// restriction reads false — but a hold (#1313) comes from
 		// ANOTHER object's resolved ability and applies face-down or
 		// not, like a next-step marker.
-		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card)
+		never := cant(card)
+		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card) || never
 		next := projectedUntapSkipPlayers(g, card)
 		if !static && len(next) == 0 {
 			continue
 		}
-		view.Cards[i].NoUntap = &NoUntapView{Static: static, Next: next}
+		view.Cards[i].NoUntap = &NoUntapView{Static: static, Never: never, Next: next}
 	}
 }
 

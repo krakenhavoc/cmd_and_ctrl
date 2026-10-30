@@ -1710,7 +1710,10 @@ function tapItems(card: CardView): MenuItem[] {
     {
       id: "untap",
       label: "Untap",
-      disabled: !tapped,
+      // #4574: nothing untaps a permanent that can't become untapped, so
+      // the sandbox does not offer it.
+      disabled: !tapped || !!card.no_untap?.never,
+      hint: card.no_untap?.never ? "it can't become untapped" : undefined,
       action: { type: "untap", params: { instance_id: card.instance_id } },
     },
   ];

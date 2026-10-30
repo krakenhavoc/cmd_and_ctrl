@@ -4493,6 +4493,8 @@ export interface CardFaceView extends CastSurfaceView {
 
 export interface NoUntapView {
   static?: boolean;
+  /** "Can't become untapped" (#4574): no untap of any kind works. Sent with `static`. */
+  never?: boolean;
   next?: string[];
 }
 

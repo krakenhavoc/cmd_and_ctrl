@@ -248,6 +248,7 @@ battlefield.cards[].namedTribe	string
 battlefield.cards[].needsEffect	bool
 battlefield.cards[].nextUntapSkips	array
 battlefield.cards[].nextUntapSkips[]	object
+battlefield.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 battlefield.cards[].nextUntapSkips[].extra	number:int
 battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
@@ -775,6 +776,7 @@ enteringTokens[].namedTribe	string
 enteringTokens[].needsEffect	bool
 enteringTokens[].nextUntapSkips	array
 enteringTokens[].nextUntapSkips[]	object
+enteringTokens[].nextUntapSkips[].cantBecomeUntapped	bool
 enteringTokens[].nextUntapSkips[].extra	number:int
 enteringTokens[].nextUntapSkips[].player	custom(uuid.UUID)
 enteringTokens[].nextUntapSkips[].while	object
@@ -1256,6 +1258,7 @@ exile.cards[].namedTribe	string
 exile.cards[].needsEffect	bool
 exile.cards[].nextUntapSkips	array
 exile.cards[].nextUntapSkips[]	object
+exile.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 exile.cards[].nextUntapSkips[].extra	number:int
 exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
@@ -7737,6 +7740,7 @@ frozenEntries[].event.keywordActionTail.armyToken.namedTribe	string
 frozenEntries[].event.keywordActionTail.armyToken.needsEffect	bool
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips	array
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[]	object
+frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].extra	number:int
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while	object
@@ -9783,6 +9787,7 @@ frozenEntries[].event.millTail.run.planned[].namedTribe	string
 frozenEntries[].event.millTail.run.planned[].needsEffect	bool
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips	array
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[]	object
+frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].extra	number:int
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while	object
@@ -10166,6 +10171,7 @@ frozenEntries[].event.millTail.run.seen[].namedTribe	string
 frozenEntries[].event.millTail.run.seen[].needsEffect	bool
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips	array
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[]	object
+frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].extra	number:int
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while	object
@@ -12137,6 +12143,7 @@ frozenEntries[].event.tokenGroups[].template.namedTribe	string
 frozenEntries[].event.tokenGroups[].template.needsEffect	bool
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips	array
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[]	object
+frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].extra	number:int
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while	object
@@ -13073,6 +13080,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].namedTribe	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].needsEffect	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[]	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].extra	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while	object
@@ -13456,6 +13464,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].namedTribe	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].needsEffect	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[]	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].extra	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while	object
@@ -16689,6 +16698,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].namedTribe	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].needsEffect	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[]	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].cantBecomeUntapped	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].extra	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while	object
@@ -17623,6 +17633,7 @@ lastKnownStack[].card.namedTribe	string
 lastKnownStack[].card.needsEffect	bool
 lastKnownStack[].card.nextUntapSkips	array
 lastKnownStack[].card.nextUntapSkips[]	object
+lastKnownStack[].card.nextUntapSkips[].cantBecomeUntapped	bool
 lastKnownStack[].card.nextUntapSkips[].extra	number:int
 lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
@@ -19745,6 +19756,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.namedTribe	string
 pendingChoices[].attackSplit.settled.chosen[].template.needsEffect	bool
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips	array
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[]	object
+pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].extra	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while	object
@@ -20147,6 +20159,7 @@ pendingChoices[].attackSplit.settled.groups[].template.namedTribe	string
 pendingChoices[].attackSplit.settled.groups[].template.needsEffect	bool
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips	array
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[]	object
+pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].extra	number:int
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while	object
@@ -21074,6 +21087,7 @@ pendingChoices[].attackSplit.template.namedTribe	string
 pendingChoices[].attackSplit.template.needsEffect	bool
 pendingChoices[].attackSplit.template.nextUntapSkips	array
 pendingChoices[].attackSplit.template.nextUntapSkips[]	object
+pendingChoices[].attackSplit.template.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].attackSplit.template.nextUntapSkips[].extra	number:int
 pendingChoices[].attackSplit.template.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.nextUntapSkips[].while	object
@@ -21807,6 +21821,7 @@ pendingChoices[].copyWalk.src.namedTribe	string
 pendingChoices[].copyWalk.src.needsEffect	bool
 pendingChoices[].copyWalk.src.nextUntapSkips	array
 pendingChoices[].copyWalk.src.nextUntapSkips[]	object
+pendingChoices[].copyWalk.src.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].copyWalk.src.nextUntapSkips[].extra	number:int
 pendingChoices[].copyWalk.src.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.nextUntapSkips[].while	object
@@ -31851,6 +31866,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.namedTribe	
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.needsEffect	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].while	object
@@ -33897,6 +33913,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].namedTribe	strin
 pendingChoices[].replacementResume.event.millTail.run.planned[].needsEffect	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].while	object
@@ -34280,6 +34297,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].namedTribe	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].needsEffect	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].while	object
@@ -36251,6 +36269,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.namedTribe	strin
 pendingChoices[].replacementResume.event.tokenGroups[].template.needsEffect	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].while	object
@@ -37187,6 +37206,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].name
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].needsEffect	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while	object
@@ -37570,6 +37590,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].namedTr
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].needsEffect	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while	object
@@ -40803,6 +40824,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].namedTribe
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].needsEffect	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[]	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].extra	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].while	object
@@ -42710,6 +42732,7 @@ pendingChoices[].targetWalk.frame.source.namedTribe	string
 pendingChoices[].targetWalk.frame.source.needsEffect	bool
 pendingChoices[].targetWalk.frame.source.nextUntapSkips	array
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[]	object
+pendingChoices[].targetWalk.frame.source.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].extra	number:int
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while	object
@@ -43367,6 +43390,7 @@ pendingChoices[].triggerFrame.source.namedTribe	string
 pendingChoices[].triggerFrame.source.needsEffect	bool
 pendingChoices[].triggerFrame.source.nextUntapSkips	array
 pendingChoices[].triggerFrame.source.nextUntapSkips[]	object
+pendingChoices[].triggerFrame.source.nextUntapSkips[].cantBecomeUntapped	bool
 pendingChoices[].triggerFrame.source.nextUntapSkips[].extra	number:int
 pendingChoices[].triggerFrame.source.nextUntapSkips[].player	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.nextUntapSkips[].while	object
@@ -44186,6 +44210,7 @@ phasedOut.cards[].namedTribe	string
 phasedOut.cards[].needsEffect	bool
 phasedOut.cards[].nextUntapSkips	array
 phasedOut.cards[].nextUntapSkips[]	object
+phasedOut.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 phasedOut.cards[].nextUntapSkips[].extra	number:int
 phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
@@ -44794,6 +44819,7 @@ resolving.card.namedTribe	string
 resolving.card.needsEffect	bool
 resolving.card.nextUntapSkips	array
 resolving.card.nextUntapSkips[]	object
+resolving.card.nextUntapSkips[].cantBecomeUntapped	bool
 resolving.card.nextUntapSkips[].extra	number:int
 resolving.card.nextUntapSkips[].player	custom(uuid.UUID)
 resolving.card.nextUntapSkips[].while	object
@@ -45724,6 +45750,7 @@ seats[].attractionDeck.cards[].namedTribe	string
 seats[].attractionDeck.cards[].needsEffect	bool
 seats[].attractionDeck.cards[].nextUntapSkips	array
 seats[].attractionDeck.cards[].nextUntapSkips[]	object
+seats[].attractionDeck.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].attractionDeck.cards[].nextUntapSkips[].extra	number:int
 seats[].attractionDeck.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].attractionDeck.cards[].nextUntapSkips[].while	object
@@ -46227,6 +46254,7 @@ seats[].command.cards[].namedTribe	string
 seats[].command.cards[].needsEffect	bool
 seats[].command.cards[].nextUntapSkips	array
 seats[].command.cards[].nextUntapSkips[]	object
+seats[].command.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].command.cards[].nextUntapSkips[].extra	number:int
 seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
@@ -46615,6 +46643,7 @@ seats[].companion.cards[].namedTribe	string
 seats[].companion.cards[].needsEffect	bool
 seats[].companion.cards[].nextUntapSkips	array
 seats[].companion.cards[].nextUntapSkips[]	object
+seats[].companion.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].companion.cards[].nextUntapSkips[].extra	number:int
 seats[].companion.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].companion.cards[].nextUntapSkips[].while	object
@@ -47012,6 +47041,7 @@ seats[].emblems.cards[].namedTribe	string
 seats[].emblems.cards[].needsEffect	bool
 seats[].emblems.cards[].nextUntapSkips	array
 seats[].emblems.cards[].nextUntapSkips[]	object
+seats[].emblems.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].emblems.cards[].nextUntapSkips[].extra	number:int
 seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
@@ -47399,6 +47429,7 @@ seats[].graveyard.cards[].namedTribe	string
 seats[].graveyard.cards[].needsEffect	bool
 seats[].graveyard.cards[].nextUntapSkips	array
 seats[].graveyard.cards[].nextUntapSkips[]	object
+seats[].graveyard.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].graveyard.cards[].nextUntapSkips[].extra	number:int
 seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
@@ -47783,6 +47814,7 @@ seats[].hand.cards[].namedTribe	string
 seats[].hand.cards[].needsEffect	bool
 seats[].hand.cards[].nextUntapSkips	array
 seats[].hand.cards[].nextUntapSkips[]	object
+seats[].hand.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].hand.cards[].nextUntapSkips[].extra	number:int
 seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
@@ -48172,6 +48204,7 @@ seats[].junkyard.cards[].namedTribe	string
 seats[].junkyard.cards[].needsEffect	bool
 seats[].junkyard.cards[].nextUntapSkips	array
 seats[].junkyard.cards[].nextUntapSkips[]	object
+seats[].junkyard.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].junkyard.cards[].nextUntapSkips[].extra	number:int
 seats[].junkyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].junkyard.cards[].nextUntapSkips[].while	object
@@ -48565,6 +48598,7 @@ seats[].library.cards[].namedTribe	string
 seats[].library.cards[].needsEffect	bool
 seats[].library.cards[].nextUntapSkips	array
 seats[].library.cards[].nextUntapSkips[]	object
+seats[].library.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].library.cards[].nextUntapSkips[].extra	number:int
 seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
@@ -48989,6 +49023,7 @@ seats[].sideboard.cards[].namedTribe	string
 seats[].sideboard.cards[].needsEffect	bool
 seats[].sideboard.cards[].nextUntapSkips	array
 seats[].sideboard.cards[].nextUntapSkips[]	object
+seats[].sideboard.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 seats[].sideboard.cards[].nextUntapSkips[].extra	number:int
 seats[].sideboard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].sideboard.cards[].nextUntapSkips[].while	object
@@ -49635,6 +49670,7 @@ stack.cards[].namedTribe	string
 stack.cards[].needsEffect	bool
 stack.cards[].nextUntapSkips	array
 stack.cards[].nextUntapSkips[]	object
+stack.cards[].nextUntapSkips[].cantBecomeUntapped	bool
 stack.cards[].nextUntapSkips[].extra	number:int
 stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
