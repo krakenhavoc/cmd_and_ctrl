@@ -69,18 +69,10 @@ func init() {
 // the Stone's own activated ability has set the designation
 // (CR 702.186b).
 func theMindStoneEndStepFlicker() game.TriggeredAbility {
+	// "Under its OWNER's control", not "under your control" — the clause
+	// Thassa, Deep-Dwelling's own end-step blink does NOT print.
 	t := AtYourEndStep("The Mind Stone — blink another nonland permanent you control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			// Controller left at its zero value: "under its OWNER's
-			// control", not "under your control" — the clause Thassa,
-			// Deep-Dwelling's own end-step blink does NOT print.
-			return Flicker{Target: id}.Apply(ctx)
-		})
+		flickerFirstLegalTargetUnderOwner)
 	t.TargetsFrom = AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 		return TargetPermanent("up to one other target nonland permanent you control",
 			YouControl(), Nonland(), other).WithCount(0, 1)

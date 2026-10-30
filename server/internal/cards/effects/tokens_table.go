@@ -82,6 +82,8 @@ var tokenTable = map[string]game.Card{
 	"0/1 red Kobolds of Kher Keep":                                     {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                                   {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/4 colorless Wall artifact with defender":                        {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
+	"1/1 colorless Robot artifact with flying":                         {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"3/3 red Ape Villain with haste":                                   {Name: "Ape Villain", TypeLine: "Token Creature — Ape Villain", Power: 3, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	"0/4 colorless Wall with defender":                                 {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
 	"0/3 colorless Wall with defender and reach":                       {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 3, Keywords: []string{"defender", "reach"}},
 	"3/1 colorless Wall artifact with defender named Stone Boulder":    {Name: "Stone Boulder", TypeLine: "Token Artifact Creature — Wall", Power: 3, Toughness: 1, Keywords: []string{"defender"}},
