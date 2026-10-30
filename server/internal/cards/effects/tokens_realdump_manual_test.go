@@ -91,6 +91,12 @@ var knownUnmatchedTokens = map[string]string{
 	// The cost is that this row keeps the text fallback until someone
 	// pins an id through ADR 0078 decision 6's override seam.
 	"3/3 colorless Phyrexian Wurm artifact": "printed token card says \"Wurm\"; the engine follows the current oracle",
+
+	// Shuri, Vibranium Technologist (Marvel Super Heroes Commander) creates
+	// "a 1/1 colorless Robot Hero artifact creature token with flying". The
+	// only printed Robot Hero token card (tmsc) is 2/1, so no printing
+	// matches a 1/1; the template follows the card's oracle text (#4455).
+	"1/1 colorless Robot Hero artifact with flying": "the only printed Robot Hero token card is 2/1; Shuri, Vibranium Technologist's oracle text says 1/1",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
