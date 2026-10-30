@@ -34,13 +34,7 @@ func init() {
 	crew := WhenThisEnters("The Ruinous Wrecking Crew — choose up to X",
 		func(*game.Game, *game.StackItem) error { return nil })
 	crew.Modes = ChooseUpToX(
-		ModeDoing("Discard a card, then draw a card.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
-			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-				Player: item.Controller,
-				Source: item.SourceCardID,
-				N:      1,
-			}, theRuinousWreckingCrewDraw, nil)
-		}),
+		discardThenDrawBullet("Discard a card, then draw a card."),
 		ModeDoing("Target opponent loses 2 life.", TargetPlayer("target opponent", Opponent()),
 			func(_ *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
@@ -71,3 +65,16 @@ func init() {
 var theRuinousWreckingCrewDraw = game.RegisterDiscardThen("choose-cards/the-ruinous-wrecking-crew-draw", func(g *game.Game, r game.DiscardsDone) error {
 	return g.DrawNForEffect(r.Player, 1)
 })
+
+// discardThenDrawBullet is the modal bullet "Discard a card, then draw a
+// card." (The Ruinous Wrecking Crew, Hawkeye, Master Marksman): the
+// controller discards one (asked), then draws one even from an empty hand.
+func discardThenDrawBullet(label string) game.ModeOption {
+	return ModeDoing(label, nil, func(item *game.StackItem, ctx *Context, _ int) error {
+		return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+			Player: item.Controller,
+			Source: item.SourceCardID,
+			N:      1,
+		}, theRuinousWreckingCrewDraw, nil)
+	})
+}

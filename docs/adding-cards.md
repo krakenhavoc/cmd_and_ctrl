@@ -8471,6 +8471,17 @@ mana is paid; both prompts are restore points. `Goal` gets that ceiling
 (`XAsHighAsYouCan` for "more is better"); nil keeps a bot's mana. Set
 `InThisStep` when what X buys belongs to the step in progress (tokens
 that enter attacking).
+`Max` caps X: "you may pay {1} up to three times" is
+`MayPayX{Symbol: "{1}", Max: 3, …}` (Hawkeye, Master Marksman, #4579).
+When the "when you do" is modal ("choose up to that many"), register its
+body with `game.ReflexiveModalBody(key, modesFrom)` instead of
+`ReflexiveBody`: `modesFrom(sourceID, params)` builds the `ModeSpec`
+(`ChooseN("…", 0, p.Amount, ModeDoing(…), …)`) from the count the
+trigger was created with (`Params.Amount`), the bullets run in printed
+order, and the mode clause is re-derived at restore like a target clause.
+The mode and target prompts of any reflexive trigger are not restore
+points (no catalog row to name, trigger_frame_keyed.go D5); the count, the
+payment and the trigger once on the stack are.
 
 **Tokens "that are tapped and attacking"** with no player named are
 `CreateTokensAttackingYourChoice{Template, N, Tapped, Prefer, Label,
