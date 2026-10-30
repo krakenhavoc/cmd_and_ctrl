@@ -470,6 +470,23 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// BecameTapped counts, per OBJECT, how many times each permanent
+	// became tapped this turn (#4576, CR 701.26a): Captain America,
+	// Living Legend's "if it's the first time that creature has become
+	// tapped this turn". Keyed by ObjectTallyKey(id, epoch, "tapped"),
+	// so a permanent that left and came back is a new object with no
+	// taps of its own (CR 400.7) and a change of control keeps the
+	// count. Written by the tally listener from the two ways a creature
+	// becomes tapped: an EventTapCard (a cost, an effect, a mana
+	// ability, the sandbox), and an EventAttack whose attacker is
+	// tapped as the declaration is announced, because the engine taps
+	// an attacker without an EventTapCard (a vigilance attacker is not
+	// tapped, so it counts nothing). A permanent that ENTERS tapped
+	// never became tapped, so it counts nothing either. Read through
+	// TimesBecameTappedThisTurn. Additive within the snapshot schema:
+	// omitted when empty, flushed with the rest of the tally when the
+	// turn begins.
+	BecameTapped map[string]int `json:"becameTapped,omitempty"`
 	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
 	// 701.43): one record per exert, so a creature exerted in two
 	// combats has two. Written only by exertLocked; read through
@@ -569,6 +586,37 @@ func (g *Game) TimesAttackedThisTurn(cardID uuid.UUID) int {
 		}
 	}
 	return n
+}
+
+// noteBecameTappedLocked counts one tap of the object `cardID` names.
+// A fresh map every time, never a write into shared storage: the undo
+// clone holds the old one (#1238's reason).
+//
+// Caller must hold g.mu.
+func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
+	if cardID == uuid.Nil {
+		return
+	}
+	key := g.objectTallyKeyLocked(cardID, "tapped")
+	next := make(map[string]int, len(g.TurnTally.BecameTapped)+1)
+	maps.Copy(next, g.TurnTally.BecameTapped)
+	next[key]++
+	g.TurnTally.BecameTapped = next
+}
+
+// TimesBecameTappedThisTurn is how many times the OBJECT `cardID`
+// names now has become tapped this turn (#4576). "If it's the first
+// time that creature has become tapped this turn" is this reading 1
+// as the trigger fires (the tally listener runs ahead of the trigger
+// harvester). A permanent that came back from another zone this turn
+// is a new object and reads 0 until it taps (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) TimesBecameTappedThisTurn(cardID uuid.UUID) int {
+	if cardID == uuid.Nil || len(g.TurnTally.BecameTapped) == 0 {
+		return 0
+	}
+	return g.TurnTally.BecameTapped[g.objectTallyKeyLocked(cardID, "tapped")]
 }
 
 // AttackedThisTurn reports whether the object `cardID` names attacked
@@ -1585,6 +1633,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopRepeat = maps.Clone(t.LoopRepeat)
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
+	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -1699,8 +1748,20 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 				}
 			}
 		}
+	case EventTapCard:
+		// #4576: a permanent became tapped. Every EventTapCard emitter
+		// has already refused a permanent that was tapped (CR 701.26a:
+		// tapping a tapped permanent does nothing), so each one is a
+		// real change of state.
+		g.noteBecameTappedLocked(ev.CardID)
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		// #4576: declaring an attacker taps it unless it has vigilance
+		// (CR 508.1f), and the engine does that without an
+		// EventTapCard, so the attack is where the tap is counted.
+		if c := g.findCardByIDLocked(ev.CardID); c != nil && c.Tapped {
+			g.noteBecameTappedLocked(ev.CardID)
+		}
 		// #3192: what the attacker was as it was declared, for the
 		// conditional cast permissions ("during any turn you attacked with
 		// a token / a commander / a Rogue"). The creature is on the
