@@ -63,25 +63,5 @@ func coerciveRecruiterEffect(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	target := item.Targets[0].ID
-	if err := (GainControl{
-		Target:   target,
-		Duration: DurationUntilEndOfTurn(ctx),
-		Label:    "Coercive Recruiter — gain control until end of turn",
-	}).Apply(ctx); err != nil {
-		return err
-	}
-	if err := (UntapTarget{Target: target}).Apply(ctx); err != nil {
-		return err
-	}
-	if err := (GrantKeywordUntilEOT{
-		Target:   target,
-		Keywords: []string{"haste"},
-		Label:    "Coercive Recruiter — haste until end of turn",
-	}).Apply(ctx); err != nil {
-		return err
-	}
-	return untilEndOfTurn(ctx, target, nil,
-		"Coercive Recruiter — becomes a Pirate in addition to its other types",
-		game.AddSubtypesMod(ctx.TextSubtypes("Pirate")...))
+	return msc13ThreatenAndPaint(ctx, item.Targets[0].ID, "Coercive Recruiter", ctx.TextSubtype("Pirate"))
 }
