@@ -28,23 +28,31 @@ func init() {
 		OracleID:     "7c340a39-4ee0-4ba1-bb66-6674f8020fda",
 		Name:         "Gratuitous Violence",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
-					return false
-				}
-				ch, ok := damageSourceCharacteristics(ev, g)
-				return ok && hasFold(ch.Types, "Creature") && ch.Controller == src.Controller
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.DamageAmount *= 2
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Gratuitous Violence: double the damage",
-		}},
+		Replacements: []game.ReplacementEffect{doubleDamageFromCreaturesYouControl("Gratuitous Violence: double the damage")},
 	})
+}
+
+// doubleDamageFromCreaturesYouControl is the replacement "if a creature
+// you control would deal damage to a permanent or player, it deals double
+// that damage instead" (Gratuitous Violence, Absorbing Man and Titania),
+// labelled with the card's own name for the log.
+func doubleDamageFromCreaturesYouControl(label string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventDealDamage},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageSource == uuid.Nil {
+				return false
+			}
+			ch, ok := damageSourceCharacteristics(ev, g)
+			return ok && hasFold(ch.Types, "Creature") && ch.Controller == src.Controller
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.DamageAmount *= 2
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: label,
+	}
 }
