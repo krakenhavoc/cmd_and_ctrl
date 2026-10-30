@@ -174,14 +174,14 @@
     <button class="primary" onclick={submit} disabled={busy}>
       {#if busy}
         {#if looksLikeURL(source)}
-          fetching from {sourceHostname(source)}…
+          Fetching from {sourceHostname(source)}…
         {:else}
-          uploading…
+          Uploading…
         {/if}
       {:else if looksLikeURL(source)}
-        import deck
+        Import deck
       {:else}
-        upload deck
+        Upload deck
       {/if}
     </button>
   </div>

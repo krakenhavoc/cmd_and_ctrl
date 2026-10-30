@@ -2,7 +2,7 @@
   import { FILTER_FROM, filterRows, type PickerRow } from "../deckPicker";
 
   // DeckRadioList is the list half of both deck pickers (YourDecksPicker,
-  // PrebuiltDeckPicker): one line per deck, a height cap so a long
+  // PrebuiltDeckPicker): one line per deck (a coverage figure only when the deck has gaps), a height cap so a long
   // library scrolls inside the panel instead of pushing the paste box a
   // page down, and a filter box once the list is longer than the cap
   // shows. What each row says comes from deckPicker.ts; the selected
@@ -69,7 +69,7 @@
           </span>
         {/if}
         <span class="sub">{row.sub}</span>
-        {#if row.cov}
+        {#if row.cov && row.tone !== "full"}
           <span class="cov"><i class="dot dot-{row.tone}"></i>{row.cov}</span>
         {/if}
       </label>

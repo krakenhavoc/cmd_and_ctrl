@@ -145,7 +145,7 @@
         onclick={() => (expanded = !expanded)}
       >
         <Icon name="chevronRight" size={12} />
-        or play a pre-built deck ({decks.length})
+        Or play a pre-built deck ({decks.length})
       </button>
     {/if}
     {#if open}
@@ -206,7 +206,7 @@
           <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
         {/if}
         <button class="primary" onclick={install} disabled={busy || !selected}>
-          {busy ? "installing…" : current ? `play ${current.name}` : "play this deck"}
+          {busy ? "Seating…" : "Sit down with this deck"}
         </button>
       </div>
 
