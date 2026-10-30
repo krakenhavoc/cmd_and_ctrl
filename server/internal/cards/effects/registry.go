@@ -291,6 +291,7 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	checkCostOpensFlash(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.

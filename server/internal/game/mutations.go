@@ -1686,7 +1686,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if !g.LandPlayWindowOpenLocked(playerID, cardID) {
 			return ErrSorcerySpeedRequired
 		}
-	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
+	} else if !g.CastTimingForCastOpenLocked(playerID, card, src.Kind, grant, alt,
+		OptionalCostsOpenCastWindow(optionalCosts, params.OptionalCosts)) {
 		return ErrSorcerySpeedRequired
 	}
 	// #3156: whether the cast needed the card's own "as though it had

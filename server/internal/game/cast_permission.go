@@ -294,6 +294,17 @@ type PermissionFilter struct {
 	// widens the array.
 	CreatureTypesAny [2]string `json:"creatureTypesAny"`
 
+	// NoncreatureOrCreatureType is Scarlet Witch, Chaotic Avenger's "a Hero
+	// or noncreature spell": a card qualifies when it is not a creature, or
+	// when it has this creature type (the Hero creature). An OR of two
+	// properties, read from the card's effective characteristics like
+	// ArtifactOrColorlessOnly, so a non-Hero creature fails it and an
+	// instant or an Aura passes. It composes with every other clause as a
+	// further AND, and the empty string constrains nothing. A string rather
+	// than a nested filter list because PermissionFilter is compared with
+	// ==.
+	NoncreatureOrCreatureType string `json:"noncreatureOrCreatureType,omitempty"`
+
 	// NotOwnedByHolder is Tinybones, Bauble Burglar's "cards YOU DON'T
 	// OWN": a card whose owner is the permission's holder does not
 	// qualify. The holder is not known to the pure-data Matches, so the
@@ -399,6 +410,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
+		return false
+	}
+	if f.NoncreatureOrCreatureType != "" && c.IsCreature() && !cardHasCreatureType(c, f.NoncreatureOrCreatureType) {
 		return false
 	}
 	if (f.CreatureTypesAny != [2]string{}) && !cardHasAnyCreatureType(c, f.CreatureTypesAny) {
@@ -2224,7 +2238,8 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 // the label is the clause as printed ("cast a Zombie creature spell"),
 // and a player reading it should see the word the text now says.
 func relabelChangedWords(label string, was, now PermissionFilter) string {
-	pairs := [][2]string{{was.CreatureType, now.CreatureType}}
+	pairs := [][2]string{{was.CreatureType, now.CreatureType},
+		{was.NoncreatureOrCreatureType, now.NoncreatureOrCreatureType}}
 	for i := range was.CreatureTypesAny {
 		pairs = append(pairs, [2]string{was.CreatureTypesAny[i], now.CreatureTypesAny[i]})
 	}
