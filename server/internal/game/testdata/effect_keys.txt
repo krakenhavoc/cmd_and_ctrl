@@ -515,6 +515,7 @@ choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
+choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nothing
 choose choose-cards/oblivion-sower-lands
@@ -626,6 +627,7 @@ choose choose-source/shield
 choose engine/outside-pick-plain
 choose hama/exile-pick
 choose manifest-dread/pick
+choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/looked-at-rest-to-bottom
@@ -929,6 +931,7 @@ option option-pick/multiform-wonder-keyword
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/nesting-grounds-counter-kind
+option option-pick/nick-fury-spymaster-attacks
 option option-pick/null-chamber-opponent
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
@@ -1077,6 +1080,7 @@ payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/the-thing-double-counters
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/ultron-artificial-malevolence-copy
+payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
@@ -1492,6 +1496,7 @@ tail gifts-ungiven/choose
 tail gilgamesh-master-at-arms/rest-then-attach-trigger
 tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail glimmer-of-genius/then
+tail glorious-purpose/after-exile
 tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
@@ -1585,6 +1590,7 @@ tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
+tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail now-for-wrath/vigilance-and-temptation
 tail oona-queen-of-the-fae/after-mill

@@ -47,6 +47,13 @@ type EntryCountersIfType struct {
 	// lowercase as Card.HasCardType reads it: "creature",
 	// "planeswalker".
 	CardType string
+	// Subtype is the subtype the entering permanent must have, in
+	// the casing the card's type line prints ("Hero"; Heroic Return's
+	// "If a Hero enters this way"), read from the permanent as it would
+	// exist on the battlefield (CR 614.12), so a static that makes it a
+	// Hero there counts. When CardType is also set the permanent must
+	// have both. Empty asks nothing about subtypes.
+	Subtype string `json:"Subtype,omitempty"`
 	// Counter is the counter kind (CounterPlusOne, CounterLoyalty).
 	Counter string
 	// N is how many. Zero or less adds nothing.
@@ -81,10 +88,11 @@ func (g *Game) seedEntryCountersIfTypeLocked(clauses []EntryCountersIfType, ev *
 		perm = c
 	}
 	for _, cl := range clauses {
-		if cl.N <= 0 || cl.Counter == "" || cl.CardType == "" {
+		if cl.N <= 0 || cl.Counter == "" || (cl.CardType == "" && cl.Subtype == "") {
 			continue
 		}
-		if perm.HasCardType(cl.CardType) {
+		if (cl.CardType == "" || perm.HasCardType(cl.CardType)) &&
+			(cl.Subtype == "" || perm.HasSubtype(cl.Subtype)) {
 			ev.AddCounterAtETB(cl.Counter, cl.N)
 		}
 	}
