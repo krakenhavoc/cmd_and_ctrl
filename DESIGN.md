@@ -317,7 +317,8 @@ no motion, and a click or Escape skips a cue that is playing.
 | The brand | `Wordmark.svelte` (`bar`, `header`, `hero`) | The mark's Cs are `--accent` and its diamond `--fg`, so it follows the skin. Keep `client/public/icons` in step (`client/tools/gen-icons.sh`). |
 | A full-screen dialog not about the turn (settings, bug report, deck import, zone browser) | `.prompt-backdrop` + `.prompt-modal`, and mount `<ModalLayer />` inside its `{#if}` | Scrim with 8px blur, z 200, max 760px, `--radius-xl`, `--shadow-lg`. Body family: `.prompt-title`, `.prompt-src`, `.prompt-hint`, `.prompt-options` / `.prompt-opt`, `.prompt-count`, `.prompt-foot`. |
 | Anything the game asks during play | An action-dock request: inline, or a `DockSheet` that grows up from the dock | **Never a centred modal** (ADR 0111 §2–3). The dock owns Enter / Escape; its primary sits in the corner. Register `<ModalLayer kind="sheet" />`. |
-| A copy-plus-rare-action control | `SplitButton.svelte` | The wide part does the everyday thing, the narrow part the rare one. |
+| A deck's colour identity | `IdentityPips.svelte` | WUBRG letters on discs of the fixed `--identity-*` tokens, one image with one name. A seat tile's status row (ADR 0212). |
+| A short list of actions from a button | `ContextMenu.svelte` with `align="end"` under the button | Items may carry an icon, a line that says what each does, and a `group` heading (the lobby card's Invite menu, ADR 0212 §4). The same arrow keys, Escape and focus return as the right-click menu. |
 | A first-use tip | a `*.hint.ts` beside the feature, drawn by `HintLayer` / `TipCard` | Card plus ring, no scrim, never over the dock, a decision or an open dialog (ADR 0125 §3.5–3.6). |
 | A keyboard hint | `.kbd` | Mono key cap. Dock buttons also carry `aria-keyshortcuts`. |
 | An AI seat | the bot chip (dashed, seat-tinted, robot glyph) or `AgentChip.svelte` (solid violet, spark glyph) | Never swap their looks (ADR 0122 §7). |

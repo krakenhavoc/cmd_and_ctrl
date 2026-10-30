@@ -157,11 +157,20 @@ registered, or when this file is stale.
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
-| `copyInvite` | `Copy invite` | button | text | `routes/Lobby.svelte` | the wide part of a lobby table's invite split button: copies the player invite link; the lobby.create hint names it |
-| `newInviteLink` | `new invite link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the invite split button: mints a new player invite after a confirm, then copies it |
-| `copySpectatorLink` | `Copy spectator link` | button | text | `routes/Lobby.svelte` | the wide part of a table's spectator split button: copies the read-only link |
-| `newSpectatorLink` | `new spectator link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the spectator split button: mints a new spectator link after a confirm, then copies it |
-| `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's rules line, e.g. 30 life · no undos: opens the table settings panel (read-only for a non-host) |
+| `seatTile` | `seat <n>: <name>` (starts with `seat `) | listitem | aria | `lib/components/SeatTile.svelte` | a lobby table's seat tile, numbered from 1 as people count; an open one is `seat <n>: open` (ADR 0212 §1) |
+| `readinessLine` | `ready <n> of <seated>` (starts with `ready `) | group | aria | `routes/Lobby.svelte` | a lobby table's readiness line, in its footer: how many of the seated players have a deck in (ADR 0212 §2) |
+| `chooseYourDeck` | `Choose your deck` | button | text | `lib/tablesPage.ts`<br>`routes/Lobby.svelte` | a lobby table's primary while your seat has no deck: opens the deck picker under the seats (ADR 0212 §2) |
+| `sitDownWithThisDeck` | `Sit down with this deck` | button | text | `lib/components/YourDecksPicker.svelte`<br>`lib/components/PrebuiltDeckPicker.svelte` | seats the deck picked in the saved-deck or the pre-built list (#4655) |
+| `startGame` | `Start game · <n> players` (starts with `Start game`) | button | text | `lib/tablesPage.ts` | a lobby table's primary once every seated player has a deck, for whoever may start it; plain Start game at four (ADR 0212 §2) |
+| `waitingFor` | `Waiting for <who>` (starts with `Waiting for `) | button | text | `lib/tablesPage.ts` | a lobby table's disabled primary: Waiting for 2 players, Waiting for players, Waiting for <host> to start (ADR 0212 §2) |
+| `openTable` | `Open table` | button | text | `lib/tablesPage.ts`<br>`routes/Lobby.svelte` | opens a lobby table on the board: the primary for a seat held elsewhere and for the admin, otherwise a ghost button in the footer and a right-click item |
+| `inviteButton` | `Invite` | button | text | `routes/Lobby.svelte`<br>`lib/components/SeatTile.svelte` | opens a table's Invite menu: the footer's Invite ▾, and the same on each open seat (ADR 0212 §4) |
+| `inviteMenu` | `invite to <table name>` (starts with `invite to `) | menu | aria | `routes/Lobby.svelte` | a table's Invite menu: the two links, Invite by DM, #looking-for-game and Make new links (ADR 0212 §4) |
+| `copyInvite` | `Copy invite` | menuitem | text | `routes/Lobby.svelte` | copies a lobby table's player invite link, from the Invite menu and the right-click menu |
+| `newInviteLink` | `New invite link…` | menuitem | text | `routes/Lobby.svelte` | mints a new player invite after a confirm, then copies it; the current link stops working |
+| `copySpectatorLink` | `Copy spectator link` | menuitem | text | `routes/Lobby.svelte` | copies a table's read-only link, from the Invite menu and the right-click menu |
+| `newSpectatorLink` | `New spectator link…` | menuitem | text | `routes/Lobby.svelte` | mints a new spectator link after a confirm, then copies it; the current link stops working |
+| `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's settings summary, life and undos and then what else differs: opens the table settings panel (read-only for a non-host) |
 | `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
 | `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
