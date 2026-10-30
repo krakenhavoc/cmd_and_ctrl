@@ -93,7 +93,7 @@ import "github.com/google/uuid"
 // count now comes from the landed outcome (destroyedThisWayLocked),
 // and the caller that needs it waits for any answer through
 // DestroyPermanentsKeyedForEffect. A commander is destroyed; a creature
-// that an "exile it instead" replacement removed is not (CR 701.7a).
+// that an "exile it instead" replacement removed is not (CR 701.8a).
 //
 // #866 finished that: exile and bounce were still counting the attempt
 // rather than the arrival, and Settle the Wreckage was searching for a
@@ -101,7 +101,7 @@ import "github.com/google/uuid"
 // command zone. Rather than a third and fourth copy of the sequencing,
 // the three verbs now share ONE batch body (below), parameterised by
 // the zoneRoute each leg takes and by what "landed" means for it:
-// CR 701.7a plus the command-zone carry-over for a destruction,
+// CR 701.8a plus the command-zone carry-over for a destruction,
 // CR 400.7's arrived-object for everything else.
 
 // beginSimultaneousExitLocked publishes `ids` as one simultaneous
@@ -257,7 +257,7 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOption
 // cardID counts as a DESTRUCTION — the question "for each creature
 // destroyed this way" is asking.
 //
-// CR 701.7a: "To destroy a permanent, move it from the battlefield to
+// CR 701.8a: "To destroy a permanent, move it from the battlefield to
 // its owner's graveyard." So the answer is read off the LANDED
 // outcome, not off the attempt, and there are three of them:
 //
@@ -271,7 +271,7 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOption
 //     battlefield had its destruction cancelled outright
 //     (indestructible granted mid-window, "it isn't destroyed"), and
 //     one that a replacement sent somewhere else — exile, hand,
-//     library — was never put into a graveyard, so by CR 701.7a it was
+//     library — was never put into a graveyard, so by CR 701.8a it was
 //     not destroyed however thoroughly it left.
 //
 // Read off the live board rather than off the event, because that is
@@ -311,7 +311,7 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 //     (ADR 0013 §5j), and nothing ever left.
 //
 // This is where sacrifice PARTS COMPANY with destroy, and the two
-// rules are why. CR 701.7a defines a destruction BY the graveyard, so
+// rules are why. CR 701.8a defines a destruction BY the graveyard, so
 // a permanent a replacement sent to exile was not destroyed however
 // thoroughly it left (destroyedThisWayLocked, #863) — the command zone
 // is destroy's one declared carry-over. CR 701.17a names the same
@@ -342,7 +342,7 @@ func (g *Game) sacrificedThisWayLocked(cardID uuid.UUID) bool {
 // returned this way" does not see it. A leg the CR 614 window cancelled,
 // and one whose prompt was abandoned (#865), never moved at all.
 //
-// Destroy is the one route that does NOT use this, because CR 701.7a
+// Destroy is the one route that does NOT use this, because CR 701.8a
 // defines destruction by the move to a graveyard and the engine
 // declares the command zone a destruction as well (ADR 0013 §5i).
 // destroyedThisWayLocked holds that rule; routeLegLandedLocked picks
@@ -660,7 +660,7 @@ func (g *Game) routeLegNothingToDoLocked(r zoneRoute, id uuid.UUID) bool {
 
 // routeLegLandedLocked answers "did this leg go THIS way", the
 // question every "for each … this way" clause is asking. One rule per
-// verb, each declared in one place: CR 701.7a plus the command-zone
+// verb, each declared in one place: CR 701.8a plus the command-zone
 // carry-over for a destruction, CR 400.7's arrived-object for every
 // other destination.
 //

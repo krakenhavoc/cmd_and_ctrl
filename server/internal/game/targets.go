@@ -534,6 +534,22 @@ type TargetSpec struct {
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
 
+	// ControlledByEventActor is "…that player controls" where that player is
+	// the triggering event's ACTOR, the controller of whatever caused it
+	// (Black Bolt, Inhuman King: "Whenever Black Bolt becomes the target of
+	// a spell or ability an opponent controls, destroy target nonland
+	// permanent that player controls", #4707). ControlledByThatPlayer's twin
+	// for an event whose Target is the thing acted on and whose Actor is the
+	// player to answer: on EventBecomesTarget the Target is Black Bolt and
+	// the Actor controls the targeting spell or ability. A candidate
+	// controlled by anyone else is not offered, announced or kept at
+	// resolution.
+	//
+	// DATA, judged in sourceAdmits for ControlledByThatPlayer's reasons, and
+	// like it admits NOTHING on a walk with no fired trigger or an event
+	// naming no Actor. Build it with effects.ControlledByThatEventActor.
+	ControlledByEventActor bool
+
 	// OpponentSlot is "for each opponent, … target … that player
 	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
 	// #4128): the clause belongs to the n-th seat (1-based) after the
@@ -849,6 +865,17 @@ type TargetSpec struct {
 	// effects.FromASingleGraveyard.
 	Same *TargetSameness
 
+	// Total is the third set rule (#4616): the picks' total of one
+	// statistic may not exceed a ceiling — "up to two target creatures
+	// with total mana value 6 or less" (The Super Hero Civil War). The
+	// same readers answer it, each with a "total" branch: the announce
+	// gate sums the set, the CR 608.2b re-check sums the survivors
+	// (totalRuleBrokenLocked), the enumerator stops a set at the
+	// ceiling and the view ships each candidate's value. Nil — every
+	// clause but those — means no such rule. Build it with
+	// effects.TotalManaValueAtMost.
+	Total *TargetTotal
+
 	// ManaValueAtMostX is "with mana value X or less", X being the X
 	// the announcement chose at CR 601.2b — which is BEFORE targets
 	// are chosen at CR 601.2c, so the bound is known by the time any
@@ -1057,6 +1084,14 @@ func (s *TargetSpec) EachDifferent(d *TargetDifference) *TargetSpec {
 // receiver, as EachDifferent does.
 func (s *TargetSpec) AllShare(r *TargetSameness) *TargetSpec {
 	s.Same = r
+	return s
+}
+
+// WithTotal attaches the total set rule to the clause (#4616) and
+// returns it — "with total mana value 6 or less". Mutates and returns
+// the receiver, as EachDifferent does.
+func (s *TargetSpec) WithTotal(r *TargetTotal) *TargetSpec {
+	s.Total = r
 	return s
 }
 
@@ -1331,7 +1366,12 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 			// picks that survived their own re-check — see
 			// setRuleConflictLocked for which reading and why.
 			// #1807: so is one whose picks must all share a key.
-			return (clause.Different == nil && clause.Same == nil) || !g.setRuleConflictLocked(item, clause, ref)
+			if (clause.Different != nil || clause.Same != nil) && g.setRuleConflictLocked(item, clause, ref) {
+				return false
+			}
+			// #4616: and one whose surviving picks must stay within a
+			// total — when they no longer do, none of them is legal.
+			return clause.Total == nil || !g.totalRuleBrokenLocked(item, clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}
@@ -1764,6 +1804,17 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 	return that != uuid.Nil && c.Controller == that
 }
 
+// eventActorAdmits is ControlledByEventActor's gate: true without the flag,
+// and with it only a candidate controlled by the player the triggering event
+// names as its Actor. No trigger, or an event with no Actor, admits nothing.
+func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByEventActor {
+		return true
+	}
+	who := triggerActorOf(src)
+	return who != uuid.Nil && c.Controller == who
+}
+
 // chooserAdmits is ControlledByChooser's gate (#2055): true without the
 // flag; with it, a candidate controlled by the opponent bound as the
 // clause's chooser, or -- before one is bound -- by any player other
@@ -1801,7 +1852,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

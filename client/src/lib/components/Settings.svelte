@@ -21,6 +21,7 @@
   import { currentTablePace } from "../tableSettings";
   import type { StackStyle } from "../stackLane";
   import type { TableLayout } from "../tableLayout";
+  import type { OpponentCardFacing } from "../opponentCardFacing";
   import type { EffectsMode } from "../tableEffects";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
@@ -880,6 +881,29 @@
               it open.
             </p>
 
+            <!-- #4555 -->
+            <label class="slider-row">
+              <span>{L.opponentCardFacing}</span>
+              <select
+                value={$settings.display.opponentCardFacing}
+                onchange={(e) =>
+                  change(
+                    "display",
+                    "opponentCardFacing",
+                    e.currentTarget.value as OpponentCardFacing,
+                  )}
+              >
+                <option value="them">Facing them, as at a real table (default)</option>
+                <option value="me">Facing me</option>
+              </select>
+              {#if isFresh("display.opponentCardFacing")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              The cards on the opponents seated across the top are drawn upside down by default,
+              facing their owner. Facing me draws them upright so the art, text, power and
+              toughness, and counters read the way yours do. The board itself does not move.
+            </p>
+
             <label class="slider-row">
               <span>Hand layout</span>
               <select
@@ -965,6 +989,18 @@
               />
               Show card art in your hand (hover for the full card)
               {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
+            </label>
+
+            <!-- #4556: motion stops under reduced motion or with animations off
+                 whatever this says; the still cues follow it. -->
+            <label>
+              <input
+                type="checkbox"
+                checked={$settings.display.keywordFlourishes}
+                onchange={(e) => change("display", "keywordFlourishes", e.currentTarget.checked)}
+              />
+              {L.keywordFlourishesToggle}
+              {#if isFresh("display.keywordFlourishes")}<span class="saved">✓ saved</span>{/if}
             </label>
 
             <!-- ADR 0179: only where the operator configured a shop. -->
@@ -1225,6 +1261,19 @@
                   Instants and flash
                   {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
                 </label>
+                <!-- #2877: a narrowing of the instants above, so it does
+                     nothing (and is disabled) while they are off. -->
+                <label class="response-sub">
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondValueInstants}
+                    disabled={!$settings.gameplay.respondInstants}
+                    onchange={(e) =>
+                      change("gameplay", "respondValueInstants", e.currentTarget.checked)}
+                  />
+                  {L.respondValueInstantsToggle}
+                  {#if isFresh("gameplay.respondValueInstants")}<span class="saved">✓</span>{/if}
+                </label>
                 <label>
                   <input
                     type="checkbox"
@@ -1259,7 +1308,9 @@
                 <p class="help">
                   Auto-pass stops for an opponent's spell, an attack or an opponent's end step only
                   when you have one of these. Mana abilities and land drops never count. In combat,
-                  crewing, animating a land or granting a keyword counts as a targeted ability.
+                  crewing, animating a land or granting a keyword counts as a targeted ability. A
+                  value instant, like Opt or Brainstorm, counts in combat and at an opponent's end
+                  step, and on an opponent's spell only when you tick it above.
                 </p>
               </fieldset>
 
@@ -2053,6 +2104,10 @@
   }
   .step-stops {
     margin-top: 12px;
+  }
+  /* #2877: a response category that narrows the one above it. */
+  .response-sub {
+    padding-inline-start: 1.5em;
   }
   /* ADR 0143 §3.1: the Gameplay tab's sections and its Advanced
      <details>. */

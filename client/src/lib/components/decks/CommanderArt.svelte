@@ -3,7 +3,8 @@
   // (ADR 0158 §2), with the artist credited on the art (#2982): an art
   // crop drops Scryfall's artist line, so we print it. An image that
   // fails reports it and draws nothing, so the card falls back to its
-  // plain band rather than a broken image.
+  // plain band rather than a broken image. Spans only: the deck picker's
+  // tiles and your seat's tile draw it inside a label or a button.
   import { creditText, useArtist } from "../../artistCredit.svelte";
   import { scryfallImageURL } from "../../cardImage";
 
@@ -15,7 +16,7 @@
 </script>
 
 {#if !failed}
-  <div class="crop" title={artist.value ? `${name} (${creditText(artist.value)})` : name}>
+  <span class="crop" title={artist.value ? `${name} (${creditText(artist.value)})` : name}>
     <img
       src={scryfallImageURL(scryfallId, "art_crop")}
       alt=""
@@ -29,12 +30,13 @@
     {#if artist.value}
       <span class="art-credit" aria-hidden="true">{creditText(artist.value)}</span>
     {/if}
-  </div>
+  </span>
 {/if}
 
 <style>
   .crop {
     position: relative;
+    display: block;
     flex: 1 1 0;
     min-width: 0;
     height: 100%;

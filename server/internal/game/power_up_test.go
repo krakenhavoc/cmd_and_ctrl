@@ -89,7 +89,7 @@ func TestAPowerUpAbilityCanBeActivatedOnlyOnce(t *testing.T) {
 		t.Errorf("pool = %v, want all five floating — a refused activation pays nothing", me.ManaPool)
 	}
 	var used bool
-	g.WithWriteLock(func() { used = g.PowerUpUsed(src, powerUpProbe()) })
+	g.WithWriteLock(func() { used = g.PowerUpUsed(g.findCardByIDLocked(src), powerUpProbe()) })
 	if !used {
 		t.Error("PowerUpUsed = false after the activation")
 	}
@@ -247,7 +247,7 @@ func TestAPowerUpStaysUsedAcrossASnapshotRoundTrip(t *testing.T) {
 
 	_, restored := roundTrip(t, g)
 	var used bool
-	restored.WithWriteLock(func() { used = restored.PowerUpUsed(src, powerUpProbe()) })
+	restored.WithWriteLock(func() { used = restored.PowerUpUsed(restored.findCardByIDLocked(src), powerUpProbe()) })
 	if !used {
 		t.Fatal("the restored game reads the power-up as unused")
 	}

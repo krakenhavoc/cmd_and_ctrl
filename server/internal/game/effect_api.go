@@ -2277,12 +2277,12 @@ type SearchLibrarySpec struct {
 	// An Optional search's prompt also carries a "don't search"
 	// answer (DeclineSearchLibrary, #4134). That is a different
 	// thing from answering with no cards: a search that finds nothing
-	// is still a search (CR 701.19), so the library is shuffled and
+	// is still a search (CR 701.23), so the library is shuffled and
 	// "whenever a player searches" triggers fire; a search the player
 	// declined never happened, so none of that does, and the library
 	// keeps its order. Only the instruction after the search
 	// (Then) still runs. The question is asked before the list is
-	// shown (looking is searching, CR 701.19): the prompt opens
+	// shown (looking is searching, CR 701.23a): the prompt opens
 	// undecided, "search" reveals the candidates, and from then on
 	// there is no decline.
 	Optional bool
@@ -2799,7 +2799,7 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches, handMatches []uuid.UUID) {
 	// #4134: a "you may search" is asked BEFORE the search begins, for
 	// every optional search. Looking through the library IS searching
-	// (CR 701.19), so showing the candidates beside a "don't search"
+	// (CR 701.23a), so showing the candidates beside a "don't search"
 	// button would be a free look at hidden information that never
 	// shuffles. The prompt therefore opens "undecided": no candidates
 	// shown, no knowledge granted, no control recorded, and the only

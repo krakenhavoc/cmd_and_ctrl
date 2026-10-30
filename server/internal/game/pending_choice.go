@@ -1051,6 +1051,14 @@ type PendingChoice struct {
 	// affordability when it runs, because life can move between the question and the answer.
 	LifeCost int
 
+	// PoisonCost is the poison counters a PendingChoiceConfirm's ACCEPT branch
+	// gives the chooser (#4613, "Ward—Get five poison counters"). It is
+	// LifeCost's sibling, on the choice and the wire for the same reason: a
+	// policy holding only the wire payload would otherwise price "get five
+	// poison counters" like "shuffle your library". The engine does not
+	// place them here; the frame's accept branch does. Zero is no counters.
+	PoisonCost int
+
 	// DeclineEndsLoop marks a confirm whose ACCEPT would continue a loop
 	// the table is already in (#2040): Channel Harm asked to deal damage
 	// that it prevented from another Channel Harm. Declining is how the
@@ -3856,8 +3864,9 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// side). That is CR 603.3d's "no legal targets" too, and a
 		// prompt for it could never be answered. #1807: so can one
 		// whose picks must share a key, when no key group is big
-		// enough.
-		if (clause.Different != nil || clause.Same != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
+		// enough. #4616: and one whose picks must stay within a total,
+		// when not enough of them fit together.
+		if (clause.Different != nil || clause.Same != nil || clause.Total != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
 			return
 		}
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
@@ -4565,6 +4574,18 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if frame == nil {
 		return
 	}
+	// #4566: a mana branch of an either payment (Titania's "Ward—Discard
+	// a card or pay {2}") is paid as the prompt's own mana is, at the
+	// branch's cost, so the pool, the auto-tapper and an unfundable
+	// "yes" all behave as they do for a plain mana pay-unless.
+	manaCost := frame.cost
+	if action != nil && action.Kind == PayActionMana {
+		parsed, err := ParseCost(action.Mana)
+		if err != nil {
+			apply = false
+		}
+		manaCost, action = parsed, nil
+	}
 	if choice.GuardsStackItem != uuid.Nil && g.StackItemForEffect(choice.GuardsStackItem) == nil {
 		g.runStateChecksLocked()
 		return
@@ -4595,7 +4616,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	paid := false
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
+			cost := WaterbendReduced(manaCost, 0, len(tapIDs))
 			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)

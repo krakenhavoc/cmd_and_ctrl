@@ -158,6 +158,30 @@ type CastTimingRule struct {
 	// Declaration-only: castTimingVerdictLocked reads it on the derived
 	// half, and a stored grant never carries it.
 	FirstCreatureSpellThisTurn bool `json:"firstCreatureSpellThisTurn,omitempty"`
+
+	// OpponentCastASpellThisTurn narrows a DECLARATION to the turns in
+	// which an opponent of the source's controller has cast a spell:
+	// Captain Mar-Vell, Space-Born's "as long as an opponent has cast a
+	// spell this turn, you may cast spells as though they had flash". It
+	// reads the other players' per-turn cast tallies LIVE, on every
+	// query, so a Mar-Vell that enters after the opponent's spell is
+	// covered at once and the statement lapses with the turn (the tallies
+	// are cleared as the next turn begins). A spell counts once it has
+	// been cast (CR 601.2i), so Mar-Vell may answer the very spell that
+	// opened the window. A player who has left the game is no longer an
+	// opponent.
+	// Declaration-only, like FirstCreatureSpellThisTurn: a stored grant
+	// never carries it.
+	OpponentCastASpellThisTurn bool `json:"opponentCastASpellThisTurn,omitempty"`
+
+	// SourceTapped narrows a DECLARATION to the time its source permanent is
+	// tapped: Quicksilver, Speedster's "as long as Quicksilver is tapped,
+	// you may cast spells as though they had flash". It reads the
+	// permanent's tapped status LIVE, on every query, so the window opens
+	// the moment it taps (an attacker without vigilance, a mana ability) and
+	// shuts the moment it untaps or leaves the battlefield. Declaration-only,
+	// like FirstCreatureSpellThisTurn: a stored grant never carries it.
+	SourceTapped bool `json:"sourceTapped,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -227,6 +251,8 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	rule.Affects = TimingAffectsYou
 	rule.Label = ""
 	rule.FirstCreatureSpellThisTurn = false
+	rule.OpponentCastASpellThisTurn = false
+	rule.SourceTapped = false
 	p.Statics = append(p.Statics, PlayerStatic{
 		Timing:   rule,
 		Source:   source,
@@ -329,10 +355,35 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 					continue
 				}
 			}
+			if t.OpponentCastASpellThisTurn && !g.opponentCastASpellThisTurnLocked(src.Controller) {
+				continue
+			}
+			if t.SourceTapped && !src.Tapped {
+				continue
+			}
+			// A creature type the filter names is a word of the
+			// granting permanent's text (CR 612.2, #4005): Blur of
+			// Heroism's "Hero spells".
+			t.Filter = t.Filter.ThroughTextOf(src)
 			v.fold(t, card, zone)
 		}
 	}
 	return v
+}
+
+// opponentCastASpellThisTurnLocked reports whether any opponent of `you`
+// still in the game has cast a spell this turn: the per-turn tally
+// (Game.SpellsCastThisTurn) of every other seat. Caller must hold g.mu.
+func (g *Game) opponentCastASpellThisTurnLocked(you uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p == nil || p.ID == you || p.Eliminated {
+			continue
+		}
+		if g.CastTallyFor(p.ID).Total > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // castTimingAffects expands a DECLARATION's scope against one source
@@ -415,8 +466,15 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 // per-offer walk and the view's per-offer `timing_closed`.
 //
 // Caller must hold g.mu (read or write).
+//
+// A sneak offer (CR 702.190a, #4586) opens the same instant-speed window
+// and is then shut everywhere but its caster's own declare blockers step
+// (sneak.go).
 func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
-	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash, true)
+	if offer != nil && offer.Sneak && !g.sneakWindowOpenLocked(playerID) {
+		return false
+	}
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow(), true)
 }
 
 // ownFlash is false only for castUsesOwnFlashLocked's question: would

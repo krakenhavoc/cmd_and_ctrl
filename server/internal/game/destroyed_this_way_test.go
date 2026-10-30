@@ -17,7 +17,7 @@ import (
 // leg whose exit is merely PAUSED on a "may" replacement prompt and has
 // not happened yet.
 //
-// The rule, per CR 701.7a ("to destroy a permanent, move it from the
+// The rule, per CR 701.8a ("to destroy a permanent, move it from the
 // battlefield to its owner's graveyard"): a graveyard is a
 // destruction, the command zone is counted as one too (the engine's
 // declared carry-over from the CR 903.9 replacement, see
@@ -108,10 +108,10 @@ func TestDestroyedThisWayCountsOnlyWhatWasDestroyed(t *testing.T) {
 	}
 }
 
-// TestAnExiledDestructionIsNotADestruction states the CR 701.7a call
+// TestAnExiledDestructionIsNotADestruction states the CR 701.8a call
 // on its own, because it is the half that is a judgement rather than
 // an obvious bug: the permanent really did leave the battlefield, and
-// it still pays out nothing. CR 701.7a defines destroying as moving
+// it still pays out nothing. CR 701.8a defines destroying as moving
 // the permanent to its owner's GRAVEYARD; a replacement that sends it
 // somewhere else means that never happened.
 func TestAnExiledDestructionIsNotADestruction(t *testing.T) {
@@ -130,7 +130,7 @@ func TestAnExiledDestructionIsNotADestruction(t *testing.T) {
 
 	if *ran != 1 || len(*got) != 0 {
 		t.Errorf("destroyed this way = %v (continuation ran %d times), want none — "+
-			"the permanent left the battlefield but was never put into a graveyard (CR 701.7a)", *got, *ran)
+			"the permanent left the battlefield but was never put into a graveyard (CR 701.8a)", *got, *ran)
 	}
 	if !g.Exile.Contains(exiled) {
 		t.Error("the permanent is in exile")

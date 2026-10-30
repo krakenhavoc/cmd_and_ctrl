@@ -16,20 +16,26 @@ import {
 } from "./s19-helpers";
 
 // #3270 / CR 608.2g: "you may cast a spell from your hand without paying its
-// mana cost" casts the spell NOW.
+// mana cost" casts the spell NOW. CR 608.2g: "If an effect specifically
+// instructs or allows a player to cast a spell during resolution, they do so
+// by following the steps in rules 601.2a-i, except no player receives
+// priority after it's cast."
 //
 // Surtland Elementalist ("whenever this creature attacks, you may cast an
 // instant or sorcery spell from your hand without paying its mana cost") is
 // the staging card: its trigger asks in the declare attackers step, where a
-// sorcery can not be cast on its own. The pick used to leave the player a
-// one-shot permission to find and use by hand; now picking the card starts the
-// cast, targets and all, and the player never touches the card in their hand.
+// sorcery can not be cast on its own. Since #4250 (#4282) the offer is the
+// resolution_cast prompt, asked while the trigger is still resolving: a sheet
+// in the dock that lists every way to cast each card on offer, targets
+// included, and "Keep it in your hand". Nobody gets priority until it is
+// answered, and the player never touches the card in their hand.
 //
-//   1. Divination (a sorcery, no target): pick it, and it is on the stack at
-//      once. Nobody clicked the card. It resolves and draws two.
-//   2. Lightning Bolt (an instant with a target): pick it, and the board is in
-//      targeting mode for it; clicking the defender's creature casts it.
-//   3. Picking none casts nothing and leaves both cards in hand.
+//   1. Divination (a sorcery, no target): its cast in the sheet puts it on
+//      the stack at once, in the declare attackers step. Nobody clicked the
+//      card. It resolves and draws two.
+//   2. Lightning Bolt (an instant with a target): the sheet offers a cast at
+//      each legal target; the one at the defender's creature casts it there.
+//   3. "Keep it in your hand" casts nothing and leaves the card in hand.
 
 const ELEMENTALIST = "Surtland Elementalist";
 const DIVINATION = "Divination";
@@ -52,6 +58,14 @@ function makeDeck(): string {
   );
 }
 
+// offerOpen: the Elementalist's free cast is being offered to `chooser`,
+// inside the trigger's resolution (the resolution_cast prompt, #4250).
+function offerOpen(v: SnapshotView, chooser: string): boolean {
+  return (v.pending_choices ?? []).some(
+    (c) => c.kind === "resolution_cast" && c.chooser === chooser && c.may_cast_keyword === "hand_cast",
+  );
+}
+
 interface Staged {
   attacker: JoinedPlayer;
   defender: JoinedPlayer;
@@ -60,7 +74,7 @@ interface Staged {
 
 // stage seats two players, puts the Elementalist on the attacker's side and
 // the Bears on the defender's, seeds the attacker's hand, declares the attack
-// and passes priority until the attacker's free-cast pick is open.
+// and passes priority until the attacker's free-cast offer is open.
 async function stage(
   browser: Browser,
   request: APIRequestContext,
@@ -112,12 +126,12 @@ async function stage(
     target: defender.playerID,
   });
 
-  // Pass priority until the attack trigger resolves into the free-cast pick.
+  // Pass priority until the attack trigger resolves into the free-cast offer.
   const deadline = Date.now() + 60_000;
   for (;;) {
     const v = admin.snapshot();
-    if ((v.pending_choices ?? []).some((c) => c.kind === "choose_cards")) break;
-    if (Date.now() > deadline) throw new Error("the free-cast pick never opened");
+    if (offerOpen(v, attacker.playerID)) break;
+    if (Date.now() > deadline) throw new Error("the free-cast offer never opened");
     const t = v.turn;
     try {
       if (t && t.priority_holder >= 0) {
@@ -146,6 +160,12 @@ function stackHolds(v: SnapshotView, cardID: string): boolean {
   return (v.stack_items ?? []).some((s) => s.source_card_id === cardID);
 }
 
+// stackTargets: the targets of the spell `cardID` on the stack.
+function stackTargets(v: SnapshotView, cardID: string): string[] {
+  const item = (v.stack_items ?? []).find((s) => s.source_card_id === cardID);
+  return (item?.targets ?? []).map((t) => t.id);
+}
+
 test.describe("#3270 a free cast from hand is cast during the resolution", () => {
   test("a sorcery picked in the declare attackers step is cast at once, with no click on the card", async ({
     browser,
@@ -160,17 +180,21 @@ test.describe("#3270 a free cast from hand is cast during the resolution", () =>
       const divination = findCardInPlayerHand(s.admin.snapshot(), s.attacker.playerID, DIVINATION)!;
       expect(s.admin.snapshot().turn?.step).toBe("declare_attackers");
 
+      // The offer is asked while the trigger resolves, over both cards.
       const prompt = page.getByRole("dialog", { name: /Surtland Elementalist/i });
       await expect(prompt).toBeVisible({ timeout: 20_000 });
-      await expect(prompt).toContainText("cast right now");
-      await prompt.locator(`[data-instance-id="${divination.instance_id}"]`).first().click();
-      await testInfo.attach("the pick", { body: await page.screenshot(), contentType: "image/png" });
-      await prompt.getByRole("button", { name: "Choose", exact: true }).click();
+      await expect(prompt).toContainText("is still resolving");
+      await expect(prompt.getByRole("button", { name: /^Cast Lightning Bolt\b/ }).first()).toBeVisible();
+      await testInfo.attach("the offer", { body: await page.screenshot(), contentType: "image/png" });
+      await prompt.getByRole("button", { name: /^Cast Divination\b/ }).click();
 
       // The cast starts by itself: Divination is on the stack, in a step a
       // sorcery could never be cast in, and nothing clicked it in the hand.
       await s.admin.waitFor((v) => stackHolds(v, divination.instance_id), "Divination cast onto the stack", 20_000);
       expect(s.admin.snapshot().turn?.step).toBe("declare_attackers");
+      // "Cast a spell": the one cast spent the offer, and the Bolt stays.
+      await s.admin.waitFor((v) => !offerOpen(v, s.attacker.playerID), "the offer is spent", 10_000);
+      expect(findCardInPlayerHand(s.admin.snapshot(), s.attacker.playerID, BOLT)).not.toBeNull();
       await testInfo.attach("Divination on the stack", {
         body: await page.screenshot(),
         contentType: "image/png",
@@ -200,10 +224,7 @@ test.describe("#3270 a free cast from hand is cast during the resolution", () =>
     }
   });
 
-  test("an instant picked with a target opens targeting, and the click casts it", async ({
-    browser,
-    request,
-  }, testInfo) => {
+  test("an instant on offer is cast at the target its line names", async ({ browser, request }, testInfo) => {
     test.slow();
     const holder: { first?: JoinedPlayer; second?: JoinedPlayer; admin?: AdminClient } = {};
     try {
@@ -212,26 +233,26 @@ test.describe("#3270 a free cast from hand is cast during the resolution", () =>
       const bolt = findCardInPlayerHand(s.admin.snapshot(), s.attacker.playerID, BOLT)!;
       const bears = findCardOnBattlefield(s.admin.snapshot(), BEARS)!;
 
+      // Each legal target is its own line: both players and both creatures.
       const prompt = page.getByRole("dialog", { name: /Surtland Elementalist/i });
       await expect(prompt).toBeVisible({ timeout: 20_000 });
-      await prompt.locator(`[data-instance-id="${bolt.instance_id}"]`).first().click();
-      await prompt.getByRole("button", { name: "Choose", exact: true }).click();
-
-      // Targeting mode opens for the Bolt on its own.
-      const banner = page.getByRole("dialog", { name: /Select target for Lightning Bolt/i });
-      await expect(banner).toBeVisible({ timeout: 20_000 });
-      await testInfo.attach("targeting", { body: await page.screenshot(), contentType: "image/png" });
-      await page.locator(`.card[data-instance-id="${bears.instance_id}"]`).first().click();
+      const casts = prompt.getByRole("button", { name: /^Cast Lightning Bolt\b/ });
+      await expect(casts).toHaveCount(4);
+      await testInfo.attach("the targets on offer", { body: await page.screenshot(), contentType: "image/png" });
+      await prompt.getByRole("button", { name: new RegExp(`^Cast Lightning Bolt\\b.* targeting ${BEARS}$`) }).click();
 
       await s.admin.waitFor((v) => stackHolds(v, bolt.instance_id), "Lightning Bolt cast onto the stack", 20_000);
-      expect(findCardInPlayerHand(s.admin.snapshot(), s.attacker.playerID, BOLT)).toBeNull();
+      const v = s.admin.snapshot();
+      expect(v.turn?.step).toBe("declare_attackers");
+      expect(stackTargets(v, bolt.instance_id)).toEqual([bears.instance_id]);
+      expect(findCardInPlayerHand(v, s.attacker.playerID, BOLT)).toBeNull();
     } finally {
       holder.admin?.close();
       await closeAll(holder.first ?? null, holder.second ?? null);
     }
   });
 
-  test("choosing none casts nothing", async ({ browser, request }) => {
+  test("keeping it in hand casts nothing", async ({ browser, request }) => {
     test.slow();
     const holder: { first?: JoinedPlayer; second?: JoinedPlayer; admin?: AdminClient } = {};
     try {
@@ -240,12 +261,8 @@ test.describe("#3270 a free cast from hand is cast during the resolution", () =>
       const divination = findCardInPlayerHand(s.admin.snapshot(), s.attacker.playerID, DIVINATION)!;
       const prompt = page.getByRole("dialog", { name: /Surtland Elementalist/i });
       await expect(prompt).toBeVisible({ timeout: 20_000 });
-      await prompt.getByRole("button", { name: /^Choose/ }).click();
-      await s.admin.waitFor(
-        (v) => !(v.pending_choices ?? []).some((c) => c.kind === "choose_cards"),
-        "the pick was answered",
-        20_000,
-      );
+      await prompt.getByRole("button", { name: "Keep it in your hand", exact: true }).click();
+      await s.admin.waitFor((v) => !offerOpen(v, s.attacker.playerID), "the offer was answered", 20_000);
       // Give a (wrong) auto-started cast time to show up.
       await page.waitForTimeout(1500);
       const v = s.admin.snapshot();

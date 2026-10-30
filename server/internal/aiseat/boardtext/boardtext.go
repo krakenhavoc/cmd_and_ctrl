@@ -302,6 +302,9 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 				b.WriteString(" (life payment unavailable)")
 			}
 		}
+		if ch.Kind == "confirm" && ch.PoisonCost > 0 {
+			fmt.Fprintf(&b, " (accepting gives you %d poison counters)", ch.PoisonCost)
+		}
 		if pa := ch.PayAmount; pa != nil {
 			writePayAmount(&b, pa)
 		}

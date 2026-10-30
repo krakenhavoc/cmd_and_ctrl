@@ -7,6 +7,7 @@ import { autopassDecision, type AutopassGates } from "./autopassDecision";
 import {
   BLUFF_PASS_REASON,
   HOLD_PASS_REASON,
+  VALUE_INSTANT_PASS_REASON,
   autopassReason,
   passNoticeRequest,
   passNoticeText,
@@ -58,6 +59,13 @@ describe("autopassReason — worded from the branch that passed", () => {
 
   it("names an opponent's item with nothing to answer it", () => {
     expect(autopassReason(gates({ stackEmpty: false }))).toBe("nothing to respond with");
+  });
+
+  it("#2877: names a value instant that did not stop an opponent's item", () => {
+    const g = gates({ stackEmpty: false, heldValueInstant: true });
+    expect(autopassDecision(g)).toBe("pass");
+    expect(autopassReason(g)).toBe(VALUE_INSTANT_PASS_REASON);
+    expect(VALUE_INSTANT_PASS_REASON).toBe("only a value instant to respond with");
   });
 
   it("names a stack that is all the viewer's own", () => {
@@ -122,6 +130,12 @@ describe("timedPassReason", () => {
 
   it("says the hold ran out for a plain pass after a stack hold", () => {
     expect(timedPassReason("hold", "pass", gates({ stackEmpty: false }))).toBe(HOLD_PASS_REASON);
+  });
+
+  it("#2877: says a value instant was all there was when the hold ran out", () => {
+    expect(
+      timedPassReason("hold", "pass", gates({ stackEmpty: false, heldValueInstant: true })),
+    ).toBe("stack hold ended, only a value instant to respond with");
   });
 
   it("falls back to the ordinary reason when settings moved during a bluff wait", () => {

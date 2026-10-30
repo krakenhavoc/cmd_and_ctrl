@@ -20,6 +20,7 @@ import {
   breaksSetRule,
   cancel,
   isLegalCardTarget,
+  pickedTotal,
   targeting,
   togglePick,
   type TargetingState,
@@ -226,5 +227,96 @@ describe("a sameness rule over the chosen targets (#1807)", () => {
     begin(decompose(), "card_in_graveyard");
     expect(targetingDetail(get(targeting)!)).toContain("targets must come from a single graveyard");
     cancel();
+  });
+});
+
+// #4616: the total rule — "up to two target creatures with total mana
+// value 6 or less" (The Super Hero Civil War, chapter I). The picker
+// greys a candidate whose value would take the picks past the ceiling,
+// and one with no value at all, and says the rule and the running total.
+function civilWarChoice(): PendingChoiceView {
+  return {
+    id: "ch",
+    kind: "pick_target",
+    chooser: "me",
+    from_player: "me",
+    count: 0,
+    reason: "gain control of up to two target creatures with total mana value 6 or less",
+    pick_target: {
+      cards: ["four", "three", "two", "seven", "odd"],
+      min: 0,
+      max: 2,
+      total: {
+        label: "have total mana value 6 or less",
+        max: 6,
+        values: { four: 4, three: 3, two: 2, seven: 7 },
+      },
+    },
+  } as PendingChoiceView;
+}
+
+const civilWarSaga: CardView = {
+  instance_id: "saga",
+  name: "The Super Hero Civil War",
+  owner: "me",
+  controller: "me",
+};
+
+describe("a total rule over the chosen targets (#4616)", () => {
+  it("greys a card over the ceiling, and one with no value, from the start", () => {
+    beginChoice(civilWarChoice(), civilWarSaga);
+    const t = get(targeting)!;
+    expect(isLegalCardTarget(t, "four")).toBe(true);
+    expect(isLegalCardTarget(t, "seven")).toBe(false);
+    expect(isLegalCardTarget(t, "odd")).toBe(false);
+  });
+
+  it("greys and refuses a second pick that passes the total, and lets the first be un-picked", () => {
+    beginChoice(civilWarChoice(), civilWarSaga);
+    let t: TargetingState = get(targeting)!;
+    t = togglePick(t, { kind: "card", id: "four" });
+    expect(pickedTotal(t)).toBe(4);
+    expect(breaksSetRule(t, "three")).toBe(true);
+    expect(isLegalCardTarget(t, "three")).toBe(false);
+    expect(isLegalCardTarget(t, "two")).toBe(true);
+    expect(isLegalCardTarget(t, "four")).toBe(true);
+    const refused = togglePick(t, { kind: "card", id: "three" });
+    expect(refused.picked.map((p) => p.id)).toEqual(["four"]);
+    t = togglePick(t, { kind: "card", id: "two" });
+    expect(t.picked.map((p) => p.id)).toEqual(["four", "two"]);
+    // Un-picking the 4 makes room for the 3 beside the 2.
+    t = togglePick(t, { kind: "card", id: "four" });
+    expect(isLegalCardTarget(t, "three")).toBe(true);
+  });
+
+  it("a cast clause carries the rule too", () => {
+    begin(
+      {
+        instance_id: "s",
+        name: "Spell",
+        owner: "me",
+        controller: "me",
+        legal_targets: {
+          cards: ["a", "b"],
+          min: 0,
+          max: 2,
+          total: { label: "have total mana value 3 or less", max: 3, values: { a: 2, b: 2 } },
+        },
+      },
+      "creature",
+    );
+    let t: TargetingState = get(targeting)!;
+    t = togglePick(t, { kind: "card", id: "a" });
+    expect(isLegalCardTarget(t, "b")).toBe(false);
+    cancel();
+  });
+
+  it("the dock's prompt says the rule and the running total", () => {
+    beginChoice(civilWarChoice(), civilWarSaga);
+    let t: TargetingState = get(targeting)!;
+    expect(targetingDetail(t)).toContain("targets must have total mana value 6 or less");
+    expect(targetingDetail(t)).not.toContain("total 0 of 6");
+    t = togglePick(t, { kind: "card", id: "four" });
+    expect(targetingDetail(t)).toContain("total 4 of 6");
   });
 });

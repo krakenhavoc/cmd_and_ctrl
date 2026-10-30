@@ -187,6 +187,11 @@ test.describe("S19 ETB triggers", () => {
     const tile = caster.page.locator(`.card[data-instance-id="${onBoard?.instance_id}"]`).first();
     const chip = tile.getByRole("button", { name: L.abilityChip(triggered, "triggered") });
     await expect(chip).toBeVisible({ timeout: 20_000 });
+    // #4675: Mulldrifter flies, and a flier's tile sways for as long as it
+    // is on the table (#4556). Playwright's click waits for the chip to hold
+    // still across two frames, which it may never do; the sway stops for
+    // reduced motion, as it does for a player who asks for it.
+    await caster.page.emulateMedia({ reducedMotion: "reduce" });
     // A press pins the list open (hover and keyboard focus open it too).
     await chip.click();
     await expect(caster.page.locator('.ability-list[data-ability-list="triggered"]')).toContainText(

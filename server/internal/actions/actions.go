@@ -1799,6 +1799,10 @@ func dispatch(g *game.Game, a Action) error {
 			// #3855: as cast_spell's — the answer to a
 			// paper_payment_required frame.
 			PaperPayment *game.PaperPayment `json:"paper_payment,omitempty"`
+			// #4566: the branch of an either/or cost the activator pays
+			// (game.ActivateAbilityParams.CostBranch). A pointer, because
+			// branch 0 is a real answer.
+			CostBranch *int `json:"cost_branch,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1930,6 +1934,7 @@ func dispatch(g *game.Game, a Action) error {
 				ExilePermanentIDs: exilePermanentIDs,
 				RevealIDs:         revealIDs,
 				WaterbendIDs:      waterbendIDs,
+				CostBranch:        p.CostBranch,
 				Targets:           refs,
 				// #1563, CR 601.2d via 602.2b: the division, with
 				// the targets it divides among.
@@ -2440,7 +2445,7 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
 			case game.PendingChoiceSearchLibrary:
-				// #4134, CR 701.19: "you may search" — apply:false is
+				// #4134, CR 701.23: "you may search" — apply:false is
 				// "I don't search" (no look, no shuffle, no search
 				// event), which is not the empty card list: that is a
 				// search that finds nothing. apply:true begins a search

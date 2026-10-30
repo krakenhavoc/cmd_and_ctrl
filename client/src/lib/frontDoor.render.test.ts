@@ -108,7 +108,7 @@ describe("the front page (§4)", () => {
 
     const steps = [...container.querySelectorAll(".steps h2")].map((h) => h.textContent);
     expect(steps).toEqual([
-      "Join the C2 Discord",
+      "Join the CMD & CTRL Discord",
       "Request account access",
       "Sign in and sit down",
     ]);
@@ -180,7 +180,7 @@ describe("the gate page (§5)", () => {
     expect(container.querySelector("h1")?.textContent).toBe("Ask for an account on our Discord");
     const steps = [...container.querySelectorAll(".steps h2")].map((h) => h.textContent);
     expect(steps).toEqual([
-      "Join the C2 Discord",
+      "Join the CMD & CTRL Discord",
       "Answer yes to “request account access”",
       "Ask in the access-request channel",
       "Check again",

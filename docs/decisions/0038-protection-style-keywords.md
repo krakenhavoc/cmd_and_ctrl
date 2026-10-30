@@ -602,6 +602,32 @@ mana, waterbend, life and sacrifice: a Confirm whose accept branch queues
 the payer's own discard prompt, with the spell countered on a decline or
 when the payer's hand is smaller than the cost.
 
+### C6. Ward—Get N poison counters
+
+`effects.WardPoison(n)` is a sixth `WardCost` component beside mana,
+waterbend, life, sacrifice and discard (#4613, The Serpent Society's
+"Ward—Get five poison counters"). It is the life ward's shape with the
+counters in the payer's favour reversed: a keyed Confirm
+(`confirm/ward-get-poison`, an on-disk identity) whose accept branch gives
+the payer n poison counters through the counter replacement window, and whose
+decline counters the spell (CR 702.21a, CR 118.12a).
+
+There is no "can't pay" case, so unlike every other non-mana ward it never
+counters without a prompt: a player can always get counters. The tenth
+counter loses the game as a state-based action (CR 122.1f, CR 704.5c) at the
+next check, and a payer at five who accepts has chosen that.
+
+The prompt declares `ConfirmPrompt.PoisonCost`, which rides
+`PendingChoice.PoisonCost` (snapshot `poisonCost`, additive within the
+version), `PendingChoiceView.poison_cost` and `legal.MoveCost.Poison`, so a
+policy holding only the wire payload prices the accept branch. The heuristic
+prices it on the life curve at two life per counter and refuses a payment
+that reaches ten, as it refuses a life payment to zero. The client needed no
+change: it renders a confirm's question and labels, which the ward writes.
+
+Back-out: delete `WardPoison` and the card; the `PoisonCost` fields are then
+unused and inert.
+
 ## Amendment (2026-10-15, #3860): "can't be the target of spells or abilities your opponents control" is not hexproof
 
 Vines of Vastwood: "Target creature can't be the target of spells or abilities your opponents control this turn." The

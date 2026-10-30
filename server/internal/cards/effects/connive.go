@@ -25,6 +25,13 @@ import (
 // A creature that has left the battlefield by the time its turn comes
 // still draws and discards (CR 701.50c: the connive still happens, there
 // is just no creature to put the counter on), and the counter is skipped.
+//
+// Each creature has connived once its discard and its counter are done
+// (CR 701.50f), and that is game.EventConnived (#4641): emitted per
+// creature, on every branch, by the discard's continuation. Iron Monger
+// watches it ("whenever a creature you control connives"). Ledger Shredder
+// and Cyclonus run their own connive and emit it from their own
+// continuations.
 
 // ConniveEach makes every creature in `ids` connive in turn for
 // `controller`.
@@ -79,6 +86,10 @@ func init() {
 				}
 			}
 		}
+		// CR 701.50f: connived once the counter step is done, even if none
+		// of it was possible. After the counter lands and before the next
+		// creature draws, so each creature's event comes in turn.
+		g.ConnivedForEffect(creature, r.Player)
 		return conniveNext(g, r.Player, r.Carry)
 	})
 }
@@ -130,8 +141,42 @@ var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discard
 			nonland++
 		}
 	}
-	if nonland == 0 || !onBattlefield(g, creature) {
-		return nil
+	if nonland > 0 && onBattlefield(g, creature) {
+		if err := g.AddCounterForEffect(creature, game.CounterPlusOne, nonland); err != nil {
+			return err
+		}
 	}
-	return g.AddCounterForEffect(creature, game.CounterPlusOne, nonland)
+	g.ConnivedForEffect(creature, r.Player)
+	return nil
 })
+
+// WhenThisEntersItConnives is "When this creature enters, it connives"
+// (A.I.M. Scientists, Red Room Recruit): ConniveEach for the one creature
+// that entered (sourceConnives, shared with Atlantean Skirmisher).
+func WhenThisEntersItConnives(label string) game.TriggeredAbility {
+	return WhenThisEnters(label, Do(Instruction(sourceConnives)))
+}
+
+// ACreatureYouControlConnived is the When of "whenever a creature you
+// control connives" (#4641, CR 701.50f). The event's Actor is the
+// controller as the creature connived (CR 701.50b: its last controller,
+// when it has left the battlefield), so a creature that died before its
+// turn to connive still counts for the player who controlled it. A
+// permanent that is not a creature does not (nothing in the catalog
+// connives one, but the words say "creature").
+func ACreatureYouControlConnived(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventConnived || ev.Actor != source.Controller {
+		return false
+	}
+	if c, ok := g.LookupCardForEffect(ev.CardID); ok {
+		return c.IsCreature()
+	}
+	return true
+}
+
+// WheneverACreatureYouControlConnives — "Whenever a creature you control
+// connives". One trigger per conniving creature (CR 701.50c: they connive
+// one after another).
+func WheneverACreatureYouControlConnives(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventConnived, ACreatureYouControlConnived, label, effect)
+}

@@ -35,3 +35,43 @@ func (g *Game) LobbyDecks() map[uuid.UUID][]Card {
 	}
 	return out
 }
+
+// CommandersOf returns a deep copy of each of player's commanders, for
+// the lobby's seat line (ADR 0212 phase B2), which reads them again from
+// a game restored after a restart. While the game is in the lobby they
+// are the commander-zone cards the deck installed, in the deck's order,
+// which is also the order LobbyDecks gives. Once the game is under way a
+// commander may be anywhere: the designation stays with the card through
+// every zone change (CR 903.3), so every zone is walked for a card the
+// player owns marked IsCommander. A token is never a commander, even one
+// copying a commander: the designation is an attribute of the card, not
+// a characteristic (CR 903.3), so a copy does not acquire it (CR 707.2).
+// Nil for a player who is not seated, or who has none.
+func (g *Game) CommandersOf(playerID uuid.UUID) []Card {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	var out []Card
+	take := func(z *Zone) {
+		if z == nil {
+			return
+		}
+		for _, c := range z.Cards {
+			if c.IsCommander && c.Owner == p.ID && !c.IsToken() {
+				out = append(out, cloneCard(c))
+			}
+		}
+	}
+	if g.State == StateLobby {
+		take(p.Command)
+		return out
+	}
+	g.eachIndexedZoneLocked(func(_ cardSlot, _ int, z *Zone) bool {
+		take(z)
+		return false
+	})
+	return out
+}

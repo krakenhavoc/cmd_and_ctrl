@@ -136,6 +136,13 @@ export interface AutopassGates {
   // hasPlay(view, viewerID, categories) — a ticked step has something
   // in it. Carries the #328 and #599 windows.
   hasPlay: boolean;
+  // #2877: with an opponent's item on the stack, the viewer holds a
+  // value instant (Opt, Brainstorm) that hasResponse left out because
+  // gameplay.respondValueInstants is off. The decision never reads it;
+  // it is only what passReason.ts says about the pass ("only a value
+  // instant to respond with"), so the player knows why Opt did not
+  // stop them. Absent is false.
+  heldValueInstant?: boolean;
   // engineMayMissMana(view, viewerID) — the viewer's own main phase,
   // a spell in hand the move list leaves out for mana alone, and a
   // manual mana source on the battlefield (ADR 0118 owner decision 8,

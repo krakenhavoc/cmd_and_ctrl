@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b1a23235-3076-475c-a68a-db29cf2a9dba",
 		Name:         "Pull from Tomorrow",
+		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: a draw answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The discard is asked after the draw's own prompts (CR 608.2c, #4155).

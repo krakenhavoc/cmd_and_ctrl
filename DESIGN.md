@@ -258,6 +258,11 @@ flight does not).
 The table's effect cues (ADR 0209) follow it: with any of the three signals, or
 `animations.effects` Off, a cue draws a still badge where the permanent was and
 no motion, and a click or Escape skips a cue that is playing.
+The lobby card's ready-check moment (ADR 0212 §2, `lib/readyMoment.ts`) follows
+it too: the seat checks pop in seat order, the tile whose deck landed and the
+Start game primary each get one ring that fades, and with any of the three
+signals none of it is drawn (the page never puts the classes on) while the
+counter, the checks, the button and the live-region line change all the same.
 
 ## 5. Layout and screens
 
@@ -317,11 +322,14 @@ no motion, and a click or Escape skips a cue that is playing.
 | The brand | `Wordmark.svelte` (`bar`, `header`, `hero`) | The mark's Cs are `--accent` and its diamond `--fg`, so it follows the skin. Keep `client/public/icons` in step (`client/tools/gen-icons.sh`). |
 | A full-screen dialog not about the turn (settings, bug report, deck import, zone browser) | `.prompt-backdrop` + `.prompt-modal`, and mount `<ModalLayer />` inside its `{#if}` | Scrim with 8px blur, z 200, max 760px, `--radius-xl`, `--shadow-lg`. Body family: `.prompt-title`, `.prompt-src`, `.prompt-hint`, `.prompt-options` / `.prompt-opt`, `.prompt-count`, `.prompt-foot`. |
 | Anything the game asks during play | An action-dock request: inline, or a `DockSheet` that grows up from the dock | **Never a centred modal** (ADR 0111 §2–3). The dock owns Enter / Escape; its primary sits in the corner. Register `<ModalLayer kind="sheet" />`. |
-| A copy-plus-rare-action control | `SplitButton.svelte` | The wide part does the everyday thing, the narrow part the rare one. |
+| A deck's colour identity | `IdentityPips.svelte` | WUBRG letters on discs of the fixed `--identity-*` tokens, one image with one name. A seat tile's status row (ADR 0212). |
+| Choosing a deck to sit down with | `DeckPicker.svelte` (tiles: `DeckGrid.svelte`) | The one deck picker (ADR 0212 §3): My decks, Pre-built and Paste a list as tabs, each grid a radio group of commander-art tiles that load their art only as they scroll into view (`lib/inView.ts`). It sends nothing until its caller commits: the lobby card's footer primary, or its own button in the table's deck dialog. The Add bot picker (`BotPicker.svelte`) reuses the grid. |
+| A short list of actions from a button | `ContextMenu.svelte` with `align="end"` under the button | Items may carry an icon, a line that says what each does, and a `group` heading (the lobby card's Invite menu, ADR 0212 §4). The same arrow keys, Escape and focus return as the right-click menu. |
 | A first-use tip | a `*.hint.ts` beside the feature, drawn by `HintLayer` / `TipCard` | Card plus ring, no scrim, never over the dock, a decision or an open dialog (ADR 0125 §3.5–3.6). |
 | A keyboard hint | `.kbd` | Mono key cap. Dock buttons also carry `aria-keyshortcuts`. |
 | An AI seat | the bot chip (dashed, seat-tinted, robot glyph) or `AgentChip.svelte` (solid violet, spark glyph) | Never swap their looks (ADR 0122 §7). |
 | Not production | `EnvBadge.svelte` | Not dismissible, click-through. |
+| A keyword's atmosphere on a battlefield card | the flourishes in `board/Card.svelte` (`lib/keywordFlourishes.ts`) | Flying lifts and sways, reach draws a bow, deathtouch has a dark inner edge, first and double strike carry one or two blades, lifelink glows blood red. They are decoration, not signals: the chip row is the fact, and the signal colours keep their meanings. They read effective keywords, sit under every badge and ring, and use `translate`, `rotate` and the resting `box-shadow` only. Reduced motion stops the sway and leaves the rest; Settings → Display turns them off. |
 
 Before writing new CSS for a site page, check `app.css`'s shared primitives
 (ADR 0156 §3 item 2): a page keeps its own CSS only for what is truly its own.

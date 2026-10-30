@@ -147,7 +147,45 @@ type PermissionCardRef struct {
 // A closed set of flags rather than a predicate, because a stored
 // permission must stay pure data (see the file header). It grows a
 // field when a card needs one.
+//
+// WHAT A CAST PERMISSION'S FILTER IS READ OFF (#4509). Two phrasings,
+// and the rules read them differently:
+//
+//   - "Cast an artifact, instant, or sorcery SPELL from your graveyard"
+//     (Bilbo, Thief in the Night), "you may cast creature SPELLS from
+//     the top of your library", "play LANDS from your graveyard". The
+//     filter is about the spell the cast makes, or the land played, so
+//     it judges the face being cast: only the chosen half of a split
+//     card (CR 709.3a), only the face that will be up on the stack of a
+//     modal double-faced card (CR 712.11c), only an Adventure's or an
+//     Omen's alternative characteristics when it is cast as one
+//     (CR 715.3a, 720.3a), the alternative set replacing the card's own
+//     for the check (CR 601.3e). An Adventure's instant half is offered
+//     under Bilbo though the card in the graveyard is a creature card,
+//     and only the creature half of it under "creature spells". This is
+//     the zero value.
+//   - "Each instant and sorcery CARD in your graveyard has flashback"
+//     (Lier), "NONLAND PERMANENT CARDS in your graveyard have retrace"
+//     (Six). The filter picks the cards an ability is granted to, so it
+//     judges the card as it is in that zone: an adventurer card has only
+//     its normal characteristics there (CR 715.4), a double-faced card
+//     only its front face's (CR 712.8a), a split card both halves'
+//     (CR 709.4). That is CardInZone. The granted ability then says
+//     which casts it opens; retrace and escape name no type, so any
+//     face of a card that has one may be cast with it.
+//
+// Every other use of a PermissionFilter (a cast ban, a timing grant, a
+// next-spell promise, a granted alternative cost) is handed the spell
+// already faced, so it judges the spell whatever CardInZone says.
 type PermissionFilter struct {
+	// CardInZone makes a cast permission's filter judge the CARD in the
+	// permission's zone rather than the spell a cast of it would make
+	// (#4509, see the type's comment): set by a permission phrased about
+	// cards, "each nonland card in your graveyard has escape". False is
+	// "spells", the phrasing almost every permission prints, and every
+	// permission stored before the field existed reads as that.
+	CardInZone bool `json:"cardInZone,omitempty"`
+
 	// LandsOnly is Oracle of Mul Daya and Courser of Kruphix: "you
 	// may play LANDS from the top of your library". Playing a land is
 	// not casting (CR 305.1), so this is a play permission that opens
@@ -214,6 +252,19 @@ type PermissionFilter struct {
 	// effective subtypes, so an Aura and an Equipment each qualify and
 	// a plain artifact or enchantment does not.
 	AuraOrEquipmentOnly bool `json:"auraOrEquipmentOnly,omitempty"`
+
+	// ColorsAny is World War Hulk's "the next RED OR GREEN creature spell
+	// you cast": a card qualifies when it has AT LEAST ONE of the named
+	// colours (CR 105.1, CR 105.2). Colour letters in the card's own
+	// vocabulary, upper case ("RG"), so one comparable string covers any
+	// union and a filter without the clause still writes nothing. Read
+	// off the card's effective colours (Card.HasColor), so the spell is
+	// judged as it was cast: a layered or copied colour counts, a
+	// colourless spell never does, a multicoloured one needs only one
+	// match (CR 105.2b). Empty constrains nothing. It composes with every
+	// other clause as a further AND (CreatureOnly narrows "red or green"
+	// to a creature spell).
+	ColorsAny string `json:"colorsAny,omitempty"`
 
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
@@ -344,6 +395,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
+	if f.ColorsAny != "" && !cardHasAnyColor(c, f.ColorsAny) {
+		return false
+	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
 		return false
 	}
@@ -363,6 +417,40 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	return true
+}
+
+// faceBlind reports whether no clause of the filter reads a
+// characteristic a card's face decides: every clause it has is about
+// the object where it sits (who owns it, a counter on it, what exiled
+// it, when it arrived), and none is about its types, subtypes,
+// supertypes, colours or name. The zero filter is face-blind.
+func (f PermissionFilter) faceBlind() bool {
+	f.CardInZone = false
+	f.NotOwnedByHolder, f.OwnedByHolder = false, false
+	f.WithCounter = ""
+	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
+	f.PutInGraveyardThisTurn = false
+	f.FromChosenType = false
+	return f == PermissionFilter{}
+}
+
+// judgesSpell reports whether a cast permission's filter is read off the
+// face being cast (#4509): it has a clause a face decides, and it is not
+// phrased about the card in its zone (CardInZone).
+func (f PermissionFilter) judgesSpell() bool {
+	return !f.CardInZone && !f.faceBlind()
+}
+
+// cardHasAnyColor reports whether the card is at least one of the colours
+// named in letters ("RG": red or green). A colourless card has none, and a
+// letter that is not a colour matches nothing.
+func cardHasAnyColor(c Card, letters string) bool {
+	for _, l := range letters {
+		if c.HasColor(string(l)) {
+			return true
+		}
+	}
+	return false
 }
 
 // CastPermission is one granted permission to cast or play cards from
@@ -987,15 +1075,138 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 	if p == nil || p.Zone != zone {
 		return false
 	}
-	if p.Scope == ScopeStanding {
-		return p.Filter.Matches(c) && p.perTypeOpens(c)
-	}
 	// #3192: a ScopeCards permission may carry a Filter too, as a
 	// spell-type gate on the NAMED cards — "you may cast it if it's a
 	// creature spell" (Vivien), "if it's an instant or sorcery spell"
 	// (Nivix). The zero filter matches everything, which is every
 	// permission written before this.
-	return p.NamesCard(c) && p.Filter.Matches(c) && p.perTypeOpens(c)
+	if p.Scope != ScopeStanding && !p.NamesCard(c) {
+		return false
+	}
+	return p.filterOpens(c) && p.perTypeOpens(c)
+}
+
+// filterOpens is CoversCard's filter half. A filter about the card in
+// its zone (CardInZone), or one no face changes the answer to, is asked
+// of the card as it is. A filter about the spell (#4509) covers the card
+// when at least one face a cast through this permission may choose is a
+// spell, or a land played, that it admits: Bilbo's "artifact, instant,
+// or sorcery spell" covers a creature card whose Adventure is an
+// instant (CR 715.3a), and "play lands" covers a modal double-faced
+// card whose back face is a land (CR 712.11c). Which of the faces the
+// cast may then choose is CastableFacesUnder's, and the face announced
+// is held to it by ForSpell.
+func (p *CastPermission) filterOpens(c Card) bool {
+	if p.Filter.CardInZone {
+		return p.Filter.Matches(asCardInZone(c))
+	}
+	if !p.Filter.judgesSpell() {
+		return p.Filter.Matches(c)
+	}
+	return len(p.spellFaces(c, p.facesBeforeFilter(c))) > 0
+}
+
+// asCardInZone is c as it is in a graveyard, exile or a library, the
+// zones a permission opens: its front face's characteristics for a
+// double-faced card (CR 712.8a), an adventurer card's normal ones
+// (CR 715.4), a split card's two halves combined (CR 709.4), and not
+// bestowed. The callers that price a cast re-derive its permission from
+// the copy the cast has already turned to the face being cast
+// (printedCostLocked and its kin), so a filter about the card reads the
+// zone's characteristics back off that copy rather than judging the
+// spell: Six's "nonland permanent cards" still covers Bonecrusher Giant
+// while it is priced as Stomp.
+func asCardInZone(c Card) Card {
+	c.Bestowed = false
+	if len(c.Faces) < 2 {
+		return c
+	}
+	c.SetFace(0)
+	if isSplitCard(&c) {
+		c.materialiseSplitWhole()
+	}
+	return c
+}
+
+// facesBeforeFilter is the faces a cast of c through this permission may
+// choose before its filter is read: the faces it names, or, when it
+// names none, the card's own (CastableFaces).
+func (p *CastPermission) facesBeforeFilter(c Card) []int {
+	if p != nil && len(p.Faces) > 0 {
+		return p.Faces
+	}
+	return c.CastableFaces()
+}
+
+// spellFaces narrows `faces` to the ones whose spell this permission's
+// filter admits, each judged with its face materialised on a copy of c,
+// as CastSpell materialises it (CR 601.3e, 709.3a, 712.11c, 715.3a,
+// 720.3a). A filter about the card in its zone, or one with no clause a
+// face decides, narrows nothing and hands `faces` back as it is. A face
+// the card does not have is dropped: SetFace would clamp it to the
+// front, which is not the face the permission named.
+func (p *CastPermission) spellFaces(c Card, faces []int) []int {
+	if p == nil || !p.Filter.judgesSpell() {
+		return faces
+	}
+	out := make([]int, 0, len(faces))
+	for _, i := range faces {
+		if i < 0 || i >= c.FaceCount() {
+			continue
+		}
+		spell := c
+		spell.SetFace(i)
+		if p.Filter.Matches(spell) {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// ForSpell narrows a permission to one cast: `spell` is the card with
+// the face being cast or played already materialised (ADR 0034), and the
+// answer is the permission when its filter admits that spell and nil
+// when it does not (#4509). CastableFacesUnder only offers the faces it
+// admits; this is the same rule at announce, so a cast of a face the
+// permission does not open is judged as a cast with no permission at
+// all: refused out of exile and out of a graveyard or library the card
+// does not open itself, and an ordinary cast out of a hand, where the
+// permission only ever priced its own claim (ForClaim).
+//
+// A filter about the card in its zone (CardInZone) admits every face of
+// a card it covers. Nil-safe.
+func (p *CastPermission) ForSpell(spell Card) *CastPermission {
+	if p == nil || !p.Filter.judgesSpell() || p.Filter.Matches(spell) {
+		return p
+	}
+	return nil
+}
+
+// OffersASpell reports whether a cast through this permission could make
+// a spell of c (#4509): some face it lets the cast choose — the faces it
+// names, or the card's own — is not a land (a land is played, never cast,
+// CR 305.9), is admitted by the filter (judged on that face, see
+// spellFaces) and is within MaxSpellManaValue. Nothing about the holder,
+// the zone, the window or the cards the permission names is asked: a
+// card building an offer asks it of the permission it is about to stamp,
+// to pick the cards the offer is over ("you may cast an artifact,
+// instant, or sorcery spell from your graveyard"), and
+// OfferResolutionCastForEffect asks it of the stored one.
+func (p *CastPermission) OffersASpell(c Card) bool {
+	if p == nil {
+		return false
+	}
+	for _, i := range p.spellFaces(c, p.facesBeforeFilter(c)) {
+		if i < 0 || i >= c.FaceCount() {
+			continue
+		}
+		spell := c
+		spell.SetFace(i)
+		if !spell.IsLand() && spellManaValueWithinCap(spell, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // GrantsFaces returns the faces this permission opens, when it names
@@ -2530,7 +2741,9 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	if from == ZoneHand || from == ZoneCommand {
 		return 0
 	}
-	grant := g.CastPermissionForClaimLocked(playerID, card, from, params.AlternativeCost)
+	// #4509: `card` is the face being cast; a permission that does not
+	// admit it takes nothing off (ForSpell).
+	grant := g.CastPermissionForClaimLocked(playerID, card, from, params.AlternativeCost).ForSpell(card)
 	if grant == nil || grant.CostLess <= 0 {
 		return 0
 	}

@@ -42,7 +42,7 @@
   import { crumble, impactShake, lunge, streak } from "../../animations";
   import { cancelAnimations } from "../../motion";
   import { play } from "../../sounds";
-  import { FACE_HIT_STAGGER_MS, faceHitSound, faceHits } from "../../faceHit";
+  import { FACE_HIT_STAGGER_MS, faceHitSound, faceHits, warCryPlan } from "../../faceHit";
   import { keepArrowCache, type ScheduledCue } from "../../combatBeats";
   import type { CombatCues } from "../../combatCues.svelte";
   import {
@@ -256,14 +256,21 @@
     // (ADR 0134 §7). With strikes on, Game.svelte leaves combat_resolve
     // to this, so it plays even when the board cannot be measured and
     // no copy flies. A late beat plays neither: the board has moved on.
-    later(() => play("combat_resolve"), tl.contactMs);
+    // #4560: when the beat hits a player the war cry follows the last face
+    // hit, quieter, so the hit is not buried under it (lib/faceHit.ts).
+    const hits = faceHits(cue.entries);
+    const cry = warCryPlan(hits.length);
+    later(
+      () => play("combat_resolve", cry.volume < 1 ? { volume: cry.volume } : undefined),
+      tl.contactMs + cry.delayMs,
+    );
     // #4432, #4543: the hit on a player's face is heard at the same contact,
     // once per player this beat hit, as the tier of all the combat damage
     // that player takes (light 1, medium 2-3, heavy 4+). The life popup
     // stands down for it (lib/faceHit.ts), so the loss does not also play
     // damage. A second player's hit is staggered a little: play() drops a
     // repeat of one name inside its rate limit, and two blows read as two.
-    faceHits(cue.entries).forEach((hit, i) => {
+    hits.forEach((hit, i) => {
       const name = faceHitSound(hit.amount);
       if (name) later(() => play(name), tl.contactMs + i * FACE_HIT_STAGGER_MS);
     });

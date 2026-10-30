@@ -482,6 +482,8 @@ var cardFields = plan(
 	"PutInGraveyardFrom", carried, "",
 	"PutInGraveyardThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
+	"damageInstance", dropped, "restores empty: which damage instance marked the latest damage on this creature (heal_damage.go, #4614). Only Wolverine, Fierce Fighter reads it, to keep damage dealt at the same time; a restore taken inside a damage step gives the rest of the step a new instance anyway (damage_instance.go), so the worst case is a later event of that step healing damage the same step marked before the restore",
+	"damageInstanceMarked", dropped, "restores empty: how much of DamageMarked damageInstance wrote; goes with damageInstance",
 	// #683: carried — a restore that dropped it would let a 0/0 that
 	// lost its last counter survive the next state-based check.
 	"LostLastCounter", carried, "",
@@ -1188,6 +1190,7 @@ var pendingChoiceFields = plan(
 	// it would render a question nobody can answer.
 	"AcceptLabel", carried, "",
 	"LifeCost", carried, "",
+	"PoisonCost", carried, "",
 	"DeclineEndsLoop", carried, "",
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",

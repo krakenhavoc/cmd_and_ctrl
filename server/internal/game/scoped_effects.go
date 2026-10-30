@@ -341,6 +341,14 @@ const (
 	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
 	// binary refuses the file instead of banning nothing. Reads Player.
 	ModCantPlayLands ModKind = "cantPlayLands"
+	// ModCantActivatePowerUp is "power-up abilities can't be activated"
+	// for a duration (#4571, CR 101.2, CR 702.193): Kang the Conqueror's
+	// "During that turn, power-up abilities can't be activated", queued
+	// with the extra turn (TakeExtraTurn.DuringThatTurn). Scope ScopeGame:
+	// every player's. Read by ActivationGateLocked (powerUpBanLocked),
+	// which every activation, the enumerator and the view ask. Reads
+	// nothing.
+	ModCantActivatePowerUp ModKind = "cantActivatePowerUp"
 	// ModCantPlayFromHand is "<players> can't play cards from their
 	// hand" for a duration (ADR 0066 amendment 2026-10-10, #2559; CR
 	// 101.2): Memory Vessel's "until your next turn, … they can't play
@@ -1112,6 +1120,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
+	// #4571: the power-up ban, read by the activation gate.
+	ModCantActivatePowerUp: {reader: readerRule},
 	// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 	// both the cast gate and the land-play gate.
 	ModCantPlayFromHand: {reader: readerRule},

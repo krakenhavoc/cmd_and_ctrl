@@ -2,6 +2,7 @@
 
 **Status:** Accepted · 2026-09-30 · Post-S30 — Rolling deck-driven catalog growth. The owner answered the seven open questions on 2026-09-30; the answers are recorded under [Owner decisions](#owner-decisions-2026-09-30) and folded into the Decisions below. No engine code lands with this ADR.
 **Amended by:** [ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §1 (2026-10-03, [#2072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2072)) — owner decision 5 is closed: `PaidCost.SacrificedObjects` names each sacrificed permanent, and Corpse Cobble ships.
+**Amended:** 2026-10-30 ([#4566](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4566)): the either/or choice on an activated ability's cost, a resolution-time "you may", and a ward. See [the amendment](#amendment-2026-10-30-eitheror-on-an-activated-ability-a-may-pay-and-a-ward-4566).
 **Issue:** [#1732](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1732), rows 1, 3 and 6 (Demand Answers, Treasure Cruise, Plumb the Forbidden). It relates to #296 and #1731.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-09-30. I ran `git fetch --all --prune`, then listed `docs/decisions/` on every remote branch (37 heads). The highest number anywhere is **0098**. 0099, 0101 and 0102 are reserved for ADRs being written at the same time, so this one takes 0100.
 **Builds on:**
@@ -339,3 +340,37 @@ Sub-PR 3 left two branch components open, each to arrive with its first card (AD
 - **Client.** The chosen branch opens the one-pick sheet the blight creature uses (`castRevealCost`), over the hand and the battlefield.
 
 Cards: Daring Buccaneer, Flamekin Bladewhirl, Goldmeadow Stalwart, Sadistic Skymarcher, Silvergill Adept, Squeaking Pie Sneak, Surtland Elementalist, Thunderherd Migration, Wren's Run Vanquisher (reveal); Caustic Exhale, Kinsbaile Aspirant, Lys Alana Dignitary, Mudbutton Cursetosser, Silvergill Mentor, Soulbright Seeker (behold). All fifteen ship `full`.
+
+## Amendment (2026-10-30): either/or on an activated ability, a may-pay and a ward (#4566)
+
+§2 put the either/or cost on a cast. Marvel Super Heroes prints the same choice in three more places, and each had one payment where the card prints two:
+
+- an **activated ability's cost**: Bullseye, Death Dealer's "{3}, {T}, Sacrifice an artifact or discard a nonland card: Bullseye deals 2 damage to any target";
+- a **resolution-time "you may"**: Bullseye's enters trigger ("you may sacrifice an artifact or discard a nonland card. When you do, …"), K'un-Lun Warrior, Contract Hero and Vision of Love ("… or discard a card. If you do, …");
+- a **ward**: Titania, Rugged Rumbler's "Ward—Discard a card or pay {2}".
+
+The rules are the ones §2 cites. CR 602.2b runs CR 601.2b–h for an ability, so the activator announces the branch with the rest of the activation (CR 601.2b), pays it at CR 601.2h, and can't choose a branch they can't pay (CR 118.3). A resolution-time "you may [pay]. If you do" is a cost paid as the ability resolves (CR 118.12); "when you do" creates a reflexive trigger (CR 603.12). Ward is "counter that spell or ability unless that player pays [cost]" (CR 702.21a), the same thing as "that player may pay [cost]; if they don't, counter it" (CR 118.12a).
+
+### 1. The activation cost: plain-data branches, folded at announce
+
+- **Declaration.** `game.AbilityCost.Either []AbilityCostBranch`. A branch is plain data: `{Kind: sacrifice | discard, Count, Label, Of PermanentQuery, Nonland bool}`. It is not a nested `AbilityCost`, because a sacrifice or discard clause holds a predicate func, and a new field of that type would be a new route from `Game` to a closure (ADR 0041's ratchet, `closure_fields.txt`). The card side is `effects.OrCost(SacrificeBranch(…), DiscardBranch(…))`, composed with `Plus`.
+- **The announcement.** `ActivateAbilityParams.CostBranch *int`, on the wire as `activate_ability.cost_branch`. It is required on a branched ability and refused on any other (`ErrAbilityCostBranch`, an `ErrInvalidParam`), the posture §2 gives `cast_spell.cost_branch`: no branch is ever guessed.
+- **The fold.** `game.ChosenAbilityCost(cost, branch)` builds the chosen branch into the ordinary `SacrificeOther` or `DiscardCards` clause and clears `Either`. `ActivateCatalogAbility` folds right after it has found the row and before any gate, so every validator and payer reads one ordinary cost. The enumerator (`legal.expandCostBranches`) and the view fold the same way, one row per branch. A branch that can't be paid offers no move, and with neither payable the ability isn't offered (CR 118.3).
+- **Guards.** `effects.Register` (`checkOrCost`) refuses fewer than two branches, a rest of the cost that has its own sacrifice or discard clause (the fold would replace it), a branch with no count or no words, and a mismatched branch shape.
+- **The record.** `PaidCost.CostBranch` is the chosen index plus one, the field and encoding §2 gave a cast. It is on the stack item, so a restore point, and an undo that restores one, keeps it.
+- **Wire and view.** `ActivatedAbilityView.cost_branches[]` has one `{label, payable, sacrifice_label, sacrifice_options, discard_cost_n, discard_cost_label, discard_cost_options}` per branch, each from the folded cost's own candidate walk. The discard branch's hand cards and its verdict are the controller's alone (#1369, `publicCostBranches`).
+- **Client.** An ability with `cost_branches` asks for the branch first, with the branch picker built on the mode picker (an unpayable branch is disabled). It then runs the chosen branch's own sacrifice or discard picker, exactly as for a row printing that clause alone, and sends `cost_branch` with the activation.
+- **Bot.** Each branch is a separate move. The policy prices the sacrifice and the discard as it already prices those clauses, so the cheaper branch wins: a spare Treasure goes before a real spell.
+
+### 2. The may-pay and the ward: ADR 0187's either payment, made available to both
+
+ADR 0187 §5 already has one offer with several ways to pay: `PayAction{Kind: either}`, answered with `pay_option`, with `pay_either[]` on the wire, one move per payable branch, and a client button per branch. #4566 makes that payment available to the two remaining callers and adds the two branch shapes they need:
+
+- **`effects.MayPay.Pay`** takes a non-mana `UpkeepPayment` in place of `Cost`. `effects.SacrificeAnArtifactOrDiscard(nonland)` is the shared "sacrifice an artifact or discard a [nonland] card". When no branch can be paid at all, MayPay asks nobody and "if you do" is false (CR 118.3). The pay branch runs only after the chosen branch has been paid. Bullseye's "when you do" is a `ReflexiveTrigger` created from that branch, and it picks its target as it goes on the stack (CR 603.3d).
+- **`PayAction.Nonland`** narrows a discard to nonland cards, so a land is never an option.
+- **`game.PayActionMana`** (`"mana"`, `PayAction.Mana`) is a mana payment as a branch. It names no cards, `answerPayUnlessLocked` pays it through the prompt's own mana path (pool, then the auto-tapper), and a "yes" that can't be funded is a decline, as for every mana pay-unless. It is payable when `payCostLocked` would pay it on a clone (`canPayCostLocked`); the enumerator asks its usual mana probe. `effects.EitherPayment` still refuses mana: only a ward builds this branch.
+- **`game.CounterUnlessPaidPrompt.Action`** lets the guarded counter-unless-paid prompt carry a payment action. **`effects.WardEither(WardDiscard(1), WardMana("{2}"))`** is Titania's ward: one guarded prompt with an either payment, a decline counters, and a caster who can pay neither branch is countered with no prompt. A ward branch may be mana, life or a chosen discard.
+- **Bot.** `eitherPaymentValue` prices a discard branch by the card's worth on the same curve as a sacrifice, prices a mana branch at 0.88 (below damage, above every card branch), and applies the land floor only to a move that sacrifices a land. A Treasure sacrificed to Bullseye isn't a land the seat needs.
+- **Snapshot.** `PayAction.Nonland` and `PayAction.Mana` are additive in schema v9 (`json:",omitempty"`), recorded with `-update-shape`. No fixture changes. The new keys (`pay-unless/bullseye-death-dealer-damage`, `pay-unless/contract-hero-pump`, `pay-unless/vision-of-love-draw-two`, `body bullseye-death-dealer/damage`) are appended to the ledger. The closure ratchet is unchanged: `AbilityCostBranch` holds no func.
+
+Cards, all Full: Bullseye, Death Dealer; K'un-Lun Warrior; Contract Hero; Vision of Love; Titania, Rugged Rumbler.

@@ -86,6 +86,24 @@ func (g *Game) discardCardsKeyedLocked(playerID uuid.UUID, cards []uuid.UUID, ca
 	return g.discardCardsAnsweredKeyedLocked(playerID, cards, cause, source, nil, then)
 }
 
+// DiscardCardsKeyedForEffect makes `playerID` discard exactly these cards
+// from their hand as an effect instructs (CR 701.9a), one at a time through
+// the one discard path (madness and "whenever a player discards" see each,
+// a replacement can send a card elsewhere), and tells `then` (a registered
+// tail) the cards that really reached the graveyard as TailOutcome.IDs. A
+// zero tail is "no continuation". A card no longer in that hand is skipped
+// (CR 608.2b), and a player an opponent's spell or ability can't make
+// discard (#2178) discards nothing. For "you choose one of those cards.
+// That player discards that card" (Klaw, Sonic Subjugator, #4588), after
+// the cards were revealed and picked: the player chose nothing here, so no
+// discard prompt goes up. `source` is the card whose effect this is. A leg's
+// prompt is a restore point.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) DiscardCardsKeyedForEffect(playerID uuid.UUID, cards []uuid.UUID, source uuid.UUID, then KeyedTail) error {
+	return g.discardCardsKeyedLocked(playerID, cards, DiscardCauseEffect, source, then)
+}
+
 // discardCardsAnsweredKeyedLocked is discardCardsKeyedLocked for a cost
 // discard whose commanders' owners answered before the payment
 // (answers, #1397).

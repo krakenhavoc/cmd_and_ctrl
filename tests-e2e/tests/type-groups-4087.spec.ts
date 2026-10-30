@@ -10,7 +10,7 @@ import { adminMoveByName, findCardOnBattlefield, openAdminClient } from "./s19-h
 // labelled, and the planeswalker and battle groups never overlap their
 // cards. Seeds the same board on every seat (four Sorins, a battle,
 // artifacts, enchantments, creatures, lands) at 2, 3 and 4 seats and at
-// 1920x1080, 1366x768 and 390x844, and checks:
+// 1920x1080 and 1366x768, and checks:
 //   - a labelled row for each of the six types (an artifact creature,
 //     an artifact land and Dryad Arbor each appear once, where
 //     cardTypes.ts puts them);
@@ -52,10 +52,12 @@ function makeDeck(): string {
   );
 }
 
+// No phone size: the table is never played below tablet width (the
+// owner's rule), and at 390px a walker card's loyalty pip overhung it by
+// a pixel or two often enough to keep the nightly red (#4675).
 const SIZES = [
   { width: 1920, height: 1080 },
   { width: 1366, height: 768 },
-  { width: 390, height: 844 },
 ];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -237,11 +239,8 @@ for (const seats of [2, 3, 4]) {
             .map(span)
             .sort((a, b) => a.left - b.left);
           const cardW = panel.rows.find((r) => r.zone === "creatures")?.cards[0]?.box.width ?? 56;
-          // A phone's cards are 30-60px and a group's label ("Lands 1")
-          // needs about 64px of its own, so there the allowance is 96px
-          // (a scrolling row, see the screenshots); at desktop widths it
-          // is one card.
-          const allowed = size.width >= 600 ? cardW : 96;
+          // No gap between neighbouring groups is wider than one card.
+          const allowed = cardW;
           for (let i = 1; i < back.length; i++) {
             const gap = back[i].left - back[i - 1].right;
             // ADR 0204 §3 (call 3): your back row may part around your
@@ -266,33 +265,27 @@ for (const seats of [2, 3, 4]) {
           expect(count("lands"), `${where}: lands`).toBe(1);
 
 
-          // At desktop widths every group is on screen without scrolling,
-          // and no walker or battle is scrolled out of its own row. (A
-          // phone scrolls the back row sideways; see the screenshots.)
-          if (size.width >= 1366) {
-            // Six groups and four walkers do not fit a 660px opponent
-            // panel; its back row scrolls (the lands are last). A panel
-            // twice that wide holds them all.
-            if (panel.box.width >= 900) {
-              expect.soft(panel.midHidden, `${where}: back row scrolls`).toBeLessThanOrEqual(1);
-            }
-            for (const row of panel.rows.filter((r) => r.spread)) {
-              expect.soft(row.hiddenX, `${where}: ${row.zone} scrolls`).toBeLessThanOrEqual(1);
-            }
+          // Every group is on screen without scrolling, and no walker or
+          // battle is scrolled out of its own row. Six groups and four
+          // walkers do not fit a 660px opponent panel; its back row
+          // scrolls (the lands are last). A panel twice that wide holds
+          // them all.
+          if (panel.box.width >= 900) {
+            expect.soft(panel.midHidden, `${where}: back row scrolls`).toBeLessThanOrEqual(1);
+          }
+          for (const row of panel.rows.filter((r) => r.spread)) {
+            expect.soft(row.hiddenX, `${where}: ${row.zone} scrolls`).toBeLessThanOrEqual(1);
           }
           const spreadCards = panel.rows.filter((r) => r.spread).flatMap((r) => r.cards);
           const walkerIDs = new Set(
             panel.rows.find((r) => r.zone === "planeswalkers")?.cards.map((c) => c.id),
           );
           for (const [i, a] of spreadCards.entries()) {
-            // On a phone the hand fan rides over the board's lower edge,
-            // and a back row scrolls sideways, so some walkers are not at
-            // a visible point; what must hold there is no overlap. On a
-            // desktop every planeswalker is painted at its centre, and a
-            // battle too unless the panel is a 440px four-seat one, whose
-            // back row scrolls the battle, artifacts and enchantments
-            // aside before it gives up a walker.
-            if (size.width >= 1366 && (walkerIDs.has(a.id) || panel.box.width >= 900)) {
+            // Every planeswalker is painted at its centre, and a battle too
+            // unless the panel is a 440px four-seat one, whose back row
+            // scrolls the battle, artifacts and enchantments aside before
+            // it gives up a walker.
+            if (walkerIDs.has(a.id) || panel.box.width >= 900) {
               expect.soft(a.painted, `${where}: walker ${i} is painted at its centre`).toBe(true);
             }
             for (const b of spreadCards.slice(i + 1)) {

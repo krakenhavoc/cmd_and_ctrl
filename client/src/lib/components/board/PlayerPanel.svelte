@@ -291,6 +291,9 @@
   // ADR 0120 §3: the expanded copy is upright, and leaves the dock's
   // and the coach card's cells to the table's panel.
   const flipped = $derived(flippedProp && !expanded);
+  // #4555: a top-row opponent's cards drawn upright, facing the viewer,
+  // when the viewer asked for it (settings.display.opponentCardFacing).
+  const facesViewer = $derived(flipped && $settings.display.opponentCardFacing === "me");
   const docked = $derived(dockedProp && !expanded);
   const coached = $derived(coachedProp && !expanded);
   // ADR 0128: this seat's playmat, drawn behind its battlefield. The
@@ -1063,6 +1066,7 @@
   class:seat-self={isSelf}
   class:opponent={!isSelf}
   class:flipped
+  class:faces-viewer={facesViewer}
   class:spectator
   class:docked
   class:coached
@@ -1986,6 +1990,51 @@
        overlay, which is never flipped, reads upright. */
     .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row-cards) {
       transform: rotate(180deg);
+      /* #4556: the keyword flourishes (Card.svelte) are drawn in screen
+         terms, so a card needs to know it is drawn turned. A flier's lift
+         and shadow flip with it; the strike blades stay on its top edge,
+         which is the one facing the table's centre when it is turned.
+         "Facing me" (#4555) turns each pile back upright and sets
+         --card-turn: 1 and --blade-turn: -1 on it (below): an upright
+         top-row card faces the centre with its bottom edge. */
+      --card-turn: -1;
+    }
+    /* #4555: "Facing me" (settings.display.opponentCardFacing) draws the
+       cards upright for the viewer. Only the drawing changes: the lists
+       above stay turned, so every row, pile and zone keeps its place and
+       fitRow measures what it always did, and each card turns back about
+       its own centre. Its box does not move, so a tapped card still turns
+       90° the way yours do (the two half turns cancel), an attachment is
+       tucked on the same side of its host as on your board, and the
+       arrows, rings and drops that measure a card's rect find it where
+       they did. The hand stays turned: an opponent's is face down, and
+       its fan is part of the panel's layout. */
+    .panel.opponent.flipped.faces-viewer .rail :global(.pile .thumb),
+    .panel.opponent.flipped.faces-viewer :global(.command-strip .slot .card) {
+      transform: none;
+    }
+    /* Upright, the half of a tucked commander that shows over the panel's
+       edge would be its lower half (rules text, no name). So it is tucked
+       only by the panel's padding: its top edge sits on the clipping edge
+       and the name and art show. It hangs further into the same empty
+       corner, over nothing else (the strip is already above the rows). */
+    .panel.opponent.flipped.faces-viewer :global(.command-strip .slot) {
+      margin-top: -8px;
+    }
+    .panel.opponent.flipped.faces-viewer :is(.grid-creatures, .grid-middle) :global(.pile) {
+      transform: rotate(180deg);
+      /* Turned back, a pile overlaps the next one on its other side, so
+         the stack order turns too: the first pile stays on top and each
+         later one tucks under it, leaving the left of every card (its
+         name) in view. A hovered pile still comes to the front. */
+      z-index: calc(100 - var(--pi, 0));
+      /* #4556: upright to the viewer, so the keyword flourishes lift up
+         the screen, and the blades go to the edge facing the centre. */
+      --card-turn: 1;
+      --blade-turn: -1;
+    }
+    .panel.opponent.flipped.faces-viewer :is(.grid-creatures, .grid-middle) :global(.pile:hover) {
+      z-index: 120;
     }
     /* #2995: but the empty-hand label is text, and reads upright. */
     .panel.opponent.flipped .hand-zone > :global(.hand > .empty) {

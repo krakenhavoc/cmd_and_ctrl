@@ -18,6 +18,18 @@ func enchantedDoesntUntap() game.UntapStepRestriction {
 	return game.UntapStepRestriction{Label: "enchanted creature doesn't untap", Restricts: AttachedToSource}
 }
 
+// enchantedCantBecomeUntapped is "enchanted creature can't become
+// untapped" (CR 614.17, #4574): Frozen in Ice. Stronger than
+// enchantedDoesntUntap: an untap effect does nothing to the creature
+// either, for as long as the Aura is on it.
+func enchantedCantBecomeUntapped() game.UntapStepRestriction {
+	return game.UntapStepRestriction{
+		Label:              "enchanted creature can't become untapped",
+		Restricts:          AttachedToSource,
+		CantBecomeUntapped: true,
+	}
+}
+
 func doesntUntapDuringTheirControllersUntapSteps(match CardPredicate) game.UntapStepRestriction {
 	return game.UntapStepRestriction{
 		Label: "doesn't untap during its controller's untap step",
@@ -87,6 +99,40 @@ func (d DoesntUntapWhile) Apply(ctx *Context) error {
 		}
 	}
 	return nil
+}
+
+// CantBecomeUntappedWhile records "it can't become untapped for as long
+// as <Duration>" on each target (#4574, CR 614.17, CR 611.2b). Unlike
+// DoesntUntapWhile the permanent stays tapped through EVERY untap, not
+// only its controller's untap step. Build Duration as for DoesntUntapWhile
+// and apply nothing when it says false.
+type CantBecomeUntappedWhile struct {
+	Targets  []uuid.UUID
+	Duration game.Duration
+}
+
+func (d CantBecomeUntappedWhile) Apply(ctx *Context) error {
+	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
+		if err := ctx.Game.CantUntapForEffect(id, d.Duration); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TapAndLockWhileYouControlThis is "tap target creature. It can't become
+// untapped for as long as you control ~" (Spider-Woman, Secret Agent). The
+// tap always happens; the lock is recorded only if the duration starts,
+// exactly as TapAndHoldWhileYouControlThis does.
+func TapAndLockWhileYouControlThis(ctx *Context, targets []uuid.UUID) error {
+	if err := tapEach(ctx, targets); err != nil {
+		return err
+	}
+	d, ok := DurationWhileYouControlSource(ctx, ctx.Source(), ctx.Controller())
+	if !ok {
+		return nil
+	}
+	return CantBecomeUntappedWhile{Targets: targets, Duration: d}.Apply(ctx)
 }
 
 // TapAndHoldWhileYouControlThis is "tap target creature. It doesn't

@@ -167,3 +167,58 @@ describe("ChoicePromptModal — mode_pick (#764, CR 603.3c)", () => {
     expect(hint).toContain("not on the stack");
   });
 });
+
+// #4617: "choose up to X" — the wire leaves a zero mode_min out, and
+// mode_max is the X paid for the spell, capped at the bullets offered.
+describe("ChoicePromptModal — a choose-up-to mode_pick (#4617, CR 700.2b)", () => {
+  // The Ruinous Wrecking Crew cast for X = 2, no token on the board.
+  const crew = {
+    reason: "Choose up to X (X is 2)",
+    mode_options: [
+      "Discard a card, then draw a card.",
+      "Target opponent loses 2 life.",
+      "Each player sacrifices a creature of their choice.",
+    ],
+    mode_indexes: [0, 1, 3],
+    mode_max: 2,
+  };
+
+  it("answers no bullet with an empty list, and says that is what it does", () => {
+    const { container, sent } = mount(crew);
+    const hint = container.querySelector(".prompt-hint")?.textContent ?? "";
+    expect(hint).toContain("up to 2, or none");
+    const button = primary(container);
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toContain("Choose none");
+    click(button);
+    expect(sent[0].params).toMatchObject({ choice_id: "choice-1", modes: [] });
+  });
+
+  it("stops at X bullets", () => {
+    const { container, sent } = mount(crew);
+    const opts = optionButtons(container);
+    click(opts[2]);
+    click(opts[0]);
+    // A third pick is refused: max 2.
+    click(opts[1]);
+    expect(primary(container).textContent).toContain("Choose");
+    expect(primary(container).textContent).not.toContain("none");
+    click(primary(container));
+    expect(sent[0].params).toMatchObject({ modes: [3, 0] });
+  });
+
+  it("lets a 'choose up to one' bullet be taken back", () => {
+    const { container, sent } = mount({
+      reason: "Choose up to one",
+      mode_options: ["Counter target spell.", "Destroy another target creature."],
+      mode_indexes: [0, 1],
+      mode_max: 1,
+    });
+    const opts = optionButtons(container);
+    click(opts[1]);
+    click(opts[1]);
+    expect(primary(container).textContent).toContain("Choose none");
+    click(primary(container));
+    expect(sent[0].params).toMatchObject({ modes: [] });
+  });
+});

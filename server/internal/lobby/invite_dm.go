@@ -42,7 +42,9 @@ const maxDMNameLen = 80
 //   - user_id is OUR user id (the id GET /me/tablemates returns), and
 //     is what an ordinary signed-in caller uses. The server resolves it
 //     to a Discord snowflake through identities; the snowflake is never
-//     on the wire in either direction.
+//     on the wire in either direction. An ordinary caller may name only
+//     a person they have shared a table with, the people the picker
+//     offers (Lobby.IsTablemate); an admin may name any account.
 //   - discord_id is a raw Discord snowflake, and is ADMIN-ONLY. It
 //     exists for #613's `/c2-invite-dm @user`, which holds a mention
 //     and nothing else — the target may have never signed in here, so
@@ -55,6 +57,10 @@ type dmInviteRequest struct {
 	UserID    string `json:"user_id,omitempty"`
 	DiscordID string `json:"discord_id,omitempty"`
 }
+
+// errNotATablemate is the 404 for a user_id an ordinary caller may not
+// name: a stranger, a deleted account, or an id that is nobody's.
+const errNotATablemate = "no such tablemate; you can invite people you have sat at a table with"
 
 // dmInviteResponse is the 200 body. It deliberately carries no
 // snowflake and no invite token: the caller learns that the DM was
@@ -75,9 +81,11 @@ var ErrInviteTokenUnavailable = errors.New("lobby: this process does not hold th
 
 // inviteDM is POST /games/{id}/invites/dm.
 //
-// Order of refusals: game first (404), then authorisation (403), then
-// the body (400), then configuration (503), then the invite (409),
-// then Discord.
+// Order of refusals: game first (404), then authorisation of the
+// caller (403), then the body (400), then configuration (503), then
+// the target (400 for a user_id that is not a uuid, 404 for one who is
+// not the caller's tablemate, 422 for one with no Discord account),
+// then the invite (409), then Discord.
 func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
@@ -95,7 +103,8 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !canInviteDM(p, meta, createdBy, c.isAdmin(p)) {
+	admin := c.isAdmin(p)
+	if !canInviteDM(p, meta, createdBy, admin) {
 		return httpError(http.StatusForbidden,
 			"only someone seated at this table, the person who created it, or the admin may send an invite DM")
 	}
@@ -129,7 +138,7 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 			"direct-message invites are not configured on this server (CMDCTRL_PUBLIC_BASE_URL is not set)")
 	}
 
-	recipient, displayName, err := c.dmRecipient(r, body)
+	recipient, displayName, err := c.dmRecipient(r, p.UserID, admin, body)
 	if err != nil {
 		return err
 	}
@@ -163,7 +172,18 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // dmRecipient turns a request body into the Discord snowflake to DM,
 // plus the target's display name when we know it.
-func (c Config) dmRecipient(r *http.Request, body dmInviteRequest) (recipient, displayName string, err error) {
+//
+// An ordinary caller may name only one of their own tablemates; admin
+// (the bot's shared token, or an allowlisted person in admin mode;
+// inviteDM asked isAdmin once and passes the answer) may name any
+// account. The route sends a Discord DM from this server's bot, so
+// without the rule any seated player could make it message any
+// account whose user id they had seen. A target who is not a
+// tablemate is a 404 with the same words as an id that names nobody,
+// not a 403: a 403 would tell the caller the account exists, which a
+// stranger's user id should not. A deleted account is not a tablemate
+// (Tablemates leaves it out), so it reads the same way.
+func (c Config) dmRecipient(r *http.Request, caller uuid.UUID, admin bool, body dmInviteRequest) (recipient, displayName string, err error) {
 	if body.DiscordID != "" {
 		// Admin-only path (#613): a snowflake, straight through. We
 		// know nothing else about the target, by design.
@@ -172,6 +192,16 @@ func (c Config) dmRecipient(r *http.Request, body dmInviteRequest) (recipient, d
 	target, err := uuid.Parse(body.UserID)
 	if err != nil || target == uuid.Nil {
 		return "", "", httpError(http.StatusBadRequest, "invalid user_id")
+	}
+	if !admin {
+		mate, err := c.Lobby.IsTablemate(caller, target)
+		if err != nil {
+			c.logger().Error("checking a DM-invite target's tablemate status failed", "err", err)
+			return "", "", httpError(http.StatusInternalServerError, "could not look that person up; try again")
+		}
+		if !mate {
+			return "", "", httpError(http.StatusNotFound, errNotATablemate)
+		}
 	}
 	store := c.userStore()
 	u, err := store.Get(r.Context(), target)

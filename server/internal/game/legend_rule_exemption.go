@@ -24,6 +24,13 @@ const (
 	// LegendRuleExemptEveryone is "The legend rule doesn't apply"
 	// (Mirror Gallery).
 	LegendRuleExemptEveryone
+	// LegendRuleExemptYourCreatures is "The legend rule doesn't apply to
+	// creatures you control" (Council of Reeds, #4707): only the
+	// controller's permanents that are creatures right now. A legendary
+	// artifact or planeswalker they control, and anything an opponent
+	// controls, still answers to CR 704.5j. Appended last so no existing
+	// value moves.
+	LegendRuleExemptYourCreatures
 )
 
 // LegendRuleExemption is one printed legend-rule exemption. Catalog data.
@@ -42,10 +49,19 @@ var CatalogLegendRuleExemptions func(key string) []LegendRuleExemption
 type legendRuleExempt struct {
 	all         bool
 	controllers map[uuid.UUID]bool
+	// creatureControllers are the controllers whose CREATURES are covered
+	// (LegendRuleExemptYourCreatures).
+	creatureControllers map[uuid.UUID]bool
 }
 
 func (e legendRuleExempt) covers(controller uuid.UUID) bool {
 	return e.all || e.controllers[controller]
+}
+
+// coversPermanent is covers for one permanent: its controller is exempt
+// outright, or it is a creature and the controller's creatures are.
+func (e legendRuleExempt) coversPermanent(c *Card) bool {
+	return e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature())
 }
 
 // legendRuleExemptControllersLocked reads every exemption on the
@@ -89,6 +105,11 @@ func (g *Game) legendRuleExemptControllersLocked() legendRuleExempt {
 					out.controllers = map[uuid.UUID]bool{}
 				}
 				out.controllers[src.Controller] = true
+			case LegendRuleExemptYourCreatures:
+				if out.creatureControllers == nil {
+					out.creatureControllers = map[uuid.UUID]bool{}
+				}
+				out.creatureControllers[src.Controller] = true
 			}
 		}
 	}

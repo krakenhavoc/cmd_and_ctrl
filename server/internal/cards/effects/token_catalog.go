@@ -219,6 +219,12 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
+	// Falcon, Winged Wonder's Redwing (#4455).
+	printedMshA3RedwingToken,
+
+	// Mole Man, Moloid Master's Moloid (#4455).
+	printedMshB6MoloidToken,
+
 	// ADR 0114 PR 5: There and Back Again's Smaug.
 	printedSmaugToken,
 
@@ -281,6 +287,26 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Alien Invasion's Alien: haste, and it must attack each combat.
 	printedAlienToken,
+
+	// Ka-Zar's Zabu: a legendary Cat that grows on landfall.
+	printedZabuToken,
+
+	// The Sentry, Golden Guardian's The Void (#4455).
+	printedMshA8VoidToken,
+
+	// U.S.Agent's Sturdy Shield: an Equipment token, +1/+2, equip {2}.
+	printedSturdyShieldToken,
+
+	// White Tiger's The Tiger God: a legendary 4/4 Cat God that can't be
+	// blocked by more than one creature.
+	printedTigerGodToken,
+
+	// The Coming of Galactus's Galactus: flying, trample, destroys a land
+	// when he attacks.
+	printedGalactusToken,
+
+	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
+	printedVibraniumToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c",
 		Name:         "Frantic Search",
-		Purpose:      game.Purpose{Draws: 2, Discards: 2},
+		Purpose:      game.Purpose{Draws: 2, Discards: 2, Answers: game.AnswerValue}, // #2877: answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The untap waits for the discard the loot asks (CR 608.2c, #4155).

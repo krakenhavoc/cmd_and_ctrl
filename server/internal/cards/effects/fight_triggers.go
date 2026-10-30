@@ -27,3 +27,16 @@ func WheneverYourCreaturesFightOrBecomeBlocked(label string, effect Effect) game
 	}
 	return t
 }
+
+// itFightsTheFirstTarget is the body of "<this permanent> fights up to one
+// target creature": the trigger's source fights the first legal target, and
+// nothing happens when none was chosen (the "up to one" shape) or either
+// fighter has gone (b10Fight).
+func itFightsTheFirstTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return b10Fight(ctx, item.SourceCardID, id)
+}

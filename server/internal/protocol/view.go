@@ -252,7 +252,8 @@ type GameView struct {
 	// LegalMovesTruncated is true when capLegalMoves dropped anything
 	// from LegalMoves — the list on this frame is then one move per
 	// (source, kind, targets_stack, has_targets, interacts,
-	// combat_interacts, combat_defender_only) rather than every move
+	// combat_interacts, combat_defender_only, value_only) rather than
+	// every move
 	// (ADR 0122 §6.1). Absent otherwise. A seat that needs the rest sends a
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
@@ -769,6 +770,13 @@ type PendingChoiceView struct {
 	// LifeCostUnpayable marks a mandatory pay-unless life component
 	// that the chooser cannot pay, including a life-total lock.
 	LifeCostUnpayable bool `json:"life_cost_unpayable,omitempty"`
+	// PoisonCost is the poison counters a "confirm" ACCEPT branch gives the
+	// chooser (#4613, The Serpent Society's "Ward—Get five poison counters").
+	// LifeCost's sibling, carried for the same reason: a client, human or
+	// bot, otherwise prices "get five poison counters" like "shuffle". It is
+	// always payable, so there is no Unpayable twin; the tenth counter loses
+	// the game (CR 704.5c), which a policy reads against the seat's poison.
+	PoisonCost int `json:"poison_cost,omitempty"`
 	// DeclineEndsLoop marks a "confirm" whose accept would continue a
 	// loop the table is already in (#2040, Channel Harm against Channel
 	// Harm). A hint, not a rule: both answers stay legal, and declining
@@ -1195,6 +1203,14 @@ type LegalTargetsView struct {
 	// shape as Different; absent on every clause without one.
 	Same *TargetDifferenceView `json:"same,omitempty"`
 
+	// Total is the third set rule (#4616): the picks' values may total
+	// no more than `max` — "total mana value 6 or less" (The Super Hero
+	// Civil War). `values` is each legal card's value; a card with no
+	// entry fits no total. The picker greys a candidate whose value
+	// would take the picks past `max`, and says the rule in its banner.
+	// Absent on every clause without one.
+	Total *TargetTotalView `json:"total,omitempty"`
+
 	// ManaValueAtMostX marks a clause bounded by the announced X —
 	// "with mana value X or less" (#1559). Like CountFromX, the
 	// server builds this legal set before X is chosen, so it is a
@@ -1314,6 +1330,33 @@ func divideView(d *game.DivideSpec) *DivideView {
 type TargetDifferenceView struct {
 	Label string            `json:"label"`
 	Keys  map[string]string `json:"keys,omitempty"`
+}
+
+// TargetTotalView is LegalTargetsView.Total, the wire shape of
+// game.TargetTotal (#4616): the printed rule, completing "those targets
+// must …", the inclusive ceiling, and each legal card's value by wire
+// id. A card with no value (an unreadable cost) is absent, and fits no
+// total.
+type TargetTotalView struct {
+	Label  string         `json:"label"`
+	Max    int            `json:"max"`
+	Values map[string]int `json:"values,omitempty"`
+}
+
+// totalRuleView projects a total rule and its values, by wire id. Nil
+// for no rule.
+func totalRuleView(r *game.TargetTotal, values map[uuid.UUID]int) *TargetTotalView {
+	if r == nil {
+		return nil
+	}
+	v := &TargetTotalView{Label: r.Label, Max: r.Max}
+	if len(values) > 0 {
+		v.Values = make(map[string]int, len(values))
+		for id, n := range values {
+			v.Values[id.String()] = n
+		}
+	}
+	return v
 }
 
 // setRuleView projects a set rule's label and its keys, by wire id.
@@ -2037,7 +2080,10 @@ type PayCardsView struct {
 // PayOptionView is one branch of an either payment (ADR 0187 §5).
 type PayOptionView struct {
 	// Action is the branch's kind: "sacrifice", "discard",
-	// "exile_graveyard", "life", "damage", "energy" or "nothing".
+	// "exile_graveyard", "life", "damage", "energy", "nothing" or — #4566,
+	// a ward with two ways to pay — "mana", answered with `pay_option`
+	// alone and paid from the pool and the auto-tapper like a plain mana
+	// pay-unless. Words then reads "pay {2}".
 	Action string `json:"action"`
 	// Count is how many cards one payment names, or the amount of life,
 	// damage or energy.
@@ -3953,8 +3999,12 @@ type LandTypeEffectView struct {
 }
 
 type NoUntapView struct {
-	Static bool     `json:"static,omitempty"`
-	Next   []string `json:"next,omitempty"`
+	Static bool `json:"static,omitempty"`
+	// Never is "can't become untapped" (#4574, CR 614.17): no untap of
+	// any kind will work on it, not only the untap step, so the client
+	// offers none. Always set together with Static.
+	Never bool     `json:"never,omitempty"`
+	Next  []string `json:"next,omitempty"`
 }
 
 // CastSurfaceView is the announce-time cast surface of ONE CASTABLE
@@ -4972,6 +5022,13 @@ type ActivatedAbilityView struct {
 	// (CR 118.3 — it will already be tapped).
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// CostBranches are the ways to pay an either/or part of the cost
+	// (#4566, game.AbilityCost.Either): Bullseye, Death Dealer's
+	// "Sacrifice an artifact or discard a nonland card". The client asks
+	// which one first, then runs the chosen branch's picker exactly as it
+	// would for a row printing that clause alone, and sends the index as
+	// `cost_branch`. Absent for every other ability.
+	CostBranches []AbilityCostBranchView `json:"cost_branches,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -5879,7 +5936,8 @@ const legalMovesWireCap = 48
 //
 // So the degraded list keeps the FIRST move of every (source, kind,
 // targets_stack, has_targets, interacts, combat_interacts,
-// combat_defender_only) tuple and drops only the alternatives.
+// combat_defender_only, value_only) tuple and drops only the
+// alternatives.
 // Every card that had a move still has one; what is lost is the choice between
 // its twelve targets, which no client consumes today (targeting is
 // driven by CardView.legal_targets, and targeting.ts stays the
@@ -5893,8 +5951,9 @@ const legalMovesWireCap = 48
 // untargeted one is two moves, and keeping only the untargeted one
 // would tell smart autopass the seat has nothing to answer with.
 // CombatInteracts and CombatDefenderOnly ride along for the same reason
-// (#2871).
-// docs/protocol.md states all five as part of the fields' contract.
+// (#2871), and so does ValueOnly (#2877): a modal spell's draw-only
+// announcement and its other modes are different answers.
+// docs/protocol.md states all six as part of the fields' contract.
 //
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
@@ -5943,6 +6002,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		interacts    bool
 		combat       bool
 		defenderOnly bool
+		valueOnly    bool
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
@@ -5953,7 +6013,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 			out = append(out, m)
 			continue
 		}
-		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
+		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly, m.ValueOnly}
 		if seen[k] {
 			continue
 		}
@@ -6679,6 +6739,10 @@ func publicActivatedAbilityRow(v ActivatedAbilityView) (out ActivatedAbilityView
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #4566: an either/or cost's discard branch lists the same hand.
+	var branchesPrivate bool
+	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
+	private = private || branchesPrivate
 	return v, private
 }
 
@@ -7415,13 +7479,14 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // castTimingOpenForAnyOffer is the timing half of castableNow: the
 // window is open for the cast as a whole, or for one of its offers
 // that carries its own "as though it had flash" (CR 601.3c, Primal
-// Prayers), judged as CastSpell would judge that claim.
+// Prayers) or sneak's declare-blockers window (CR 702.190a, #4586),
+// judged as CastSpell would judge that claim.
 func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []*game.AlternativeCost) bool {
 	if g.CastTimingOpenLocked(caster, card, kind, grant) {
 		return true
 	}
 	for _, o := range offers {
-		if o != nil && o.AsThoughFlash && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
+		if o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
 			return true
 		}
 	}
@@ -7640,10 +7705,14 @@ func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []Att
 		// #3400: a fixed player the creature can't attack, and their
 		// planeswalkers (Promise of Loyalty). Not the creature's own
 		// controller, whom CR 506.2 already forbids.
-		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller {
+		//
+		// A restriction with an attacker filter (#4601, Storm, Windrider)
+		// needs the board to know whether it binds this creature now, so
+		// stampDefenderRefusals adds its row and this one leaves it out.
+		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller && len(r.OnlyAttackersMatching) == 0 {
 			out = append(out, AttackTargetRestrictionView{
 				Player:        r.NotPlayer.String(),
-				Planeswalkers: true,
+				Planeswalkers: !r.NotPlayerOnly,
 				Source:        r.SourceName,
 			})
 		}
@@ -7712,6 +7781,8 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	if s := spec.Same; s != nil {
 		v.Same = setRuleView(s.Label, g.TargetSamenessKeysForEffect(spec, cards))
 	}
+	// #4616: the total rule, with each legal card's value.
+	v.Total = totalRuleView(spec.Total, g.TargetTotalValuesForEffect(spec, cards))
 	// #1559, ADR 0109 §9: the X bound and the values the client
 	// narrows the superset with.
 	stat := game.BoundStatisticForEffect(spec)
@@ -9247,6 +9318,7 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 	// #1261: the board's restrictions gathered once for the whole
 	// battlefield, not once per permanent.
 	restricted := g.UntapStepRestrictedCheckerLocked()
+	cant := g.CantBecomeUntappedCheckerLocked()
 	for i := range view.Cards {
 		if i >= len(g.Battlefield.Cards) {
 			break
@@ -9256,12 +9328,13 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 		// restriction reads false — but a hold (#1313) comes from
 		// ANOTHER object's resolved ability and applies face-down or
 		// not, like a next-step marker.
-		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card)
+		never := cant(card)
+		static := (!card.FaceDown && restricted(card)) || g.UntapHeldLocked(card) || never
 		next := projectedUntapSkipPlayers(g, card)
 		if !static && len(next) == 0 {
 			continue
 		}
-		view.Cards[i].NoUntap = &NoUntapView{Static: static, Next: next}
+		view.Cards[i].NoUntap = &NoUntapView{Static: static, Never: never, Next: next}
 	}
 }
 
@@ -9665,6 +9738,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+			v.PoisonCost = c.PoisonCost
 			v.DeclineEndsLoop = c.DeclineEndsLoop
 		}
 		// ADR 0115 decision 2: the one computed fact a CR 903.9a
@@ -10007,6 +10081,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if s, keys := g.PickTargetSameRuleForEffect(c); s != nil {
 				pt.Same = setRuleView(s.Label, keys)
 			}
+			// #4616: and its total rule, with each candidate's value.
+			pt.Total = totalRuleView(g.PickTargetTotalRuleForEffect(c))
 			// #1563: a divided trigger clause asks for the shares
 			// with the picks.
 			pt.Divide = divideView(game.PickTargetDivideForEffect(c))
@@ -12852,7 +12928,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
-		v.PowerUpUsed = g.PowerUpUsed(c.InstanceID, a)
+		v.PowerUpUsed = g.PowerUpUsed(&c, a)
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true
@@ -12867,7 +12943,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// the whole card, because almost no board restricts anything.
 		if restricted {
 			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
-				game.ActivationAbility{Label: a.Label})
+				game.ActivationAbility{Label: a.Label, PowerUp: a.PowerUp})
 		}
 		// ADR 0129 §8: the energy component, and the refusal's own text
 		// when the controller is short of the printed part (CR 118.3),
@@ -12987,6 +13063,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
 		}
+		// #4566: each branch of an either/or cost, off the walks the
+		// engine validates the folded cost against.
+		v.CostBranches = abilityCostBranchViews(g, caster, c.InstanceID, a.Cost)
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			// #662: an activated ability's source is the permanent

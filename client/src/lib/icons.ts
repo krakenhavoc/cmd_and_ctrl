@@ -197,10 +197,30 @@ export const ICONS = {
     p("M4 12H2"),
     p("M22 12h-2"),
   ],
-  // #3499, the table card's toolbar: the spectator link (an eye) and
-  // Invite by DM (an envelope).
+  // #3499 and ADR 0212 §4, a table's Invite menu: the spectator link (an
+  // eye), Invite by DM (an envelope) and a new link (a plus in a ring,
+  // not the ↻ that read as "reload").
   eye: [p("M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"), c(12, 12, 3)],
   mail: [{ t: "rect", x: 3, y: 5, w: 18, h: 14, rx: 2 } as IconPrimitive, p("M3 7l9 6 9-6")],
+  newLink: [p("M12 8v8"), p("M8 12h8"), c(12, 12, 9)],
+  // ADR 0212 §1: your seat with no deck yet, the tile that opens the picker.
+  plus: [p("M12 5v14"), p("M5 12h14")],
+  // ADR 0212 §3: a deck tile's flag for cards that do not play as
+  // printed. A caution, not a signal colour: it carries the words.
+  warn: [
+    p("M10.3 4.2 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"),
+    p("M12 9.5v4"),
+    p("M12 17h.01"),
+  ],
+  // A deck's sideboard (ADR 0191), under the picker's grid.
+  list: [
+    p("M9 6h11"),
+    p("M9 12h11"),
+    p("M9 18h11"),
+    p("M4.5 6h.01"),
+    p("M4.5 12h.01"),
+    p("M4.5 18h.01"),
+  ],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

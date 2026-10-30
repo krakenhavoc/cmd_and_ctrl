@@ -63,6 +63,10 @@ func TestCyclonusStaysWhenConniveStopsShortOfFive(t *testing.T) {
 		t.Fatalf("%d counters, want 2 (a land discard adds none)", c.Counters["+1/+1"])
 	}
 	wantFace(t, g, id, 0, "Cyclonus, the Saboteur")
+	// CR 701.50f, #4641: it connived once, and said so.
+	if evs := eventsOfKind(g, game.EventConnived); len(evs) != 1 || evs[0].CardID != id {
+		t.Errorf("connive events = %+v, want one for Cyclonus", evs)
+	}
 }
 
 // Cyclonus with power already 5 converts after any connive, even a land

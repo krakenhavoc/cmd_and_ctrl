@@ -8,6 +8,18 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// exileTheFirstTargetIfLegal is "Exile target <thing>" for a spell or
+// ability whose first target is the one exiled (Baleful Mastery, Fall to
+// Earth). It re-checks the target against the item's own targets rather
+// than a captured slice, for undo safety, and does nothing for a target
+// that is no longer legal (CR 608.2b).
+func exileTheFirstTargetIfLegal(ctx *Context) error {
+	if ctx.Item == nil || len(ctx.Item.Targets) == 0 || !ctx.IsTargetLegal(ctx.Item.Targets[0]) {
+		return nil
+	}
+	return ExileTarget{Target: ctx.Item.Targets[0].ID}.Apply(ctx)
+}
+
 // returnLegalGraveyardTargetsToHand returns every still-legal graveyard
 // target to its owner's hand, in announce order — the body of the
 // "return N target cards from your graveyard to your hand" spells whose
@@ -24,17 +36,6 @@ func returnLegalGraveyardTargetsToHand(ctx *Context) error {
 		}
 	}
 	return nil
-}
-
-// putPlusOneCounterOnTheLegalTarget puts a +1/+1 counter on the spell's
-// still-legal creature target (CR 608.2b: one that left in response gets
-// none). The first sentence of Slip Out the Back and Moment of Glory.
-func putPlusOneCounterOnTheLegalTarget(ctx *Context) error {
-	targets := legalTargetCards(ctx.Item, ctx.Game)
-	if len(targets) == 0 {
-		return nil
-	}
-	return AddCounter{Target: targets[0], Kind: "+1/+1", N: 1}.Apply(ctx)
 }
 
 // cardDied reports whether an EventLTB marks `source` going to the
@@ -505,6 +506,21 @@ func leftAsColor(ev game.Event, c game.Card, color string) bool {
 	return c.HasColor(color)
 }
 
+// leftWithKeyword is leftAsType for a KEYWORD (#4613, CR 603.10a): whether
+// the permanent an EventLTB names had `keyword` ("deathtouch") as it last
+// existed on the battlefield — Event.LastKnownKeywords, the post-layer
+// abilities the exit read with the card still in play. A creature that had
+// deathtouch only through an effect (a Gift of the Viper, a lord) had it on
+// the battlefield and is a plain creature in the graveyard. c is the card as
+// it sits now, consulted only for an event that carries no last-known
+// information.
+func leftWithKeyword(ev game.Event, c game.Card, keyword string) bool {
+	if was, known := ev.WasKeyword(keyword); known {
+		return was
+	}
+	return game.HasKeyword(&c, keyword)
+}
+
 // diedWhileAttacking resolves the creature that just died from a dies
 // event when it was ATTACKING as it died — "whenever an attacking
 // creature dies" (Kardur, Doomscourge), Garna's "if it was attacking".
@@ -873,20 +889,6 @@ func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-}
-
-// plusOneCounterOnChosen is "put a +1/+1 counter on target creature" as
-// a trigger or ability Effect — Triumph of Gerrard's first two chapters
-// and Pridemalkin's enters trigger.
-func plusOneCounterOnChosen(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
-	}
-	return AddCounter{
-		Target: item.Targets[0].ID,
-		Kind:   game.CounterPlusOne,
-		N:      1,
-	}.Apply(NewContext(g, item))
 }
 
 // regenerateTheTargetPermanent is the whole Effect of "{cost}:

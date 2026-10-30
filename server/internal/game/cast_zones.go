@@ -519,6 +519,18 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 //
 // Caller must hold g.mu.
 func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
+	// #4509: a permission whose filter is about the spell judges the
+	// face `card` has materialised (CR 601.3e, 709.3a, 712.11c, 715.3a).
+	// One that does not admit it opens nothing for this cast, so every
+	// rule below reads the cast as having no permission, and its own
+	// price claimed anyway is refused — here, in the gate the view's
+	// offer list, the bot enumerator and CastSpell share.
+	if grant != nil && grant.ForSpell(card) == nil {
+		if alt != nil && alt.FromPermission {
+			return ErrCastZoneNotAllowed
+		}
+		grant = nil
+	}
 	if alt != nil && alt.Granted {
 		return g.grantedOfferClaimableLocked(card, srcKind, alt, grant)
 	}
@@ -535,12 +547,27 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	if alt != nil && alt.RequiresGrant && (grant == nil || grant.AltCostKey != alt.Key) {
 		return ErrAltCostNotGranted
 	}
+	// #4628, CR 702.187b: mayhem's price is claimable only for a card
+	// its owner discarded this turn, whatever else opens the zone.
+	if alt != nil && alt.RequiresDiscardedThisTurn && !g.DiscardedThisTurn(card.InstanceID) {
+		return ErrCastZoneNotAllowed
+	}
 	// ADR 0099: a discover or cascade grant caps the mana value of the
 	// spell it opens, judged against the face the caller materialised —
 	// CastSpell and the enumerator both SetFace before asking — so a
 	// modal DFC's expensive back face is refused here, in the one gate
 	// the view, the bot and the engine share.
-	if !spellManaValueWithinCap(card, grant) {
+	//
+	// #4509: a HAND grant's cap ("you may cast a spell with mana value 2
+	// or less from your hand without paying its mana cost") binds only
+	// the cast that claims its offer. The card's ordinary cast from hand
+	// needs no permission (CR 601.2), so the grant is not what it is
+	// cast under (ForClaim).
+	capped := grant
+	if grant != nil && grant.Zone == ZoneHand && (alt == nil || !alt.FromPermission) {
+		capped = nil
+	}
+	if !spellManaValueWithinCap(card, capped) {
 		return ErrSpellManaValueTooHigh
 	}
 	// ADR 0103, CR 702.127a: an aftermath half casts from a graveyard

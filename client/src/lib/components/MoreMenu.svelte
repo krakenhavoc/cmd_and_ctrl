@@ -1,4 +1,6 @@
 <script lang="ts" module>
+  import type { IconName } from "../icons";
+
   /** One entry of a ⋯ menu: a button, or a link (a download, say). */
   export interface MoreItem {
     label: string;
@@ -8,6 +10,12 @@
     danger?: boolean;
     disabled?: boolean;
     title?: string;
+    // ContextMenu only (ADR 0212 §4, the Invite menu): a glyph before the
+    // label, a line under it that says what it does, and a heading that
+    // groups it with the items after it that carry the same one.
+    icon?: IconName;
+    hint?: string;
+    group?: string;
   }
 </script>
 

@@ -127,6 +127,10 @@ var activatedRowScopes = map[string]rowScope{
 	// the X flag are public; the matching HAND cards are not.
 	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic, "RevealHandCost": rowPublic,
 	"RevealCostOptions": rowHiddenZone,
+	// #4566: the branches of an either/or cost stay on the public row;
+	// publicCostBranches clears a discard branch's hand cards and its
+	// verdict inside them (ability_cost_either_view_test.go).
+	"CostBranches": rowPublic,
 }
 
 // manaRowScopes is activatedRowScopes for ManaAbilityView.

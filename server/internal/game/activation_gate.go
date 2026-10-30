@@ -117,6 +117,12 @@ type ActivationAbility struct {
 	// new is that the keyword can be NAMED by a card that speaks
 	// about it, which is a different claim.
 	Equip bool
+
+	// PowerUp marks a power-up ability (CR 702.193), because Kang the
+	// Conqueror's clause names the keyword: "power-up abilities can't be
+	// activated". Derived from ActivatedAbilityShape.PowerUp by
+	// ActivationAbilityOf, never set by a card file.
+	PowerUp bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -134,6 +140,7 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		SorcerySpeed: ab.SorcerySpeed,
 		Loyalty:      ab.Cost.Loyalty != nil,
 		Equip:        ab.Equip,
+		PowerUp:      ab.PowerUp,
 	}
 }
 
@@ -306,7 +313,19 @@ func (e *CantActivateError) Unwrap() error { return ErrCantActivate }
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKind, ability ActivationAbility) error {
-	if g == nil || g.Battlefield == nil || CatalogActivationRestrictions == nil {
+	if g == nil || g.Battlefield == nil {
+		return nil
+	}
+	// The THIRD source, the one the header promised: a ban with a
+	// duration, a ScopedEffect swept when it ends (#4571, Kang the
+	// Conqueror's "power-up abilities can't be activated" for an extra
+	// turn). Asked first, because it needs no catalog hook.
+	if ability.PowerUp {
+		if reason, source, ok := g.powerUpBanLocked(); ok {
+			return &CantActivateError{Reason: reason, Source: source}
+		}
+	}
+	if CatalogActivationRestrictions == nil {
 		return nil
 	}
 	q := ActivationQuery{
@@ -342,7 +361,13 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AnyActivationRestrictionsForEffect() bool {
-	if g == nil || g.Battlefield == nil || CatalogActivationRestrictions == nil {
+	if g == nil || g.Battlefield == nil {
+		return false
+	}
+	if _, _, ok := g.powerUpBanLocked(); ok {
+		return true
+	}
+	if CatalogActivationRestrictions == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {

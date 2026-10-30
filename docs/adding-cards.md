@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
   - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
+  - [Sneak (CR 702.190, #4586)](#sneak-cr-702190-4586)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
@@ -237,7 +238,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    matters, as in Arc Trail) so a target that left in response is
    skipped rather than erroring.
 
-   **Rules over the chosen set (#1559, #1807).** A clause whose picks
+   **Rules over the chosen set (#1559, #1807, #4616).** A clause whose picks
    are judged against each other carries a set rule from
    [target_set.go](../server/internal/cards/effects/target_set.go),
    never a hand-written predicate. "That each have a different mana
@@ -253,6 +254,20 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    surviving picks at resolution, counts only the largest group when
    it asks whether a clause can be filled, and ships the keys so the
    picker greys what doesn't fit ([ADR 0106 §5](decisions/0106-five-small-seams-from-the-s50-rechecks.md)).
+   "With total mana value N or less" is the third rule, a ceiling on
+   the picks' sum (#4616):
+   ```go
+   Targets: TargetCreature("up to two target creatures with total mana value 6 or less").
+       WithCount(0, 2).WithTotal(TotalManaValueAtMost(6)), // The Super Hero Civil War, chapter I
+   ```
+   The engine sums the set at announce, sums the picks still legal again
+   at resolution (when they no longer fit, none of them is legal, as the
+   printed rulings say), counts the smallest values for fillability, and
+   ships each candidate's value so the picker greys what would pass the
+   ceiling. A card whose cost it cannot read fits no total. It stands
+   alone: `effects.Register` refuses it beside another set rule, an X
+   bound, a player clause or a sacrifice clause ([ADR 0019 amendment
+   2026-10-30](decisions/0019-structured-targeting.md)).
    `ExileTargetCards` (single_graveyard.go) is the shared body for
    "exile up to N target cards from a single graveyard".
 
@@ -376,6 +391,19 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    is a plain choose-one: `Register` refuses it on a spell, an
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
+
+   **"When this enters, choose up to X" (#4617, CR 107.3m)** is
+   `ChooseUpToX(…)` on the **enters trigger's** `Modes` (The Ruinous
+   Wrecking Crew), where X is the X paid for the spell that became the
+   permanent. The engine reads it off the entering object as the
+   trigger goes on the stack, asks for up to that many bullets (never
+   more than the card prints, CR 700.2d), and at X = 0, or for a
+   permanent that was not cast, removes the trigger without asking (CR
+   700.2b). Choosing no bullet is a legal answer and removes it too.
+   `Register` refuses it on a spell, an activated ability, a granted
+   ability and any trigger that watches more than `EventETB`. A
+   "choose up to X" whose X is something else (Riku of Many Paths,
+   Bumi, King of Three Trials) is not this.
 
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
@@ -1639,8 +1667,12 @@ both where both are true; neither is derived from the other.
 **What `effects.Register` refuses:**
 
 - `AnswerValue` beside any other answer;
-- `Answers` on a spell, a mode, an alternative cost or a triggered row
-  (nothing reads it there yet);
+- `Answers` on an activated or triggered ability's mode, inside
+  `Purpose.Kicked` or `Purpose.FaceUp`, or on a triggered row (except
+  `AnswerRemove`, an edict);
+- on a spell, `AnswerValue` in any slot when its additional cost
+  sacrifices or exiles a creature, or on an alternative cost that
+  sacrifices or returns one;
 - `Answers` on a sorcery-speed or loyalty row, or on a row whose every
   announcement has a target;
 - a crew row without `AnswerAnimate`;
@@ -1665,6 +1697,47 @@ A "Sacrifice this creature: …" row needs no special declaration for the
 moment its creature is threatened: the enumerator sets `interacts` while
 an opponent's stack item targets it, and `combat_interacts` while it
 attacks or blocks, from the game state (ADR 0142 owner answer 4).
+
+**Spells (#2877, ADR 0142's amendment of 2026-10-30).** A spell
+declares what it answers too: on the card (`Spec.Purpose.Answers`), on a
+mode (`ModeWithPurpose`) or on an alternative cost (`Purpose` on the
+`AlternativeCost`). The one reading that changes anything is
+`AnswerValue`: a cast declared exactly `value` (Opt, Brainstorm, Fact or
+Fiction, Entomb) carries `value_only`, and smart autopass does not stop
+for it on an opponent's spell unless the player asks; it still does in
+combat and at an opponent's end step. Any other declaration, and none,
+keeps the cast an instant that stops you, so declare the real answer
+where there is one:
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerValue},                   // Opt: "Scry 1. Draw a card."
+Purpose: game.Purpose{Draws: 2, Answers: game.AnswerSacOutlet},     // Altar's Reap: its cost sacrifices a creature
+ModeWithPurpose(ModeDoing("Draw a card.", nil, draw), game.Purpose{Draws: 1, Answers: game.AnswerValue}), // Mystic Confluence's third mode
+```
+
+- A mode that declares nothing is covered by the card's declaration;
+  with none there, a cast choosing it counts as answering. A mode's own
+  declaration replaces the card's for that mode.
+- An alternative cost that changes what the spell does (overload, a
+  face-down cast, bestow, its own clause list) declares for itself, or
+  the cast counts as answering. One that only changes the price
+  (flashback, a pitch cost) needs nothing.
+- A kicker adds nothing: declare the union of the kicked and unkicked
+  effect on the card (sweep ruling 4).
+- A creature with flash is a blocker (sweep ruling 7: `makes_blocker`),
+  so it is never `value`. A spell that targets the stack is a counter
+  whatever it declares.
+- A cost that gives up a creature (Altar's Reap, Deadly Dispute) is a
+  sacrifice outlet; the guard refuses `value` beside it, and the
+  enumerator never sets `value_only` on a cast that sacrifices, exiles or
+  returns a creature.
+
+There is no CI ratchet for spells: a `Spec` has no type line, and CI has
+no Scryfall dump. `go test ./internal/decks/ -run RealDumpSpellAnswers
+-v` with `CMDCTRL_SCRYFALL_DUMP` lists every instant and flash card that
+declares nothing yet; a sweep batch declares a slice of it and quotes the
+count before and after. An undeclared spell stops you as every instant
+did before, so a card left off the list costs a click, never a window.
 
 Declare what a row answers, not when it should stop a player. The
 enumerator gates `protect`, `survive`, `pump`, `prevent` and `sac_outlet` itself:
@@ -3114,7 +3187,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
-| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
+| `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)). A permanent that GIVES it to spells declares `Spec.SplitSecondGrants`, read live: Samut's `InstantAndSorcerySpellsYouControlHaveSplitSecond()`, or `EachSpellYouCastHasSplitSecondIfManaFrom(kinds, label)` for "each spell you cast has split second if mana from a … was spent to cast it" (ADR 0007 amendments 2026-10-14 and 2026-10-30) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
 | `"cipher"` | Cipher (CR 702.99) — #3867, a SPELL's keyword read as it RESOLVES: once every prompt the spell's own text opened is answered, the engine asks its controller to exile it encoded on a creature they control (`game/cipher.go`, a keyed option pick). The creature then has a granted "whenever this creature deals combat damage to a player" trigger, one per encoded card, that offers its controller a free copy of the card; the copy runs the card's OnResolve again with new targets. Declare `PrintedKeywords: []string{game.KeywordCipher}` on the instant or sorcery and write only the rest of its text: never exile the card yourself. ([ADR 0093's 2026-10-16 amendment](decisions/0093-abilities-granted-to-other-permanents.md)) |
 | `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
@@ -3370,7 +3443,16 @@ and combines mandatory life with any optional Phyrexian-symbol payment.
 move price, bot text and human payment button include it. Other mixtures
 remain unsupported. A discard ward asks the caster to confirm, then to pick the card
 from their own hand; a caster with fewer cards than the cost is
-countered with no prompt.
+countered with no prompt. `WardPoison(5)` ("Ward—Get five poison counters",
+The Serpent Society, #4613) is the sixth component: the caster confirms, and
+accepting gives them the counters. It is always offered, since a player can
+always get counters, and a caster who takes the tenth loses at the next
+state-based check. The prompt declares `PoisonCost` (the wire's `poison_cost`
+and `legal.MoveCost.Poison`) the way a life ward declares `LifeCost`, so the
+bot prices the accept branch against the ten that lose the game. A dies
+trigger that asks about a keyword the creature had ("another creature you
+control with deathtouch dies") reads `leftWithKeyword(ev, dead, "deathtouch")`,
+the post-layer keywords the exit stamped on the event (`Event.WasKeyword`).
 
 The four checks are engine-side and a card opts into none of them:
 targeting (`CanBeTargetedBy`, CR 702.16b), attachment
@@ -4921,6 +5003,34 @@ during each of your turns" (Advancing the Spirit, a
 applied to a cost with {X}). `Register` panics when the label prints
 "Power-up —" without the bit or the bit without the label.
 
+Three more clauses sit on the bit (#4571, ADR 0020 Decisions 72 to 74).
+"Each power-up ability of permanents you control can be activated an
+additional time" is `PowerUpExtras:
+[]game.PowerUpExtra{YourPowerUpAbilitiesActivateAnAdditionalTime(label)}`
+(Wonder Man): the entries add to the printed once, read from the
+battlefield. "During that turn, power-up abilities can't be activated"
+on an extra turn is `TakeExtraTurn{DuringThatTurn:
+PowerUpAbilitiesCantBeActivatedDuringThatTurn()}` (Kang the Conqueror),
+which the activation gate, the bot and the view's `cant_activate` all
+read. "Spend this mana only to activate power-up abilities" is the mana
+ability's `Restrictions: []string{game.ManaRestrictPowerUp}` (Quinjet
+Technician); tap the restricted row before the power-up, because the
+auto-tapper plans restricted mana for casts only. A power-up row that
+only counters itself is `powerUpAnswering(text, cost, effect)`, which
+declares the pump; any other row builds `PowerUp` and sets its own
+`Purpose`.
+
+**Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
+to cast Equipment spells or activate equip abilities" is
+`Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,
+game.ManaRestrictSubtype("Equipment")}, []string{game.ManaRestrictEquip})}`
+(Ronin, Shadow Stalker). `ManaRestrictEquip` matches
+`ManaSpendContext.Equip`, set from the equip bit of the row being paid
+for; the source's types can't say it, because an Equipment's other
+abilities are not equip abilities. A mana ability whose cost is life and
+no {T} is never planned by the auto-tapper, so the player fires it first
+and the mana floats; the top-up then spends it only where the tag allows.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`
@@ -5919,7 +6029,7 @@ card. The fire-and-forget `g.DestroyPermanentsForEffect(ids)` keeps
 its `int` for a sweep nothing is waiting on; it cannot include a leg
 that paused, so never read it as "destroyed this way".
 
-What counts as destroyed is CR 701.7a — "move it from the battlefield
+What counts as destroyed is CR 701.8a — "move it from the battlefield
 to its owner's graveyard". A permanent the CR 614 window saved is not
 destroyed (it never left), and neither is one a replacement sent to
 exile, a hand or a library instead (it left, but not to a graveyard).
@@ -6034,7 +6144,7 @@ reads the result — "draw that many cards", "for each permanent
 sacrificed this way" — because a leg can stop on a replacement's
 prompt and the number is not knowable on the next line. A sacrifice
 is NOT a destruction (CR 701.17a: indestructible and regeneration do
-not apply), and the two "this way" rules differ in one row: CR 701.7a
+not apply), and the two "this way" rules differ in one row: CR 701.8a
 defines a destruction by the graveyard, so a permanent an "exile it
 instead" replacement took was not destroyed, while CR 701.17a's
 sacrifice is the controller's move OFF the battlefield and that same
@@ -6852,6 +6962,32 @@ mana cost", Songcrafter Mage) is `GrantHarmonizeToCard`, Snapcaster's
 `GrantFlashbackToCard` under the `harmonize` key, so the granted offer
 taps and reduces exactly as a printed one does.
 
+**Mayhem (#4628, CR 702.187, ADR 0025 amendment 2026-10-30):** a card
+that prints "Mayhem {cost}" may be cast from its owner's graveyard for
+that cost only if it was discarded this turn. It needs two lines, the
+zone and the price:
+
+```go
+CastableZonesIf:  []game.ConditionalCastZone{MayhemCastableZone()},   // Sadistic Slash
+AlternativeCosts: []game.AlternativeCost{Mayhem("{1}{B}")},
+```
+
+`MayhemCastableZone()` is Gravecrawler's conditional zone with the
+condition `Game.DiscardedThisTurn(card)`: a per-object record (CR 400.7)
+written when a card is discarded into a graveyard and flushed with the
+turn. A milled card, a card discarded last turn, and a card that was
+discarded, left the graveyard and came back are all "no". `Mayhem` is
+flashback's graveyard price without the exile, so the spell lands back
+in the graveyard and mayhems again the next time it is discarded. Never
+hand-roll the struct: `RequiresDiscardedThisTurn` is what stops another
+permission that opens the graveyard from claiming the cheap price for a
+card that was not discarded. Timing is the spell's own ("timing rules
+still apply"), so a flash creature goes at instant speed and the rest at
+sorcery speed. Read "if it was cast from your graveyard" on a mayhem
+card's enters trigger with `source.Provenance.FromZone == game.ZoneGraveyard`
+(Rocket-Powered Goblin Glider). Mayhem without a cost (CR 702.187c) has
+no card yet.
+
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:
 `Card.Provenance` is a `CastProvenance{AltCost, FromZone}` written at
@@ -6997,6 +7133,24 @@ face is ignored, because there is exactly one legal cast. A defeated
 Siege's grant is `Faces: []int{1}` and CR 715.4's Adventure grant is
 `Faces: []int{0}`, which is why it is a list: zero cannot mean both
 "no opinion" and "the front face".
+
+**A filter is about the spell unless it says `CardInZone` (#4509).**
+"Cast an instant or sorcery SPELL", "creature SPELLS from the top of
+your library" and "play LANDS from your graveyard" judge the face being
+cast or played (CR 601.3e, 709.3a, 712.11c, 715.3a): Bonecrusher Giant
+in a graveyard is offered for Stomp under the first and only as the
+Giant under the second, and a modal DFC whose back is a land is played
+as that face under the third. That is the zero value; write nothing.
+"Each instant and sorcery CARD in your graveyard has flashback" and
+"nonland permanent CARDS in your graveyard have retrace" pick cards as
+they are in the zone (CR 715.4, 712.8a, 709.4), so set
+`Filter: game.PermissionFilter{CardInZone: true, ...}`; the keyword then
+says which faces it casts. A card that builds its own offer picks the
+cards with `perm.OffersASpell(c)` on the permission it is about to
+stamp (Bilbo, Thief in the Night), never with a type check on the card,
+which reads only its front face. A free cast's "a spell [with mana value
+N or less]" is a `freeCastSpell` clause (`freeInstantOrSorcery()`,
+`spellWithManaValueAtMost(n)`) that the permission carries.
 
 **"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
 permission over a set good for one spell: the first cast it is the
@@ -8537,6 +8691,24 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+**"Target player reveals N cards from their hand. You choose one of them. That player exiles/discards it."**
+(Taster of Wares, Klaw, Sonic Subjugator; ADR 0116's 2026-10-30 amendment, #4588) is not the shape above: the
+revealing player picks which N cards to show and only those are revealed. Declare the pair of keyed prompts once
+and call it where N is known:
+
+```go
+var klawReveal = NewRevealFromHandPick("Klaw, Sonic Subjugator", "discards",
+	"choose-cards/klaw-sonic-subjugator-reveal", "choose-cards/klaw-sonic-subjugator-discard",
+	func(ctx *Context, owner, card uuid.UUID) error {
+		return ctx.Game.DiscardCardsKeyedForEffect(owner, []uuid.UUID{card}, ctx.Source(), game.KeyedTail{})
+	})
+// in the trigger: return klawReveal.Ask(ctx, TargetedPlayer(ctx), 1+creatureCardsInYourGraveyard)
+```
+
+`DiscardCardsKeyedForEffect` is the one exported "discard these specific cards from P's hand" verb for a
+choice P did not make (it takes a `then` tail told the cards that landed); append both keys to the ledger with
+`-update-effect-keys`.
+
 ### Controlling another player (ADR 0166, #2164, CR 723)
 
 Word of Command is the one card: a look-only, keep-the-card pick, then
@@ -8879,6 +9051,28 @@ leaving a wedge. CR 732.4's draw sits on top (#2506): a loop of only
 mandatory actions that comes round unchanged gets no prompt, its notice
 is marked `mandatory`, and one more unchanged time round is a draw (ADR
 0055's amendment of 2026-10-15).
+
+### A creature becoming tapped (#4534, #4576)
+
+"Becomes tapped" is two event kinds, because the engine taps an attacker
+without an `EventTapCard`: watch `game.EventTapCard` and `game.EventAttack`
+and use `ThisBecameTapped` or `b32CreatureYouControlBecameTapped`, which read
+an attacker as tapped only when it is (a vigilance attacker did not become
+tapped). Two seams sit on top:
+
+- **The cause.** `Event.TapCause` says why a tap happened when a card asks. The
+  teamwork payment stamps `game.TapCauseTeamwork`, and
+  `effects.ThisTappedToPayTeamwork` is the When for "becomes tapped to pay a
+  teamwork cost" (Agent Maria Hill). Every other tap leaves it empty. A new
+  cause is a new constant on the tapping path; the string is on disk inside
+  a trigger's context, so it is never renamed or reused.
+- **Once per object per turn.** `Game.TimesBecameTappedThisTurn(id)` is how many
+  times that OBJECT has become tapped this turn (CR 400.7: a flickered or
+  bounced permanent is new and reads 0; the turn boundary flushes it). The
+  tally listener runs before the trigger harvester, so a predicate reads `== 1`
+  for "the first time it has become tapped this turn" (Captain America, Living
+  Legend). It counts the `EventTapCard` and the attack that tapped; a permanent
+  that enters tapped, or a regenerating one (no event), is not counted.
 
 ### Untapping in another player's untap step (#74)
 
@@ -11840,6 +12034,12 @@ the offer replaces the mana cost; casting for the printed cost stays sorcery-spe
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
+"Whenever a creature you control connives" watches `game.EventConnived` (#4641): `CardID` is the conniver and `Actor`
+its controller as it connived, so it holds for a creature that left the battlefield first (CR 701.50b). It fires once per
+creature, after the discard and the counter, whether or not a counter went on (CR 701.50f). Write it as
+`WheneverACreatureYouControlConnives(label, effect)` (Iron Monger). A card that connives in its own way must emit it:
+call `g.ConnivedForEffect(creature, controller)` from the discard continuation, as Ledger Shredder does.
+
 ### Blitz (CR 702.152, #3772)
 
 Blitz is dash's sibling: an alternative cost whose entry clause (`AlternativeCost.Blitz`, `game/blitz.go`) gives the
@@ -11858,6 +12058,22 @@ g.ApplyBlitzRidersForEffect(tokenID, item.Controller, "Jaxis — sacrifice the t
 `CastableZones: []game.ZoneKind{game.ZoneGraveyard}`. It binds the hand offer to the hand and the graveyard offer
 (`blitz-graveyard`) to the graveyard, so the card cannot be cast from its graveyard for its mana cost. The draw is one
 shared grant bundle, `game.BlitzDrawGrant`, that `effects/blitz.go` registers once. Don't declare a per-card copy of it.
+
+### Sneak (CR 702.190, #4586)
+
+Sneak is ninjutsu as an alternative cost: cast the spell for its sneak cost in your own declare blockers step, returning an
+unblocked creature you control to its owner's hand, and a permanent cast this way enters tapped and attacking whatever that
+creature was attacking. Engine notes are in the 2026-10-30 amendment of [ADR 0025](decisions/0025-alternative-costs.md).
+
+```go
+AlternativeCosts: []game.AlternativeCost{Sneak("{1}{B}{B}")}, // Elektra, Daughter of the Hand
+```
+
+Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries the window (the offer is timed by
+`CastTimingForOfferOpenLocked`, open only in its caster's declare blockers step) and the entry, and the cost is
+`ReturnToHand` narrowed by `UnblockedAttacker`, so the picker, the enumerator and the validator agree. An instant or
+sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
+ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
 
 ### Flash if X is N or less (#3225)
 

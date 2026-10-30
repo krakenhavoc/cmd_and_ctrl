@@ -74,6 +74,13 @@ const (
 	// It marks the card as one Goliath Daydreamer may cast from exile.
 	// MoveCard clears counters on the way out of exile (CR 400.7).
 	CounterDream = "dream"
+	// CounterFinality is the finality counter (CR 122.1h). One or more
+	// of them on a permanent create a single replacement effect: "If
+	// this permanent would be put into a graveyard from the battlefield,
+	// exile it instead." The rule is an engine-owned replacement
+	// (finality_counters.go), so a counter that any card puts on any
+	// permanent works, not only the ones on the cards that print it.
+	CounterFinality = "finality"
 )
 
 // Player-level counter type identifiers.
@@ -131,6 +138,7 @@ var KnownCardCounters = []string{
 	CounterTime,
 	CounterDream,
 	CounterHone,
+	CounterFinality,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

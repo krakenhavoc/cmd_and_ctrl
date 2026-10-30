@@ -213,6 +213,18 @@ type Move struct {
 	// CombatInteracts.
 	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
 
+	// ValueOnly is true on a cast whose announcement is declared to
+	// answer nothing (#2877, ADR 0142's amendment of 2026-10-30): the
+	// card, the chosen modes or the alternative cost declare exactly
+	// game.AnswerValue (Opt, Brainstorm, Fact or Fiction), it targets
+	// nothing on the stack, and its costs give up no creature
+	// (castValueOnly). Smart autopass does not count it as a response to
+	// an opponent's stack item unless the player asks it to; in combat
+	// and at an opponent's end step it is an instant like any other. A
+	// cast that declares nothing never sets it. Never set on an
+	// activation, whose answers are Interacts and CombatInteracts.
+	ValueOnly bool `json:"value_only,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
@@ -430,6 +442,15 @@ type MoveCost struct {
 	// free. Always positive when present: the enumerator has already
 	// checked the library holds that many (CR 118.3).
 	LibraryExile int `json:"library_exile,omitempty"`
+
+	// Poison is the poison counters the move gives the seat (#4613,
+	// CR 122.1f): a ward payment, "Ward—Get five poison counters". The
+	// params name no amount, so without it a policy would read the accept
+	// branch as free and pay it at nine poison. Always positive when
+	// present. Always payable: the enumerator gates nothing on it, and a
+	// payment that would reach ten loses the game (CR 704.5c), which a
+	// policy prices as such.
+	Poison int `json:"poison,omitempty"`
 }
 
 // withLibraryExile adds an "Exile the top N cards of your library"
@@ -526,6 +547,21 @@ type CounterPrice struct {
 	Counter string `json:"counter"`
 	// N is how many, always positive.
 	N int `json:"n"`
+}
+
+// confirmAcceptCost is what a confirm's accept branch charges: the life it
+// declares (#547) and the poison counters it gives (#4613). Nil when it
+// charges neither.
+func confirmAcceptCost(c *game.PendingChoice) *MoveCost {
+	cost := moveCost(c.LifeCost, 0)
+	if c.PoisonCost <= 0 {
+		return cost
+	}
+	if cost == nil {
+		cost = &MoveCost{}
+	}
+	cost.Poison = c.PoisonCost
+	return cost
 }
 
 // moveCost returns the MoveCost for a set of components, or nil when
@@ -961,12 +997,21 @@ type enumerator struct {
 	// a rider that covers only one borrow's lent rows is asked exactly as
 	// the activation asks it. A field for permType's reason.
 	rowOrigin game.AbilityOrigin
+	// rowPowerUp is whether that row is a power-up ability, for the
+	// spend context's ManaRestrictPowerUp (#4571).
+	rowPowerUp bool
+	// rowEquip is whether that row is an equip ability, for the spend
+	// context's ManaRestrictEquip (#4600).
+	rowEquip bool
 }
 
 // abilitySpend is the spend context of the activated ability row being
 // expanded: game.ManaSpendForAbilityRow with the row's origin.
 func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
-	return game.ManaSpendForAbilityRow(*source, e.rowOrigin)
+	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
+	spend.PowerUp = e.rowPowerUp
+	spend.Equip = e.rowEquip
+	return spend
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

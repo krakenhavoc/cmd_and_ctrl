@@ -8,6 +8,11 @@ import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
+import {
+  DEFAULT_OPPONENT_CARD_FACING,
+  isOpponentCardFacing,
+  type OpponentCardFacing,
+} from "./opponentCardFacing";
 import { normalizeSeen } from "./hints/seen";
 import { DEFAULT_EFFECTS_MODE, isEffectsMode, type EffectsMode } from "./tableEffects";
 import { DEFAULT_PLAYMATS_MODE, isPlaymatsMode, type PlaymatsMode } from "./playmatMode";
@@ -120,6 +125,14 @@ export interface Settings {
     // whatever opponentDetail and expandActivePlayer say, and you
     // hover or click an avatar to see a whole board. See tableLayout.ts.
     tableLayout: TableLayout;
+    // #4555: which way the cards on a top-row (flipped) opponent's panel
+    // face. "them" (the default, how the table has always looked) draws
+    // them turned 180°, facing their owner across the table as at a real
+    // one. "me" draws them upright, facing the viewer, so the art, text,
+    // P/T and counters read without tilting your head. It changes how the
+    // cards are drawn and nothing else: the rows, the piles, the identity
+    // and which seat sits where stay put. Synced: a taste, not a screen.
+    opponentCardFacing: OpponentCardFacing;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
     // since v17) is a pile of large, readable cards on the left of the
     // table; phones and short boards draw "compact" instead, without
@@ -198,6 +211,13 @@ export interface Settings {
     // every one. Per person: a signed-in account's choice follows it,
     // a guest's stays in this browser.
     shopLinks: boolean;
+    // #4556: the quiet flourishes on battlefield cards that have a
+    // keyword: flying hovers, reach leans up, deathtouch has a dark edge,
+    // first and double strike carry blades, lifelink glows red. Default
+    // on. Off draws none of them; the keyword chips are untouched. With
+    // reduced motion (or the animations master switch off) the motion
+    // goes and the still cues stay, whatever this says about them.
+    keywordFlourishes: boolean;
   };
 
   gameplay: {
@@ -276,8 +296,18 @@ export interface Settings {
     //                                fetch land, cycling). Off by
     //                                default: not interaction.
     //   respondSpecialActions      — foretell, suspend, turning face up
+    //   respondValueInstants       — #2877 (schema v31): a value
+    //                                instant (Opt, Brainstorm: a cast
+    //                                the server marks value_only) also
+    //                                counts on an opponent's stack item.
+    //                                Off by default (owner, 2026-10-30,
+    //                                option (a)); it counts in combat
+    //                                and at an opponent's end step
+    //                                either way, and never without
+    //                                respondInstants.
     respondCounterspells: boolean;
     respondInstants: boolean;
+    respondValueInstants: boolean;
     respondAbilities: boolean;
     respondUntargetedAbilities: boolean;
     respondSpecialActions: boolean;
@@ -396,7 +426,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 30;
+export const SETTINGS_VERSION = 31;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -521,6 +551,7 @@ export function defaultSettings(): Settings {
       // Row from #2433 (owner decision): opponents in one row along the
       // top, the viewer's board under them.
       tableLayout: DEFAULT_TABLE_LAYOUT,
+      opponentCardFacing: DEFAULT_OPPONENT_CARD_FACING,
       // v17 default: the pile (ADR 0119 §1, owner answer 1). It was
       // compact from v14, until the owner picked the pile.
       stackStyle: DEFAULT_STACK_STYLE,
@@ -548,6 +579,8 @@ export function defaultSettings(): Settings {
       playmats: DEFAULT_PLAYMATS_MODE,
       // ADR 0179 default: shown (owner rule, #3444).
       shopLinks: true,
+      // #4556 default: shown.
+      keywordFlourishes: true,
     },
     gameplay: {
       confirmExit: true,
@@ -572,6 +605,9 @@ export function defaultSettings(): Settings {
       // untargeted ability, which is not interaction.
       respondCounterspells: true,
       respondInstants: true,
+      // #2877 default: off. A value instant has nothing to answer on the
+      // stack; the stops in combat and at an opponent's end step stay.
+      respondValueInstants: false,
       respondAbilities: true,
       respondUntargetedAbilities: false,
       respondSpecialActions: true,
@@ -689,6 +725,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     cardSize: "device",
     handLayout: "device",
     tableLayout: "device",
+    opponentCardFacing: "synced",
     stackStyle: "synced",
     opponentDetail: "device",
     expandActivePlayer: "device",
@@ -703,6 +740,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     playmats: "device",
     // ADR 0179: the person's choice, on every device.
     shopLinks: "synced",
+    // #4556: a taste, like the art tiles.
+    keywordFlourishes: "synced",
   },
   gameplay: {
     confirmExit: "synced",
@@ -717,6 +756,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     stepStopsOnlyWhenCanAct: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
+    respondValueInstants: "synced",
     respondAbilities: "synced",
     respondUntargetedAbilities: "synced",
     respondSpecialActions: "synced",
@@ -1078,6 +1118,12 @@ function migrate(raw: unknown): Settings {
   if (!isTableLayout(merged.display.tableLayout)) {
     merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
   }
+  // #4555: display.opponentCardFacing is new. The shallow merge fills it
+  // with "them" (today's look) for any older blob, and a value that is
+  // not one of the two (a hand edit) falls back to it. No version bump.
+  if (!isOpponentCardFacing(merged.display.opponentCardFacing)) {
+    merged.display.opponentCardFacing = DEFAULT_OPPONENT_CARD_FACING;
+  }
   // ADR 0128: display.playmats is new. The shallow merge fills it with
   // "all" for any older blob, and a value that is not one of the three
   // (a hand edit) falls back to the default rather than to a board that
@@ -1294,11 +1340,33 @@ function migrate(raw: unknown): Settings {
   if (!isEffectsMode(merged.animations.effects)) {
     merged.animations.effects = DEFAULT_EFFECTS_MODE;
   }
+  // v30 → v31 (#2877, ADR 0142's amendment of 2026-10-30):
+  // gameplay.respondValueInstants. The owner chose option (a): a value
+  // instant (Opt, Brainstorm) no longer stops you on an opponent's
+  // stack item unless you ask, so the default (off) changes behaviour
+  // for a player who touched nothing, as v22 did for value abilities.
+  // A player who ticked "Value abilities" (respondUntargetedAbilities,
+  // off by default since v22) asked to be stopped for value plays, so a
+  // blob from before v31 with it on keeps value instants stopping too.
+  // An account copy from an older client goes through here as well
+  // (applySyncedCopy). From v31 on, the stored choice stands, and
+  // anything but a boolean is the default.
+  if (storedVersion < 31) {
+    gp.respondValueInstants = gp.respondUntargetedAbilities === true;
+  } else if (typeof gp.respondValueInstants !== "boolean") {
+    gp.respondValueInstants = d.gameplay.respondValueInstants;
+  }
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
   // boolean is the default.
   if (typeof merged.display.shopLinks !== "boolean") {
     merged.display.shopLinks = true;
+  }
+  // #4556: display.keywordFlourishes fills from the default (on) through
+  // the shallow merge, so SETTINGS_VERSION stands. Anything but a boolean
+  // is the default.
+  if (typeof merged.display.keywordFlourishes !== "boolean") {
+    merged.display.keywordFlourishes = true;
   }
   return absorbLegacy(merged);
 }

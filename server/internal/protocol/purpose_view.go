@@ -136,7 +136,9 @@ type PurposeView struct {
 	// "pump", "prevent", "remove", "sac_outlet", "restrict",
 	// "combat_grant", "animate", "makes_blocker", "value"). Absent when
 	// the row declares none; ["value"] is a declared "answers nothing".
-	// On an activated row only. It is not an amount: a purpose that
+	// On an activated row, a triggered row (only "remove"), and since
+	// #2877 a card, a spell's mode and an alternative cost, which a
+	// cast's value_only reads. It is not an amount: a purpose that
 	// declares only answers is not Priced. A pointer so PurposeView
 	// stays comparable.
 	Answers *[]string `json:"answers,omitempty"`

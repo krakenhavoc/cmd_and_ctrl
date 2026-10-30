@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // search finds. The search is Moon-Blessed Cleric's shape: optional (a
 // player may always decline), the card is revealed, and ToTop puts it on
 // top AFTER the shuffle, so it is a known card on an unknown library. A
-// declined search is not a search, so nothing is shuffled (CR 701.19).
+// declined search is not a search, so nothing is shuffled (CR 701.23).
 // Flying rides PrintedKeywords.
 //
 // No simplification.

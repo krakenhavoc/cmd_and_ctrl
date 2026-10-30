@@ -104,6 +104,7 @@ function stackItem(controller: string): StackItemView {
 const only = (k: keyof ResponseCategories): ResponseCategories => ({
   counter: false,
   instant: false,
+  valueInstant: false,
   ability: false,
   untargeted: false,
   special: false,
@@ -317,6 +318,7 @@ describe("hasPlay", () => {
     const none = {
       counter: false,
       instant: false,
+      valueInstant: false,
       ability: false,
       untargeted: false,
       special: false,
@@ -514,5 +516,65 @@ describe("combat_interacts", () => {
       });
     expect(hasResponse(at("p0"), "p0", DEFAULT_RESPONSES)).toBe(true);
     expect(hasResponse(at("p2"), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+});
+
+// #2877, ADR 0142's amendment of 2026-10-30 (owner, option (a)): a cast
+// the server marks value_only (Opt, Brainstorm) is no answer to an
+// opponent's stack item by default, and a setting turns that stop back
+// on. In combat and at an opponent's end step, with the stack empty, it
+// is an instant as before.
+describe("value instants (#2877)", () => {
+  const opt = move("cast", { source: "opt", label: "Cast Opt", value_only: true });
+  const onOppStack = (moves: LegalMoveView[], step = "precombat_main") =>
+    snap({ step, active: 1, holder: 0, moves, stackItems: [stackItem("p1")] });
+
+  it("classifies as valueInstant on a stack and as an instant off it", () => {
+    expect(classifyMove(opt, false, undefined, null, false, false, true)).toBe("valueInstant");
+    expect(classifyMove(opt, false, undefined, null, false, false, false)).toBe("instant");
+    expect(classifyMove(opt, true, undefined, null, false, false, false)).toBe("play");
+    // A cast that targets the stack is a counter whatever it declares.
+    const odd = move("cast", { value_only: true, targets_stack: true });
+    expect(classifyMove(odd, false, undefined, null, false, false, true)).toBe("counter");
+  });
+
+  it("does not stop you on an opponent's spell by default", () => {
+    expect(hasResponse(onOppStack([pass, opt]), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  it("the setting turns the stop back on, and it needs instants on too", () => {
+    const s = onOppStack([pass, opt]);
+    expect(hasResponse(s, "p0", { ...DEFAULT_RESPONSES, valueInstant: true })).toBe(true);
+    expect(hasResponse(s, "p0", { ...DEFAULT_RESPONSES, valueInstant: true, instant: false })).toBe(
+      false,
+    );
+  });
+
+  it("another instant in hand still stops you", () => {
+    const bolt = move("cast", { source: "bolt", has_targets: true });
+    expect(hasResponse(onOppStack([pass, opt, bolt]), "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("an opponent's end step and their attack still stop you for it", () => {
+    const end = snap({ step: "end", active: 1, holder: 0, moves: [pass, opt] });
+    expect(hasResponse(end, "p0", DEFAULT_RESPONSES)).toBe(true);
+    const attack = snap({
+      step: "declare_attackers",
+      active: 1,
+      holder: 0,
+      moves: [pass, opt],
+      battlefield: [card("a", { controller: "p1", attacking_target: "p0" })],
+    });
+    expect(hasResponse(attack, "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("an attack trigger on the stack is a stack item it does not answer", () => {
+    const s = onOppStack([pass, opt], "declare_attackers");
+    expect(hasResponse(s, "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  it("a ticked step with the stack empty counts it like any instant", () => {
+    const upkeep = snap({ step: "upkeep", active: 1, holder: 0, moves: [pass, opt] });
+    expect(hasPlay(upkeep, "p0", DEFAULT_RESPONSES)).toBe(true);
   });
 });

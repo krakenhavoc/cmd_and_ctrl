@@ -20,7 +20,7 @@ import { splicePaymentsWire } from "./targeting";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
-import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
+import type { MyDeckCommander, MyDeckInfo, MyDecksResponse } from "./myDecks";
 import type { CoverageReport, DeckCheckRequest } from "./deckcheck";
 import type { SaveDeckResponse } from "./decksPage";
 import type { DeckUpdateConfirm, DeckUpdateInput, DeckUpdatePreview } from "./deckUpdate";
@@ -137,6 +137,16 @@ export interface SeatInfo {
   // The seat's life total while the game is in play (ADR 0158 §1 item
   // 4). GET /games only; absent in the lobby and once the game ends.
   life?: number;
+  // The seated deck's commanders (ADR 0212 phase B2), in the shape a
+  // saved deck's are (GET /me/decks), resolved by the same server code:
+  // a printing to draw through /cards/{id}/image, never an image URL,
+  // and each one's identity; color_identity is their union. Sent only to
+  // the table's own people (its seats, spectators, creator and the
+  // admin; owner decision 3), so a table someone else is at, the invite
+  // preview and an older server have neither, and the tile says the
+  // deck's name over the seat's wash.
+  commander_cards?: MyDeckCommander[];
+  color_identity?: string[];
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
@@ -157,13 +167,18 @@ export interface BotTierInfo {
   reason?: string;
 }
 
-// BotDeckInfo mirrors aiseat.DeckInfo — one curated bot deck.
+// BotDeckInfo mirrors lobby.botDeckOption — one curated bot deck:
+// aiseat.DeckInfo plus its commander resolved against the card index.
 export interface BotDeckInfo {
   id: string;
   name: string;
   description?: string;
   colors?: string[];
   commander?: string;
+  // The commander's printing to draw and its identity (ADR 0212 phase
+  // B1), as GET /decks gives a pre-built deck's. Absent when the server
+  // has no card index, and an older server never sends it.
+  commander_cards?: MyDeckCommander[];
 }
 
 // BotOptions is GET /bot/options: what the Add-bot picker renders.

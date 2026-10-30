@@ -117,7 +117,8 @@ func (g *Game) tapCostForCastParamsLocked(caster uuid.UUID, card Card, params Ca
 	from, _ := castZoneFromWire(params.FromZone)
 	var grant *CastPermission
 	if caster != uuid.Nil && from != ZoneHand && from != ZoneCommand {
-		grant = g.CastPermissionForClaimLocked(caster, card, from, params.AlternativeCost)
+		// #4509: judged on the face being cast, as CastSpell judges it.
+		grant = g.CastPermissionForClaimLocked(caster, card, from, params.AlternativeCost).ForSpell(card)
 	}
 	own := g.TapPermanentsCostForGrantLocked(caster, card, from, grant)
 	if tc := g.optionalWaterbendLocked(caster, card, params.OptionalCosts); tc != nil {

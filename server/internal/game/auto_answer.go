@@ -191,10 +191,10 @@ func payUnlessCovered(c *PendingChoice) bool {
 }
 
 // confirmCovered reports whether a confirm can take a standing answer:
-// a plain "you may", with the default Yes / No labels and no life to
+// a plain "you may", with the default Yes / No labels and no life or poison to
 // pay.
 func confirmCovered(c *PendingChoice) bool {
-	return confirmFrameOf(c) != nil && c.LifeCost == 0 && c.AcceptLabel == "" && c.DeclineLabel == ""
+	return confirmFrameOf(c) != nil && c.LifeCost == 0 && c.PoisonCost == 0 && c.AcceptLabel == "" && c.DeclineLabel == ""
 }
 
 // triggerPromptCovered reports whether an optional trigger can take a

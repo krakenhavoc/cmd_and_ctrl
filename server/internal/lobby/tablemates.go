@@ -21,6 +21,17 @@ package lobby
 // Not started_at or ended_at: those are NULL on a table that never
 // started, and a lobby you both sat in yesterday is a better
 // suggestion than a game you finished a year ago.
+//
+// A deleted account is not a tablemate. Deleting an account scrubs the
+// users row to a tombstone ("Deleted player") and leaves the seats
+// pointing at it (accountdelete), so the join has to leave out
+// `users.deleted_at IS NOT NULL` or the picker offers a person who can
+// no longer be reached and the DM route fails on them with a 422.
+//
+// The same relation is the DM route's gate: POST /games/{id}/invites/dm
+// lets an ordinary caller name only a person this query returns
+// (IsTablemate), so the picker and the route cannot disagree about who
+// counts.
 
 import (
 	"context"
@@ -61,7 +72,9 @@ type Tablemate struct {
 // Tablemates lists the people userID has shared a table with, most
 // recent table first. The caller is never in the list, and a seat
 // with no user — a guest, a bot, a Discord seat still waiting on a
-// users row — is not a person and is skipped.
+// users row — is not a person and is skipped. So is a deleted
+// account, which the SQL store leaves out (the memory store has no
+// users table, so no account there is ever deleted).
 func (l *Lobby) Tablemates(userID uuid.UUID) ([]Tablemate, error) {
 	out := []Tablemate{}
 	if userID == uuid.Nil {
@@ -86,6 +99,29 @@ func (l *Lobby) Tablemates(userID uuid.UUID) ([]Tablemate, error) {
 		})
 	}
 	return out, nil
+}
+
+// IsTablemate reports whether target is one of userID's tablemates:
+// the answer of Tablemates, so the picker and the invite-DM route
+// share one definition of "someone you have sat at a table with"
+// (a guest, a bot, yourself and a deleted account are not). It reads
+// the whole list rather than asking the store a second question, which
+// would be a second copy of the join; the list is the people one
+// person has played with, which at this scale is small.
+func (l *Lobby) IsTablemate(userID, target uuid.UUID) (bool, error) {
+	if target == uuid.Nil {
+		return false, nil
+	}
+	mates, err := l.Tablemates(userID)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range mates {
+		if m.UserID == target {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // --- HTTP --------------------------------------------------------
@@ -120,7 +156,8 @@ func myTablemates(c Config, w http.ResponseWriter, r *http.Request) error {
 // key to users(id) (migration 0003), so a non-NULL value always has a
 // row, and an inner join keeps a corrupted id out of the picker
 // rather than offering a nameless entry the DM route could not
-// resolve.
+// resolve. `u.deleted_at IS NULL` keeps a deleted account's tombstone
+// out for the same reason: it has no Discord identity left to DM.
 func (s *SQLStore) Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error) {
 	if userID == "" {
 		return nil, nil
@@ -132,6 +169,7 @@ func (s *SQLStore) Tablemates(ctx context.Context, userID string) ([]TablemateRe
 		 JOIN games g ON g.id = s1.game_id
 		 JOIN users u ON u.id = s2.user_id
 		 WHERE s1.user_id = ? AND s2.user_id IS NOT NULL AND s2.user_id <> ?
+		   AND u.deleted_at IS NULL
 		 GROUP BY s2.user_id
 		 ORDER BY last_played DESC, u.display_name, s2.user_id`, userID, userID)
 	if err != nil {

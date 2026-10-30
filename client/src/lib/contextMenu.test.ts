@@ -340,6 +340,13 @@ describe("buildMenuSections — battlefield", () => {
     expect(itemById(sections, "untap")?.disabled).toBe(false);
   });
 
+  it("offers no untap for a permanent that can't become untapped (#4574)", () => {
+    const frozen = { ...c, no_untap: { static: true, never: true } };
+    const sections = buildMenuSections(v, frozen, "a", false);
+    expect(itemById(sections, "untap")?.disabled).toBe(true);
+    expect(itemById(sections, "tap")?.disabled).toBe(true);
+  });
+
   it("disables counter removal when the card has none of that kind", () => {
     const sections = buildMenuSections(v, c, "a", false);
     expect(itemById(sections, "counter-remove-+1/+1")?.disabled).toBe(true);

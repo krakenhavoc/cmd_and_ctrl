@@ -38,21 +38,141 @@ import (
 //
 // "The first power-up ability you activate during each of your turns"
 // is PlayerTurnTally.PowerUpActivations, bumped at the announce.
+//
+// Three more rules sit on the same bit (#4571):
+//
+//   - "can be activated an additional time" (Wonder Man) is a
+//     PowerUpExtra static, summed into PowerUpLimitFor, which PowerUpUsed
+//     compares the activation record against;
+//   - "power-up abilities can't be activated" for a turn (Kang the
+//     Conqueror) is a ModCantActivatePowerUp ScopedEffect queued with the
+//     extra turn, read by ActivationGateLocked through powerUpBanLocked;
+//   - "spend this mana only to activate power-up abilities" (Quinjet
+//     Technician) is the ManaRestrictPowerUp tag, matched against
+//     ManaSpendContext.PowerUp.
+
+// PowerUpExtra is one "each power-up ability of permanents you control
+// can be activated an additional time" static contributed by a permanent
+// on the battlefield (Wonder Man, Hollywood Hero). A struct of hooks, for
+// the reason BoastLimit, StaticAbility and CostModifier are: a card file
+// writes a literal.
+//
+// Unlike a BoastLimit, which REPLACES the printed number ("twice rather
+// than once"), this ADDS to it: the text says "an additional time", so
+// two of them let a power-up ability be activated three times in all.
+type PowerUpExtra struct {
+	// Label is the clause as printed.
+	Label string
+
+	// Times is how many additional activations each power-up ability
+	// the static reaches may have. Wonder Man: 1. A value below 1 changes
+	// nothing and is refused at Register.
+	Times int
+
+	// Applies decides whether this permanent's static reaches the
+	// power-up ability's source. `grantor` is the permanent contributing
+	// the static, so grantor.Controller is the "you" of the ability.
+	// Wonder Man: source.Controller == grantor.Controller. Nil is refused
+	// at Register: it would reach every permanent of every player.
+	//
+	// Evaluated under g.mu. READ-ONLY, as BoastLimit.Applies is.
+	Applies func(g *Game, source Card, grantor Card) bool
+
+	// ActiveWhen is the ADR 0071 designation gate, the same slot
+	// BoastLimit carries.
+	ActiveWhen Designation
+}
+
+// CatalogPowerUpExtras is the catalog hook, mirroring CatalogBoastLimits.
+// Nil, or a nil return, means the card changes nobody's power-up limit.
+var CatalogPowerUpExtras func(key string) []PowerUpExtra
+
+// powerUpExtrasOf is the extra activations a permanent contributes right
+// now, ability removal and designation gate applied (CatalogAbilityKey,
+// not CatalogKey: this is a static ability, ADR 0046).
+func powerUpExtrasOf(c *Card) []PowerUpExtra {
+	if CatalogPowerUpExtras == nil {
+		return nil
+	}
+	key := catalogAbilityKeyOf(c)
+	if key == "" {
+		return nil
+	}
+	return activeOnly(c, CatalogPowerUpExtras(key), func(x PowerUpExtra) Designation {
+		return x.ActiveWhen
+	})
+}
+
+// PowerUpLimitFor is how many times each power-up ability of `source`
+// may be activated: the printed once (CR 702.193a), plus one for every
+// battlefield static that grants an additional time (CR 113.6 — a static
+// works from the battlefield, so this is a battlefield walk).
+//
+// Read at the moment of activation, like BoastLimitFor: nothing is stored
+// that could outlive the static, which is the duration. If Wonder Man
+// leaves after a power-up ability has been activated twice, it is simply
+// spent (two activations against a limit of one).
+//
+// Caller must hold g.mu.
+func (g *Game) PowerUpLimitFor(source Card) int {
+	limit := 1
+	if g == nil || g.Battlefield == nil || CatalogPowerUpExtras == nil {
+		return limit
+	}
+	for i := range g.Battlefield.Cards {
+		grantor := &g.Battlefield.Cards[i]
+		for _, x := range powerUpExtrasOf(grantor) {
+			if x.Times > 0 && x.Applies != nil && x.Applies(g, source, *grantor) {
+				limit += x.Times
+			}
+		}
+	}
+	return limit
+}
 
 // PowerUpUsed reports whether `ab` is a power-up ability that the object
-// `source` names has already activated: "Activate this ability only
-// once" (CR 702.193a). False for every ability without the bit.
+// `source` names has already been activated as many times as it may:
+// "Activate this ability only once" (CR 702.193a), or once more for each
+// "an additional time" static in play (PowerUpLimitFor). False for every
+// ability without the bit.
 //
 // One function and three readers, as AbilityExhausted is:
 // ActivateCatalogAbility refuses with ErrPowerUpUsed, internal/legal
 // does not offer the move, and the view stamps `power_up_used`.
 //
 // Caller must hold g.mu.
-func (g *Game) PowerUpUsed(source uuid.UUID, ab ActivatedAbilityShape) bool {
-	if !ab.PowerUp {
+func (g *Game) PowerUpUsed(source *Card, ab ActivatedAbilityShape) bool {
+	if !ab.PowerUp || source == nil {
 		return false
 	}
-	return g.ActivatedThisGame(source, ab.Label) > 0
+	used := g.ActivatedThisGame(source.InstanceID, ab.Label)
+	if used == 0 {
+		// The walk for a static happens only once the ability has been
+		// used at all.
+		return false
+	}
+	return used >= g.PowerUpLimitFor(*source)
+}
+
+// powerUpBanLocked is the clause of a live ModCantActivatePowerUp
+// ScopedEffect and the permanent that made it, for the activation gate
+// (Kang the Conqueror's "During that turn, power-up abilities can't be
+// activated"). ok is false when nothing bans them.
+//
+// Caller must hold g.mu.
+func (g *Game) powerUpBanLocked() (reason string, source uuid.UUID, ok bool) {
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		if !scopedEffectHasMod(e, ModCantActivatePowerUp) {
+			continue
+		}
+		reason = "Power-up abilities can't be activated"
+		if e.SourceName != "" {
+			reason += " — " + e.SourceName
+		}
+		return reason, e.Source.ID, true
+	}
+	return "", uuid.Nil, false
 }
 
 // PowerUpActivationsThisTurn is how many power-up abilities `player`

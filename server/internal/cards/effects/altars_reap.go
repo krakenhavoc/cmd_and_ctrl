@@ -15,7 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "6a125750-2b8c-4f9d-8173-ac8d14c91ddb",
 		Name:           "Altar's Reap",
-		Purpose:        game.Purpose{Draws: 2},
+		Purpose:        game.Purpose{Draws: 2, Answers: game.AnswerSacOutlet}, // #2877: the creature sacrifice is the answer (ADR 0142 §3)
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

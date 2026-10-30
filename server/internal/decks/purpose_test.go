@@ -270,24 +270,32 @@ var curatedPermanentPurposes = map[string]string{
 }
 
 // specDeclaresPurpose reports whether a spell declares what it does on
-// the card, on a mode or on an alternative cost.
+// the card, on a mode or on an alternative cost. What it answers (ADR
+// 0142, on a spell since #2877) is not what it does: it is no amount,
+// so a spell on noPrintedAmount may declare it and stay there.
 func specDeclaresPurpose(s effects.Spec) bool {
-	if !s.Purpose.IsZero() {
+	if declaresBeyondAnswers(s.Purpose) {
 		return true
 	}
 	if s.Modes != nil {
 		for _, o := range s.Modes.Options {
-			if !o.Purpose.IsZero() {
+			if declaresBeyondAnswers(o.Purpose) {
 				return true
 			}
 		}
 	}
 	for _, a := range s.AlternativeCosts {
-		if !a.Purpose.IsZero() {
+		if declaresBeyondAnswers(a.Purpose) {
 			return true
 		}
 	}
 	return false
+}
+
+// declaresBeyondAnswers reports whether p declares anything but Answers.
+func declaresBeyondAnswers(p game.Purpose) bool {
+	p.Answers = 0
+	return !p.IsZero()
 }
 
 // declaresIn reports whether the spec declares a purpose in `slot`. A

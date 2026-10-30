@@ -36,8 +36,11 @@ func init() {
 		Name:         "Underworld Breach",
 		Completeness: CompletenessFull,
 		CastPermissions: []game.CastPermission{{
-			Zone:                    game.ZoneGraveyard,
-			Filter:                  game.PermissionFilter{NonLandOnly: true},
+			Zone: game.ZoneGraveyard,
+			// "Each nonland CARD in your graveyard": the card in the
+			// graveyard, not the spell (CR 715.4, 712.8a; #4509), so a Town
+			// whose Adventure is a sorcery is a land card and has no escape.
+			Filter:                  game.PermissionFilter{CardInZone: true, NonLandOnly: true},
 			AltCostKey:              "escape",
 			ExileOtherFromGraveyard: 3,
 			Label:                   "Escape — its mana cost, Exile three other cards from your graveyard",

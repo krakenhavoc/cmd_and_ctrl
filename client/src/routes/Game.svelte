@@ -23,7 +23,7 @@
     switchAdminMode,
   } from "../lib/admin";
   import { seatColor } from "../lib/colors";
-  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import BugReportDraftPill from "../lib/components/BugReportDraftPill.svelte";
   import { currentBugDraft } from "../lib/bugReportDraft.svelte";
@@ -140,6 +140,7 @@
   import { requestHandSort, requestNextHandSort } from "../lib/handOrder";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
+  import { playStepWarCry } from "../lib/faceHit";
   import {
     attackRowRequest,
     blockGroupRequest,
@@ -687,11 +688,14 @@
     const cats: ResponseCategories = {
       counter: gp.respondCounterspells,
       instant: gp.respondInstants,
+      // #2877: a value instant on an opponent's stack item.
+      valueInstant: gp.respondValueInstants,
       ability: gp.respondAbilities,
       untargeted: gp.respondUntargetedAbilities,
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
+    const respond = hasResponse(view, viewerID, cats);
     return {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated || !!controlledBy,
@@ -741,8 +745,14 @@
       // ADR 0143 §2.3: the column for whoever is active.
       stepStop: stepStopFor(gp, step, viewerIsActive),
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
-      hasResponse: hasResponse(view, viewerID, cats),
+      hasResponse: respond,
       hasPlay: hasPlay(view, viewerID, cats),
+      // #2877: only for the pass chip's wording, never the verdict.
+      heldValueInstant:
+        !respond &&
+        !cats.valueInstant &&
+        !stackEmpty(view) &&
+        hasResponse(view, viewerID, { ...cats, valueInstant: true }),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.
       engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,
@@ -1369,6 +1379,11 @@
   // seen step and only fire on a real change; the initial snapshot (or
   // a reconnect rebuild) sets the baseline silently.
   let prevStep: string | null = null;
+  const warCryTimers = new Set<ReturnType<typeof setTimeout>>();
+  onDestroy(() => {
+    for (const t of warCryTimers) clearTimeout(t);
+    warCryTimers.clear();
+  });
   // Whether the step change plays combat_resolve itself, or leaves it to
   // the strike layer: the same gate the cue clock plans the frame with.
   function combatSoundOnStepChange(): boolean {
@@ -1399,7 +1414,12 @@
         // contact of each beat instead (ADR 0134 §7). Only when no
         // strike is scheduled (motion off, reduced motion, a hidden
         // tab) does it stay on the step change.
-        if (combatSoundOnStepChange()) play("combat_resolve");
+        // #4560: when the step hit a player, the popup plays the face hit
+        // now, so the war cry follows it, quieter.
+        if (combatSoundOnStepChange()) {
+          const t = playStepWarCry(view?.log, play, (fired) => warCryTimers.delete(fired));
+          if (t) warCryTimers.add(t);
+        }
       }
     }
     prevStep = step;
@@ -3256,15 +3276,9 @@
           Choose your deck
           <span class="prompt-src" aria-hidden="true">before the game starts</span>
         </h2>
-        <p class="prompt-hint">
-          Every deck is validated against Commander rules — 100-card singleton, color identity,
-          format legality — whichever way it arrives.
-        </p>
-        <DeckUploadForm
-          {gameID}
-          playerID={viewerID}
-          onSuccess={() => (deckImportDismissed = true)}
-        />
+        <!-- The lobby card's deck picker (ADR 0212 §3), with its own
+             Sit down button: there is no card footer here. -->
+        <DeckPicker {gameID} playerID={viewerID} onSuccess={() => (deckImportDismissed = true)} />
         <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
@@ -4719,8 +4733,11 @@
     z-index: 50;
     padding: 1rem;
   }
+  /* Wide enough for four of the picker's tiles; its tab bar runs to the
+     dialog's edges. */
   .deck-import-modal {
-    width: min(640px, 100%);
+    --picker-pad: 22px;
+    width: min(760px, 100%);
   }
   .import-hint {
     margin-top: 4px;

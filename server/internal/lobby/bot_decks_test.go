@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -44,6 +45,7 @@ func newBotHTTPStack(t *testing.T, idx *cards.Index, decks aiseat.DeckSource) (*
 	log := discardLogger()
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
+	l.SetCardIndex(idx)
 	host := newFakeBotHost()
 	l.SetBotHost(host)
 	a := newTestAuth()
@@ -108,6 +110,51 @@ func TestBotOptionsListsEveryTierAndTheDeckCatalog(t *testing.T) {
 	}
 	if len(out.Decks) != 1 || out.Decks[0].ID != "test-mono-white" {
 		t.Errorf("decks: %+v", out.Decks)
+	}
+}
+
+// TestBotOptionsDecksCarryTheirCommanders pins ADR 0212 phase B1 on GET
+// /bot/options: each deck's commander resolved by the code GET /decks
+// and GET /me/decks use, so the Add bot grid and a bot seat's tile can
+// draw its art. A deck the catalog names a commander for that the index
+// does not know keeps its name and no id.
+func TestBotOptionsDecksCarryTheirCommanders(t *testing.T) {
+	idx := cards.NewIndex()
+	cmd := uuid.New()
+	idx.Put(cards.Card{ID: cmd, OracleID: uuid.New(), Name: "Test Commander", ColorIdentity: []string{"W"},
+		ImageURIs: map[string]string{"art_crop": "https://example.test/c.jpg"}})
+	srv, _, _, a := newBotHTTPStack(t, idx, fakeDeckSource{})
+
+	resp := doGet(t, srv, "/bot/options", adminSession(t, a))
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var out botOptionsResponse
+	if err := json.Unmarshal(raw, &out); err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /bot/options: %d, decode %v (%s)", resp.StatusCode, err, raw)
+	}
+	if len(out.Decks) != 1 || len(out.Decks[0].CommanderCards) != 1 {
+		t.Fatalf("decks = %+v, want one deck with one commander", out.Decks)
+	}
+	// The embedded DeckInfo still flattens onto the deck, as before.
+	if d := out.Decks[0]; d.ID != "test-mono-white" || d.Commander != "Test Commander" || len(d.Colors) != 1 {
+		t.Errorf("deck = %+v, lost its DeckInfo fields", d)
+	}
+	c := out.Decks[0].CommanderCards[0]
+	if c.Name != "Test Commander" || c.ScryfallID != cmd.String() || strings.Join(c.ColorIdentity, "") != "W" {
+		t.Errorf("commander = %+v, want Test Commander %s [W]", c, cmd)
+	}
+	if strings.Contains(string(raw), "example.test") {
+		t.Errorf("GET /bot/options leaks an image URL: %s", raw)
+	}
+
+	// A commander the index does not know: the row stays, with no id and
+	// a null identity (the tile washes in the deck's colours instead).
+	srv2, _, _, a2 := newBotHTTPStack(t, cards.NewIndex(), fakeDeckSource{})
+	resp2 := doGet(t, srv2, "/bot/options", adminSession(t, a2))
+	defer resp2.Body.Close()
+	raw2, _ := io.ReadAll(resp2.Body)
+	if !strings.Contains(string(raw2), `"commander_cards":[{"name":"Test Commander","color_identity":null}]`) {
+		t.Errorf("an unresolved commander must keep its row with no id: %s", raw2)
 	}
 }
 

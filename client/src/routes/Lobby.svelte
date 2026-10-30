@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
+  import { get } from "svelte/store";
   import {
-    addBotSeat,
     archiveGame,
     createGame,
     deleteGame,
@@ -24,10 +24,12 @@
     rotateInvite,
     startGame,
     unarchiveGame,
+    type BotDeckInfo,
     type BotOptions,
     type GameMeta,
     type ReclaimTicket,
     type SeatInfo,
+    type UploadDeckResponse,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate, route } from "../lib/router";
   import { L } from "../lib/labels";
@@ -40,6 +42,19 @@
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
+  import { settings } from "../lib/settings";
+  import {
+    NO_MEMORY,
+    READY_ANNOUNCE_HOLD_MS,
+    READY_MOMENT_MS,
+    READY_PRIMARY_DELAY_MS,
+    observeReady,
+    readyAnnouncement,
+    readyDelayMs,
+    readyMotion,
+    type ReadyMemory,
+    type ReadyMoment,
+  } from "../lib/readyMoment";
   import { canInviteTablemates } from "../lib/tablemates";
   import {
     canCreateTables,
@@ -48,6 +63,7 @@
     type TableSetup,
   } from "../lib/tableSetup";
   import {
+    botChipText,
     contextLine,
     filterHistory,
     HISTORY_FILTERS,
@@ -55,20 +71,28 @@
     HISTORY_ID,
     HISTORY_STEP,
     historyRows,
+    lobbyPrimary,
+    lobbySlots,
     moreCount,
     nowTables,
+    readiness,
     seatLine,
     seatName,
+    seatPreview,
+    seatTileArt,
+    seatTileText,
     statusChip,
     whenLabel,
     type HistoryFilter,
     type HistoryRow,
+    type LobbyPrimaryKind,
   } from "../lib/tablesPage";
   import type { TableSettingsView } from "../lib/protocol";
   import { settingsSummary, type TableSettingsPatch } from "../lib/tableSettings";
-  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import DeckPicker from "../lib/components/DeckPicker.svelte";
+  import BotPicker from "../lib/components/BotPicker.svelte";
+  import type { PickerCommit, PickerState } from "../lib/deckPicker";
   import GameCardsPanel from "../lib/components/GameCardsPanel.svelte";
-  import ShopLinks from "../lib/components/ShopLinks.svelte";
   import { visibleShops } from "../lib/shopLinksStore";
   import type { PrebuiltDeck } from "../lib/prebuiltDecks";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
@@ -80,7 +104,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import ContextMenu from "../lib/components/ContextMenu.svelte";
-  import SplitButton from "../lib/components/SplitButton.svelte";
+  import SeatTile from "../lib/components/SeatTile.svelte";
   import { contextMenuTrigger, type MenuPoint } from "../lib/menuTrigger";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import {
@@ -98,24 +122,20 @@
   import DeckPowerBadge from "../lib/components/DeckPowerBadge.svelte";
   import Page from "../lib/components/Page.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
-  import {
-    defaultBotTier,
-    ownKeyTierChoices,
-    tierForOwnKey,
-    tierNote,
-    tierOptionLabel,
-  } from "../lib/botTier";
 
   // Tables, the signed-in home (ADR 0112 §1, ADR 0158 §1). The page
   // head holds the join box and + New table. Under it, two sections:
   //
   //   - Now: the tables in the lobby or in play that this person sits
-  //     at or created (every table for an admin), one card each with a
-  //     primary button, the four seats, a toolbar (the invite and
-  //     spectator links as copy / ↻ split buttons, your deck, Invite by
-  //     DM, #lfg) and a rules line that opens the table settings
-  //     (#3499). A right-click on the card opens the same actions, and
-  //     the admin's, as a menu; there is no ⋯ on a card any more.
+  //     at or created (every table for an admin), one card each. A
+  //     table in the lobby is a character select (ADR 0212): the
+  //     settings summary in its head, four seat tiles, the deck picker
+  //     (or the bot picker) under the seats, and a footer with the
+  //     readiness line, Open table, the Invite menu and one primary that
+  //     follows the table's state. A table in play keeps its primary in
+  //     the head (Resume or Open), its seats with life totals and a rules
+  //     line. A right-click on either opens every action, and the
+  //     admin's, as a menu; there is no ⋯ on a card.
   //   - History: every table they sat at that has ended or been
   //     archived (GET /me/games minus Now), one compact row each, with
   //     client-side filters. My games used to be its own page.
@@ -265,18 +285,16 @@
   // --- bot seats (S31, ADR 0033 §9) -------------------------------
   //
   // Bots take real seats out of the same four, so the control lives on
-  // the open seats. The option catalog is fetched once; `enabled` false
-  // means this server has no bot host, and Add bot is not offered.
+  // the open seats: Add bot opens the bot picker under the seats (ADR
+  // 0212 owner decision 8, BotPicker.svelte), and the footer's primary
+  // adds it. The option catalog is fetched once; `enabled` false means
+  // this server has no bot host, and Add bot is not offered.
   let botOptions = $state<BotOptions | null>(null);
   let botPickerFor = $state<string | null>(null);
-  let botTier = $state("");
-  let botDeck = $state("");
-  let botBusy = $state(false);
-  let botError = $state("");
-  // ADR 0182: "run on my model key", offered when GET /bot/options says
-  // this person has a key saved in Settings › AI opponents.
-  let botOwnKey = $state(false);
-  let botModel = $state("");
+  // What the open bot picker would add, for the footer's primary.
+  let botCommit = $state<PickerCommit | null>(null);
+  let botPicker = $state<{ commit: () => Promise<void> } | undefined>();
+  const botBusy = $derived(botCommit?.busy === true);
 
   const botTiersAvailable = $derived((botOptions?.tiers ?? []).filter((t) => t.available));
   const botsOfferable = $derived(
@@ -284,14 +302,6 @@
       (botTiersAvailable.length > 0 || botOptions?.own_key !== undefined) &&
       (botOptions?.decks.length ?? 0) > 0,
   );
-  const botTierChoices = $derived(
-    botOwnKey ? ownKeyTierChoices(botOptions?.tiers ?? []) : (botOptions?.tiers ?? []),
-  );
-
-  function onOwnKeyToggle(on: boolean): void {
-    botOwnKey = on;
-    botTier = on ? tierForOwnKey(botTier) : defaultBotTier(botOptions?.tiers ?? []);
-  }
 
   // canManageBots: admin, or a player seated at this table. Mirrors
   // the server gate; the endpoint is authoritative.
@@ -421,35 +431,26 @@
     return isAdmin || g.is_creator === true;
   }
 
-  function openBotPicker(gameID: string): void {
-    botError = "";
-    botPickerFor = gameID;
-    botOwnKey = false;
-    botModel = botOptions?.own_key?.model ?? "";
-    botTier = defaultBotTier(botOptions?.tiers ?? []);
-    // A server with no tier of its own to offer starts on the key.
-    if (!botTier && botOptions?.own_key?.games_left) onOwnKeyToggle(true);
-    botDeck = botOptions?.decks[0]?.id ?? "";
+  // openBotPicker is an open seat's Add bot. The bot picker takes the
+  // region under the seats, so the deck picker or the tablemate picker
+  // there closes, and focus moves into it.
+  async function openBotPicker(g: GameMeta): Promise<void> {
+    botPickerFor = g.id;
+    panelChoice = { ...panelChoice, [g.id]: null };
+    await tick();
+    const region = document.getElementById(botPickerID(g.id));
+    region?.scrollIntoView?.({ block: "nearest" });
+    region?.focus({ preventScroll: true });
   }
 
-  async function onAddBot(gameID: string): Promise<void> {
-    if (!botTier || !botDeck) return;
-    botBusy = true;
-    botError = "";
-    try {
-      await addBotSeat(
-        gameID,
-        botOwnKey
-          ? { tier: botTier, deck: botDeck, own_key: true, model: botModel.trim() || undefined }
-          : { tier: botTier, deck: botDeck },
-      );
-      botPickerFor = null;
-      await refresh();
-    } catch (err) {
-      botError = lobbyErrorMessage(err, "could not add the bot");
-    } finally {
-      botBusy = false;
-    }
+  function botPickerID(gameID: string): string {
+    return `bot-picker-${gameID}`;
+  }
+
+  // The seat a bot takes: the first open one, as the server seats it.
+  function botSeatFor(g: GameMeta): number {
+    const open = lobbySlots(g).findIndex((p) => p === null);
+    return open >= 0 ? open : g.players.length;
   }
 
   // --- removing a seat (#2785, #3494) -----------------------------
@@ -504,15 +505,10 @@
     return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
   }
 
-  const botTierNote = $derived(tierNote(botOptions?.tiers ?? [], botTier));
-  const botDeckDescription = $derived(
-    botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
-  );
-
   // The bot decks are the pre-built decks, so GET /decks holds each
-  // one's list for "Play this deck in paper" (ADR 0179 §7).
+  // one's coverage for the bot picker's tiles and its list for "Play
+  // this deck in paper" (ADR 0179 §7).
   let prebuiltDecks = $state<PrebuiltDeck[]>([]);
-  const botDeckCards = $derived(prebuiltDecks.find((d) => d.id === botDeck)?.cards ?? []);
 
   // --- archiving and deleting (admin) ------------------------------
   //
@@ -680,9 +676,9 @@
   }
 
   // copyLink copies one of the table's links (ADR 0158 §1 item 2,
-  // #3499). With none held here, one who may rotate invites gets a new
-  // one minted first, as the button's title says. Nobody else ever sees
-  // the button without a link.
+  // ADR 0212 §4). With none held here, one who may rotate invites gets a
+  // new one minted first, as the menu item says. Nobody else is ever
+  // offered the item without a link.
   async function copyLink(g: GameMeta, kind: InviteKind): Promise<void> {
     const held = heldLinks(kind);
     let token = held.get(g.id);
@@ -708,9 +704,9 @@
     await copyToClipboard(linkURL(g.id, kind, token), `${g.id}:${kind}`);
   }
 
-  // The split buttons (#3499): the invite for the host, the creator and
-  // the admin in the lobby; the spectator link for anyone at a table not
-  // yet over who holds one, or may make one.
+  // The Invite menu's links (ADR 0212 §4): the invite for the host, the
+  // creator and the admin in the lobby; the spectator link for anyone at
+  // a table not yet over who holds one, or may make one.
   function offersSpectatorLink(g: GameMeta): boolean {
     if (g.state === "ended") return false;
     return recentSpectatorInvites.has(g.id) || canRotateInvites(g);
@@ -803,28 +799,13 @@
     return me !== null && (me.is_host === true || g.is_creator === true);
   }
 
-  function canStart(g: GameMeta): boolean {
-    return g.state === "lobby" && g.players.length >= 2 && g.players.every((p) => p.deck_uploaded);
-  }
-
-  // startReason explains why the table cannot start yet, in one line.
-  function startReason(g: GameMeta): string {
-    if (g.state !== "lobby") return "";
-    const me = mySeat(g);
-    if (me && !me.deck_uploaded) return "Waiting on your deck";
-    if (g.players.length < 2) return "Needs at least two seats";
-    const pending = g.players.filter((p) => !p.deck_uploaded);
-    if (pending.length === 1) return `Waiting on ${seatName(pending[0])}'s deck`;
-    if (pending.length > 1) return `Waiting on ${pending.length} decks`;
-    if (me && !startsFromSeat(g)) return "Waiting for the host to start";
-    return "";
-  }
-
-  // The card's one primary button (ADR 0158 §1 item 2): Open in the
-  // lobby, Resume in play. A seat held through another session is
-  // reclaimed first. Whoever may start a table of two or more gets
-  // Start in its place; Open moves to the card's right-click menu.
+  // The card's one primary (ADR 0212 §2, ADR 0158 §1 item 2). In the
+  // lobby it follows the table's state (tablesPage.lobbyPrimary): Open
+  // table, Take a seat, Choose your deck, Waiting for …, Start game or
+  // Watch. In play it is Resume for a seat, Open for anyone else; a seat
+  // held through another session is reclaimed first.
   interface Primary {
+    kind: LobbyPrimaryKind;
     label: string;
     run: () => void;
     disabled?: boolean;
@@ -836,30 +817,57 @@
     return g.state === "lobby" && g.players.length >= 2 && (startsFromSeat(g) || isAdmin);
   }
 
+  // watchesHere: a spectator session of this table (owner decision 6).
+  function watchesHere(g: GameMeta): boolean {
+    return $session?.principal.role === "spectator" && $session.gameID === g.id;
+  }
+
   function primaryFor(g: GameMeta): Primary {
-    const held = mySeatNumber(g) !== null;
-    if (rejoinsHere(g.id)) {
-      return {
-        label: g.state === "active" ? "Resume" : "Open",
-        run: () => void openMine(g.id, g.state),
-        disabled: opening !== null,
-        busy: opening === g.id,
-        title: "open your seat at this table",
-      };
+    const reclaim = (label: string): Primary => ({
+      kind: "open",
+      label,
+      run: () => void openMine(g.id, g.state),
+      disabled: opening !== null,
+      busy: opening === g.id,
+      title: "open your seat at this table",
+    });
+    if (g.state !== "lobby") {
+      if (rejoinsHere(g.id)) return reclaim("Resume");
+      const held = mySeatNumber(g) !== null;
+      return { kind: "open", label: held ? "Resume" : "Open", run: () => openGame(g.id) };
     }
-    if (mayStart(g)) {
-      const reason = startReason(g);
-      return {
-        label: "Start",
-        run: () => void onStart(g.id),
-        disabled: !canStart(g),
-        title: reason || "start the game",
-      };
+    const p = lobbyPrimary(g, {
+      me: mySeat(g),
+      heldElsewhere: rejoinsHere(g.id),
+      takesSeat: takesSeat(g),
+      mayStart: mayStart(g),
+      spectator: watchesHere(g),
+      picking: pickerOpen(g) ? (pickerState?.commit ?? null) : null,
+      addingBot: botPickerFor === g.id ? botCommit : null,
+    });
+    switch (p.kind) {
+      case "open":
+        return rejoinsHere(g.id) ? reclaim(p.label) : { ...p, run: () => openGame(g.id) };
+      case "take":
+        return {
+          ...p,
+          label: seatBusy === g.id ? "Taking a seat…" : p.label,
+          disabled: seatBusy !== null,
+          run: () => void takeSeat(g),
+        };
+      case "choose":
+        return { ...p, run: () => void openPicker(g) };
+      case "sit":
+        return { ...p, run: () => void deckPicker?.commit() };
+      case "bot":
+        return { ...p, run: () => void botPicker?.commit() };
+      case "start":
+        return { ...p, run: () => void onStart(g.id) };
+      case "watch":
+        return { ...p, run: () => openGame(g.id) };
+      default:
+        return { ...p, run: () => undefined };
     }
-    if (g.state === "active") {
-      return { label: held ? "Resume" : "Open", run: () => openGame(g.id) };
-    }
-    return { label: "Open", run: () => openGame(g.id) };
   }
 
   // Copy invite (§1 item 2): the host or creator, in the lobby, when
@@ -882,25 +890,38 @@
   function deckLabel(seat: SeatInfo): string {
     return seat.deck_uploaded
       ? `Change deck · ${seat.deck_name || "deck ready"}`
-      : "Choose your deck";
+      : L.chooseYourDeck;
   }
 
   // tableMenuFor is the card's right-click menu (#3499): every action the
-  // card shows, as a shortcut, then the admin's, which only live here.
+  // card shows, as a shortcut, then the admin's, which only live here:
+  // a seat link for each person (ADR 0212 §1), the replay and Archive.
   // Labels are unique within it (they key the list).
   function tableMenuFor(g: GameMeta): MoreItem[] {
     const items: MoreItem[] = [];
     const primary = primaryFor(g);
-    items.push({
-      label: primary.label === "Start" ? "Start game" : `${primary.label} table`,
-      disabled: primary.disabled,
-      title: primary.title,
-      onclick: primary.run,
-    });
-    if (mayStart(g) && !rejoinsHere(g.id)) {
-      items.push({ label: "Open table", onclick: () => openGame(g.id) });
+    if (g.state !== "lobby") {
+      items.push({
+        label: `${primary.label} table`,
+        disabled: primary.disabled,
+        title: primary.title,
+        onclick: primary.run,
+      });
+    } else {
+      // A wait is not an action; the card says what it waits on.
+      if (primary.kind !== "wait") {
+        items.push({
+          label: primary.label,
+          disabled: primary.disabled,
+          title: primary.title,
+          onclick: primary.run,
+        });
+      }
+      if (primary.kind !== "open" && primary.kind !== "watch") {
+        items.push({ label: L.openTable, onclick: () => openGame(g.id) });
+      }
     }
-    if (takesSeat(g)) {
+    if (takesSeat(g) && primary.kind !== "take") {
       items.push({
         label: seatBusy === g.id ? "Taking a seat…" : "Take a seat",
         disabled: seatBusy !== null,
@@ -916,7 +937,7 @@
       });
       if (canRotateInvites(g)) {
         items.push({
-          label: "New invite link…",
+          label: L.newInviteLink,
           title: "mint a new player invite — the current one stops working immediately",
           disabled: rotateBusy !== null,
           onclick: () => (confirmRotate = { gameID: g.id, kind: "player" }),
@@ -932,7 +953,7 @@
       });
       if (canRotateInvites(g)) {
         items.push({
-          label: "New spectator link…",
+          label: L.newSpectatorLink,
           title: "mint a new spectator link — the current one stops working immediately",
           disabled: rotateBusy !== null,
           onclick: () => (confirmRotate = { gameID: g.id, kind: "spectator" }),
@@ -940,11 +961,11 @@
       }
     }
     const seat = mySeat(g);
-    if (seat && offersDeck(g)) {
-      items.push({ label: deckLabel(seat), onclick: () => showPanel(g, "deck") });
+    if (seat && offersDeck(g) && primary.kind !== "choose" && primary.kind !== "sit") {
+      items.push({ label: deckLabel(seat), onclick: () => void openPicker(g) });
     }
     if (canInvite(g)) {
-      items.push({ label: "Invite by DM", onclick: () => showPanel(g, "invite") });
+      items.push({ label: "Invite by DM…", onclick: () => showPanel(g, "invite") });
     }
     if (canReadSettings(g)) {
       items.push({
@@ -969,6 +990,18 @@
         disabled: lfgBusy,
         onclick: () => void toggleLFG(g.id, false),
       });
+    }
+    // Admin-only: a disconnected player's way back in, one per person.
+    if (isAdmin) {
+      for (const p of [...g.players].sort((a, b) => a.seat - b.seat)) {
+        if (p.is_bot) continue;
+        items.push({
+          label: `Seat link for ${seatName(p)} (seat ${p.seat + 1})`,
+          title: `generate a one-time link that returns ${seatName(p)} to this seat`,
+          disabled: reclaimBusy !== null,
+          onclick: () => void onSeatLink(g.id, p),
+        });
+      }
     }
     // The server's replay gate: an admin any time after the lobby.
     if (isAdmin && g.state !== "lobby") {
@@ -1003,27 +1036,229 @@
     if (restoreFocus) opener?.focus();
   }
 
-  // The toolbar's two panels: invite a tablemate, and your deck.
-  // Open on their own when they are the next thing to do (a table just
-  // created; a deck not chosen yet), until the person toggles them.
+  // --- the Invite menu (ADR 0212 §4) --------------------------------
+  //
+  // One menu for the footer's Invite ▾ and each open seat's Invite: the
+  // two links, Invite by DM, #looking-for-game, and under "Make new
+  // links" the two rotations with today's confirm. It shows only what
+  // this person may use, and every item is in the right-click menu too.
+  // `from` is the button that opened it: "footer", or an open seat's
+  // number.
+  let inviteMenu = $state<{
+    gameID: string;
+    from: "footer" | number;
+    opener: HTMLElement;
+    x: number;
+    y: number;
+    align: "start" | "end";
+  } | null>(null);
+  const inviteMenuGame = $derived(
+    inviteMenu ? (games.find((g) => g.id === inviteMenu!.gameID) ?? null) : null,
+  );
+  // The press that closes the menu from outside lands on its own button
+  // first; this keeps that button's click from opening it again.
+  let inviteClosed: { opener: HTMLElement | undefined; at: number } | null = null;
+
+  function toggleInviteMenu(g: GameMeta, opener: HTMLElement, from: "footer" | number): void {
+    if (inviteMenu?.opener === opener) {
+      closeInviteMenu(false);
+      return;
+    }
+    if (inviteClosed?.opener === opener && performance.now() - inviteClosed.at < 400) return;
+    const r = opener.getBoundingClientRect();
+    const align = from === "footer" ? "end" : "start";
+    inviteMenu = {
+      gameID: g.id,
+      from,
+      opener,
+      x: align === "end" ? r.right : r.left,
+      y: r.bottom + 6,
+      align,
+    };
+  }
+
+  function closeInviteMenu(restoreFocus: boolean): void {
+    const opener = inviteMenu?.opener;
+    inviteClosed = { opener, at: performance.now() };
+    inviteMenu = null;
+    if (restoreFocus) opener?.focus();
+  }
+
+  function inviteItemsFor(g: GameMeta): MoreItem[] {
+    // A choice gives focus back to the button that opened the menu.
+    const back =
+      (run: () => void): (() => void) =>
+      () => {
+        const opener = inviteClosed?.opener;
+        run();
+        opener?.focus();
+      };
+    const items: MoreItem[] = [];
+    const unheld = "No link is held here: this makes a new one, and an older one stops working";
+    if (offersCopyInvite(g)) {
+      items.push({
+        label: L.copyInvite,
+        icon: "link",
+        hint: recentInvites.has(g.id) ? "The player link: whoever opens it takes a seat" : unheld,
+        disabled: rotateBusy !== null,
+        onclick: back(() => void copyLink(g, "player")),
+      });
+    }
+    if (offersSpectatorLink(g)) {
+      items.push({
+        label: L.copySpectatorLink,
+        icon: "eye",
+        hint: recentSpectatorInvites.has(g.id) ? "Watch only; no seat" : unheld,
+        disabled: rotateBusy !== null,
+        onclick: back(() => void copyLink(g, "spectator")),
+      });
+    }
+    if (canInvite(g)) {
+      items.push({
+        label: "Invite by DM…",
+        icon: "mail",
+        hint: "Someone you've played with, on Discord",
+        onclick: back(() => showPanel(g, "invite")),
+      });
+    }
+    const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null;
+    if (lfg?.kind === "post") {
+      items.push({
+        label: "Post to #looking-for-game",
+        icon: "discord",
+        hint: lfg.disabled ? lfg.title : "Comes down when the game starts",
+        disabled: lfg.disabled || lfgBusy,
+        onclick: back(() => void toggleLFG(g.id, true)),
+      });
+    } else if (lfg?.kind === "posted") {
+      items.push({
+        label: "Withdraw from #looking-for-game",
+        icon: "discord",
+        hint: `${lfg.label}; this takes the post down`,
+        disabled: lfgBusy,
+        onclick: back(() => void toggleLFG(g.id, false)),
+      });
+    }
+    if (canRotateInvites(g)) {
+      const group = "Make new links";
+      if (offersCopyInvite(g)) {
+        items.push({
+          label: L.newInviteLink,
+          icon: "newLink",
+          hint: "The current player link stops working",
+          group,
+          disabled: rotateBusy !== null,
+          onclick: back(() => (confirmRotate = { gameID: g.id, kind: "player" })),
+        });
+      }
+      if (offersSpectatorLink(g)) {
+        items.push({
+          label: L.newSpectatorLink,
+          icon: "newLink",
+          hint: "The current spectator link stops working",
+          group,
+          disabled: rotateBusy !== null,
+          onclick: back(() => (confirmRotate = { gameID: g.id, kind: "spectator" })),
+        });
+      }
+    }
+    return items;
+  }
+
+  // invitesPlayers: the Invite menu can fill a seat for this person (the
+  // player link, a DM or #lfg), so an open seat offers it too. Someone
+  // who may only share the spectator link finds it in the footer.
+  function invitesPlayers(g: GameMeta): boolean {
+    const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null;
+    return offersCopyInvite(g) || canInvite(g) || lfg !== null;
+  }
+
+  // What the Invite button says for a moment after a copy, where a
+  // screen reader hears it once (#3499's split buttons said it in place).
+  function copiedNote(gameID: string): string {
+    switch (copied) {
+      case `${gameID}:player`:
+        return "Invite copied";
+      case `${gameID}:player:new`:
+        return "New invite copied";
+      case `${gameID}:spectator`:
+        return "Spectator link copied";
+      case `${gameID}:spectator:new`:
+        return "New spectator link copied";
+      default:
+        return "";
+    }
+  }
+
+  // The panels under the seats: invite a tablemate (from the Invite
+  // menu), and your deck (your seat's tile, or Choose your deck). The
+  // deck picker opens on its own while your seat has no deck, the table
+  // you just made included (ADR 0212 owner decision 2); Invite by DM
+  // opens first on a new table where you are not seated. Either stays
+  // as the person last left it. They share the region under the seats
+  // with the bot picker, so opening one closes it.
   let panelChoice = $state<Record<string, "invite" | "deck" | null>>({});
 
   function panelFor(g: GameMeta): "invite" | "deck" | null {
     if (g.id in panelChoice) return panelChoice[g.id];
-    if (justCreated === g.id) return "invite";
     const seat = mySeat(g);
     if (seat && g.state === "lobby" && !seat.deck_uploaded) return "deck";
+    if (justCreated === g.id) return "invite";
     return null;
   }
 
   function togglePanel(g: GameMeta, which: "invite" | "deck"): void {
-    panelChoice = { ...panelChoice, [g.id]: panelFor(g) === which ? null : which };
+    const next = panelFor(g) === which ? null : which;
+    if (next && botPickerFor === g.id) botPickerFor = null;
+    panelChoice = { ...panelChoice, [g.id]: next };
   }
 
-  // showPanel opens one from the card menu, where a second click closing
-  // it again would be a surprise.
+  // showPanel opens one from a menu, where a second click closing it
+  // again would be a surprise.
   function showPanel(g: GameMeta, which: "invite" | "deck"): void {
+    if (botPickerFor === g.id) botPickerFor = null;
     panelChoice = { ...panelChoice, [g.id]: which };
+  }
+
+  // --- the deck picker (ADR 0212 §3) --------------------------------
+  //
+  // One at most is open, since a session holds one seat. It reports what
+  // is selected, which your seat's tile previews, and what committing it
+  // says, which the footer's primary becomes (§2 rule 4): "Sit down with
+  // this deck", or Upload / Import deck on Paste a list. The primary
+  // calls its commit().
+  let pickerState = $state<PickerState | null>(null);
+  let deckPicker = $state<{ commit: () => Promise<void> } | undefined>();
+
+  function pickerOpen(g: GameMeta): boolean {
+    return panelFor(g) === "deck" && offersDeck(g);
+  }
+
+  // After a deck is seated the picker closes and your tile says Ready,
+  // unless the picker has more to say about the deck just seated (its
+  // warnings, or a pasted list's unimplemented cards and library note),
+  // which stays open to be read. The answer carries the table's seats,
+  // so the tile turns Ready before the list is read again.
+  function onSeated(g: GameMeta, res: UploadDeckResponse, more: boolean): void {
+    const seats = res.game?.players;
+    if (seats) games = games.map((x) => (x.id === g.id ? { ...x, players: seats } : x));
+    panelChoice = { ...panelChoice, [g.id]: more ? "deck" : null };
+    void refresh();
+  }
+
+  // The deck picker's id, for the seat tile's aria-controls.
+  function pickerID(gameID: string): string {
+    return `deck-picker-${gameID}`;
+  }
+
+  // openPicker is Choose your deck: open the deck picker, or bring the
+  // open one into view, and put focus on it.
+  async function openPicker(g: GameMeta): Promise<void> {
+    if (panelFor(g) !== "deck") showPanel(g, "deck");
+    await tick();
+    const panel = document.getElementById(pickerID(g.id));
+    panel?.scrollIntoView?.({ block: "nearest" });
+    panel?.focus({ preventScroll: true });
   }
 
   function canInvite(g: GameMeta): boolean {
@@ -1037,13 +1272,16 @@
     return seatName(p).trim().slice(0, 1).toUpperCase() || "?";
   }
 
-  // A table in the lobby seats four, so its card pads with open seats
-  // (where Add bot lives). A game in play shows who is there.
-  const TABLE_SEATS = 4;
-  function seatSlots(g: GameMeta): (SeatInfo | null)[] {
-    const slots: (SeatInfo | null)[] = [...g.players].sort((a, b) => a.seat - b.seat);
-    if (g.state === "lobby") while (slots.length < TABLE_SEATS) slots.push(null);
-    return slots;
+  // A table in play shows who is there, in seat order; a table in the
+  // lobby draws its four seats as tiles (tablesPage.lobbySlots).
+  function seatsInPlay(g: GameMeta): SeatInfo[] {
+    return [...g.players].sort((a, b) => a.seat - b.seat);
+  }
+
+  // A bot seat's pre-built deck, from GET /bot/options.
+  function botDeckOf(p: SeatInfo): BotDeckInfo | undefined {
+    if (!p.is_bot || !p.bot_deck) return undefined;
+    return botOptions?.decks?.find((d) => d.id === p.bot_deck);
   }
 
   // What the page lists (lib/signedInHome.ts's myTables): every table
@@ -1158,6 +1396,92 @@
     };
   });
 
+  // --- the ready-check moment (ADR 0212 §2, lib/readyMoment.ts) -----------
+  //
+  // The page keeps no socket, so "the last deck landed" is two reads of
+  // the same table. This effect hands observeReady the tables Now shows
+  // after every write to `games`: the 5 s poll, a focus re-read, the
+  // sit-down answer. observeReady fires only on the edge from not-all-ready
+  // to all-ready between two reads, so it is silent on a first read and on
+  // every repeat poll. The memory is a plain variable on purpose: writing
+  // it must not re-run the effect.
+  let readyMemory: ReadyMemory = NO_MEMORY;
+  // The tables whose moment is on screen, and which seat landed (null:
+  // none to ring). Cleared READY_MOMENT_MS later. Left empty under reduced
+  // motion, where the checks, the counter and the primary simply change.
+  let readyShown = $state<Record<string, { landed: number | null }>>({});
+  // The polite live region's line: said once per moment, then cleared.
+  let announcement = $state("");
+  const readyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  let announceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    const seen = observeReady(readyMemory, now);
+    readyMemory = seen.memory;
+    for (const m of seen.moments) untrack(() => showReadyMoment(m));
+  });
+
+  onMount(() => () => {
+    for (const t of readyTimers.values()) clearTimeout(t);
+    clearTimeout(announceTimer);
+  });
+
+  function osReducesMotion(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }
+
+  // takesPart: this person sits at the table, created it, or watches it.
+  // The live region speaks for those tables only; an admin scrolling a
+  // long list of other people's tables gets the card's change, not a line
+  // per table.
+  function takesPart(g: GameMeta): boolean {
+    return mySeatNumber(g) !== null || g.is_creator === true || watchesHere(g);
+  }
+
+  function showReadyMoment(m: ReadyMoment): void {
+    const g = now.find((x) => x.id === m.gameID);
+    if (!g) return;
+    const s = get(settings);
+    const motion = readyMotion({
+      enabled: s.animations.enabled,
+      reduceMotion: s.accessibility.reduceMotion,
+      osReduceMotion: osReducesMotion(),
+    });
+    if (motion === "full") {
+      readyShown = { ...readyShown, [g.id]: { landed: m.landed } };
+      clearTimeout(readyTimers.get(g.id));
+      readyTimers.set(
+        g.id,
+        setTimeout(() => {
+          const rest = { ...readyShown };
+          delete rest[g.id];
+          readyShown = rest;
+          readyTimers.delete(g.id);
+        }, READY_MOMENT_MS),
+      );
+    }
+    if (!takesPart(g)) return;
+    const mine = now.filter((x) => x.state === "lobby" && takesPart(x));
+    void say(readyAnnouncement(g, { startable: mayStart(g), named: mine.length > 1 }));
+  }
+
+  // say sets the live region's line. When it already holds one, it is
+  // emptied for a render first, so the next line is a new insertion that
+  // a screen reader announces even when the words are the same.
+  async function say(text: string): Promise<void> {
+    clearTimeout(announceTimer);
+    if (announcement) {
+      announcement = "";
+      await tick();
+    }
+    announcement = text;
+    announceTimer = setTimeout(() => (announcement = ""), READY_ANNOUNCE_HOLD_MS);
+  }
+
   // #/lobby?show=history (and the old #/my-games, which redirects
   // there) scrolls to History once the lists have loaded.
   let scrolledToHistory = false;
@@ -1221,6 +1545,10 @@
 >
   <section class="lobby">
     <RemovedNotice />
+
+    <!-- The ready-check moment's line (ADR 0212 §2): a polite live region
+         that is always mounted, so the line is announced when it is set. -->
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
 
     {#if modeNotice}
       <div class="mode-notice" role="status">
@@ -1341,29 +1669,25 @@
       {:else}
         <ul class="games" aria-label="tables now">
           {#each now as g (g.id)}
+            {@const lobby = g.state === "lobby"}
             {@const seat = mySeat(g)}
             {@const myNo = mySeatNumber(g)}
             {@const chip = statusChip(g)}
             {@const primary = primaryFor(g)}
-            {@const reason = startReason(g)}
+            {@const shown = readyShown[g.id]}
             {@const panel = panelFor(g)}
-            {@const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null}
             {@const rules = cardSettings.get(g.id)}
             {@const rulesText = rules ? settingsSummary(rules) : null}
             {@const showRules = canReadSettings(g)}
-            {@const showInvite = offersCopyInvite(g)}
-            {@const showSpectator = offersSpectatorLink(g)}
-            {@const showTools =
-              showInvite ||
-              showSpectator ||
-              takesSeat(g) ||
-              offersDeck(g) ||
-              canInvite(g) ||
-              lfg !== null}
+            {@const inviteItems = inviteItemsFor(g)}
+            {@const footerMenuOpen = inviteMenu?.gameID === g.id && inviteMenu.from === "footer"}
             <li
               class="tcard"
+              class:lobby
               class:mine={myNo !== null}
               class:menu-open={cardMenu?.gameID === g.id}
+              class:moment={shown !== undefined}
+              style:--ring-delay="{READY_PRIMARY_DELAY_MS}ms"
               use:contextMenuTrigger={(at, opener) => openCardMenu(g, at, opener)}
             >
               <div class="thead">
@@ -1374,22 +1698,95 @@
                   </span>
                   <span class="ctx">{contextLine(g, { seat: myNo })}</span>
                 </div>
-                <div class="tact">
-                  <button
-                    type="button"
-                    class="btn primary sm"
-                    disabled={primary.disabled}
-                    title={primary.title}
-                    onclick={primary.run}
-                  >
-                    {primary.busy ? "…" : primary.label}
-                  </button>
-                </div>
+                {#if lobby}
+                  <!-- §5: the settings as one quiet pill. -->
+                  {#if showRules}
+                    <button
+                      type="button"
+                      class="rules pill"
+                      aria-label={L.tableSettingsLine(rulesText ?? "loading")}
+                      aria-expanded={settingsFor === g.id}
+                      title={canManageTableFor(g)
+                        ? "table settings: undos, starting life, commander damage, table pace, spawning"
+                        : "the table's settings; only the host can change them"}
+                      onclick={() => toggleTableSettings(g.id)}
+                    >
+                      <Icon name="gear" size={13} />
+                      <span>{rulesText ?? "Table settings"}</span>
+                      <i class="caret" class:up={settingsFor === g.id}></i>
+                    </button>
+                  {/if}
+                {:else}
+                  <div class="tact">
+                    <button
+                      type="button"
+                      class="btn primary sm"
+                      disabled={primary.disabled}
+                      title={primary.title}
+                      onclick={primary.run}
+                    >
+                      {primary.busy ? "…" : primary.label}
+                    </button>
+                  </div>
+                {/if}
               </div>
 
-              <ul class="seats" aria-label="seats">
-                {#each seatSlots(g) as p, i (p?.player_id ?? `open-${i}`)}
-                  {#if p}
+              {#if lobby}
+                <!-- §1: the seats are the hero, four tiles at every width. -->
+                <ul class="tiles" aria-label="seats">
+                  {#each lobbySlots(g) as p, i (p?.player_id ?? `open-${i}`)}
+                    {#if p}
+                      {@const own = !p.is_bot && isOwnSeat(p, { isAdmin, mySeat: seat })}
+                      <!-- Your seat previews the deck selected in the open picker (§1). -->
+                      {@const pv =
+                        seat?.player_id === p.player_id && pickerOpen(g)
+                          ? seatPreview(p, pickerState?.preview ?? null)
+                          : null}
+                      <SeatTile
+                        seat={p.seat}
+                        {p}
+                        text={pv?.text ?? seatTileText(p, botDeckOf(p))}
+                        art={pv?.art ?? seatTileArt(p, botDeckOf(p))}
+                        preview={pv?.preview ?? false}
+                        you={myNo === p.seat}
+                        botChip={p.is_bot ? botChipText(p, botOptions?.tiers ?? []) : ""}
+                        moment={shown ? { landed: shown.landed === p.seat } : undefined}
+                        pick={seat?.player_id === p.player_id && offersDeck(g)
+                          ? {
+                              expanded: panel === "deck",
+                              controls: pickerID(g.id),
+                              onclick: () => togglePanel(g, "deck"),
+                            }
+                          : undefined}
+                        remove={(p.is_bot ? canManageBots(g) : canRemove(g, p))
+                          ? {
+                              label: own ? "leave your seat" : `remove ${seatName(p)}`,
+                              title: own
+                                ? "leave your seat at this table"
+                                : `remove ${seatName(p)} from this table`,
+                              disabled: removeBusy || botBusy,
+                              onclick: () => askRemove(g, p),
+                            }
+                          : undefined}
+                      />
+                    {:else}
+                      <SeatTile
+                        seat={i}
+                        p={null}
+                        oninvite={invitesPlayers(g)
+                          ? (el) => toggleInviteMenu(g, el, i)
+                          : undefined}
+                        inviteExpanded={inviteMenu?.gameID === g.id && inviteMenu.from === i}
+                        addBot={canManageBots(g) && botPickerFor !== g.id
+                          ? { disabled: botBusy, onclick: () => void openBotPicker(g) }
+                          : undefined}
+                      />
+                    {/if}
+                  {/each}
+                </ul>
+              {:else}
+                <ul class="seats" aria-label="seats">
+                  {#each seatsInPlay(g) as p (p.player_id)}
                     {@const avatar = avatarURL(p.discord_id, p.discord_avatar_hash)}
                     {@const line = seatLine(g, p, botDeckName)}
                     <li class="seat" class:you={myNo === p.seat} class:bot={p.is_bot}>
@@ -1422,232 +1819,29 @@
                           >
                         </div>
                       </div>
-                      {#if !p.is_bot && isAdmin}
-                        <!-- Admin-only: the disconnected player's way back in. -->
-                        <button
-                          class="seat-link"
-                          title={`generate a one-time link that returns ${seatName(p)} to this seat`}
-                          aria-label={`seat link for ${seatName(p)}`}
-                          disabled={reclaimBusy !== null}
-                          onclick={() => onSeatLink(g.id, p)}
-                        >
-                          {reclaimBusy === p.player_id ? "…" : "seat link"}
-                        </button>
-                      {/if}
-                      {#if p.is_bot ? canManageBots(g) : canRemove(g, p)}
-                        {@const own = !p.is_bot && isOwnSeat(p, { isAdmin, mySeat: seat })}
+                      {#if canRemove(g, p)}
                         <button
                           class="seat-x"
-                          title={own
-                            ? "leave your seat at this table"
-                            : `remove ${seatName(p)} from this table`}
-                          aria-label={own ? "leave your seat" : `remove ${seatName(p)}`}
-                          disabled={removeBusy || botBusy}
+                          title={`remove ${seatName(p)} from this table`}
+                          aria-label={`remove ${seatName(p)}`}
+                          disabled={removeBusy}
                           onclick={() => askRemove(g, p)}
                         >
                           <Icon name="x" size={12} />
                         </button>
                       {/if}
                     </li>
-                  {:else}
-                    <li class="seat open">
-                      <span class="sav open"></span>
-                      <div class="sinfo">
-                        <div class="sname dim">Open seat</div>
-                        <div class="sstat dim">send the invite link</div>
-                      </div>
-                      {#if canManageBots(g) && botPickerFor !== g.id}
-                        <button
-                          class="seat-add"
-                          disabled={botBusy}
-                          onclick={() => openBotPicker(g.id)}
-                        >
-                          <Icon name="robot" size={13} /> Add bot
-                        </button>
-                      {/if}
-                    </li>
-                  {/if}
-                {/each}
-              </ul>
+                  {/each}
+                </ul>
+              {/if}
 
-              {#if botPickerFor === g.id}
-                <div class="bot-picker">
-                  <label>
-                    <span>tier</span>
-                    <select bind:value={botTier} disabled={botBusy}>
-                      {#each botTierChoices as t (t.tier)}
-                        <option value={t.tier} disabled={!t.available} title={t.description}>
-                          {tierOptionLabel(t)}
-                        </option>
-                      {/each}
-                    </select>
-                  </label>
-                  <label>
-                    <span>deck</span>
-                    <select bind:value={botDeck} disabled={botBusy}>
-                      {#each botOptions?.decks ?? [] as d (d.id)}
-                        <option value={d.id} title={d.description}>{d.name}</option>
-                      {/each}
-                    </select>
-                  </label>
-                  {#if botOptions?.own_key}
-                    <label class="own-key">
-                      <input
-                        type="checkbox"
-                        checked={botOwnKey}
-                        disabled={botBusy || (!botOptions.own_key.games_left && !botOwnKey)}
-                        onchange={(e) => onOwnKeyToggle(e.currentTarget.checked)}
-                      />
-                      <span>Run on my model key ({botOptions.own_key.provider_label})</span>
-                    </label>
-                    {#if !botOptions.own_key.games_left}
-                      <p class="deck-desc tier-warning">
-                        Your model key has played all the games you allowed it today (Settings › AI
-                        opponents).
-                      </p>
-                    {/if}
-                    {#if botOwnKey}
-                      <label>
-                        <span>model</span>
-                        <input
-                          type="text"
-                          autocomplete="off"
-                          spellcheck="false"
-                          maxlength="128"
-                          placeholder={botOptions.own_key.model}
-                          bind:value={botModel}
-                          disabled={botBusy}
-                        />
-                      </label>
-                    {/if}
-                  {/if}
-                  {#if botTierNote}
-                    <p class="deck-desc" class:tier-warning={botTierNote.warning}>
-                      {botTierNote.text}
-                    </p>
-                  {/if}
-                  {#if botDeckDescription}
-                    <p class="deck-desc">{botDeckDescription}</p>
-                  {/if}
-                  {#if botDeckCards.length > 0}
-                    <ShopLinks list={botDeckCards} label="Play this deck in paper" />
-                  {/if}
-                  <div class="bot-actions">
-                    <button
-                      class="primary"
-                      disabled={botBusy || !botTier || !botDeck}
-                      onclick={() => onAddBot(g.id)}
-                    >
-                      {botBusy ? "adding…" : "add bot"}
-                    </button>
-                    <button class="ghost" disabled={botBusy} onclick={() => (botPickerFor = null)}>
-                      cancel
-                    </button>
-                  </div>
-                  {#if botError}<div class="bot-error">{botError}</div>{/if}
-                  <p class="hint">
-                    A bot takes a real seat, arrives with its deck already loaded, and starts
-                    playing when you press Start.
-                  </p>
-                </div>
-              {:else if botError}
-                <div class="bot-error">{botError}</div>
-              {:else if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
+              {#if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
                 <div class="bot-error" role="alert">{lfgError}</div>
               {/if}
 
-              {#if showTools}
-                <!-- The host toolbar (#3499): what a table's people reach
-                     for, out where it can be seen. -->
-                <div class="ttools" role="group" aria-label={`tools for ${g.name}`}>
-                  {#if showInvite}
-                    <SplitButton
-                      label={L.copyInvite}
-                      doneLabel={copied === `${g.id}:player:new`
-                        ? "New invite copied"
-                        : "Invite copied"}
-                      done={copied === `${g.id}:player` || copied === `${g.id}:player:new`}
-                      title={linkTitle(g, "player")}
-                      disabled={rotateBusy !== null}
-                      onmain={() => void copyLink(g, "player")}
-                      rotateLabel={canRotateInvites(g) ? L.newInviteLink : undefined}
-                      rotateTitle="make a new invite link: the current one stops working"
-                      onrotate={canRotateInvites(g)
-                        ? () => (confirmRotate = { gameID: g.id, kind: "player" })
-                        : undefined}
-                    />
-                  {/if}
-                  {#if showSpectator}
-                    <SplitButton
-                      icon="eye"
-                      label={L.copySpectatorLink}
-                      doneLabel={copied === `${g.id}:spectator:new`
-                        ? "New spectator link copied"
-                        : "Spectator link copied"}
-                      done={copied === `${g.id}:spectator` || copied === `${g.id}:spectator:new`}
-                      title={linkTitle(g, "spectator")}
-                      disabled={rotateBusy !== null}
-                      onmain={() => void copyLink(g, "spectator")}
-                      rotateLabel={canRotateInvites(g) ? L.newSpectatorLink : undefined}
-                      rotateTitle="make a new spectator link: the current one stops working"
-                      onrotate={canRotateInvites(g)
-                        ? () => (confirmRotate = { gameID: g.id, kind: "spectator" })
-                        : undefined}
-                    />
-                  {/if}
-                  {#if takesSeat(g)}
-                    <button
-                      type="button"
-                      class="btn ghost sm"
-                      disabled={seatBusy !== null}
-                      onclick={() => void takeSeat(g)}
-                    >
-                      {seatBusy === g.id ? "Taking a seat…" : "Take a seat"}
-                    </button>
-                  {/if}
-                  {#if seat && offersDeck(g)}
-                    <button
-                      type="button"
-                      class="btn ghost sm tool-toggle"
-                      class:pend={!seat.deck_uploaded}
-                      aria-expanded={panel === "deck"}
-                      onclick={() => togglePanel(g, "deck")}
-                    >
-                      {deckLabel(seat)}
-                      <i class="caret" class:up={panel === "deck"}></i>
-                    </button>
-                  {/if}
-                  {#if canInvite(g)}
-                    <button
-                      type="button"
-                      class="btn ghost sm tool-toggle"
-                      aria-expanded={panel === "invite"}
-                      onclick={() => togglePanel(g, "invite")}
-                    >
-                      <Icon name="mail" size={13} /> Invite by DM
-                      <i class="caret" class:up={panel === "invite"}></i>
-                    </button>
-                  {/if}
-                  {#if lfg?.kind === "post"}
-                    <button
-                      type="button"
-                      class="btn ghost sm"
-                      disabled={lfg.disabled || lfgBusy}
-                      title={lfg.title}
-                      onclick={() => toggleLFG(g.id, true)}
-                    >
-                      <Icon name="discord" size={13} /> Post to #looking-for-game
-                    </button>
-                  {:else if lfg?.kind === "posted"}
-                    <span class="lfg-state" title={lfg.title} data-testid="lfg-state">
-                      <Icon name="discord" size={13} />
-                      {lfg.label}
-                    </span>
-                  {/if}
-                </div>
-              {/if}
-
-              {#if showRules || reason}
+              {#if !lobby && (showRules || inviteItems.length > 0)}
+                <!-- In play: the rules line, and the Invite menu for the
+                     spectator link. -->
                 <div class="tline">
                   {#if showRules}
                     <button
@@ -1665,25 +1859,71 @@
                       <i class="caret" class:up={settingsFor === g.id}></i>
                     </button>
                   {/if}
-                  {#if reason}<span class="reason">{reason}</span>{/if}
+                  {#if inviteItems.length > 0}
+                    <span class="tacts">
+                      <span class="copied" role="status">{copiedNote(g.id)}</span>
+                      <button
+                        type="button"
+                        class="btn ghost sm"
+                        aria-haspopup="menu"
+                        aria-expanded={footerMenuOpen}
+                        onclick={(e) => toggleInviteMenu(g, e.currentTarget, "footer")}
+                      >
+                        <Icon name="link" size={13} />
+                        {L.inviteButton}
+                        <i class="caret" class:up={footerMenuOpen}></i>
+                      </button>
+                    </span>
+                  {/if}
                 </div>
               {/if}
 
-              {#if panel === "invite" && canInvite(g)}
+              <!-- The region under the seats: the bot picker (owner decision
+                   8), the tablemate picker, or the deck picker (§3), with a
+                   notch at the seat it is for. -->
+              {#if botPickerFor === g.id && lobby && botOptions}
+                {@const botSeat = botSeatFor(g)}
+                <div
+                  class="picker bot"
+                  id={botPickerID(g.id)}
+                  tabindex="-1"
+                  style:--notch={Math.min(botSeat, 3)}
+                >
+                  <BotPicker
+                    bind:this={botPicker}
+                    gameID={g.id}
+                    seat={botSeat}
+                    options={botOptions}
+                    prebuilt={prebuiltDecks}
+                    onchange={(c) => (botCommit = c)}
+                    oncancel={() => (botPickerFor = null)}
+                    onadded={() => {
+                      botPickerFor = null;
+                      void refresh();
+                    }}
+                  />
+                </div>
+              {:else if panel === "invite" && canInvite(g)}
                 <div class="invite-picker">
                   <TablematePicker gameID={g.id} lastTable={lastSetup?.tablemates ?? []} />
                 </div>
               {:else if panel === "deck" && seat && offersDeck(g) && $session?.playerID}
-                <div class="deck-upload">
-                  <p class="hint">
-                    Every deck is validated against Commander rules — 100-card singleton, color
-                    identity, format legality — whichever way it arrives.
-                  </p>
-                  <DeckUploadForm
+                <div
+                  class="picker"
+                  id={pickerID(g.id)}
+                  role="region"
+                  aria-label={L.deckPicker}
+                  tabindex="-1"
+                  style:--notch={seat.seat}
+                >
+                  <DeckPicker
+                    bind:this={deckPicker}
                     gameID={g.id}
                     playerID={$session.playerID}
                     shopLinks
-                    onSuccess={() => void refresh()}
+                    actions="external"
+                    onchange={(st) => (pickerState = st)}
+                    onSuccess={(res, more) => onSeated(g, res, more)}
                   />
                 </div>
               {/if}
@@ -1914,6 +2154,65 @@
               {#if createdNote?.gameID === g.id}
                 <p class="hint setup-note" role="status">{createdNote.message}</p>
               {/if}
+
+              {#if lobby}
+                <!-- §2: the readiness line, then Open table, the Invite
+                     menu and the one primary, in the footer's corner. -->
+                {@const ready = readiness(g, seat, { bots: canManageBots(g) })}
+                <div class="tfoot">
+                  <div
+                    class="readiness"
+                    role="group"
+                    aria-label={L.readinessLine(ready.ready, ready.seated)}
+                  >
+                    <span class="rlabel" aria-hidden="true">Ready</span>
+                    <span class="rcount" aria-hidden="true">{ready.ready}/{ready.seated}</span>
+                    <span class="segs" aria-hidden="true">
+                      {#each ready.segments as sg (sg.seat)}
+                        <i
+                          class="sg {sg.state}"
+                          style:--c={seatColor(sg.seat)}
+                          style:--wave="{readyDelayMs(sg.seat)}ms"
+                        ></i>
+                      {/each}
+                    </span>
+                    <span class="rtext"
+                      >{ready.lead ? `${ready.lead} · ` : ""}<b>{ready.status}</b></span
+                    >
+                  </div>
+                  <div class="tacts">
+                    <span class="copied" role="status">{copiedNote(g.id)}</span>
+                    {#if primary.kind !== "open" && primary.kind !== "watch"}
+                      <button type="button" class="btn ghost sm" onclick={() => openGame(g.id)}>
+                        {L.openTable}
+                      </button>
+                    {/if}
+                    {#if inviteItems.length > 0}
+                      <button
+                        type="button"
+                        class="btn sm"
+                        aria-haspopup="menu"
+                        aria-expanded={footerMenuOpen}
+                        onclick={(e) => toggleInviteMenu(g, e.currentTarget, "footer")}
+                      >
+                        <Icon name="link" size={13} />
+                        {L.inviteButton}
+                        <i class="caret" class:up={footerMenuOpen}></i>
+                      </button>
+                    {/if}
+                    <button
+                      type="button"
+                      class="btn primary sm wide"
+                      class:ringed={shown !== undefined && primary.kind === "start"}
+                      disabled={primary.disabled}
+                      title={primary.title}
+                      onclick={primary.run}
+                    >
+                      {primary.busy ? "…" : primary.label}
+                    </button>
+                  </div>
+                </div>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -1925,6 +2224,18 @@
               y={cardMenu.at.y}
               items={tableMenuFor(cardMenuGame)}
               onclose={closeCardMenu}
+            />
+          {/key}
+        {/if}
+        {#if inviteMenu && inviteMenuGame}
+          {#key inviteMenu}
+            <ContextMenu
+              label={L.inviteMenu(inviteMenuGame.name)}
+              x={inviteMenu.x}
+              y={inviteMenu.y}
+              align={inviteMenu.align}
+              items={inviteItemsFor(inviteMenuGame)}
+              onclose={closeInviteMenu}
             />
           {/key}
         {/if}
@@ -2266,14 +2577,6 @@
     gap: 8px;
     margin-left: auto;
   }
-  .lfg-state {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--mint);
-    white-space: nowrap;
-  }
   .btn:disabled {
     opacity: 0.55;
     cursor: default;
@@ -2311,7 +2614,10 @@
     background: var(--mint);
   }
 
-  .seats {
+  /* Four seats in one row at every width, the tablet's 820px included
+     (ADR 0212 §6): the lobby's tiles and a game in play's seats. */
+  .seats,
+  .tiles {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -2319,12 +2625,8 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
   }
-  /* Four seats in one row from the laptop up; two by two on a tablet,
-     where a fourth of the card is too narrow for a name and Add bot. */
-  @media (max-width: 1023px) {
-    .seats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .tiles {
+    gap: 12px;
   }
   .seat {
     display: flex;
@@ -2338,10 +2640,6 @@
   }
   .seat.you {
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  }
-  .seat.open {
-    border: 1px dashed var(--border-strong);
-    background: transparent;
   }
   .sav {
     width: 38px;
@@ -2369,10 +2667,6 @@
     font-size: 14px;
     color: #1c1503;
   }
-  .sav.open {
-    border: 2px dashed var(--border-strong);
-    background: transparent;
-  }
   .sinfo {
     min-width: 0;
     flex: 1 1 auto;
@@ -2394,31 +2688,27 @@
     font-weight: 700;
     margin-left: 5px;
   }
-  .sname.dim,
-  .sstat.dim {
-    color: var(--fg-dim);
-    font-weight: 500;
-  }
+  /* A seat in play: four across at 820px too (ADR 0212 §6), so the
+     line wraps rather than cut off its life total. The dot and the power
+     badge beside it never shrink (#3671). */
   .sstat {
     font-size: 11.5px;
     color: var(--fg-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     margin-top: 2px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 5px;
+    gap: 2px 5px;
   }
   .sstat.pend {
     color: var(--accent-strong);
   }
-  /* The deck text is what gives way on a narrow seat; the dot and the
-     power badge beside it never shrink (#3671). */
+  /* Beside the dot when there is room for a word or two, else under it
+     and the badge. */
   .stext {
+    flex: 1 1 4.5rem;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .seat.bot {
     border-style: dashed;
@@ -2435,72 +2725,31 @@
     margin: 2px 0;
     min-width: 0;
   }
-  .seat-x,
-  .seat-add,
-  .seat-link {
+  .seat-x {
+    display: grid;
+    place-items: center;
     flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    padding: 0;
     border-radius: 8px;
     border: 1px solid var(--border-strong);
     background: transparent;
     color: var(--fg-muted);
     cursor: pointer;
-    font: inherit;
   }
-  .seat-x {
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-  }
-  .seat-add {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    height: 30px;
-    padding: 0 10px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--fg);
-    white-space: nowrap;
-    background: var(--surface-raised);
-  }
-  .seat-link {
-    font-size: 11px;
-    padding: 4px 8px;
-    white-space: nowrap;
-  }
-  .seat-x:hover:not(:disabled),
-  .seat-add:hover:not(:disabled),
-  .seat-link:hover:not(:disabled) {
+  .seat-x:hover:not(:disabled) {
     color: var(--fg);
     border-color: var(--accent);
   }
-  .seat-x:disabled,
-  .seat-add:disabled,
-  .seat-link:disabled {
+  .seat-x:disabled {
     opacity: 0.5;
     cursor: default;
   }
 
-  /* --- the toolbar and the rules line (#3499) --- */
+  /* --- the settings summary, and in play the rules line (#3499) --- */
   .tcard.menu-open {
     border-color: var(--border-strong);
-  }
-  .ttools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-  .tool-toggle {
-    gap: 6px;
-  }
-  .tool-toggle.pend {
-    color: var(--accent-strong);
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
   .tline {
     display: flex;
@@ -2508,6 +2757,9 @@
     align-items: center;
     gap: 6px 16px;
     min-width: 0;
+  }
+  .tline .tacts {
+    margin-left: auto;
   }
   .rules {
     display: inline-flex;
@@ -2531,6 +2783,18 @@
   .rules:hover {
     color: var(--fg);
   }
+  /* §5: in the lobby card's head, one quiet pill. */
+  .rules.pill {
+    flex: 0 1 auto;
+    height: 28px;
+    padding: 0 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .rules.pill:hover {
+    border-color: var(--border-strong);
+  }
   .caret {
     width: 5px;
     height: 5px;
@@ -2542,20 +2806,193 @@
   .caret.up {
     transform: translateY(1px) rotate(-135deg);
   }
-  .reason {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--fg-dim);
-  }
-  .deck-upload,
   .invite-picker {
     padding: 12px 14px;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--surface-sunken);
   }
-  .deck-upload .hint {
-    margin-top: 0;
+  /* The picker region under the seats (§3): the deck picker, its tab bar
+     edge to edge, or the bot picker. Its notch points at the seat it is
+     for: the middle of column --notch of four, 12px apart. */
+  .picker {
+    --picker-pad: 14px;
+    position: relative;
+    padding: 0 var(--picker-pad) var(--picker-pad);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+  }
+  .picker.bot {
+    padding-top: 12px;
+  }
+  .picker::before {
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: calc((100% - 36px) / 4 * (var(--notch, 0) + 0.5) + 12px * var(--notch, 0) - 6px);
+    width: 12px;
+    height: 12px;
+    transform: rotate(45deg);
+    background: var(--surface-sunken);
+    border-left: 1px solid var(--border-strong);
+    border-top: 1px solid var(--border-strong);
+  }
+  .picker:focus {
+    outline: none;
+  }
+  .picker:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+
+  /* --- the lobby card's footer: readiness and the one primary (§2) --- */
+  .tfoot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .readiness {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+  .rlabel {
+    font: 700 10.5px/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .rcount {
+    margin-left: -6px;
+    font: 700 15px/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+  .segs {
+    display: inline-flex;
+    gap: 4px;
+  }
+  .sg {
+    display: block;
+    width: 20px;
+    height: 6px;
+    box-sizing: border-box;
+    border-radius: 3px;
+  }
+  .sg.ready {
+    background: var(--c);
+  }
+  .sg.choosing {
+    border: 1.5px solid var(--c);
+  }
+  .sg.open {
+    border: 1px dashed var(--fg-dim);
+  }
+  .rtext {
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+  }
+  .rtext b {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .tacts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .tacts .btn {
+    gap: 6px;
+  }
+  .btn.wide {
+    padding: 0 18px;
+  }
+  .copied {
+    font-size: 12px;
+    color: var(--mint);
+    white-space: nowrap;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* --- the ready-check moment (ADR 0212 §2) ---
+     .moment is on the card only while lib/readyMoment.ts says so: for
+     READY_MOMENT_MS after this client sees the last deck land, and never
+     under reduced motion (the page decides that from the setting, the
+     animations switch and the OS signal). The seat tiles' own part, the
+     checks and the ring on the seat that landed, is in SeatTile. Here:
+     the counter's segments fill in seat order, the number settles, and
+     Start game gets one soft ring that fades. Each keyframe's last frame
+     is the resting look, so nothing jumps when the class goes. */
+  .tcard.moment .sg.ready {
+    transform-origin: left center;
+    animation: sg-fill 420ms var(--ease) both;
+    animation-delay: var(--wave, 0ms);
+  }
+  .tcard.moment .rcount {
+    transform-origin: left center;
+    animation: count-settle 520ms var(--ease) both;
+    animation-delay: var(--ring-delay, 440ms);
+  }
+  .tacts .btn.primary.ringed {
+    animation: start-ring 1500ms var(--ease) both;
+    animation-delay: var(--ring-delay, 440ms);
+  }
+  @keyframes sg-fill {
+    from {
+      transform: scaleX(0.15);
+      opacity: 0.4;
+    }
+    to {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+  @keyframes count-settle {
+    from {
+      transform: scale(1.35);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  @keyframes start-ring {
+    0% {
+      box-shadow: 0 0 0 0 var(--accent-soft);
+    }
+    30% {
+      box-shadow: 0 0 0 5px var(--accent-soft);
+    }
+    100% {
+      box-shadow: 0 0 0 10px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tcard.moment .sg.ready,
+    .tcard.moment .rcount,
+    .tacts .btn.primary.ringed {
+      animation: none;
+    }
   }
 
   /* --- the card's inset panels: settings, confirmations, new links --- */
@@ -2654,71 +3091,6 @@
   .hint.warn {
     margin: 0;
     color: var(--fg);
-  }
-  .bot-picker {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 10px;
-    padding: 12px;
-    border: 1px dashed var(--border-strong);
-    border-radius: 10px;
-    background: var(--surface-sunken);
-  }
-  .bot-picker label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-    color: var(--fg-muted);
-    min-width: 150px;
-  }
-  /* ADR 0182: the own-key switch takes its own line, as a row. */
-  .bot-picker label.own-key {
-    flex: 1 0 100%;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--fg);
-    min-width: 0;
-  }
-  .bot-picker input[type="text"] {
-    font: inherit;
-    font-size: 12.5px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-raised);
-    color: var(--fg);
-    min-width: 0;
-    max-width: 100%;
-  }
-  .bot-picker select {
-    font: inherit;
-    font-size: 12.5px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-raised);
-    color: var(--fg);
-  }
-  .bot-actions {
-    display: flex;
-    gap: 8px;
-  }
-  .bot-picker .hint {
-    flex: 1 0 100%;
-    margin: 0;
-  }
-  .deck-desc {
-    flex: 1 0 100%;
-    margin: 0;
-    font-size: 12px;
-    color: var(--fg-muted);
-  }
-  .deck-desc.tier-warning {
-    color: var(--danger);
   }
   .bot-error {
     color: var(--danger);

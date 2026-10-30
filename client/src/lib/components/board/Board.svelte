@@ -82,6 +82,7 @@
   import CombatStrikes from "./CombatStrikes.svelte";
   import TableEffects from "./TableEffects.svelte";
   import EliminationFx from "./EliminationFx.svelte";
+  import ExtortScales from "./ExtortScales.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -203,6 +204,12 @@
     type TargetRef,
   } from "../../targeting";
   import { abilityMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import {
+    abilityCostBranches,
+    costBranchModeSpec,
+    payableCostBranches,
+    withCostBranch,
+  } from "../../costBranch";
   import { castPreviewParams } from "../../castPreview";
   import {
     altCostTapRange,
@@ -2015,6 +2022,8 @@
       if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
       // #2598: the cards revealed to pay "Reveal X black cards".
       if (abilityRevealIDs.length > 0) params.reveal_ids = abilityRevealIDs;
+      // #4566: the branch of an either/or cost, chosen before the picks.
+      if (abilityCostBranch !== undefined) params.cost_branch = abilityCostBranch;
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
       // #916, CR 107.4f: announced with the rest of the cost, before
       // these targets, and sent in the same message.
@@ -2039,6 +2048,7 @@
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
       abilityTapX = undefined;
+      abilityCostBranch = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -2245,6 +2255,36 @@
   } | null>(null);
   let abilityDiscardIDs: string[] = [];
 
+  // #4566: the branch of an either/or cost ("Sacrifice an artifact or
+  // discard a nonland card"), asked before anything else and carried on
+  // the side like the discard picks until the one activate_ability goes
+  // out as `cost_branch`. undefined means the row has no branches.
+  let abilityBranchPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityCostBranch: number | undefined = undefined;
+  const abilityBranchCard = $derived(
+    abilityBranchPrompt
+      ? ({
+          ...abilityBranchPrompt.card,
+          modes: costBranchModeSpec(abilityBranchPrompt.ability),
+        } as CardView)
+      : null,
+  );
+  function confirmAbilityBranch(modes: number[]): void {
+    const p = abilityBranchPrompt;
+    abilityBranchPrompt = null;
+    if (!p || modes.length !== 1) return;
+    afterAbilityBranch(p.card, p.ability, modes[0]);
+  }
+  // afterAbilityBranch folds the chosen branch into the row and runs the
+  // ordinary announce chain on it.
+  function afterAbilityBranch(card: CardView, ability: ActivatedAbilityView, k: number): void {
+    abilityCostBranch = k;
+    startAbilityCosts(card, withCostBranch(ability, k));
+  }
+
   // #2598: the "Reveal X black cards from your hand" component of an
   // activated ability's cost (Martyr of Bones), asked first — before the
   // discard pick — because revealing is the cost nothing else depends on.
@@ -2401,6 +2441,26 @@
     abilityTapX = undefined;
     abilityRevealIDs = [];
     abilityRevealX = undefined;
+    abilityCostBranch = undefined;
+    // #4566: an either/or cost asks which branch first. One payable
+    // branch is the answer, so it is taken without a question; none means
+    // the row can't be paid (CR 118.3) and nothing is sent.
+    if (abilityCostBranches(ability).length > 0) {
+      const payable = payableCostBranches(ability);
+      if (payable.length === 0) return;
+      if (payable.length === 1) {
+        afterAbilityBranch(card, ability, payable[0]);
+        return;
+      }
+      abilityBranchPrompt = { card, ability };
+      return;
+    }
+    startAbilityCosts(card, ability);
+  }
+
+  // startAbilityCosts is the head of the announce chain once any
+  // either/or branch is folded in (#4566).
+  function startAbilityCosts(card: CardView, ability: ActivatedAbilityView): void {
     // #2598: "Reveal X black cards from your hand" is asked before the
     // rest. The X form always asks — how many is the question — and an
     // empty set of matching cards pays it at X=0 with nothing to pick; a
@@ -3179,6 +3239,8 @@
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     // #2598: the cards revealed to pay "Reveal X black cards".
     if (abilityRevealIDs.length > 0) params.reveal_ids = abilityRevealIDs;
+    // #4566: the branch of an either/or cost, chosen before the picks.
+    if (abilityCostBranch !== undefined) params.cost_branch = abilityCostBranch;
     abilityWaterbendIDs = undefined;
     abilityRevealIDs = [];
     abilityRevealX = undefined;
@@ -3191,6 +3253,7 @@
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
     abilityTapX = undefined;
+    abilityCostBranch = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -4068,6 +4131,10 @@
        player_eliminated sound plays, once; the tombstone that follows is on
        their panel (Tombstone.svelte). z 57, aria-hidden, no pointer events. -->
   <EliminationFx {view} {boardEl} {beatsPrimeKey} />
+  <!-- #4544: an extort drain plays the Scales of Souls, small, at the middle
+       of the table. z 57 after TableEffects, aria-hidden, no pointer events;
+       a click or Escape skips it, for this player only. -->
+  <ExtortScales {view} {boardEl} {beatsPrimeKey} {viewerID} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->
@@ -4740,6 +4807,17 @@
     onConfirm={confirmAbilityModes}
     onCancel={() => {
       abilityModePrompt = null;
+    }}
+  />
+  <!-- #4566: which branch of an either/or cost pays this activation
+       ("Sacrifice an artifact or discard a nonland card"). A branch the
+       player can't pay is disabled. -->
+  <ModePickerModal
+    card={abilityBranchCard}
+    onConfirm={confirmAbilityBranch}
+    onCancel={() => {
+      abilityBranchPrompt = null;
+      abilityCostBranch = undefined;
     }}
   />
   {#if $zoneBrowser}

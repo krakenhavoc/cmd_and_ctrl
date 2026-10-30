@@ -254,7 +254,7 @@ func TestAPlainWipeIsRegeneratedThroughAndDoesNotCount(t *testing.T) {
 		t.Error("the unshielded creature should have died")
 	}
 	if !idsEqual(*got, []uuid.UUID{plain}) {
-		t.Errorf("destroyed this way = %v, want just the unshielded one — a regenerated permanent was never destroyed (CR 701.7a)", *got)
+		t.Errorf("destroyed this way = %v, want just the unshielded one — a regenerated permanent was never destroyed (CR 701.8a)", *got)
 	}
 }
 

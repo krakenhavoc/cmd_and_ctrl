@@ -862,3 +862,26 @@ elsewhere gets nothing (CR 614.6). Code: `game/entry_counters_if_type.go`; catal
 `flicker/return-exiled-with-additional-counters`.
 
 Tests: `entry_counters_if_type_test.go` (`internal/game`), `semesters_end_test.go` (`internal/cards/effects`).
+
+## Amendment (2026-10-30, #4707): a legend-rule exemption for creatures only (Council of Reeds)
+
+`LegendRuleExemption.Whose` (the #2177 printed exemption, `game/legend_rule_exemption.go`) had two values: "yours" (every
+permanent its controller controls, Mirror Box) and "everyone" (Mirror Gallery). Council of Reeds (Marvel Super Heroes,
+#4455) prints "The legend rule doesn't apply to creatures you control". CR 704.5j applies the legend rule to every legendary
+permanent, so a legendary artifact or planeswalker its controller controls, and anything an opponent controls, must keep
+answering to it. Checked on `origin/develop` at `9c223b6b9` against CR 704.5j in the pinned Comprehensive Rules.
+
+`LegendRuleExemptYourCreatures` is the third value, appended after the other two so no stored value moves, and
+`effects.LegendRuleDoesntApplyToYourCreatures()` is the card-side sentence. `legendRuleExempt` gains a second set,
+`creatureControllers`, and `coversPermanent` answers for one permanent: its controller is exempt outright, or it is a
+creature (after continuous effects) and its controller's creatures are. `legendRuleChoicesLocked` asks that instead of
+`covers(controller)`. Everything else in this ADR's #2177 and #3515 text is unchanged: the exemption is read live off the
+battlefield, never stored, two exempting permanents compose, and when the last one leaves the next state-based check
+applies the rule again (`TestMsc4707CouncilLeavingRestoresTheLegendRuleForCreatures`). The ability row reads "The legend
+rule doesn't apply to creatures you control." (`legendRuleExemptionRows`).
+
+Tests: `TestMsc4707CouncilKeepsTwoLegendaryCreaturesButNotOtherLegends` (two legendary creatures stay; two legendary
+artifacts you control and an opponent's two legendary creatures still prompt) and
+`TestMsc4707CouncilCopiesItselfAtCombatAfterANoncreatureSpell` (the token copy coexists with its original).
+
+Back-out: make `coversPermanent` ignore `creatureControllers` and the first test sees two legendary creatures prompted.

@@ -16,7 +16,8 @@ export function noUntapFooterLines(
   const state = card.no_untap;
   if (!state) return [];
   const lines: string[] = [];
-  if (state.static) lines.push("doesn't untap during its controller's untap step");
+  if (state.never) lines.push("can't become untapped");
+  else if (state.static) lines.push("doesn't untap during its controller's untap step");
   for (const id of state.next ?? []) {
     const player = seats.find((seat) => seat.id === id);
     const name = player?.name || "that player";

@@ -15,9 +15,12 @@ func legendRuleExemptionRows(v reflect.Value) []string {
 	exemptions, _ := v.Interface().([]LegendRuleExemption)
 	out := make([]string, 0, len(exemptions))
 	for _, e := range exemptions {
-		if e.Whose == LegendRuleExemptEveryone {
+		switch e.Whose {
+		case LegendRuleExemptEveryone:
 			out = append(out, "The legend rule doesn't apply.")
-		} else {
+		case LegendRuleExemptYourCreatures:
+			out = append(out, "The legend rule doesn't apply to creatures you control.")
+		default:
 			out = append(out, "The legend rule doesn't apply to permanents you control.")
 		}
 	}

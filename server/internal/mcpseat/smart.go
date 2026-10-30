@@ -103,9 +103,11 @@ func anyAttacking(v *protocol.GameView) bool {
 // "Stop for" categories (DEFAULT_RESPONSES): a counter, an instant, a
 // targeted or interacting ability and a special action count; a pure
 // value ability (a fetch, Mind Stone, cycling), a mana ability, a land and
-// a declaration do not.
+// a declaration do not, and nor does a value instant (Opt, Brainstorm:
+// a cast marked value_only, #2877) while something is on the stack.
 func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine bool) bool {
 	sorcery := mine && len(v.StackItems) == 0 && (v.Turn.Step == stepPrecombatMain || v.Turn.Step == stepPostcombatMain)
+	onStack := len(v.StackItems) > 0
 	combat := inCombatWindow(v)
 	defending := isDefending(v, me)
 	controllers := map[string]string{}
@@ -123,7 +125,7 @@ func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine b
 				continue
 			}
 		}
-		if moveIsResponse(m, sorcery, combat, defending) {
+		if moveIsResponse(m, sorcery, onStack, combat, defending) {
 			return true
 		}
 	}
@@ -131,8 +133,12 @@ func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine b
 }
 
 // moveIsResponse is classifyMove's response classes: counter, instant,
-// ability and special. The "untargeted" class is off by default.
-func moveIsResponse(m legal.Move, sorcery, combat, defending bool) bool {
+// ability and special. The "untargeted" class is off by default, and so
+// is "valueInstant", a value_only cast while the stack holds something
+// (#2877; the browser's respondValueInstants, off by default). The
+// caller has already passed a stack that is entirely the seat's own, so
+// onStack means an opponent's item is there.
+func moveIsResponse(m legal.Move, sorcery, onStack, combat, defending bool) bool {
 	switch m.Kind {
 	case legal.KindMana:
 		// A sacrifice outlet that makes mana still answers removal.
@@ -141,7 +147,13 @@ func moveIsResponse(m legal.Move, sorcery, combat, defending bool) bool {
 		if sorcery {
 			return false
 		}
-		if m.TargetsStack || m.Kind == legal.KindCast || m.HasTargets || m.Interacts {
+		if m.TargetsStack {
+			return true
+		}
+		if m.Kind == legal.KindCast {
+			return !(m.ValueOnly && onStack)
+		}
+		if m.HasTargets || m.Interacts {
 			return true
 		}
 		return combat && m.CombatInteracts && (!m.CombatDefenderOnly || defending)

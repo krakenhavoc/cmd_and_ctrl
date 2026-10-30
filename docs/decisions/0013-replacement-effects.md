@@ -762,7 +762,7 @@ on the CR 903.9 prompt and has not happened yet. Every card that reads
 Bane of Progress, Blood Money, The Battle of Bywater — was paid for
 permanents that were still standing.
 
-**1. The rule is CR 701.7a, read off the landed outcome.** "To destroy
+**1. The rule is CR 701.8a, read off the landed outcome.** "To destroy
 a permanent, move it from the battlefield to its owner's graveyard."
 So `destroyedThisWayLocked` asks where the permanent actually ended up:
 
@@ -776,7 +776,7 @@ So `destroyedThisWayLocked` asks where the permanent actually ended up:
 The exile row is the judgement, and it is the one the issue left open.
 A permanent that an "exile it instead" replacement removed really did
 leave the battlefield, and it is tempting to call that destroyed
-because the destruction is what moved it. CR 701.7a names the
+because the destruction is what moved it. CR 701.8a names the
 graveyard, so the engine does not: it was never put into one, so it
 was not destroyed. The consequence is deliberate and small —
 Fumigate gains nothing for it, Deadly Tempest charges nobody for it,
@@ -784,7 +784,7 @@ and a "whenever a creature dies" trigger never saw it either, because
 it did not die.
 
 The command-zone row is a **declared carry-over**, not something
-CR 701.7a compels: by the letter of the same sentence a commander put
+CR 701.8a compels: by the letter of the same sentence a commander put
 into the command zone was not put into a graveyard either. The engine
 has counted it since S23 on the stated grounds that "CR 903.9 replaces
 the zone change, not the destruction" (simultaneous.go's header), the
@@ -955,7 +955,7 @@ were both counted as having moved. Settle the Wreckage
 synchronously, so it handed its victim a basic land for every attacking
 creature whose owner had been *asked* about the command zone.
 
-**1. The rule for these two is CR 400.7, not CR 701.7a.** A card that
+**1. The rule for these two is CR 400.7, not CR 701.8a.** A card that
 changes zones becomes a new object in the zone it arrives in, so "for
 each card exiled this way" means the cards that reached EXILE.
 `landedInZoneLocked` (simultaneous.go) asks exactly that, against the
@@ -1730,7 +1730,7 @@ and this is where sacrifice parts company with destroy:
 | still on the battlefield (cancelled, or the prompt abandoned — §5j) | no | no |
 
 The two rules are why, and the difference is not an inconsistency.
-CR 701.7a defines a DESTRUCTION by the graveyard — "move it from the
+CR 701.8a defines a DESTRUCTION by the graveyard — "move it from the
 battlefield to its owner's graveyard" is what the word means, so a
 permanent an "exile it instead" replacement took was never destroyed
 however thoroughly it left, and the command zone is destroy's one
@@ -2608,7 +2608,7 @@ same decision for the COUNT.
 | the command zone — CR 903.9 | yes |
 | still in the hand — the CR 614 window cancelled it, or the prompt was abandoned (§5j) | no |
 
-Destroy remains the odd one out (§5i): CR 701.7a defines a destruction
+Destroy remains the odd one out (§5i): CR 701.8a defines a destruction
 by the graveyard it arrives in.
 
 The landed list is accumulated by `discardBatchLocked`, carried
@@ -5607,3 +5607,21 @@ CR 701.8a: to destroy a permanent is to move it from the battlefield to its owne
 **Tests.** `effects/destruction_redirect_test.go`, for Liesa and for Rest in Peace: with the exile ordered first, a shielded Bear is exiled and a Bear Umbra's Bear is exiled; with the regeneration shield or umbra armor ordered first, the Bear stays (tapped, shield spent, for the shield; the Aura destroyed, for umbra); a restore at the prompt keeps the order a real choice. `simultaneous_replacements_test.go`'s ordering, not-written and Fumigate restore tests use a real regeneration shield on the Needle in place of the no-op probe the 2026-10-29 amendment above used.
 
 **Back-out**, restored: dropping the `endDestructionOnRedirectLocked` call fails the exile-first tests for both a shield and umbra armor, the restore test, the Liesa ordering test and the Fumigate restore test.
+
+## Amendment 2026-10-29 — a finality counter is an engine rule (#4575)
+
+CR 122.1h: "One or more finality counters on a permanent create a single replacement effect that stops the permanent from going to the graveyard. That effect is 'If this permanent would be put into a graveyard from the battlefield, exile it instead.'" The rule lived only in the two catalog cards that print a finality counter (Grim Repriser, Proctor of Potential), each as a self-replacement on its own `Spec`, so a counter that another card put on a permanent did nothing. Grim Reaper, Lethal Legionnaire returns a card with one.
+
+**The built-in.** `finalityCounterReplacement` (`game/finality_counters.go`) joins `Game.BuiltinReplacements` beside the shield counter's two effects (CR 122.1c, #2000), appended last because a CR 616 prompt names a built-in by its index. Its `AppliesTo` is "a move off the battlefield to a graveyard of a permanent that has a finality counter", read from the live permanent. `Replace` sets the destination to exile. It covers every way a permanent is put into a graveyard (destroy, sacrifice, state-based actions, a wipe's leg, the legend rule), a non-creature permanent, and a token. It is registered once, so any number of counters is one replacement, as CR 122.1h says.
+
+**Ordering.** Not preemptive and not `PureCancel`. The permanent's controller orders it against every other replacement that applies (CR 616.1), through the one gather: a Rest in Peace, a Liesa, a regeneration shield, umbra armor, a Darksteel Colossus. `AppliesTo` also reads `ev.NewZone`, so after another replacement has sent the move anywhere but a graveyard it is no longer applicable (CR 616.1f), exactly as `GraveyardBecomesExile` does. A regeneration chosen first cancels the move and the counter stays on the permanent; the counter chosen first redirects the move to exile, which `runReplaceLocked` already treats as the end of the destruction (the #4526 amendment above), so the shield is not spent. A wipe gathers it per leg like any other built-in; it needs no departed source, since the permanent it reads is the leg's own.
+
+**The trigger-independence check** sets the built-in aside on a board with no finality counter (`anyFinalityCounterLocked`), as it does the shield counter's.
+
+**The cards.** `game.CounterFinality` is the counter's name (and is in `KnownCardCounters`); the cards' `"finality"` string is that constant. Grim Repriser and Proctor of Potential keep only the other half of what they print, "enters with a finality counter" when it comes from a graveyard, which is a property of their own entry; their exile half and `rfMiscAFinalityExile` are gone, and the stale CR 122.1b citation (it is 122.1h) went with them. Grim Reaper puts the counter on with `ZoneEntryOptions.EntersWithCounters` through the CR 506.3c put-attacking door (`putAttackingWithFinality`), so the counter is on the permanent as it enters.
+
+**Compatibility.** No snapshot field changes and no fixture is edited: the registry is rebuilt by `NewGame`, and a restore mid-order names the built-in by its index. The effect-key ledger gains three keys (`body grim-reaper-lethal-legionnaire/return`, `payunless pay-unless/grim-reaper-lethal-legionnaire-return` and `option option-pick/put-attacking-from-graveyard-finality`). No closure route is added; the built-in is a new element of an existing slice.
+
+**Tests.** `effects/finality_counters_test.go`: a creature given the counter by another effect is exiled when destroyed or sacrificed, and its leave event names exile, not the graveyard; one without it goes to the graveyard; a non-creature permanent; Wrath of God over three finality creatures and two plain ones; a token with the counter (and without it); the order against Rest in Peace (exiled either way, no second prompt), against a regeneration shield (counter first exiles and spends no shield; shield first keeps the creature and the counter) and against a Darksteel Colossus (its shuffle first leaves the counter nothing to replace); the order prompt as a restore point and the rule on a restored table; and Grim Reaper end to end (pay, target, tapped and attacking with the counter, exiled when it dies; declined; no creature card). The Grim Repriser and Proctor of Potential tests (`reality_fracture_fra_creature_b_more_test.go`, `reality_fracture_fra_misc_a_test.go`) pass unchanged.
+
+**Back-out**, restored: not registering the built-in fails every test above and the Repriser and Proctor tests. Dropping the `ev.NewZone` read fails the Darksteel Colossus order. Dropping `EntersWithCounters` from the put-attacking door fails Grim Reaper's end to end.

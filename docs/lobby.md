@@ -1329,6 +1329,51 @@ game that has ended carries neither. They are read fresh from the
 engine on each list and never stored, and `GET /games/{id}` does not
 carry them. Additive: an older client ignores them.
 
+**A seat's commanders** ([ADR 0212](decisions/0212-a-new-tables-lobby-card-as-a-character-select.md)
+phase B2). Once a deck is seated (pasted, from the library or
+pre-built) or a bot is added, its `players[]` entry carries the deck's
+commanders, which the lobby card draws as the seat's art and pips:
+
+```json
+{
+  "player_id": "<uuid>", "name": "Alice", "seat": 0, "deck_uploaded": true, "deck_name": "Blood and Thunder",
+  "commander_cards": [
+    { "name": "Tymna the Weaver", "scryfall_id": "<uuid>", "color_identity": ["W", "B"] },
+    { "name": "Kraum, Ludevic's Opus", "scryfall_id": "<uuid>", "color_identity": ["U", "R"] }
+  ],
+  "color_identity": ["W", "U", "B", "R"]
+}
+```
+
+`commander_cards` is the shape `GET /me/decks` gives a saved deck's,
+resolved by the same code (`libraryCommanders`), with the printing the
+seat holds as the hint: `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`, never an image URL, and is absent
+when none resolves; `color_identity` is `[]` for a colourless commander
+and `null` for a name the card index does not know. The seat's
+`color_identity` is their union in WUBRG order, absent for a colourless
+deck. Neither is sent with no card index, or before a deck is in.
+
+**Who gets them** (owner decision 3): only the table's own people, its
+seats (a player session of this table, or a signed-in person holding a
+seat here through another session), its spectators, its creator and the
+admin, before the game starts and after. Every other caller of `GET
+/games` and `GET /games/{id}` still gets `deck_name` and `deck_power`,
+but no commander. They go out only through the redaction every listed
+meta passes (`redactMetaFor`), so the routes that answer with a table
+without it never carry them: the invite preview (`GET
+/games/{id}/preview`, read before a session exists), the join, spectate
+and session answers, start and archive. The deck and bot routes
+(`POST /games/{id}/decks`, `POST /games/{id}/decks/{deck_id}`, `POST`
+and `DELETE /games/{id}/seats/bot…`) answer through it, so the seat
+sees its own at once. The board's own view of the command zone over
+the WebSocket is unchanged.
+
+They survive a restart without a column: the lobby reads them again
+from the restored game's commander cards (the command zone in the
+lobby, wherever they are once the game is under way), as it reads
+`deck_uploaded`. Additive: an older client ignores them.
+
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
@@ -1807,6 +1852,9 @@ deck, not an empty picker implying there are none.
       "summary": "...",
       "commander": "Purphoros, God of the Forge",
       "colors": ["R"],
+      "commander_cards": [
+        { "name": "Purphoros, God of the Forge", "scryfall_id": "<uuid>", "color_identity": ["R"] }
+      ],
       "card_count": 100,
       "cards": [{ "name": "Purphoros, God of the Forge", "count": 1 }, { "name": "Mountain", "count": 30 }],
       "coverage": {
@@ -1825,6 +1873,24 @@ deck, not an empty picker implying there are none.
   ]
 }
 ```
+
+`commander_cards` ([ADR 0212](decisions/0212-a-new-tables-lobby-card-as-a-character-select.md)
+phase B1) is the deck's commander resolved against the card index, in the
+shape `GET /me/decks` gives a saved deck's (below) and by the same code
+(`libraryCommanders`): `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`, and is absent when the name did not
+resolve or no printing has an image; `color_identity` is `[]` for a
+colourless commander and `null` when the name did not resolve. A catalog
+deck names no printing, so it takes the index's default one. The picker's
+Pre-built tiles and the Add bot grid draw the art from it. The field is
+absent when the server has no card index, and an older server never sends
+it; the client then washes the tile in the deck's `colors`. It is additive:
+a client that does not know it ignores it.
+
+The field is a printing id and never an image URL. The art itself is the
+image route's, and `GET /cards/{id}/image` wants a session, as does this
+route, so a visitor with no session gets neither the id nor the art (ADR
+0092 decision 1). The signed-out Decks page does not ask for this route.
 
 `cards` is the whole list, commander first, one row per distinct card
 with its copies. It feeds the optional "Play this deck in paper" shop
@@ -1876,13 +1942,21 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong (experimental)", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
-    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
+    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge",
+      "commander_cards": [{ "name": "Purphoros, God of the Forge", "scryfall_id": "<uuid>", "color_identity": ["R"] }] },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
     { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
   ]
 }
 ```
+
+Each deck's `commander_cards` (shown on the first deck above) is
+the same field, resolved by the same code, as on `GET /decks` (ADR 0212
+phase B1): the printing the Add bot grid and a bot seat's tile draw as
+the commander's art, and its colour identity. It is absent when the
+server has no card index. Like the rest of this route it needs a session,
+as does the image it is drawn through.
 
 When the model tiers are off because a spend cap is used up or an admin
 switched model calls off (#2980), the response also carries `model_note`,
@@ -2537,6 +2611,14 @@ same person signed in in another tab).
 resolves the Discord account from `identities` itself, so a snowflake
 appears on the wire in neither direction.
 
+An ordinary caller may name only a **tablemate**: someone who is in the
+caller's own [`GET /me/tablemates`](#get-metablemates-adr-0051-decision-8-s34-sub-pr-6)
+list, so the picker and the route agree about who counts. Anyone else,
+including a stranger, a deleted account and an id that names nobody, is
+the same **404** (`no such tablemate`): a 403 would confirm that the
+account exists. The bot's shared token and an allowlisted person in
+admin mode skip this check and may name any account.
+
 `discord_id` is accepted as an alternative — a raw Discord snowflake,
 exactly one of the two fields — but **only for an admin session**. It
 exists for #613's `/c2-invite-dm @user`, which holds a mention and
@@ -2591,7 +2673,7 @@ link the table has already shared, which is a startling side effect of
 | 400 | neither or both of `user_id` / `discord_id`, or `user_id` is not a uuid |
 | 401 | unauthenticated |
 | 403 | not seated here, not the creator, not the admin — or `discord_id` from a non-admin |
-| 404 | no such game, no such user, or Discord has no user with that id |
+| 404 | no such game; for an ordinary caller, a `user_id` that is not one of their tablemates (or names nobody, or a deleted account); for an admin, no such user; or Discord has no user with that id |
 | 409 | this process no longer holds the table's invite plaintext (rotate first) |
 | 422 | the target has no Discord identity here, or Discord refused the DM (no shared server / DMs closed) |
 | 429 | rate-limited, by us or by Discord |
@@ -3004,8 +3086,10 @@ with a non-nil `user_id`. No credential is **401**; every other caller is
 **403**, including a guest's seat session, an admin (a credential, not
 a person) and everyone on a deployment with no database.
 
-Excluded, always: the caller themselves, and any seat with no user — a
-guest, a bot, or a Discord seat still waiting on its `users` row.
+Excluded, always: the caller themselves, any seat with no user — a
+guest, a bot, or a Discord seat still waiting on its `users` row — and
+a deleted account (its seats stay, as "Deleted player", but there is no
+one left to invite).
 
 **Response 200**
 

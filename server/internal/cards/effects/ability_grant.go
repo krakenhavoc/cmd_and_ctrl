@@ -315,6 +315,11 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 			panic(where("trigger", i) + " watches from outside the battlefield — a granted ability is a permanent's")
 		}
 		checkTriggeredPurpose(name, fmt.Sprintf("ability grant %s trigger %d", gr.Key, i), t)
+		// #4617, CR 107.3j: a gained ability's X is the one it defines,
+		// or 0, never the X the recipient's spell was cast for.
+		if t.Modes != nil && t.Modes.UpToCastX {
+			panic(where("trigger", i) + " declares \"choose up to X\" — a gained ability's X is not the recipient's spell's (CR 107.3j)")
+		}
 	}
 	for i, s := range gr.Static {
 		if s.ActiveWhen.IsGate() {

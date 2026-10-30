@@ -15,7 +15,8 @@
 //     instants, targeted abilities, untargeted abilities and special
 //     actions, each one a category the player can switch off. Mana and
 //     land never count, and untargeted abilities are off by default
-//     (#2853).
+//     (#2853). So is a value instant (Opt, Brainstorm) on an
+//     opponent's stack item (#2877).
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
 //
@@ -44,6 +45,13 @@ import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 //   counter     — a cast or activation that targets the stack.
 //   instant     — any other cast (instant, flash, split second's
 //                 exceptions — whatever the enumerator offered).
+//   valueInstant — a cast the server marks `value_only` (#2877, ADR
+//                 0142's amendment of 2026-10-30: Opt, Brainstorm, Fact
+//                 or Fiction), while the stack holds something: it has
+//                 nothing to answer there. Its own class so it does
+//                 not count by default; with the stack empty (combat,
+//                 an opponent's end step, a ticked step) it is an
+//                 `instant`.
 //   ability     — any other activated ability that targets or protects
 //                 (#2853: `has_targets`, or `interacts`: a sacrifice
 //                 outlet, regeneration, a pump, a blink, a shield; a
@@ -65,16 +73,20 @@ export type MoveClass =
   | "play"
   | "counter"
   | "instant"
+  | "valueInstant"
   | "ability"
   | "untargeted"
   | "special"
   | "declaration"
   | "other";
 
-// ResponseCategories are the five gameplay.respond* toggles.
+// ResponseCategories are the six gameplay.respond* toggles.
 export interface ResponseCategories {
   counter: boolean;
   instant: boolean;
+  // #2877: a value instant on an opponent's stack item. A narrowing of
+  // `instant`, so it counts only when both are on.
+  valueInstant: boolean;
   ability: boolean;
   untargeted: boolean;
   special: boolean;
@@ -83,6 +95,7 @@ export interface ResponseCategories {
 export const ALL_RESPONSES: ResponseCategories = {
   counter: true,
   instant: true,
+  valueInstant: true,
   ability: true,
   untargeted: true,
   special: true,
@@ -91,9 +104,12 @@ export const ALL_RESPONSES: ResponseCategories = {
 // DEFAULT_RESPONSES is what a player who never touched "Stop for"
 // gets (#2853, owner decision 1): an opponent's stack item stops you
 // for an instant, a counter, or an ability that targets or protects
-// (owner answer 2). A pure value ability is not interaction.
+// (owner answer 2). A pure value ability is not interaction, and nor
+// is a value instant on the stack (#2877, owner decision 2026-10-30:
+// option (a)).
 export const DEFAULT_RESPONSES: ResponseCategories = {
   ...ALL_RESPONSES,
+  valueInstant: false,
   untargeted: false,
 };
 
@@ -110,6 +126,12 @@ export const DEFAULT_RESPONSES: ResponseCategories = {
 //
 // `combat` is inCombatWindow: there, an activation the server marks
 // `combat_interacts` is an `ability`; elsewhere it is `untargeted`.
+// `onStack` is "the stack holds something": there, a cast the server
+// marks `value_only` is a `valueInstant` (#2877). The caller reaches
+// that question only with an opponent's item on it (a stack of the
+// viewer's own is #323's), and the item is what a value instant has no
+// answer to. With an empty stack it is an `instant`: an opponent's end
+// step and combat are where Opt and Brainstorm are cast.
 // `defending` is isDefending: an activation also marked
 // `combat_defender_only` (a creature-token maker) is an `ability` only
 // when the viewer is being attacked as well (owner answer, #2871).
@@ -131,6 +153,7 @@ export function classifyMove(
   me?: string | null,
   combat = false,
   defending = false,
+  onStack = false,
 ): MoveClass {
   if (m.kind === "activate" && controllers && me && activatesAcross(m, controllers, me)) {
     return "none";
@@ -149,7 +172,7 @@ export function classifyMove(
     case "activate":
       if (sorceryWindow) return "play";
       if (m.targets_stack) return "counter";
-      if (m.kind === "cast") return "instant";
+      if (m.kind === "cast") return m.value_only && onStack ? "valueInstant" : "instant";
       if (m.has_targets || m.interacts) return "ability";
       if (combat && m.combat_interacts && (!m.combat_defender_only || defending)) {
         return "ability";
@@ -236,6 +259,8 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
       return cats.counter;
     case "instant":
       return cats.instant;
+    case "valueInstant":
+      return cats.instant && cats.valueInstant;
     case "ability":
       return cats.ability;
     case "untargeted":
@@ -264,9 +289,10 @@ export function hasResponse(
   const sw = inSorceryWindow(view, me);
   const combat = inCombatWindow(view);
   const defending = isDefending(view, me);
+  const onStack = !stackEmpty(view);
   const controllers = battlefieldControllers(view);
   return moves.some((m) =>
-    isEnabledResponse(classifyMove(m, sw, controllers, me, combat, defending), cats),
+    isEnabledResponse(classifyMove(m, sw, controllers, me, combat, defending, onStack), cats),
   );
 }
 
@@ -295,9 +321,10 @@ export function hasPlay(
   const sw = inSorceryWindow(view, me);
   const combat = inCombatWindow(view);
   const defending = isDefending(view, me);
+  const onStack = !stackEmpty(view);
   const controllers = battlefieldControllers(view);
   return moves.some((m) => {
-    const c = classifyMove(m, sw, controllers, me, combat, defending);
+    const c = classifyMove(m, sw, controllers, me, combat, defending, onStack);
     if (c === "play" || c === "declaration" || c === "other") return true;
     return isEnabledResponse(c, cats);
   });

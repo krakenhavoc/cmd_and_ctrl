@@ -295,7 +295,7 @@ describe("a card grid is a sheet", () => {
   });
 
   it("search: a you-may search asks before it looks, with no cards shown (#4134)", () => {
-    // Looking through the library is searching (CR 701.19): the question
+    // Looking through the library is searching (CR 701.23a): the question
     // comes first, so declining is never a free look.
     const a = mount(
       snap({

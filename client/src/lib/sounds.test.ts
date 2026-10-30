@@ -22,6 +22,7 @@ class FakeAudio {
     return Promise.resolve();
   });
   load = vi.fn();
+  pause = vi.fn();
   constructor(src: string) {
     this.src = src;
     FakeAudio.instances.push(this);
@@ -238,6 +239,24 @@ describe("sounds", () => {
       expect(Object.keys(m.SOUND_MANIFEST)).not.toContain("face_hit");
     });
 
+    // #4544: extort has no file yet. It plays damage until extort-1.mp3 is
+    // added to the manifest, and then plays itself, with no other change.
+    it("plays damage when extort has no file, and itself once a take is listed", async () => {
+      const m = await load();
+      expect(m.SOUND_MANIFEST.extort).toEqual([]);
+      expect(m.SOUND_CATEGORY.extort).toBe("effects");
+      expect(m.SOUND_FALLBACK.extort).toBe("damage");
+      m.play("extort");
+      await settle();
+      expect(played().at(-1)?.src).toMatch(/damage-/);
+
+      tick();
+      m.SOUND_MANIFEST.extort = ["/sounds/extort-1.mp3"];
+      m.play("extort");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/extort-1.mp3");
+    });
+
     it("falls back to an existing sound when every take of a cue is missing", async () => {
       const m = await load();
       for (const u of m.SOUND_MANIFEST.your_turn) FakeAudio.broken.add(u);
@@ -394,5 +413,67 @@ describe("sounds", () => {
     m.setMuted(true);
     m.play("draw");
     expect(played()).toHaveLength(0);
+  });
+
+  describe("length cap (#4567)", () => {
+    it("caps the war cry at 2 s and fades the last 300 ms", async () => {
+      const m = await load();
+      expect(m.SOUND_MAX_MS.combat_resolve).toBe(2000);
+      expect(m.SOUND_FADE_MS).toBe(300);
+      m.play("combat_resolve");
+      const [a] = played();
+      vi.advanceTimersByTime(2000 - m.SOUND_FADE_MS - 1);
+      expect(a.volume).toBe(1);
+      vi.advanceTimersByTime(1 + 25);
+      expect(a.volume).toBeLessThan(1);
+      expect(a.volume).toBeGreaterThan(0);
+      expect(a.pause).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(300);
+      expect(a.volume).toBe(0);
+      expect(a.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves a sound with no cap alone", async () => {
+      const m = await load();
+      m.play("attack");
+      const [a] = played();
+      vi.advanceTimersByTime(10_000);
+      expect(a.volume).toBe(1);
+      expect(a.pause).not.toHaveBeenCalled();
+    });
+
+    it("starts the fade from the caller's hint", async () => {
+      const m = await load();
+      m.play("combat_resolve", { volume: 0.6 });
+      const [a] = played();
+      expect(a.volume).toBeCloseTo(0.6);
+      vi.advanceTimersByTime(1850);
+      expect(a.volume).toBeLessThan(0.6);
+      expect(a.volume).toBeGreaterThan(0);
+    });
+
+    it("caps each overlapping play on its own clock", async () => {
+      const m = await load();
+      m.play("combat_resolve");
+      vi.advanceTimersByTime(1000);
+      m.play("combat_resolve");
+      const [a, b] = played();
+      vi.advanceTimersByTime(1000);
+      expect(a.pause).toHaveBeenCalledTimes(1);
+      expect(b.pause).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1000);
+      expect(b.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears its timers when the take ends before the cap", async () => {
+      const m = await load();
+      m.play("combat_resolve");
+      const [a] = played();
+      a.fire("ended");
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(5000);
+      expect(a.pause).not.toHaveBeenCalled();
+      expect(a.volume).toBe(1);
+    });
   });
 });

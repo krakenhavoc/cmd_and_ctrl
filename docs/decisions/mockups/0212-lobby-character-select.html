@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0212 mockup: a new table's lobby card as a character select</title>
+<!--
+  ADR 0212 mockup. A static picture of the Tables page's lobby card
+  (routes/Lobby.svelte) in three states, for review. Not production
+  code: no build, no script, inline CSS. The tokens are copied from
+  client/src/app.css (War room, the default skin), the seat colours
+  from client/src/lib/colors.ts and the identity colours from app.css.
+  The fonts load from client/public/fonts when this file is opened
+  from the repo; elsewhere the metric-close fallbacks show.
+
+  The art is placeholder: a striped block in the commander's identity
+  colours stands where the art crop (/cards/{id}/image?size=art_crop,
+  CommanderArt.svelte) would be, and "Illus. Artist Name" where the
+  artist credit goes. No card image is shipped here.
+
+  Look at it at 820px wide (the tablet minimum) and at 1280px.
+-->
+<style>
+  @font-face { font-family: "Bricolage Grotesque"; src: url("../../../client/public/fonts/bricolage-grotesque-latin.woff2") format("woff2"); font-weight: 500 800; font-display: swap; }
+  @font-face { font-family: "Instrument Sans"; src: url("../../../client/public/fonts/instrument-sans-latin.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "JetBrains Mono"; src: url("../../../client/public/fonts/jetbrains-mono-latin.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+
+  :root {
+    color-scheme: dark;
+    --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --font-ui: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --bg: #070d14;
+    --surface: #121e2c;
+    --surface-raised: #1a2a3c;
+    --surface-hover: #22354b;
+    --surface-sunken: #0a121b;
+    --fg: #e8eff7;
+    --fg-muted: #8fa3ba;
+    --fg-dim: #5d7187;
+    --border: rgba(140, 180, 225, 0.11);
+    --border-strong: rgba(140, 180, 225, 0.2);
+    --accent: #ff7a1a;
+    --accent-strong: #ffa55e;
+    --accent-soft: rgba(255, 122, 26, 0.16);
+    --accent-fg: #1f0b00;
+    --accent-glow: color-mix(in srgb, var(--accent) 7%, transparent);
+    --mint: #5fd4a4;
+    --priority: #d9b45c;
+    --identity-w: #eadb9c;
+    --identity-u: #3f8fe0;
+    --identity-b: #8d6fb3;
+    --identity-r: #e2533a;
+    --identity-g: #35a866;
+    --identity-c: #94a3b3;
+    --seat-0: #5fb0ff;
+    --seat-1: #c98bff;
+    --seat-2: #ffb45f;
+    --seat-3: #5fd4a4;
+    --radius-sm: 4px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+    --page-gutter: 28px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--font-ui);
+    color: var(--fg);
+    background: radial-gradient(900px 520px at 50% -10%, var(--accent-glow), transparent 70%), var(--bg);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  svg.i { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* --- the site frame, abridged --- */
+  .site {
+    position: relative; z-index: 30;
+    display: flex; align-items: center; gap: 24px;
+    height: 60px; padding: 0 var(--page-gutter);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .wordmark { font: 800 17px/1 var(--font-display); letter-spacing: -0.01em; }
+  .wordmark b { color: var(--accent); font-weight: 800; }
+  .site nav { display: flex; gap: 18px; font-size: 13.5px; color: var(--fg-muted); }
+  .site nav .on { color: var(--fg); font-weight: 600; }
+  .site .me { margin-left: auto; width: 30px; height: 30px; border-radius: 50%; background: var(--seat-0); color: #06101c; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 40px var(--page-gutter) 56px; box-sizing: content-box; }
+  .page-eyebrow { font: 600 11px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .page-title { font: 700 34px/1.1 var(--font-display); letter-spacing: -0.02em; margin: 8px 0 6px; }
+  .page-lede { margin: 0 0 28px; color: var(--fg-muted); font-size: 15px; max-width: 72ch; }
+
+  /* --- mockup chrome: what a state is, and the notes under it --- */
+  .state { margin: 0 0 56px; }
+  .state-label { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font: 600 11px/1.3 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim); }
+  .state-label b { color: var(--fg-muted); font-weight: 700; }
+  .notes { margin: 12px 0 0; padding: 0 0 0 18px; color: var(--fg-muted); font-size: 12.5px; max-width: 110ch; }
+  .notes li { margin: 3px 0; }
+  .notes code { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--fg); }
+
+  /* --- buttons (the table card uses the site .btn family) --- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 32px; padding: 0 12px;
+    border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: var(--surface-raised); color: var(--fg);
+    font: 700 12.5px/1 var(--font-ui); white-space: nowrap; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .btn.primary.wide { padding: 0 18px; }
+  .btn.xs { height: 26px; padding: 0 9px; font-size: 12px; }
+  .btn[disabled] { opacity: 0.45; cursor: default; }
+  .btn .caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; opacity: 0.8; }
+  .btn.open .caret { transform: rotate(180deg); }
+  .ringed { box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* --- the table card --- */
+  .games { list-style: none; margin: 0; padding: 0; }
+  .tcard {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .thead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .tid { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0; }
+  .tname { margin: 0; font: 700 18px/1.2 var(--font-display); letter-spacing: -0.01em; }
+  .chip {
+    font: 600 10.5px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--fg-muted);
+  }
+  .ctx { color: var(--fg-muted); font-size: 13px; }
+  .rules {
+    display: inline-flex; align-items: center; gap: 7px; flex: none;
+    height: 28px; padding: 0 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--fg-muted);
+    font: 500 12.5px/1 var(--font-ui); white-space: nowrap;
+  }
+  .rules .caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; opacity: 0.7; }
+
+  /* The seats: the hero of the card. */
+  .seats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .seat {
+    --seat: var(--seat-0);
+    position: relative; min-width: 0;
+    display: flex; flex-direction: column;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--seat) 9%, var(--surface-sunken));
+    box-shadow: inset 0 3px 0 var(--seat), inset 0 0 0 1px color-mix(in srgb, var(--seat) 30%, transparent);
+    overflow: hidden;
+  }
+  .seat.s1 { --seat: var(--seat-1); }
+  .seat.s2 { --seat: var(--seat-2); }
+  .seat.s3 { --seat: var(--seat-3); }
+  .art { position: relative; aspect-ratio: 16 / 10; display: flex; }
+  @media (min-width: 1024px) { .seats .art { aspect-ratio: 16 / 9; } }
+  .ph {
+    flex: 1 1 0; min-width: 0; display: grid; place-items: center;
+    background: repeating-linear-gradient(135deg,
+      color-mix(in srgb, var(--c1) 34%, #0a121b) 0 12px,
+      color-mix(in srgb, var(--c2, var(--c1)) 24%, #0a121b) 12px 24px);
+    font: 600 9.5px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase;
+    color: color-mix(in srgb, #fff 55%, transparent);
+  }
+  .ph + .ph { border-left: 1px solid rgba(0, 0, 0, 0.5); }
+  .art::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom, transparent 52%, color-mix(in srgb, var(--seat) 9%, var(--surface-sunken))); }
+  .seatno {
+    position: absolute; top: 9px; left: 9px; z-index: 1;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 7px; border-radius: 999px; background: rgba(6, 9, 18, 0.66);
+    font: 700 9.5px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: #e8eff7;
+  }
+  .seatno i { width: 7px; height: 7px; border-radius: 50%; background: var(--seat); }
+  .credit {
+    position: absolute; top: 8px; right: 8px; z-index: 1; max-width: calc(100% - 90px);
+    padding: 1px 6px; border-radius: 999px; background: rgba(6, 9, 18, 0.6);
+    font-size: 9.5px; line-height: 1.5; font-style: italic; color: #e6e0cf;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sinfo { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .av { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2px solid var(--seat); display: grid; place-items: center;
+    background: color-mix(in srgb, var(--seat) 70%, #000); color: #06101c; font: 700 11.5px/1 var(--font-ui); }
+  .av.bot { background: transparent; border-style: dashed; color: var(--seat); }
+  .av.bot svg.i { width: 15px; height: 15px; }
+  .name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .tag { flex: none; font: 700 9px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 6px; border-radius: 999px; background: color-mix(in srgb, var(--seat) 22%, transparent); color: var(--fg); }
+  .tag.botchip { background: transparent; border: 1px dashed color-mix(in srgb, var(--seat) 70%, transparent); color: var(--fg); }
+  .cmdr { font-size: 13px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .deckname { font-size: 12px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .srow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; margin-top: 2px; }
+  .pips { display: inline-flex; gap: 3px; }
+  .pip { width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; font: 700 8.5px/1 var(--font-mono); color: #0b0f14; }
+  .pip.w { background: var(--identity-w); } .pip.u { background: var(--identity-u); } .pip.b { background: var(--identity-b); }
+  .pip.r { background: var(--identity-r); } .pip.g { background: var(--identity-g); } .pip.c { background: var(--identity-c); }
+  .ready { display: inline-flex; align-items: center; gap: 5px; font: 700 10.5px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
+  .ready .ck { width: 18px; height: 18px; border-radius: 50%; background: var(--mint); color: #04150e; display: grid; place-items: center; }
+  .ready .ck svg.i { width: 12px; height: 12px; stroke-width: 2.6; }
+  .pending { font-size: 12px; color: var(--fg-muted); }
+
+  /* Your seat with no deck yet: the tile is the call to action. */
+  .seat.empty-you { background: color-mix(in srgb, var(--seat) 6%, var(--surface-sunken)); box-shadow: inset 0 3px 0 var(--seat); outline: 1.5px dashed color-mix(in srgb, var(--seat) 55%, transparent); outline-offset: -1.5px; }
+  .seat.empty-you .art { display: grid; place-items: center; background: color-mix(in srgb, var(--seat) 7%, transparent); }
+  .seat.empty-you .art::after { display: none; }
+  .bigplus { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1.5px dashed color-mix(in srgb, var(--seat) 70%, transparent); color: var(--seat); }
+  .bigplus svg.i { width: 20px; height: 20px; }
+  /* Previewing a deck in the picker, not seated yet. */
+  .seat.preview .art::before { content: "Preview"; position: absolute; left: 9px; bottom: 9px; z-index: 1; padding: 3px 7px; border-radius: 999px;
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); color: var(--accent-strong);
+    font: 700 9.5px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Open seats */
+  .seat.open { background: transparent; box-shadow: none; outline: 1.5px dashed color-mix(in srgb, var(--seat) 32%, var(--border-strong)); outline-offset: -1.5px; }
+  .seat.open .art { display: grid; place-items: center; }
+  .seat.open .art::after { display: none; }
+  .ghostav { width: 40px; height: 40px; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--seat) 45%, transparent); }
+  .seat.open .name { color: var(--fg-muted); font-weight: 600; }
+  .openacts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* The ready-check moment: still frame of the last tick landing. */
+  .seat.landed { box-shadow: inset 0 3px 0 var(--seat), inset 0 0 0 1px color-mix(in srgb, var(--seat) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--mint) 55%, transparent); }
+
+  /* --- the deck picker, inline under the seats --- */
+  .picker { position: relative; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-sunken); padding: 0 14px 14px; }
+  .picker::before { /* the notch that ties the picker to your seat */
+    content: ""; position: absolute; top: -7px; left: calc(12.5% - 14px); width: 12px; height: 12px; transform: rotate(45deg);
+    background: var(--surface-sunken); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); }
+  .pbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); margin: 0 -14px 12px; padding: 0 14px; }
+  .tabs { display: flex; gap: 2px; }
+  .tab { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 12px 10px 11px; font: 600 13px/1 var(--font-ui); color: var(--fg-muted); background: none; border: 0; }
+  .tab .n { font: 600 10.5px/1 var(--font-mono); color: var(--fg-dim); }
+  .tab[aria-selected="true"] { color: var(--fg); }
+  .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .ptools { display: flex; align-items: center; gap: 8px; }
+  .filter { height: 28px; width: 180px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg-dim); font: 400 12.5px/26px var(--font-ui); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+  .seg span { padding: 0 9px; height: 26px; display: grid; place-items: center; font: 600 11.5px/1 var(--font-ui); color: var(--fg-muted); }
+  .seg span.on { background: var(--surface-raised); color: var(--fg); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .dtile { position: relative; display: flex; flex-direction: column; min-width: 0; border-radius: 10px; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border); text-align: left; padding: 0; color: inherit; font: inherit; }
+  .dtile .art { aspect-ratio: 16 / 9; }
+  .dtile .art::after { background: linear-gradient(to bottom, transparent 55%, var(--surface)); }
+  .dtile .credit { max-width: calc(100% - 12px); right: 6px; top: 6px; }
+  .dinfo { padding: 6px 10px 9px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .dname { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dsub { font-size: 11.5px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 6px; margin-top: 2px; min-height: 18px; }
+  .gapflag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--border-strong);
+    font: 600 10px/1.2 var(--font-mono); color: var(--fg); white-space: nowrap; }
+  .gapflag svg.i { width: 11px; height: 11px; }
+  .dtile.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+  .dtile.sel .selmark { position: absolute; top: 6px; left: 6px; z-index: 1; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-fg); }
+  .dtile.sel .selmark svg.i { width: 12px; height: 12px; stroke-width: 2.6; }
+  .dtile.last .lastmark { position: absolute; left: 6px; bottom: 44px; }
+  .detail { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .detail p { margin: 0; font-size: 12.5px; color: var(--fg-muted); min-width: 0; }
+  .detail p b { color: var(--fg); }
+  .fadeout { position: relative; max-height: 316px; overflow: hidden; }
+  .fadeout::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(to bottom, transparent, var(--surface-sunken)); pointer-events: none; }
+
+  /* --- the footer: readiness and the one primary --- */
+  .tfoot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .readiness { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .rlabel { font: 700 10.5px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); }
+  .rcount { font: 700 15px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+  .segs { display: inline-flex; gap: 4px; }
+  .segs i { width: 20px; height: 6px; border-radius: 3px; display: block; }
+  .segs .rd { background: var(--c); }
+  .segs .pd { box-shadow: inset 0 0 0 1.5px var(--c); }
+  .segs .op { box-shadow: inset 0 0 0 1px var(--fg-dim); opacity: 0.6; }
+  .rtext { font-size: 12.5px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .rtext b { color: var(--fg); font-weight: 600; }
+  .acts { display: flex; align-items: center; gap: 8px; flex: none; position: relative; }
+
+  /* --- the Invite menu --- */
+  .menu { position: absolute; z-index: 40; right: 0; top: calc(100% + 8px); width: 300px; padding: 6px;
+    background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .mi { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  .mi.hl { background: var(--surface-hover); }
+  .mi svg.i { margin-top: 2px; color: var(--fg-muted); }
+  .mi small { display: block; color: var(--fg-muted); font-size: 11.5px; margin-top: 1px; }
+  .msep { height: 1px; background: var(--border); margin: 5px 4px; }
+  .mhead { padding: 6px 10px 2px; font: 700 9.5px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim); }
+
+  .announce { margin-top: 10px; font: 500 11.5px/1.4 var(--font-mono); color: var(--fg-dim); }
+
+  /* Tablet and up only: the app screens get no phone layout. At the
+     tablet width the seats stay four across; the picker grid drops to
+     four columns by itself (auto-fill). */
+  @media (max-width: 1023px) {
+    .filter { width: 130px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/><circle cx="12" cy="12" r="6.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h15M4 15h15M10 3 8 21M16 3l-2 18"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9.5"/></symbol>
+  <symbol id="i-robot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><circle cx="9" cy="13" r="1.4" fill="currentColor"/><circle cx="15" cy="13" r="1.4" fill="currentColor"/><path d="M9.5 16.5h5M12 8V4M4 12H2M22 12h-2"/><circle cx="12" cy="3" r="1.4"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</svg>
+
+<header class="site">
+  <span class="wordmark"><b>C</b>MD &amp; <b>C</b>TRL</span>
+  <nav><span class="on">Tables</span><span>Decks</span><span>Catalog</span><span>Roadmap</span></nav>
+  <span class="me">L</span>
+</header>
+
+<main class="page">
+  <div class="page-eyebrow">ADR 0212 mockup · a new table as a character select</div>
+  <h1 class="page-title">Tables</h1>
+  <p class="page-lede">Three states of one table in the lobby. Striped blocks stand where the commander's art crop goes; "Illus. Artist Name" is where its artist credit goes. Seat colours, identity colours and every other colour are the app's own tokens.</p>
+
+  <!-- ============================================================ -->
+  <section class="state" id="state-created">
+    <h2 class="state-label"><b>1</b> Just created · you are seated, no deck · the Invite menu open</h2>
+    <ul class="games" style="margin-bottom: 330px">
+      <li class="tcard">
+        <div class="thead">
+          <div class="tid">
+            <h3 class="tname">Friday pod</h3>
+            <span class="chip">Lobby</span>
+            <span class="ctx">you host · created just now</span>
+          </div>
+          <button class="rules" aria-label="table settings: 40 life · 1 undo · standard rules"><svg class="i"><use href="#i-gear"/></svg>40 life · 1 undo · standard rules<i class="caret"></i></button>
+        </div>
+
+        <ul class="seats" aria-label="seats">
+          <li class="seat empty-you">
+            <div class="art"><span class="seatno"><i></i>Seat 1</span><span class="bigplus"><svg class="i"><use href="#i-plus"/></svg></span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">L</span><span class="name">Luke</span><span class="tag">host</span><span class="tag">you</span></div>
+              <div class="cmdr">No deck yet</div>
+              <div class="srow"><span class="pending">Choose one to sit down</span></div>
+            </div>
+          </li>
+          <li class="seat s1 open">
+            <div class="art"><span class="seatno"><i></i>Seat 2</span><span class="ghostav"></span></div>
+            <div class="sinfo">
+              <div class="who"><span class="name">Open seat</span></div>
+              <div class="openacts"><button class="btn xs"><svg class="i"><use href="#i-link"/></svg>Invite</button><button class="btn xs ghost"><svg class="i"><use href="#i-robot"/></svg>Add bot</button></div>
+            </div>
+          </li>
+          <li class="seat s2 open">
+            <div class="art"><span class="seatno"><i></i>Seat 3</span><span class="ghostav"></span></div>
+            <div class="sinfo">
+              <div class="who"><span class="name">Open seat</span></div>
+              <div class="openacts"><button class="btn xs"><svg class="i"><use href="#i-link"/></svg>Invite</button><button class="btn xs ghost"><svg class="i"><use href="#i-robot"/></svg>Add bot</button></div>
+            </div>
+          </li>
+          <li class="seat s3 open">
+            <div class="art"><span class="seatno"><i></i>Seat 4</span><span class="ghostav"></span></div>
+            <div class="sinfo">
+              <div class="who"><span class="name">Open seat</span></div>
+              <div class="openacts"><button class="btn xs"><svg class="i"><use href="#i-link"/></svg>Invite</button><button class="btn xs ghost"><svg class="i"><use href="#i-robot"/></svg>Add bot</button></div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="tfoot">
+          <div class="readiness">
+            <span class="rlabel">Ready</span><span class="rcount">0/1</span>
+            <span class="segs"><i class="pd" style="--c: var(--seat-0)"></i><i class="op"></i><i class="op"></i><i class="op"></i></span>
+            <span class="rtext">3 seats open · <b>waiting on your deck</b></span>
+          </div>
+          <div class="acts">
+            <button class="btn ghost">Open table</button>
+            <button class="btn open" aria-haspopup="menu" aria-expanded="true"><svg class="i"><use href="#i-link"/></svg>Invite<i class="caret"></i></button>
+            <button class="btn primary wide">Choose your deck</button>
+            <div class="menu" role="menu" aria-label="invite to Friday pod">
+              <div class="mi hl" role="menuitem"><svg class="i"><use href="#i-link"/></svg><div>Copy invite<small>The player link: whoever opens it takes a seat</small></div></div>
+              <div class="mi" role="menuitem"><svg class="i"><use href="#i-eye"/></svg><div>Copy spectator link<small>Watch only; no seat</small></div></div>
+              <div class="mi" role="menuitem"><svg class="i"><use href="#i-mail"/></svg><div>Invite by DM…<small>Someone you've played with, on Discord</small></div></div>
+              <div class="mi" role="menuitem"><svg class="i"><use href="#i-hash"/></svg><div>Post to #looking-for-game<small>Comes down when the game starts</small></div></div>
+              <div class="msep"></div>
+              <div class="mhead">Make new links</div>
+              <div class="mi" role="menuitem"><svg class="i"><use href="#i-new"/></svg><div>New invite link…<small>The current player link stops working</small></div></div>
+              <div class="mi" role="menuitem"><svg class="i"><use href="#i-new"/></svg><div>New spectator link…<small>The current spectator link stops working</small></div></div>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+    <ul class="notes">
+      <li>The four seats lead the card. Seat colours are <code>seatColor(seat)</code>, the same as the board and the front page's hero.</li>
+      <li>Your empty seat is dashed in your colour. The one primary says what to do next: <code>Choose your deck</code>. "Open table" is a quiet ghost button, no longer a second accent button.</li>
+      <li>One <code>Invite</code> menu replaces Copy invite ↻, Copy spectator link ↻, Invite by DM and Post to #lfg. ↻ becomes "New invite link…", a sentence and not an icon, with today's confirm. #looking-for-game appears only when the server offers it; DM only for a signed-in person.</li>
+      <li>An open seat's <code>Invite</code> opens the same menu; <code>Add bot</code> opens the bot picker in the seat's place (state 2).</li>
+      <li>The settings summary always names life and undos, then what else differs ("standard rules" when nothing does). It opens the existing TableSettingsPanel.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="state" id="state-choosing">
+    <h2 class="state-label"><b>2</b> Choosing a deck · a friend is in and ready, a bot sits in seat 4, the grid is open</h2>
+    <ul class="games">
+      <li class="tcard">
+        <div class="thead">
+          <div class="tid">
+            <h3 class="tname">Friday pod</h3>
+            <span class="chip">Lobby</span>
+            <span class="ctx">you host · created 4m ago</span>
+          </div>
+          <button class="rules"><svg class="i"><use href="#i-gear"/></svg>40 life · 1 undo · standard rules<i class="caret"></i></button>
+        </div>
+
+        <ul class="seats" aria-label="seats">
+          <li class="seat preview">
+            <div class="art" style="--c1: var(--identity-w); --c2: var(--identity-r)"><span class="seatno"><i></i>Seat 1</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">L</span><span class="name">Luke</span><span class="tag">host</span><span class="tag">you</span></div>
+              <div class="cmdr">Kenrith, the Returned King</div>
+              <div class="deckname">Kenrith's court</div>
+              <div class="srow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip r">R</i><i class="pip g">G</i></span><span class="pending">Not seated yet</span></div>
+            </div>
+          </li>
+          <li class="seat s1">
+            <div class="art" style="--c1: var(--identity-b); --c2: var(--identity-g)"><span class="seatno"><i></i>Seat 2</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">S</span><span class="name">Slysloth</span></div>
+              <div class="cmdr">Lathril, Blade of the Elves</div>
+              <div class="srow"><span class="pips"><i class="pip b">B</i><i class="pip g">G</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+          <li class="seat s2 open">
+            <div class="art"><span class="seatno"><i></i>Seat 3</span><span class="ghostav"></span></div>
+            <div class="sinfo">
+              <div class="who"><span class="name">Open seat</span></div>
+              <div class="openacts"><button class="btn xs"><svg class="i"><use href="#i-link"/></svg>Invite</button><button class="btn xs ghost"><svg class="i"><use href="#i-robot"/></svg>Add bot</button></div>
+            </div>
+          </li>
+          <li class="seat s3">
+            <div class="art" style="--c1: var(--identity-g)"><span class="seatno"><i></i>Seat 4</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av bot"><svg class="i"><use href="#i-robot"/></svg></span><span class="name">Bot</span><span class="tag botchip">Medium</span></div>
+              <div class="cmdr">Marwyn, the Nurturer</div>
+              <div class="deckname">Pre-built · Elf ball</div>
+              <div class="srow"><span class="pips"><i class="pip g">G</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="picker" role="region" aria-label="choose your deck">
+          <div class="pbar">
+            <div class="tabs" role="tablist">
+              <button class="tab" role="tab" aria-selected="true">My decks <span class="n">9</span></button>
+              <button class="tab" role="tab" aria-selected="false">Pre-built <span class="n">8</span></button>
+              <button class="tab" role="tab" aria-selected="false">Paste a list</button>
+            </div>
+            <div class="ptools">
+              <span class="filter">Filter your decks</span>
+              <span class="seg"><span class="on">Recent</span><span>Name</span></span>
+            </div>
+          </div>
+          <div class="fadeout">
+            <div class="grid" role="radiogroup" aria-label="your decks">
+              <button class="dtile sel" role="radio" aria-checked="true">
+                <div class="art" style="--c1: var(--identity-w); --c2: var(--identity-r)"><span class="selmark"><svg class="i"><use href="#i-check"/></svg></span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Kenrith's court</span><span class="dsub">Kenrith, the Returned King</span><span class="drow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip r">R</i><i class="pip g">G</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-u); --c2: var(--identity-g)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Atraxa, Praetors' Voice</span><span class="dsub">superfriends · 100 cards</span><span class="drow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip g">G</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-r)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Krenko, Mob Boss</span><span class="dsub">100 cards</span><span class="drow"><span class="pips"><i class="pip r">R</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-u); --c2: var(--identity-b)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Ninja tricks</span><span class="dsub">Yuriko, the Tiger's Shadow</span><span class="drow"><span class="pips"><i class="pip u">U</i><i class="pip b">B</i></span><span class="gapflag" title="2 cards are simplified or not implemented: open the coverage report"><svg class="i"><use href="#i-warn"/></svg>2 not as printed</span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-b); --c2: var(--identity-g)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Meren of Clan Nel Toth</span><span class="dsub">100 cards</span><span class="drow"><span class="pips"><i class="pip b">B</i><i class="pip g">G</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-r); --c2: var(--identity-b)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Vampire court</span><span class="dsub">Edgar Markov</span><span class="drow"><span class="pips"><i class="pip w">W</i><i class="pip b">B</i><i class="pip r">R</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-u); --c2: var(--identity-g)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Kinnan, Bonder Prodigy</span><span class="dsub">100 cards</span><span class="drow"><span class="pips"><i class="pip u">U</i><i class="pip g">G</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-r); --c2: var(--identity-w)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Isshin attacks</span><span class="dsub">Isshin, Two Heavens as One</span><span class="drow"><span class="pips"><i class="pip w">W</i><i class="pip b">B</i><i class="pip r">R</i></span><span class="gapflag"><svg class="i"><use href="#i-warn"/></svg>5 not as printed</span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-u)"><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+                <div class="dinfo"><span class="dname">Talrand, Sky Summoner</span><span class="dsub">100 cards</span><span class="drow"><span class="pips"><i class="pip u">U</i></span></span></div>
+              </button>
+              <button class="dtile" role="radio" aria-checked="false">
+                <div class="art" style="--c1: var(--identity-w); --c2: var(--identity-b)"><span class="ph">art crop</span><span class="ph" style="--c1: var(--identity-u); --c2: var(--identity-r)">art crop</span></div>
+                <div class="dinfo"><span class="dname">Partner blitz</span><span class="dsub">Tymna the Weaver · Kraum, Ludevic's Opus</span><span class="drow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip r">R</i></span></span></div>
+              </button>
+            </div>
+          </div>
+          <div class="detail">
+            <p><b>Kenrith's court</b> · Kenrith, the Returned King · 100 cards · every card plays as printed · from archidekt.com</p>
+            <button class="btn ghost" data-testid="your-deck-sideboard"><svg class="i"><use href="#i-list"/></svg>Sideboard · 4</button>
+          </div>
+        </div>
+
+        <div class="tfoot">
+          <div class="readiness">
+            <span class="rlabel">Ready</span><span class="rcount">2/3</span>
+            <span class="segs"><i class="pd" style="--c: var(--seat-0)"></i><i class="rd" style="--c: var(--seat-1)"></i><i class="op"></i><i class="rd" style="--c: var(--seat-3)"></i></span>
+            <span class="rtext">1 seat open · <b>waiting on your deck</b></span>
+          </div>
+          <div class="acts">
+            <button class="btn ghost">Open table</button>
+            <button class="btn"><svg class="i"><use href="#i-link"/></svg>Invite<i class="caret"></i></button>
+            <button class="btn primary wide">Sit down with this deck</button>
+          </div>
+        </div>
+      </li>
+    </ul>
+    <ul class="notes">
+      <li>The picker opens inline, under the seats, with a notch pointing at your seat. Choosing a tile previews it in your seat ("Preview", "Not seated yet") before anything is sent; the footer's primary becomes the commit, <code>Sit down with this deck</code> (#4655's wording), so the card still has one primary.</li>
+      <li>Tabs: <code>My decks</code> (signed in, with a library), <code>Pre-built</code>, <code>Paste a list</code>. A guest, or a person with no saved decks, gets no My decks tab and opens on Pre-built. The last deck you seated is preselected, as today.</li>
+      <li>Tiles say the deck's name once; the line under it is the commander only when the name is not the commander's. A tile carries a flag only when the deck has cards that don't play as printed; full decks say nothing.</li>
+      <li>The grid is a radio group (arrow keys move, Space picks); filter from 8 decks, as today. The detail line under the grid holds the coverage sentence, the source and <code>Sideboard</code> (ADR 0191).</li>
+      <li>A partner pair shows two crops side by side, as on the Decks page. Every crop credits its artist.</li>
+      <li>The bot seat shows the dashed bot chip with its tier and its pre-built deck's commander. Bots are always ready.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <section class="state" id="state-ready">
+    <h2 class="state-label"><b>3</b> All ready · the last deck has just landed · the host sees Start game</h2>
+    <ul class="games">
+      <li class="tcard">
+        <div class="thead">
+          <div class="tid">
+            <h3 class="tname">Friday pod</h3>
+            <span class="chip">Lobby</span>
+            <span class="ctx">you host · created 9m ago</span>
+          </div>
+          <button class="rules"><svg class="i"><use href="#i-gear"/></svg>40 life · 1 undo · standard rules<i class="caret"></i></button>
+        </div>
+
+        <ul class="seats" aria-label="seats">
+          <li class="seat">
+            <div class="art" style="--c1: var(--identity-w); --c2: var(--identity-r)"><span class="seatno"><i></i>Seat 1</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">L</span><span class="name">Luke</span><span class="tag">host</span><span class="tag">you</span></div>
+              <div class="cmdr">Kenrith, the Returned King</div>
+              <div class="deckname">Kenrith's court</div>
+              <div class="srow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip r">R</i><i class="pip g">G</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+          <li class="seat s1">
+            <div class="art" style="--c1: var(--identity-b); --c2: var(--identity-g)"><span class="seatno"><i></i>Seat 2</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">S</span><span class="name">Slysloth</span></div>
+              <div class="cmdr">Lathril, Blade of the Elves</div>
+              <div class="srow"><span class="pips"><i class="pip b">B</i><i class="pip g">G</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+          <li class="seat s2 landed">
+            <div class="art"><span class="seatno"><i></i>Seat 3</span><span class="ph" style="--c1: var(--identity-w); --c2: var(--identity-b)">art crop</span><span class="ph" style="--c1: var(--identity-u); --c2: var(--identity-r)">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av">M</span><span class="name">Mirabel</span></div>
+              <div class="cmdr">Tymna the Weaver · Kraum, Ludevic's Opus</div>
+              <div class="deckname">Partner blitz</div>
+              <div class="srow"><span class="pips"><i class="pip w">W</i><i class="pip u">U</i><i class="pip b">B</i><i class="pip r">R</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+          <li class="seat s3">
+            <div class="art" style="--c1: var(--identity-g)"><span class="seatno"><i></i>Seat 4</span><span class="credit">Illus. Artist Name</span><span class="ph">art crop</span></div>
+            <div class="sinfo">
+              <div class="who"><span class="av bot"><svg class="i"><use href="#i-robot"/></svg></span><span class="name">Bot</span><span class="tag botchip">Medium</span></div>
+              <div class="cmdr">Marwyn, the Nurturer</div>
+              <div class="deckname">Pre-built · Elf ball</div>
+              <div class="srow"><span class="pips"><i class="pip g">G</i></span><span class="ready"><span class="ck"><svg class="i"><use href="#i-check"/></svg></span>Ready</span></div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="tfoot">
+          <div class="readiness">
+            <span class="rlabel">Ready</span><span class="rcount">4/4</span>
+            <span class="segs"><i class="rd" style="--c: var(--seat-0)"></i><i class="rd" style="--c: var(--seat-1)"></i><i class="rd" style="--c: var(--seat-2)"></i><i class="rd" style="--c: var(--seat-3)"></i></span>
+            <span class="rtext"><b>Every deck is in</b></span>
+          </div>
+          <div class="acts">
+            <button class="btn ghost">Open table</button>
+            <button class="btn"><svg class="i"><use href="#i-link"/></svg>Invite<i class="caret"></i></button>
+            <button class="btn primary wide ringed">Start game</button>
+          </div>
+        </div>
+      </li>
+    </ul>
+    <p class="announce">live region, once: "Every deck is in. You can start the game."</p>
+    <ul class="notes">
+      <li>The ready-check moment, as a still: the last seat's check lands (here seat 3's tile has a brief ring), the counter reaches 4/4 and the primary turns from <code>Waiting for 1 player</code> to <code>Start game</code> with one soft ring. With reduced motion (any of the three signals in DESIGN.md §4) the checks and the counter simply appear, and the live-region line says the same thing.</li>
+      <li>"Ready" is a check shape plus the word, on a mint disc (<code>--mint</code>, success). It is never <code>--ready</code>, which means "a legal action now" on the board. Seat 4's green equals mint, which is why the word is always printed.</li>
+      <li>A seat who doesn't host sees the same seats with <code>Waiting for Luke to start</code> as a disabled primary (DESIGN.md: disabled, not hidden).</li>
+      <li>Two or three seated players can start too, as today (2 to 4 seats): the primary then reads <code>Start game · 3 players</code> and the open seat is drawn as "closes at start". Whether that needs a confirm is an open question in the ADR.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
