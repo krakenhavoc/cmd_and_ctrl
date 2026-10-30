@@ -137,6 +137,7 @@ body graveyard/return-the-object-under-your-control
 body grim-reaper-lethal-legionnaire/return
 body guide-of-souls/angel
 body havengul-lich/gains-its-abilities
+body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
 body heroic-sacrifice/its-counters-and-draw
 body hostility/elemental-shamans
@@ -1039,6 +1040,7 @@ payunless pay-unless/graveyard-return-this-card-to-hand
 payunless pay-unless/grim-reaper-lethal-legionnaire-return
 payunless pay-unless/guide-of-souls-angel
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
+payunless pay-unless/hawkeye-trick-arrows
 payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike

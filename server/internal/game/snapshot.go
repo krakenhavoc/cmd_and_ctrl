@@ -3190,6 +3190,9 @@ func stackSpecsRederivable(s stackItemSnapshot) bool {
 	if s.Body != "" && reflexiveTargetSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
 		return true
 	}
+	if s.Body != "" && reflexiveModeSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
+		return true
+	}
 	return false
 }
 
@@ -4323,6 +4326,10 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)
+	} else if s.HasModeSpec && s.Body != "" {
+		// A modal CR 603.12 reflexive trigger (#4579): its mode clause was
+		// declared with the body (ReflexiveModalBody).
+		out.modeSpec = reflexiveModeSpecFor(s.Body, s.SourceCardID, out.Params)
 	}
 	return out, true
 }

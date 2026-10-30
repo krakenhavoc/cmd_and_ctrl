@@ -35,6 +35,9 @@ type MayPayX struct {
 	// Symbol is "pay any amount of {R}": the cost is X of that one
 	// symbol. Set it instead of Cost (Leyline Tyrant).
 	Symbol string
+	// Max caps X: "you may pay {1} up to three times" is Symbol "{1}" with
+	// Max 3 (Hawkeye, Master Marksman). Zero is no cap.
+	Max int
 	// Label names the card in the prompts.
 	Label string
 	// Buys says what X buys in the payment's header, with "X" standing
@@ -66,6 +69,7 @@ func (m MayPayX) Apply(ctx *Context) error {
 		Source:     ctx.Source(),
 		Cost:       m.Cost,
 		Symbol:     m.Symbol,
+		Max:        m.Max,
 		Label:      m.Label,
 		Buys:       m.Buys,
 		Goal:       goal,

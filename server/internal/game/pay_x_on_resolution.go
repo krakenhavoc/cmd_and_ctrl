@@ -66,6 +66,10 @@ type MayPayX struct {
 	// Symbol is "pay ANY AMOUNT of {R}" (Leyline Tyrant): the cost is X of
 	// this one mana symbol, "{R}", and nothing else. Set instead of Cost.
 	Symbol string
+	// Max caps X: "pay {1} up to three times" (#4579) is Symbol "{1}" with
+	// Max 3. Zero is no cap beyond what the chooser can pay. The cap is
+	// applied when X is asked, so the prompt it makes already carries it.
+	Max int
 	// Label names the card in the prompts' headers ("Tilonalli's
 	// Summoner").
 	Label string
@@ -179,6 +183,9 @@ func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
 		return nil
 	}
 	ceiling := g.largestPayableXLocked(pl, settle, p.Source)
+	if p.Max > 0 && ceiling > p.Max {
+		ceiling = p.Max
+	}
 	if ceiling < 0 {
 		// Not even X = 0 can be paid: "Pay" is not an answer (CR
 		// 118.3), and "Don't pay" is the only one left.
