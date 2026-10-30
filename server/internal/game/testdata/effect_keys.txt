@@ -1819,3 +1819,7 @@ tail msh-a3/doom-reigns-supreme-after-exile
 choose choose-cards/cosmic-cube-cast
 tail hellcat/loses-abilities-gains-haste
 tail hex-magic/permit-and-draw
+body killmonger-scourge-of-wakanda/destroy
+condition loki-laufeyson/next-cast
+confirm confirm/killmonger-sacrifice
+run prompt-run/killmonger-sacrificed

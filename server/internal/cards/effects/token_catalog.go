@@ -284,6 +284,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Alien Invasion's Alien: haste, and it must attack each combat.
 	printedAlienToken,
+
+	// Ka-Zar's Zabu: a legendary Cat that grows on landfall.
+	printedZabuToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
