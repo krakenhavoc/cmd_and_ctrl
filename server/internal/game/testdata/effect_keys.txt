@@ -380,6 +380,8 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/klaw-sonic-subjugator-discard
+choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/last-march-of-the-ents-put
 choose choose-cards/last-rites-reveal
 choose choose-cards/last-voyage-of-the-blank-return
