@@ -213,6 +213,7 @@ body primal-witchstalker/land
 body protean-hydra/two-counters
 body prowess/pump
 body pygmy-hippo/add-colorless
+body quantum-entanglement/blink
 body rad/mill
 body ratchet-field-medic/return
 body rebound/cast
@@ -223,6 +224,7 @@ body renown/grow
 body repeated-reverberation/copy-twice
 body return/the-objects-together-under-your-control
 body rewrite-history/return
+body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
@@ -1060,6 +1062,7 @@ payunless pay-unless/nothing
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
+payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/rhystic-study-may-draw
 payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
@@ -1631,6 +1634,7 @@ tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
 tail replicating-ring/check
 tail rex-cyber-hound/after-exile
+tail rhino-terrible-trampler/counters-and-trample
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
 tail rohirrim-chargers/attach-then-rest
