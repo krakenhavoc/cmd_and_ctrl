@@ -237,21 +237,27 @@
       <section aria-labelledby="discord-title" data-testid="guide-discord-section">
         <h2 id="discord-title">On the CMD & CTRL Discord</h2>
         <dl class="terms">
-          <dt>#welcome, #announcements</dt>
-          <dd>This guide, and news: new features and downtime.</dd>
+          <dt>#welcome</dt>
+          <dd>House rules, and this guide in short.</dd>
+          <dt>#announcements</dt>
+          <dd>Releases and downtime.</dd>
           <dt>#looking-for-game</dt>
-          <dd>Find a pod.</dd>
+          <dd>Find a pod, or ping <strong>@LFG</strong> when you need a fourth.</dd>
           <dt>#decks</dt>
-          <dd>Brewing, swapping lists, asking what works.</dd>
+          <dd>Lists, brews and asking what works.</dd>
           <dt>#account-requests</dt>
           <dd>Ask for the Elder Dragon Highlander role.</dd>
           <dt>#bug-reports</dt>
           <dd>
-            A forum: open a post to report a bug or suggest something. Or use the bug button (<strong
+            A forum for anything broken: open a post. Or use the bug button (<strong
               >{L.reportABug}</strong
             >): it's in a game's toolbar and, once you're signed in, at the top of every other page.
             It files the report on GitHub, where what you write is public.
           </dd>
+          <dt>#requests-and-ideas</dt>
+          <dd>Anything you wish it did, and cards you'd like automated.</dd>
+          <dt>#general</dt>
+          <dd>Everything else.</dd>
         </dl>
         <h3 class="sub">The bot's slash commands</h3>
         <dl class="terms">
