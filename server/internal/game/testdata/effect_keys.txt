@@ -1823,3 +1823,6 @@ body killmonger-scourge-of-wakanda/destroy
 condition loki-laufeyson/next-cast
 confirm confirm/killmonger-sacrifice
 run prompt-run/killmonger-sacrificed
+body grim-reaper-lethal-legionnaire/return
+option option-pick/put-attacking-from-graveyard-finality
+payunless pay-unless/grim-reaper-lethal-legionnaire-return
