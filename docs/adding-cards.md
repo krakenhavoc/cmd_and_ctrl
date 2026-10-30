@@ -3442,7 +3442,16 @@ and combines mandatory life with any optional Phyrexian-symbol payment.
 move price, bot text and human payment button include it. Other mixtures
 remain unsupported. A discard ward asks the caster to confirm, then to pick the card
 from their own hand; a caster with fewer cards than the cost is
-countered with no prompt.
+countered with no prompt. `WardPoison(5)` ("Ward—Get five poison counters",
+The Serpent Society, #4613) is the sixth component: the caster confirms, and
+accepting gives them the counters. It is always offered, since a player can
+always get counters, and a caster who takes the tenth loses at the next
+state-based check. The prompt declares `PoisonCost` (the wire's `poison_cost`
+and `legal.MoveCost.Poison`) the way a life ward declares `LifeCost`, so the
+bot prices the accept branch against the ten that lose the game. A dies
+trigger that asks about a keyword the creature had ("another creature you
+control with deathtouch dies") reads `leftWithKeyword(ev, dead, "deathtouch")`,
+the post-layer keywords the exit stamped on the event (`Event.WasKeyword`).
 
 The four checks are engine-side and a card opts into none of them:
 targeting (`CanBeTargetedBy`, CR 702.16b), attachment

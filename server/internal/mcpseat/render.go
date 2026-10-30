@@ -639,6 +639,10 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 		} else if m.Cost.LibraryExile > 1 {
 			notes = append(notes, fmt.Sprintf("exiles the top %d cards of your library", m.Cost.LibraryExile))
 		}
+		// #4613: the poison counters a ward payment gives the seat.
+		if m.Cost.Poison > 0 {
+			notes = append(notes, fmt.Sprintf("gives you %d poison counters", m.Cost.Poison))
+		}
 		// ADR 0130 §4: an exert cost keeps the source tapped through the
 		// seat's next untap step.
 		if m.Cost.Exert {

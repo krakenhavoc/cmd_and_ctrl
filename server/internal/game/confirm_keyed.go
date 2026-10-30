@@ -42,6 +42,9 @@ type ConfirmAnswer struct {
 	// (ConfirmPrompt.LifeCost): "pay N life" is a number a shared answer
 	// reads off the prompt rather than from a key of its own.
 	LifeCost int
+	// PoisonCost is the poison counters the accept branch was declared to give
+	// the chooser (ConfirmPrompt.PoisonCost, #4613).
+	PoisonCost int
 	// Word is the one word of the card's text the queuing card put on the
 	// prompt (ConfirmPrompt.Word, #4291): an amount or a token's name that a
 	// shared answer ("draw N cards", "create a token") is parameterised by.
@@ -155,6 +158,7 @@ func (g *Game) QueueConfirmKeyedForEffect(p ConfirmPrompt, then ConfirmThen, car
 		AcceptLabel:  p.AcceptLabel,
 		DeclineLabel: p.DeclineLabel,
 		LifeCost:     p.LifeCost,
+		PoisonCost:   p.PoisonCost,
 
 		DeclineEndsLoop: p.DeclineEndsLoop,
 		PickThen:        then.key,
@@ -178,7 +182,7 @@ func confirmFrameOf(c *PendingChoice) *confirmFrame {
 	}
 	r := ConfirmAnswer{
 		Chooser: c.Chooser, Source: c.Source, Carry: copyUUIDs(c.OptionCarry),
-		LifeCost: c.LifeCost, Word: c.PickMatchArg, Objects: cloneObjectRefs(c.OptionObjects),
+		LifeCost: c.LifeCost, PoisonCost: c.PoisonCost, Word: c.PickMatchArg, Objects: cloneObjectRefs(c.OptionObjects),
 		Item: c.Asked.StackItem(),
 	}
 	accepted := r

@@ -770,6 +770,13 @@ type PendingChoiceView struct {
 	// LifeCostUnpayable marks a mandatory pay-unless life component
 	// that the chooser cannot pay, including a life-total lock.
 	LifeCostUnpayable bool `json:"life_cost_unpayable,omitempty"`
+	// PoisonCost is the poison counters a "confirm" ACCEPT branch gives the
+	// chooser (#4613, The Serpent Society's "Ward—Get five poison counters").
+	// LifeCost's sibling, carried for the same reason: a client, human or
+	// bot, otherwise prices "get five poison counters" like "shuffle". It is
+	// always payable, so there is no Unpayable twin; the tenth counter loses
+	// the game (CR 704.5c), which a policy reads against the seat's poison.
+	PoisonCost int `json:"poison_cost,omitempty"`
 	// DeclineEndsLoop marks a "confirm" whose accept would continue a
 	// loop the table is already in (#2040, Channel Harm against Channel
 	// Harm). A hint, not a rule: both answers stay legal, and declining
@@ -9716,6 +9723,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+			v.PoisonCost = c.PoisonCost
 			v.DeclineEndsLoop = c.DeclineEndsLoop
 		}
 		// ADR 0115 decision 2: the one computed fact a CR 903.9a
