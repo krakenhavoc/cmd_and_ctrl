@@ -343,6 +343,7 @@ choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
+choose choose-cards/doomsday-search
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
@@ -375,6 +376,7 @@ choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/heart-shaped-herb-sacrifice
+choose choose-cards/heroes-hangout-play
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
@@ -1734,6 +1736,8 @@ tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
 tail then/do-or-die-destroy-pile
 tail then/doomsday-excruciator-next-exile
+tail then/doomsday-lose-half-your-life
+tail then/doomsday-put-on-top
 tail then/dragons-approach-search
 tail then/drain-power-add-lost-mana
 tail then/draw-a-card
@@ -1756,6 +1760,7 @@ tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
+tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps

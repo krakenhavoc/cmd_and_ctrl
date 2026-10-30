@@ -30,7 +30,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WheneverYouDraw("Iron Man — put a +1/+1 counter on target creature",
-				Do(Instruction(putPlusOneCounterOnTheLegalTarget))),
+				Do(Instruction(func(ctx *Context) error { return PlusOneCounterOnTheTarget(ctx.Game, ctx.Item) }))),
 				TargetCreature("target creature")),
 			WheneverThisAttacks("Iron Man — other attacking modified creatures gain flying until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
