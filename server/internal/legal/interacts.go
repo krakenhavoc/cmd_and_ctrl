@@ -46,6 +46,11 @@ import (
 //     free sacrifice outlet or Selfless Spirit stops you for removal, a
 //     wipe or a fight, and not for every opponent spell. That is read
 //     from the game too.
+//
+// answer_window.go (#4734) reads the same declarations a second way, for
+// Move.AnswersNow: kind by kind, against the window the seat is in. These
+// flags are unchanged by it, for every reader that does not know that
+// field.
 
 // CostAnswers is what an activated ability's cost alone answers: a
 // creature sacrifice, exile or return outlet (sac_outlet), or crew

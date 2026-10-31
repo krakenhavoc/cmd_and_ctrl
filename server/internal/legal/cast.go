@@ -1779,6 +1779,7 @@ func (e *enumerator) castMoveEmitter(
 		label += modesLabel(modeSpec, modes)
 		label += targetLabel(g, targets)
 		targetsStack := targetsStackObject(g, targets)
+		answers := castAnswersOf(ownAnswers, modeSpec, modes, offer)
 		e.add(Move{
 			Type:   TypeCastSpell,
 			Player: e.seat,
@@ -1805,10 +1806,12 @@ func (e *enumerator) castMoveEmitter(
 			TargetsStack: targetsStack,
 			HasTargets:   hasTargets(targets),
 			// #2877: an announcement declared to answer nothing.
-			ValueOnly: castValueOnly(g, castAnswersOf(ownAnswers, modeSpec, modes, offer), targetsStack,
-				sacs, exileIDs, altPaid),
-			IdleHint: idle,
-			Value:    xv,
+			ValueOnly: castValueOnly(g, answers, targetsStack, sacs, exileIDs, altPaid),
+			// #4734: whether the announcement's declared answers match
+			// the window.
+			AnswersNow: e.answerWindow().castAnswersNow(g, answers, targetsStack, sacs, exileIDs, altPaid),
+			IdleHint:   idle,
+			Value:      xv,
 			Params: mustJSON(castParams{
 				InstanceID:        card.InstanceID.String(),
 				FromZone:          from,

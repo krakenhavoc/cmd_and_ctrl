@@ -1759,6 +1759,16 @@ seat, and count in combat otherwise
 Don't declare `value` or a combat answer to keep a row from stopping
 players.
 
+**A declaration is matched to the window (#4734).** Every cast,
+activation and mana move that declares something other than `value` or
+`remove` also carries `answers_now`: whether one of its kinds matches the
+window the seat is in (`internal/legal/answer_window.go`, ADR 0009's
+amendment of 2026-10-30). Once smart autopass reads it (that amendment's
+browser and seat slices), a declared move stops a player only where it
+matches, so a declaration that is too narrow can pass a window the card
+could answer. Declare every answer any mode or cost can give (sweep
+ruling 4).
+
 ### Paying energy (ADR 0129, #1995)
 
 Energy is a counter on the player (CR 107.14, CR 122.1):
