@@ -170,14 +170,13 @@ func clauseValue(spec *TargetSpec, i int) TargetClause {
 // a step turns the whole announcement strict — a caller that
 // annotates one must annotate all, because a half-annotated list is
 // not something the greedy fill can read.
+//
+// This fill only counts, so it cannot pass over an optional clause the
+// caller left empty. An announcement made against the board uses
+// fitAnnouncedSlotsLocked, which can (#4497).
 func assignAnnouncedSlots(steps []AnnouncedClause, targets []TargetRef) []TargetRef {
-	if len(steps) == 0 || len(targets) == 0 {
+	if len(steps) == 0 || len(targets) == 0 || !refsUnannotated(targets) {
 		return targets
-	}
-	for _, t := range targets {
-		if t.Mode != 0 || t.Slot != 0 {
-			return targets
-		}
 	}
 	out := append([]TargetRef(nil), targets...)
 	cursor, filled := 0, 0
@@ -186,9 +185,7 @@ func assignAnnouncedSlots(steps []AnnouncedClause, targets []TargetRef) []Target
 			continue
 		}
 		// Advance past every step already full. Max 0 is unbounded,
-		// so such a step never fills and swallows the rest — which is
-		// right: no catalog statement puts an unbounded clause
-		// anywhere but last.
+		// so such a step never fills and swallows the rest.
 		for cursor < len(steps)-1 {
 			max := steps[cursor].Clause.Max
 			if max > 0 && filled >= max {
@@ -200,6 +197,133 @@ func assignAnnouncedSlots(steps []AnnouncedClause, targets []TargetRef) []Target
 		}
 		out[i].Mode, out[i].Slot = steps[cursor].Mode, steps[cursor].Slot
 		filled++
+	}
+	return out
+}
+
+// refsUnannotated reports whether no ref names a step: every one is
+// at (Mode 0, Slot 0), which is also how a list reads whose picks all
+// answer the first step, since the wire omits a zero.
+func refsUnannotated(targets []TargetRef) bool {
+	for _, t := range targets {
+		if t.Mode != 0 || t.Slot != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// fitSearchBudget caps the calls fitAnnouncedSlotsLocked's search
+// makes. Real announcements need a few dozen at most; past the cap
+// the plain fill's answer stands.
+const fitSearchBudget = 4096
+
+// fitAnnouncedSlotsLocked is assignAnnouncedSlots for an announcement
+// checked against the board (#4497). When no ref names its step, each
+// ref is filed under the first step, in printed order, whose clause it
+// is a legal target for, such that every step's count can still be
+// met.
+//
+// The plain fill fills each step to its maximum before it moves on,
+// so a ref meant for a later clause lands in an earlier optional one.
+// Meager Meal with its "up to one target creature" left empty and its
+// "target player" answered filed the player under the creature clause,
+// and the gate refused the cast. Under CR 601.2c a player announces
+// how many targets a variable count gets before choosing them, and
+// "up to one" allows none; each target chosen answers one instance of
+// the word "target". So the player belongs to the clause that asked
+// for a player.
+//
+// The search tries the plain fill's order first: stay on the current
+// step while it has room, else move to the next. It backs up only when
+// that order breaks a clause's predicate or count, so a list the plain
+// fill filed legally is filed the same way. When no filing fits, the
+// plain fill's answer is returned and the gate refuses it as before.
+//
+// A stamped list (CastSpellParams.TargetsStamped: the caller sent a
+// `slot` or `mode`, as the browser client always does) is read exactly
+// as given, zeros included. Each pick is filed under the clause it was
+// chosen for, and a pick that clause refuses is refused by the gate
+// rather than moved to another one. So is a list with any nonzero Slot
+// or Mode, as the plain fill leaves it.
+//
+// An unstamped list can't say "every pick answers the first step"
+// apart from "I didn't say", since the wire omits a zero (the bot
+// enumerator and the MCP seat send none). That reading is tried first,
+// so it wins whenever it is legal; only a list it would refuse is
+// filed further on. A pick legal under two clauses goes under the
+// earlier one, so a caller that means the later one must say so with
+// `slot` (docs/protocol.md).
+//
+// Caller must hold g.mu.
+func (g *Game) fitAnnouncedSlotsLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef, stamped bool) []TargetRef {
+	if stamped {
+		return targets
+	}
+	plain := assignAnnouncedSlots(steps, targets)
+	if len(steps) < 2 || !refsUnannotated(targets) {
+		return plain
+	}
+	var picks []int // indexes into targets of the refs that answer a step
+	for i, t := range targets {
+		if t.Kind == TargetPlayer || t.Kind == TargetCard {
+			picks = append(picks, i)
+		}
+	}
+	if len(picks) == 0 {
+		return plain
+	}
+	mins := make([]int, len(steps))
+	for i := range steps {
+		mins[i] = g.clauseMinLocked(src.Controller, &steps[i].Clause)
+	}
+	// restOptional[i]: every step after i may be left empty.
+	restOptional := make([]bool, len(steps))
+	restOptional[len(steps)-1] = true
+	for i := len(steps) - 2; i >= 0; i-- {
+		restOptional[i] = restOptional[i+1] && mins[i+1] == 0
+	}
+	at := make([]int, len(picks)) // the step each pick is filed under
+	budget := fitSearchBudget
+	var fit func(r, step, filled int) bool
+	fit = func(r, step, filled int) bool {
+		if budget == 0 {
+			return false
+		}
+		budget--
+		if r == len(picks) {
+			return filled >= mins[step] && restOptional[step]
+		}
+		t := targets[picks[r]]
+		if c := &steps[step].Clause; (c.Max == 0 || filled < c.Max) && g.targetLegalLocked(src, c, t) {
+			at[r] = step
+			if fit(r+1, step, filled+1) {
+				return true
+			}
+		}
+		if filled < mins[step] {
+			return false
+		}
+		for next := step + 1; next < len(steps); next++ {
+			if g.targetLegalLocked(src, &steps[next].Clause, t) {
+				at[r] = next
+				if fit(r+1, next, 1) {
+					return true
+				}
+			}
+			// A required step can't be passed over.
+			if mins[next] > 0 {
+				break
+			}
+		}
+		return false
+	}
+	if !fit(0, 0, 0) {
+		return plain
+	}
+	out := append([]TargetRef(nil), targets...)
+	for r, i := range picks {
+		out[i].Mode, out[i].Slot = steps[at[r]].Mode, steps[at[r]].Slot
 	}
 	return out
 }

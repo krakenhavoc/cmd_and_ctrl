@@ -1252,6 +1252,10 @@ type ActivateAbilityParams struct {
 	// clauses of the chosen modes (#764).
 	Targets []TargetRef
 
+	// TargetsStamped says Targets name their clauses, as on
+	// CastSpellParams (#4497).
+	TargetsStamped bool `json:"targetsStamped,omitempty"`
+
 	// Distribution is the announced division for an ability whose
 	// clause divides ("It deals 3 damage divided as you choose among
 	// one, two, or three targets"), keyed by target id — CR 601.2d
@@ -1910,7 +1914,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #2055: the payload names targets for the controller's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
-	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	// #4497: a pick that names no clause is filed by what it can target.
+	params.Targets = g.fitAnnouncedSlotsLocked(SourceObject(playerID, source), StepsChosenByController(steps), params.Targets, params.TargetsStamped)
 	ownTargets := params.Targets
 	oppTargets, err := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
 	if err != nil {

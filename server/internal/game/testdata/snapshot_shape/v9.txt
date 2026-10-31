@@ -20056,6 +20056,7 @@ pendingChoices[].assist.announce.params.Targets[].splice	number:int
 pendingChoices[].assist.announce.params.TeamworkIDs	array
 pendingChoices[].assist.announce.params.TeamworkIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.XValue	number:int
+pendingChoices[].assist.announce.params.targetsStamped	bool
 pendingChoices[].assist.announce.spliced	array
 pendingChoices[].assist.announce.spliced[]	object
 pendingChoices[].assist.announce.spliced[].ID	custom(uuid.UUID)
@@ -26374,6 +26375,7 @@ pendingChoices[].parked.activate.params.TopIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.activate.params.WaterbendIDs	array
 pendingChoices[].parked.activate.params.WaterbendIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.activate.params.XValue	number:int
+pendingChoices[].parked.activate.params.targetsStamped	bool
 pendingChoices[].parked.activate.randomDiscards	array
 pendingChoices[].parked.activate.randomDiscards[]	custom(uuid.UUID)
 pendingChoices[].parked.activate.randomTargets	array
@@ -26480,6 +26482,7 @@ pendingChoices[].parked.cast.params.Targets[].splice	number:int
 pendingChoices[].parked.cast.params.TeamworkIDs	array
 pendingChoices[].parked.cast.params.TeamworkIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.XValue	number:int
+pendingChoices[].parked.cast.params.targetsStamped	bool
 pendingChoices[].parked.cast.spliced	array
 pendingChoices[].parked.cast.spliced[]	object
 pendingChoices[].parked.cast.spliced[].ID	custom(uuid.UUID)
