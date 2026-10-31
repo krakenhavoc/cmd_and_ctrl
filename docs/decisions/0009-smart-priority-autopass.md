@@ -52,12 +52,13 @@ Nevinyrral's Disk, Pestilence) is a threat too, read from its catalog row.
 ability that sweeps or edicts (a saga chapter that destroys all creatures, a
 Massacre Wurm's enters trigger, a Fleshbag Marauder's edict) is a threat
 too, read from its catalog row the same way.
-**Amendment proposed:** S75 (#4734), 2026-10-30, not yet accepted — a
+**Amended by:** S75 (#4734), accepted 2026-10-31 — a
 response held all game (a free Flawless Maneuver, Ranger-Captain of Eos's
 sacrifice) stops you only when one of its declared answers can answer what
 is happening now: a threat to you or yours for `protect` and `survive`, an
-opponent's upkeep or spell for `restrict`. A move that declares nothing stops
-as before. See "Amendment of 2026-10-30 (#4734)" below.
+opponent's upkeep or spell for `restrict`, and the other kinds by what they
+can change. A move that declares nothing stops as before. See "Amendment of
+2026-10-30 (#4734)" below.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -906,14 +907,17 @@ default.
 
 ## Amendment of 2026-10-30 (#4734): a held answer stops you only when it can answer now
 
-**Status:** Proposed · 2026-10-30 · Sprint S75 — Agents at the table: a
-current seat, quieter turns, sharper bots. Issue:
+**Status:** Accepted · 2026-10-31 · Sprint S75 — Agents at the table: a
+current seat, quieter turns, sharper bots. Proposed 2026-10-30. Issue:
 [#4734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4734). Related:
 #3603 and #4186 (the MCP seat's `pass_until: smart`), #3555 and #2877 above.
-No code changes with it. The owner's decision is recorded below. The
-[open questions](#open-questions-for-the-owner-4734) are not answered yet,
-and where the text depends on one it follows the recommended option and says
-so, as "(Q1)" to "(Q5)".
+No code changes with it. The owner's decision of 2026-10-30 is recorded
+below. On 2026-10-31 the owner accepted the amendment and answered all five
+[questions](#questions-for-the-owner-4734-answered-2026-10-31), each with the
+recommended option (a); the answers are under
+[Owner decisions](#owner-decisions-2026-10-31). The text marks what each
+answer settled as "(Q1)" to "(Q5)". The changes land in the PRs under
+[Slices](#slices).
 
 The owner's standing goal for auto-pass: no pointless pass clicks, no missed
 response windows, and a countdown that is visible and stoppable.
@@ -1053,8 +1057,8 @@ most at the decision's two moments:
 
 "An opponent's spell" is any spell on the stack an opponent controls, a copy
 included (CR 707.10). An opponent's ability on the stack does not match
-`restrict`. That is the owner's line. Q5 asks whether graveyard exile should
-be the exception, since it does answer a reanimation trigger.
+`restrict`. That is the owner's line. Graveyard exile, which does answer a
+reanimation trigger, is now a kind of its own, `graveyard` (Q5).
 
 **Counters.** `targets_stack` is read from the announcement; it is not a
 declared kind. The enumerator offers such a move only when a legal target is
@@ -1069,7 +1073,8 @@ owner answer 3):
 - a cast that declares nothing: 1,133 of the catalog's 1,144 instant-speed
   cards (below), Flawless Maneuver among them;
 - a row carried on a card instance, and a sorcery-speed row;
-- a targeted activated row, which ADR 0142 §1 does not let declare (Q2);
+- a targeted activated row that declares nothing. From slice 7 such a row
+  may declare, but need not (Q2);
 - a move that declares `remove` (Q1);
 - a move whose only declared answer is `value`. #2877's `value_only` covers
   it.
@@ -1196,7 +1201,7 @@ the 2026-10-14 Scryfall dump.
 | Slot | Declared | Measured by |
 |---|---|---|
 | untargeted instant-speed activated rows, and mana abilities with a sacrifice cost (ADR 0142 §4's scope) | 1,135 of 1,135 | `TestEveryAnswersRowDeclares`, which fails CI on an undeclared row |
-| targeted instant-speed activated rows | 0 of 638; ADR 0142 §1 does not allow it | nothing yet (Q2) |
+| targeted instant-speed activated rows | 0 of 638; ADR 0142 §1 refuses it until slice 7 | nothing: declaring one stays optional, with no ratchet (Q2) |
 | instant-speed spells (instants and flash cards) | 11 of 1,144: nine `value`, plus Altar's Reap and Deadly Dispute (`sac_outlet`) | `go test ./internal/decks/ -run RealDumpSpellAnswers -v`, with `CMDCTRL_SCRYFALL_DUMP` |
 
 By kind, the 1,135 rows declare `value` 520, `pump` 214, `makes_blocker` 79,
@@ -1269,7 +1274,8 @@ restriction changes what that opponent may do for the rest of the turn.
 
 ### Calls made here
 
-Each is overturnable in review.
+Accepted with the amendment on 2026-10-31. Any of them can still be
+revisited in a slice's review.
 
 1. **No history.** The rule reads a move's declared answers and the window.
    It does not track how long a card has been held, so a card drawn this turn
@@ -1387,15 +1393,16 @@ the change removes is one the bot acted on.
 | # | Slice | What | Model | Needs |
 |---|---|---|---|---|
 | 1 | This amendment | docs | — | — |
-| 2 | **The server's match** | `answer_window.go`: `answers_now` on casts, activations and mana moves; a combat that involves you; an opponent's upkeep; an opponent's spell; the stack threat as narrowed above; owner answer 4. `Move.AnswersNow`, the cap key, `docs/protocol.md`, `protocol.ts`. The per-kind counts in the spell listing. The server tests, the #4734 regression and the agreement fixture's writer. No reader yet, so no player sees a change | Opus (tier 3) | 1, with Q1, Q3 and Q4 answered |
+| 2 | **The server's match** | `answer_window.go`: `answers_now` on casts, activations and mana moves; a combat that involves you; an opponent's upkeep; an opponent's spell; the stack threat as narrowed above; owner answer 4. `Move.AnswersNow`, the cap key, `docs/protocol.md`, `protocol.ts`. The per-kind counts in the spell listing. The server tests, the #4734 regression and the agreement fixture's writer. No reader yet, so no player sees a change | Opus (tier 3) | 1 |
 | 3 | **The browser** | `classifyMove` and `hasPlay` read the verdict; rule 7's new clause; the pass reason; one sentence of help under "What counts as a response"; ADR 0143 §2.5 and the `autopassDecision.ts` header; the agreement test. Branch E2E | Sonnet (tier 2) | 2 |
 | 4 | **The seat** | `moveIsResponse` and `smartPassApplies`; the agreement fixture read in `smart_test.go`; `docs/mcp-seat.md` and a pointer in ADR 0122 | Sonnet (tier 2) | 2 |
 | 5 | **Declarations, first batch** | Flawless Maneuver and the curated decks' other 55 undeclared instant-speed cards, each from its effect with ADR 0142's table and rulings, quoting the listing's counts before and after. Inert until slice 2, so it can land first | Sonnet (tier 1) | — |
 | 6 | **The spell sweep** | ADR 0142's #2877 sweep of the remaining ~1,077 instant-speed cards, in batches of about 80, protective kinds first | Sonnet (tier 1), about 14 PRs | 5 |
-| 7 | **Targeted rows declare** (Q2 (a)) | the guard accepts `Answers` on a targeted activated row without requiring it; declare the protective ones first (Mother of Runes, Arwen, Liliana the Faultless, Plaza of Heroes, Skrelv, Zack Fair), then targeted pumps and prevents | Opus for the guard, Sonnet for the batches | 2 |
+| 7 | **Targeted rows declare** (Q2 (a), planned) | the guard accepts `Answers` on a targeted activated row without requiring it; declare the protective ones first (Mother of Runes, Arwen, Liliana the Faultless, Plaza of Heroes, Skrelv, Zack Fair), then targeted pumps and prevents | Opus for the guard, Sonnet for the batches | 2 |
 | 8 | **Measured** | the arena replay above; optionally, the bot's Layer A reads `answers_now` behind a `Config` switch, measured by ADR 0052's report | Opus (tier 3) | 3, 5 |
-| 9 | **`graveyard` splits from `restrict`** (Q5 (a)) | a new kind after `restrict` on the wire, as `survive` split from `protect`: the guard, the boardtext label, and the retag of the eight graveyard-exile rows (Soul-Guide Lantern, Scavenger Grounds, Silent Gravestone, Stonespeaker Crystal, and `ExileFromASingleGraveyardAbility`'s Famished Ghoul, Rag Dealer, Unlicensed Hearse and Carrion Beetles) | Sonnet (tier 2) | 2 |
+| 9 | **`graveyard` splits from `restrict`** (Q5 (a), planned) | a new kind after `restrict` on the wire, as `survive` split from `protect`: the guard, the boardtext label, and the retag of the eight graveyard-exile rows (Soul-Guide Lantern, Scavenger Grounds, Silent Gravestone, Stonespeaker Crystal, and `ExileFromASingleGraveyardAbility`'s Famished Ghoul, Rag Dealer, Unlicensed Hearse and Carrion Beetles) | Sonnet (tier 2) | 2 |
 
+All nine slices are planned: Q2 (a) and Q5 (a) bring in slices 7 and 9.
 Slices 3 and 4 can run in parallel, and so can 5, 7 and 9. A player sees
 the change only with slice 3; the seat, with slice 4. Ranger-Captain is
 quiet from slice 3, and Flawless Maneuver from slices 3 and 5.
@@ -1406,10 +1413,12 @@ Reading the verdict is the whole change for a player and for the seat. Drop
 it in `classifyMove` and `moveIsResponse`, along with rule 7's clause, and
 every move is classed as today. The server field is additive and can stay.
 
-### Open questions for the owner (#4734)
+### Questions for the owner (#4734, answered 2026-10-31)
 
-The decision does not settle these. Each lists the recommended option first,
-the most rules-faithful one, and the text above follows it.
+The 2026-10-30 decision did not settle these. Each lists the recommended
+option first, the most rules-faithful one. The owner chose (a) on all five on
+2026-10-31, and the text above is written for those answers. They are
+recorded under [Owner decisions](#owner-decisions-2026-10-31) below.
 
 1. **Q1. The kinds the decision does not name:** `pump`, `prevent`,
    `sac_outlet`, `remove` and the three combat kinds.
@@ -1483,6 +1492,36 @@ the most rules-faithful one, and the text above follows it.
      would stop for those triggers too, with nothing to answer.
    - **(c)** As decided: an opponent's spell only, and a graveyard exile
      misses the trigger.
+
+### Owner decisions (2026-10-31)
+
+The owner accepted the amendment and answered each question with the
+recommended option (a). The answers bind slices 2 to 9.
+
+1. **Q1 (a): every kind is matched by what it can change.** `pump`,
+   `prevent` and `sac_outlet` match like `protect` and `survive`: a threat
+   on the stack, or a combat that involves you. That narrows #3555's "any
+   combat window" for them. `combat_grant`, `animate` and `makes_blocker`
+   count only in a combat that involves you, in the steps where they can
+   still change it. `remove` keeps today's windows.
+2. **Q2 (a): targeted rows may declare.** The registration guard accepts
+   `Answers` on a targeted activated row, optional and with no ratchet, and
+   the protective rows are declared first (slice 7). A declared targeted move
+   is matched by its kind. An undeclared one stops as today.
+3. **Q3 (a): the server computes the match.** `internal/legal` sets
+   `answers_now` on each move, and the browser and the MCP seat both read it.
+   The agreement fixture keeps the seat's port of the windows matched to the
+   browser's.
+4. **Q4 (a): the threat test is per kind**, as the tables in "The rule"
+   give it. A target on you counts for `protect`, `prevent` and `sac_outlet`.
+   A target on your spell counts for `protect`. An unblocked attacker at you
+   or yours counts for `protect` and `prevent`.
+5. **Q5 (a): graveyard exile becomes its own kind.** `graveyard` splits out
+   of `restrict`, as `survive` split from `protect` (slice 9). It matches an
+   opponent's spell on the stack, or an opponent's item that targets a card in
+   a graveyard. `restrict` keeps the decided windows.
+
+The owner asked for the build to start next, from slice 2.
 
 ## Context
 
