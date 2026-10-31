@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { exileCostNote, exileCostOptionCards, exileCostWhere, exileCostZone } from "./exileCost";
+import {
+  colorSymbolCount,
+  exileCostNote,
+  exileCostOptionCards,
+  exileCostSymbolTotal,
+  exileCostWhere,
+  exileCostZone,
+} from "./exileCost";
 import type { CardView, PlayerView, ZoneView } from "./protocol";
 
 function card(id: string, name: string): CardView {
@@ -53,5 +60,28 @@ describe("exileCost", () => {
 
   it("offers nothing without a seat", () => {
     expect(exileCostOptionCards(undefined, { exile_cost_options: ["g1"] })).toEqual([]);
+  });
+});
+
+describe("colour symbols among mana costs", () => {
+  // Baron Helmut Zemo's boast: hybrid and Phyrexian black symbols count
+  // once each, as the engine counts them.
+  it("counts plain, hybrid, Phyrexian and two-brid symbols once", () => {
+    expect(colorSymbolCount("{B}{B}{B}", "B")).toBe(3);
+    expect(colorSymbolCount("{2}{B/G}{G}", "B")).toBe(1);
+    expect(colorSymbolCount("{B/P}{B/G/P}", "B")).toBe(2);
+    expect(colorSymbolCount("{2/B}{W}", "B")).toBe(1);
+    expect(colorSymbolCount("{4}{U}{R}", "B")).toBe(0);
+    expect(colorSymbolCount(undefined, "B")).toBe(0);
+  });
+
+  it("totals only the picked cards", () => {
+    const cards = [
+      { instance_id: "a", name: "A", mana_cost: "{B}{B}" },
+      { instance_id: "b", name: "B", mana_cost: "{1}{B}" },
+      { instance_id: "c", name: "C", mana_cost: "{B}{B}{B}{B}" },
+    ] as CardView[];
+    expect(exileCostSymbolTotal(cards, ["a", "c"], "B")).toBe(6);
+    expect(exileCostSymbolTotal(cards, [], "B")).toBe(0);
   });
 });

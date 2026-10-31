@@ -4215,6 +4215,33 @@ HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
   "For the rest of the game" with a single "no maximum" can also use
   `SetMaxHandSizeForEffect` (Finale of Revelation, Praetor's Counsel).
 
+### "The first time you would draw a card each turn" (#4455, CR 614.11)
+
+A draw replacement that applies once per turn (Reed Richards, Smartest Man)
+is the `DrawBecomes` family ([draw_replacements.go](../server/internal/cards/effects/draw_replacements.go))
+with `FirstTimeEachTurn`:
+
+```go
+Replacements: []game.ReplacementEffect{
+    YouDrawFourInsteadTheFirstTimeEachTurn("Reed Richards, Smartest Man: draw four cards instead"),
+},
+```
+
+- **The mark is the turn's, per object.** `Replace` calls
+  `Game.MarkReplacementAppliedThisTurnForEffect(src, label)` and `AppliesTo`
+  reads `ReplacementAppliedThisTurnForEffect`; both live in
+  `TurnTally.ReplacementsApplied`, keyed by `ObjectTallyKey(source, epoch,
+  label)`, so two Reeds each have a first time (CR 614.5) and one that left
+  and came back is a new object (CR 400.7). The label is the key: give each
+  replacement of a card its own.
+- **An exemption writes no mark.** `ExceptInOwnDrawStep` is judged before the
+  mark is read and does not set it, so the draw step's turn-based card does not
+  spend the turn's one application; a second card drawn in the draw step, or
+  any card on another player's turn, is the first time.
+- **The substitute is not replaced again.** Each of the four drawn cards is its
+  own descendant draw that inherits the applied replacements (CR 614.5), and
+  the mark keeps every later draw this turn plain.
+
 ### Attaching, and an ability whose source has gone (#812)
 
 Two rules, each at one choke point, and no card file checks either.
@@ -9397,6 +9424,39 @@ One pass-closed permission carries `MaxSpellManaValue` and `AnyNumber`, so a cas
 only its own card and the rest stay castable until the holder passes. It takes the same
 options as `TotalManaValueAtMost` refuses, and the two cannot be set together. See ADR
 0066's 2026-10-19 amendment.
+
+"You may cast up to three of the copies" (Baron Helmut Zemo's boast, #4455,
+CR 707.12a) adds `AtMostCasts`:
+
+```go
+CopyAndCast{Cards: ctx.Exiled(), Free: true, AtMostCasts: 3}.Apply(ctx)
+```
+
+The copies then share one pass-closed `AnyNumber` permission with
+`CastPermission.CastsLeft` set to the number: each cast strikes its own copy
+and spends one, and the last closes the permission, so the copies not cast
+cease to exist and the `resolution_cast` prompt ends with the third cast. The
+copies of one call sit in one zone (all of them in exile, or all in a
+graveyard); a set split across both would get a count each.
+
+"Exile any number of <kind> cards from your graveyard with N or more <colour>
+mana symbols among their mana costs" is the cost that feeds it:
+
+```go
+ExileAnyNumberFromGraveyardWithSymbols("any number of black cards", "B", 15, blackCard)
+```
+
+It is `game.ExileCost{AnyNumber, SymbolTotal}` on a CR 602 ability only
+(`Register` refuses it on a cast and on a mana ability). The activator names
+the cards in `exile_ids` and the engine refuses a pick whose printed mana costs
+hold fewer than the floor's symbols before anything is paid; `ctx.Exiled()` is
+then the cards the cost exiled. A hybrid, Phyrexian or `{2/B}` symbol that
+offers the colour counts once (`Card.ColorSymbols`, CR 700.5). The view ships
+`exile_cost_any_number`, `exile_cost_symbol_color` and `exile_cost_symbol_min`
+and greys the row while the graveyard cannot reach the floor; the client's
+exile picker runs in its variable mode and shows the running total, and the bot
+pays the cheapest fuel first until the floor is met
+(`Game.ExileCostCheapestSufficientForEffect`).
 
 ### Adding a hideaway card (S43+, ADR 0091)
 

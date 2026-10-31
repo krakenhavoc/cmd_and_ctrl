@@ -3836,6 +3836,15 @@ export interface ActivatedAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // "Exile any number of black cards from your graveyard with fifteen or
+  // more black mana symbols among their mana costs" (Baron Helmut Zemo's
+  // boast): `exile_cost_n` is absent, any number of `exile_cost_options`
+  // may be picked, and the picks are enough once their printed costs hold
+  // `exile_cost_symbol_min` symbols of the colour letter
+  // `exile_cost_symbol_color`. The server refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_symbol_color?: string;
+  exile_cost_symbol_min?: number;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —

@@ -519,6 +519,18 @@ func (p CastPermission) spendManaValueBudget(card Card) (CastPermission, bool) {
 	if (p.ManaValueBudget == nil && !p.AnyNumber) || len(p.Cards) < 2 {
 		return p, false
 	}
+	if p.CastsLeft > 0 {
+		// "Up to N of the copies" (Baron Helmut Zemo's boast): an AnyNumber
+		// permission with a cast count spends one per cast, and the cast
+		// that takes the last closes it whole, so the copies not cast are
+		// never offered again. This runs before consumeLimitedGrantLocked,
+		// which then no longer finds the struck card, so the count is
+		// spent once.
+		if p.CastsLeft == 1 {
+			return p, false
+		}
+		p.CastsLeft--
+	}
 	if p.ManaValueBudget != nil {
 		mv, _ := card.ParsedManaValue()
 		left := max(*p.ManaValueBudget-mv, 0)

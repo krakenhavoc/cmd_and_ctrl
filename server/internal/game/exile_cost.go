@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // exile_cost.go — #1221: exiling the SOURCE CARD as part of an
 // activated ability's cost, the component `AbilityCost` was missing
@@ -242,6 +246,49 @@ type ExileCost struct {
 	// effects.Register allows it only on a cast's mandatory slot, never
 	// on an ability, an optional cost or an either/or branch.
 	CountFromX bool
+
+	// AnyNumber is "exile any number of <kind> cards from your graveyard
+	// with <a total>" (Baron Helmut Zemo's boast): the activator names as
+	// many matching cards as they like, and SymbolTotal says how many are
+	// enough. N is zero. A CR 602 ability only: effects.Register refuses it
+	// on a cast and on a mana ability, whose views and pickers have no
+	// room for a count that is not printed.
+	AnyNumber bool
+
+	// SymbolTotal is the threshold an AnyNumber clause reads: the chosen
+	// cards must hold at least this many mana symbols of one colour among
+	// their printed mana costs. Plain data (no func) so the clause adds no
+	// closure route to Game. Nil with AnyNumber is "any number, no floor".
+	SymbolTotal *ManaSymbolTotal
+}
+
+// ManaSymbolTotal is "<N> or more <colour> mana symbols among their mana
+// costs": a hybrid or Phyrexian symbol that offers the colour counts once,
+// as it does for devotion (CR 700.5, CR 107.4). A card with no mana cost
+// has none (CR 202.1b).
+type ManaSymbolTotal struct {
+	// Color is the colour letter, "B" for black.
+	Color string
+	// AtLeast is the floor the chosen cards' symbols must reach.
+	AtLeast int
+}
+
+// Total is the number of the colour's mana symbols among the printed mana
+// costs of `cards`. Nil-safe.
+func (t *ManaSymbolTotal) Total(cards []Card) int {
+	if t == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range cards {
+		n += c.ColorSymbols(t.Color)
+	}
+	return n
+}
+
+// Met reports whether `cards` reach the floor. Nil is no floor.
+func (t *ManaSymbolTotal) Met(cards []Card) bool {
+	return t == nil || t.Total(cards) >= t.AtLeast
 }
 
 // Count is how many cards the clause exiles at the announced X: N for
@@ -312,7 +359,7 @@ func exileCostPile(p *Player, cost *ExileCost) *Zone {
 //
 // CALLER MUST ALREADY HOLD g.mu (read or write).
 func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) []uuid.UUID {
-	if cost == nil || (cost.N <= 0 && !cost.CountFromX) {
+	if cost == nil || (cost.N <= 0 && !cost.CountFromX && !cost.AnyNumber) {
 		return nil
 	}
 	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
@@ -331,6 +378,54 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 		out = append(out, c.InstanceID)
 	}
 	return out
+}
+
+// ExileCostPayableForEffect reports whether the cards ExileCostOptionsForEffect
+// offers can pay the clause at all: at least N of them, or, for an AnyNumber
+// clause, enough to reach its symbol floor. The view reads it for the
+// "can't activate" reason and the bot enumerator for whether to offer the
+// ability. CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) ExileCostPayableForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) bool {
+	if cost == nil {
+		return true
+	}
+	ids := g.ExileCostOptionsForEffect(playerID, sourceID, cost)
+	if !cost.AnyNumber {
+		return cost.CountFromX || len(ids) >= cost.N
+	}
+	return cost.SymbolTotal.Met(g.exileCostCardsLocked(playerID, cost, ids))
+}
+
+// exileCostCardsLocked resolves ids out of the pile the clause reads.
+// Caller must hold g.mu.
+func (g *Game) exileCostCardsLocked(playerID uuid.UUID, cost *ExileCost, ids []uuid.UUID) []Card {
+	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
+	var out []Card
+	for _, id := range ids {
+		if c := findZoneCard(pile, id); c != nil {
+			out = append(out, *c)
+		}
+	}
+	return out
+}
+
+// ExileCostCheapestSufficientForEffect picks cards, out of the options in
+// the order given, until an AnyNumber clause's floor is reached, and reports
+// whether it was. The bot's payment for a clause that has no printed count.
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) ExileCostCheapestSufficientForEffect(playerID uuid.UUID, cost *ExileCost, ordered []uuid.UUID) ([]uuid.UUID, bool) {
+	var out []uuid.UUID
+	var cards []Card
+	for _, id := range ordered {
+		if cost.SymbolTotal.Met(cards) {
+			break
+		}
+		for _, c := range g.exileCostCardsLocked(playerID, cost, []uuid.UUID{id}) {
+			out = append(out, id)
+			cards = append(cards, c)
+		}
+	}
+	return out, cost.SymbolTotal.Met(cards)
 }
 
 // validateExileCardsCostLocked checks an ExileCards component without
@@ -362,7 +457,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 	if p == nil {
 		return nil, ErrPlayerNotFound
 	}
-	if len(chosen) != cost.N {
+	if !cost.AnyNumber && len(chosen) != cost.N {
 		return nil, ErrInvalidParam
 	}
 	pile := exileCostPile(p, cost)
@@ -374,6 +469,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		spent[id] = true
 	}
 	seen := make(map[uuid.UUID]bool, len(chosen))
+	var named []Card
 	for _, id := range chosen {
 		if seen[id] || spent[id] || id == sourceID {
 			return nil, ErrInvalidParam
@@ -386,6 +482,13 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
+		named = append(named, *c)
+	}
+	// "Any number of … with N or more <colour> mana symbols among their
+	// mana costs": the cards named must reach the floor, or the cost is
+	// not paid (CR 601.2h, 602.2b).
+	if cost.AnyNumber && !cost.SymbolTotal.Met(named) {
+		return nil, ErrInvalidParam
 	}
 	return append([]uuid.UUID(nil), chosen...), nil
 }
@@ -430,4 +533,24 @@ func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.
 		}
 	}
 	return nil
+}
+
+// ColorSymbols is the number of mana symbols in the card's printed mana
+// cost that offer `color` (a letter, "B"): a plain {B}, a hybrid {B/G}, a
+// Phyrexian {B/P}, a {2/B}. Each symbol counts once however many colours it
+// offers, which is CR 700.5's reading of "mana symbols of that colour among
+// mana costs". A card with no mana cost, or an unreadable one, has none
+// (CR 202.1b).
+func (c Card) ColorSymbols(color string) int {
+	cost, err := ParseCost(c.ManaCost)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, req := range cost.Required {
+		if slices.Contains(req.Options, color) {
+			n++
+		}
+	}
+	return n
 }

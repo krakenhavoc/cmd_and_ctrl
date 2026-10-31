@@ -481,6 +481,12 @@ type TurnTally struct {
 	// has a fresh one (CR 400.7). Written as the spell becomes cast;
 	// read by GrantedAlternativeCost.gatedOn. Additive within schema v9.
 	GrantedAltCostsClaimed map[string]int `json:"grantedAltCostsClaimed,omitempty"`
+	// ReplacementsApplied is the "first time each turn" replacements
+	// already applied this turn (Reed Richards, Smartest Man), keyed by
+	// ObjectTallyKey(source, epoch, label): PER OBJECT (CR 614.5, 400.7).
+	// Written by the replacement's Replace, read by its AppliesTo; see
+	// replacement_turn_mark.go. Additive within schema v9.
+	ReplacementsApplied map[string]int `json:"replacementsApplied,omitempty"`
 	// Attacks is every attack declared this turn, in declaration order
 	// (ADR 0059 Decision 8): one record per attacking creature per
 	// declaration, so a creature that attacks in two combats has two.
@@ -1694,6 +1700,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopRepeat = maps.Clone(t.LoopRepeat)
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
+	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)

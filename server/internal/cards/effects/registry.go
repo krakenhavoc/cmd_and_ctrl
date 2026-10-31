@@ -825,6 +825,10 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
+		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles any number of cards — a CR 602 ability's cost only",
+				spec.Name, i))
+		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
@@ -2480,7 +2484,21 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards — the X form is a cast's additional cost only (#1948)",
 			name, where))
 	}
-	if ec.N <= 0 {
+	if ec.AnyNumber {
+		// "Exile any number of black cards from your graveyard with fifteen
+		// or more black mana symbols among their mana costs" (Baron Helmut
+		// Zemo): no printed count, a floor on the symbols instead.
+		if ec.N != 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
+				name, where, ec.N))
+		}
+		if ec.SymbolTotal == nil || ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1 {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no symbol floor — "+
+				"a clause with no floor would be free", name, where))
+		}
+	} else if ec.SymbolTotal != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s names a symbol floor without AnyNumber", name, where))
+	} else if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
 			name, where, ec.N))
 	}

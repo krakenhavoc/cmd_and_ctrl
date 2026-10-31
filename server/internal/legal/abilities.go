@@ -2682,6 +2682,22 @@ func handDiscardLabel(dc *game.DiscardCost, n int) string {
 // A nil component is a payment of nothing and ok. ok is false when the
 // pile cannot cover the count, which means the ability is not offered.
 func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if ec != nil && ec.AnyNumber {
+		// "Exile any number of … with a total" (Baron Helmut Zemo's boast):
+		// the cheapest fuel first, until the floor is reached; the ability
+		// is not offered when the whole pile falls short.
+		skip := make(map[uuid.UUID]bool, len(taken))
+		for _, id := range taken {
+			skip[id] = true
+		}
+		var pool []uuid.UUID
+		for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
+			if !skip[id] {
+				pool = append(pool, id)
+			}
+		}
+		return e.g.ExileCostCheapestSufficientForEffect(e.seat, ec, pool)
+	}
 	if ec == nil || ec.N <= 0 {
 		return nil, true
 	}
