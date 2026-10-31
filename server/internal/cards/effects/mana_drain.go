@@ -44,6 +44,7 @@ func init() {
 		OracleID:     "74d3277a-38e5-4732-afed-084a56148f20",
 		Name:         "Mana Drain",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {

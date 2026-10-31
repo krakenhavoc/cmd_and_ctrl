@@ -41,11 +41,15 @@ func init() {
 		Name:         "Boros Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
+			// #4734: damage that can kill a planeswalker.
 			ModeWithPurpose(Mode("Boros Charm deals 4 damage to target player or planeswalker.",
-				targetPlayerOrPlaneswalker()), ForTargets(DamageToTarget(0, 4))),
-			Mode("Permanents you control gain indestructible until end of turn."),
+				targetPlayerOrPlaneswalker()), game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 4)), Answers: game.AnswerRemove}),
+			// #4734: indestructible survives a Wrath.
+			ModeWithPurpose(Mode("Permanents you control gain indestructible until end of turn."),
+				game.Purpose{Answers: game.AnswerSurvive}),
+			// #4734: double strike is a combat keyword.
 			ModeWithPurpose(Mode("Target creature gains double strike until end of turn.",
-				TargetCreature("target creature")), ForTargets(BenefitUntilEOT(0, 0, 0, "double strike"))),
+				TargetCreature("target creature")), game.Purpose{Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "double strike")), Answers: game.AnswerCombatGrant}),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {

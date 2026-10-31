@@ -17,6 +17,7 @@ func init() {
 		OracleID:     "cba94732-1f1f-4ffd-9aba-45db990043fa",
 		Name:         "Utter End",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: exiles a permanent
 		Targets:      TargetPermanent("target nonland permanent", Nonland()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			legal := ctx.LegalTargets()

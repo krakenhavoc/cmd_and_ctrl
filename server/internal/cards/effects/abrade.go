@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "f9db72dc-9a5b-48a4-a86e-7464d9a2166a",
 		Name:         "Abrade",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: both modes destroy or damage a permanent
 		Modes: ChooseOne(
 			ModeWithPurpose(Mode("Abrade deals 3 damage to target creature.",
 				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 3))),

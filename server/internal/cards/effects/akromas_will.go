@@ -40,22 +40,25 @@ func init() {
 		Name:         "Akroma's Will",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Creatures you control gain flying, vigilance, and double strike until end of turn.", nil,
+			// #4734: flying, vigilance and double strike are combat keywords.
+			ModeWithPurpose(ModeDoing("Creatures you control gain flying, vigilance, and double strike until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return GrantKeywordUntilEOT{
 						Match:    And(Creature(), YouControl()),
 						Keywords: []string{"flying", "vigilance", "double strike"},
 						Label:    "Akroma's Will — flying, vigilance and double strike",
 					}.Apply(ctx)
-				}),
-			ModeDoing("Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.", nil,
+				}), game.Purpose{Answers: game.AnswerCombatGrant}),
+			// #4734: indestructible survives a Wrath, protection from each
+			// colour is out of reach of targeting, lifelink is a combat keyword.
+			ModeWithPurpose(ModeDoing("Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return GrantKeywordUntilEOT{
 						Match:    And(Creature(), YouControl()),
 						Keywords: akromasWillProtectiveKeywords(),
 						Label:    "Akroma's Will — lifelink, indestructible and protection from each color",
 					}.Apply(ctx)
-				}),
+				}), game.Purpose{Answers: game.AnswerSurvive | game.AnswerProtect | game.AnswerCombatGrant}),
 		).OrUpToIf(2, YouControlACommander),
 	})
 }

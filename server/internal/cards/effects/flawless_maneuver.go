@@ -36,6 +36,7 @@ func init() {
 		OracleID:     "4e183439-17d2-47ff-9d99-5e22821d91e3",
 		Name:         "Flawless Maneuver",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive}, // #4734: indestructible for the team
 		AlternativeCosts: []game.AlternativeCost{
 			FreeIfYouControlCommander("Cast without paying its mana cost (you control a commander)"),
 		},

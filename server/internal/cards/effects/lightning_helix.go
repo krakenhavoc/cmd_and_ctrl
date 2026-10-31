@@ -19,7 +19,7 @@ func init() {
 		Name:         "Lightning Helix",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
-		Purpose:      ForTargets(DamageToTarget(0, 3)),
+		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 3)), Answers: game.AnswerRemove}, // #4734: damages a creature, planeswalker or player
 		OnResolve: ResolveSteps(
 			// The life gain waits for a prompt the damage asks (Khârn the
 			// Betrayer's question, a CR 616 order), CR 608.2c (#4155).

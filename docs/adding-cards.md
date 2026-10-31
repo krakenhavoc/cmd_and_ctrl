@@ -1731,6 +1731,18 @@ ModeWithPurpose(ModeDoing("Draw a card.", nil, draw), game.Purpose{Draws: 1, Ans
   sacrifice outlet; the guard refuses `value` beside it, and the
   enumerator never sets `value_only` on a cast that sacrifices, exiles or
   returns a creature.
+- Removal, burn, bounce and a counterspell are `AnswerRemove` (the curated
+  decks' declarations, #4734): `remove` is the kind that keeps today's
+  windows, and a counterspell is `remove` on the precedent of sweep
+  ruling 8, which files stack removal there. The enumerator reads a
+  counter from the announcement (a spell that targets the stack), so
+  nothing depends on the kind. A removal spell that returns something to
+  the controller (Swords to Plowshares, Generous Gift) is still `remove`.
+- Protection for your own permanents is `survive` (indestructible, phase
+  out), `protect` (hexproof, protection from a colour) or both, and a
+  keyword for combat is `combat_grant`; a modal spell declares each mode
+  (Akroma's Will, Boros Charm). An alternative cost that changes the spell
+  (overload) declares for itself (Cyclonic Rift).
 
 There is no CI ratchet for spells: a `Spec` has no type line, and CI has
 no Scryfall dump. `go test ./internal/decks/ -run RealDumpSpellAnswers

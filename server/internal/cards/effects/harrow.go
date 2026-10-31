@@ -42,7 +42,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "705509e9-a034-4a5a-9c65-66f58748b8a2",
 		Name:           "Harrow",
-		Purpose:        game.Purpose{Lands: 2, LandsUntapped: 2},
+		Purpose:        game.Purpose{Lands: 2, LandsUntapped: 2, Answers: game.AnswerValue}, // #4734: ramp; the land it sacrifices is a price, not an answer
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a land", Land()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -27,8 +27,20 @@ import (
 // #2877, because an undeclared cast counts as an answer (ADR 0142 owner
 // answer 3). A sweep batch declares a slice of this list and runs it
 // again; the count it prints is the batch's "before" and "after".
+//
+// It also prints the same count for the curated decks alone (the ones
+// GET /decks serves), the listing ADR 0009's amendment of 2026-10-30
+// (#4734) declares first: 56 undeclared before its slice 5, none after.
 func TestRealDumpSpellAnswers(t *testing.T) {
 	idx := loadDumpForPurpose(t)
+	curated := map[string]bool{}
+	for _, d := range All() {
+		for _, c := range d.WithCompanion() {
+			if !c.Basic {
+				curated[c.OracleID] = true
+			}
+		}
+	}
 	declared := map[string]bool{}
 	names := map[string]string{}
 	for _, s := range effects.All() {
@@ -38,8 +50,8 @@ func TestRealDumpSpellAnswers(t *testing.T) {
 		}
 		declared[base] = declared[base] || spellDeclaresAnswers(s)
 	}
-	var instants, flash []string
-	done := 0
+	var instants, flash, curatedLeft []string
+	done, curatedDone := 0, 0
 	for base, name := range names {
 		id, err := uuid.Parse(base)
 		if err != nil {
@@ -55,6 +67,13 @@ func TestRealDumpSpellAnswers(t *testing.T) {
 		if !instant && !hasFlash {
 			continue
 		}
+		if curated[base] {
+			if declared[base] {
+				curatedDone++
+			} else {
+				curatedLeft = append(curatedLeft, name)
+			}
+		}
 		if declared[base] {
 			done++
 			continue
@@ -67,10 +86,13 @@ func TestRealDumpSpellAnswers(t *testing.T) {
 	}
 	sort.Strings(instants)
 	sort.Strings(flash)
+	sort.Strings(curatedLeft)
 	t.Logf("%d instant-speed catalog cards declare what they answer; %d instants and %d flash cards do not yet",
 		done, len(instants), len(flash))
 	t.Logf("undeclared instants:\n\t%s", strings.Join(instants, "\n\t"))
 	t.Logf("undeclared flash cards:\n\t%s", strings.Join(flash, "\n\t"))
+	t.Logf("curated decks: %d instant-speed cards declare what they answer; %d do not yet%s",
+		curatedDone, len(curatedLeft), listed(curatedLeft))
 }
 
 // spellDeclaresAnswers reports whether a spec declares Answers on the
@@ -92,4 +114,12 @@ func spellDeclaresAnswers(s effects.Spec) bool {
 		}
 	}
 	return false
+}
+
+// listed formats names for a log line: nothing for none, else a list.
+func listed(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	return ":\n\t" + strings.Join(names, "\n\t")
 }

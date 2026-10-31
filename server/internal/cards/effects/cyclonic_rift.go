@@ -25,10 +25,12 @@ func init() {
 		OracleID:     "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b",
 		Name:         "Cyclonic Rift",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: bounces an opponent's permanent
 		Targets: TargetPermanent("target nonland permanent you don't control",
 			nonlandYouDontControl),
 		AlternativeCosts: []game.AlternativeCost{
-			CostWithPurpose(Overload("{6}{U}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, OpponentsOnly: true}}),
+			// #4734: overload bounces each of them. It changes the spell, so it declares for itself.
+			CostWithPurpose(Overload("{6}{U}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, OpponentsOnly: true}, Answers: game.AnswerRemove}),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {

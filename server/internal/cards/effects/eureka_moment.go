@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "0e2c11b2-d95f-4402-9a4a-afd3f7ffb8be",
 		Name:         "Eureka Moment",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Draws: 2},
+		Purpose:      game.Purpose{Draws: 2, Answers: game.AnswerValue}, // #4734: draw and a land answer nothing
 		OnResolve: ResolveSteps(
 			// The land waits for a prompt the draws ask (CR 608.2c, #4155).
 			DrawCards{N: 2},

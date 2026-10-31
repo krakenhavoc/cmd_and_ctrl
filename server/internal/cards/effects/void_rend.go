@@ -17,6 +17,7 @@ func init() {
 		OracleID:        "713f16db-95ec-479e-a48c-7a69f7668d7f",
 		Name:            "Void Rend",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		CantBeCountered: true,
 		Targets:         TargetPermanent("target nonland permanent", Nonland()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

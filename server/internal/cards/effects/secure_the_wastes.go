@@ -17,6 +17,7 @@ func init() {
 		Name:         "Secure the Wastes",
 		XMatters:     true,
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerMakesBlocker}, // #4734: creature tokens at instant speed
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Warrior"), N: ctx.X()}.Apply(ctx)
 		},

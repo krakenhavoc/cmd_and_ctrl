@@ -89,6 +89,9 @@
                       "slot": 0,
                       "damage": 3
                     }
+                  ],
+                  "answers": [
+                    "remove"
                   ]
                 }
               },
@@ -1273,6 +1276,9 @@
                       "slot": 0,
                       "damage": 3
                     }
+                  ],
+                  "answers": [
+                    "remove"
                   ]
                 }
               },
@@ -1856,6 +1862,9 @@
                       "slot": 0,
                       "damage": 3
                     }
+                  ],
+                  "answers": [
+                    "remove"
                   ]
                 }
               },
@@ -2474,6 +2483,9 @@
                       "slot": 0,
                       "damage": 3
                     }
+                  ],
+                  "answers": [
+                    "remove"
                   ]
                 }
               }
