@@ -801,6 +801,7 @@ confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
+confirm confirm/titan-of-littjara-loot
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/wandering-archaic-copy

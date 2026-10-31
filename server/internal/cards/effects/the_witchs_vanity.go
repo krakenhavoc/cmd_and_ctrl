@@ -26,13 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, SagaChapterLabel(name, 1, "destroy target creature an opponent controls with mana value 2 or less"),
 				TargetCreature("target creature an opponent controls with mana value 2 or less", OpponentControls(), ManaValueLE(2)),
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if id, ok := b16FirstLegalTargetCard(ctx); ok {
-						return DestroyTarget{Target: id}.Apply(ctx)
-					}
-					return nil
-				}),
+				destroyTheFirstLegalTarget),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "create a Food token"),
 				func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
