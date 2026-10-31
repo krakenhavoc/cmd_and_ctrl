@@ -122,6 +122,10 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		subject = gr.SpellsText
 	}
 	o := gr.Offer
+	if o.Key == AltCostKeyGrantedMiracle {
+		// Molecule Man: the granted keyword, in the printed words.
+		return "Nonland cards in your hand have miracle " + o.ManaCost + "."
+	}
 	if gr.PricedAtManaCost || o.Sacrifice != nil {
 		return "Each " + strings.TrimSuffix(subject, "s") + " you cast can be cast by sacrificing a creature, reducing its cost by that creature's mana value."
 	}

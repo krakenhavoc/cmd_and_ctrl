@@ -1294,6 +1294,13 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p == nil || p.AltCostKey == "" || card.IsLand() {
 		return nil
 	}
+	// A granted miracle's permission is only the RIGHT to claim the
+	// price Molecule Man's static derives (RequiresGrant); it names no
+	// price of its own, and the full mana cost this would synthesize
+	// under the key is not it.
+	if p.AltCostKey == AltCostKeyGrantedMiracle {
+		return nil
+	}
 	out := AlternativeCost{
 		Key:            p.AltCostKey,
 		Label:          p.Label,
@@ -1668,6 +1675,15 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // keyword it is an instance of.
 func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string) *CastPermission {
 	claim = AltCostKeyword(claim)
+	if zone == ZoneHand && isMiracleKey(claim) {
+		// A card can hold a printed miracle's grant and a granted one's
+		// (Molecule Man beside a Terminus): the claim names which.
+		if p := g.playerByIDLocked(playerID); p != nil {
+			if perm := g.storedHandPermissionForLocked(p, card, claim); perm != nil {
+				return perm
+			}
+		}
+	}
 	if claim != "" && zone != ZoneCommand && zone != ZoneHand && !card.PrepareCopy {
 		if p := g.playerByIDLocked(playerID); p != nil {
 			for i := range p.CastPermissions {
@@ -1892,9 +1908,20 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 //
 // Caller must hold g.mu.
 func (g *Game) storedHandPermissionLocked(p *Player, card Card) *CastPermission {
+	return g.storedHandPermissionForLocked(p, card, "")
+}
+
+// storedHandPermissionForLocked is storedHandPermissionLocked narrowed to
+// the permission whose AltCostKey is `key`; an empty key takes the first.
+//
+// Caller must hold g.mu.
+func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *CastPermission {
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
 		if perm.Scope == ScopeStanding || !perm.CoversCard(card, ZoneHand) {
+			continue
+		}
+		if key != "" && perm.AltCostKey != key {
 			continue
 		}
 		if !g.CastPermissionActiveForEffect(perm, p.ID) {

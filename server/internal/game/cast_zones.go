@@ -415,7 +415,14 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		if duplicatesListedPrice(card, out, ac) {
 			continue
 		}
-		add(ac, grant)
+		under := grant
+		if ac.RequiresGrant {
+			// A granted miracle is claimable only under the hand
+			// permission that names ITS key, which is not always the
+			// first one the card holds (a printed miracle's, beside it).
+			under = g.CastPermissionForClaimLocked(playerID, card, zone, ac.Key)
+		}
+		add(ac, under)
 	}
 	return out
 }

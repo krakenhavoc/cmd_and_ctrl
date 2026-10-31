@@ -104,6 +104,16 @@ import (
 // permission's, which must agree for RequiresGrant to open the offer.
 const AltCostKeyMiracle = "miracle"
 
+// AltCostKeyGrantedMiracle is the alternative-cost key of a GRANTED
+// miracle: "Nonland cards in your hand have miracle {0}" (Molecule Man).
+// It is its own key, not AltCostKeyMiracle, so a card that prints miracle
+// and is also granted one has two miracle abilities, each with its own
+// price, reveal and grant (CR 113.2c); the printed offer is never shadowed
+// by the per-key dedupe of the offer list. An on-disk identity: it lands
+// on StackItem.AltCost and on a CastPermission, so it is never renamed or
+// reused.
+const AltCostKeyGrantedMiracle = "granted-miracle"
+
 // MiracleTriggerLabel is the stack label and the OncePerBatch key. The
 // reveal's log line names the card; the stack overlay shows the source.
 const MiracleTriggerLabel = "Miracle — cast it for its miracle cost"
@@ -163,6 +173,98 @@ func MiracleTrigger(name, cost string) TriggeredAbility {
 	}
 }
 
+// GrantedMiracleTriggerLabel is the stack label of a granted miracle's
+// reveal-and-cast trigger. Distinct from MiracleTriggerLabel so a card
+// with a printed miracle and a granted one raises two triggers.
+const GrantedMiracleTriggerLabel = "Miracle (granted) — cast it for its miracle cost"
+
+// GrantedMiracleTrigger is CR 702.94a's linked trigger for a miracle a
+// battlefield permanent GRANTS to the cards in its controller's hand
+// (Molecule Man, "Nonland cards in your hand have miracle {0}"). The card
+// has no catalog row of its own for it, so the trigger is a row of the
+// GRANTING permanent: it watches the same draw the printed one does, and
+// fires for the first card its controller drew this turn when that card
+// is still in their hand and the permanent's GrantedAlternativeCost under
+// AltCostKeyGrantedMiracle reaches it (a land is not offered one).
+//
+// The item it builds is the printed one's: the revealed OBJECT in
+// Params.Object and a body that grants the cast permission, its source the
+// drawn card so the prompt, the log and the stack read as that card's
+// miracle. `cost` is the copy of the granted price.
+func GrantedMiracleTrigger(cost string) TriggeredAbility {
+	return TriggeredAbility{
+		Watches: []EventKind{EventDrawCard},
+		Key:     GrantedMiracleTriggerLabel,
+		OptionalPrompt: &TriggerOptionalPrompt{
+			Question:    "Reveal the card you drew for its miracle cost " + cost + "?",
+			BeforeStack: true,
+		},
+		AppliesTo: func(ev Event, source *Card, _ Characteristic, g *Game) bool {
+			return g.grantedMiracleCardLocked(source, ev) != nil
+		},
+		Build: func(ev Event, source *Card, _ Characteristic, g *Game) *StackItem {
+			if source == nil {
+				return nil
+			}
+			// Like the printed trigger's, the item is always made: a card
+			// that left the hand (or a Molecule Man that did) while the
+			// prompt was open is not there to reveal, and the resolution
+			// grants nothing (CR 702.94b). Its object is then one no card
+			// in a hand is, epoch -1.
+			card := *source
+			ref := ObjectRef{ID: ev.CardID, Epoch: -1}
+			if c := g.grantedMiracleCardLocked(source, ev); c != nil {
+				ref = ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
+				g.RevealForEffect(RevealSpec{
+					Player: c.Owner,
+					Source: c.InstanceID,
+					Reason: "Miracle — " + c.Name,
+					Cards:  []uuid.UUID{c.InstanceID},
+				})
+				card = *c
+				card.Controller = card.Owner
+			}
+			return NewKeyedTriggeredItem(&card, GrantedMiracleTriggerLabel, miracleGrantedOfferBody,
+				EffectParams{Cost: cost, Object: ref})
+		},
+	}
+}
+
+// grantedMiracleCardLocked is the card a granted-miracle trigger of
+// `source` is about for a draw event: the first card its controller drew
+// this turn, still in their hand, that the controller's granted miracle
+// reaches. Nil otherwise.
+//
+// Caller must hold g.mu.
+func (g *Game) grantedMiracleCardLocked(source *Card, ev Event) *Card {
+	if source == nil || ev.Kind != EventDrawCard || ev.Actor != source.Controller ||
+		g.firstCardDrawnThisTurnLocked(ev.Actor) != ev.CardID {
+		return nil
+	}
+	p := g.playerByIDLocked(ev.Actor)
+	if p == nil || p.Hand == nil {
+		return nil
+	}
+	for i := range p.Hand.Cards {
+		c := &p.Hand.Cards[i]
+		if c.InstanceID != ev.CardID {
+			continue
+		}
+		if g.grantedAlternativeCostByKeyLocked(ev.Actor, *c, ZoneHand, AltCostKeyGrantedMiracle) == nil {
+			return nil
+		}
+		return c
+	}
+	return nil
+}
+
+// miracleGrantedOfferBody is "miracle/granted-offer": a granted miracle
+// trigger's resolution, the printed one's with the granted key.
+var miracleGrantedOfferBody = DelayedBody("miracle/granted-offer", func(g *Game, item *StackItem, p EffectParams) error {
+	g.grantMiracleCastKeyedLocked(item.Controller, p.Object, AltCostKeyGrantedMiracle)
+	return nil
+})
+
 // miracleOfferBody is "miracle/offer": the trigger's resolution, read
 // entirely off the item (ADR 0041 P9) — the revealed object and, for
 // the log, the miracle cost.
@@ -218,6 +320,14 @@ func (g *Game) miracleCardInHandLocked(owner uuid.UUID, ref ObjectRef) *Card {
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantMiracleCastLocked(owner uuid.UUID, ref ObjectRef) {
+	g.grantMiracleCastKeyedLocked(owner, ref, AltCostKeyMiracle)
+}
+
+// grantMiracleCastKeyedLocked is grantMiracleCastLocked for the offer
+// under `key`: the printed miracle's, or a granted one's.
+//
+// Caller must hold g.mu (write).
+func (g *Game) grantMiracleCastKeyedLocked(owner uuid.UUID, ref ObjectRef, key string) {
 	c := g.miracleCardInHandLocked(owner, ref)
 	if c == nil {
 		return
@@ -226,7 +336,7 @@ func (g *Game) grantMiracleCastLocked(owner uuid.UUID, ref ObjectRef) {
 		Player:     owner,
 		Zone:       ZoneHand,
 		Cards:      []PermissionCardRef{{ID: c.InstanceID, Epoch: c.ObjectEpoch}},
-		AltCostKey: AltCostKeyMiracle,
+		AltCostKey: key,
 		Timing:     TimingFlash,
 		CastOnly:   true,
 		Source:     c.InstanceID,
@@ -253,7 +363,7 @@ func (g *Game) closeMiracleWindowLocked(playerID uuid.UUID) {
 	}
 	kept := p.CastPermissions[:0:0]
 	for _, perm := range p.CastPermissions {
-		if perm.Zone == ZoneHand && perm.AltCostKey == AltCostKeyMiracle {
+		if perm.Zone == ZoneHand && isMiracleKey(perm.AltCostKey) {
 			continue
 		}
 		kept = append(kept, perm)
@@ -265,4 +375,10 @@ func (g *Game) closeMiracleWindowLocked(playerID uuid.UUID) {
 		kept = nil
 	}
 	p.CastPermissions = kept
+}
+
+// isMiracleKey reports whether `key` names a miracle offer, printed or
+// granted.
+func isMiracleKey(key string) bool {
+	return key == AltCostKeyMiracle || key == AltCostKeyGrantedMiracle
 }

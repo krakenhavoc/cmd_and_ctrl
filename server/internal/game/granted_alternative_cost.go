@@ -433,6 +433,18 @@ func (g *Game) grantedAlternativeCostByKeyLocked(playerID uuid.UUID, card Card, 
 //
 // Caller must hold g.mu.
 func (g *Game) grantedOfferClaimableLocked(card Card, zone ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
+	// A granted miracle ("Nonland cards in your hand have miracle {0}",
+	// Molecule Man) is the printed miracle's shape (#1665): the offer is
+	// the PRICE, claimable only under a live hand permission naming its
+	// key, which is the revealed trigger's resolution. The permission is
+	// the reason the claim is legal, so it is not the "already priced"
+	// permission the rule below refuses.
+	if alt.RequiresGrant {
+		if zone != ZoneHand || grant == nil || grant.AltCostKey != alt.Key {
+			return ErrAltCostNotGranted
+		}
+		return nil
+	}
 	under := grant.ForClaim(alt)
 	if err := g.validateCastPathLocked(card, zone, nil, under); err != nil {
 		return err
