@@ -334,6 +334,10 @@ What to know about how they behave:
   - `restrict` (Ranger-Captain of Eos's "your opponents can't cast
     noncreature spells this turn") fits an opponent's upkeep and an
     opponent's spell on the stack, not an opponent's ability;
+  - `graveyard` (Soul-Guide Lantern's "exile each opponent's graveyard")
+    fits an opponent's spell on the stack, and an opponent's spell or
+    ability that targets a card in a graveyard (an Eternal Witness
+    trigger), not an opponent's upkeep;
   - a counterspell fits any opponent's item on the stack;
   - a combat answer (`combat_grant`, `animate`, `makes_blocker`) fits a
     combat that involves you, and `combat_grant` and `animate` also the
