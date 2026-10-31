@@ -46,6 +46,14 @@ func PowerNoGreater() game.SourceComparison {
 	return game.SourceComparison{Stat: game.SourcePower, Cmp: game.CmpLessEq}
 }
 
+// ManaValueNoGreaterThanPower is "with mana value less than or equal to
+// this creature's power" (Winter Soldier, Reborn Avenger): the candidate's
+// mana value against the source's power, last-known once the source has
+// left (CR 608.2h).
+func ManaValueNoGreaterThanPower() game.SourceComparison {
+	return game.SourceComparison{Stat: game.SourceManaValueVsPower, Cmp: game.CmpLessEq}
+}
+
 // GreaterPower is "with greater power".
 func GreaterPower() game.SourceComparison {
 	return game.SourceComparison{Stat: game.SourcePower, Cmp: game.CmpGreater}

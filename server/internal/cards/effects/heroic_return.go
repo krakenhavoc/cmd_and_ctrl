@@ -50,6 +50,16 @@ func aCreatureIsAttackingYou() CostPredicate {
 }
 
 func heroicReturnResolve(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCardGivingHeroesCounters(ctx, 2)
+}
+
+// returnTargetCardGivingHeroesCounters is "return target creature card from
+// your graveyard to the battlefield. If a Hero enters this way, it enters with
+// N additional +1/+1 counters on it" (Heroic Return, Winter Soldier): the
+// first legal card target comes back, and the counters are the entry's own,
+// given when the card is a Hero as it would exist on the battlefield
+// (CR 614.12), not as it sits in the graveyard.
+func returnTargetCardGivingHeroesCounters(ctx *Context, n int) error {
 	var id uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -63,14 +73,10 @@ func heroicReturnResolve(_ *game.StackItem, ctx *Context) error {
 	if _, ok := ctx.Game.LookupCardForEffect(id); !ok {
 		return nil
 	}
-	// "If a Hero enters this way": judged by what the card would be on the
-	// battlefield (CR 614.12), so a static that makes it a Hero there counts
-	// and one that stops it being a Hero does not, whatever the card is in
-	// the graveyard.
 	opts := game.ZoneEntryOptions{
 		Controller: ctx.Controller(),
 		EntersWithCountersIfType: []game.EntryCountersIfType{
-			{Subtype: ctx.TextSubtype("Hero"), Counter: game.CounterPlusOne, N: 2},
+			{Subtype: ctx.TextSubtype("Hero"), Counter: game.CounterPlusOne, N: n},
 		},
 	}
 	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, []uuid.UUID{id}, opts, game.TailRef{}, 0)
