@@ -280,6 +280,61 @@ func buildSmartPassFrames(t *testing.T) []smartPassFrame {
 			declared{row: {nil, "declares nothing: interacts, classed as before"}},
 			true, "an undeclared row is an ability as before, and an opponent's end step is a key window"))
 	}
+	// The graveyard kind (Q5, slice 9) parts from restrict in two windows:
+	// an opponent's ability that targets a card in a graveyard matches
+	// graveyard and not restrict, and an opponent's upkeep matches restrict
+	// and not graveyard. An opponent's spell matches both.
+	reanimation := func(s *small) {
+		src := battlefieldCard(s.g, s.active, creature("Trigger Source", "{1}{G}{G}", 2, 1))
+		card := graveyardCard(s.active, creature("Fallen Bear", "{1}{G}", 2, 2))
+		advanceTo(t, s.g, game.StepPrecombatMain)
+		pushAbilityAW(s.g, s.active, src, game.StackItemTriggered, "Trigger Source — return target card from your graveyard to your hand", nil,
+			game.TargetRef{Kind: game.TargetCard, ID: card})
+		givePriority(s.g, s.seat)
+	}
+	{
+		s := newSmall("krakenhavoc")
+		gy := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerGraveyard))
+		rs := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerRestrict))
+		reanimation(s)
+		out = append(out, frameOf(t, s.g, s.seat, "opponent_reanimation_trigger_graveyard_and_restrict",
+			"an opponent's trigger returns a card from their graveyard to their hand (Eternal Witness's enters trigger); the seat holds a graveyard row and a restrict row",
+			declared{
+				gy: {verdict(true), "the trigger targets a card in a graveyard, which exiling it leaves with an illegal target (CR 608.2b)"},
+				rs: {verdict(false), "restrict matches an opponent's spell or upkeep, never an opponent's ability"},
+			},
+			true, "a matched answer to an opponent's item is a response (rule 6)"))
+	}
+	{
+		s := newSmall("krakenhavoc")
+		rs := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerRestrict))
+		reanimation(s)
+		out = append(out, frameOf(t, s.g, s.seat, "opponent_reanimation_trigger_restrict",
+			"the same trigger; the seat holds only a restrict row (Ranger-Captain of Eos's kind)",
+			declared{rs: {verdict(false), "restrict matches an opponent's spell or upkeep, never an opponent's ability"}},
+			false, "nothing the seat holds answers the opponent's item"))
+	}
+	{
+		s := newSmall("krakenhavoc")
+		gy := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerGraveyard))
+		advanceTo(t, s.g, game.StepPrecombatMain)
+		pushSpellAW(s.g, s.active, game.Card{Name: "Grizzly Bears", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Power: 2, Toughness: 2})
+		givePriority(s.g, s.seat)
+		out = append(out, frameOf(t, s.g, s.seat, "opponent_creature_spell_graveyard",
+			"an opponent's creature spell on the stack; the seat holds a graveyard row",
+			declared{gy: {verdict(true), "graveyard matches any opponent's spell on the stack, as restrict does"}},
+			true, "a matched answer to an opponent's item is a response (rule 6)"))
+	}
+	{
+		s := newSmall("krakenhavoc")
+		gy := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerGraveyard))
+		advanceTo(t, s.g, game.StepUpkeep)
+		givePriority(s.g, s.seat)
+		out = append(out, frameOf(t, s.g, s.seat, "opponent_upkeep_graveyard",
+			"an opponent's upkeep, the stack empty; the seat holds a graveyard row",
+			declared{gy: {verdict(false), "graveyard matches an opponent's spell or an item aimed at a graveyard card, not their upkeep: that is restrict's"}},
+			false, "nothing the seat holds matches"))
+	}
 	return out
 }
 

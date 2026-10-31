@@ -50,7 +50,7 @@ func init() {
 			// ruling for a conditional row, as Isochron Scepter does).
 			BoastAnswering(game.AnswerProtect|game.AnswerSurvive|game.AnswerPump|
 				game.AnswerPrevent|game.AnswerRemove|game.AnswerSacOutlet|game.AnswerRestrict|
-				game.AnswerCombatGrant|game.AnswerAnimate|game.AnswerMakesBlocker,
+				game.AnswerGraveyard|game.AnswerCombatGrant|game.AnswerAnimate|game.AnswerMakesBlocker,
 				"Exile any number of black cards from your graveyard with fifteen or more black mana symbols among their mana costs: Copy those exiled cards. You may cast up to three of the copies without paying their mana costs.",
 				ExileAnyNumberFromGraveyardWithSymbols("any number of black cards", "B", 15, blackCard),
 				func(g *game.Game, item *game.StackItem) error {

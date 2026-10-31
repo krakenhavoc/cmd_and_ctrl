@@ -15386,5 +15386,2104 @@
     ],
     "verdict": "stop",
     "why": "an undeclared row is an ability as before, and an opponent's end step is a key window"
+  },
+  {
+    "name": "opponent_reanimation_trigger_graveyard_and_restrict",
+    "note": "an opponent's trigger returns a card from their graveyard to their hand (Eternal Witness's enters trigger); the seat holds a graveyard row and a restrict row",
+    "viewer": "00000194-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000195-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000196-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000196-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000196-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000196-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000197-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000196-0000-4000-8000-000000000000",
+                "controller": "00000196-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000196-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000198-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "00000196-0000-4000-8000-000000000000",
+                "controller": "00000196-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000199-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000199-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000199-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000199-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000199-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000019a-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "00000199-0000-4000-8000-000000000000",
+                "controller": "00000199-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "0000019b-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000019b-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000019b-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000019b-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000019b-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000019c-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "0000019b-0000-4000-8000-000000000000",
+                "controller": "0000019b-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000194-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "0000019d-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000194-0000-4000-8000-000000000000",
+                "controller": "00000194-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000019e-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000194-0000-4000-8000-000000000000",
+                "controller": "00000194-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "0000019f-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000194-0000-4000-8000-000000000000",
+                "controller": "00000194-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001a0-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "00000194-0000-4000-8000-000000000000",
+                "controller": "00000194-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 5,
+        "cards": [
+          {
+            "instance_id": "000001a1-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "controller": "00000194-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001a2-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "0000019b-0000-4000-8000-000000000000",
+            "controller": "0000019b-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001a3-0000-4000-8000-000000000000",
+            "name": "Relic (graveyard)",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "controller": "00000194-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: graveyard",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: graveyard",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "instance_id": "000001a4-0000-4000-8000-000000000000",
+            "name": "Relic (restrict)",
+            "owner": "00000194-0000-4000-8000-000000000000",
+            "controller": "00000194-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: restrict",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "restrict"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: restrict",
+                "purpose": {
+                  "answers": [
+                    "restrict"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "instance_id": "000001a5-0000-4000-8000-000000000000",
+            "name": "Trigger Source",
+            "owner": "00000196-0000-4000-8000-000000000000",
+            "controller": "00000196-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 1,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}{G}"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "next_seat": 1,
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "stack_items": [
+        {
+          "id": "000001a6-0000-4000-8000-000000000000",
+          "kind": "triggered",
+          "controller": "00000196-0000-4000-8000-000000000000",
+          "owner": "00000196-0000-4000-8000-000000000000",
+          "source_card_id": "000001a5-0000-4000-8000-000000000000",
+          "label": "Trigger Source — return target card from your graveyard to your hand",
+          "targets": [
+            {
+              "kind": "card",
+              "id": "00000197-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      ],
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000194-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000194-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001a3-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (graveyard): Answer: graveyard",
+          "source": "000001a3-0000-4000-8000-000000000000",
+          "interacts": true,
+          "answers_now": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000194-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001a4-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (restrict): Answer: restrict",
+          "source": "000001a4-0000-4000-8000-000000000000",
+          "interacts": true,
+          "answers_now": false
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001a3-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          },
+          "000001a4-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001a3-0000-4000-8000-000000000000",
+        "name": "Relic (graveyard)",
+        "kind": "activate",
+        "answers_now": true,
+        "why": "the trigger targets a card in a graveyard, which exiling it leaves with an illegal target (CR 608.2b)"
+      },
+      {
+        "source": "000001a4-0000-4000-8000-000000000000",
+        "name": "Relic (restrict)",
+        "kind": "activate",
+        "answers_now": false,
+        "why": "restrict matches an opponent's spell or upkeep, never an opponent's ability"
+      }
+    ],
+    "verdict": "stop",
+    "why": "a matched answer to an opponent's item is a response (rule 6)"
+  },
+  {
+    "name": "opponent_reanimation_trigger_restrict",
+    "note": "the same trigger; the seat holds only a restrict row (Ranger-Captain of Eos's kind)",
+    "viewer": "000001a7-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001a8-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001a9-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001a9-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001a9-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001a9-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001aa-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001a9-0000-4000-8000-000000000000",
+                "controller": "000001a9-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001a9-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ab-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001a9-0000-4000-8000-000000000000",
+                "controller": "000001a9-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001ac-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001ac-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001ac-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001ac-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001ac-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ad-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001ac-0000-4000-8000-000000000000",
+                "controller": "000001ac-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001ae-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001ae-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001ae-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001ae-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001ae-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001af-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001ae-0000-4000-8000-000000000000",
+                "controller": "000001ae-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001a7-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "000001b0-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001a7-0000-4000-8000-000000000000",
+                "controller": "000001a7-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001b1-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001a7-0000-4000-8000-000000000000",
+                "controller": "000001a7-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001b2-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001a7-0000-4000-8000-000000000000",
+                "controller": "000001a7-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001b3-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001a7-0000-4000-8000-000000000000",
+                "controller": "000001a7-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "000001b4-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "controller": "000001a7-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001b5-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001ae-0000-4000-8000-000000000000",
+            "controller": "000001ae-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001b6-0000-4000-8000-000000000000",
+            "name": "Relic (restrict)",
+            "owner": "000001a7-0000-4000-8000-000000000000",
+            "controller": "000001a7-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: restrict",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "restrict"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: restrict",
+                "purpose": {
+                  "answers": [
+                    "restrict"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "instance_id": "000001b7-0000-4000-8000-000000000000",
+            "name": "Trigger Source",
+            "owner": "000001a9-0000-4000-8000-000000000000",
+            "controller": "000001a9-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 1,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}{G}"
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "next_seat": 1,
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "stack_items": [
+        {
+          "id": "000001b8-0000-4000-8000-000000000000",
+          "kind": "triggered",
+          "controller": "000001a9-0000-4000-8000-000000000000",
+          "owner": "000001a9-0000-4000-8000-000000000000",
+          "source_card_id": "000001b7-0000-4000-8000-000000000000",
+          "label": "Trigger Source — return target card from your graveyard to your hand",
+          "targets": [
+            {
+              "kind": "card",
+              "id": "000001aa-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      ],
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001a7-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001a7-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001b6-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (restrict): Answer: restrict",
+          "source": "000001b6-0000-4000-8000-000000000000",
+          "interacts": true,
+          "answers_now": false
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001b6-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001b6-0000-4000-8000-000000000000",
+        "name": "Relic (restrict)",
+        "kind": "activate",
+        "answers_now": false,
+        "why": "restrict matches an opponent's spell or upkeep, never an opponent's ability"
+      }
+    ],
+    "verdict": "pass",
+    "why": "nothing the seat holds answers the opponent's item"
+  },
+  {
+    "name": "opponent_creature_spell_graveyard",
+    "note": "an opponent's creature spell on the stack; the seat holds a graveyard row",
+    "viewer": "000001b9-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001ba-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001bb-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001bb-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001bb-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001bb-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001bb-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001bc-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001bb-0000-4000-8000-000000000000",
+                "controller": "000001bb-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001bd-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001bd-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001bd-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001bd-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001bd-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001be-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001bd-0000-4000-8000-000000000000",
+                "controller": "000001bd-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001bf-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001bf-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001bf-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001bf-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001bf-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001c0-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001bf-0000-4000-8000-000000000000",
+                "controller": "000001bf-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001b9-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "000001c1-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001b9-0000-4000-8000-000000000000",
+                "controller": "000001b9-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001c2-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001b9-0000-4000-8000-000000000000",
+                "controller": "000001b9-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001c3-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001b9-0000-4000-8000-000000000000",
+                "controller": "000001b9-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001c4-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001b9-0000-4000-8000-000000000000",
+                "controller": "000001b9-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "000001c5-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "controller": "000001b9-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001c6-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001bf-0000-4000-8000-000000000000",
+            "controller": "000001bf-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001c7-0000-4000-8000-000000000000",
+            "name": "Relic (graveyard)",
+            "owner": "000001b9-0000-4000-8000-000000000000",
+            "controller": "000001b9-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: graveyard",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: graveyard",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "000001c8-0000-4000-8000-000000000000",
+            "name": "Grizzly Bears",
+            "owner": "000001bb-0000-4000-8000-000000000000",
+            "controller": "000001bb-0000-4000-8000-000000000000",
+            "type_line": "Creature — Bear",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "mana_cost": "{1}{G}"
+          }
+        ]
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "next_seat": 1,
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "stack_items": [
+        {
+          "id": "000001c8-0000-4000-8000-000000000000",
+          "kind": "spell",
+          "controller": "000001bb-0000-4000-8000-000000000000",
+          "owner": "000001bb-0000-4000-8000-000000000000",
+          "source_card_id": "000001c8-0000-4000-8000-000000000000",
+          "label": "Grizzly Bears"
+        }
+      ],
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001b9-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001b9-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001c7-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (graveyard): Answer: graveyard",
+          "source": "000001c7-0000-4000-8000-000000000000",
+          "interacts": true,
+          "answers_now": true
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001c7-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001c7-0000-4000-8000-000000000000",
+        "name": "Relic (graveyard)",
+        "kind": "activate",
+        "answers_now": true,
+        "why": "graveyard matches any opponent's spell on the stack, as restrict does"
+      }
+    ],
+    "verdict": "stop",
+    "why": "a matched answer to an opponent's item is a response (rule 6)"
+  },
+  {
+    "name": "opponent_upkeep_graveyard",
+    "note": "an opponent's upkeep, the stack empty; the seat holds a graveyard row",
+    "viewer": "000001c9-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001ca-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001cb-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001cb-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001cb-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001cb-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001cb-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001cc-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001cb-0000-4000-8000-000000000000",
+                "controller": "000001cb-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001cd-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001cd-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001cd-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001cd-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001cd-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ce-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001cd-0000-4000-8000-000000000000",
+                "controller": "000001cd-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001cf-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001cf-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001cf-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001cf-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001cf-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001d0-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001cf-0000-4000-8000-000000000000",
+                "controller": "000001cf-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001c9-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "000001d1-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001c9-0000-4000-8000-000000000000",
+                "controller": "000001c9-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001d2-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001c9-0000-4000-8000-000000000000",
+                "controller": "000001c9-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001d3-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001c9-0000-4000-8000-000000000000",
+                "controller": "000001c9-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001d4-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001c9-0000-4000-8000-000000000000",
+                "controller": "000001c9-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "000001d5-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "controller": "000001c9-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001d6-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001cf-0000-4000-8000-000000000000",
+            "controller": "000001cf-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001d7-0000-4000-8000-000000000000",
+            "name": "Relic (graveyard)",
+            "owner": "000001c9-0000-4000-8000-000000000000",
+            "controller": "000001c9-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: graveyard",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: graveyard",
+                "purpose": {
+                  "answers": [
+                    "graveyard"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "beginning",
+        "step": "upkeep",
+        "next_seat": 1,
+        "phase_id": 1,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "draw",
+            "phase_id": 1
+          },
+          {
+            "step": "precombat_main",
+            "phase_id": 2
+          },
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001c9-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001c9-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001d7-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (graveyard): Answer: graveyard",
+          "source": "000001d7-0000-4000-8000-000000000000",
+          "interacts": true,
+          "answers_now": false
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001d7-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001d7-0000-4000-8000-000000000000",
+        "name": "Relic (graveyard)",
+        "kind": "activate",
+        "answers_now": false,
+        "why": "graveyard matches an opponent's spell or an item aimed at a graveyard card, not their upkeep: that is restrict's"
+      }
+    ],
+    "verdict": "pass",
+    "why": "nothing the seat holds matches"
   }
 ]

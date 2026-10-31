@@ -66,7 +66,7 @@ func defensiveAnswerOnly(pv *protocol.PurposeView) bool {
 	}
 	for _, answer := range *pv.Answers {
 		switch answer {
-		case "survive", "protect", "prevent", "restrict":
+		case "survive", "protect", "prevent", "restrict", "graveyard":
 		default:
 			return false
 		}

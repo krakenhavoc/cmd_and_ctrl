@@ -1638,6 +1638,7 @@ in code, not declared.
 | `game.AnswerRemove` | stack | removes, destroys, damages or shrinks other permanents with no target | Pestilence, Nevinyrral's Disk |
 | `game.AnswerSacOutlet` | stack | sacrifices a creature at will, in its cost or its effect | Viscera Seer, Ashnod's Altar |
 | `game.AnswerRestrict` | stack | stops what an opponent may do next: can't cast, can't activate | Ranger-Captain of Eos |
+| `game.AnswerGraveyard` | stack | exiles cards from graveyards, which answers a reanimation or regrowth trigger: "exile each opponent's graveyard", "exile all graveyards", "exile up to N target cards from a single graveyard". Not `restrict` | Soul-Guide Lantern, Scavenger Grounds, Rag Dealer |
 | `game.AnswerCombatGrant` | combat | grants a combat keyword or permission, first strike, double strike and deathtouch included | Endling's deathtouch |
 | `game.AnswerAnimate` | combat | becomes a creature until end of turn: a manland, a Vehicle, every crew row | Smuggler's Copter |
 | `game.AnswerMakesBlocker` | combat | creates creature tokens at instant speed | Dawn of Hope |
@@ -1661,6 +1662,11 @@ both where both are true; neither is derived from the other.
 - A trade (+2/-2, +1/-1, "+1/-1 or -1/+1") is `AnswerPump`.
 - Turning off an opponent's protection (removing hexproof or
   indestructible, "can't be regenerated") is `AnswerRestrict`.
+- Exiling cards from graveyards (Soul-Guide Lantern, Silent Gravestone,
+  Rag Dealer) is `AnswerGraveyard`, not `AnswerRestrict`: it answers an
+  opponent's reanimation trigger, which `restrict` does not (ADR 0009's
+  amendment of 2026-10-30, Q5). Shuffling your own graveyard into your
+  library (Feldon's Cane) is still `value`.
 - A modal, conditional or mixed row declares the union of every answer
   any mode or condition can give.
 
@@ -1767,7 +1773,11 @@ amendment of 2026-10-30). Once smart autopass reads it (that amendment's
 browser and seat slices), a declared move stops a player only where it
 matches, so a declaration that is too narrow can pass a window the card
 could answer. Declare every answer any mode or cost can give (sweep
-ruling 4).
+ruling 4). The kinds that stop at an opponent's spell are `restrict`
+(also at an opponent's upkeep) and `graveyard` (also at an opponent's
+spell or ability that targets a card in a graveyard), so a row that
+exiles graveyards declares `graveyard`, and a row that stops what an
+opponent may do declares `restrict`.
 
 ### Paying energy (ADR 0129, #1995)
 

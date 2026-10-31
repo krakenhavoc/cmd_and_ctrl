@@ -282,7 +282,7 @@ Four more rulings (owner, 2026-10-10, S2 batch 2):
 
 7. **A creature put onto the battlefield at instant speed is `makes_blocker` if it enters untapped, `value` if it enters tapped.** Talon Gates of Madara, Quicksilver Amulet, PuPu UFO, Proctor of Potential, Grim Repriser and Cauldron Familiar declare `makes_blocker`. A tapped token (Automated Assembly Line, Necromancer's Stockpile) is `value`: it cannot block this turn.
 8. **Ending the turn is `remove`.** Sundial of the Infinite and Obeka, Brute Chronologist exile the whole stack, so they answer any item on it.
-9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`.
+9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`. *(Graveyard exile is its own kind, `graveyard`, since the [2026-10-31 amendment](#amendment-2026-10-31--graveyard-splits-from-restrict-4734-q5--accepted); Kill Switch stays `restrict`.)*
 10. **Leftovers.** Fountainport's "Sacrifice a token: Draw a card" is `sac_outlet`. Aang, Swift Savior ("Waterbend {8}: Transform Aang") is `pump`. Elsewhere Flask, Terraformer and Roiling Vortex are `value`. Experimental Frenzy `restrict` and Master Transmuter `protect` (S2 batch 1) are confirmed.
 
 Three more rulings (owner, 2026-10-10, S2 batch 3):
@@ -491,3 +491,23 @@ The price is a narrow one, in the games the pool plays: it needs a Spirit that t
 **The bot** is unchanged. Its Layer A `valueOnly` rule still escalates any window with a cast in it, and the heuristic prices a spell by its amounts. `TestCuratedDeckPurposes` now reads "declares a purpose" as "declares something besides `Answers`", so a curated spell on its no-printed-amount list (Pull from Tomorrow, Sphinx's Revelation, Fact or Fiction) may declare what it answers and stay there.
 
 **Back-outs.** `TestValueOnlyMarksADeclaredValueCast` and `TestValueOnlyReadsTheChosenModes` (`internal/legal`) fail without the declarations or the reader; `TestCastAnswersOf`, `TestCastValueOnly` and `TestFusedAnswersNeedBothHalves` pin the rules above; `TestAnswersGuardOnSpellCosts` and `TestAnswersRefusedInsideKicked` (`internal/cards/effects`) pin the guard.
+
+## Amendment 2026-10-31 — `graveyard` splits from `restrict` (#4734, Q5) · Accepted
+
+[ADR 0009's amendment of 2026-10-30](0009-smart-priority-autopass.md#amendment-of-2026-10-30-4734-a-held-answer-stops-you-only-when-it-can-answer-now) matches each declared kind to the window the seat is in. `restrict` there matches an opponent's upkeep or an opponent's spell, and never an opponent's ability. That was the owner's line for Ranger-Captain of Eos, but sweep ruling 9 had filed graveyard exile under `restrict` too, and graveyard exile does answer an ability: exiling the graveyard in response to an opponent's reanimation or regrowth trigger (Eternal Witness's, in the #4734 game) leaves its target illegal (CR 608.2b). The owner chose, on 2026-10-31 (Q5 (a)), to split the kind, as `survive` was split from `protect`. This is slice 9 of that amendment.
+
+**The vocabulary** is now twelve values. `graveyard` follows `restrict` in the table's order and on the wire, and is stack tier.
+
+| Value | Wire | Tier | Means | Examples |
+|---|---|---|---|---|
+| `AnswerGraveyard` | `graveyard` | stack | exiles cards from graveyards, which answers a reanimation or regrowth trigger: "exile each opponent's graveyard", "exile all graveyards", "exile up to N target cards from a single graveyard" | Soul-Guide Lantern, Scavenger Grounds, Silent Gravestone, Rag Dealer |
+
+**What it matches** (`internal/legal/answer_window.go`, `answers_now`): an opponent's spell on the stack, a copy included, or an opponent's item, spell or ability, that targets a card in a graveyard (any player's; a trigger counts, read from `StackMeta`). It does not match an opponent's upkeep, and not an opponent's ability that targets nothing in a graveyard. `restrict` keeps the windows ADR 0009 decided. `interacts` is unchanged: `graveyard` is stack tier and not threat-gated, as `restrict` was.
+
+**The retag.** The eight rows that exile from graveyards were `restrict` and declare `graveyard`: Soul-Guide Lantern, Scavenger Grounds and Silent Gravestone (no target), Stonespeaker Crystal (its "any number of target players' graveyards" allows zero targets), and Famished Ghoul, Rag Dealer, Unlicensed Hearse and Carrion Beetles, declared once in `ExileFromASingleGraveyardAbility`. Of the 25 rows that declared `restrict`, 15 stay: Ranger-Captain of Eos, the turn-off-protection rows (Shadowspear, Detection Tower, Arcane Lighthouse, Knight and Clergy of the Holy Nimbus, Bone Shaman, Nullhide Ferox, the Glittering pair), Aether Storm and Experimental Frenzy (ruling 5), Freed from the Real, Kill Switch and War Tax. The other two declare the union of every answer (Isochron Scepter, Baron Helmut Zemo) and gain `graveyard` beside `restrict`, since an instant can exile from a graveyard (Surgical Extraction). A graveyard exile that always names a target (Scavenging Ooze, Tormod's Crypt) still declares nothing: its move carries `has_targets`, which already stops smart auto-pass.
+
+**The bot.** `defensiveAnswerOnly` (the rows held when the stack is empty) accepts `graveyard` beside `restrict`, so the eight rows are held as they were. Nothing else in the heuristic reads `restrict`.
+
+**Wire.** Additive. `purpose.answers` may now contain `"graveyard"`, listed after `"restrict"`. A reader that prints the names as they come (`boardtext`'s "(answers: …)" label, the MCP seat's move list) passes it through; the client does not enumerate the kinds. `SnapshotSchemaVersion` stays 7; `Answers` holds no closure.
+
+**Guards.** `TestGraveyardExileRowsDeclareGraveyard` pins the eight rows, `TestRestrictRowsAreNotGraveyardHate` fails on a row that declares `restrict` alone with a graveyard-exile label, and `TestUnionRowsDeclareGraveyard` pins the two unions (`internal/cards/effects`). The match is pinned by `TestAnswersNowByKind`, `TestAnswersNowGraveyardRowsOfTheCatalog` and `TestAnswersNowGraveyardUnion` (`internal/legal`), and four frames in `smart_pass_agreement.json` carry its stop and pass verdicts to the browser's and the seat's readers.
