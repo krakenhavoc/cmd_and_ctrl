@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 )
 
@@ -42,6 +43,13 @@ type prebuiltDeckInfo struct {
 	// Colors is the deck's colour identity as single WUBRG letters,
 	// so the picker can render pips without parsing the list.
 	Colors []string `json:"colors,omitempty"`
+	// CommanderCards is the commander resolved against the card index
+	// (ADR 0212 phase B1), the shape GET /me/decks gives a saved deck's:
+	// the printing the picker's tile draws through /cards/{id}/image and
+	// the colour identity. An id, never an image URL: the art itself is
+	// the image route's, which wants a session. Omitted with no card
+	// index.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
 	// CardCount is the physical size — 100 for a legal Commander
 	// deck, counting every copy of a basic land.
 	CardCount int `json:"card_count"`
@@ -84,17 +92,31 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 			cards = append(cards, prebuiltCard{Name: c.Name, Count: c.Copies()})
 		}
 		out = append(out, prebuiltDeckInfo{
-			ID:        d.ID,
-			Name:      d.Name,
-			Archetype: d.Archetype,
-			Summary:   d.Summary,
-			Commander: d.Commander.Name,
-			Colors:    colors,
-			CardCount: d.Size(),
-			Coverage:  covs[d.ID],
-			Cards:     cards,
+			ID:             d.ID,
+			Name:           d.Name,
+			Archetype:      d.Archetype,
+			Summary:        d.Summary,
+			Commander:      d.Commander.Name,
+			Colors:         colors,
+			CommanderCards: catalogCommanderCards(c.Cards, d.Commander.Name),
+			CardCount:      d.Size(),
+			Coverage:       covs[d.ID],
+			Cards:          cards,
 		})
 	}
+	return out
+}
+
+// catalogCommanderCards resolves a catalog deck's commander for the
+// picker's art and pips (ADR 0212 phase B1). It is libraryCommanders,
+// the code GET /me/decks resolves a saved deck's commanders with, so a
+// pre-built tile and a saved deck's tile get the same printing rule:
+// the index's playable printing, or the oracle's representative one when
+// that has no image, and no id at all rather than one that 404s. A
+// catalog deck names no printing, so it takes the default one. nil with
+// no card index or no commander.
+func catalogCommanderCards(idx *cards.Index, commander string) []myDeckCommander {
+	out, _ := libraryCommanders(idx, []string{commander}, nil)
 	return out
 }
 
@@ -107,6 +129,11 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 // effects registry and are true regardless, and the honest failure
 // for a deployment with no dump is the 503 on installing a deck, not
 // an empty picker that implies there are none.
+//
+// The session gate is also what keeps card art from a visitor with no
+// session (ADR 0092 decision 1): commander_cards carries printing ids,
+// and the art behind them is /cards/{id}/image, which wants a session
+// too. The route is never mounted on the public handler.
 func prebuiltDecks(c Config, w http.ResponseWriter, _ *http.Request) error {
 	return writeJSON(w, http.StatusOK, prebuiltDecksResponse{Decks: prebuiltDeckCatalog(c)})
 }

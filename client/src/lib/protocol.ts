@@ -715,8 +715,12 @@ export interface LoopNoticeView {
 // set) or "proposed" (count more iterations, ending at end).
 export interface LoopRecordingView {
   recorder: string;
+  // "armed" | "recording" | "ready" | "proposed" (docs/protocol.md).
   status: string;
   steps: number;
+  // #4736: recording, and the recorder asked to stop without priority;
+  // the closure check runs at their next priority with nothing open.
+  stopping?: boolean;
   name?: string;
   net?: string;
   iteration?: LoopStepView[];
@@ -953,6 +957,27 @@ export interface LegalMoveView {
   // viewer is a defending player in this combat. Only ever set beside
   // combat_interacts.
   combat_defender_only?: boolean;
+  // #2877 (ADR 0142's amendment of 2026-10-30): true on a cast whose
+  // announcement is declared to answer nothing: Opt, Brainstorm, Fact
+  // or Fiction. It targets nothing on the stack and gives up no
+  // creature as a cost. Smart autopass does not count it as a response
+  // to an opponent's stack item unless gameplay.respondValueInstants
+  // is on; in combat and at an opponent's end step it is an instant
+  // like any other. Never on an activation. Absent on older servers
+  // and on every cast that declares something else or nothing.
+  value_only?: boolean;
+  // #4734 (ADR 0009's amendment of 2026-10-30): on a cast, activation or
+  // mana move whose declared answers (ADR 0142) are something other than
+  // `value` alone, whether one of them can answer what is happening now:
+  // true when one matches the window the viewer holds priority in, false
+  // when none does. The server computes it for the viewer's seat. Absent
+  // on a move that keeps today's class (it declares nothing, exactly
+  // `value`, or `remove`) and on older servers. A reader that knows it
+  // reads it first and ignores interacts, combat_interacts and
+  // combat_defender_only on that move, which keep their meaning for
+  // every other reader. In the viewer's own main phase with an empty
+  // stack a cast or activation is a play whatever this says.
+  answers_now?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never
@@ -2132,6 +2157,10 @@ export interface PendingChoiceView {
   life_cost?: number;
   // Computed affordability of the mandatory life, including life locks.
   life_cost_unpayable?: boolean;
+  // #4613: populated for kind "confirm" — the poison counters the ACCEPT
+  // branch gives the chooser (a ward of "Get five poison counters"). Absent
+  // when it gives none. Always payable; the label already says it.
+  poison_cost?: number;
   // #2040: a "confirm" whose accept would continue a loop the table is
   // already in (Channel Harm against Channel Harm). A hint for bots;
   // both answers stay legal and the client need not show it.
@@ -2195,6 +2224,10 @@ export interface PendingChoiceView {
   // ModeSpec index each label belongs to and that is what the answer
   // sends back: `resolve_choice {choice_id, modes: [i, …]}`.
   // Repeats are legal only when mode_repeatable (CR 700.2d).
+  // mode_min is absent when it is 0: a "choose up to" prompt, answered
+  // with `modes: []` to choose none, which removes the ability (CR
+  // 700.2b). "Choose up to X" (#4617) sends the X paid for the spell,
+  // capped at the bullets offered, as mode_max, and the X in `reason`.
   mode_options?: string[];
   mode_indexes?: number[];
   mode_min?: number;
@@ -2308,6 +2341,14 @@ export interface DamageAssignmentView {
   blocker_card_ids: string[];
   attacker_power: number;
   allow_trample?: boolean;
+  // CR 510.1c, Wolverine, Claws Out: "you may have [it] assign its combat
+  // damage as though it weren't blocked". Besides the division among
+  // blocker_card_ids the answer may put the whole attacker_power on what
+  // the attacker attacks: every blocker 0, trample_to_player =
+  // attacker_power, no lethal damage owed to any blocker.
+  // blocker_card_ids may be empty (every blocker has left combat). The
+  // sheet shows the player row and never auto-sends the suggested split.
+  as_though_unblocked?: boolean;
   has_deathtouch?: boolean;
   // #1706, CR 510.1d: the card in attacker_card_id is a BLOCKER that
   // blocks every creature in blocker_card_ids, and its controller
@@ -3166,6 +3207,14 @@ export interface OptionalCostView {
   // cast_spell as `blight_ids`.
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #4642: a "you may behold a Hero" offer (CR 701.4a) — AdditionalCostView's
+  // `reveal` / `behold` / `reveal_options`. `reveal_options` is your cards
+  // that could pay it (hand cards first, then permanents); present-and-empty
+  // means there is nothing to behold and the offer cannot be taken. Taken, it
+  // asks for exactly one, which rides cast_spell as `reveal_ids`.
+  reveal?: boolean;
+  behold?: boolean;
+  reveal_options?: LegalTargetsView;
   // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
   // cast's tap cost: the board opens the tap picker from it and sends
   // the picks as `tap_ids` (lib/targeting.ts tapCostFor).
@@ -3359,9 +3408,25 @@ export interface PayCardsView {
 }
 
 // One branch of an either payment (ADR 0187 §5).
+// AbilityCostBranchView is one way to pay an either/or activation cost
+// (#4566). The discard branch's options and verdict reach the
+// controller only.
+export interface AbilityCostBranchView {
+  // "Sacrifice an artifact", "Discard a nonland card".
+  label: string;
+  // Whether the activator can pay this branch now (CR 118.3).
+  payable?: boolean;
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
+  discard_cost_n?: number;
+  discard_cost_label?: string;
+  discard_cost_options?: string[];
+}
+
 export interface PayOptionView {
   // "sacrifice", "discard", "exile_graveyard", "life", "damage",
-  // "energy" or "nothing".
+  // "energy", "nothing" or — #4566, a ward with two ways to pay —
+  // "mana" (words "pay {2}"), answered with pay_option alone.
   action: string;
   // How many cards one payment names, or the amount of life, damage or
   // energy. Absent for a branch with no amount.
@@ -3686,6 +3751,11 @@ export interface ActivatedAbilityView {
   // activation's `x_value`; min / max are then unset (0 / 0).
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #4566: the branches of an either/or cost ("Sacrifice an artifact or
+  // discard a nonland card"). The client asks which branch first, runs
+  // that branch's own picker as for a row printing the clause alone, and
+  // sends the index as `cost_branch`. Absent on every other row.
+  cost_branches?: AbilityCostBranchView[];
   // #660: the discard cost components (CR 702.29a and the general
   // "Discard a creature card" clause). `discard_self` is cycling's
   // "Discard this card" — advisory only, there is nothing to pick,
@@ -3778,6 +3848,15 @@ export interface ActivatedAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // "Exile any number of black cards from your graveyard with fifteen or
+  // more black mana symbols among their mana costs" (Baron Helmut Zemo's
+  // boast): `exile_cost_n` is absent, any number of `exile_cost_options`
+  // may be picked, and the picks are enough once their printed costs hold
+  // `exile_cost_symbol_min` symbols of the colour letter
+  // `exile_cost_symbol_color`. The server refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_symbol_color?: string;
+  exile_cost_symbol_min?: number;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -4168,6 +4247,11 @@ export interface LegalTargetsView {
   // candidate whose key differs from a pick of THIS clause, and says
   // the rule. A card missing from `keys` fits any group.
   same?: TargetDifferenceView;
+  // #4616: the third rule — the picks' values may total no more than
+  // `max` ("total mana value 6 or less"). The picker greys a candidate
+  // whose value would take THIS clause's picks past `max`, and says the
+  // rule. A card missing from `values` fits no total.
+  total?: TargetTotalView;
   // #1559: "with mana value X or less", X the announced X. Like
   // count_from_x, the server built this legal set before X was chosen,
   // so it is a superset: the picker drops every card whose
@@ -4227,6 +4311,16 @@ export interface DivideView {
 export interface TargetDifferenceView {
   label: string;
   keys?: Record<string, string>;
+}
+
+// TargetTotalView is LegalTargetsView.total (#4616): `label` completes
+// "those targets must …" ("have total mana value 6 or less"), `max` is
+// the inclusive ceiling, and `values` maps each legal card to what it
+// adds to the total.
+export interface TargetTotalView {
+  label: string;
+  max: number;
+  values?: Record<string, number>;
 }
 
 // TargetSharesView is LegalTargetsView.shares (ADR 0137's amendment):
@@ -4493,6 +4587,8 @@ export interface CardFaceView extends CastSurfaceView {
 
 export interface NoUntapView {
   static?: boolean;
+  /** "Can't become untapped" (#4574): no untap of any kind works. Sent with `static`. */
+  never?: boolean;
   next?: string[];
 }
 

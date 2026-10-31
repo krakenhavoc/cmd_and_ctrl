@@ -64,6 +64,8 @@
     stepTrample,
     toAnswer,
     trampleShort,
+    unblockedMixed,
+    assignAllToPlayer,
     type DamageShares,
   } from "../../damageAssignment";
   import {
@@ -366,7 +368,7 @@
   // #4134: "you may search" has an answer beside "Find nothing": not
   // searching at all, which skips the shuffle and the search event. It is
   // only on the table BEFORE the search begins (looking at the list is
-  // searching, CR 701.19), so the server sends search_optional only on the
+  // searching, CR 701.23a), so the server sends search_optional only on the
   // undecided prompt.
   const searchOptional = $derived(isSearch && active?.search_optional === true);
   // #4134: an optional search asks first, with no candidate list.
@@ -1194,7 +1196,10 @@
   const isModePick = $derived(active?.kind === "mode_pick");
   const modeLabels = $derived(active?.mode_options ?? []);
   const modeIndexes = $derived(active?.mode_indexes ?? []);
-  const modeMin = $derived(active?.mode_min ?? 1);
+  // The wire omits a zero `mode_min` (omitempty), so an absent one is a
+  // "choose up to" prompt that may be answered with no bullet (#4617,
+  // CR 700.2b), not a choose-one.
+  const modeMin = $derived(active?.mode_min ?? 0);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
   // ADR 0097 (#1749): every bullet in printed order, the ones this
@@ -1225,7 +1230,9 @@
   );
   function toggleMode(idx: number): void {
     if (modeSingle) {
-      modePicks = [idx];
+      // "Choose up to one": a second click takes the bullet back, so
+      // choosing none stays reachable after a pick.
+      modePicks = modeMin === 0 && modePicks[0] === idx ? [] : [idx];
       return;
     }
     if (!modeRepeatable && modePicks.includes(idx)) {
@@ -1764,7 +1771,8 @@
       choiceID: c.id,
       attackerID: frame.attacker_card_id,
       power: frame.attacker_power,
-      allowTrample: !!frame.allow_trample && !frame.blocker_divides,
+      allowTrample:
+        (!!frame.allow_trample || !!frame.as_though_unblocked) && !frame.blocker_divides,
       blockerDivides: !!frame.blocker_divides,
       lethal,
       shares: damageShares,
@@ -1779,6 +1787,11 @@
     if (!sameShares(s.shares, mine)) damageShares = s.shares;
   });
   onDestroy(() => publishBoardDamage(null));
+
+  function assignAllToDefender(): void {
+    if (!damageFrame) return;
+    damageShares = assignAllToPlayer(damageFrame);
+  }
 
   function setDamageAmount(id: string, raw: string): void {
     damageShares = setBlocker(damageShares, id, Number(raw));
@@ -1989,12 +2002,15 @@
       };
     }
     if (isModePick) {
+      // An empty answer is a real one on an up-to prompt (#4617): say
+      // so, rather than offer "Choose" with nothing chosen.
+      const verb = modeMin === 0 && modePicks.length === 0 ? "Choose none" : "Choose";
       return {
         label: triggerSourceName(c.source),
         src: c.reason || "choose one",
         count: `${modePicks.length} / ${modeMax > 0 ? modeMax : "any"}`,
         width: 560,
-        primary: confirmAction("Choose", answerModes, { disabled: !canConfirmModes }),
+        primary: confirmAction(verb, answerModes, { disabled: !canConfirmModes }),
         secondary: [],
       };
     }
@@ -2069,7 +2085,15 @@
                 ? `Assign exactly ${damageFrame.attacker_power}`
                 : undefined,
         }),
-        secondary: [],
+        secondary: damageFrame.as_though_unblocked
+          ? [
+              {
+                id: "all-to-player",
+                label: "All to the defending player",
+                onPress: assignAllToDefender,
+              },
+            ]
+          : [],
       };
     }
     if (isDivideShield && divideFrame) {
@@ -2670,6 +2694,10 @@
         {#if modeRepeatable}
           You may choose the same mode more than once.
         {/if}
+        {#if modeMin === 0}
+          You may choose up to {modeMax > 0 ? modeMax : "any number"}, or none; with none, the
+          ability does nothing.
+        {/if}
       </p>
       <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
         {#each modeRows as row (row.idx)}
@@ -2804,6 +2832,21 @@
           is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
           {damageFrame.attacker_power} damage among them however you like.
         </p>
+      {:else if damageFrame.as_though_unblocked}
+        <!-- CR 510.1c, Wolverine, Claws Out: divide the damage among the
+               blockers as usual, or assign all of it as though unblocked. -->
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          {damageFrame.blocker_card_ids.length === 0
+            ? "is blocked, but nothing is blocking it now."
+            : `is blocked by ${damageFrame.blocker_card_ids.length} creature${damageFrame.blocker_card_ids.length === 1 ? "" : "s"}.`}
+          Divide its {damageFrame.attacker_power} damage among
+          {damageFrame.blocker_card_ids.length === 0 ? "no one" : "them"}, or assign all of it to
+          the defending player as though it weren't blocked.
+          {#if damageFrame.has_deathtouch}
+            Deathtouch makes 1 damage lethal.
+          {/if}
+        </p>
       {:else}
         <p class="prompt-hint">
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
@@ -2857,9 +2900,13 @@
             </span>
           </li>
         {/each}
-        {#if damageFrame.allow_trample && !damageFrame.blocker_divides}
+        {#if (damageFrame.allow_trample || damageFrame.as_though_unblocked) && !damageFrame.blocker_divides}
           <li class="assign-row trample">
-            <span class="assign-name">Defending player (trample)</span>
+            <span class="assign-name"
+              >Defending player ({damageFrame.allow_trample
+                ? "trample"
+                : "as though unblocked"})</span
+            >
             <span class="assign-step">
               <button
                 type="button"
@@ -2889,7 +2936,12 @@
           </li>
         {/if}
       </ul>
-      {#if damageShortOfLethal.length > 0}
+      {#if unblockedMixed(damageFrame, damageShares)}
+        <p class="prompt-hint sub warn">
+          Either divide the damage among the blockers or assign all of it to the defending player,
+          not both.
+        </p>
+      {:else if damageShortOfLethal.length > 0}
         <p class="prompt-hint sub warn">
           Trample damage goes over only once every blocker has lethal damage. Short:
           {damageShortOfLethal.map(blockerName).join(", ")}.

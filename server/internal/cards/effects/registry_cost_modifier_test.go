@@ -55,24 +55,6 @@ func TestRegisterRefusesMalformedCostModifiers(t *testing.T) {
 			want: "CostFloor",
 		},
 		{
-			name: "a Unit on a self CostReduction",
-			spec: Spec{SelfCostModifiers: []game.CostModifier{func() game.CostModifier {
-				m := CostsLess(1, "coloured reduction")
-				m.Unit = unitOf(t, "{W}")
-				return m
-			}()}},
-			want: "something other than an increase",
-		},
-		{
-			name: "a Unit on a battlefield CostReduction",
-			spec: Spec{CostModifiers: []game.CostModifier{func() game.CostModifier {
-				m := CostsLess(1, "coloured reduction")
-				m.Unit = unitOf(t, "{1}")
-				return m
-			}()}},
-			want: "something other than an increase",
-		},
-		{
 			name: "a Unit on a battlefield CostFloor",
 			spec: Spec{CostModifiers: []game.CostModifier{func() game.CostModifier {
 				m := CostsAtLeast(3, "coloured floor")
@@ -122,7 +104,7 @@ func TestRegisterRefusesMalformedCostModifiers(t *testing.T) {
 
 // The shapes the guards must let through: a strive unit of generic
 // and single-colour symbols on an increase, a plain self reduction,
-// and a floor in the battlefield slot.
+// a coloured reduction (#4707) and a floor in the battlefield slot.
 func TestRegisterAcceptsWellFormedCostModifiers(t *testing.T) {
 	spec := Spec{
 		OracleID: "test-registry-cost-modifier-ok",
@@ -130,6 +112,7 @@ func TestRegisterAcceptsWellFormedCostModifiers(t *testing.T) {
 		SelfCostModifiers: []game.CostModifier{
 			CostsMorePerTargetBeyondFirst("{1}{W}", "Strive"),
 			CostsLess(1, "{1} less"),
+			ActivationCostsLessMana("{1}{U}", "{1}{U} less"),
 		},
 		CostModifiers: []game.CostModifier{CostsAtLeast(3, "Trinisphere")},
 	}

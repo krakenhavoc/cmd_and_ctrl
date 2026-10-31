@@ -34,6 +34,7 @@ import {
   isMultiPick,
   isPicked,
   legalTargetCount,
+  pickedTotal,
   type ShareScope,
   type TargetingMode,
   type TargetingState,
@@ -179,6 +180,12 @@ export function targetingDetail(state: TargetingState, view?: GameView | null): 
   if (state.different) parts.push(`targets must ${state.different.label}`);
   // #1807: "from a single graveyard".
   if (state.same) parts.push(`targets must ${state.same.label}`);
+  // #4616: "total mana value 6 or less", with the running total once a
+  // pick is made, so the player can see how much room is left.
+  if (state.total) {
+    parts.push(`targets must ${state.total.label}`);
+    if (state.picked.length > 0) parts.push(`total ${pickedTotal(state)} of ${state.total.max}`);
+  }
   const doubled = doubledTriggerLabel(state.doubledBy, state.doubledByName);
   if (doubled) parts.push(doubled);
   const divide = divideText(state);

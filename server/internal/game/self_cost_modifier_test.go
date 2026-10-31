@@ -346,7 +346,7 @@ func mustParse(t *testing.T, s string) *ParsedCost {
 }
 
 // ADR 0048 §4, for the self slot: a negative amount refuses the cast
-// and names the card; so does a mana unit on a reduction, and a unit on
+// and names the card; so does a mana unit on a floor (a reduction may carry one since #4707), and a unit on
 // an increase that carries {X}, a hybrid or a Phyrexian symbol (§16).
 // effects.Register refuses all of these at boot; this is the engine's
 // own refusal for a catalog hook that got past it.
@@ -358,7 +358,7 @@ func TestBrokenSelfModifierRefusesTheCast(t *testing.T) {
 	}
 	withCatalogDefs(t, map[string]*CardDef{
 		broken:        {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "sign error", Amount: fixed(-2)}}},
-		badUnit:       {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "coloured reduction", Amount: fixed(1), Unit: mustParse(t, "{W}")}}},
+		badUnit:       {SelfCostModifiers: []CostModifier{{Kind: CostFloor, Label: "coloured floor", Amount: fixed(3), Unit: mustParse(t, "{W}")}}},
 		xUnit:         {SelfCostModifiers: increaseOf("{X}")},
 		hybridUnit:    {SelfCostModifiers: increaseOf("{1}{W/U}")},
 		phyrexianUnit: {SelfCostModifiers: increaseOf("{W/P}")},

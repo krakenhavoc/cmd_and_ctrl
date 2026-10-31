@@ -58,6 +58,7 @@ func Register(spec Spec) {
 		if spec.Modes.AtRandom {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
+		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -79,6 +80,7 @@ func Register(spec Spec) {
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkPowerUp(spec)
+	checkPowerUpExtras(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
@@ -109,6 +111,7 @@ func Register(spec Spec) {
 			}
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
+			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 			}
@@ -147,6 +150,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
+			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -287,12 +291,15 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	checkCostOpensFlash(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
 	checkReplicate(spec)
 	// #3999: an optional "you may waterbend {N}".
 	checkOptionalWaterbend(spec)
+	// #4642: an optional "you may behold a <type>".
+	checkOptionalBehold(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -676,6 +683,8 @@ func Register(spec Spec) {
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
 		checkAbilityCostModifiers(spec.Name, i, ab)
+		// #4566: an either/or part of the cost (checkOrCost).
+		checkOrCost(spec.Name, i, ab.Cost)
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		checkGrantorOnlyIsGranted(spec.Name, i, ab)
@@ -814,6 +823,10 @@ func Register(spec Spec) {
 		// #2190: and neither can "Discard a card with mana value X".
 		if game.DiscardManaValueX(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
+				spec.Name, i))
+		}
+		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles any number of cards — a CR 602 ability's cost only",
 				spec.Name, i))
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
@@ -1311,6 +1324,10 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
 	case spec.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	case spec.Total != nil:
+		// #4616: the total rule is read by the target readers only; no
+		// sacrifice payer or cost picker sums one.
+		panic(fmt.Sprintf("effects.Register: %q %s has a total rule on its sacrifice clause — only a target clause reads one", card, where))
 	}
 	checkSacrificeSetRule(card, where, spec)
 	checkSacrificeDifferentRule(card, where, spec)
@@ -1758,6 +1775,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		if s := spec.Clause(i).Same; s != nil && (s.Key == game.TargetShareNone || s.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a sameness rule with no Key or no Label — build it with FromASingleGraveyard", name, i))
 		}
+		checkTotalRule(name, i, spec.Clause(i))
 		// #1723: "mana value X or less" and "mana value X" are
 		// different clauses — no printed card is both, and a spec
 		// that set both would have the second WithManaValue...X()
@@ -1785,6 +1803,32 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 	}
 }
 
+// checkTotalRule is #4616's guard for TargetSpec.Total, the "total mana
+// value N or less" set rule. The rule needs a statistic, a Label and a
+// ceiling that is not negative. It sums CARDS, so a clause that can
+// pick a player is refused (a player has no mana value). And it stands
+// alone: the fillability count and the enumerator answer one set rule
+// per clause, and no printed card has a total beside a key rule or an
+// X bound.
+func checkTotalRule(name string, i int, c *game.TargetClause) {
+	r := c.Total
+	if r == nil {
+		return
+	}
+	switch {
+	case r.Stat == game.TargetTotalNone || r.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule with no statistic or no Label — build it with TotalManaValueAtMost", name, i))
+	case r.Max < 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule with a negative ceiling", name, i))
+	case c.Players:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d sums a total over a clause that can pick a player", name, i))
+	case c.Different != nil || c.Same != nil || len(c.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule beside another set rule — no reader searches for a set under both", name, i))
+	case c.CountFromX || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
+	}
+}
+
 // checkOpponentChoice validates an "of an opponent's choice" clause
 // (#2055, ADR 0019's 2026-10-16 amendment). "They control" means nothing
 // without an opponent choosing; and the clause is a plain one: chosen by
@@ -1805,7 +1849,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 		switch {
 		case c.ChosenByOpponent:
 			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen both by an opponent and by the triggering player", name, i))
-		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 			panic(fmt.Sprintf("effects.Register: %q target clause %d is the triggering player's choice and is random, divided or related — no printed card is", name, i))
 		}
 	}
@@ -1813,7 +1857,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 		return
 	}
 	switch {
-	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
 	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
@@ -2008,11 +2052,39 @@ func checkActivatedAtRandom(name string, spec *game.TargetSpec) {
 // raise or "hasn't been chosen" memory, none of which a random pick
 // can honour.
 func checkAtRandom(name string, ms *game.ModeSpec) {
+	if ms != nil && !ms.AtRandom && !ms.NotRandomIf.IsZero() {
+		panic(fmt.Sprintf("effects.Register: %q declares \"you choose one instead\" without \"choose one at random\" — build it with ChooseOneAtRandom(…).ChosenByYouInsteadIf(…)", name))
+	}
 	if ms == nil || !ms.AtRandom {
 		return
 	}
 	if ms.Min != 1 || ms.Max != 1 || ms.Repeatable || ms.RaisedMax != 0 || ms.NotChosen != game.ModeMemoryNone {
 		panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" that is not a plain choose-one — build it with ChooseOneAtRandom", name))
+	}
+}
+
+// checkUpToCastX validates "choose up to X" read off the spell's X
+// (#4617, game.ModeSpec.UpToCastX). `t` is the trigger that owns the
+// spec, or nil for a spell's or an activated ability's modes, which
+// are refused: CR 107.3m gives the spell's X only to the permanent's
+// ENTERS trigger, a spell announces its own X with its modes, and no
+// printed activated ability says it. On a trigger it must watch
+// EventETB and nothing else, start at zero, cap at its bullets and
+// carry no repeat, raise, random pick or "hasn't been chosen" memory,
+// none of which the count reads.
+func checkUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbility) {
+	if ms == nil || !ms.UpToCastX {
+		return
+	}
+	if t == nil {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" on %s — only an enters trigger reads the X its spell was cast for (CR 107.3m)", name, owner))
+	}
+	if len(t.Watches) != 1 || t.Watches[0] != game.EventETB {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" on a trigger that is not an enters trigger — CR 107.3m gives the spell's X to an enters trigger only", name))
+	}
+	if ms.Min != 0 || ms.Max != len(ms.Options) || ms.Repeatable || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() ||
+		ms.AtRandom || ms.NotChosen != game.ModeMemoryNone {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" that is not a plain up-to count — build it with ChooseUpToX", name))
 	}
 }
 
@@ -2149,6 +2221,23 @@ func checkBoast(spec Spec) {
 		}
 		if l.Limit < 2 {
 			panic(fmt.Sprintf("effects.Register: %q boast limit %d is %d — the printed limit is already 1, so a limit below 2 changes nothing", spec.Name, i, l.Limit))
+		}
+	}
+}
+
+// checkPowerUpExtras refuses a PowerUpExtras entry that would reach every
+// permanent of every player, has no printed clause, or adds nothing
+// (#4571). checkBoast's reasons.
+func checkPowerUpExtras(spec Spec) {
+	for i, x := range spec.PowerUpExtras {
+		if x.Applies == nil {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d has no Applies — it would reach every permanent of every player, always", spec.Name, i))
+		}
+		if x.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d has no Label — the label is the printed clause", spec.Name, i))
+		}
+		if x.Times < 1 {
+			panic(fmt.Sprintf("effects.Register: %q power-up extra %d adds %d activations — it must add at least one", spec.Name, i, x.Times))
 		}
 	}
 }
@@ -2395,7 +2484,21 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards — the X form is a cast's additional cost only (#1948)",
 			name, where))
 	}
-	if ec.N <= 0 {
+	if ec.AnyNumber {
+		// "Exile any number of black cards from your graveyard with fifteen
+		// or more black mana symbols among their mana costs" (Baron Helmut
+		// Zemo): no printed count, a floor on the symbols instead.
+		if ec.N != 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
+				name, where, ec.N))
+		}
+		if ec.SymbolTotal == nil || ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1 {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no symbol floor — "+
+				"a clause with no floor would be free", name, where))
+		}
+	} else if ec.SymbolTotal != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s names a symbol floor without AnyNumber", name, where))
+	} else if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
 			name, where, ec.N))
 	}

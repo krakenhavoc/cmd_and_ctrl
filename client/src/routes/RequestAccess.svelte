@@ -38,7 +38,7 @@
   title={retry ? "Discord didn't answer — try again" : "Ask for an account on our Discord"}
   lede={retry
     ? "We couldn't check your account with Discord just now. Checking again usually works; nothing was saved in the meantime."
-    : "Accounts are for members of the C2 Discord who have the Elder Dragon Highlander role. Here's how to get it."}
+    : "Accounts are for members of the CMD & CTRL Discord who have the Elder Dragon Highlander role. Here's how to get it."}
   actions={retry ? checkAgain : undefined}
   width="prose"
 >
@@ -46,7 +46,7 @@
     <li class="step">
       <span class="n" aria-hidden="true">1</span>
       <div class="body">
-        <h2>Join the C2 Discord</h2>
+        <h2>Join the CMD & CTRL Discord</h2>
         <p>Everyone who joins is a Planeswalker: you can chat, find a pod and play as a guest.</p>
       </div>
       {#if invite}

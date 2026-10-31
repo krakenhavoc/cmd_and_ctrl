@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// search_decline_test.go — #4134, CR 701.19: "you may search" has an
+// search_decline_test.go — #4134, CR 701.23: "you may search" has an
 // answer that is not "find nothing". A search that finds nothing is
 // still a search (the library is shuffled, the search event fires); a
 // declined search never happened (neither does).
@@ -162,7 +162,7 @@ func TestOnlyTheChooserMayDecline(t *testing.T) {
 	}
 }
 
-// Looking through the library IS searching (CR 701.19): once the searcher
+// Looking through the library IS searching (CR 701.23a): once the searcher
 // has said yes and been shown the candidates there is no way back. A
 // decline at that point would be a free look that never shuffles.
 func TestABegunSearchCannotBeDeclined(t *testing.T) {

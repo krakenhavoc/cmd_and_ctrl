@@ -42,7 +42,7 @@ func init() {
 		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if !ctx.PaidAltCost("baleful-mastery") {
-				return balefulMasteryExile(ctx)
+				return exileTheFirstTargetIfLegal(ctx)
 			}
 			return ChoosePlayer{
 				Among:    Opponents,
@@ -63,15 +63,5 @@ var balefulMasteryDrawThenExile = ChoosePlayerThen("option-pick/baleful-mastery-
 			return err
 		}
 	}
-	return balefulMasteryExile(ctx)
+	return exileTheFirstTargetIfLegal(ctx)
 })
-
-// balefulMasteryExile is "Exile target creature or planeswalker",
-// re-checked against the item's own targets rather than a captured
-// slice, for the same undo-safety reason.
-func balefulMasteryExile(ctx *Context) error {
-	if ctx.Item == nil || len(ctx.Item.Targets) == 0 || !ctx.IsTargetLegal(ctx.Item.Targets[0]) {
-		return nil
-	}
-	return ExileTarget{Target: ctx.Item.Targets[0].ID}.Apply(ctx)
-}

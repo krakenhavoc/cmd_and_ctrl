@@ -59,6 +59,10 @@ const (
 	// equal to its mana value rather than paying its mana cost."
 	// (Access Maze, #3174).
 	GrantedAltCostLifeFromHandOnceYourTurn = "granted-life-from-hand-once-your-turn"
+	// GrantedAltCostMiracle is "Nonland cards in your hand have miracle
+	// {0}." (Molecule Man). It is game.AltCostKeyGrantedMiracle: the engine
+	// half (the reveal trigger, the cast permission, the window) reads it.
+	GrantedAltCostMiracle = game.AltCostKeyGrantedMiracle
 )
 
 // PaidEmerge reports whether `key` — a StackItem's or a permanent's
@@ -263,6 +267,25 @@ func PayLifeForASpellFromHandOnceEachOfYourTurns() game.GrantedAlternativeCost {
 	}
 }
 
+// MiracleZeroForNonlandCardsInYourHand is Molecule Man's static:
+// "Nonland cards in your hand have miracle {0}." The granted keyword is
+// CR 702.94a's, in the printed shape (game/miracle.go): the offer is the
+// price, claimable only under the hand permission the revealed trigger's
+// resolution grants, so a card in a hand is not castable for {0} until
+// its owner reveals it as the first card they drew this turn. A land is
+// never offered one (a land is not a spell, CR 305.1).
+func MiracleZeroForNonlandCardsInYourHand() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:           GrantedAltCostMiracle,
+			Label:         "Miracle {0}",
+			ManaCost:      "{0}",
+			RequiresGrant: true,
+		},
+		Zones: []game.ZoneKind{game.ZoneHand},
+	}
+}
+
 // checkGrantedAlternativeCosts refuses a declaration the engine would
 // read wrongly, at boot: a key outside the namespace (it could shadow a
 // card's own offer, or be shadowed by one), a key declared twice, and a
@@ -294,6 +317,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValue != nil && *gr.MaxManaValue < 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative MaxManaValue", name, o.Key))
 		}
+		if len(gr.SpellsAnyOf) > 0 && gr.SpellsText == "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a SpellsAnyOf and no SpellsText — the ability row words it", name, o.Key))
+		}
 		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}
@@ -313,8 +339,8 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 			checkEmerge(name, o)
 		}
 		if o.Life != 0 || (o.PaysCards() && !emerge) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
-			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash || o.Blitz ||
-			o.EntersWithCounterName != "" || o.FaceDown != nil || o.RequiresGrant || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
+			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash || o.Blitz || o.Sneak ||
+			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))
 		}
 	}

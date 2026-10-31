@@ -118,6 +118,14 @@ const (
 	// do to a learn is replace it (CR 614.1a: "if you would learn, …
 	// instead"), which is KeywordInstead, or leave it alone.
 	KeywordActionLearn KeywordAction = "learn"
+
+	// KeywordActionConnive is connive (CR 701.50a, connive_action.go).
+	// Its count is the N of "connive N" (1 for a plain connive; a
+	// connive 0 is no event, CR 701.50e, so the window never opens on
+	// it). The conniving permanent is the event's Source and the player
+	// who controls it, as it connives, is the Actor. A replacement can
+	// rewrite the count and add cards drawn first (ConniveExtraDraws).
+	KeywordActionConnive KeywordAction = "connive"
 )
 
 // actsAtZeroCount reports whether the action still happens when its
@@ -344,6 +352,10 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		// #3525. Learn is performed by the catalog's body once the
 		// window has left it alone (learn_action.go).
 		return 0, g.applyLearnLocked(ev)
+	case KeywordActionConnive:
+		// #4589. The caller's tail performs the connive with what the
+		// window settled on (connive_action.go).
+		return 0, g.applyConniveLocked(ev)
 	case KeywordActionAmass:
 		// #1236. The count is a number of +1/+1 counters and the rest
 		// of the verb happens whatever it settled on, which is why

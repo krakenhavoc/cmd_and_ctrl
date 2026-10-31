@@ -56,7 +56,7 @@ func (g *Game) castUsesOwnFlashLocked(playerID uuid.UUID, card Card, zone ZoneKi
 	if !printsFlashWithCleanupSacrifice(card) || g.SorcerySpeedOpenLocked(playerID) {
 		return false
 	}
-	return !g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash, false)
+	return !g.castTimingOpenLocked(playerID, card, zone, perm, offer.opensOwnCastWindow(), false)
 }
 
 // flashCleanupSacrificeBody is the delayed trigger's body, a registered

@@ -132,6 +132,12 @@ func devSpawnCard(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 
 	template := deck.ToGameCard(card, body.Commander)
+	name, scryfallID := card.Name, card.ID.String()
+	// #4738: a printing of a predefined token is made as the catalog's
+	// template on this route too (see predefinedTokenFor).
+	if t, ok := predefinedTokenFor(c, card); ok {
+		template, name, scryfallID = t, t.Name, ""
+	}
 	// Actor names the spawner in the game-log line ADR 0075 added.
 	// Everything else about this route is unchanged: no AllowSpawn
 	// check, no undo entry, still 404 outside a dev deployment.
@@ -156,9 +162,9 @@ func devSpawnCard(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	return writeJSON(w, http.StatusOK, devSpawnResponse{
 		Spawned:     out,
-		Name:        card.Name,
+		Name:        name,
 		Zone:        string(zone),
-		ScryfallID:  card.ID.String(),
+		ScryfallID:  scryfallID,
 		InstanceIDs: len(out),
 	})
 }

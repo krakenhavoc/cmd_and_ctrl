@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Ulvenwald Tracker — Creature — Human Shaman {G}, 1/1 (EDHREC rank
 // 2970):
 //
@@ -33,18 +31,7 @@ func init() {
 				TargetCreature("target creature you control", YouControl()),
 				Distinct(TargetCreature("another target creature")),
 			),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				mine, ok := ctx.ClauseTarget(0)
-				if !ok || mine.Kind != game.TargetCard {
-					return nil
-				}
-				other, ok := ctx.ClauseTarget(1)
-				if !ok || other.Kind != game.TargetCard {
-					return nil
-				}
-				return b10Fight(ctx, mine.ID, other.ID)
-			},
+			Effect: slotZeroFightsSlotOne,
 		}},
 	})
 }

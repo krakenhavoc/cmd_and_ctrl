@@ -510,8 +510,13 @@ func checkEitherCost(spec Spec) {
 		if oc.ExileCards != nil {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536)", spec.Name, oc.Key))
 		}
-		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Reveal != nil {
+		if oc.PayLife != 0 || len(oc.Either) > 0 {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		}
+		// An optional reveal is only the behold cost (#4642); checkOptionalBehold
+		// holds its shape.
+		if oc.Reveal != nil && oc.Key != game.BeholdKey {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q reveals a card — only an optional behold (OptionalBehold) may; a mandatory reveal is a branch of EitherCost (ADR 0100)", spec.Name, oc.Key))
 		}
 	}
 	ac := spec.AdditionalCost
@@ -605,6 +610,9 @@ func checkEitherCost(spec Spec) {
 // count or the X form ("exile X cards"), which has no printed count of
 // its own (ExileCost.CountFromX, N zero).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
+	if ec.AnyNumber {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
+	}
 	if ec.Zone() != game.ZoneGraveyard {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — a cast exiles from the graveyard (#3536)", name, where, ec.Zone()))
 	}

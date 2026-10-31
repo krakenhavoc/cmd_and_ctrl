@@ -15,9 +15,12 @@ func legendRuleExemptionRows(v reflect.Value) []string {
 	exemptions, _ := v.Interface().([]LegendRuleExemption)
 	out := make([]string, 0, len(exemptions))
 	for _, e := range exemptions {
-		if e.Whose == LegendRuleExemptEveryone {
+		switch e.Whose {
+		case LegendRuleExemptEveryone:
 			out = append(out, "The legend rule doesn't apply.")
-		} else {
+		case LegendRuleExemptYourCreatures:
+			out = append(out, "The legend rule doesn't apply to creatures you control.")
+		default:
 			out = append(out, "The legend rule doesn't apply to permanents you control.")
 		}
 	}
@@ -115,7 +118,14 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	case gr.Spells.NonLandPermanentOnly:
 		subject = "permanent spells"
 	}
+	if gr.SpellsText != "" {
+		subject = gr.SpellsText
+	}
 	o := gr.Offer
+	if o.Key == AltCostKeyGrantedMiracle {
+		// Molecule Man: the granted keyword, in the printed words.
+		return "Nonland cards in your hand have miracle " + o.ManaCost + "."
+	}
 	if gr.PricedAtManaCost || o.Sacrifice != nil {
 		return "Each " + strings.TrimSuffix(subject, "s") + " you cast can be cast by sacrificing a creature, reducing its cost by that creature's mana value."
 	}

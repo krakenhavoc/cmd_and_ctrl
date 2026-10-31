@@ -36,7 +36,7 @@ type SetDeckInput struct {
 // WaitInput is `wait_for_decision`'s input.
 type WaitInput struct {
 	TimeoutS  int    `json:"timeout_s,omitempty" jsonschema:"seconds to wait, 1 to 50 (default 25)"`
-	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default), my_turn_or_stack (also pass priority on other players' turns while the stack is empty) or smart (also pass the idle steps of your own turn and stack items you hold no response to; stops at your main phases, attacks, blocks and choices)"`
+	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default), my_turn_or_stack (also pass priority on other players' turns while the stack is empty) or smart (also pass the idle steps of your own turn and stack items nothing you hold can answer; stops at your main phases, attacks, blocks, choices, and any step where a move you hold can answer what is happening)"`
 }
 
 // GetStateInput is `get_state`'s input.
@@ -715,7 +715,8 @@ func resolveChoice(v *protocol.GameView, me, choice string) (string, error) {
 
 // mergeMoves appends a card's expanded moves to the window, so every
 // index still names one move of one window, and replaces that card's
-// cut report with the expanded request's.
+// cut report with the expanded request's. A prompt the card raised keeps
+// its own cut: asking for the card does not lift it.
 func mergeMoves(w *window, rep *protocol.LegalMovesPayload, req moveRequest) int {
 	have := map[string]bool{}
 	for _, m := range w.moves {
@@ -731,7 +732,7 @@ func mergeMoves(w *window, rep *protocol.LegalMovesPayload, req moveRequest) int
 	}
 	cuts := w.cuts[:0:0]
 	for _, c := range w.cuts {
-		if !(req.Source != "" && c.Source == req.Source) && !(req.Choice != "" && c.Choice == req.Choice) {
+		if !(req.Source != "" && c.Source == req.Source && c.Choice == "") && !(req.Choice != "" && c.Choice == req.Choice) {
 			cuts = append(cuts, c)
 		}
 	}

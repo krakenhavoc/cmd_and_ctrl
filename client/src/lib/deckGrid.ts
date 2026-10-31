@@ -3,7 +3,7 @@
 // colour-identity aura and the notes line. Pure functions, so the rules
 // have unit tests; DeckCard.svelte only draws what these return.
 
-import { coverageDetail, type MyDeckInfo } from "./myDecks";
+import { coverageDetail, type MyDeckCommander, type MyDeckInfo } from "./myDecks";
 
 export type DeckSort = "recent" | "name" | "coverage";
 
@@ -70,8 +70,13 @@ export interface DeckArt {
   scryfallId: string;
 }
 
-/** deckArt lists the commanders with a printing to draw, partners side by side. */
-export function deckArt(d: MyDeckInfo): DeckArt[] {
+/**
+ * deckArt lists the commanders with a printing to draw, partners side by
+ * side. A saved deck, a pre-built deck and a bot deck all carry
+ * `commander_cards` the same way (GET /me/decks, GET /decks and GET
+ * /bot/options), so each is drawn by the one rule.
+ */
+export function deckArt(d: { commander_cards?: MyDeckCommander[] }): DeckArt[] {
   return (d.commander_cards ?? [])
     .filter((c) => !!c.scryfall_id)
     .map((c) => ({ name: c.name, scryfallId: c.scryfall_id! }));

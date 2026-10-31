@@ -20,6 +20,14 @@ func TestSpawnableTokenKeysAreUnique(t *testing.T) {
 			t.Errorf("%q is in both behaviourTokens and tokenTable", k)
 		}
 	}
+	for k := range predefinedTokens {
+		if _, clash := tokenTable[k]; clash {
+			t.Errorf("%q is in both predefinedTokens and tokenTable", k)
+		}
+		if _, clash := behaviourTokens[k]; clash {
+			t.Errorf("%q is in both predefinedTokens and behaviourTokens", k)
+		}
+	}
 	lib := Tokens()
 	keys := lib.TokenKeys()
 	seen := make(map[string]bool, len(keys))
@@ -32,11 +40,49 @@ func TestSpawnableTokenKeysAreUnique(t *testing.T) {
 			t.Errorf("TokenKeys lists %q but TokenTemplate does not resolve it", k)
 		}
 	}
-	if len(keys) != len(tokenTable)+len(behaviourTokens) {
-		t.Errorf("TokenKeys returned %d keys, want %d", len(keys), len(tokenTable)+len(behaviourTokens))
+	if want := len(tokenTable) + len(predefinedTokens) + len(behaviourTokens); len(keys) != want {
+		t.Errorf("TokenKeys returned %d keys, want %d", len(keys), want)
 	}
 	if _, ok := lib.TokenTemplate("no such token"); ok {
 		t.Error("TokenTemplate resolved a key that is in neither table")
+	}
+}
+
+// #4738: a predefined token (CR 111.10) is looked up by its own name,
+// and what comes back is the catalog's template, the object a card's
+// trigger makes: named as the rule names it, a token of that subtype,
+// keyed on a token key rather than an oracle ID, and never flagged as
+// text the engine does not run.
+func TestPredefinedTokensAreTheirTemplates(t *testing.T) {
+	lib := Tokens()
+	for name := range predefinedTokens {
+		tmpl, ok := lib.PredefinedToken(name)
+		if !ok {
+			t.Errorf("PredefinedToken(%q) found nothing", name)
+			continue
+		}
+		if tmpl.Name != name {
+			t.Errorf("PredefinedToken(%q) is named %q", name, tmpl.Name)
+		}
+		if !tmpl.IsToken() || !tmpl.HasSubtype(name) {
+			t.Errorf("PredefinedToken(%q) has type line %q, want a %s token", name, tmpl.TypeLine, name)
+		}
+		if tmpl.OracleID != "" || !game.IsTokenKey(game.CatalogKey(tmpl)) {
+			t.Errorf("PredefinedToken(%q) keys on %q, want its token key", name, game.CatalogKey(tmpl))
+		}
+		if game.Unimplemented(tmpl) {
+			t.Errorf("PredefinedToken(%q) is flagged unimplemented", name)
+		}
+		if via, _ := lib.TokenTemplate(name); game.CatalogKey(via) != game.CatalogKey(tmpl) {
+			t.Errorf("the Tokens tab's %q is not the predefined template", name)
+		}
+	}
+	// The ones CR 111.10 defines that have no template stay unanswered,
+	// and so does a name that is not a predefined token at all.
+	for _, name := range []string{"Junk", "Shard", "Mutagen", "Walker", "Soldier", "treasure"} {
+		if _, ok := lib.PredefinedToken(name); ok {
+			t.Errorf("PredefinedToken(%q) answered, want nothing", name)
+		}
 	}
 }
 

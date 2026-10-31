@@ -481,6 +481,50 @@ func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 	}
 }
 
+// TestCapLegalMovesKeepsAnswersNowDistinct is #4734: a modal cast whose
+// modes declare different answers can carry no verdict, a false one and
+// a true one, and the capped list keeps one of each, so smart autopass
+// never sees only the announcement that matches nothing.
+func TestCapLegalMovesKeepsAnswersNowDistinct(t *testing.T) {
+	source := uuid.New()
+	moves := make([]LegalMoveView, 0, legalMovesWireCap+4)
+	for i := 0; i <= legalMovesWireCap; i++ {
+		moves = append(moves, LegalMoveView{
+			Type: legal.TypeCastSpell, Kind: legal.KindCast,
+			Label: fmt.Sprintf("filler %d", i), Source: uuid.New(),
+		})
+	}
+	no, yes := false, true
+	moves = append(moves,
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "undeclared mode", Source: source},
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "unmatched mode", Source: source, AnswersNow: &no},
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "matched mode", Source: source, AnswersNow: &yes},
+		LegalMoveView{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "matched again", Source: source, AnswersNow: &yes},
+	)
+
+	out, cut := capLegalMoves(moves)
+	if !cut {
+		t.Fatal("the duplicate matched mode was not folded")
+	}
+	seen := map[string]int{}
+	for _, m := range out {
+		if m.Source != source {
+			continue
+		}
+		switch {
+		case m.AnswersNow == nil:
+			seen["absent"]++
+		case *m.AnswersNow:
+			seen["true"]++
+		default:
+			seen["false"]++
+		}
+	}
+	if seen["absent"] != 1 || seen["false"] != 1 || seen["true"] != 1 {
+		t.Errorf("cap kept %v of %s's announcements, want one absent, one false and one true (%v)", seen, source, labelsOf(out))
+	}
+}
+
 // BenchmarkViewOfGame measures the projection on the same busy
 // four-player board, with and without the enumeration.
 //

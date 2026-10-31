@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // siteShell.render.test.ts — the one site shell (ADR 0156 §3, §6): the
-// header's grouped links for each kind of session, the C2 Discord in the
+// header's grouped links for each kind of session, the CMD & CTRL Discord in the
 // header and the footer only when the server names an invite, the
 // footer's one row, and the page frame's head.
 
@@ -127,12 +127,14 @@ describe("the site header's links", () => {
   });
 });
 
-describe("the C2 Discord in the shell", () => {
+describe("the CMD & CTRL Discord in the shell", () => {
   it("is hidden in the header and the footer while the server names no invite", async () => {
     const header = render(SiteHeader as never, {} as never);
     const footer = render(SiteFooter as never, {} as never);
     await settle();
-    expect(header.container.querySelector('[aria-label="the C2 Discord server"]')).toBeNull();
+    expect(
+      header.container.querySelector('[aria-label="the CMD & CTRL Discord server"]'),
+    ).toBeNull();
     expect(footer.container.textContent).not.toContain("Discord");
   });
 
@@ -144,9 +146,9 @@ describe("the C2 Discord in the shell", () => {
     // The phone layout's panel row (#3877) is a second link to the invite,
     // so the icon is found by its name.
     const icon = header.container.querySelector<HTMLAnchorElement>(
-      `a[aria-label="the C2 Discord server"]`,
+      `a[aria-label="the CMD & CTRL Discord server"]`,
     );
-    expect(icon?.getAttribute("aria-label")).toBe("the C2 Discord server");
+    expect(icon?.getAttribute("aria-label")).toBe("the CMD & CTRL Discord server");
     expect(icon?.getAttribute("target")).toBe("_blank");
     expect(icon?.getAttribute("rel")).toContain("noopener");
     const links = [...footer.container.querySelectorAll("nav a")].map((a) => a.textContent?.trim());

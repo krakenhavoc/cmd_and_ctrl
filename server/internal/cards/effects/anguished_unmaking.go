@@ -21,6 +21,7 @@ func init() {
 		OracleID:     "ad09b3c3-c8e7-481c-8c45-e7f234935117",
 		Name:         "Anguished Unmaking",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: exiles a permanent
 		Targets:      TargetPermanent("target nonland permanent", Nonland()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {

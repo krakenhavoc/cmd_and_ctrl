@@ -13,9 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // enters trigger on top. The incubate is the Aura's controller's, made
 // when the trigger resolves.
 //
-// Declared simplification shared with Wild Growth: the auto-tap planner
-// does not count the extra mana (ADR 0074 §7). Weaker than printed and
-// safe.
+// The auto-tap planner counts the extra mana (ADR 0074, amendment of
+// 2026-10-30): a land under it plans as two mana, the second a pick of
+// any colour that the plan books like any other slot.
 //
 // No simplification of the card itself.
 func init() {

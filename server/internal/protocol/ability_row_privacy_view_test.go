@@ -113,6 +113,9 @@ var activatedRowScopes = map[string]rowScope{
 	// #1297's exile-N-cards clause: its printed count and words, and
 	// the pile it names.
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	// #4455's any-number form (Baron Helmut Zemo): the printed flag and
+	// the printed symbol floor.
+	"ExileCostAnyNumber": rowPublic, "ExileCostSymbolColor": rowPublic, "ExileCostSymbolMin": rowPublic,
 	// ADR 0109 §7: the printed random flag, the printed counts of the
 	// two library components and the put's words.
 	"DiscardCostRandom": rowPublic, "DiscardCostCountFromX": rowPublic, "DiscardCostManaValueX": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,
@@ -127,6 +130,10 @@ var activatedRowScopes = map[string]rowScope{
 	// the X flag are public; the matching HAND cards are not.
 	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic, "RevealHandCost": rowPublic,
 	"RevealCostOptions": rowHiddenZone,
+	// #4566: the branches of an either/or cost stay on the public row;
+	// publicCostBranches clears a discard branch's hand cards and its
+	// verdict inside them (ability_cost_either_view_test.go).
+	"CostBranches": rowPublic,
 }
 
 // manaRowScopes is activatedRowScopes for ManaAbilityView.

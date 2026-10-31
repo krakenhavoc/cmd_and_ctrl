@@ -186,6 +186,13 @@ var (
 	// be captured to build the clause again.
 	reflexiveTargetSpecs = map[string]func(sourceID uuid.UUID, p EffectParams) *TargetSpec{}
 
+	// reflexiveModeSpecs is the same answer for a reflexive trigger that is
+	// MODAL (#4579, Hawkeye, Master Marksman's "When you do, choose up to
+	// that many"): ReflexiveModalBody declares the mode clause beside the
+	// body, keyed the same way, because the trigger has no catalog row to
+	// re-derive it from at restore. The count rides Params.Amount.
+	reflexiveModeSpecs = map[string]func(sourceID uuid.UUID, p EffectParams) *ModeSpec{}
+
 	// eachConditionObjects is the object half of an each-condition
 	// (DelayedEachCondition, ADR 0187 amendment 2026-10-16): the objects
 	// a matching event makes the trigger trigger for, one instance each.
@@ -299,6 +306,40 @@ func ReflexiveBody(key string, fn BodyFunc, targetsFrom func(sourceID uuid.UUID,
 		effectRegistryMu.Unlock()
 	}
 	return ref
+}
+
+// ReflexiveModalBody registers a MODAL CR 603.12 reflexive trigger (#4579):
+// "When you do, choose up to that many —" followed by bullets. The bullets
+// carry their own bodies (ModeOption.Effect) and target clauses, which the
+// engine runs in printed order as the trigger resolves (CR 608.2c), so the
+// body itself does nothing; what is registered is the ModeSpec, built from
+// the creator's source and the Params the trigger was created with (the
+// count of bullets is Params.Amount, fixed when it was created).
+//
+// modesFrom must be a pure function of its two arguments, as targetsFrom
+// is: it is called when the trigger is put on the stack (CR 603.3c) and
+// again when a restored item re-derives its clause.
+func ReflexiveModalBody(key string, modesFrom func(sourceID uuid.UUID, p EffectParams) *ModeSpec) BodyRef {
+	if modesFrom == nil {
+		panic(fmt.Sprintf("game: modal body %q has no mode clause", key))
+	}
+	ref := DelayedBody(key, func(*Game, *StackItem, EffectParams) error { return nil })
+	effectRegistryMu.Lock()
+	reflexiveModeSpecs[key] = modesFrom
+	effectRegistryMu.Unlock()
+	return ref
+}
+
+// reflexiveModeSpecFor re-derives a modal reflexive trigger's mode clause
+// from its body key; nil for a body registered without one.
+func reflexiveModeSpecFor(key string, sourceID uuid.UUID, p EffectParams) *ModeSpec {
+	effectRegistryMu.RLock()
+	fn, ok := reflexiveModeSpecs[resolveEffectAlias(key)]
+	effectRegistryMu.RUnlock()
+	if !ok || fn == nil {
+		return nil
+	}
+	return fn(sourceID, p)
 }
 
 // reflexiveTargetSpecFor re-derives a reflexive trigger's target clause

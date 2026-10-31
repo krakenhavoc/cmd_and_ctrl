@@ -2,6 +2,8 @@ package mcpseat
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -22,6 +24,8 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 	mana := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Tap"}
 	land := legal.Move{Type: "play_land", Kind: legal.KindLand, Label: "Play Forest"}
 	instant := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Deadly Rollick", Source: card}
+	// #2877: a value instant (Opt), declared to answer nothing.
+	opt := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Opt", Source: card, ValueOnly: true}
 	value := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Cycle", Source: card}
 	targeted := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Zap", Source: card, HasTargets: true}
 	outlet := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Sacrifice", Source: card, Interacts: true}
@@ -102,6 +106,10 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 		{"their spell, nothing to answer with", view(1, "precombat_main", oppSpell), []legal.Move{pass, mana}, true},
 		{"their spell, a pure value ability", view(1, "precombat_main", oppSpell), []legal.Move{pass, value}, true},
 		{"their spell, an instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, instant}, false},
+		{"their spell, a value instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, opt}, true},
+		{"their spell, a value instant and an instant", view(1, "precombat_main", oppSpell), []legal.Move{pass, opt, instant}, false},
+		{"their end step, a value instant", view(1, "end", nil), []legal.Move{pass, opt}, false},
+		{"their attack, a value instant", view(1, "declare_attackers", attackerInPlay), []legal.Move{pass, opt}, false},
 		{"their spell, a counterspell", view(1, "precombat_main", oppSpell), []legal.Move{pass, counter}, false},
 		{"their spell, a targeted ability", view(1, "precombat_main", oppSpell), []legal.Move{pass, targeted}, false},
 		{"their spell, a sacrifice outlet", view(1, "precombat_main", oppSpell), []legal.Move{pass, outlet}, false},
@@ -145,6 +153,211 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 		if ok && tc.moves[i].Kind != legal.KindPass {
 			t.Errorf("%s: answered with %q, not the pass", tc.name, tc.moves[i].Label)
 		}
+	}
+}
+
+// TestSmartPassReadsAnswersNow pins #4734 (ADR 0009's amendment of
+// 2026-10-30): the seat reads the server's answers_now first, ahead of
+// interacts, has_targets, targets_stack, combat_interacts and value_only,
+// and a move without it is classed as before. Rule 7's new clause holds a
+// matched move with the stack empty in any window.
+func TestSmartPassReadsAnswersNow(t *testing.T) {
+	me, opp := uuid.New(), uuid.New()
+	card := uuid.New()
+	yes, no := true, false
+	pass := legal.Move{Type: legal.TypePassPriority, Kind: legal.KindPass, Label: "Pass"}
+	// A cast that declares a protective answer, matched or not.
+	castYes := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Flawless Maneuver", Source: card, AnswersNow: &yes}
+	castNo := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Flawless Maneuver", Source: card, AnswersNow: &no}
+	// A row that sets every old flag, so a false verdict has to beat all of them.
+	rowNo := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Ranger-Captain", Source: card,
+		Interacts: true, HasTargets: true, CombatInteracts: true, AnswersNow: &no}
+	rowYes := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Ranger-Captain", Source: card, AnswersNow: &yes}
+	counterNo := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Counter", Source: card, TargetsStack: true, AnswersNow: &no}
+	manaYes := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Sac for mana", Source: card, AnswersNow: &yes}
+	manaNo := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Sac for mana", Source: card, Interacts: true, AnswersNow: &no}
+	// The same flags without a verdict: today's classes.
+	rowOld := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Old row", Source: card, Interacts: true}
+	manaOld := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Old outlet", Source: card, Interacts: true}
+	crewOld := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Crew", Source: card, CombatInteracts: true}
+	special := legal.Move{Type: "special_action", Kind: legal.KindSpecialAction, Label: "Foretell"}
+	// A value cast has no verdict (declared exactly value).
+	opt := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Opt", Source: card, ValueOnly: true}
+
+	view := func(active int, step string, mut func(*protocol.GameView)) *protocol.GameView {
+		v := &protocol.GameView{State: "active",
+			Seats: []protocol.PlayerView{{ID: me.String(), Seat: 0}, {ID: opp.String(), Seat: 1}},
+			Turn:  protocol.TurnView{ActiveSeat: active, Step: step}}
+		if mut != nil {
+			mut(v)
+		}
+		return v
+	}
+	oppSpell := func(v *protocol.GameView) {
+		v.StackItems = []protocol.StackItemView{{ID: "s", Kind: "spell", Controller: opp.String()}}
+	}
+	oppAbility := func(v *protocol.GameView) {
+		v.StackItems = []protocol.StackItemView{{ID: "t", Kind: "triggered", Controller: opp.String(), Label: "Smaug: deals damage"}}
+	}
+	attackOnMe := func(v *protocol.GameView) {
+		v.Battlefield.Cards = []protocol.CardView{{InstanceID: "a", Controller: opp.String(), AttackingTarget: me.String()}}
+	}
+	myAttack := func(v *protocol.GameView) {
+		v.Battlefield.Cards = []protocol.CardView{{InstanceID: "a", Controller: me.String(), AttackingTarget: opp.String()}}
+	}
+	foreignSource := func(v *protocol.GameView) {
+		v.Battlefield.Cards = []protocol.CardView{{InstanceID: card.String(), Controller: opp.String()}}
+	}
+
+	for _, tc := range []struct {
+		name  string
+		v     *protocol.GameView
+		moves []legal.Move
+		want  bool // passes without the model
+	}{
+		// With something of an opponent's on the stack: true holds, false
+		// passes, whatever the old flags say.
+		{"their spell, a matched cast", view(1, "precombat_main", oppSpell), []legal.Move{pass, castYes}, false},
+		{"their spell, an unmatched cast", view(1, "precombat_main", oppSpell), []legal.Move{pass, castNo}, true},
+		{"their spell, a matched row", view(1, "precombat_main", oppSpell), []legal.Move{pass, rowYes}, false},
+		{"their spell, an unmatched row with every old flag", view(1, "precombat_main", oppSpell), []legal.Move{pass, rowNo}, true},
+		{"their spell, an unmatched counter", view(1, "precombat_main", oppSpell), []legal.Move{pass, counterNo}, true},
+		{"their spell, a matched mana move", view(1, "precombat_main", oppSpell), []legal.Move{pass, manaYes}, false},
+		{"their spell, an unmatched mana move that interacts", view(1, "precombat_main", oppSpell), []legal.Move{pass, manaNo}, true},
+		{"their ability, a matched cast", view(1, "precombat_main", oppAbility), []legal.Move{pass, castYes}, false},
+		{"their ability, an unmatched cast and an unmatched row", view(1, "precombat_main", oppAbility), []legal.Move{pass, castNo, rowNo}, true},
+		{"their ability, an unmatched row beside a special action", view(1, "precombat_main", oppAbility), []legal.Move{pass, rowNo, special}, false},
+		{"their spell, an unmatched cast beside a matched row", view(1, "precombat_main", oppSpell), []legal.Move{pass, castNo, rowYes}, false},
+		{"their spell on my turn, a matched cast", view(0, "precombat_main", oppSpell), []legal.Move{pass, castYes}, false},
+		{"their spell on my turn, an unmatched cast", view(0, "precombat_main", oppSpell), []legal.Move{pass, castNo}, true},
+
+		// No verdict: classed as before.
+		{"their spell, an old row", view(1, "precombat_main", oppSpell), []legal.Move{pass, rowOld}, false},
+		{"their spell, an old sacrifice outlet that makes mana", view(1, "precombat_main", oppSpell), []legal.Move{pass, manaOld}, false},
+		{"their spell, a value cast", view(1, "precombat_main", oppSpell), []legal.Move{pass, opt}, true},
+
+		// The empty stack, key windows: the verdict decides.
+		{"their attack, a matched cast", view(1, "declare_attackers", attackOnMe), []legal.Move{pass, castYes}, false},
+		{"their attack, an unmatched cast", view(1, "declare_attackers", attackOnMe), []legal.Move{pass, castNo}, true},
+		{"their attack, an unmatched row that crews", view(1, "declare_attackers", attackOnMe), []legal.Move{pass, rowNo}, true},
+		{"their attack, an old crew", view(1, "declare_attackers", attackOnMe), []legal.Move{pass, crewOld}, false},
+		{"my attack, a matched cast", view(0, "declare_blockers", myAttack), []legal.Move{pass, castYes}, false},
+		{"their end step, a matched row", view(1, "end", nil), []legal.Move{pass, rowYes}, false},
+		{"their end step, an unmatched row", view(1, "end", nil), []legal.Move{pass, rowNo}, true},
+		{"their end step, an unmatched cast", view(1, "end", nil), []legal.Move{pass, castNo}, true},
+		{"their end step, an old row", view(1, "end", nil), []legal.Move{pass, rowOld}, false},
+
+		// Rule 7's new clause: a matched move holds with the stack empty
+		// in any other window, and an unmatched one does not.
+		{"their upkeep, a matched row", view(1, "upkeep", nil), []legal.Move{pass, rowYes}, false},
+		{"their upkeep, a matched cast", view(1, "upkeep", nil), []legal.Move{pass, castYes}, false},
+		{"their upkeep, a matched mana move", view(1, "upkeep", nil), []legal.Move{pass, manaYes}, false},
+		{"their upkeep, an unmatched row", view(1, "upkeep", nil), []legal.Move{pass, rowNo}, true},
+		{"their upkeep, an old row", view(1, "upkeep", nil), []legal.Move{pass, rowOld}, true},
+		{"their draw step, a matched row", view(1, "draw", nil), []legal.Move{pass, rowYes}, false},
+		{"their main phase, a matched cast", view(1, "precombat_main", nil), []legal.Move{pass, castYes}, false},
+		{"their begin combat, a matched cast", view(1, "begin_combat", nil), []legal.Move{pass, castYes}, false},
+		{"first-strike damage step, a matched cast", view(1, "first_strike_damage", attackOnMe), []legal.Move{pass, castYes}, false},
+		{"first-strike damage step, an unmatched cast", view(1, "first_strike_damage", attackOnMe), []legal.Move{pass, castNo}, true},
+		{"first-strike damage step, an old row", view(1, "first_strike_damage", attackOnMe), []legal.Move{pass, rowOld}, true},
+		{"regular damage step, a matched cast", view(1, "combat_damage", attackOnMe), []legal.Move{pass, castYes}, false},
+		{"regular damage step, an unmatched cast", view(1, "combat_damage", attackOnMe), []legal.Move{pass, castNo}, true},
+		{"declare blockers with no attack, a matched cast", view(1, "declare_blockers", nil), []legal.Move{pass, castYes}, false},
+		{"my begin combat, a matched cast", view(0, "begin_combat", nil), []legal.Move{pass, castYes}, false},
+		{"my begin combat, an old crew", view(0, "begin_combat", nil), []legal.Move{pass, crewOld}, true},
+		{"my upkeep, an unmatched cast", view(0, "upkeep", nil), []legal.Move{pass, castNo}, true},
+
+		// A permanent another player controls is never a reason to stop
+		// (ADR 0106 §1), matched or not.
+		{"their upkeep, a matched row of theirs anyone may use", view(1, "upkeep", foreignSource), []legal.Move{pass, rowYes}, true},
+		{"their spell, a matched row of theirs anyone may use", view(1, "precombat_main", func(v *protocol.GameView) {
+			oppSpell(v)
+			foreignSource(v)
+		}), []legal.Move{pass, rowYes}, true},
+
+		// The seat's own main phases stop whatever the verdict, and so does
+		// everything that always stops it.
+		{"my first main, an unmatched cast", view(0, "precombat_main", nil), []legal.Move{pass, castNo}, false},
+		{"my second main, an unmatched row", view(0, "postcombat_main", nil), []legal.Move{pass, rowNo}, false},
+		{"my own spell, a matched cast", view(0, "precombat_main", func(v *protocol.GameView) {
+			v.StackItems = []protocol.StackItemView{{ID: "s", Kind: "spell", Controller: me.String()}}
+		}), []legal.Move{pass, castYes}, true},
+		{"a matched cast with a choice owed", view(1, "upkeep", func(v *protocol.GameView) {
+			v.PendingChoices = []protocol.PendingChoiceView{{ID: "c", Chooser: me.String()}}
+		}), []legal.Move{pass, castNo}, false},
+	} {
+		i, ok := smartPassApplies(tc.v, me.String(), tc.moves)
+		if ok != tc.want {
+			t.Errorf("%s: passes=%v, want %v", tc.name, ok, tc.want)
+			continue
+		}
+		if ok && tc.moves[i].Kind != legal.KindPass {
+			t.Errorf("%s: answered with %q, not the pass", tc.name, tc.moves[i].Label)
+		}
+	}
+}
+
+// agreementFrame is one frame of the shared fixture, as
+// internal/legal's smart_pass_agreement_test.go writes it.
+type agreementFrame struct {
+	Name    string            `json:"name"`
+	Viewer  string            `json:"viewer"`
+	View    protocol.GameView `json:"view"`
+	Verdict string            `json:"verdict"`
+	Why     string            `json:"why"`
+}
+
+// TestSmartPassAgreesWithTheSharedFixture is ADR 0009's agreement test
+// for the seat (#4734): every frame of internal/legal's
+// smart_pass_agreement.json, a real wire frame with its legal moves, has
+// a stop or pass verdict declared by hand at the default settings, and
+// the seat must reach it. client/src/lib/smartPassAgreement.test.ts
+// asserts the browser's. Either side drifting fails a test, and neither
+// is the other's oracle: when the seat disagrees, work out which side is
+// wrong before touching either. The fixture lives in internal/legal
+// because this package may not import internal/game (imports_test.go);
+// regenerate it there with
+//
+//	go test ./internal/legal/ -run TestSmartPassAgreement -update
+func TestSmartPassAgreesWithTheSharedFixture(t *testing.T) {
+	body, err := os.ReadFile("../legal/testdata/smart_pass_agreement.json")
+	if err != nil {
+		t.Fatalf("read the shared fixture: %v", err)
+	}
+	var frames []agreementFrame
+	if err := json.Unmarshal(body, &frames); err != nil {
+		t.Fatalf("unmarshal the shared fixture: %v", err)
+	}
+	if len(frames) == 0 {
+		t.Fatal("the shared fixture is empty")
+	}
+	stops, passes := 0, 0
+	for _, f := range frames {
+		t.Run(f.Name, func(t *testing.T) {
+			var want bool
+			switch f.Verdict {
+			case "stop":
+				stops++
+			case "pass":
+				want = true
+				passes++
+			default:
+				t.Fatalf("verdict %q is neither stop nor pass", f.Verdict)
+			}
+			if len(f.View.LegalMoves) == 0 {
+				t.Fatal("the frame carries no legal moves")
+			}
+			i, ok := smartPassApplies(&f.View, f.Viewer, f.View.LegalMoves)
+			if ok != want {
+				t.Fatalf("the seat's smart pass: passes=%v, the fixture declares %q (%s)", ok, f.Verdict, f.Why)
+			}
+			if ok && f.View.LegalMoves[i].Kind != legal.KindPass {
+				t.Errorf("answered with %q, not the pass", f.View.LegalMoves[i].Label)
+			}
+		})
+	}
+	if stops == 0 || passes == 0 {
+		t.Errorf("the fixture should hold both verdicts: %d stops, %d passes", stops, passes)
 	}
 }
 

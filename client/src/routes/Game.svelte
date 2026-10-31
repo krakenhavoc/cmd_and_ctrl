@@ -23,7 +23,7 @@
     switchAdminMode,
   } from "../lib/admin";
   import { seatColor } from "../lib/colors";
-  import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import BugReportDraftPill from "../lib/components/BugReportDraftPill.svelte";
   import { currentBugDraft } from "../lib/bugReportDraft.svelte";
@@ -105,6 +105,7 @@
     acceptParams,
     loopControl,
     loopProposalFor,
+    recordLoopEntry,
     shortenParams,
     type LoopDockProps,
   } from "../lib/loopShortcut";
@@ -140,6 +141,7 @@
   import { requestHandSort, requestNextHandSort } from "../lib/handOrder";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
+  import { playStepWarCry } from "../lib/faceHit";
   import {
     attackRowRequest,
     blockGroupRequest,
@@ -225,7 +227,14 @@
     clampAttackLife,
     type AttackLifePrompt,
   } from "../lib/attackLife";
-  import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
+  import {
+    hasMatchedResponse,
+    hasPlay,
+    hasResponse,
+    hasUnmatchedAnswer,
+    keyWindow,
+    type ResponseCategories,
+  } from "../lib/responseWindow";
   import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
     attackAllParams,
@@ -687,11 +696,14 @@
     const cats: ResponseCategories = {
       counter: gp.respondCounterspells,
       instant: gp.respondInstants,
+      // #2877: a value instant on an opponent's stack item.
+      valueInstant: gp.respondValueInstants,
       ability: gp.respondAbilities,
       untargeted: gp.respondUntargetedAbilities,
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
+    const respond = hasResponse(view, viewerID, cats);
     return {
       viewerHasPriority,
       tableBusy: mulligansOpen || gameEnded || viewerEliminated || !!controlledBy,
@@ -721,6 +733,12 @@
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.
       loopSuspended,
+      // ADR 0193 (#4736): the viewer is demonstrating a loop by hand —
+      // armed, recording, or ready and needing priority to propose.
+      loopDemo:
+        !!view?.loop_recording &&
+        view.loop_recording.recorder === realViewerID &&
+        view.loop_recording.status !== "proposed",
       step,
       autopassToggle: autopassEnabled,
       viewerIsActive,
@@ -741,8 +759,20 @@
       // ADR 0143 §2.3: the column for whoever is active.
       stepStop: stepStopFor(gp, step, viewerIsActive),
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
-      hasResponse: hasResponse(view, viewerID, cats),
+      hasResponse: respond,
       hasPlay: hasPlay(view, viewerID, cats),
+      // #4734: rule 7's new clause. A move the server marked
+      // answers_now: true in an enabled category holds any empty-stack
+      // window, not only the key windows.
+      matchedResponse: hasMatchedResponse(view, viewerID, cats),
+      // #2877: only for the pass chip's wording, never the verdict.
+      heldValueInstant:
+        !respond &&
+        !cats.valueInstant &&
+        !stackEmpty(view) &&
+        hasResponse(view, viewerID, { ...cats, valueInstant: true }),
+      // #4734: likewise, a held answer the server says fits nothing here.
+      heldUnmatchedAnswer: !respond && hasUnmatchedAnswer(view, viewerID, cats),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.
       engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,
@@ -1278,19 +1308,21 @@
   const loopState = $derived(
     view ? loopControl(view, viewerID, actingHasPriority && actingID === viewerID) : null,
   );
+  // The sheet opens once each time the loop is ready AND the viewer may
+  // propose (CR 732.2a: the player with priority), so a ready loop whose
+  // recorder lacks priority opens it when they next hold priority.
   let loopProposeOpen = $state(false);
-  let loopWasReady = false;
+  let loopWasProposable = false;
   $effect(() => {
-    const ready = loopState?.mode === "ready";
-    if (ready && !loopWasReady) loopProposeOpen = true;
-    if (!ready) loopProposeOpen = false;
-    loopWasReady = ready;
+    const proposable = loopState?.mode === "ready" && loopState.canPropose;
+    if (proposable && !loopWasProposable) loopProposeOpen = true;
+    if (!proposable) loopProposeOpen = false;
+    loopWasProposable = proposable;
   });
   const loopDock = $derived<LoopDockProps | undefined>(
     loopState && viewerID
       ? {
           state: loopState,
-          onRecord: () => sendAction("loop_record_start", undefined, viewerID ?? undefined),
           onStop: () => sendAction("loop_record_stop", undefined, viewerID ?? undefined),
           onCancel: () => sendAction("loop_record_cancel", undefined, viewerID ?? undefined),
           onPropose: () => (loopProposeOpen = true),
@@ -1369,6 +1401,11 @@
   // seen step and only fire on a real change; the initial snapshot (or
   // a reconnect rebuild) sets the baseline silently.
   let prevStep: string | null = null;
+  const warCryTimers = new Set<ReturnType<typeof setTimeout>>();
+  onDestroy(() => {
+    for (const t of warCryTimers) clearTimeout(t);
+    warCryTimers.clear();
+  });
   // Whether the step change plays combat_resolve itself, or leaves it to
   // the strike layer: the same gate the cue clock plans the frame with.
   function combatSoundOnStepChange(): boolean {
@@ -1399,7 +1436,12 @@
         // contact of each beat instead (ADR 0134 §7). Only when no
         // strike is scheduled (motion off, reduced motion, a hidden
         // tab) does it stay on the step change.
-        if (combatSoundOnStepChange()) play("combat_resolve");
+        // #4560: when the step hit a player, the popup plays the face hit
+        // now, so the war cry follows it, quieter.
+        if (combatSoundOnStepChange()) {
+          const t = playStepWarCry(view?.log, play, (fired) => warCryTimers.delete(fired));
+          if (t) warCryTimers.add(t);
+        }
       }
     }
     prevStep = step;
@@ -2956,6 +2998,17 @@
     }
   }
 
+  // ADR 0193's 2026-10-30 amendment (#4736): the ⋯ menu's "Record loop",
+  // drawn for every viewer, enabled for a seat in an active game with no
+  // loop standing (a prompt partway through a resolution included).
+  const recordLoop = $derived(
+    recordLoopEntry(view, viewerID, {
+      seated: dockShown,
+      eliminated: viewerEliminated,
+      controlled: !!controlledBy,
+      viewerHasPriority: actingHasPriority && actingID === viewerID,
+    }),
+  );
   const menuOptions = $derived<GameMenuOptions>({
     seated: dockShown,
     eliminated: viewerEliminated,
@@ -2994,9 +3047,12 @@
     // ADR 0167 §4: no sandbox for either player of a controlled turn.
     sandbox: !sandboxClosed,
     onTableRoll: rollAtTable,
-    // ADR 0193 §9: start a loop recording, from the menu.
-    recordLoop: dockShown && loopDock?.state.mode === "record",
-    onRecordLoop: () => loopDock?.onRecord(),
+    // ADR 0193 §9: start a loop recording, from the menu (#4736: never
+    // hidden; disabled with its reason where nobody could).
+    recordLoop,
+    onRecordLoop: () => {
+      if (recordLoop.enabled && viewerID) sendAction("loop_record_start", undefined, viewerID);
+    },
     // #3016: forget every trigger order this seat asked to reuse.
     forgetTriggerOrders:
       dockShown && view?.state === "active" ? (viewerSeat?.trigger_order_memory_count ?? 0) : 0,
@@ -3256,15 +3312,9 @@
           Choose your deck
           <span class="prompt-src" aria-hidden="true">before the game starts</span>
         </h2>
-        <p class="prompt-hint">
-          Every deck is validated against Commander rules — 100-card singleton, color identity,
-          format legality — whichever way it arrives.
-        </p>
-        <DeckUploadForm
-          {gameID}
-          playerID={viewerID}
-          onSuccess={() => (deckImportDismissed = true)}
-        />
+        <!-- The lobby card's deck picker (ADR 0212 §3), with its own
+             Sit down button: there is no card footer here. -->
+        <DeckPicker {gameID} playerID={viewerID} onSuccess={() => (deckImportDismissed = true)} />
         <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
@@ -3754,7 +3804,7 @@
       <!-- ADR 0193 §9: the recorder's propose sheet and the other seats'
            answer to a proposal. -->
       <LoopProposeSheet
-        recording={loopProposeOpen && loopState?.mode === "ready"
+        recording={loopProposeOpen && loopState?.mode === "ready" && loopState.canPropose
           ? (view.loop_recording ?? null)
           : null}
         onPropose={(count) => {
@@ -4719,8 +4769,11 @@
     z-index: 50;
     padding: 1rem;
   }
+  /* Wide enough for four of the picker's tiles; its tab bar runs to the
+     dialog's edges. */
   .deck-import-modal {
-    width: min(640px, 100%);
+    --picker-pad: 22px;
+    width: min(760px, 100%);
   }
   .import-hint {
     margin-top: 4px;

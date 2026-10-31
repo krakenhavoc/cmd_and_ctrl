@@ -1135,6 +1135,12 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"POST /games/{id}/decks for Alice's seat", []string{"uploadDeck"}, true, httpProbe("POST", "/games/{id}/decks", func(fx *probeFixture) any {
 			return uploadDeckRequest{Format: "text", Source: "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n", PlayerID: fx.alice}
 		})},
+		// A saved deck is seated only by the seat itself; the admin is read
+		// only to redact the answer (ADR 0212 phase B2), so every caller
+		// is answered alike.
+		{"POST /games/{id}/decks/{deck_id}", []string{"seatLibraryDeck"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", fx.tablePath("/decks/"+uuid.NewString()), nil)
+		}},
 		// #2785: removing someone's seat is the host's, the creator's or an
 		// admin's. Bob is the seat asked about, so admin mode removes him
 		// and player mode is refused.
@@ -1151,10 +1157,12 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /games/{id}/spectators/{spectator}", []string{"removeSpectator"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", fx.tablePath("/spectators/"+uuid.NewString()), nil)
 		}},
-		{"POST /games/{id}/seats/bot", []string{"botSeatAuthorised"}, true, httpProbe("POST", "/games/{id}/seats/bot", func(*probeFixture) any {
+		// The answer goes through redactMetaFor, which reads the admin to
+		// say who sees the seats' commanders (ADR 0212 phase B2).
+		{"POST /games/{id}/seats/bot", []string{"botSeatAuthorised", "addBot"}, true, httpProbe("POST", "/games/{id}/seats/bot", func(*probeFixture) any {
 			return addBotRequest{Tier: "random", Deck: "test-mono-white"}
 		})},
-		{"DELETE /games/{id}/seats/bot/{player}", []string{"botSeatAuthorised"}, true, func(t *testing.T, fx *probeFixture) answer {
+		{"DELETE /games/{id}/seats/bot/{player}", []string{"botSeatAuthorised", "removeBot"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", fx.tablePath("/seats/bot/"+fx.bob.String()), nil)
 		}},
 		// ADR 0177: the admin may always answer the away offer, but the

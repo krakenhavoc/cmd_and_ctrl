@@ -153,6 +153,14 @@ type PlayerTurnTally struct {
 	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
 }
 
+// EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
+type EnteredFlierRecord struct {
+	// Controller is the player the creature entered under.
+	Controller uuid.UUID `json:"controller"`
+	// Card is the instance the entry produced.
+	Card uuid.UUID `json:"card"`
+}
+
 // TurnTally is the per-turn record on Game. Reset on turn advance.
 type TurnTally struct {
 	// Players holds each player's tally; a player with nothing
@@ -228,6 +236,16 @@ type TurnTally struct {
 	// because every other cell of the tally is, and because "how many
 	// times" is the question the next card asks.
 	Entered map[uuid.UUID]int `json:"entered,omitempty"`
+	// EnteredFliers lists the creatures that entered the battlefield this
+	// turn WITH FLYING (#4707, Flying Drone's "another creature with flying
+	// entered the battlefield under your control this turn"), one record per
+	// entry, in order, each naming the controller it entered under and the
+	// instance it entered as. Judged as the creature entered, after the
+	// layers (EnteredSubtypes' reading), so one that has since died, lost
+	// flying or changed hands still answers. The object dimension is what
+	// "another" needs: the source's own entry is skipped by instance id.
+	// Read through Game.EnteredFlierUnderThisTurn. Additive.
+	EnteredFliers []EnteredFlierRecord `json:"enteredFliers,omitempty"`
 	// AttackedSubtypes is the subtype tally of the creatures each player
 	// declared as attackers this turn, per subtype they had as they
 	// attacked (#3192): Robber of the Rich's "during any turn you attacked
@@ -463,6 +481,12 @@ type TurnTally struct {
 	// has a fresh one (CR 400.7). Written as the spell becomes cast;
 	// read by GrantedAlternativeCost.gatedOn. Additive within schema v9.
 	GrantedAltCostsClaimed map[string]int `json:"grantedAltCostsClaimed,omitempty"`
+	// ReplacementsApplied is the "first time each turn" replacements
+	// already applied this turn (Reed Richards, Smartest Man), keyed by
+	// ObjectTallyKey(source, epoch, label): PER OBJECT (CR 614.5, 400.7).
+	// Written by the replacement's Replace, read by its AppliesTo; see
+	// replacement_turn_mark.go. Additive within schema v9.
+	ReplacementsApplied map[string]int `json:"replacementsApplied,omitempty"`
 	// Attacks is every attack declared this turn, in declaration order
 	// (ADR 0059 Decision 8): one record per attacking creature per
 	// declaration, so a creature that attacks in two combats has two.
@@ -470,6 +494,23 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// BecameTapped counts, per OBJECT, how many times each permanent
+	// became tapped this turn (#4576, CR 701.26a): Captain America,
+	// Living Legend's "if it's the first time that creature has become
+	// tapped this turn". Keyed by ObjectTallyKey(id, epoch, "tapped"),
+	// so a permanent that left and came back is a new object with no
+	// taps of its own (CR 400.7) and a change of control keeps the
+	// count. Written by the tally listener from the two ways a creature
+	// becomes tapped: an EventTapCard (a cost, an effect, a mana
+	// ability, the sandbox), and an EventAttack whose attacker is
+	// tapped as the declaration is announced, because the engine taps
+	// an attacker without an EventTapCard (a vigilance attacker is not
+	// tapped, so it counts nothing). A permanent that ENTERS tapped
+	// never became tapped, so it counts nothing either. Read through
+	// TimesBecameTappedThisTurn. Additive within the snapshot schema:
+	// omitted when empty, flushed with the rest of the tally when the
+	// turn begins.
+	BecameTapped map[string]int `json:"becameTapped,omitempty"`
 	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
 	// 701.43): one record per exert, so a creature exerted in two
 	// combats has two. Written only by exertLocked; read through
@@ -569,6 +610,37 @@ func (g *Game) TimesAttackedThisTurn(cardID uuid.UUID) int {
 		}
 	}
 	return n
+}
+
+// noteBecameTappedLocked counts one tap of the object `cardID` names.
+// A fresh map every time, never a write into shared storage: the undo
+// clone holds the old one (#1238's reason).
+//
+// Caller must hold g.mu.
+func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
+	if cardID == uuid.Nil {
+		return
+	}
+	key := g.objectTallyKeyLocked(cardID, "tapped")
+	next := make(map[string]int, len(g.TurnTally.BecameTapped)+1)
+	maps.Copy(next, g.TurnTally.BecameTapped)
+	next[key]++
+	g.TurnTally.BecameTapped = next
+}
+
+// TimesBecameTappedThisTurn is how many times the OBJECT `cardID`
+// names now has become tapped this turn (#4576). "If it's the first
+// time that creature has become tapped this turn" is this reading 1
+// as the trigger fires (the tally listener runs ahead of the trigger
+// harvester). A permanent that came back from another zone this turn
+// is a new object and reads 0 until it taps (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) TimesBecameTappedThisTurn(cardID uuid.UUID) int {
+	if cardID == uuid.Nil || len(g.TurnTally.BecameTapped) == 0 {
+		return 0
+	}
+	return g.TurnTally.BecameTapped[g.objectTallyKeyLocked(cardID, "tapped")]
 }
 
 // AttackedThisTurn reports whether the object `cardID` names attacked
@@ -741,6 +813,22 @@ func (g *Game) TurnTallyFor(playerID uuid.UUID) PlayerTurnTally {
 // come back this turn answers zero. Caller must hold g.mu.
 func (g *Game) ResolvedThisTurn(source uuid.UUID, label string) int {
 	return sumTally(g.TurnTally.Resolved, g.objectTallyPrefixLocked(source), label)
+}
+
+// discardedThisTurnLabel is the TurnTally.Resolved label under which
+// the turn tally records that a card was discarded into a graveyard
+// (#4628). Reserved: no card file writes it with NoteDoneThisTurn.
+const discardedThisTurnLabel = "discarded"
+
+// DiscardedThisTurn reports whether the card object `cardID` names was
+// discarded this turn and is the object that landed in the graveyard
+// (CR 702.187b, mayhem). Per OBJECT (CR 400.7): a card that was
+// discarded, left the graveyard and came back is a new object, and a
+// card put into the graveyard some other way (a mill, a destroyed
+// permanent) was never discarded. Flushed with the rest of the turn
+// tally, so "this turn" ends with the turn. Caller must hold g.mu.
+func (g *Game) DiscardedThisTurn(cardID uuid.UUID) bool {
+	return cardID != uuid.Nil && g.ResolvedThisTurn(cardID, discardedThisTurnLabel) > 0
 }
 
 // NoteDoneThisTurn records that the instruction the ability labelled
@@ -1385,6 +1473,32 @@ func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
 	}
 }
 
+// recordEnteredFlierLocked records an entering creature that has flying as
+// it enters under `controller` (TurnTally.EnteredFliers).
+func (g *Game) recordEnteredFlierLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil || !c.IsCreature() || !HasKeyword(c, "flying") {
+		return
+	}
+	g.TurnTally.EnteredFliers = append(g.TurnTally.EnteredFliers, EnteredFlierRecord{Controller: controller, Card: c.InstanceID})
+}
+
+// EnteredFlierUnderThisTurn reports whether a creature other than
+// `except` (uuid.Nil for any) entered the battlefield under playerID's
+// control this turn having flying as it entered (#4707, Flying Drone).
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredFlierUnderThisTurn(playerID, except uuid.UUID) bool {
+	if playerID == uuid.Nil {
+		return false
+	}
+	for _, r := range g.TurnTally.EnteredFliers {
+		if r.Controller == playerID && r.Card != except {
+			return true
+		}
+	}
+	return false
+}
+
 // recordEnteredSubtypesLocked adds one entering permanent to
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
@@ -1556,6 +1670,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
+	out.EnteredFliers = append([]EnteredFlierRecord(nil), t.EnteredFliers...)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
@@ -1585,6 +1700,8 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopRepeat = maps.Clone(t.LoopRepeat)
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
+	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
+	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -1682,6 +1799,15 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
 	case EventDiscardCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
+		// #4628, CR 702.187b: mayhem's "you discarded this card this
+		// turn". Written for the card that landed in a graveyard, under
+		// the epoch the move gave it (zone.go bumps it before the event
+		// fires), so it names the OBJECT in the graveyard and nothing
+		// that leaves and returns later. A discard replaced to another
+		// zone leaves a card mayhem cannot cast from there anyway.
+		if ev.NewZone == ZoneGraveyard && ev.CardID != uuid.Nil {
+			g.NoteDoneThisTurn(ev.CardID, discardedThisTurnLabel)
+		}
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:
@@ -1699,8 +1825,20 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 				}
 			}
 		}
+	case EventTapCard:
+		// #4576: a permanent became tapped. Every EventTapCard emitter
+		// has already refused a permanent that was tapped (CR 701.26a:
+		// tapping a tapped permanent does nothing), so each one is a
+		// real change of state.
+		g.noteBecameTappedLocked(ev.CardID)
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		// #4576: declaring an attacker taps it unless it has vigilance
+		// (CR 508.1f), and the engine does that without an
+		// EventTapCard, so the attack is where the tap is counted.
+		if c := g.findCardByIDLocked(ev.CardID); c != nil && c.Tapped {
+			g.noteBecameTappedLocked(ev.CardID)
+		}
 		// #3192: what the attacker was as it was declared, for the
 		// conditional cast permissions ("during any turn you attacked with
 		// a token / a commander / a Rogue"). The creature is on the
@@ -1789,8 +1927,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if controller == uuid.Nil {
 			controller = ev.Actor
 		}
-		g.recordEnteredSubtypesLocked(controller, g.enteredWithLayersLocked(c))
-		g.recordEnteredCardTypesLocked(controller, g.enteredWithLayersLocked(c))
+		entered := g.enteredWithLayersLocked(c)
+		g.recordEnteredSubtypesLocked(controller, entered)
+		g.recordEnteredCardTypesLocked(controller, entered)
+		g.recordEnteredFlierLocked(controller, entered)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

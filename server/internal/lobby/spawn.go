@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -50,6 +51,10 @@ type TokenTemplates interface {
 	TokenKeys() []string
 	// TokenTemplate returns a fresh copy of the named template.
 	TokenTemplate(key string) (game.Card, bool)
+	// PredefinedToken returns a fresh copy of the template for the
+	// predefined token (CR 111.10) with this name ("Treasure",
+	// "Incubator"), or false when the catalog has none.
+	PredefinedToken(name string) (game.Card, bool)
 }
 
 // SpawnOptions is one spawn, as the lobby performs it.
@@ -283,7 +288,41 @@ func resolveSpawnTemplate(c Config, body spawnRequest) (tmpl game.Card, name, sc
 	if err != nil {
 		return game.Card{}, "", "", false, err
 	}
+	if t, ok := predefinedTokenFor(c, card); ok {
+		return t, t.Name, "", true, nil
+	}
 	return deck.ToGameCard(card, body.Commander), card.Name, card.ID.String(), false, nil
+}
+
+// predefinedTokenFor is the template to spawn in place of a Scryfall
+// token PRINTING of a predefined token (CR 111.10), if the catalog has
+// one (#4738).
+//
+// The card search lists token printings beside cards, so a host who
+// searches "Treasure" and picks the first row sends that printing's
+// scryfall_id. Made as a card, it was an object with the printing's
+// oracle ID and no catalog entry. It did not run its own "{T},
+// Sacrifice this token: Add one mana of any color", and the table was
+// told the engine does not run its text. Yet it still counted as an
+// artifact and a Treasure for everything that reads the type line. A
+// predefined token is defined by the rules, not by a printing, so the
+// spawn makes the catalog's template, the object a card's trigger
+// makes.
+//
+// Only a token printing is swapped, so a card that merely shares a
+// name is left alone. A double-faced token printing is matched on its
+// front face, the face it enters with ("Incubator // Phyrexian"). A
+// printing with no template (Junk, Shard) is spawned as before, and the
+// table is told the engine does not run its text, which is true.
+func predefinedTokenFor(c Config, card cards.Card) (game.Card, bool) {
+	if c.Tokens == nil || !(game.Card{TypeLine: card.TypeLine}).IsToken() {
+		return game.Card{}, false
+	}
+	name := card.Name
+	if len(card.CardFaces) > 0 && card.CardFaces[0].Name != "" {
+		name = card.CardFaces[0].Name
+	}
+	return c.Tokens.PredefinedToken(name)
 }
 
 // spawnHTTPError maps the mutation's refusals onto statuses. The

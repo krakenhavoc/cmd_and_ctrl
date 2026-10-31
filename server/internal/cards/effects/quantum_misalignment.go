@@ -23,19 +23,25 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature you control", YouControl()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return CreateTokenCopy{
-				Controller: item.Controller,
-				Copy:       id,
-				N:          1,
-				Except: func(t *game.Card) {
-					t.TypeLine = removeLegendaryFromTypeLine(t.TypeLine)
-				},
-			}.Apply(ctx)
-		},
+		OnResolve:       nonLegendaryTokenCopyOfTheTarget,
 	})
+}
+
+// nonLegendaryTokenCopyOfTheTarget is "Create a token that's a copy of target
+// creature you control, except it isn't legendary" (Quantum Misalignment,
+// Multiversal Recruitment): the copy's Legendary supertype comes off the
+// copied type line (CR 707.9b).
+func nonLegendaryTokenCopyOfTheTarget(item *game.StackItem, ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return CreateTokenCopy{
+		Controller: item.Controller,
+		Copy:       id,
+		N:          1,
+		Except: func(t *game.Card) {
+			t.TypeLine = removeLegendaryFromTypeLine(t.TypeLine)
+		},
+	}.Apply(ctx)
 }

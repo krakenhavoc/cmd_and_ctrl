@@ -23,6 +23,7 @@ func init() {
 		OracleID:        "08b13e1f-27ca-40a8-b5ed-88ac933d24bf",
 		Name:            "Archivist of Oghma",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Answers: game.AnswerMakesBlocker}, // #4734: a creature with flash is a blocker (sweep ruling 7)
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSearchLibrary, AnOpponentSearchesTheirOwnLibrary,

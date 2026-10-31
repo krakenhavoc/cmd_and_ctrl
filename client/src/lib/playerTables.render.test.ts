@@ -2,17 +2,16 @@
 //
 // ADR 0110 Delivery PR 7 rendered: the create form for a signed-in
 // player with "use my last setup", the tablemate picker that opens on
-// the new table with the last table's people first, the deck pickers
-// preselecting the last deck, and the Join page pre-filling a guest's
+// the new table with the last table's people first, the deck picker
+// (ADR 0212 §3: its tabs, its grids, the last deck preselected, the
+// sideboard and Paste a list), and the Join page pre-filling a guest's
 // name.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Lobby from "../routes/Lobby.svelte";
 import Join from "../routes/Join.svelte";
-import DeckUploadForm from "./components/DeckUploadForm.svelte";
-import PrebuiltDeckPicker from "./components/PrebuiltDeckPicker.svelte";
-import YourDecksPicker from "./components/YourDecksPicker.svelte";
+import DeckPicker from "./components/DeckPicker.svelte";
 import { GUEST_NAME_KEY } from "./guestName";
 import { SERVER_FULL_MESSAGE } from "./serverFull";
 import { GUEST_LAST_DECK_KEY } from "./lastDeck";
@@ -160,15 +159,22 @@ describe("the lobby's create flow for a signed-in player", () => {
 
     expect(posted).toContainEqual({ url: "/games", body: { name: "Friday", setup: "last" } });
     expect(container.textContent).toMatch(/Last setup: table settings applied, 1 bot added\./);
-    // The creator's own table: links to share, a seat to take, and the
-    // tablemate picker already open, with the last table's people first.
-    expect(container.textContent).toMatch(/Copy invite/);
+    // The creator's own table: a seat to take as its primary (ADR 0212
+    // §2), the links in its Invite menu, and the tablemate picker already
+    // open, with the last table's people first.
     // The form closed on success.
     expect(container.querySelector("form.new-table")).toBeNull();
-    // #3499: the card's toolbar, no ⋯ menu.
-    expect(container.querySelector('[aria-label="tools for Friday"]')?.textContent).toMatch(
-      /Take a seat/,
-    );
+    const foot = container.querySelector<HTMLElement>("li.tcard .tfoot")!;
+    expect(foot.querySelector(".btn.primary")?.textContent?.trim()).toBe("Take a seat");
+    const invite = [...foot.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent?.trim() === "Invite",
+    )!;
+    click(invite);
+    await settle();
+    const menu = document.querySelector('[role="menu"][aria-label="invite to Friday"]');
+    expect(menu?.textContent).toMatch(/Copy invite/);
+    menu!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    flushSync();
     expect(container.querySelector(".invite-picker")).not.toBeNull();
     const mates = [...container.querySelectorAll(".mates li")].map((li) => li.textContent ?? "");
     expect(mates).toHaveLength(2);
@@ -201,7 +207,7 @@ describe("the lobby's create flow for a signed-in player", () => {
     expect(container.querySelector("form.new-table")).not.toBeNull();
     expect(container.querySelector(".use-setup")).toBeNull();
 
-    // Take a seat is on the card's toolbar (#3499).
+    // Take a seat is the card's primary (ADR 0212 §2).
     const seat = [...container.querySelectorAll("button")].find((b) =>
       /Take a seat/.test(b.textContent ?? ""),
     );
@@ -225,72 +231,146 @@ describe("the lobby's create flow for a signed-in player", () => {
   });
 });
 
-describe("the deck pickers preselect the last deck", () => {
-  const prebuilt = (id: string, name: string) => ({
-    id,
-    name,
-    card_count: 100,
-    coverage: { cards: 10, full: 10, caveats: 0, unreviewed: 0, basics: 1, unregistered: 0 },
+// ADR 0212 §3: one deck picker, a grid behind tabs, in both places that
+// seat a deck. These render it alone, with its own button (the table
+// route's dialog); tableCard.render.test.ts covers it under a lobby
+// card, where the footer's primary commits.
+const prebuilt = (id: string, name: string) => ({
+  id,
+  name,
+  card_count: 100,
+  coverage: { cards: 10, full: 10, caveats: 0, unreviewed: 0, basics: 1, unregistered: 0 },
+});
+const saved = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  commanders: [],
+  card_count: 100,
+  updated_at: new Date().toISOString(),
+  ...extra,
+});
+
+function renderPicker() {
+  return render(DeckPicker as never, { gameID: GAME, playerID: "p1" } as never);
+}
+
+const tabNames = (c: HTMLElement) =>
+  [...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.replace(/\s+/g, " ").trim());
+const selectedTab = (c: HTMLElement) =>
+  c.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.replace(/\s+/g, " ").trim();
+const checked = (c: HTMLElement, name: string) =>
+  c.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
+const commitButton = (c: HTMLElement) => c.querySelector<HTMLButtonElement>(".row-actions button")!;
+function tab(c: HTMLElement, name: RegExp): HTMLButtonElement {
+  return [...c.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) =>
+    name.test(t.textContent ?? ""),
+  )!;
+}
+
+describe("the deck picker's tabs (owner decision 7)", () => {
+  function setup(userID: string, library: unknown[], lastDeck: unknown = null) {
+    setSession(sess("player", userID));
+    routes = {
+      "GET /decks": () => ({ decks: [prebuilt("raid", "Raid"), prebuilt("deep", "Deep")] }),
+      "GET /me/decks": () => ({ decks: library }),
+      "GET /me/last-deck": () => ({ last_deck: lastDeck }),
+    };
+    stubServer();
+    return renderPicker();
+  }
+
+  it("opens a signed-in person with saved decks on My decks", async () => {
+    const { container } = setup(USER, [saved("lib-a", "Mine")]);
+    await settle();
+    expect(tabNames(container)).toEqual(["My decks 1", "Pre-built 2", "Paste a list"]);
+    expect(selectedTab(container)).toBe("My decks 1");
+    expect(container.querySelector('[role="radiogroup"][aria-label="your decks"]')).not.toBeNull();
   });
 
-  it("checks the last pre-built deck", async () => {
+  it("opens on Pre-built when the last deck seated was a pre-built one", async () => {
+    const { container } = setup(USER, [saved("lib-a", "Mine")], { kind: "prebuilt", id: "deep" });
+    await settle();
+    expect(selectedTab(container)).toBe("Pre-built 2");
+    expect(checked(container, "prebuilt-deck")).toBe("deep");
+  });
+
+  it("gives a guest, or an empty library, no My decks tab, and the note on Paste a list", async () => {
+    const r = setup(USER, []);
+    await settle();
+    expect(tabNames(r.container)).toEqual(["Pre-built 2", "Paste a list"]);
+    cleanup();
+
+    const guest = setup(NIL, []);
+    await settle();
+    expect(tabNames(guest.container)).toEqual(["Pre-built 2", "Paste a list"]);
+    expect(selectedTab(guest.container)).toBe("Pre-built 2");
+    // A guest is never asked for their library.
+    expect(posted).toEqual([]);
+    click(tab(guest.container, /Paste a list/));
+    await settle();
+    expect(guest.container.textContent).toContain(
+      "Sign in with Discord to keep the decks you paste.",
+    );
+    expect(guest.container.querySelector('textarea[aria-label="decklist source"]')).not.toBeNull();
+  });
+
+  it("moves between tabs with the arrow keys", async () => {
+    const { container } = setup(USER, [saved("lib-a", "Mine")]);
+    await settle();
+    const list = container.querySelector('[role="tablist"]')!;
+    list.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    flushSync();
+    expect(selectedTab(container)).toBe("Pre-built 2");
+    expect(document.activeElement?.textContent).toMatch(/Pre-built/);
+    list.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+    flushSync();
+    expect(selectedTab(container)).toBe("Paste a list");
+  });
+});
+
+describe("the deck picker preselects the last deck", () => {
+  it("checks the last pre-built deck, from the browser for a guest", async () => {
     setSession(sess("player", NIL));
+    localStorage.setItem(GUEST_LAST_DECK_KEY, JSON.stringify({ kind: "prebuilt", id: "deep" }));
     routes = {
       "GET /decks": () => ({ decks: [prebuilt("raid", "Raid"), prebuilt("deep", "Deep")] }),
     };
     stubServer();
-    const { container } = render(
-      PrebuiltDeckPicker as never,
-      {
-        gameID: GAME,
-        playerID: "p1",
-        lastDeck: { kind: "prebuilt", id: "deep" },
-      } as never,
-    );
+    const { container } = renderPicker();
     await settle();
-    const checked = container.querySelector<HTMLInputElement>(
-      'input[name="prebuilt-deck"]:checked',
-    );
-    expect(checked?.value).toBe("deep");
+    expect(checked(container, "prebuilt-deck")).toBe("deep");
+  });
+
+  it("flags only the tile whose deck has gaps", async () => {
+    setSession(sess("player", NIL));
+    const gappy = {
+      ...prebuilt("gap", "Gappy"),
+      coverage: { ...prebuilt("x", "x").coverage, unregistered: 2 },
+    };
+    routes = { "GET /decks": () => ({ decks: [prebuilt("raid", "Raid"), gappy] }) };
+    stubServer();
+    const { container } = renderPicker();
+    await settle();
+    const flags = [...container.querySelectorAll(".gapflag")].map((e) => e.textContent?.trim());
+    expect(flags).toEqual(["2 not implemented"]);
   });
 
   it("checks the last library deck, and ignores one that has gone", async () => {
     setSession(sess("player", USER));
-    const deck = (id: string, name: string) => ({
-      id,
-      name,
-      commanders: [],
-      card_count: 100,
-      updated_at: new Date().toISOString(),
-    });
-    routes = { "GET /me/decks": () => ({ decks: [deck("lib-a", "A"), deck("lib-b", "B")] }) };
+    routes = {
+      "GET /me/decks": () => ({ decks: [saved("lib-a", "A"), saved("lib-b", "B")] }),
+      "GET /me/last-deck": () => ({ last_deck: { kind: "library", id: "lib-b" } }),
+    };
     stubServer();
-    const r = render(
-      YourDecksPicker as never,
-      {
-        gameID: GAME,
-        playerID: "p1",
-        lastDeck: { kind: "library", id: "lib-b" },
-      } as never,
-    );
+    const r = renderPicker();
     await settle();
-    expect(
-      r.container.querySelector<HTMLInputElement>('input[name="your-deck"]:checked')?.value,
-    ).toBe("lib-b");
+    expect(checked(r.container, "your-deck")).toBe("lib-b");
     cleanup();
 
-    const gone = render(
-      YourDecksPicker as never,
-      {
-        gameID: GAME,
-        playerID: "p1",
-        lastDeck: { kind: "library", id: "deleted" },
-      } as never,
-    );
+    routes["GET /me/last-deck"] = () => ({ last_deck: { kind: "library", id: "deleted" } });
+    const gone = renderPicker();
     await settle();
-    expect(
-      gone.container.querySelector<HTMLInputElement>('input[name="your-deck"]:checked')?.value,
-    ).toBe("lib-a");
+    expect(checked(gone.container, "your-deck")).toBe("lib-a");
   });
 
   it("remembers a guest's pre-built pick in the browser", async () => {
@@ -306,48 +386,41 @@ describe("the deck pickers preselect the last deck", () => {
       }),
     };
     stubServer();
-    const { container } = render(
-      PrebuiltDeckPicker as never,
-      {
-        gameID: GAME,
-        playerID: "p1",
-      } as never,
-    );
+    const { container } = renderPicker();
     await settle();
-    const play = [...container.querySelectorAll("button")].find((b) =>
-      /play/.test(b.textContent ?? ""),
-    );
-    click(play!);
+    expect(commitButton(container).textContent?.trim()).toBe("Sit down with this deck");
+    click(commitButton(container));
     await settle();
+    expect(posted).toContainEqual({
+      url: `/games/${GAME}/decks`,
+      body: { player_id: "p1", deck: "raid" },
+    });
     expect(JSON.parse(localStorage.getItem(GUEST_LAST_DECK_KEY) ?? "null")).toEqual({
       kind: "prebuilt",
       id: "raid",
     });
+    expect(container.textContent).toContain("Playing Raid");
   });
 });
 
-describe("the deck pickers stay one screen with many decks", () => {
-  const deck = (i: number) => ({
-    id: `lib-${i}`,
-    name: i === 7 ? "Inverse Nissa" : `Deck ${i}`,
-    commanders: [i === 7 ? "Nissa, Leyline Tamer" : `Commander ${i}`],
-    card_count: 100,
-    updated_at: new Date().toISOString(),
-  });
+describe("the deck picker stays one screen with many decks", () => {
+  const deck = (i: number) =>
+    saved(`lib-${i}`, i === 7 ? "Inverse Nissa" : `Deck ${i}`, {
+      commanders: [i === 7 ? "Nissa, Leyline Tamer" : `Commander ${i}`],
+    });
 
   function setup(n: number) {
     setSession(sess("player", USER));
     routes = {
       "GET /me/decks": () => ({ decks: Array.from({ length: n }, (_, i) => deck(i)) }),
+      "GET /me/last-deck": () => ({ last_deck: null }),
     };
     stubServer();
-    return render(YourDecksPicker as never, { gameID: GAME, playerID: "p1" } as never);
+    return renderPicker();
   }
 
   const radios = (c: HTMLElement) =>
     [...c.querySelectorAll<HTMLInputElement>('input[name="your-deck"]')].map((r) => r.value);
-  const playButton = (c: HTMLElement) =>
-    [...c.querySelectorAll("button")].find((b) => /^play /.test(b.textContent ?? ""));
 
   it("offers no filter for a short list", async () => {
     const { container } = setup(3);
@@ -356,13 +429,12 @@ describe("the deck pickers stay one screen with many decks", () => {
     expect(radios(container)).toHaveLength(3);
   });
 
-  it("filters a long list by name or commander, and names the deck on the button", async () => {
+  it("filters a long list by name or commander, and keeps the pick", async () => {
     const { container } = setup(30);
     await settle();
     const filter = container.querySelector<HTMLInputElement>('input[type="search"]')!;
     expect(filter.getAttribute("aria-label")).toBe("filter your decks");
     expect(radios(container)).toHaveLength(30);
-    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
 
     filter.value = "leyline";
     filter.dispatchEvent(new Event("input", { bubbles: true }));
@@ -375,18 +447,32 @@ describe("the deck pickers stay one screen with many decks", () => {
     expect(radios(container)).toEqual([]);
     expect(container.textContent).toContain("No deck matches");
     // The pick survives a filter that hides it.
-    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+    expect(commitButton(container).textContent?.trim()).toBe("Sit down with this deck");
+  });
+
+  it("sorts by Recent or Name", async () => {
+    setSession(sess("player", USER));
+    routes = {
+      "GET /me/decks": () => ({
+        decks: [saved("z", "Zed"), saved("a", "Atraxa"), saved("m", "Meren")],
+      }),
+      "GET /me/last-deck": () => ({ last_deck: null }),
+    };
+    stubServer();
+    const { container } = renderPicker();
+    await settle();
+    expect(radios(container)).toEqual(["z", "a", "m"]);
+    click(
+      [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+        (b) => b.textContent === "Name",
+      )!,
+    );
+    flushSync();
+    expect(radios(container)).toEqual(["a", "m", "z"]);
   });
 });
 
-describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
-  const deck = (id: string, name: string) => ({
-    id,
-    name,
-    commanders: [],
-    card_count: 100,
-    updated_at: new Date().toISOString(),
-  });
+describe("the deck picker shows a saved deck's sideboard (#3833)", () => {
   const printing = (name: string, count: number, board: string, entry: number) => ({
     entry,
     name,
@@ -400,7 +486,8 @@ describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
   function setup() {
     setSession(sess("player", USER));
     routes = {
-      "GET /me/decks": () => ({ decks: [deck("lib-a", "Wishes"), deck("lib-b", "Plain")] }),
+      "GET /me/decks": () => ({ decks: [saved("lib-a", "Wishes"), saved("lib-b", "Plain")] }),
+      "GET /me/last-deck": () => ({ last_deck: null }),
       "GET /me/decks/lib-a/printings": () => ({
         revision: "r",
         cards: [
@@ -416,14 +503,14 @@ describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
       [`POST /games/${GAME}/decks/library`]: () => ({}),
     };
     stubServer();
-    return render(YourDecksPicker as never, { gameID: GAME, playerID: "p1" } as never);
+    return renderPicker();
   }
 
   const sideButton = (c: HTMLElement) =>
     c.querySelector<HTMLButtonElement>('[data-testid="your-deck-sideboard"]')!;
   const list = (c: HTMLElement) => c.querySelector('[data-testid="deck-sideboard"]');
 
-  it("opens the picked deck's sideboard read only, and closes it again", async () => {
+  it("opens the selected deck's sideboard read only, and closes it again", async () => {
     const { container } = setup();
     await settle();
     expect(list(container)).toBeNull();
@@ -446,7 +533,7 @@ describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
     expect(list(container)).toBeNull();
   });
 
-  it("closes when another deck is picked, and says a deck has none", async () => {
+  it("closes when another deck is selected, and says a deck has none", async () => {
     const { container } = setup();
     await settle();
     click(sideButton(container));
@@ -461,68 +548,52 @@ describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
   });
 });
 
-describe("the pre-built decks fold away behind your own", () => {
-  const pb = (id: string) => ({
-    id,
-    name: id,
-    card_count: 100,
-    coverage: { cards: 10, full: 10, caveats: 0, unreviewed: 0, basics: 1, unregistered: 0 },
-  });
-  const saved = {
-    id: "lib-a",
-    name: "Mine",
-    commanders: [],
-    card_count: 100,
-    updated_at: new Date().toISOString(),
-  };
-
-  function setup(userID: string, library: unknown[], lastDeck: unknown = null) {
-    setSession(sess("player", userID));
+describe("Paste a list", () => {
+  it("imports a link, then lists what the engine does not carry out", async () => {
+    setSession(sess("player", USER));
     routes = {
-      "GET /decks": () => ({ decks: [pb("raid"), pb("deep")] }),
-      "GET /me/decks": () => ({ decks: library }),
-      "GET /me/last-deck": () => ({ last_deck: lastDeck }),
+      "GET /me/decks": () => ({ decks: [] }),
+      "GET /me/last-deck": () => ({ last_deck: null }),
+      [`POST /games/${GAME}/decks`]: () => ({
+        game: createdMeta,
+        deck_name: "Linked",
+        card_count: 100,
+        commanders: ["Atraxa, Praetors' Voice"],
+        unimplemented: ["Oko", "Hullbreacher"],
+      }),
     };
+    let more: boolean | undefined;
     stubServer();
-    return render(DeckUploadForm as never, { gameID: GAME, playerID: "p1" } as never);
-  }
-
-  const prebuiltRadios = (c: HTMLElement) => c.querySelectorAll('input[name="prebuilt-deck"]');
-  const toggle = (c: HTMLElement) =>
-    [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) =>
-      /pre-built deck \(2\)/.test(b.textContent ?? ""),
+    const { container } = render(
+      DeckPicker as never,
+      {
+        gameID: GAME,
+        playerID: "p1",
+        onSuccess: (_res: unknown, m: boolean) => (more = m),
+      } as never,
     );
-
-  it("starts as one line for a player with saved decks, and opens on a click", async () => {
-    const { container } = setup(USER, [saved]);
     await settle();
-    expect(prebuiltRadios(container)).toHaveLength(0);
-    const t = toggle(container)!;
-    expect(t.getAttribute("aria-expanded")).toBe("false");
-    click(t);
+    // No library and no pre-built decks: Paste a list is all there is.
+    expect(tabNames(container)).toEqual(["Paste a list"]);
+    expect(commitButton(container).textContent?.trim()).toBe("Upload deck");
+    expect(commitButton(container).disabled).toBe(true);
+    // Signed in: no sign-in note.
+    expect(container.textContent).not.toContain("Sign in with Discord");
+    const box = container.querySelector<HTMLTextAreaElement>("textarea")!;
+    box.value = "https://archidekt.com/decks/1";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
     flushSync();
-    expect(t.getAttribute("aria-expanded")).toBe("true");
-    expect(prebuiltRadios(container)).toHaveLength(2);
-  });
-
-  it("stays open when the last deck seated was a pre-built one", async () => {
-    const { container } = setup(USER, [saved], { kind: "prebuilt", id: "deep" });
+    expect(commitButton(container).textContent?.trim()).toBe("Import deck");
+    click(commitButton(container));
     await settle();
-    expect(toggle(container)).toBeUndefined();
-    expect(prebuiltRadios(container)).toHaveLength(2);
-  });
-
-  it("stays open with an empty library, and for a guest", async () => {
-    const r = setup(USER, []);
-    await settle();
-    expect(toggle(r.container)).toBeUndefined();
-    expect(prebuiltRadios(r.container)).toHaveLength(2);
-    cleanup();
-
-    const guest = setup(NIL, []);
-    await settle();
-    expect(toggle(guest.container)).toBeUndefined();
-    expect(prebuiltRadios(guest.container)).toHaveLength(2);
+    expect(posted).toContainEqual({
+      url: `/games/${GAME}/decks`,
+      body: { player_id: "p1", source: "https://archidekt.com/decks/1" },
+    });
+    expect(container.textContent).toContain("Uploaded Linked: 100 cards");
+    expect(container.querySelector(".unimpl summary")?.textContent).toMatch(/2 of these cards/);
+    expect(more).toBe(true);
+    expect(box.value).toBe("");
   });
 });
 

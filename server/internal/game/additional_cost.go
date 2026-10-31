@@ -218,6 +218,18 @@ type AdditionalCost struct {
 	// cost keyed TeamworkKey.
 	Teamwork int
 
+	// AsThoughFlash is "You may cast this spell as though it had flash if
+	// it's cast using <this cost>" (Quantum Reduction, CR 601.3c):
+	// announcing this optional cost opens the instant-speed window for
+	// THIS cast and no other. Only an optional cost has the clause; the
+	// caster announces it before timing is judged (CR 601.2b precedes the
+	// timing gate here), and CastSpell, the legal-move enumerator and the
+	// view's castable_here all read it through OptionalCostsOpenCastWindow.
+	// Like an offer's AsThoughFlash (CR 601.3c) it joins the card's own
+	// timing before the per-player restrictions, so a Teferi, Time Raveler
+	// still closes it (CR 101.2). False is every cost written before this.
+	AsThoughFlash bool
+
 	// Blight is "blight N" paid as a cost (CR 701.68a): put N -1/-1
 	// counters on a creature you control. The caster names the one
 	// creature in CastSpellParams.BlightIDs. The counters go through
@@ -315,8 +327,11 @@ type AdditionalCost struct {
 	// Reveal is "reveal a <type> card from your hand" or "behold a
 	// <type>" (CR 701.20, ADR 0100 amendment 2026-10-07): the caster
 	// names one card on CastSpellParams.RevealIDs and paying shows it to
-	// the table. Only as a branch of an either/or cost, beside a mana
-	// branch — every printed card pairs it with mana.
+	// the table. As a branch of an either/or cost, beside a mana branch
+	// (every printed mandatory one pairs it with mana), or — behold only —
+	// on an optional cost keyed BeholdKey ("you may behold a Hero",
+	// effects.OptionalBehold, #4642), which names its card on the same
+	// reveal_ids when the caster takes it.
 	Reveal *RevealCost
 
 	// ExilePermanents is "As an additional cost to cast this spell, exile
@@ -526,6 +541,12 @@ const (
 	// Waterbend clause (optional_waterbend.go); "if this spell's
 	// additional cost was paid" is ctx.OptionalCostTimes(WaterbendKey).
 	WaterbendKey = "waterbend"
+	// BeholdKey is an optional "you may behold a <type>" additional cost
+	// (#4642, Hulk's Thunderclap, Hyperion's Atomic Vision). The cost is
+	// the Reveal component on an optional entry; "if this spell's
+	// additional cost was paid" / "if a Hero was beheld" is
+	// ctx.OptionalCostTimes(BeholdKey) > 0.
+	BeholdKey = "behold"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose

@@ -16,15 +16,19 @@ func init() {
 		Name:         "Demonic Tutor",
 		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return SearchLibrary{
-				Player:  ctx.Controller(),
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Reveal:  false,
-				Shuffle: true,
-				Reason:  "Demonic Tutor — search your library for a card",
-			}.Apply(ctx)
-		},
+		OnResolve:    demonicTutorOnResolve,
 	})
+}
+
+// demonicTutorOnResolve is the spell's body, shared with Emeritus of
+// Woe's prepare spell, which prints the same text.
+func demonicTutorOnResolve(_ *game.StackItem, ctx *Context) error {
+	return SearchLibrary{
+		Player:  ctx.Controller(),
+		Dest:    game.ZoneHand,
+		Limit:   1,
+		Reveal:  false,
+		Shuffle: true,
+		Reason:  "Demonic Tutor — search your library for a card",
+	}.Apply(ctx)
 }

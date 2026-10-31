@@ -8,7 +8,8 @@ import (
 )
 
 // answers_guard_test.go — ADR 0142 decision 1: what effects.Register
-// refuses in a declared Purpose.Answers or ManaAbility.Answers.
+// refuses in a declared Purpose.Answers or ManaAbility.Answers, and
+// (#2877) on a spell's slots.
 
 // refusal runs fn and returns its panic message, "" for none.
 func refusal(fn func()) (msg string) {
@@ -31,9 +32,14 @@ func TestAnswersGuardOnSlots(t *testing.T) {
 		{"activated row", purposeOnActivated, game.Purpose{Answers: game.AnswerProtect}, ""},
 		{"any-player row", purposeOnAnyPlayerActivated, game.Purpose{Answers: game.AnswerValue}, ""},
 		{"pump beside its amounts", purposeOnActivated, game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 1}}, ""},
-		{"on the card", purposeOnCard, game.Purpose{Answers: game.AnswerValue}, "off an activated row"},
-		{"on a mode", purposeOnMode, game.Purpose{Answers: game.AnswerRemove}, "off an activated row"},
-		{"on an alternative cost", purposeOnAltCost, game.Purpose{Answers: game.AnswerRemove}, "off an activated row"},
+		// #2877, ADR 0142's amendment of 2026-10-30: a spell's slots
+		// declare too, for a cast's value_only.
+		{"on the card", purposeOnCard, game.Purpose{Answers: game.AnswerValue}, ""},
+		{"on a spell's mode", purposeOnSpellMode, game.Purpose{Answers: game.AnswerValue}, ""},
+		{"on an alternative cost", purposeOnAltCost, game.Purpose{Answers: game.AnswerRemove}, ""},
+		{"on an ability's mode", purposeOnMode, game.Purpose{Answers: game.AnswerRemove}, "off an activated row"},
+		{"on a turn face up", purposeOnFaceUp, game.Purpose{Answers: game.AnswerValue}, "off an activated row"},
+		{"value beside another on the card", purposeOnCard, game.Purpose{Answers: game.AnswerRemove | game.AnswerValue}, "value stands alone"},
 		{"on a triggered row", purposeOnTriggered, game.Purpose{Answers: game.AnswerPump}, "off an activated row"},
 		{"value beside another", purposeOnActivated, game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerValue}, "value stands alone"},
 		{"unknown bit", purposeOnActivated, game.Purpose{Answers: 1 << 14}, "name no answer"},
@@ -151,5 +157,55 @@ func TestAnswersAllowedOnAnOpponentsOnlyRow(t *testing.T) {
 	row.Purpose.Draws = 1
 	if msg := refusal(func() { checkAnyPlayerAbility("Test Card", "ability 0", row) }); !strings.Contains(msg, "opponents-only") {
 		t.Fatalf("got %q, want the opponents-only refusal", msg)
+	}
+}
+
+// #2877: a spell keeps the cost coupling (ADR 0142 §3). A cost that
+// gives up a creature is a sacrifice outlet, so no slot of the spell may
+// say it answers nothing; a land or a discard is a price.
+func TestAnswersGuardOnSpellCosts(t *testing.T) {
+	creature := SacrificeCost("a creature", Creature())
+	land := SacrificeCost("a land", Land())
+	value := game.Purpose{Answers: game.AnswerValue}
+	outlet := game.Purpose{Answers: game.AnswerSacOutlet}
+	creatureInstead := game.AlternativeCost{Key: "test", Label: "sacrifice a creature", Sacrifice: &game.TargetSpec{Label: "a creature", Min: 1, Max: 1}, Purpose: value}
+	for _, c := range []struct {
+		name string
+		spec Spec
+		want string
+	}{
+		{"a cantrip", Spec{Purpose: value}, ""},
+		{"a creature sacrifice declared value", Spec{Purpose: value, AdditionalCost: creature}, "sacrifice outlet"},
+		{"a creature sacrifice declared sac_outlet", Spec{Purpose: outlet, AdditionalCost: creature}, ""},
+		{"a land sacrifice declared value", Spec{Purpose: value, AdditionalCost: land}, ""},
+		{"a mode declared value under a creature sacrifice", Spec{AdditionalCost: creature,
+			Modes: &game.ModeSpec{Options: []game.ModeOption{{Purpose: value}}}}, "spell mode 0"},
+		{"an alternative cost declared value under a creature sacrifice", Spec{AdditionalCost: creature,
+			AlternativeCosts: []game.AlternativeCost{{Key: "flashback", Purpose: value}}}, "alternative cost"},
+		{"a creature sacrificed instead of paying, declared value", Spec{AlternativeCosts: []game.AlternativeCost{creatureInstead}}, "instead of paying"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			c.spec.Name = "Test Card"
+			msg := refusal(func() { checkSpellAnswers(c.spec) })
+			if c.want == "" && msg != "" {
+				t.Fatalf("refused: %s", msg)
+			}
+			if c.want != "" && !strings.Contains(msg, c.want) {
+				t.Fatalf("got %q, want a refusal naming %q", msg, c.want)
+			}
+		})
+	}
+}
+
+// #2877: what a kicked cast answers is the card's union, so a kicked
+// purpose may not declare Answers of its own.
+func TestAnswersRefusedInsideKicked(t *testing.T) {
+	spec := Spec{
+		Name:          "Test Card",
+		OptionalCosts: []game.AdditionalCost{{Key: game.KickerKey, Optional: true, ManaCost: "{1}"}},
+		Purpose:       game.Purpose{Answers: game.AnswerValue, Kicked: &game.Purpose{Draws: 1, Answers: game.AnswerValue}},
+	}
+	if msg := refusal(func() { checkConditionalPurposes(spec) }); !strings.Contains(msg, "declares Answers") {
+		t.Fatalf("got %q, want the kicked Answers refusal", msg)
 	}
 }

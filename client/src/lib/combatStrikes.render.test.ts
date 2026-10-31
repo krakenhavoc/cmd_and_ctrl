@@ -240,16 +240,17 @@ describe("the strike layer", () => {
     expect(cues.isStriking("ogre")).toBe(false);
   });
 
-  it("plays combat_resolve once, at contact, not when the beat starts", () => {
+  it("plays combat_resolve once, at contact, at full volume on a creature-only beat, not when the beat starts", () => {
     const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
-    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
-    play(before, next, [ogre], [ogre]);
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", "bear")];
+    play(before, next, [ogre, bear], [ogre, bear]);
     advance(0);
     expect(playSound).not.toHaveBeenCalled();
     advance(179);
     expect(playSound).not.toHaveBeenCalled();
     advance(1);
     expect(soundCalls("combat_resolve")).toBe(1);
+    expect(playSound).toHaveBeenCalledWith("combat_resolve", undefined);
     advance(2000);
     expect(soundCalls("combat_resolve")).toBe(1);
   });
@@ -334,9 +335,9 @@ describe("the strike layer", () => {
     const next = [
       ...before,
       stepE(120, "first_strike_damage"),
-      { ...hit(121, 0, "ogre", 1), combat_step: "first_strike" as const },
+      { ...hit(121, 0, "ogre", "bear"), combat_step: "first_strike" as const },
       stepE(130, "combat_damage"),
-      { ...hit(131, 1, "bear", 0), combat_step: "regular" as const },
+      { ...hit(131, 1, "bear", "ogre"), combat_step: "regular" as const },
     ];
     play(before, next, [ogre, bear], [ogre, bear]);
     advance(180);
@@ -351,8 +352,8 @@ describe("the strike layer", () => {
   it("scales the contact time with the animation speed", () => {
     updateSettings("animations", "speed", 2);
     const before = [stepE(100, "declare_attackers")];
-    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
-    play(before, next, [ogre], [ogre]);
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", "bear")];
+    play(before, next, [ogre, bear], [ogre, bear]);
     advance(359);
     expect(playSound).not.toHaveBeenCalled();
     advance(1);
@@ -370,8 +371,47 @@ describe("the strike layer", () => {
     r.setProps({ view: viewWith(next, [ogre]) } as never);
     cues.frame(next, get(settings));
     advance(180);
-    expect(soundCalls("combat_resolve")).toBe(1);
     expect(faceHitCalls()).toBe(1);
+    expect(soundCalls("combat_resolve")).toBe(0);
+    advance(300);
+    expect(soundCalls("combat_resolve")).toBe(1);
+  });
+
+  it("plays the hit at contact, then a quieter war cry 300 ms later (#4560)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", 1)];
+    play(before, next, [ogre], [ogre]);
+    advance(180);
+    expect(faceHitCalls()).toBe(1);
+    expect(soundCalls("combat_resolve")).toBe(0);
+    advance(299);
+    expect(soundCalls("combat_resolve")).toBe(0);
+    advance(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
+    expect(playSound).toHaveBeenLastCalledWith("combat_resolve", { volume: 0.6 });
+    // The hit is a plain play: full volume.
+    expect(playSound).toHaveBeenCalledWith("face_hit_medium");
+    advance(2000);
+    expect(soundCalls("combat_resolve")).toBe(1);
+  });
+
+  it("starts the war cry after the LAST staggered face hit (#4560)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", 1, 1),
+      hit(122, 0, "bear", 2, 5),
+    ];
+    play(before, next, [ogre, bear], [ogre, bear]);
+    // Last hit at 180 + 90; the cry 300 after it.
+    advance(180 + 90 + 299);
+    expect(faceHitCalls()).toBe(2);
+    expect(soundCalls("combat_resolve")).toBe(0);
+    advance(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
+    const order = vi.mocked(playSound).mock.calls.map(([n]) => n);
+    expect(order.indexOf("combat_resolve")).toBe(order.length - 1);
   });
 
   it("plays nothing on a priming frame (a reconnect, a replay jump)", () => {

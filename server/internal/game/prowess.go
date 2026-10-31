@@ -145,7 +145,7 @@ func resolveProwess(g *Game, item *StackItem) error {
 // abilities and the zone harvesters skip them, exactly as they skip a
 // catalog trigger that did not declare their zone.
 func keywordTriggersFor(c *Card) []TriggeredAbility {
-	prowess, evolve, exalted, decayed := 0, 0, 0, 0
+	prowess, evolve, exalted, decayed, melee := 0, 0, 0, 0, 0
 	var annihilator, renown []int
 	forEachAbilityToken(c, func(a string) bool {
 		switch a {
@@ -157,6 +157,8 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 			exalted++
 		case KeywordDecayed:
 			decayed++
+		case KeywordMelee:
+			melee++
 		default:
 			// CR 702.86b (#2073, annihilator.go): one trigger per
 			// "annihilator N" instance, each with its own N.
@@ -171,10 +173,10 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 		}
 		return true
 	})
-	if prowess+evolve+exalted+decayed+len(annihilator)+len(renown) == 0 {
+	if prowess+evolve+exalted+decayed+melee+len(annihilator)+len(renown) == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+len(annihilator)+len(renown))
+	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+melee+len(annihilator)+len(renown))
 	for i := 0; i < prowess; i++ {
 		out = append(out, prowessTrigger)
 	}
@@ -189,6 +191,9 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 	}
 	for i := 0; i < decayed; i++ {
 		out = append(out, decayedTrigger)
+	}
+	for i := 0; i < melee; i++ {
+		out = append(out, meleeTrigger)
 	}
 	for _, n := range renown {
 		out = append(out, renownTriggerFor(n))

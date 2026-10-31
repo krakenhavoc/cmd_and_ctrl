@@ -289,3 +289,26 @@ the threshold clause is a `CastPermissionGate` (`GraveyardAtLeast(7)`), derived 
 opens the moment the count reaches seven and closes if it falls back.
 
 **Cards.** Null Summoner (Full).
+
+## Amendment 2026-10-30 — the revealer picks which cards to show, and a chosen card is discarded by id (#4588)
+
+"Target player reveals a number of cards from their hand … You choose one of them. That player discards that
+card." (Klaw, Sonic Subjugator) is not this ADR's pick: `ChooseFromRevealedHand` reveals the WHOLE hand (CR
+701.20a), and here the revealing player chooses which N cards to show, and only those are shown. Taster of Wares
+already built that flow for an exile (a `choose_cards` over the revealer's own hand, `RevealForEffect`, then a
+`reveal_pick` for the controller; both keyed, both plain data). Two small pieces make it reusable:
+
+- **`effects.RevealFromHandPick`** (`cards/effects/reveal_from_hand_pick.go`) is that flow as one value built at
+  package level: `NewRevealFromHandPick(name, verb, revealKey, pickKey, onPick)` and `.Ask(ctx, player, n)`. N is
+  read by the card as the ability resolves. A hand no larger than N is revealed whole and nobody is asked, an empty
+  hand does nothing. `onPick` moves the controller's chosen card; the two `choose-cards/<card>-…` keys are
+  on-disk identities, ledgered in `effect_keys.txt`. Taster of Wares now uses it with its keys unchanged.
+- **`Game.DiscardCardsKeyedForEffect(player, cards, source, then)`** (`game/discard_keyed.go`) is the exported,
+  keyed wrapper over the one discard path for "discard these specific cards from player P's hand" when P chose
+  nothing: madness and discard triggers see each card, a replacement may redirect it, an opponent-effect discard
+  block applies (#2178), a card no longer in that hand is skipped, and `then` is a registered tail told the
+  cards that landed. It was the missing exported verb; every earlier caller either prompted the player
+  (`QueueDiscardChoiceForEffect`), chose at random, or sat inside `game`.
+
+No snapshot field, no wire field, no new prompt kind: the two prompts are the existing `choose_cards` and
+`reveal_pick`, which the bot and `legal` already answer. **Cards.** Klaw, Sonic Subjugator (Full).

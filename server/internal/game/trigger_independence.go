@@ -1457,6 +1457,15 @@ func (g *Game) reactorLocked(emits map[EventKind]bool) (card string, kind EventK
 			}
 			continue
 		}
+		if r.Label == finalityCounterLabel {
+			// CR 122.1h's effect applies only to a permanent with a
+			// finality counter on it (#4575): set aside on a board
+			// with none.
+			if ok && g.anyFinalityCounterLocked() {
+				return "", k, true
+			}
+			continue
+		}
 		if !knownBuiltinReplacementLabels[r.Label] && (len(r.Watches) == 0 || ok) {
 			return "", k, true
 		}
@@ -1619,7 +1628,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
-	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
+	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,

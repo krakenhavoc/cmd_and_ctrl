@@ -47,8 +47,9 @@ func upToNCardsFromASingleGraveyard(n int) *game.TargetSpec {
 func ExileFromASingleGraveyardAbility(costText string, cost game.AbilityCost, n int) ActivatedAbility {
 	return ActivatedAbility{
 		Label: costText + ": Exile up to " + numberWord(n) + " target cards from a single graveyard.",
-		// ADR 0142 sweep ruling 9: graveyard hate is restrict.
-		Purpose: game.Purpose{Answers: game.AnswerRestrict},
+		// ADR 0142 sweep ruling 9, split from restrict by ADR 0009's
+		// amendment of 2026-10-30 (#4734, Q5): graveyard hate is graveyard.
+		Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 		Cost:    cost,
 		Targets: upToNCardsFromASingleGraveyard(n),
 		Effect:  ExileTargetCards,

@@ -191,6 +191,7 @@ func moveClauses(v *protocol.GameView, m legal.Move) []clauseRef {
 	}
 	var p struct {
 		InstanceID   string `json:"instance_id"`
+		Face         int    `json:"face"`
 		AltCost      string `json:"alternative_cost"`
 		Modes        []int  `json:"modes"`
 		SourceCardID string `json:"source_card_id"`
@@ -206,19 +207,26 @@ func moveClauses(v *protocol.GameView, m legal.Move) []clauseRef {
 		if c == nil {
 			return nil
 		}
+		// #4497: a cast of another face (an Adventure, a modal DFC's back)
+		// is announced under that face's clauses, which the view carries
+		// on the face. The card's own block is the face that is up.
+		s := &c.CastSurfaceView
+		if p.Face > 0 && p.Face < len(c.Faces) {
+			s = &c.Faces[p.Face].CastSurfaceView
+		}
 		if p.AltCost != "" {
-			for _, a := range c.AlternativeCosts {
+			for _, a := range s.AlternativeCosts {
 				if a.Key == p.AltCost && (a.LegalTargets != nil) {
 					return clausesOf(a.LegalTargets, nil, 0)
 				}
 			}
 		}
 		if len(p.Modes) > 0 {
-			if cl := modeClauses(c.Modes, p.Modes); len(cl) > 0 {
+			if cl := modeClauses(s.Modes, p.Modes); len(cl) > 0 {
 				return cl
 			}
 		}
-		return clausesOf(c.LegalTargets, c.Clauses, 0)
+		return clausesOf(s.LegalTargets, s.Clauses, 0)
 	case legal.TypeActivateAbility:
 		c, _ := findCard(v, p.SourceCardID)
 		if c == nil {
@@ -305,6 +313,9 @@ func targetsText(v *protocol.GameView, w *window, n int) (string, error) {
 		}
 		if c.Different != nil || c.Same != nil {
 			b.WriteString("  the picks must also satisfy the clause's set rule; the server checks it\n")
+		}
+		if c.Total != nil {
+			fmt.Fprintf(&b, "  the picks must %s; the server checks it\n", c.Total.Label)
 		}
 		for _, id := range c.Players {
 			fmt.Fprintf(&b, "  player %s — id %s\n", targetRef(v, me, "player", id), id)

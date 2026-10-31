@@ -17,13 +17,13 @@ import (
 // Reassembling Skeleton's graveyard activation, gated by an activation
 // condition that reads this turn's events for noncombat damage dealt to
 // one of the controller's opponents (rfCreatureBAnOpponentWasDealtNoncombatDamage).
-// The finality counter is two self-replacements on this card, because
-// no other card in the catalog uses the counter yet: it enters with one
-// only when it comes from a graveyard (a hard-cast Repriser has none),
-// and a Repriser that carries one and would die is exiled instead
-// (CR 614.6: the replacement rewrites the move, so no dies trigger
-// sees it). A finality counter put on it some other way is honoured by
-// the same second replacement.
+// The finality counter is half the card's and half the engine's: the
+// Repriser enters with one only when it comes from a graveyard (a
+// hard-cast Repriser has none; a self-replacement), and a permanent
+// that carries one and would die is exiled instead by the engine's own
+// CR 122.1h replacement (game/finality_counters.go, #4575), which
+// rewrites the move so no dies trigger sees it (CR 614.6). A finality
+// counter put on it some other way is honoured the same way.
 //
 // No simplification.
 func init() {
@@ -35,23 +35,6 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			rfCreatureBEntersWithCounterFromGraveyard(rfCreatureBFinalityCounter, 1,
 				"Grim Repriser: enters with a finality counter"),
-			{
-				Watches: []game.EventKind{game.EventZoneMove},
-				AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-					return ev.Kind == game.RepEventMove && ev.OldZone == game.ZoneBattlefield &&
-						ev.NewZone == game.ZoneGraveyard && src != nil && ev.CardID == src.InstanceID &&
-						src.Counters[rfCreatureBFinalityCounter] > 0
-				},
-				Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-					ev.NewZone = game.ZoneExile
-					ev.NewZoneOwner = uuid.Nil
-					return nil
-				},
-				Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-					return src.Controller
-				},
-				Label: "Grim Repriser: exile instead of dying (finality counter)",
-			},
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}{R}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if an opponent has been dealt noncombat damage this turn.",

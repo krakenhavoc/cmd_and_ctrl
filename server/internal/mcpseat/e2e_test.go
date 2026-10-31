@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -33,8 +34,9 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
-	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects" // Lightning Bolt, for the capped window
+	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects" // Lightning Bolt and Anguished Unmaking, for the capped windows
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/mcpseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -44,8 +46,10 @@ import (
 const (
 	e2eAdminToken = "e2e-admin-token-0123456789"
 	oracleBolt    = "4457ed35-7c10-48c8-9776-456485fdf070"
-	plainsDeck    = "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n"
-	maxDecisions  = 40
+	// Anguished Unmaking: "Exile target nonland permanent." (#4737)
+	oracleAnguishedUnmaking = "ad09b3c3-c8e7-481c-8c45-e7f234935117"
+	plainsDeck              = "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n"
+	maxDecisions            = 40
 )
 
 type e2eStack struct {
@@ -203,28 +207,8 @@ func TestE2EAnAgentPlaysARealTable(t *testing.T) {
 	}
 	admin := st.post(t, "/admin/login", "", map[string]string{"token": e2eAdminToken})["token"].(string)
 
-	// The seat, driven through the SDK's own client.
-	logBuf := &lockedBuffer{}
-	stateDir := filepath.Join(t.TempDir(), "state")
-	seat, err := mcpseat.NewSeat(mcpseat.Config{StateDir: stateDir, LogOutput: logBuf, AckTimeout: 10 * time.Second})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(seat.Close)
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	sT, cT := mcp.NewInMemoryTransports()
-	ss, err := mcpseat.NewMCPServer(seat, "e2e").Connect(ctx, sT, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = ss.Close() })
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "e2e-client", Version: "1"}, nil).Connect(ctx, cT, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = cs.Close() })
-
+	cs, logBuf, stateDir := newE2ESeat(t)
+	ctx := context.Background()
 	tools, err := cs.ListTools(ctx, nil)
 	if err != nil || len(tools.Tools) != 10 {
 		t.Fatalf("tools/list: %d tools, %v", len(tools.Tools), err)
@@ -379,6 +363,174 @@ func TestE2EAnAgentPlaysARealTable(t *testing.T) {
 	if strings.Contains(logBuf.String(), saved.Token) {
 		t.Fatal("the session token appeared in the log")
 	}
+}
+
+// newE2ESeat is the seat, driven through the SDK's own client: the
+// client session, the seat's log and its state directory.
+func newE2ESeat(t *testing.T) (*mcp.ClientSession, *lockedBuffer, string) {
+	t.Helper()
+	logBuf := &lockedBuffer{}
+	stateDir := filepath.Join(t.TempDir(), "state")
+	seat, err := mcpseat.NewSeat(mcpseat.Config{StateDir: stateDir, LogOutput: logBuf, AckTimeout: 10 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(seat.Close)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	sT, cT := mcp.NewInMemoryTransports()
+	ss, err := mcpseat.NewMCPServer(seat, "e2e").Connect(ctx, sT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ss.Close() })
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "e2e-client", Version: "1"}, nil).Connect(ctx, cT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	return cs, logBuf, stateDir
+}
+
+// #4737, against the real enumerator: a single-target removal spell over
+// more nonland permanents than the enumerator's per-card cap, on a list
+// far under the wire's 48-move cap, so legal_moves_truncated stays off and
+// only the spell's legal_actions entry says it was cut. The window offers
+// every target, folds the identical Treasures to one line, and the report
+// counts the window as truncated.
+func TestE2EACardCutUnderTheWireCapOffersEveryTarget(t *testing.T) {
+	st := newE2EStack(t)
+	meta, err := st.lobby.Create("e2e-cut")
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin := st.post(t, "/admin/login", "", map[string]string{"token": e2eAdminToken})["token"].(string)
+	cs, _, _ := newE2ESeat(t)
+	invite := st.srv.URL + "/#/games/" + meta.ID.String() + "/join?t=" + meta.InviteToken
+	text, isErr := call(t, cs, "join", map[string]any{"invite_url": invite, "display_name": "Claude"})
+	if isErr {
+		t.Fatalf("join: %s", text)
+	}
+	agentID := field(text, "player_id")
+	if text, isErr = call(t, cs, "set_deck", map[string]any{"deck": map[string]any{"list": plainsDeck}}); isErr {
+		t.Fatalf("set_deck: %s", text)
+	}
+	bot := st.post(t, "/games/"+meta.ID.String()+"/seats/bot", admin, map[string]any{"tier": "random", "format": "text", "source": plainsDeck})
+	botID, _ := bot["player_id"].(string)
+	st.post(t, "/games/"+meta.ID.String()+"/start", admin, map[string]any{})
+
+	injected, checked := false, false
+	for decisions := 0; decisions < maxDecisions && !checked; {
+		text, isErr = call(t, cs, "wait_for_decision", map[string]any{"timeout_s": 20})
+		if isErr {
+			t.Fatalf("wait_for_decision: %s", text)
+		}
+		if s := field(text, "status"); s == "game_over" {
+			break
+		} else if s != "decision" {
+			continue
+		}
+		decisions++
+		switch {
+		case injected && strings.Contains(text, "Anguished Unmaking {1}{W}{B} (hand)"):
+			checked = true
+			for i := 1; i <= cutRelics; i++ {
+				if want := fmt.Sprintf("Cast Anguished Unmaking targeting Test Relic %02d (", i); !strings.Contains(text, want) {
+					t.Errorf("Test Relic %02d is a legal target and the window does not offer it", i)
+				}
+			}
+			if !regexp.MustCompile(`Cast Anguished Unmaking targeting Treasure \(.*\) \[and 5 more like it, each naming another identical permanent: moves \d`).MatchString(text) {
+				t.Error("the six identical Treasures are not one line that counts the other five")
+			}
+			if strings.Contains(text, "not listed") {
+				t.Error("a card fetched in full still says it was cut")
+			}
+			if t.Failed() {
+				t.Logf("the window:\n%s", text)
+			}
+			continue
+		case !injected && strings.Contains(text, "kind: priority") && strings.Contains(text, "precombat main") &&
+			strings.Contains(text, "active player: «Claude» (YOU)"):
+			injected = true
+			injectCutCard(t, st, meta.ID, agentID, botID)
+			continue // the window just went stale; wait for the new one
+		}
+		text, _ = call(t, cs, "act", map[string]any{"window": field(text, "window"), "move": choose(text)})
+		if got := field(text, "status"); got != "accepted" && got != "rejected" && !strings.HasPrefix(got, "stale") {
+			t.Fatalf("act was answered without an ack or an error: %s", text)
+		}
+	}
+	if !checked {
+		t.Fatal("the agent never saw the removal spell's window within the bound")
+	}
+	if text, _ = call(t, cs, "concede", map[string]any{"confirm": true}); !strings.Contains(text, "conceded") {
+		t.Fatalf("concede: %s", text)
+	}
+	text, _ = call(t, cs, "wait_for_decision", map[string]any{"timeout_s": 20})
+	m := regexp.MustCompile(`truncated windows: (\d+);`).FindStringSubmatch(text)
+	if m == nil {
+		t.Fatalf("no report after conceding: %s", text)
+	}
+	if n, _ := strconv.Atoi(m[1]); n < 1 {
+		t.Errorf("the report counts %d truncated windows; the removal spell's window was cut", n)
+	}
+}
+
+// cutRelics is how many distinct artifacts injectCutCard gives the bot.
+const cutRelics = 20
+
+// injectCutCard puts Anguished Unmaking in the agent's hand with the mana
+// to cast it, and gives the bot twenty distinct artifacts and six
+// Treasures: 26 legal targets for one spell, over twice the enumerator's
+// per-card cap, on a list well under the wire cap.
+func injectCutCard(t *testing.T, st *e2eStack, gameID uuid.UUID, agentID, botID string) {
+	t.Helper()
+	g, err := st.lobby.LookupGame(gameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	agent, bot := uuid.MustParse(agentID), uuid.MustParse(botID)
+	room := st.mgr.Get(gameID)
+	var spell uuid.UUID
+	view, seq, err := room.ApplyExternal(func() error {
+		au := game.Card{Name: "Anguished Unmaking", TypeLine: "Instant", ManaCost: "{1}{W}{B}", OracleID: oracleAnguishedUnmaking}
+		ids, err := g.SpawnCards(agent, agent, game.ZoneHand, au, 1)
+		if err != nil {
+			return err
+		}
+		spell = ids[0]
+		for _, land := range []game.Card{{Name: "Swamp", TypeLine: "Basic Land — Swamp"}, {Name: "Plains", TypeLine: "Basic Land — Plains"}} {
+			if _, err := g.SpawnCards(agent, agent, game.ZoneBattlefield, land, 2); err != nil {
+				return err
+			}
+		}
+		for i := 1; i <= cutRelics; i++ {
+			relic := game.Card{Name: fmt.Sprintf("Test Relic %02d", i), TypeLine: "Artifact", ManaCost: "{1}"}
+			if _, err := g.SpawnCards(agent, bot, game.ZoneBattlefield, relic, 1); err != nil {
+				return err
+			}
+		}
+		treasure := game.Card{Name: "Treasure", TypeLine: "Token Artifact — Treasure"}
+		_, err = g.SpawnCards(agent, bot, game.ZoneBattlefield, treasure, 6)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The shape #4737 needs, from the server's own enumeration: the spell
+	// cut, the list under the wire cap.
+	rep := legal.EnumerateReport(g, agent, legal.Options{})
+	if len(rep.Moves) > 48 {
+		t.Fatalf("%d moves: past the wire cap, so this is not the board #4737 is about", len(rep.Moves))
+	}
+	cut := false
+	for _, c := range rep.Cuts {
+		cut = cut || (c.Source == spell && c.Cap == legal.CapPerSource)
+	}
+	if !cut {
+		t.Fatalf("the enumerator did not cut the spell: %+v", rep.Cuts)
+	}
+	st.hub.BroadcastState(gameID, seq, view)
 }
 
 // assertBotSeesTheBadge reads the bot seat's own filtered view over the

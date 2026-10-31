@@ -3,14 +3,23 @@ import { describe, expect, it } from "vitest";
 import type { GameMeta, SeatInfo } from "./api";
 import type { MyGame } from "./myGames";
 import {
+  botChipText,
   contextLine,
   filterHistory,
   historyRows,
+  lobbyPrimary,
+  lobbySlots,
   moreCount,
   nowTables,
+  readiness,
   seatLine,
+  seatPreview,
+  seatTileArt,
+  seatTileText,
   statusChip,
+  type LobbyViewer,
 } from "./tablesPage";
+import type { PickerCommit } from "./deckPicker";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-10-13T12:00:00Z");
@@ -108,6 +117,382 @@ describe("the Now card's head (ADR 0158 §1 item 2)", () => {
       meta({ id: "d", archived_at: "2026-10-01T00:00:00Z" }),
     ];
     expect(nowTables(list).map((g) => g.id)).toEqual(["a", "b"]);
+  });
+});
+
+// ADR 0212: a table in the lobby as a character select.
+describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
+  it("lays the four seats out by seat number, open ones as null", () => {
+    const slots = lobbySlots(meta({ players: [seat(1), seat(0)] }));
+    expect(slots.map((p) => p?.seat ?? null)).toEqual([0, 1, null, null]);
+    // A seat out of range is kept, after the four.
+    expect(lobbySlots(meta({ players: [seat(0), seat(6)] }))).toHaveLength(5);
+  });
+
+  it("names a person's deck once when the seat carries no commanders", () => {
+    expect(seatTileText(seat(0, { deck_name: "Kenrith's court" }), undefined)).toEqual({
+      what: "Kenrith's court",
+      second: "",
+      colors: [],
+      ready: true,
+    });
+    expect(seatTileText(seat(0, { deck_uploaded: false }), undefined)).toMatchObject({
+      what: "No deck yet",
+      ready: false,
+    });
+  });
+
+  // ADR 0212 phase B2: a person's seat carries its commanders, for the
+  // table's own people. The tile names the commander, the deck only when
+  // it is not the commander's, and the seat's identity as pips.
+  it("names a person's commander, then the deck when it is not the commander's (phase B2)", () => {
+    const krenko = {
+      deck_name: "Goblin storm",
+      commander_cards: [{ name: "Krenko, Mob Boss", scryfall_id: "k1", color_identity: ["R"] }],
+      color_identity: ["R"],
+    };
+    expect(seatTileText(seat(0, krenko), undefined)).toEqual({
+      what: "Krenko, Mob Boss",
+      second: "Goblin storm",
+      colors: ["R"],
+      ready: true,
+    });
+    // A deck named for its commander says it once.
+    expect(
+      seatTileText(seat(0, { ...krenko, deck_name: "krenko, mob boss" }), undefined),
+    ).toMatchObject({
+      what: "Krenko, Mob Boss",
+      second: "",
+    });
+    // A partner pair is one line, its identity the union in WUBRG order.
+    const pair = seat(1, {
+      deck_name: "Tymna / Kraum",
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: "t1", color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", scryfall_id: "k2", color_identity: ["U", "R"] },
+      ],
+      color_identity: ["R", "W", "B", "U"],
+    });
+    expect(seatTileText(pair, undefined)).toEqual({
+      what: "Tymna the Weaver · Kraum, Ludevic's Opus",
+      second: "Tymna / Kraum",
+      colors: ["W", "U", "B", "R"],
+      ready: true,
+    });
+    // A colourless commander has no pips; an unresolved one keeps its name.
+    expect(
+      seatTileText(
+        seat(2, {
+          deck_name: "Eldrazi",
+          commander_cards: [{ name: "Kozilek", color_identity: [] }],
+        }),
+        undefined,
+      ),
+    ).toMatchObject({ what: "Kozilek", second: "Eldrazi", colors: [] });
+    // No deck in yet: the commanders, if any were left, are not read.
+    expect(seatTileText(seat(0, { ...krenko, deck_uploaded: false }), undefined)).toMatchObject({
+      what: "No deck yet",
+      colors: [],
+    });
+  });
+
+  it("draws a person's commander art, partners side by side, and a wash without a printing (phase B2)", () => {
+    const pair = seat(1, {
+      commander_cards: [
+        { name: "Tymna the Weaver", scryfall_id: "t1", color_identity: ["W", "B"] },
+        { name: "Kraum, Ludevic's Opus", color_identity: ["U", "R"] },
+      ],
+    });
+    expect(seatTileArt(pair, undefined)).toEqual([{ name: "Tymna the Weaver", scryfallId: "t1" }]);
+    // A table this person is not at sends no commanders: the seat's wash.
+    expect(seatTileArt(seat(0, { deck_name: "Goblin storm" }), undefined)).toEqual([]);
+  });
+
+  it("draws a bot seated with a pasted list from its own seat, and prefers it to the catalog's", () => {
+    const own = [{ name: "Krenko, Mob Boss", scryfall_id: "k1", color_identity: ["R"] }];
+    const pasted = seat(2, {
+      is_bot: true,
+      bot_tier: "random",
+      deck_name: "Goblins",
+      commander_cards: own,
+      color_identity: ["R"],
+    });
+    expect(seatTileArt(pasted, undefined)).toEqual([
+      { name: "Krenko, Mob Boss", scryfallId: "k1" },
+    ]);
+    expect(seatTileText(pasted, undefined)).toEqual({
+      what: "Krenko, Mob Boss",
+      second: "Goblins",
+      colors: ["R"],
+      ready: true,
+    });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["G"],
+      commander_cards: [{ name: "Marwyn, the Nurturer", scryfall_id: "m1", color_identity: ["G"] }],
+    };
+    const catalog = seat(3, {
+      is_bot: true,
+      bot_deck: "elves",
+      commander_cards: [{ name: "Marwyn, the Nurturer", scryfall_id: "m2", color_identity: ["G"] }],
+    });
+    expect(seatTileArt(catalog, deck)).toEqual([
+      { name: "Marwyn, the Nurturer", scryfallId: "m2" },
+    ]);
+  });
+
+  it("gives a bot its pre-built deck's commander, the deck, and its colours", () => {
+    const bot = seat(3, { is_bot: true, bot_tier: "heuristic", bot_deck: "elves" });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["g"],
+    };
+    expect(seatTileText(bot, deck)).toEqual({
+      what: "Marwyn, the Nurturer",
+      second: "Pre-built · Elf ball",
+      colors: ["G"],
+      ready: true,
+    });
+    // A bot is ready even before GET /bot/options has answered.
+    expect(seatTileText({ ...bot, deck_name: "Elf ball" }, undefined)).toMatchObject({
+      what: "Elf ball",
+      ready: true,
+    });
+  });
+
+  it("draws a bot's pre-built deck's commander art, and a person's seat none without its own (phase B1)", () => {
+    const bot = seat(3, { is_bot: true, bot_tier: "heuristic", bot_deck: "elves" });
+    const deck = {
+      id: "elves",
+      name: "Elf ball",
+      commander: "Marwyn, the Nurturer",
+      colors: ["G"],
+      commander_cards: [
+        { name: "Marwyn, the Nurturer", scryfall_id: "m1", color_identity: ["G"] },
+        { name: "No printing", color_identity: null },
+      ],
+    };
+    // Only a commander with a printing is drawn; the rest of the seat is the wash.
+    expect(seatTileArt(bot, deck)).toEqual([{ name: "Marwyn, the Nurturer", scryfallId: "m1" }]);
+    expect(seatTileArt(bot, { ...deck, commander_cards: undefined })).toEqual([]);
+    expect(seatTileArt(bot, undefined)).toEqual([]);
+    // A person's seat takes no art from a deck; their preview supplies it (seatPreview).
+    expect(seatTileArt(seat(0), deck)).toEqual([]);
+  });
+
+  it("names a bot's tier, and a player's own key", () => {
+    const tiers = [{ tier: "heuristic", label: "Medium", description: "", available: true }];
+    const bot = seat(3, { is_bot: true, bot_tier: "heuristic" });
+    expect(botChipText(bot, tiers)).toBe("Medium");
+    expect(botChipText({ ...bot, bot_own_key: true }, tiers)).toBe("Medium (own key)");
+    expect(botChipText({ ...bot, bot_tier: "model" }, tiers)).toBe("model");
+  });
+});
+
+describe("a lobby table's readiness line (ADR 0212 §2)", () => {
+  it("counts the seated players, not four, and says what it waits on", () => {
+    const me = seat(0, { deck_uploaded: false });
+    const players = [me, seat(1), seat(3, { is_bot: true, deck_uploaded: false })].map((p, i) => ({
+      ...p,
+      seat: i,
+    }));
+    const r = readiness(meta({ players }), me, { bots: true });
+    expect([r.ready, r.seated]).toEqual([2, 3]);
+    expect(r.segments.map((s) => s.state)).toEqual(["choosing", "ready", "ready", "open"]);
+    expect([r.lead, r.status]).toEqual(["1 seat open", "waiting on your deck"]);
+  });
+
+  it("names one player still choosing, or counts several", () => {
+    const one = meta({ players: [seat(0), seat(1, { deck_uploaded: false, name: "Bob" })] });
+    expect(readiness(one, seat(0), { bots: true }).status).toBe("waiting on Bob's deck");
+    const two = meta({
+      players: [seat(0), seat(1, { deck_uploaded: false }), seat(2, { deck_uploaded: false })],
+    });
+    expect(readiness(two, seat(0), { bots: true }).status).toBe("waiting on 2 decks");
+  });
+
+  it("says every deck is in, capitalised when nothing comes before it", () => {
+    const full = meta({ players: [seat(0), seat(1), seat(2), seat(3)] });
+    expect(readiness(full, seat(0), { bots: true })).toMatchObject({
+      lead: "",
+      status: "Every deck is in",
+    });
+  });
+
+  it("asks for a second player below two, offering a bot only to who may add one", () => {
+    const alone = meta({ players: [seat(0)] });
+    expect(readiness(alone, seat(0), { bots: true }).status).toBe("invite someone or add a bot");
+    expect(readiness(alone, seat(0), { bots: false }).status).toBe("invite someone");
+  });
+});
+
+describe("a lobby table's one primary (ADR 0212 §2)", () => {
+  const viewer = (v: Partial<LobbyViewer> = {}): LobbyViewer => ({
+    me: null,
+    heldElsewhere: false,
+    takesSeat: false,
+    mayStart: false,
+    spectator: false,
+    ...v,
+  });
+  const host = seat(0, { is_host: true, display_name: "Luke" });
+
+  it("reclaims a seat held elsewhere first, then seats the creator", () => {
+    const g = meta({ players: [host] });
+    expect(lobbyPrimary(g, viewer({ heldElsewhere: true, takesSeat: true })).label).toBe(
+      "Open table",
+    );
+    expect(lobbyPrimary(g, viewer({ takesSeat: true })).kind).toBe("take");
+  });
+
+  it("asks a seat without a deck to choose one", () => {
+    const me = seat(1, { deck_uploaded: false });
+    const p = lobbyPrimary(meta({ players: [host, me] }), viewer({ me }));
+    expect(p).toMatchObject({ kind: "choose", label: "Choose your deck", disabled: false });
+  });
+
+  it("waits, disabled, on the players still choosing", () => {
+    const g = meta({ players: [host, seat(1, { deck_uploaded: false }), seat(2)] });
+    expect(lobbyPrimary(g, viewer({ me: host, mayStart: true }))).toMatchObject({
+      kind: "wait",
+      label: "Waiting for 1 player",
+      disabled: true,
+    });
+    const two = meta({
+      players: [host, seat(1, { deck_uploaded: false }), seat(2, { deck_uploaded: false })],
+    });
+    expect(lobbyPrimary(two, viewer({ me: host })).label).toBe("Waiting for 2 players");
+  });
+
+  it("waits for players below two", () => {
+    const p = lobbyPrimary(meta({ players: [host] }), viewer({ me: host, mayStart: false }));
+    expect(p).toMatchObject({ label: "Waiting for players", disabled: true });
+    expect(p.title).toMatch(/invite someone or add a bot/);
+  });
+
+  it("offers Start game to who may start, naming the count while a seat is open", () => {
+    const three = meta({ players: [host, seat(1), seat(2, { is_bot: true })] });
+    expect(lobbyPrimary(three, viewer({ me: host, mayStart: true }))).toMatchObject({
+      kind: "start",
+      label: "Start game · 3 players",
+      disabled: false,
+    });
+    const four = meta({ players: [host, seat(1), seat(2), seat(3)] });
+    expect(lobbyPrimary(four, viewer({ me: host, mayStart: true })).label).toBe("Start game");
+  });
+
+  it("names the host to everyone else once every deck is in", () => {
+    const me = seat(1);
+    const g = meta({ players: [host, me] });
+    expect(lobbyPrimary(g, viewer({ me }))).toMatchObject({
+      label: "Waiting for Luke to start",
+      disabled: true,
+    });
+  });
+
+  it("gives the admin Start when the table can start, and Open table when not", () => {
+    const ready = meta({ players: [host, seat(1)] });
+    expect(lobbyPrimary(ready, viewer({ mayStart: true })).kind).toBe("start");
+    const choosing = meta({ players: [host, seat(1, { deck_uploaded: false })] });
+    expect(lobbyPrimary(choosing, viewer({ mayStart: true })).label).toBe("Open table");
+    expect(lobbyPrimary(meta(), viewer()).label).toBe("Open table");
+  });
+
+  it("lets a spectator of the table watch", () => {
+    expect(lobbyPrimary(meta({ players: [host] }), viewer({ spectator: true }))).toMatchObject({
+      kind: "watch",
+      label: "Watch",
+    });
+  });
+
+  // Rule 4, and owner decision 8: the pickers under the seats commit
+  // from the footer, so the card keeps one primary.
+  const sit: PickerCommit = {
+    label: "Sit down with this deck",
+    disabled: false,
+    title: "sit down with Elf ball",
+    busy: false,
+  };
+  const emptyPaste: PickerCommit = {
+    label: "Upload deck",
+    disabled: true,
+    title: "paste a decklist or a deck link first",
+    busy: false,
+    empty: true,
+  };
+
+  it("seats the picker's deck from the footer while the picker holds one", () => {
+    const me = seat(1, { deck_uploaded: false });
+    const g = meta({ players: [host, me] });
+    expect(lobbyPrimary(g, viewer({ me, picking: sit }))).toMatchObject({
+      kind: "sit",
+      label: "Sit down with this deck",
+      disabled: false,
+      title: "sit down with Elf ball",
+    });
+    // Nothing selected: Choose your deck, which brings the picker into view.
+    expect(lobbyPrimary(g, viewer({ me, picking: null })).kind).toBe("choose");
+    // Changing a deck already in: the commit still wins over Start.
+    const ready = meta({ players: [host, seat(1)] });
+    expect(lobbyPrimary(ready, viewer({ me: host, mayStart: true, picking: sit })).kind).toBe(
+      "sit",
+    );
+  });
+
+  it("lets an empty Paste a list box lead only a seat with no deck", () => {
+    const me = seat(1, { deck_uploaded: false });
+    expect(
+      lobbyPrimary(meta({ players: [host, me] }), viewer({ me, picking: emptyPaste })),
+    ).toMatchObject({ kind: "sit", label: "Upload deck", disabled: true });
+    const ready = meta({ players: [host, seat(1)] });
+    expect(
+      lobbyPrimary(ready, viewer({ me: host, mayStart: true, picking: emptyPaste })).kind,
+    ).toBe("start");
+  });
+
+  it("adds the bot picker's bot from the footer", () => {
+    const add: PickerCommit = { label: "Add bot", disabled: false, title: "seat it", busy: false };
+    const g = meta({ players: [host, seat(1, { deck_uploaded: false })] });
+    expect(lobbyPrimary(g, viewer({ me: host, addingBot: add, picking: sit }))).toMatchObject({
+      kind: "bot",
+      label: "Add bot",
+    });
+    // The admin, not seated, adds bots too.
+    expect(lobbyPrimary(g, viewer({ mayStart: true, addingBot: add })).kind).toBe("bot");
+    // A seat held elsewhere is reclaimed first.
+    expect(lobbyPrimary(g, viewer({ heldElsewhere: true, addingBot: add })).kind).toBe("open");
+  });
+});
+
+describe("your seat while you browse the picker (ADR 0212 §1)", () => {
+  const pv = {
+    name: "Elf ball",
+    text: {
+      what: "Marwyn, the Nurturer",
+      second: "Pre-built · Elf ball",
+      colors: ["G"],
+      ready: false,
+    },
+    art: [{ name: "Marwyn, the Nurturer", scryfallId: "m1" }],
+  };
+
+  it("previews the selected deck, not ready, with its art", () => {
+    const p = seatPreview(seat(0, { deck_uploaded: false }), pv);
+    expect(p).toEqual({ text: pv.text, art: pv.art, preview: true });
+    // Another deck than the one seated is a preview too.
+    expect(seatPreview(seat(0, { deck_name: "Raid" }), pv)?.preview).toBe(true);
+  });
+
+  it("draws the deck already in the seat as ready, and nothing with nothing selected", () => {
+    const p = seatPreview(seat(0, { deck_name: "elf ball" }), pv);
+    expect(p?.preview).toBe(false);
+    expect(p?.text.ready).toBe(true);
+    expect(p?.art).toEqual(pv.art);
+    expect(seatPreview(seat(0), null)).toBeNull();
   });
 });
 

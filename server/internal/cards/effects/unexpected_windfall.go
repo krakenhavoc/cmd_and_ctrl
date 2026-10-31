@@ -16,7 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "498c10c9-253d-4b15-b48c-1509381b17e8",
 		Name:           "Unexpected Windfall",
-		Purpose:        game.Purpose{Draws: 2, Tokens: 2},
+		Purpose:        game.Purpose{Draws: 2, Tokens: 2, Answers: game.AnswerValue}, // #4734: draw and Treasure tokens answer nothing
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

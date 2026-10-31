@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // battlefield_exit.go — the Game-side half of a permanent leaving the
 // battlefield (CR 400.7).
@@ -118,6 +122,12 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) exitLKI {
 // Aura — is not black in the graveyard, and Teysa, Orzhov Scion's
 // "whenever another black creature you control dies" is judged on
 // what it was as it left: the post-layer Colors are copied.
+//
+// Keywords close it (#4613). A creature that had deathtouch only because
+// an effect gave it some is a plain creature in the graveyard, and The
+// Serpent Society's "whenever another creature you control with
+// deathtouch dies" is judged on what it was as it left: the post-layer
+// Abilities are copied.
 type exitLKI struct {
 	attacking        uuid.UUID
 	blocking         uuid.UUID
@@ -128,6 +138,7 @@ type exitLKI struct {
 	supertypes       []string
 	controller       uuid.UUID
 	colors           []string
+	keywords         []string
 }
 
 // exitLKILocked reads cardID's combat state, card types, subtypes,
@@ -146,6 +157,7 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 		subtypes:   copyStrings(eff.Subtypes),
 		supertypes: copyStrings(eff.Supertypes),
 		colors:     copyStrings(eff.Colors),
+		keywords:   copyStrings(eff.Abilities),
 		// Card.Controller, not eff.Controller: the layer pass
 		// materialises layer 2's answer onto the field
 		// (materialiseControlLocked), and the field is what every
@@ -169,7 +181,7 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 // (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
 // Event.LastKnownTypes, Event.LastKnownSubtypes,
 // Event.LastKnownAllCreatureTypes, Event.LastKnownSupertypes,
-// Event.LastKnownController, Event.LastKnownColors).
+// Event.LastKnownController, Event.LastKnownColors, Event.LastKnownKeywords).
 func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
@@ -180,6 +192,7 @@ func (l exitLKI) stamp(ev *Event) {
 	ev.LastKnownSupertypes = l.supertypes
 	ev.LastKnownController = l.controller
 	ev.LastKnownColors = l.colors
+	ev.LastKnownKeywords = l.keywords
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -264,6 +277,20 @@ func (ev Event) WasColor(color string) (was, known bool) {
 		return false, false
 	}
 	return typeListHas(ev.LastKnownColors, color), true
+}
+
+// WasKeyword reports whether the permanent an EventLTB names had keyword
+// `keyword` ("deathtouch") as it last existed on the battlefield (#4613,
+// CR 603.10a), by the same exact token match Card's HasKeyword makes. A
+// keyword it had only through an effect counts; one an effect took away
+// does not. known is WasColor's: the keywords are stamped by the same
+// exitLKI, so a stamped event with none is a known "no", and an event
+// with no last-known types at all is an unknown.
+func (ev Event) WasKeyword(keyword string) (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	return slices.Contains(ev.LastKnownKeywords, keyword), true
 }
 
 // forgetPerObjectTurnStateLocked drops every "this object did this"

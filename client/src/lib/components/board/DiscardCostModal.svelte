@@ -21,6 +21,7 @@
   import type { CardView } from "../../protocol";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
+  import { exileCostSymbolTotal } from "../../exileCost";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -52,6 +53,14 @@
     // number of the offered cards, none included, is a legal answer,
     // and the confirm names how many.
     variable?: boolean;
+    // "Exile any number of … with N or more <colour> mana symbols among
+    // their mana costs" (Baron Helmut Zemo's boast): a variable pick that
+    // is enough once the picked cards' printed costs hold `symbolMin`
+    // symbols of the colour letter `symbolColor`. The confirm waits for the
+    // floor and the header shows the running total; the server checks it
+    // again.
+    symbolColor?: string;
+    symbolMin?: number;
   }
 
   const {
@@ -65,6 +74,8 @@
     note = "additional cost · CR 601.2f",
     where = "in hand",
     variable = false,
+    symbolColor,
+    symbolMin,
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -82,7 +93,11 @@
     }
   });
 
-  const ready = $derived(variable || (need > 0 && chosen.length === need));
+  const symbolTotal = $derived(
+    symbolColor ? exileCostSymbolTotal(options, chosen, symbolColor) : 0,
+  );
+  const floorMet = $derived(!symbolColor || !symbolMin || symbolTotal >= symbolMin);
+  const ready = $derived(variable ? floorMet : need > 0 && chosen.length === need);
   const short = $derived(!variable && options.length < need);
 
   function toggle(id: string): void {
@@ -107,7 +122,9 @@
     width={560}
     sheetKey={`discardcost:${card.instance_id}:${verb}:${label ?? ""}`}
     count={variable
-      ? `${chosen.length} picked`
+      ? symbolColor && symbolMin
+        ? `${chosen.length} picked · ${symbolTotal} / ${symbolMin} ${symbolColor} symbols`
+        : `${chosen.length} picked`
       : need > 1
         ? `${chosen.length} / ${need} picked`
         : undefined}

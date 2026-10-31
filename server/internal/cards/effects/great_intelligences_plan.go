@@ -36,7 +36,7 @@ var greatIntelligencesPlanChoice = NewVillainousChoice("great-intelligences-plan
 		Label: "The controller of Great Intelligence's Plan may cast a spell from their hand without paying its mana cost",
 		Harm:  3,
 		Body: func(ctx *Context, _ Facing) error {
-			offerFreeHandCast(ctx, ctx.Controller(), greatIntelligencesPlanFreeCast, "a spell", nil)
+			offerFreeHandCast(ctx, ctx.Controller(), greatIntelligencesPlanFreeCast, "a spell", anySpell)
 			return nil
 		},
 	})

@@ -183,29 +183,32 @@ export function setCurrentTablePace(p: TableSettingsView["bot_pace"] | null): vo
 }
 
 /**
- * The table card's one-line summary of its rules (#3499): only what
- * differs from the defaults, in the order a player cares about, or
- * "Standard rules" when nothing does.
+ * The table card's one-line summary of its rules (ADR 0212 §5, which
+ * replaced #3499's differences-only line): the starting life and the
+ * undos always, then what else differs from the defaults in the order a
+ * player cares about, or "standard rules" when nothing else does:
+ * "40 life · 1 undo · standard rules".
  */
 export function settingsSummary(s: TableSettingsView): string {
   const d = DEFAULT_TABLE_SETTINGS;
-  const parts: string[] = [];
-  if (s.starting_life !== d.starting_life) parts.push(`${s.starting_life} life`);
+  const undos = isUnlimitedUndo(s.undo_limit)
+    ? "unlimited undos"
+    : s.undo_limit === 0
+      ? "no undos"
+      : `${s.undo_limit} undo${s.undo_limit === 1 ? "" : "s"}`;
+  const rest: string[] = [];
   if (s.commander_damage !== d.commander_damage) {
-    parts.push(`${s.commander_damage} commander damage`);
+    rest.push(`${s.commander_damage} commander damage`);
   }
-  if (s.undo_limit !== d.undo_limit) {
-    if (isUnlimitedUndo(s.undo_limit)) parts.push("unlimited undos");
-    else if (s.undo_limit === 0) parts.push("no undos");
-    else parts.push(`${s.undo_limit} undos a turn`);
-  }
-  if (s.undo_scope === "host_any") parts.push("host can undo anyone");
+  if (s.undo_scope === "host_any") rest.push("host can undo anyone");
   const free = s.free_mulligans ?? 0;
-  if (free === FREE_MULLIGANS_UNLIMITED) parts.push("every mulligan free");
-  else if (free > 0) parts.push(`${free} free mulligan${free === 1 ? "" : "s"}`);
-  if (s.bot_pace !== d.bot_pace) parts.push(`${s.bot_pace} pace`);
-  if (s.allow_spawn) parts.push("spawning on");
-  return parts.length > 0 ? parts.join(" · ") : "Standard rules";
+  if (free === FREE_MULLIGANS_UNLIMITED) rest.push("every mulligan free");
+  else if (free > 0) rest.push(`${free} free mulligan${free === 1 ? "" : "s"}`);
+  if (s.bot_pace !== d.bot_pace) rest.push(`${s.bot_pace} pace`);
+  if (s.allow_spawn) rest.push("spawning on");
+  return [`${s.starting_life} life`, undos, ...(rest.length > 0 ? rest : ["standard rules"])].join(
+    " · ",
+  );
 }
 
 /** The table's settings, or the defaults when the frame has none. */

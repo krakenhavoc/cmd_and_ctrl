@@ -620,6 +620,25 @@ type AbilityCost struct {
 	// every other cost, so it is paid last. effects.Register refuses
 	// it beside ExileFromLibraryTop, which no printed card has.
 	Mill int
+
+	// Either is an either/or part of the cost (#4566, ADR 0100's
+	// 2026-10-30 amendment): Bullseye, Death Dealer's "{3}, {T},
+	// Sacrifice an artifact or discard a nonland card:". The rest of
+	// this cost is paid as always, and exactly ONE branch is paid with
+	// it; the activator announces which as ActivateAbilityParams.
+	// CostBranch (CR 602.2b runs CR 601.2b, where the intention to pay
+	// a cost is announced). Nil means no such part, which is every other
+	// ability.
+	//
+	// A branch is plain data (AbilityCostBranch): a sacrifice or a
+	// discard, and the rest of the cost carries neither clause, which
+	// effects.Register enforces. ChosenAbilityCost builds the announced
+	// branch into the ordinary clause, so the validator, the payer, the
+	// enumerator and the view all see one ordinary cost
+	// (ability_cost_either.go). Data rather than a nested AbilityCost,
+	// whose clauses hold predicate funcs: no new route from Game to a
+	// closure (ADR 0041).
+	Either []AbilityCostBranch
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -1233,6 +1252,10 @@ type ActivateAbilityParams struct {
 	// clauses of the chosen modes (#764).
 	Targets []TargetRef
 
+	// TargetsStamped says Targets name their clauses, as on
+	// CastSpellParams (#4497).
+	TargetsStamped bool `json:"targetsStamped,omitempty"`
+
 	// Distribution is the announced division for an ability whose
 	// clause divides ("It deals 3 damage divided as you choose among
 	// one, two, or three targets"), keyed by target id — CR 601.2d
@@ -1284,6 +1307,14 @@ type ActivateAbilityParams struct {
 	// More than the cost prints, or more life than CR 119.4 allows,
 	// is refused before anything is paid.
 	PhyrexianLife int
+
+	// CostBranch is the branch of an either/or cost the activator pays
+	// (#4566, AbilityCost.Either): an index into Either, on the wire as
+	// `cost_branch`. Required on an ability whose cost has branches and
+	// refused on any other, as CastSpellParams.CostBranch is (ADR 0100
+	// §2): an activation is never paid at a price the player did not
+	// name.
+	CostBranch *int
 
 	// PaperPayment mirrors CastSpellParams.PaperPayment (#3855): the
 	// answer to a *PaperPaymentRequiredError from a permissive
@@ -1461,6 +1492,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		}
 		ab = equipTwinShape(ab, alt, from)
 	}
+	// #4566, CR 602.2b / 601.2b: an either/or cost is announced with the
+	// branch it pays, and from here on the row's cost IS that branch
+	// folded into the rest (ChosenAbilityCost). Before every gate below,
+	// so a missing or bad branch is refused with nothing paid, and every
+	// validator and payer reads one ordinary cost.
+	if ab.Cost, err = ChosenAbilityCost(ab.Cost, params.CostBranch); err != nil {
+		return err
+	}
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
@@ -1544,7 +1583,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	}
 	// CR 702.193a (#4527): "Activate this ability only once", read from
 	// the same record and key as exhaust, before anything is paid.
-	if g.PowerUpUsed(cardID, ab) {
+	if g.PowerUpUsed(source, ab) {
 		return ErrPowerUpUsed
 	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
@@ -1875,7 +1914,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #2055: the payload names targets for the controller's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
-	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	// #4497: a pick that names no clause is filed by what it can target.
+	params.Targets = g.fitAnnouncedSlotsLocked(SourceObject(playerID, source), StepsChosenByController(steps), params.Targets, params.TargetsStamped)
 	ownTargets := params.Targets
 	oppTargets, err := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
 	if err != nil {
@@ -2021,6 +2061,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// below. The effect reads the paid counter count back out of it
 	// (Context.CountersRemoved), the same way it reads X.
 	paid := PaidCost{}
+	// #4566: which branch of an either/or cost was paid, index plus one
+	// (0 is "no either/or cost"), as a cast records it (ADR 0100 §2).
+	if params.CostBranch != nil {
+		paid.CostBranch = *params.CostBranch + 1
+	}
 	// #3855: what the activator declared about a waived payment, for
 	// the activation's log line.
 	var paper paperNote
@@ -2035,6 +2080,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// "spend mana as though any color to activate those abilities"
 		// rider can cover the rows one borrow lent and nothing else.
 		riderCtx.AbilityOrigin = origins.At(index)
+		// CR 702.193 (#4571): "spend this mana only to activate power-up
+		// abilities" is asked of the row being paid for.
+		riderCtx.PowerUp = ab.PowerUp
+		// CR 702.6 (#4600): and "...or activate equip abilities".
+		riderCtx.Equip = ab.Equip
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -2839,10 +2889,10 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 	}
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
-		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, x, spendCtx, excluded, 0)
 		// #2461: a plan that would not fund the cost is refused before
 		// anything taps.
-		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
+		plan, short, ok := g.autoTapFundedLocked(p, cost, x, spendCtx, excluded, 0)
+		if !ok {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanInLocked(p, plan, short, spendCtx)

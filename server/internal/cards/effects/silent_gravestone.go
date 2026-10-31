@@ -36,7 +36,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: Exile this artifact and all cards from all graveyards. Draw a card.",
-			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Effect:  silentGravestoneExile,
 		}},

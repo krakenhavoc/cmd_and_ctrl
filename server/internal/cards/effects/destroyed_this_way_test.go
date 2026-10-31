@@ -58,7 +58,7 @@ func registerExitReplacementFrom(t *testing.T, g *game.Game, from game.ZoneKind,
 // cancelled mid-window ("it can't be destroyed"), one is exiled
 // instead. Fumigate gains 1 life, not 3.
 //
-// The exiled one is the judgement call, and it is CR 701.7a's: to
+// The exiled one is the judgement call, and it is CR 701.8a's: to
 // destroy a permanent is to move it from the battlefield to its
 // owner's GRAVEYARD, so a destruction a replacement rewrote into an
 // exile destroyed nothing however thoroughly the permanent left.
@@ -92,7 +92,7 @@ func TestFumigateDoesNotPayForADestructionTheWindowTookAway(t *testing.T) {
 	}
 	if want := before + 1; me.Life != want {
 		t.Errorf("life %d -> %d, want %d — one creature was destroyed this way; "+
-			"the saved one never left and the exiled one was never put into a graveyard (CR 701.7a)",
+			"the saved one never left and the exiled one was never put into a graveyard (CR 701.8a)",
 			before, me.Life, want)
 	}
 }

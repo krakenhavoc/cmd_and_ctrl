@@ -29,16 +29,7 @@ func init() {
 		Name:         "Ashaya, Soul of the Wild",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			{
-				Layer:     game.Layer7PT,
-				SubLayer:  game.SubLayer7A_CDA,
-				Label:     "Ashaya's power and toughness are each equal to the number of lands you control.",
-				AppliesTo: selfOnly,
-				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-					n := b10LandsControlled(g, source.Controller)
-					c.Power, c.Toughness = n, n
-				},
-			},
+			landsYouControlPT("Ashaya's power and toughness are each equal to the number of lands you control."),
 			{
 				Layer: game.Layer4Type,
 				Label: "Nontoken creatures you control are Forest lands in addition to their other types.",

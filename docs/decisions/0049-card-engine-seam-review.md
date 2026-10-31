@@ -457,3 +457,29 @@ Alpharael's "Ward—Discard a card at random" is `WardCost.DiscardAtRandom` (`ef
 ## Amendment (2026-10-23, #1997): who put a nontoken permanent onto the battlefield
 
 `PlayerTurnTally.NontokenPermanentsPut` counts, for each player, the nontoken permanents that player PUT onto the battlefield this turn. That is the player who made the put, not the player the permanent entered under. It is bumped where the entry is announced (`notePermanentPutLocked`), not by the listener, because the putter is read off the entry itself: a land play's player, a permanent spell's controller, the resolving spell or ability's controller, or the player an instruction names. At turn end it is folded into `Player.LastTurnCastOrPut`, for Arboria. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the rule. Additive in schema 9.
+
+## Amendment (2026-10-30, #4707): the tally of creatures that entered with flying (Flying Drone)
+
+"Another creature with flying entered the battlefield under your control this turn" (Flying Drone's cost reduction, Marvel
+Super Heroes, #4455) has three parts the existing entry tallies cannot answer. Flying is a keyword, not a card type or
+subtype (`EnteredCardTypes`, `EnteredSubtypes`). It is judged as the creature entered, so a flier that has since died, lost
+flying or changed hands still counts, which rules out walking the battlefield. And "another" needs the object: the Drone's
+own entry must not turn its own discount on (`Entered` is per object but says nothing about flying). Checked on
+`origin/develop` at `9c223b6b9`.
+
+`TurnTally.EnteredFliers` is a list of `{controller, card}` records, one per creature that entered with flying, written by
+the same `EventETB` listener beside `EnteredSubtypes` and `EnteredCardTypes`, from the same one look-ahead of the entering
+object after the layers (`enteredWithLayersLocked`, now computed once rather than twice per entry). It resets with the rest
+of the tally at the turn boundary and is copied by `cloneTurnTally`. `Game.EnteredFlierUnderThisTurn(player, except)` is the
+read: a record under that player whose card is not `except`. Additive within snapshot schema v9 (`-update-shape`): an older
+file reads back with no records and an older binary drops the key, and either way the discount is simply not offered, never
+more than printed.
+
+Tests: `TestMsc4707FlyingDroneCostsOnlyTapAfterAnotherFlierEntersUnderYourControl` and
+`TestMsc4707FlyingDroneIgnoresItsOwnEntryAndAnOpponentsFlier` (`internal/cards/effects`).
+
+## Amendment (2026-10-30, #4721): "put into your graveyard from anywhere" is one reader over three event kinds
+
+A card arriving in a graveyard is announced by exactly one event of one of three kinds: `EventDiscardCard` (a discard), `EventMill` (a mill) or `EventZoneMove` (every other route, with the zone pair stamped; a death is also an `EventLTB`, which carries no `OldZone`). #2809 read the library route only. `graveyardArrivals` (`cards/effects/graveyard_arrival.go`) generalises it, as plain data beside a card filter: the source zones, the zones it must not have come from, and whether the batch read keeps only cards still there. `When()` is the trigger's per-event test and `InBatch(g, batch, owner)` is the owner's arrivals in one event batch, read as the ability resolves. The batch is this ADR's: everything one resolution or one turn-based action emits (CR 603.2c). Two creature cards discarded by one spell, or a creature that dies beside a creature card milled by the same resolution, are one occurrence; the next resolution is the next.
+
+Three rules fix what it counts. A token is not a card (CR 108.2b, 111.6), so a card clause never counts one. A token is still put into the graveyard before it ceases to exist (CR 111.7, 704.5d), so a clause that says "an artifact is put into your graveyard from the battlefield" reads the leaves-the-battlefield event instead and counts a token artifact (`WhenAnotherArtifactIsPutIntoYourGraveyard`). A card is judged by what it is in the graveyard, because "from anywhere" is never a leaves-the-battlefield ability (CR 603.6c). A clause without "one or more" is one trigger per object and uses no batch (Ultron's Auxiliary). The batch count includes a card that has left the graveyard since, because it was put there; the library reader keeps its older "still there" filter (`Present`). No snapshot field, no effect key.

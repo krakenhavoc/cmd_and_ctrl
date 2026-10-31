@@ -30,10 +30,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // dual, and the trigger fires from there (ADR 0074 §3) — so a Mana
 // Flare over a Thriving Isle sees exactly the colour the player chose.
 //
-// Same declared auto-tap simplification as Wild Growth: the planner
-// does not count the extra mana, so an auto-tapped cast under a Mana
-// Flare taps as many lands as it would without one and floats the
-// difference (ADR 0074 §7).
+// The auto-tap planner counts the extra mana (ADR 0074, amendment of
+// 2026-10-30), whoever controls the Flare: the mana reaches the payer
+// whatever anyone wants (CR 605.4a). It depends on the land's pick, so a
+// dual under a Flare is planned per pick, as {W}{W} or as {U}{U} and
+// never as {W}{U}, which would be stronger than printed.
 //
 // No simplification of the card itself.
 func init() {

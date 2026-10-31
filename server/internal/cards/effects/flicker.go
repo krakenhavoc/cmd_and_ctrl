@@ -75,6 +75,19 @@ func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	return Flicker{Target: id, Controller: item.Controller}.Apply(ctx)
 }
 
+// flickerFirstLegalTargetUnderOwner is flickerFirstLegalTarget for the
+// printings that say "under its OWNER's control" (The Mind Stone, Photon,
+// Lady of Light): Controller is left at its zero value, so the card comes
+// back for its owner, not for the player whose ability blinked it.
+func flickerFirstLegalTargetUnderOwner(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Flicker{Target: id}.Apply(ctx)
+}
+
 // exileTargetsThenScheduleReturn exiles every still-legal card target
 // on the resolving item as ONE event and, from that exile's
 // continuation, schedules the delayed trigger that returns the cards
@@ -148,6 +161,19 @@ func returnExiledCardsWithAdditionalCounters(g *game.Game, item *game.StackItem)
 			{CardType: "planeswalker", Counter: game.CounterLoyalty, N: 1},
 		},
 	}.Apply(NewContext(g, item))
+}
+
+// returnExiledCardsLandsTapped is Silver Surfer, Cosmic Voyager's return: the
+// listed cards come back together under their owners' control, and a card
+// that is a land as it enters comes in tapped (CR 614.12), judged card by card.
+func returnExiledCardsLandsTapped(g *game.Game, item *game.StackItem) error {
+	var ids []uuid.UUID
+	for _, t := range item.Targets {
+		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
+			ids = append(ids, t.ID)
+		}
+	}
+	return ReturnFromExileTogether{Targets: ids, TappedIfType: []string{"land"}}.Apply(NewContext(g, item))
 }
 
 // exileTargetsThenReturnOnOwnersEndStep is "exile <targets>. Return

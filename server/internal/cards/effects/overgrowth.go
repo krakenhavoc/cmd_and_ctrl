@@ -14,9 +14,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ParseProducedMana grammar, so "more than one token from one trigger"
 // needed nothing new.
 //
-// Same declared auto-tap simplification as Wild Growth: the planner
-// does not count the extra mana, so it may tap one land too many and
-// the surplus floats (ADR 0074 §7).
+// The auto-tap planner counts both extra {G} (ADR 0074, amendment of
+// 2026-10-30): a Forest under Overgrowth plans as {G}{G}{G}.
 //
 // No simplification of the card itself.
 func init() {

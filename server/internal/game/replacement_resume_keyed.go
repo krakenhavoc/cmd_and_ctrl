@@ -438,6 +438,7 @@ var replacementEventFields = map[string]replacementEventField{
 	// Learn has no tail at all.
 	"KeywordAction":      repFieldCarried,
 	"KeywordActionCount": repFieldCarried,
+	"ConniveExtraDraws":  repFieldCarried,
 	"keywordAction":      repFieldCarried, // its data half; see replacementFrameKeyable
 
 	// A zone move and a battlefield entry.
@@ -750,6 +751,7 @@ type replacementEventSnapshot struct {
 
 	KeywordAction      KeywordAction `json:"keywordAction,omitempty"`
 	KeywordActionCount int           `json:"keywordActionCount,omitempty"`
+	ConniveExtraDraws  int           `json:"conniveExtraDraws,omitempty"`
 
 	CardID                    *uuid.UUID          `json:"cardId,omitempty"`
 	OldZone                   ZoneKind            `json:"oldZone,omitempty"`
@@ -1198,6 +1200,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source),
 		KeywordAction:             ev.KeywordAction,
 		KeywordActionCount:        ev.KeywordActionCount,
+		ConniveExtraDraws:         ev.ConniveExtraDraws,
 		CardID:                    uuidPtrOrNil(ev.CardID),
 		OldZone:                   ev.OldZone,
 		NewZone:                   ev.NewZone,
@@ -1364,6 +1367,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		drawTail:                  s.DrawTail,
 		KeywordAction:             s.KeywordAction,
 		KeywordActionCount:        s.KeywordActionCount,
+		ConniveExtraDraws:         s.ConniveExtraDraws,
 		CardID:                    uuidOrNil(s.CardID),
 		OldZone:                   s.OldZone,
 		NewZone:                   s.NewZone,

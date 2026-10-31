@@ -178,7 +178,9 @@ const (
 	// they care about.
 	EventZoneMove EventKind = "zone_move"
 
-	// EventTapCard — CardID was tapped.
+	// EventTapCard — CardID was tapped. TapCause says why when the
+	// cause is one a card can ask about (TapCauseTeamwork); it is
+	// empty for every other tap.
 	EventTapCard EventKind = "tap_card"
 
 	// EventUntapCard — CardID was untapped.
@@ -2085,6 +2087,14 @@ type Event struct {
 	// See ADR 0027's 2026-09-28 amendment (#1689).
 	LastKnownColors []string `json:"last_known_colors,omitempty"`
 
+	// LastKnownKeywords is the same permanent's keyword abilities as it
+	// last existed on the battlefield (#4613, CR 603.10a): the post-layer
+	// ability tokens, so a keyword an effect gave it counts and one an
+	// effect took away does not. Read it through WasKeyword. Engine-internal,
+	// like LastKnownTypes. Additive within the snapshot schema: omitted when
+	// empty.
+	LastKnownKeywords []string `json:"last_known_keywords,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an
@@ -2092,7 +2102,21 @@ type Event struct {
 	// S35 (#1032, ADR 0075).
 	SettingOld string `json:"setting_old,omitempty"`
 	SettingNew string `json:"setting_new,omitempty"`
+
+	// TapCause is why an EventTapCard happened, when a card asks
+	// (#4534): TapCauseTeamwork on a creature tapped to pay a teamwork
+	// cost (CR 702.194a), which is Agent Maria Hill's "becomes tapped
+	// to pay a teamwork cost". Empty on every other tap and every
+	// other kind. It is an event fact, so it rides the trigger
+	// context verbatim into a snapshot. Additive within the snapshot
+	// schema: omitted when empty.
+	TapCause string `json:"tap_cause,omitempty"`
 }
+
+// TapCauseTeamwork is Event.TapCause for a creature tapped to pay a
+// teamwork cost (CR 702.194a). The string is on disk inside stack
+// items' trigger contexts: never rename it, never reuse it.
+const TapCauseTeamwork = "teamwork"
 
 // DamageLifeLoss is the life an EventDealDamage cost the player it was
 // dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that

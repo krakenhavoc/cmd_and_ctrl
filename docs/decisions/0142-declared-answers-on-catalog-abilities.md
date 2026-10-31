@@ -282,7 +282,7 @@ Four more rulings (owner, 2026-10-10, S2 batch 2):
 
 7. **A creature put onto the battlefield at instant speed is `makes_blocker` if it enters untapped, `value` if it enters tapped.** Talon Gates of Madara, Quicksilver Amulet, PuPu UFO, Proctor of Potential, Grim Repriser and Cauldron Familiar declare `makes_blocker`. A tapped token (Automated Assembly Line, Necromancer's Stockpile) is `value`: it cannot block this turn.
 8. **Ending the turn is `remove`.** Sundial of the Infinite and Obeka, Brute Chronologist exile the whole stack, so they answer any item on it.
-9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`.
+9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`. *(Graveyard exile is its own kind, `graveyard`, since the [2026-10-31 amendment](#amendment-2026-10-31--graveyard-splits-from-restrict-4734-q5--accepted); Kill Switch stays `restrict`.)*
 10. **Leftovers.** Fountainport's "Sacrifice a token: Draw a card" is `sac_outlet`. Aang, Swift Savior ("Waterbend {8}: Transform Aang") is `pump`. Elsewhere Flask, Terraformer and Roiling Vortex are `value`. Experimental Frenzy `restrict` and Master Transmuter `protect` (S2 batch 1) are confirmed.
 
 Three more rulings (owner, 2026-10-10, S2 batch 3):
@@ -450,3 +450,64 @@ Decision 6 priced a `survive` or `protect` row only on the creature that carries
 - Synthetic `answers-battle` (`BattleDeck` with ten Basalt Gargoyles and eight Selfless Spirits), two `heuristic` against two `heuristic-baseline`, 160 games: identical off and on, `heuristic` 87/320. Its only removal is Lightning Bolt at creatures not worth a Spirit.
 
 The price is a narrow one, in the games the pool plays: it needs a Spirit that the sweep or removal passes over, beside a creature worth more than the Spirit. The unit tests carry the cases.
+
+## Amendment 2026-10-30 — spells declare what they answer (#2877) · Accepted
+
+[Q5](#questions-for-the-owner-answered-2026-10-09) held the field back on spells, modes and alternative costs until a separate decision said how a castable instant declared `value` should be classed. That decision is [#2877](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2877). **Owner decision (2026-10-30): option (a).** A castable "value" instant (Opt, Brainstorm) does not stop smart auto-pass on an opponent's stack item by default, and a setting turns the stop back on. Combat and an opponent's end step keep stopping for it. A 2026-10-14 bot arena replay (eight seeded four-seat games, every priority window through the client's `autopassDecision` on default settings) found about 75 stops whose only responses were value instants (Altar's Reap, Entomb, Frantic Search, Dig Through Time), almost none of them acted on in response to a spell. The client side of the decision is [ADR 0009's #2877 amendment](0009-smart-priority-autopass.md#amendment-a-value-instant-does-not-stop-you-on-an-opponents-spell-2877); this section is the declaration and its reader.
+
+**Where the signal lives: the server, on the cast move.** Decision 2's slot table gets the reader its spell row lacked. `internal/legal` reads the declaration for each cast announcement and sets `Move.ValueOnly` (wire `value_only`), as it sets `interacts` for an activation. Three reasons, the same as [ADR 0009 #3555](0009-smart-priority-autopass.md#amendment-a-free-answer-stops-you-only-for-a-threat-3555)'s Q3: what a cast answers depends on the announcement (the modes chosen, the alternative cost claimed, the creature a cost gives up), which the enumerator has and the client does not; the client, the bot and the MCP seat then all read one flag; and the client keeps only the question of *when* a non-answer may pass, which ADR 0009 §2 puts there.
+
+| Slot | Go field | Reader |
+|---|---|---|
+| Spell (the card, or the face being cast) | `Spec.Purpose.Answers` | `legal.castAnswersOf` → `Move.ValueOnly` |
+| A spell's mode | `ModeWithPurpose(…, game.Purpose{Answers: …})` | the same, per chosen mode |
+| Alternative cost | `AlternativeCost.Purpose.Answers` | the same, for a cast claiming the cost |
+
+**How a cast is read** (`server/internal/legal/cast_answers.go`):
+
+- The answers are the card's, a chosen mode's in place of the card's for that mode, or the alternative cost's when the cost declares any. A mode that declares nothing is covered by the card's declaration; with none there, the whole cast is undeclared. An alternative cost that declares nothing leaves the card's effect, unless it makes the spell something else (a purpose of its own, overload's "each", a clause list of its own, a face-down cast, bestow), in which case the cast is undeclared. A fused split spell answers what both halves do, and an undeclared half leaves it undeclared (`Purpose.plus`).
+- `value_only` is set when those answers are exactly `value`, the announcement targets nothing on the stack, and its costs sacrifice, exile or return no creature. The last is read from the announcement (the permanents the move names), like owner answer 4: a cast that gives up a creature is a sacrifice outlet whatever the card declares.
+- **Only `value` changes anything.** Any other declaration, and none, keeps the cast an instant that stops you, as every instant did before. The tiers of decision 1 are not applied to casts, and #3555's threat gate is not either: its Q2 kept "instants and flash stopping as they do today", and this decision changes that for `value` alone. A follow-up could class a spell's other answers by tier or gate them; nothing here prevents it.
+- A kicker adds nothing. A card whose kicked effect answers something declares the union on the card (sweep ruling 4), and `effects.Register` refuses `Answers` inside `Purpose.Kicked` and `Purpose.FaceUp`.
+
+**The guard** (`effects.Register`, decision 1's rules extended):
+
+- `Answers` is now accepted on the card, a spell's mode (a new slot, `purposeOnSpellMode`) and an alternative cost. It is still refused on an activated or triggered ability's mode, inside `Kicked` or `FaceUp`, and on a triggered row other than `remove`.
+- Decision 3's cost coupling holds for spells (`checkSpellAnswers`): no slot of a spell whose additional cost sacrifices or exiles a creature (`legal.AdditionalCostAnswers`: Altar's Reap, Deadly Dispute) may declare `value`, nor an alternative cost that sacrifices or returns a creature instead of paying (`legal.AlternativeCostAnswers`).
+- Decision 1's "a row that must name a target declares nothing" is not carried over. A cast move is classed an instant whatever `has_targets` says, so a targeted spell that answers nothing ("target player draws three cards") may declare `value`. A spell that targets the stack is a counter to every reader, so `value_only` is never set on such an announcement.
+
+**The declarations in this PR.** Enough to make the behaviour real in the curated decks and the arena replay's list, and nothing more:
+
+| Card | Answers | Why |
+|---|---|---|
+| Opt, Brainstorm, Fact or Fiction, Pull from Tomorrow, Sphinx's Revelation, Dig Through Time, Frantic Search, Entomb | `value` | card selection, draw, a loot, a self-mill tutor: nothing on the stack is answered |
+| Mystic Confluence, its "Draw a card." mode | `value` | the draw-three announcement answers nothing; the counter mode targets the stack and the bounce mode is undeclared, so any cast with either stops you |
+| Altar's Reap, Deadly Dispute | `sac_outlet` | the cost sacrifices a creature in response (decision 3); the guard refuses `value` here |
+
+**How the rest are declared: a sweep, with a listing in place of a ratchet.** Decision 4's ratchet cannot be built for spells in CI: a `Spec` carries no type line, so "an instant or a card with flash" is known only from the Scryfall dump, which CI does not have. A failing ratchet would also break every card PR in flight that adds an instant. So the sweep runs on a review aid: `go test ./internal/decks/ -run RealDumpSpellAnswers -v` with `CMDCTRL_SCRYFALL_DUMP` lists every catalog instant and flash card that declares `Answers` in no spell slot. On 2026-10-30 that is **946 instants and 151 flash cards** (11 declared). An undeclared spell stops you as before, so a card the sweep has not reached costs a click and never a window (owner answer 3). The sweep follows §5's shape: alphabetical batches of about 80 card files, `tier:1-mechanical`, each declaring from the card's effect with the table in decision 1 and the sweep rulings (a creature with flash is a blocker, ruling 7, so never `value`), each quoting the listing's count before and after, merging on green (Q6). A ratchet can be added once the type line is in the checked-in oracle fixture, which this amendment does not do.
+
+**Wire.** Additive. `LegalMoveView` gains `value_only` (`docs/protocol.md`), and the wire cap's key gains it (`capLegalMoves`), so a capped list keeps a modal spell's draw-only announcement beside its others. `purpose.answers` may now appear on a card, a mode and an alternative cost; `PurposeView.Priced` already ignores it, so no price moves. `SnapshotSchemaVersion` stays 7; `Answers` holds no closure, so `closure_fields.txt` does not change.
+
+**The bot** is unchanged. Its Layer A `valueOnly` rule still escalates any window with a cast in it, and the heuristic prices a spell by its amounts. `TestCuratedDeckPurposes` now reads "declares a purpose" as "declares something besides `Answers`", so a curated spell on its no-printed-amount list (Pull from Tomorrow, Sphinx's Revelation, Fact or Fiction) may declare what it answers and stay there.
+
+**Back-outs.** `TestValueOnlyMarksADeclaredValueCast` and `TestValueOnlyReadsTheChosenModes` (`internal/legal`) fail without the declarations or the reader; `TestCastAnswersOf`, `TestCastValueOnly` and `TestFusedAnswersNeedBothHalves` pin the rules above; `TestAnswersGuardOnSpellCosts` and `TestAnswersRefusedInsideKicked` (`internal/cards/effects`) pin the guard.
+
+## Amendment 2026-10-31 — `graveyard` splits from `restrict` (#4734, Q5) · Accepted
+
+[ADR 0009's amendment of 2026-10-30](0009-smart-priority-autopass.md#amendment-of-2026-10-30-4734-a-held-answer-stops-you-only-when-it-can-answer-now) matches each declared kind to the window the seat is in. `restrict` there matches an opponent's upkeep or an opponent's spell, and never an opponent's ability. That was the owner's line for Ranger-Captain of Eos, but sweep ruling 9 had filed graveyard exile under `restrict` too, and graveyard exile does answer an ability: exiling the graveyard in response to an opponent's reanimation or regrowth trigger (Eternal Witness's, in the #4734 game) leaves its target illegal (CR 608.2b). The owner chose, on 2026-10-31 (Q5 (a)), to split the kind, as `survive` was split from `protect`. This is slice 9 of that amendment.
+
+**The vocabulary** is now twelve values. `graveyard` follows `restrict` in the table's order and on the wire, and is stack tier.
+
+| Value | Wire | Tier | Means | Examples |
+|---|---|---|---|---|
+| `AnswerGraveyard` | `graveyard` | stack | exiles cards from graveyards, which answers a reanimation or regrowth trigger: "exile each opponent's graveyard", "exile all graveyards", "exile up to N target cards from a single graveyard" | Soul-Guide Lantern, Scavenger Grounds, Silent Gravestone, Rag Dealer |
+
+**What it matches** (`internal/legal/answer_window.go`, `answers_now`): an opponent's spell on the stack, a copy included, or an opponent's item, spell or ability, that targets a card in a graveyard (any player's; a trigger counts, read from `StackMeta`). It does not match an opponent's upkeep, and not an opponent's ability that targets nothing in a graveyard. `restrict` keeps the windows ADR 0009 decided. `interacts` is unchanged: `graveyard` is stack tier and not threat-gated, as `restrict` was.
+
+**The retag.** The eight rows that exile from graveyards were `restrict` and declare `graveyard`: Soul-Guide Lantern, Scavenger Grounds and Silent Gravestone (no target), Stonespeaker Crystal (its "any number of target players' graveyards" allows zero targets), and Famished Ghoul, Rag Dealer, Unlicensed Hearse and Carrion Beetles, declared once in `ExileFromASingleGraveyardAbility`. Of the 25 rows that declared `restrict`, 15 stay: Ranger-Captain of Eos, the turn-off-protection rows (Shadowspear, Detection Tower, Arcane Lighthouse, Knight and Clergy of the Holy Nimbus, Bone Shaman, Nullhide Ferox, the Glittering pair), Aether Storm and Experimental Frenzy (ruling 5), Freed from the Real, Kill Switch and War Tax. The other two declare the union of every answer (Isochron Scepter, Baron Helmut Zemo) and gain `graveyard` beside `restrict`, since an instant can exile from a graveyard (Surgical Extraction). A graveyard exile that always names a target (Scavenging Ooze, Tormod's Crypt) still declares nothing: its move carries `has_targets`, which already stops smart auto-pass.
+
+**The bot.** `defensiveAnswerOnly` (the rows held when the stack is empty) accepts `graveyard` beside `restrict`, so the eight rows are held as they were. Nothing else in the heuristic reads `restrict`.
+
+**Wire.** Additive. `purpose.answers` may now contain `"graveyard"`, listed after `"restrict"`. A reader that prints the names as they come (`boardtext`'s "(answers: …)" label, the MCP seat's move list) passes it through; the client does not enumerate the kinds. `SnapshotSchemaVersion` stays 7; `Answers` holds no closure.
+
+**Guards.** `TestGraveyardExileRowsDeclareGraveyard` pins the eight rows, `TestRestrictRowsAreNotGraveyardHate` fails on a row that declares `restrict` alone with a graveyard-exile label, and `TestUnionRowsDeclareGraveyard` pins the two unions (`internal/cards/effects`). The match is pinned by `TestAnswersNowByKind`, `TestAnswersNowGraveyardRowsOfTheCatalog` and `TestAnswersNowGraveyardUnion` (`internal/legal`), and four frames in `smart_pass_agreement.json` carry its stop and pass verdicts to the browser's and the seat's readers.

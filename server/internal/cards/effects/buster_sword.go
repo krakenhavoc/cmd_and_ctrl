@@ -18,8 +18,8 @@ import (
 //
 // The free cast (#3172, #3270) is the same offer Rishkar's Expertise and
 // Surtland Elementalist make (offerFreeHandCast): after the draw, the
-// controller picks a nonland card from hand with mana value no greater
-// than the damage dealt (or none). The pick opens the cast at once, at any
+// controller picks a card from hand with a spell of mana value no greater
+// than the damage dealt (or none), judged on the face being cast (#4509). The pick opens the cast at once, at any
 // timing (CR 608.2g), through the ordinary announce path with its
 // targets, modes and additional costs; passing priority without casting
 // ends the chance and the card stays in hand.
@@ -58,14 +58,14 @@ func init() {
 
 // busterSwordOfferFreeCast is "you may cast a spell from your hand with
 // mana value less than or equal to that damage without paying its mana
-// cost": a pick among the nonland hand cards that fit, or none.
+// cost": a pick among the hand cards with a spell that fits, or none.
 func busterSwordOfferFreeCast(ctx *Context, controller uuid.UUID, damage int) error {
 	if damage < 0 {
 		return nil
 	}
 	offerFreeHandCast(ctx, controller, busterSwordFreeCast,
 		"a spell with mana value "+strconv.Itoa(damage)+" or less",
-		ManaValueLE(damage))
+		spellWithManaValueAtMost(damage))
 	return nil
 }
 

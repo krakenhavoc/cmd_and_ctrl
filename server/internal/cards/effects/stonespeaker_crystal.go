@@ -28,7 +28,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice Stonespeaker Crystal: Exile any number of target players' graveyards. Draw a card.",
-			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Targets: TargetPlayer("any number of target players").WithCount(0, 0),
 			Effect:  b30ExileTargetGraveyardsThenDraw,

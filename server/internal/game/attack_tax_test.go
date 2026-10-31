@@ -319,7 +319,7 @@ func TestManaTriggersFireForTheTapsThatPayAnAttackTax(t *testing.T) {
 	})
 	pushTaxEnchantment(g, g.Seats[1], "Propaganda", propagandaTestOracle)
 	forest := pushBattlefieldForTest(g, g.Seats[0].ID, "Forest", "Basic Land — Forest", taxForestTestOracle)
-	pushBattlefieldForTest(g, g.Seats[0].ID, "Forest", "Basic Land — Forest", taxForestTestOracle)
+	other := pushBattlefieldForTest(g, g.Seats[0].ID, "Forest", "Basic Land — Forest", taxForestTestOracle)
 	pushAuraOn(g, g.Seats[0], "Wild Growth", wildGrowthTestOracle, forest)
 	withCatalogManaTriggers(t, func(key string) []ManaTrigger {
 		if key == wildGrowthTestOracle {
@@ -328,21 +328,23 @@ func TestManaTriggersFireForTheTapsThatPayAnAttackTax(t *testing.T) {
 		return nil
 	})
 
-	// The tapper plans two Forests for the {2} — it prices a land at
-	// what the land itself makes and does not model triggered mana,
-	// which is ADR 0074's line and not this test's subject. What IS
-	// this test's subject: the declaration taps through
-	// materializePlanLocked, so Wild Growth's CR 605.1b trigger fires
-	// at the production site and the THIRD mana it makes is left
-	// floating after the tax is spent.
+	// The declaration taps through materializePlanLocked, so Wild
+	// Growth's CR 605.1b trigger fires at the production site. Since ADR
+	// 0074's amendment of 2026-10-30 the planner counts that {G} too, so
+	// the enchanted Forest alone pays the {2}: one tap, two mana, none
+	// left over. Before it, the planner tapped both Forests and the
+	// trigger's {G} floated.
 	if err := g.DeclareAttackerWith(bear, g.Seats[1].ID, DeclareAttackersParams{AutoTap: true}); err != nil {
-		t.Fatalf("two Forests against a {2} tax: %v", err)
+		t.Fatalf("an enchanted Forest against a {2} tax: %v", err)
 	}
 	if c := findCard(g, forest); c == nil || !c.Tapped {
 		t.Error("the enchanted Forest was not tapped")
 	}
-	if n := g.Seats[0].ManaPool.Total(); n != 1 {
-		t.Errorf("pool after the tax = %d, want 1 — Wild Growth's trigger did not fire for the taps", n)
+	if c := findCard(g, other); c == nil || c.Tapped {
+		t.Error("the plain Forest was tapped, but the enchanted one pays the {2} alone")
+	}
+	if n := g.Seats[0].ManaPool.Total(); n != 0 {
+		t.Errorf("pool after the tax = %d, want 0 — Wild Growth's {G} paid half the tax", n)
 	}
 }
 

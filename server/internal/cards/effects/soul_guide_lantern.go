@@ -34,7 +34,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}, Sacrifice this artifact: Exile each opponent's graveyard.",
-				Purpose: game.Purpose{Answers: game.AnswerRestrict},
+				Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 				Cost:    Plus(TapCost(), SacrificeThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					for _, opp := range NewContext(g, item).Opponents() {

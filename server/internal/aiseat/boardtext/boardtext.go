@@ -302,6 +302,9 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 				b.WriteString(" (life payment unavailable)")
 			}
 		}
+		if ch.Kind == "confirm" && ch.PoisonCost > 0 {
+			fmt.Fprintf(&b, " (accepting gives you %d poison counters)", ch.PoisonCost)
+		}
 		if pa := ch.PayAmount; pa != nil {
 			writePayAmount(&b, pa)
 		}
@@ -490,6 +493,15 @@ func permanentClass(c *protocol.CardView) int {
 
 func PermanentLabel(c *protocol.CardView, opts Options) string {
 	return permanentLabelWith(c, opts, nil)
+}
+
+// GroupLabel is the label the battlefield line groups a permanent under:
+// permanents of one controller with the same label print once, as
+// "Treasure x3". A reader that folds moves naming such permanents (the
+// MCP seat, #4737) groups by this same text, so it never merges two
+// permanents the board tells apart.
+func GroupLabel(v *protocol.GameView, c *protocol.CardView, opts Options) string {
+	return permanentLabelWith(c, opts, relationPhrases(v, c))
 }
 
 // permanentLabelWith is PermanentLabel plus relation phrases the view

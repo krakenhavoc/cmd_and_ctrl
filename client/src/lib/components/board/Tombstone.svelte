@@ -12,9 +12,12 @@
   // signal, the stone does not drop; it only fades in. That fade is opacity
   // alone, so it keeps its length when app.css cuts every other animation.
   //
-  // `compact` is the small stone in a collapsed seat's card; otherwise the
-  // stone sits in the middle of the seat's whole panel, over the (now empty)
-  // board. It takes no pointer events, so nothing under it is blocked.
+  // `compact` is the small stone in a collapsed seat's card, where it takes
+  // the place of the read-out under the identity. Otherwise the stone sits
+  // on the seat's whole panel, over the (now empty) board, by one rule for
+  // every seat (#4552, tombstoneAnchor.ts): centred across the panel and
+  // centred in the part of it the seat's identity leaves free. It takes no
+  // pointer events, so nothing under it is blocked.
 
   import { untrack } from "svelte";
   import { get } from "svelte/store";
@@ -30,6 +33,7 @@
     tombstoneCommanders,
   } from "../../elimination";
   import { effectMotion, type EffectMotion } from "../../tableEffects";
+  import { tombstoneBand, tombstoneFits, type Span } from "../../tombstoneAnchor";
 
   interface Props {
     seat: PlayerView;
@@ -48,6 +52,58 @@
     rememberCommanders(view, seat);
   });
   const commander = $derived(eliminated ? commanderLine(tombstoneCommanders(view, seat)) : "");
+
+  // The parts of a seat's identity that stand apart from its box: the name
+  // above the avatar, the side columns of counters and markers, the life
+  // chip and keywords below it, the hand count on its rim.
+  const IDENTITY_PARTS = ".name-line, .avatar-wrap, .life-row, .seat-keywords, .side, .hand-count";
+
+  // Keep the stone clear of the identity (#4552): measure the panel and the
+  // identity's boxes, and hand the stone the band between them. Re-measured
+  // when either resizes, since the identity moves with the panel's size.
+  // The stone steps down to the collapsed card's size when the band is too
+  // short for it (tombstoneFits).
+  let snug = $state(false);
+  function anchor(node: HTMLElement, isCompact: boolean) {
+    const panel = node.parentElement;
+    if (isCompact || !panel || typeof ResizeObserver === "undefined") return {};
+    let frame = 0;
+    let watched: Element | null = null;
+    const measure = () => {
+      frame = 0;
+      const id = panel.querySelector(".identity");
+      if (id !== watched) {
+        if (watched) ro.unobserve(watched);
+        if (id) ro.observe(id);
+        watched = id;
+      }
+      const pr = panel.getBoundingClientRect();
+      const blocked: Span[] = [];
+      if (id) {
+        for (const el of [id, ...id.querySelectorAll(IDENTITY_PARTS)]) {
+          const r = el.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) blocked.push({ top: r.top, bottom: r.bottom });
+        }
+      }
+      const panelSpan = { top: pr.top, bottom: pr.bottom };
+      const band = tombstoneBand(panelSpan, blocked);
+      snug = !tombstoneFits(panelSpan, band);
+      node.style.setProperty("--tomb-top", `${band.top}px`);
+      node.style.setProperty("--tomb-bottom", `${band.bottom}px`);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    const ro = new ResizeObserver(schedule);
+    ro.observe(panel);
+    measure();
+    return {
+      destroy() {
+        if (frame) cancelAnimationFrame(frame);
+        ro.disconnect();
+      },
+    };
+  }
 
   function osReducesMotion(): boolean {
     return (
@@ -88,7 +144,9 @@
 {#if eliminated}
   <div
     class="tomb"
+    use:anchor={compact}
     class:compact
+    class:snug
     class:arrives={arrival !== null}
     class:still={arrival?.motion === "still"}
     data-tombstone={seat.id}
@@ -119,8 +177,9 @@
     position: absolute;
     inset: 0;
     z-index: 20;
-    /* Clear of an avatar at the top of a short panel. */
-    padding-top: 44px;
+    /* The band the identity leaves free, measured (anchor); the whole panel
+       until it is. */
+    padding: var(--tomb-top, 0px) 0 var(--tomb-bottom, 0px);
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -136,7 +195,7 @@
     container-type: normal;
     flex: 1 1 auto;
     min-height: 0;
-    padding-top: 0;
+    padding: 0;
   }
   .stone {
     --stone-hi: color-mix(in srgb, var(--fg) 22%, var(--surface-sunken));
@@ -159,7 +218,8 @@
       inset 0 2px 3px color-mix(in srgb, var(--fg) 18%, transparent);
     color: var(--fg);
   }
-  .compact .stone {
+  .compact .stone,
+  .snug .stone {
     width: 100%;
     min-width: 0;
     max-width: 128px;
@@ -175,7 +235,8 @@
     color: var(--fg-muted);
   }
   /* A small card has no room for the cross; the epitaph says it. */
-  .compact .cross {
+  .compact .cross,
+  .snug .cross {
     display: none;
   }
   .rip {
@@ -186,7 +247,8 @@
     margin-right: -0.22em;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
   }
-  .compact .rip {
+  .compact .rip,
+  .snug .rip {
     font-size: 0.7rem;
   }
   .who {
@@ -198,7 +260,8 @@
     font-weight: 700;
     color: var(--fg);
   }
-  .compact .who {
+  .compact .who,
+  .snug .who {
     font-size: 0.68rem;
   }
   .commander {
@@ -210,7 +273,8 @@
     font-style: italic;
     color: var(--fg-muted);
   }
-  .compact .commander {
+  .compact .commander,
+  .snug .commander {
     font-size: 0.6rem;
   }
 

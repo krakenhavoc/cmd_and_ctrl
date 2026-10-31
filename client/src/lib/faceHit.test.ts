@@ -1,9 +1,18 @@
 // #4432, #4543 — the face_hit decision: how hard a blow is, which seats a
 // beat hit, and whether the life popup stands down for a combat hit.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { faceHitSeats, faceHitSound, faceHits, popupCombatDamage, popupSound } from "./faceHit";
+import {
+  faceHitSeats,
+  faceHitSound,
+  faceHits,
+  playStepWarCry,
+  popupCombatDamage,
+  popupSound,
+  stepFaceHits,
+  warCryPlan,
+} from "./faceHit";
 import type { GameView, LogEvent } from "./protocol";
 
 const dmg = (
@@ -115,5 +124,47 @@ describe("popupSound", () => {
     expect(popupSound("damage", 3, false)).toBe("face_hit_medium");
     expect(popupSound("damage", 4, false)).toBe("face_hit_heavy");
     expect(popupSound("damage", 7, false)).toBe("face_hit_heavy");
+  });
+});
+
+describe("warCryPlan (#4560)", () => {
+  it("is at contact and full volume when no player is hit", () => {
+    expect(warCryPlan(0)).toEqual({ delayMs: 0, volume: 1 });
+  });
+  it("follows one hit by 300 ms at 0.6", () => {
+    expect(warCryPlan(1)).toEqual({ delayMs: 300, volume: 0.6 });
+  });
+  it("follows the last of several staggered hits", () => {
+    expect(warCryPlan(3)).toEqual({ delayMs: 2 * 90 + 300, volume: 0.6 });
+  });
+});
+
+describe("stepFaceHits and playStepWarCry, the step-change fallback (#4560)", () => {
+  const step = (seq: number): LogEvent => ({ seq, kind: "step", seat: 0, text: "" }) as LogEvent;
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("reads only the entries after the newest step entry", () => {
+    const log = [step(1), dmg(2, 1, 3, true), step(3), dmg(4, undefined, 2, true)];
+    expect(stepFaceHits(log)).toEqual([]);
+    expect(stepFaceHits([...log, dmg(5, 1, 2, true)])).toEqual([{ seat: 1, amount: 2 }]);
+  });
+
+  it("plays the war cry at once, at normal volume, when no player is hit", () => {
+    const play = vi.fn();
+    expect(playStepWarCry([step(1), dmg(2, undefined, 2, true)], play)).toBeNull();
+    expect(play).toHaveBeenCalledExactlyOnceWith("combat_resolve");
+  });
+
+  it("delays a quieter war cry by 300 ms when a player is hit", () => {
+    const play = vi.fn();
+    const fired = vi.fn();
+    const t = playStepWarCry([step(1), dmg(2, 1, 3, true)], play, fired);
+    expect(t).not.toBeNull();
+    vi.advanceTimersByTime(299);
+    expect(play).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(play).toHaveBeenCalledExactlyOnceWith("combat_resolve", { volume: 0.6 });
+    expect(fired).toHaveBeenCalledWith(t);
   });
 });

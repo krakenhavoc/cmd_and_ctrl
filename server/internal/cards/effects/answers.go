@@ -8,19 +8,25 @@ import (
 )
 
 // answers.go — ADR 0142: the registration guard for a declared
-// Purpose.Answers on an activated row, and ManaAbility.Answers on a mana
-// ability. The vocabulary and its tiers are game/answers.go; the reader
-// is internal/legal's untargetedFlags (manaMoveInteracts for a mana
-// ability).
+// Purpose.Answers on an activated row, ManaAbility.Answers on a mana
+// ability, and (#2877, ADR 0142's amendment of 2026-10-30) Answers on a
+// spell, a spell's mode or an alternative cost. The vocabulary and its
+// tiers are game/answers.go; the reader is internal/legal's
+// untargetedFlags (manaMoveInteracts for a mana ability, castAnswersOf
+// for a cast), and answer_window.go matches the same declarations to the
+// window for a move's answers_now (#4734).
 //
 // A declaration is the only thing the reader reads, so the guard keeps
 // it honest where it can without reading text. It refuses:
 //
 //   - a bit that names no answer;
 //   - AnswerValue beside any other answer;
-//   - Answers on a spell, a mode or an alternative cost, or anything but
-//     AnswerRemove (an edict) on a triggered row,
-//     which nothing reads it on yet (checkPurpose, ADR 0142 §2);
+//   - Answers on an ability's mode, inside Kicked or FaceUp, or anything
+//     but AnswerRemove (an edict) on a triggered row, which nothing
+//     reads it on (checkPurpose, ADR 0142 §2);
+//   - on a spell, `value` in any slot when its additional cost
+//     sacrifices or exiles a creature, or on an alternative cost that
+//     sacrifices or returns one (checkSpellAnswers);
 //   - Answers on a row whose every announcement must name a target (a
 //     clause with Min 0, "up to one", still has the empty announcement):
 //     its move carries has_targets, which already stops smart autopass;
@@ -171,5 +177,46 @@ func checkManaAbilitiesAnswers(name, where string, in []ManaAbility) {
 	for i, m := range in {
 		checkManaAnswers(name, fmt.Sprintf("%s mana ability %d", where, i),
 			game.ManaAbilityShape{SacrificeOther: m.Cost.SacrificeOther, Answers: m.Answers})
+	}
+}
+
+// checkSpellAnswers is the guard for what a spell declares it answers
+// (#2877, ADR 0142's amendment of 2026-10-30): on the card, a mode or
+// an alternative cost, which a cast reads for value_only
+// (legal.castAnswersOf). checkPurpose has already checked the bits and
+// the slot. This keeps the activated rows' cost coupling (ADR 0142 §3)
+// true for spells: a spell whose printed additional cost sacrifices or
+// exiles a creature you control (Altar's Reap, Deadly Dispute) is a
+// sacrifice outlet however it is cast, so no slot of it may declare
+// `value`; nor may an alternative cost that sacrifices or returns a
+// creature instead of paying. A cost the reader can see a creature
+// given up in at enumeration (a choice, a kicker) it reads there too.
+func checkSpellAnswers(spec Spec) {
+	fail := func(where, why string) {
+		panic(fmt.Sprintf("effects.Register: %q %s declares Answers that %s (ADR 0142's amendment of 2026-10-30; docs/adding-cards.md, \"Declaring what an ability answers\")", spec.Name, where, why))
+	}
+	const why = "say value on a spell whose cost sacrifices or exiles a creature — that cost is a sacrifice outlet; declare AnswerSacOutlet"
+	if legal.AdditionalCostAnswers(spec.AdditionalCost).Has(game.AnswerSacOutlet) {
+		if spec.Purpose.Answers == game.AnswerValue {
+			fail("card", why)
+		}
+		if spec.Modes != nil {
+			for i, o := range spec.Modes.Options {
+				if o.Purpose.Answers == game.AnswerValue {
+					fail(fmt.Sprintf("spell mode %d", i), why)
+				}
+			}
+		}
+		for _, a := range spec.AlternativeCosts {
+			if a.Purpose.Answers == game.AnswerValue {
+				fail(fmt.Sprintf("alternative cost %q", a.Key), why)
+			}
+		}
+	}
+	for i := range spec.AlternativeCosts {
+		a := &spec.AlternativeCosts[i]
+		if a.Purpose.Answers == game.AnswerValue && legal.AlternativeCostAnswers(a).Has(game.AnswerSacOutlet) {
+			fail(fmt.Sprintf("alternative cost %q", a.Key), "say value on a cost that sacrifices or returns a creature instead of paying — that cost is a sacrifice outlet; declare AnswerSacOutlet")
+		}
 	}
 }

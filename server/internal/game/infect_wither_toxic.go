@@ -213,6 +213,10 @@ func KeywordIsCumulative(kw string) bool {
 	if kw == KeywordDecayed {
 		return true
 	}
+	// Melee (#4722): CR 702.121b, each instance triggers separately.
+	if kw == KeywordMelee {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

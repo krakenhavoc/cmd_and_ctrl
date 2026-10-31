@@ -15,7 +15,8 @@
 //     instants, targeted abilities, untargeted abilities and special
 //     actions, each one a category the player can switch off. Mana and
 //     land never count, and untargeted abilities are off by default
-//     (#2853).
+//     (#2853). So is a value instant (Opt, Brainstorm) on an
+//     opponent's stack item (#2877).
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
 //
@@ -25,6 +26,14 @@
 // and one about the moment: keyWindow says whether the cursor is in a
 // window where a response is worth stopping for even without a tick.
 // ADR 0009, amendment #1307.
+//
+// #4734 (ADR 0009's amendment of 2026-10-30): a held answer counts only
+// when it can answer what is happening. The server says so on each cast,
+// activation and mana move that declares what it answers (ADR 0142) as
+// `answers_now`, and classifyMove reads that first: true is a response,
+// false is neither a response nor a play outside the sorcery window,
+// absent is classed exactly as before. Neither this module nor the
+// decision works out a threat, a combat or a window from the view.
 //
 // Pure functions over the frame. The decision lives in
 // autopassDecision.ts; this module only answers questions.
@@ -44,6 +53,13 @@ import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 //   counter     — a cast or activation that targets the stack.
 //   instant     — any other cast (instant, flash, split second's
 //                 exceptions — whatever the enumerator offered).
+//   valueInstant — a cast the server marks `value_only` (#2877, ADR
+//                 0142's amendment of 2026-10-30: Opt, Brainstorm, Fact
+//                 or Fiction), while the stack holds something: it has
+//                 nothing to answer there. Its own class so it does
+//                 not count by default; with the stack empty (combat,
+//                 an opponent's end step, a ticked step) it is an
+//                 `instant`.
 //   ability     — any other activated ability that targets or protects
 //                 (#2853: `has_targets`, or `interacts`: a sacrifice
 //                 outlet, regeneration, a pump, a blink, a shield; a
@@ -65,16 +81,20 @@ export type MoveClass =
   | "play"
   | "counter"
   | "instant"
+  | "valueInstant"
   | "ability"
   | "untargeted"
   | "special"
   | "declaration"
   | "other";
 
-// ResponseCategories are the five gameplay.respond* toggles.
+// ResponseCategories are the six gameplay.respond* toggles.
 export interface ResponseCategories {
   counter: boolean;
   instant: boolean;
+  // #2877: a value instant on an opponent's stack item. A narrowing of
+  // `instant`, so it counts only when both are on.
+  valueInstant: boolean;
   ability: boolean;
   untargeted: boolean;
   special: boolean;
@@ -83,6 +103,7 @@ export interface ResponseCategories {
 export const ALL_RESPONSES: ResponseCategories = {
   counter: true,
   instant: true,
+  valueInstant: true,
   ability: true,
   untargeted: true,
   special: true,
@@ -91,9 +112,12 @@ export const ALL_RESPONSES: ResponseCategories = {
 // DEFAULT_RESPONSES is what a player who never touched "Stop for"
 // gets (#2853, owner decision 1): an opponent's stack item stops you
 // for an instant, a counter, or an ability that targets or protects
-// (owner answer 2). A pure value ability is not interaction.
+// (owner answer 2). A pure value ability is not interaction, and nor
+// is a value instant on the stack (#2877, owner decision 2026-10-30:
+// option (a)).
 export const DEFAULT_RESPONSES: ResponseCategories = {
   ...ALL_RESPONSES,
+  valueInstant: false,
   untargeted: false,
 };
 
@@ -110,6 +134,12 @@ export const DEFAULT_RESPONSES: ResponseCategories = {
 //
 // `combat` is inCombatWindow: there, an activation the server marks
 // `combat_interacts` is an `ability`; elsewhere it is `untargeted`.
+// `onStack` is "the stack holds something": there, a cast the server
+// marks `value_only` is a `valueInstant` (#2877). The caller reaches
+// that question only with an opponent's item on it (a stack of the
+// viewer's own is #323's), and the item is what a value instant has no
+// answer to. With an empty stack it is an `instant`: an opponent's end
+// step and combat are where Opt and Brainstorm are cast.
 // `defending` is isDefending: an activation also marked
 // `combat_defender_only` (a creature-token maker) is an `ability` only
 // when the viewer is being attacked as well (owner answer, #2871).
@@ -124,6 +154,19 @@ export const DEFAULT_RESPONSES: ResponseCategories = {
 // so it is `none`: neither a response nor a play. A source the map
 // does not know (a card in hand, a caller with no map) keeps the
 // ordinary classification.
+//
+// #4734: `answers_now` is read before the flags above, which it
+// replaces on a move that carries it (ADR 0009's amendment of
+// 2026-10-30). The viewer's own sorcery window still comes first: a
+// cast or activation there is a play whatever it matches.
+//   true  — the move can answer what is happening: a counter when it
+//           targets the stack (the category a player may have kept on
+//           while turning instants off), else an `instant` for a cast
+//           and an `ability` for an activation or a mana move. It
+//           still needs that category switched on to count.
+//   false — neither a response nor a play: `none`.
+//   absent — the move declares nothing, exactly `value`, or `remove`,
+//           or the server is older: classified as before.
 export function classifyMove(
   m: LegalMoveView,
   sorceryWindow: boolean,
@@ -131,10 +174,33 @@ export function classifyMove(
   me?: string | null,
   combat = false,
   defending = false,
+  onStack = false,
+): MoveClass {
+  return classifyWith(m, true, sorceryWindow, controllers, me, combat, defending, onStack);
+}
+
+// answersNow is the server's verdict on a move (#4734), or undefined when
+// it sent none (an older server, or a move that keeps today's class).
+function answersNow(m: LegalMoveView): boolean | undefined {
+  return typeof m.answers_now === "boolean" ? m.answers_now : undefined;
+}
+
+// classifyWith is classifyMove, with the verdict optional: hasUnmatchedAnswer
+// asks what an unmatched move would have been without it.
+function classifyWith(
+  m: LegalMoveView,
+  readVerdict: boolean,
+  sorceryWindow: boolean,
+  controllers: ReadonlyMap<string, string> | undefined,
+  me: string | null | undefined,
+  combat: boolean,
+  defending: boolean,
+  onStack: boolean,
 ): MoveClass {
   if (m.kind === "activate" && controllers && me && activatesAcross(m, controllers, me)) {
     return "none";
   }
+  const verdict = readVerdict ? answersNow(m) : undefined;
   switch (m.kind) {
     case "pass":
       return "none";
@@ -142,14 +208,21 @@ export function classifyMove(
       // #2853: a sacrifice outlet that makes mana (Ashnod's Altar)
       // still answers removal. Never a play: it is not why the viewer
       // stopped on their own main phase.
+      if (verdict !== undefined) return verdict && !sorceryWindow ? "ability" : "none";
       return m.interacts && !sorceryWindow ? "ability" : "none";
     case "land":
       return "play";
     case "cast":
     case "activate":
       if (sorceryWindow) return "play";
+      // #4734: the server's match for the window the viewer is in.
+      if (verdict === false) return "none";
+      if (verdict === true) {
+        if (m.targets_stack) return "counter";
+        return m.kind === "cast" ? "instant" : "ability";
+      }
       if (m.targets_stack) return "counter";
-      if (m.kind === "cast") return "instant";
+      if (m.kind === "cast") return m.value_only && onStack ? "valueInstant" : "instant";
       if (m.has_targets || m.interacts) return "ability";
       if (combat && m.combat_interacts && (!m.combat_defender_only || defending)) {
         return "ability";
@@ -236,6 +309,8 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
       return cats.counter;
     case "instant":
       return cats.instant;
+    case "valueInstant":
+      return cats.instant && cats.valueInstant;
     case "ability":
       return cats.ability;
     case "untargeted":
@@ -245,6 +320,39 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
     default:
       return false;
   }
+}
+
+// WindowFacts is everything classifyMove reads about the frame, read
+// once per question.
+interface WindowFacts {
+  sorcery: boolean;
+  combat: boolean;
+  defending: boolean;
+  onStack: boolean;
+  controllers: ReadonlyMap<string, string>;
+}
+
+function windowFacts(view: GameView, me: string): WindowFacts {
+  return {
+    sorcery: inSorceryWindow(view, me),
+    combat: inCombatWindow(view),
+    defending: isDefending(view, me),
+    onStack: !stackEmpty(view),
+    controllers: battlefieldControllers(view),
+  };
+}
+
+function classifyIn(m: LegalMoveView, w: WindowFacts, me: string, readVerdict = true): MoveClass {
+  return classifyWith(
+    m,
+    readVerdict,
+    w.sorcery,
+    w.controllers,
+    me,
+    w.combat,
+    w.defending,
+    w.onStack,
+  );
 }
 
 // hasResponse reports whether the viewer holds priority and has a move
@@ -261,12 +369,49 @@ export function hasResponse(
   if (!hasPriority(view, me)) return false;
   const moves = view.legal_moves;
   if (!moves) return true;
-  const sw = inSorceryWindow(view, me);
-  const combat = inCombatWindow(view);
-  const defending = isDefending(view, me);
-  const controllers = battlefieldControllers(view);
-  return moves.some((m) =>
-    isEnabledResponse(classifyMove(m, sw, controllers, me, combat, defending), cats),
+  const w = windowFacts(view, me);
+  return moves.some((m) => isEnabledResponse(classifyIn(m, w, me), cats));
+}
+
+// hasMatchedResponse is hasResponse over the moves the server marked
+// `answers_now: true` alone (#4734). It is what rule 7's new clause
+// asks: a window with no key window of its own (an opponent's upkeep,
+// the first-strike damage step) holds only for an answer the server
+// says fits it. A move that carries no verdict is classed as before,
+// which in an ordinary empty-stack window means a pass, so it cannot
+// hold here. No move list is false: there is no verdict to read.
+export function hasMatchedResponse(
+  view: GameView | null | undefined,
+  me: string | null,
+  cats: ResponseCategories,
+): boolean {
+  if (!view || !me) return false;
+  if (!hasPriority(view, me)) return false;
+  const moves = view.legal_moves;
+  if (!moves) return false;
+  const w = windowFacts(view, me);
+  return moves.some((m) => answersNow(m) === true && isEnabledResponse(classifyIn(m, w, me), cats));
+}
+
+// hasUnmatchedAnswer reports whether the viewer holds a move that would
+// count as a response in an enabled category if the server had sent no
+// verdict, and that the server says answers nothing now (#4734). It is
+// only what passReason.ts says about a pass, "nothing you hold answers
+// this"; the decision never reads it. The caller ANDs it with
+// `!hasResponse`, so a pass is only blamed on a held answer when no
+// other move held the window.
+export function hasUnmatchedAnswer(
+  view: GameView | null | undefined,
+  me: string | null,
+  cats: ResponseCategories,
+): boolean {
+  if (!view || !me) return false;
+  if (!hasPriority(view, me)) return false;
+  const w = windowFacts(view, me);
+  return (view.legal_moves ?? []).some(
+    (m) =>
+      answersNow(m) === false &&
+      isEnabledResponse(classifyIn(m, w, me, /* readVerdict */ false), cats),
   );
 }
 
@@ -279,6 +424,11 @@ export function hasResponse(
 // Lands count here and only here, so a hand holding nothing but a land
 // still stops on the viewer's own main phase — and never holds an
 // opponent's spell.
+//
+// #4734: it reads the verdict through classifyMove, so an answer the
+// server says does not fit the window is no reason to hold a ticked step
+// (ADR 0009's amendment, call 6). The viewer's own sorcery window is
+// untouched: a cast or activation there is a play whatever it matches.
 export function hasPlay(
   view: GameView | null | undefined,
   me: string | null,
@@ -292,12 +442,9 @@ export function hasPlay(
   if (combatWindowHeld(view)) return true;
   const moves = view.legal_moves;
   if (!moves) return true;
-  const sw = inSorceryWindow(view, me);
-  const combat = inCombatWindow(view);
-  const defending = isDefending(view, me);
-  const controllers = battlefieldControllers(view);
+  const w = windowFacts(view, me);
   return moves.some((m) => {
-    const c = classifyMove(m, sw, controllers, me, combat, defending);
+    const c = classifyIn(m, w, me);
     if (c === "play" || c === "declaration" || c === "other") return true;
     return isEnabledResponse(c, cats);
   });

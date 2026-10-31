@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -48,7 +49,35 @@ type PermanentQuery struct {
 	Keyword string `json:",omitempty"`
 	// Enchanted asks for a permanent with an Aura attached to it.
 	Enchanted bool `json:",omitempty"`
+	// HasPowerAtMost asks for a permanent whose power is PowerAtMost or
+	// less: "creatures with power 2 or less" (Queen Mother Ramonda,
+	// #4659). A flag beside the number because zero is a real bound and a
+	// ScopedEffect holds no pointers. Read live off the permanent's power
+	// after the layers and its counters (CR 208.1, 613.4), not clamped, so
+	// a -1/1 has power -1. Only a battlefield permanent has a power the
+	// query can read: matchesCharacteristic never matches a bounded query.
+	// Set the pair with WithPowerAtMost.
+	HasPowerAtMost bool `json:",omitempty"`
+	PowerAtMost    int  `json:",omitempty"`
+	// HasPowerAtLeast is the other direction: "power 3 or greater".
+	HasPowerAtLeast bool `json:",omitempty"`
+	PowerAtLeast    int  `json:",omitempty"`
 }
+
+// WithPowerAtMost is q that also asks for power n or less.
+func (q PermanentQuery) WithPowerAtMost(n int) PermanentQuery {
+	q.HasPowerAtMost, q.PowerAtMost = true, n
+	return q
+}
+
+// WithPowerAtLeast is q that also asks for power n or greater.
+func (q PermanentQuery) WithPowerAtLeast(n int) PermanentQuery {
+	q.HasPowerAtLeast, q.PowerAtLeast = true, n
+	return q
+}
+
+// boundsPower reports whether q asks anything about power.
+func (q PermanentQuery) boundsPower() bool { return q.HasPowerAtMost || q.HasPowerAtLeast }
 
 // Equal reports whether q and o ask the same thing, field by field.
 func (q PermanentQuery) Equal(o PermanentQuery) bool {
@@ -57,7 +86,9 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		slices.Equal(q.Supertypes, o.Supertypes) &&
 		slices.Equal(q.Colors, o.Colors) &&
 		q.Keyword == o.Keyword &&
-		q.Enchanted == o.Enchanted
+		q.Enchanted == o.Enchanted &&
+		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
+		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -93,6 +124,12 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 	}
 	if q.Enchanted && !g.isEnchantedLocked(c.InstanceID) {
 		return false
+	}
+	if q.boundsPower() {
+		p := c.PowerForComparison()
+		if (q.HasPowerAtMost && p > q.PowerAtMost) || (q.HasPowerAtLeast && p < q.PowerAtLeast) {
+			return false
+		}
 	}
 	return true
 }
@@ -204,8 +241,20 @@ func (q PermanentQuery) Noun() string {
 		words = append(words, "permanent")
 	}
 	s := strings.Join(words, " ")
+	var with []string
 	if q.Keyword != "" {
-		s += " with " + q.Keyword
+		with = append(with, q.Keyword)
+	}
+	switch {
+	case q.HasPowerAtMost && q.HasPowerAtLeast:
+		with = append(with, fmt.Sprintf("power %d to %d", q.PowerAtLeast, q.PowerAtMost))
+	case q.HasPowerAtMost:
+		with = append(with, fmt.Sprintf("power %d or less", q.PowerAtMost))
+	case q.HasPowerAtLeast:
+		with = append(with, fmt.Sprintf("power %d or greater", q.PowerAtLeast))
+	}
+	if len(with) > 0 {
+		s += " with " + strings.Join(with, " and ")
 	}
 	return s
 }

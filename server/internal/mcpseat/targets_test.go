@@ -301,6 +301,62 @@ func TestTargetsAreAnsweredPerSlot(t *testing.T) {
 	}
 }
 
+// #4497: a cast of an Adventure half is announced under the half's own
+// clauses, which the view carries on faces[1]. Meager Meal's first clause
+// is "up to one", so the agent may answer the player clause alone, and the
+// pick goes out stamped with slot 1.
+func TestAFaceCastOffersThatFacesClauses(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	spell, bear := uuid.New(), uuid.NewString()
+	v := activeView(f)
+	v.Seats[0].Hand.Cards = []protocol.CardView{{InstanceID: spell.String(), Name: "Gollum, Silent Slinker", ManaCost: "{3}{B}",
+		Faces: []protocol.CardFaceView{
+			{Name: "Gollum, Silent Slinker"},
+			{Name: "Meager Meal", CastSurfaceView: protocol.CastSurfaceView{Clauses: []protocol.LegalTargetsView{
+				{Cards: []string{bear}, Min: 0, Max: 1, Label: "up to one target creature"},
+				{Players: []string{f.playerID.String(), f.oppID.String()}, Min: 1, Max: 1, Label: "target player"},
+			}}},
+		}}}
+	v.Battlefield.Cards = append(v.Battlefield.Cards, protocol.CardView{InstanceID: bear, Name: "Bear", Controller: f.playerID.String()})
+	moves := []legal.Move{f.pass(), {Type: legal.TypeCastSpell, Player: f.playerID, Kind: legal.KindCast, Label: "Cast Meager Meal", Source: spell,
+		Params: mustJSON(map[string]any{"instance_id": spell, "face": 1,
+			"targets": []map[string]any{{"kind": "player", "id": f.playerID, "slot": 1}}})}}
+	f.setState(v, moves, false)
+	tok, _ := decisionWindow(t, s)
+
+	r, _ := s.LegalMoves(context.Background(), LegalMovesInput{TargetsFor: ptr(1)})
+	for _, want := range []string{"the server's legal set", "slot 0: up to one target creature — pick up to 1", "slot 1: target player — pick 1"} {
+		if !strings.Contains(r.Text, want) {
+			t.Errorf("targets_for missing %q:\n%s", want, r.Text)
+		}
+	}
+	// A player is no answer to the creature clause.
+	r, _ = s.Act(context.Background(), ActInput{Window: tok, Move: 1, Targets: []TargetPick{{IDs: []string{f.oppID.String()}}}})
+	if !r.IsError || !strings.Contains(r.Text, "not a legal target for slot 0") {
+		t.Errorf("a player for slot 0: %s", r.Text)
+	}
+	if f.actionCount() != 0 {
+		t.Fatal("a refused pick was sent")
+	}
+	r, _ = s.Act(context.Background(), ActInput{Window: tok, Move: 1, Targets: []TargetPick{{Slot: 1, IDs: []string{f.oppID.String()}}}})
+	if !strings.Contains(r.Text, "status: accepted") {
+		t.Fatalf("act: %s", r.Text)
+	}
+	var got struct {
+		Face    int          `json:"face"`
+		Targets []wireTarget `json:"targets"`
+	}
+	if err := json.Unmarshal(f.lastAction().Params, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := wireTarget{Kind: "player", ID: f.oppID.String(), Slot: 1}
+	if got.Face != 1 || len(got.Targets) != 1 || got.Targets[0] != want {
+		t.Errorf("sent %s, want face 1 and %+v", f.lastAction().Params, want)
+	}
+}
+
 func TestATargetlessMoveTakesNoTargets(t *testing.T) {
 	f := newFakeServer(t)
 	s := newTestSeat(t, nil)

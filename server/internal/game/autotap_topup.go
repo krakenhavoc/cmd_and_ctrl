@@ -41,6 +41,9 @@ import (
 // context (#352), so Ancient Ziggurat's creature-only {G} is credited
 // toward a creature spell and toward nothing else, exactly as the
 // payment that follows will spend it.
+//
+// A payer that carries the plan out asks autoTapFundedLocked, which is
+// this planner, the #2461 clone check and ADR 0074's fallback in one call.
 
 // maxPoolShortfalls caps how many ways of crediting the pool against
 // a cost are offered to the planner. Only a hybrid or a widened symbol
@@ -280,6 +283,11 @@ func requirementKey(r ColorRequirement) string {
 // `cost` is the cost as the payer will pay it (after the spend-grant
 // widening and the Phyrexian strike), and `xValue` its announced X.
 // Read-only. Caller must hold g.mu.
+//
+// The plan counts the mana triggered mana abilities add when it taps a
+// source (ADR 0074, amendment of 2026-10-30). A payer that carries a
+// plan out asks autoTapFundedLocked instead, which checks it on a clone
+// and falls back to a plan without trigger mana.
 func (g *Game) autoTapTopUpLocked(
 	controller uuid.UUID,
 	cost ParsedCost,
@@ -287,6 +295,23 @@ func (g *Game) autoTapTopUpLocked(
 	ctx ManaSpendContext,
 	excluded map[uuid.UUID]bool,
 	prefer ManaSourceKinds,
+) (tapPlan, ParsedCost, bool) {
+	return g.autoTapTopUpWithLocked(controller, cost, xValue, ctx, excluded, prefer, true)
+}
+
+// autoTapTopUpWithLocked is autoTapTopUpLocked with the switch for
+// trigger mana: `triggerMana` false plans as the planner did before ADR
+// 0074's amendment of 2026-10-30, which is the payers' fallback.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapTopUpWithLocked(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	ctx ManaSpendContext,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+	triggerMana bool,
 ) (tapPlan, ParsedCost, bool) {
 	// #2556: "Spend only mana produced by basic lands to cast this
 	// spell" — the sources that could not pay are out of every plan
@@ -297,6 +322,7 @@ func (g *Game) autoTapTopUpLocked(
 	// planner's comparators and the pool's spend order; see
 	// autotap_wish.go for the bound.
 	wish := g.autoTapWishFor(controller, ctx, prefer)
+	wish.noTriggerMana = !triggerMana
 	p := g.playerByIDLocked(controller)
 	if p == nil {
 		plan, ok := g.autoTapWishedLocked(controller, cost, xValue, excluded, wish)
@@ -405,4 +431,47 @@ func (g *Game) planFundsLocked(p *Player, plan tapPlan, short, cost ParsedCost, 
 	}
 	trial.materializePlanInLocked(tp, plan, short, ctx)
 	return tp.ManaPool.CanPayFor(cost, xValue, ctx)
+}
+
+// autoTapFundedLocked is the plan an auto-tap payer carries out: the
+// top-up plan (autoTapTopUpLocked) that the clone check (planFundsLocked)
+// says funds `cost`, or false. Every payer that materialises a plan asks
+// this, so a refusal leaves nothing tapped (#2461).
+//
+// ADR 0074, amendment of 2026-10-30, item 8: the plan counts trigger
+// mana, judged against the board before the payment, and the executor
+// judges each trigger at its own tap. The two differ only when an earlier
+// step of the same payment changes a trigger's condition, such as a
+// sacrifice in the plan that removes the trigger's permanent. When the
+// plan does not fund the cost (or none was found) and a mana trigger
+// exists, the payer plans once more without trigger mana, which is
+// exactly the planner before the amendment, and checks that plan instead.
+// Every board that paid before still pays, and trigger mana is counted
+// whenever it really arrives.
+//
+// `cost`, `xValue` and `ctx` are what the payer pays: they are both the
+// cost planned and the cost the clone must fund.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapFundedLocked(
+	p *Player,
+	cost ParsedCost,
+	xValue int,
+	ctx ManaSpendContext,
+	excluded map[uuid.UUID]bool,
+	prefer ManaSourceKinds,
+) (tapPlan, ParsedCost, bool) {
+	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, xValue, ctx, excluded, prefer)
+	if ok && g.planFundsLocked(p, plan, short, cost, xValue, ctx) {
+		return plan, short, true
+	}
+	// On a board with no mana trigger the second plan would be the first.
+	if !g.manaTriggersExistLocked() {
+		return nil, ParsedCost{}, false
+	}
+	plan, short, ok = g.autoTapTopUpWithLocked(p.ID, cost, xValue, ctx, excluded, prefer, false)
+	if ok && g.planFundsLocked(p, plan, short, cost, xValue, ctx) {
+		return plan, short, true
+	}
+	return nil, ParsedCost{}, false
 }

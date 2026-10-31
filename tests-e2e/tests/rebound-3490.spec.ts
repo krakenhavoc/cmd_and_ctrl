@@ -30,15 +30,23 @@ import {
 //   - after a turn that ended on a hand-size discard, the upkeep's triggers
 //     waited until the draw step to go on the stack (cleanup.go).
 //
+// Since #4250 (#4269) the cast is made while the rebound trigger resolves
+// (CR 608.2g: "If an effect specifically instructs or allows a player to cast
+// a spell during resolution, they do so by following the steps in rules
+// 601.2a-i, except no player receives priority after it's cast"). The offer
+// is the resolution_cast prompt: a sheet in the dock listing the card's cast
+// at each legal target, and "Leave it in exile". Nobody holds priority while
+// it is open, so nothing can pass it away.
+//
 //   1. Quantum Misalignment is cast from hand at a creature: a token copy, and
 //      the card is exiled by rebound instead of going to the graveyard.
 //   2. Both players end their turns with the dock's End turn; the second one
 //      ends on a discard to hand size.
-//   3. The caster's upkeep, still the upkeep: the rebound trigger asks "Cast
-//      it free"; the answer opens targeting for the card at once, and nothing
-//      passes for the player while it is open.
-//   4. Clicking the creature casts it from exile; it resolves into a second
-//      token copy and goes to its owner's graveyard, not back to exile.
+//   3. The caster's upkeep, still the upkeep: the rebound trigger, while it
+//      resolves, offers the cast at each creature the caster controls; nothing
+//      passes for the player while the offer is open.
+//   4. Picking a line casts it from exile; it resolves into a second token
+//      copy and goes to its owner's graveyard, not back to exile.
 
 const MISALIGNMENT = "Quantum Misalignment";
 const BEARS = "Grizzly Bears";
@@ -270,10 +278,13 @@ test.describe("#3490 rebound casts its card from exile at the next upkeep", () =
       );
       await endTurn(a, other);
 
-      // ---- 3. The upkeep offer. ----
+      // ---- 3. The upkeep offer, inside the trigger's resolution. ----
       const offerOpen = (v: SnapshotView) =>
         (v.pending_choices ?? []).some(
-          (c) => c.kind === "may_cast" && c.chooser === caster.playerID,
+          (c) =>
+            c.kind === "resolution_cast" &&
+            c.chooser === caster.playerID &&
+            c.may_cast_keyword === "rebound",
         );
       await passUntil(
         a,
@@ -286,39 +297,46 @@ test.describe("#3490 rebound casts its card from exile at the next upkeep", () =
         caster.playerID,
       );
 
-      const prompt = page.getByRole("dialog").filter({ hasText: /Rebound/ });
+      const prompt = page.getByRole("dialog", {
+        name: new RegExp(`^Rebound: you may cast ${MISALIGNMENT}`),
+      });
       await expect(prompt).toBeVisible({ timeout: 20_000 });
+      // One line per creature the caster controls: the Bears and its copy.
+      const casts = prompt.getByRole("button", {
+        name: new RegExp(
+          `^Cast ${MISALIGNMENT} from exile targeting ${BEARS}$`,
+        ),
+      });
+      await expect(casts).toHaveCount(2);
+      await expect(
+        prompt.getByRole("button", { name: "Leave it in exile", exact: true }),
+      ).toBeVisible();
       await testInfo.attach("the upkeep offer", {
         body: await page.screenshot(),
         contentType: "image/png",
       });
-      await prompt.getByRole("button", { name: "Cast it free" }).click();
 
-      // ---- 4. Targeting opens on its own, and nothing passes under it. ----
-      const banner = page.getByRole("dialog", {
-        name: new RegExp(`Select target for ${MISALIGNMENT}`, "i"),
-      });
-      await expect(banner).toBeVisible({ timeout: 20_000 });
+      // ---- 4. Nothing passes under the offer; a line casts it. ----
       // Auto-pass used to pass here within 100 ms. Give it far longer.
       await page.waitForTimeout(2_000);
       const held = a.snapshot();
       expect(held.turn?.step).toBe("upkeep");
       expect(inExile(held, card.instance_id)).toBe(true);
-      await testInfo.attach("targeting the rebound cast", {
-        body: await page.screenshot(),
-        contentType: "image/png",
-      });
+      expect(offerOpen(held)).toBe(true);
 
-      const bearTile = page
-        .locator(`.card[data-instance-id="${bear.instance_id}"]`)
-        .first();
-      await bearTile.click();
+      await casts.first().click();
       await a.waitFor(
         (v) => onStack(v, card.instance_id),
         "the free cast is on the stack",
         20_000,
       );
       expect(a.snapshot().turn?.step).toBe("upkeep");
+      // The one card is cast, so the offer is done.
+      await a.waitFor((v) => !offerOpen(v), "the offer closed", 10_000);
+      await testInfo.attach("the rebound cast on the stack", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
 
       await passUntil(
         a,

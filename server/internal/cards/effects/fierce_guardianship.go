@@ -31,6 +31,7 @@ func init() {
 		OracleID:     "d09c9cba-fdd2-479b-ad5d-d05181c3e3f9",
 		Name:         "Fierce Guardianship",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		AlternativeCosts: []game.AlternativeCost{
 			FreeIfYouControlCommander("Cast without paying its mana cost (you control a commander)"),

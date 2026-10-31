@@ -231,7 +231,7 @@ func (g *Game) harvestFromDeclaredZones(pass *harvestPass) {
 	if CatalogTriggers == nil {
 		return
 	}
-	for _, kind := range triggerZones.zonesFor(pass.ev.Kind) {
+	for _, kind := range grantedSuspendZones(pass.ev.Kind, triggerZones.zonesFor(pass.ev.Kind)) {
 		for _, z := range g.triggerZonesOfKindLocked(kind) {
 			g.harvestFromDeclaredZone(pass, z, kind)
 		}
@@ -289,7 +289,7 @@ func (g *Game) harvestFromDeclaredZone(pass *harvestPass, z *Zone, kind ZoneKind
 		// any card with this key declare a zone at all" — and it is
 		// answered before anything else because it is one map read
 		// and it skips the whole of every ordinary card.
-		if !triggerZones.declares(CatalogKey(z.Cards[i])) {
+		if !z.Cards[i].SuspendGranted && !triggerZones.declares(CatalogKey(z.Cards[i])) {
 			continue
 		}
 		source := z.Cards[i]

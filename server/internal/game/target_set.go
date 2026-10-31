@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 )
@@ -102,6 +103,75 @@ const (
 	// owner's instead, so no card is ever in another player's.
 	TargetShareOwner
 )
+
+// TargetTotal is the third kind of set rule (#4616): the picks' TOTAL
+// of one statistic may not exceed Max — "up to two target creatures
+// with total mana value 6 or less" (The Super Hero Civil War, chapter
+// I). It is not a key, because whether a pick fits depends on the sum
+// of the others rather than on a value two picks share, but it is
+// read by the same four readers, each with a "total" branch:
+//
+//   - the announce gate refuses a set whose total exceeds Max, and a
+//     set holding a card whose statistic it cannot read;
+//   - the CR 608.2b re-check sums the SURVIVING picks, and when that
+//     sum now exceeds Max every one of them is illegal (the printed
+//     rulings: "the entire selection of targets is illegal") — see
+//     totalRuleBrokenLocked;
+//   - the enumerator never extends a set past Max;
+//   - the client's picker greys a candidate whose value would take the
+//     picks past Max, from the values the view ships as `total`.
+//
+// Stat is a closed vocabulary, not a func, for TargetSameness's
+// reason: TargetSpec is reachable from a stack item and a paused
+// pick_target frame, and a func there would be a closure route the
+// ADR 0041 ratchet has to carry.
+type TargetTotal struct {
+	// Label is the printed rule in a form the picker and the refusal
+	// can both say after "the targets must": "have total mana value 6
+	// or less".
+	Label string
+
+	// Stat names the statistic the picks are summed by.
+	Stat TargetTotalStat
+
+	// Max is the printed ceiling, inclusive: "6 or less" is 6.
+	Max int
+}
+
+// TargetTotalStat is what a TargetTotal sums.
+type TargetTotalStat uint8
+
+const (
+	// TargetTotalNone is the zero value: a rule that sums nothing.
+	// effects.Register refuses it on a catalog clause.
+	TargetTotalNone TargetTotalStat = iota
+
+	// TargetTotalManaValue is each pick's mana value where it is now
+	// (CR 202.3, read by Game.ManaValueForEffect): {X} is zero off the
+	// stack (CR 202.3e), an object with no mana cost is zero (CR
+	// 202.3a), and a card whose cost the engine cannot read has no
+	// value — it meets no total, as it meets no "mana value N or
+	// less" (ManaValueLE).
+	TargetTotalManaValue
+)
+
+// valueOf is the number a card contributes to the total, or false
+// when the engine cannot read one; a card with no value fits no total.
+// Caller must hold g.mu.
+func (r *TargetTotal) valueOf(g *Game, c Card) (int, bool) {
+	if r == nil {
+		return 0, false
+	}
+	switch r.Stat {
+	case TargetTotalManaValue:
+		// A face-down permanent reads 0 here (CR 708.2a, CR 202.3a):
+		// ManaValueForEffect does not look through the face-down state,
+		// so neither this total nor the view that ships its values can
+		// tell what the permanent hides.
+		return g.ManaValueForEffect(c)
+	}
+	return 0, false
+}
 
 // keyOf is the value a pick holds under the rule, or false when it has
 // none (a card with no owner, a rule with no key) — and a pick with no
@@ -306,6 +376,23 @@ func (g *Game) targetSamenessKeyLocked(clause *TargetClause, ref TargetRef) (str
 	})
 }
 
+// targetTotalValueLocked is what one pick contributes to clause's total
+// rule (#4616), read off the card in whatever zone it is in now, or
+// false when the clause has no total, the pick is a player or a card
+// that is gone, or its statistic cannot be read.
+//
+// Caller must hold g.mu.
+func (g *Game) targetTotalValueLocked(clause *TargetClause, ref TargetRef) (int, bool) {
+	if clause == nil || clause.Total == nil || ref.Kind != TargetCard {
+		return 0, false
+	}
+	c := g.findCardByIDLocked(ref.ID)
+	if c == nil {
+		return 0, false
+	}
+	return clause.Total.valueOf(g, *c)
+}
+
 // pickKeyLocked finds the card a pick names, in whatever zone it is in
 // now, and reads a set-rule key off it. A player, or a card that is
 // gone, has no key.
@@ -360,6 +447,24 @@ func (g *Game) TargetSamenessKeysForEffect(spec *TargetSpec, ids []uuid.UUID) ma
 	return out
 }
 
+// TargetTotalValuesForEffect is what each card in ids contributes to
+// spec's total rule (#4616), for the protocol projection and the
+// enumerator. Nil when the spec has no total rule; a card whose value
+// cannot be read is absent from the map, and fits no total. Caller
+// must hold g.mu.
+func (g *Game) TargetTotalValuesForEffect(spec *TargetSpec, ids []uuid.UUID) map[uuid.UUID]int {
+	if spec == nil || spec.Total == nil {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(ids))
+	for _, id := range ids {
+		if v, ok := g.targetTotalValueLocked(spec, TargetRef{Kind: TargetCard, ID: id}); ok {
+			out[id] = v
+		}
+	}
+	return out
+}
+
 // BoundValuesForEffect is each card's value of the clause's bounded
 // statistic (ADR 0109 §9) — mana value, power or toughness — for the
 // view to ship beside a bounded clause's legal set, so the client can
@@ -400,6 +505,98 @@ func targetSameError(r *TargetSameness) error {
 		label = r.Label
 	}
 	return fmt.Errorf("%w: those targets must %s", ErrIllegalTarget, label)
+}
+
+// targetTotalError is targetSetError for the total rule (#4616): "those
+// targets must have total mana value 6 or less".
+func targetTotalError(r *TargetTotal) error {
+	label := "stay within their total"
+	if r != nil && r.Label != "" {
+		label = r.Label
+	}
+	return fmt.Errorf("%w: those targets must %s", ErrIllegalTarget, label)
+}
+
+// totalRuleBrokenLocked is the CR 608.2b half of the total rule (#4616):
+// is ref, which has already passed its own clause's per-candidate
+// re-check, illegal because the picks of its clause that are still
+// legal now total more than the clause allows?
+//
+// CR 608.2b re-checks every target against the targeting requirements,
+// and the total is one of them. The reading, which the printed rulings
+// on this family settle (Nethroi, Apex of Death and Reunion of the
+// House, whose total can grow while their targets sit in a graveyard:
+// "the entire selection of targets is illegal and nothing is
+// returned"):
+//
+//   - a pick that became illegal on its own (it left, it stopped being
+//     a creature, it gained protection) is dropped first and
+//     contributes nothing, as setRuleConflictLocked drops it — so a
+//     creature that leaves in response costs exactly that creature,
+//     and removing a target can only lower the total;
+//   - the picks still individually legal are summed, and when that sum
+//     exceeds Max EVERY one of them is illegal. None is preferred,
+//     which is the same symmetric, weaker-never-stronger reading
+//     ADR 0019 gives a collision under a key rule;
+//   - a pick whose statistic can no longer be read fits no total and
+//     is illegal itself (TargetTotalStat's rule at announce), and the
+//     others are summed without it.
+//
+// So with one clause and every pick illegal, the spell or ability
+// does not resolve (CR 608.2b), which is the rulings' "nothing is
+// returned".
+//
+// Caller must hold g.mu.
+func (g *Game) totalRuleBrokenLocked(item *StackItem, clause *TargetClause, ref TargetRef) bool {
+	if clause == nil || clause.Total == nil || ref.Kind != TargetCard {
+		return false
+	}
+	sum, ok := g.targetTotalValueLocked(clause, ref)
+	if !ok {
+		return true
+	}
+	src := g.stackItemSourceLocked(item)
+	for _, other := range item.Targets {
+		if other.Kind != TargetCard || other.ID == ref.ID {
+			continue
+		}
+		if other.Mode != ref.Mode || other.Slot != ref.Slot {
+			continue
+		}
+		if !g.targetLegalLocked(src, clause, other) {
+			continue
+		}
+		if v, ok := g.targetTotalValueLocked(clause, other); ok {
+			sum += v
+		}
+	}
+	return sum > clause.Total.Max
+}
+
+// totalCountLocked is how many of ids one announcement could pick under
+// the clause's total rule (#4616): the smallest values first, for as
+// long as their sum stays within Max, since no set of k picks has a
+// smaller total than the k smallest. A card with no value fits no
+// total and is never counted.
+//
+// Caller must hold g.mu.
+func (g *Game) totalCountLocked(clause *TargetClause, ids []uuid.UUID) int {
+	vals := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if v, ok := g.targetTotalValueLocked(clause, TargetRef{Kind: TargetCard, ID: id}); ok {
+			vals = append(vals, v)
+		}
+	}
+	sort.Ints(vals)
+	n, sum := 0, 0
+	for _, v := range vals {
+		if sum+v > clause.Total.Max {
+			break
+		}
+		sum += v
+		n++
+	}
+	return n
 }
 
 // setRuleConflictLocked is the CR 608.2b half of the set rule: does
@@ -473,9 +670,17 @@ func (g *Game) setRuleConflictLocked(item *StackItem, clause *TargetClause, ref 
 // target cards from a single graveyard" (Pestilent Cauldron) is not
 // offered when no one graveyard holds four.
 //
+// Under the total rule (#4616) it is the most cards whose values fit
+// within the total together (totalCountLocked).
+//
 // Caller must hold g.mu.
 func (g *Game) fillableCountLocked(clause *TargetClause, lt LegalTargets) int {
 	n := len(lt.Players)
+	// #4616: under a total rule, as many of the smallest values as fit.
+	// effects.Register keeps it off a clause with a key rule too.
+	if clause != nil && clause.Total != nil {
+		return n + g.totalCountLocked(clause, lt.Cards)
+	}
 	if clause == nil || (clause.Different == nil && clause.Same == nil) {
 		return n + len(lt.Cards)
 	}
@@ -577,6 +782,21 @@ func (g *Game) PickTargetSameRuleForEffect(c *PendingChoice) (*TargetSameness, m
 	return clause.Same, g.TargetSamenessKeysForEffect(clause, c.PickTargetCards)
 }
 
+// PickTargetTotalRuleForEffect is PickTargetSetRuleForEffect for the
+// total rule (#4616): the rule of the clause a pick_target prompt is
+// asking about, with each offered card's value. Nil when the clause
+// has none, or when the prompt carries no live frame (a restored
+// snapshot); the announce gate still enforces the rule on the answer.
+//
+// Caller must hold g.mu.
+func (g *Game) PickTargetTotalRuleForEffect(c *PendingChoice) (*TargetTotal, map[uuid.UUID]int) {
+	clause := pickTargetClauseOf(c)
+	if clause == nil || clause.Total == nil {
+		return nil, nil
+	}
+	return clause.Total, g.TargetTotalValuesForEffect(clause, c.PickTargetCards)
+}
+
 // withoutSetRuleConflictsLocked narrows slot `slot`'s retarget
 // alternatives to the cards whose set-rule key no OTHER slot of the
 // same clause holds (#1559). CR 115.7c: the new target must not make
@@ -592,8 +812,16 @@ func (g *Game) PickTargetSameRuleForEffect(c *PendingChoice) (*TargetSameness, m
 // change that moves every slot to another graveyard at once — a whole
 // list through RetargetStackItemForEffect — is accepted.
 //
+// Under the total rule (#4616) it narrows to the cards whose value,
+// added to what the staying slots hold, stays within the total. Again
+// the gate judges the final set, so a whole new list that fits is
+// accepted however the slots were filled before.
+//
 // Caller must hold g.mu.
 func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTargets, targets []TargetRef, slot int) LegalTargets {
+	if clause != nil && clause.Total != nil && slot >= 0 && slot < len(targets) {
+		return g.withinTotalLocked(clause, lt, targets, slot)
+	}
 	if clause == nil || (clause.Different == nil && clause.Same == nil) || slot < 0 || slot >= len(targets) {
 		return lt
 	}
@@ -626,6 +854,31 @@ func (g *Game) withoutSetRuleConflictsLocked(clause *TargetClause, lt LegalTarge
 			continue
 		}
 		out.Cards = append(out.Cards, id)
+	}
+	return out
+}
+
+// withinTotalLocked is withoutSetRuleConflictsLocked's total branch
+// (#4616): slot `slot`'s retarget alternatives, narrowed to the cards
+// that fit beside the clause's other slots. A staying slot whose value
+// cannot be read (a card that has gone) adds nothing to what is held.
+//
+// Caller must hold g.mu.
+func (g *Game) withinTotalLocked(clause *TargetClause, lt LegalTargets, targets []TargetRef, slot int) LegalTargets {
+	held := 0
+	for i, t := range targets {
+		if i == slot || t.Mode != targets[slot].Mode || t.Slot != targets[slot].Slot {
+			continue
+		}
+		if v, ok := g.targetTotalValueLocked(clause, t); ok {
+			held += v
+		}
+	}
+	out := LegalTargets{Players: lt.Players}
+	for _, id := range lt.Cards {
+		if v, ok := g.targetTotalValueLocked(clause, TargetRef{Kind: TargetCard, ID: id}); ok && held+v <= clause.Total.Max {
+			out.Cards = append(out.Cards, id)
+		}
 	}
 	return out
 }

@@ -56,7 +56,7 @@ func cecilyFreeCast(ctx *Context) error {
 	if p == nil || p.Hand == nil || len(p.Hand.Cards) < 11 {
 		return nil
 	}
-	offerFreeHandCast(ctx, ctx.Controller(), cecilyFreeCastOffer, "an instant or sorcery spell", Or(Instant(), Sorcery()))
+	offerFreeHandCast(ctx, ctx.Controller(), cecilyFreeCastOffer, "an instant or sorcery spell", freeInstantOrSorcery())
 	return nil
 }
 

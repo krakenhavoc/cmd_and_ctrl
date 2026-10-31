@@ -36,8 +36,10 @@ func init() {
 			AnyPlayersSpellsCantBeCountered("Spells can't be countered."),
 		},
 		CastPermissions: []game.CastPermission{{
-			Zone:              game.ZoneGraveyard,
-			Filter:            game.PermissionFilter{InstantOrSorceryOnly: true},
+			Zone: game.ZoneGraveyard,
+			// "Each instant and sorcery CARD in your graveyard": the card
+			// in the graveyard, not the spell (CR 715.4, 712.8a; #4509).
+			Filter:            game.PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true},
 			AltCostKey:        "flashback",
 			ExileOnResolution: true,
 			Label:             "Flashback — its mana cost (Lier, Disciple of the Drowned)",

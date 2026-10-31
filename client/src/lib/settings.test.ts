@@ -156,7 +156,7 @@ describe("settings", () => {
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION, applySyncedCopy } =
       await freshModule();
-    expect(SETTINGS_VERSION).toBe(30);
+    expect(SETTINGS_VERSION).toBe(31);
     expect(defaultSettings().animations.stackArrival).toBe(true);
     const s = get(settings);
     expect(s.animations.stackArrival).toBe(true);
@@ -185,10 +185,10 @@ describe("settings", () => {
       JSON.stringify({ __version: 29, animations: { enabled: true, combat: false } }),
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
-    expect(SETTINGS_VERSION).toBe(30);
+    expect(SETTINGS_VERSION).toBe(31);
     expect(defaultSettings().animations.effects).toBe("full");
     const s = get(settings);
-    expect(s.__version).toBe(30);
+    expect(s.__version).toBe(31);
     expect(s.animations.effects).toBe("full");
     expect(s.animations.combat).toBe(false);
     expect(SYNCED_FIELDS.animations.effects).toBe("synced");
@@ -212,6 +212,29 @@ describe("settings", () => {
     expect(get((await freshModule()).settings).animations.effects).toBe("full");
   });
 
+  // #4556: display.keywordFlourishes fills from the default (on) with no
+  // version bump; a chosen Off survives and junk is the default.
+  it("defaults display.keywordFlourishes on, keeps Off and resets junk, synced", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { cardSize: "large" } }),
+    );
+    const first = await freshModule();
+    expect(first.defaultSettings().display.keywordFlourishes).toBe(true);
+    expect(get(first.settings).display.keywordFlourishes).toBe(true);
+    expect(first.SYNCED_FIELDS.display.keywordFlourishes).toBe("synced");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { keywordFlourishes: false } }),
+    );
+    expect(get((await freshModule()).settings).display.keywordFlourishes).toBe(false);
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { keywordFlourishes: "no" } }),
+    );
+    expect(get((await freshModule()).settings).display.keywordFlourishes).toBe(true);
+  });
+
   // #3586: v27 → v28 adds gameplay.attackDefault. Existing players stay
   // on today's behaviour ("ask"); a chosen mode survives; junk is "ask".
   it("migrates v27 to v28 with attackDefault on Choose each time", async () => {
@@ -220,10 +243,10 @@ describe("settings", () => {
       JSON.stringify({ __version: 27, gameplay: { strictMana: false } }),
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
-    expect(SETTINGS_VERSION).toBe(30);
+    expect(SETTINGS_VERSION).toBe(31);
     expect(defaultSettings().gameplay.attackDefault).toBe("ask");
     const s = get(settings);
-    expect(s.__version).toBe(30);
+    expect(s.__version).toBe(31);
     expect(s.gameplay.attackDefault).toBe("ask");
     expect(s.gameplay.strictMana).toBe(false);
     expect(SYNCED_FIELDS.gameplay.attackDefault).toBe("synced");
@@ -255,7 +278,7 @@ describe("settings", () => {
     );
     const { settings, SYNCED_FIELDS } = await freshModule();
     const a = get(settings).audio;
-    expect(get(settings).__version).toBe(30);
+    expect(get(settings).__version).toBe(31);
     expect(a.cardsVolume).toBe(35);
     expect(a.combatVolume).toBe(35);
     expect(a.interfaceVolume).toBe(35);
@@ -452,6 +475,23 @@ describe("settings", () => {
     expect(s.display.showOpponentHandCount).toBe(false);
     expect(s.gameplay.adminOverrides).toBe(true);
     expect(s.shortcuts.bindings).toEqual({ undo: "z" });
+  });
+
+  // #4555: opponents' cards face them (as at a real table) until the
+  // viewer asks for them upright, and the choice survives a reload.
+  it("opponentCardFacing defaults to them, persists, and ignores a value it does not know", async () => {
+    let m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("them");
+    expect(m.defaultSettings().display.opponentCardFacing).toBe("them");
+    m.updateSettings("display", "opponentCardFacing", "me");
+    m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("me");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { opponentCardFacing: "sideways" } }),
+    );
+    m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("them");
   });
 
   // #2209: art tiles on the battlefield by default, full cards in the
@@ -1158,6 +1198,74 @@ describe("respondUntargetedAbilities (v21 → v22)", () => {
       gameplay: { respondUntargetedAbilities: "yes" },
     });
     expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+});
+
+// ---- #2877: value instants on an opponent's spell ----
+
+describe("respondValueInstants (v30 → v31)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  it("is off for a new player (owner, 2026-10-30: option (a))", async () => {
+    const { defaultSettings } = await freshModule();
+    expect(defaultSettings().gameplay.respondValueInstants).toBe(false);
+  });
+
+  it("moves a player on the defaults to off", async () => {
+    const { mod, s } = await load({
+      __version: 30,
+      gameplay: { respondInstants: true, respondUntargetedAbilities: false },
+    });
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(31);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.respondValueInstants).toBe(false);
+  });
+
+  it("keeps value instants stopping for a player who ticked Value abilities", async () => {
+    const { s } = await load({
+      __version: 30,
+      gameplay: { respondUntargetedAbilities: true },
+    });
+    expect(s.gameplay.respondUntargetedAbilities).toBe(true);
+    expect(s.gameplay.respondValueInstants).toBe(true);
+  });
+
+  it("follows v22's carry-over for a blob from before value abilities split off", async () => {
+    // A v21 player who turned counters off kept "any ability" (v22), so
+    // value plays stopped them, and value instants keep doing so.
+    const { s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: false,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+      },
+    });
+    expect(s.gameplay.respondUntargetedAbilities).toBe(true);
+    expect(s.gameplay.respondValueInstants).toBe(true);
+  });
+
+  it("from v31 on, a stored choice stands and survives a save", async () => {
+    const { mod } = await load({
+      __version: 31,
+      gameplay: { respondValueInstants: true, respondUntargetedAbilities: false },
+    });
+    expect(get(mod.settings).gameplay.respondValueInstants).toBe(true);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.respondValueInstants).toBe(true);
+  });
+
+  it("a v31 blob with a malformed value falls back to the default", async () => {
+    const { s } = await load({ __version: 31, gameplay: { respondValueInstants: "yes" } });
+    expect(s.gameplay.respondValueInstants).toBe(false);
   });
 });
 

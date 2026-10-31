@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Mortify — Instant {1}{W}{B}:
 //
 //	"Destroy target creature or enchantment. It can't be regenerated."
@@ -13,6 +15,7 @@ func init() {
 		OracleID:     "faa01ed1-ccfa-4e58-951f-cd81f9068027",
 		Name:         "Mortify",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
 		OnResolve:    destroyTheTargetPermanentNoRegen,
 	})

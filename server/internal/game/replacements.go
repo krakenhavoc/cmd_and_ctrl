@@ -1006,6 +1006,13 @@ type ReplacementEvent struct {
 	// the number of CARDS looked at (base N).
 	KeywordActionCount int
 
+	// ConniveExtraDraws is a connive's cards drawn BEFORE it connives
+	// (CR 701.50a, connive_action.go): "if a creature you control would
+	// connive, instead you draw a card, then that creature connives"
+	// adds one. Zero on every other keyword action. Read only when the
+	// window has settled on a connive.
+	ConniveExtraDraws int
+
 	// keywordAction is the keyword-action sibling of zoneRoute,
 	// damageTail and tokenTail: what the entry point still owes once
 	// the window settles — a proliferate's chosen permanents and

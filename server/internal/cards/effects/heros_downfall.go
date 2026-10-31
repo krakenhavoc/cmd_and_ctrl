@@ -16,6 +16,7 @@ func init() {
 		OracleID:     "03df6a57-37c9-46d3-83b3-4a6240100714",
 		Name:         "Hero's Downfall",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

@@ -33,10 +33,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     pressed "Auto-tap & cast";
 //   - CR 613.1f — an Aura whose abilities were removed has no trigger.
 //
-// Declared simplification: the auto-tap PLANNER does not count the
-// extra {G} (ADR 0074 §7). It may therefore tap one land more than it
-// needed to, and the surplus floats until the step ends. Weaker than
-// printed and safe; the mana that arrives is always right.
+// The auto-tap PLANNER counts the extra {G} (ADR 0074, amendment of
+// 2026-10-30). It asks this trigger's own condition through the judge
+// the executor fires with, so a Forest under Wild Growth plans as {G}{G}
+// and pays a two-mana cost alone. Paying a single {G} with it still
+// floats the other, since a land cannot be half-tapped.
 //
 // No simplification of the card itself.
 func init() {

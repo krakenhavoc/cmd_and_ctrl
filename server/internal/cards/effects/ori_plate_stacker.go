@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (an artifact enchantment is destroyed once and counted once) whose keyed
 // tail gains 1 life for each permanent that actually went (massGainLifeForEach),
 // so a permanent that was indestructible, regenerated or exiled instead is not
-// counted (CR 701.7a). Ori's own sweep never touches his own side.
+// counted (CR 701.8a). Ori's own sweep never touches his own side.
 //
 // No simplification.
 func init() {

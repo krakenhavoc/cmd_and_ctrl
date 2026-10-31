@@ -356,6 +356,13 @@ type autoTapWish struct {
 	// output (#3874; see restrictedSpend).
 	plain bool
 
+	// noTriggerMana is set for the payers' fallback plan (ADR 0074,
+	// amendment of 2026-10-30, item 8): a gather that counts no trigger
+	// mana, which is exactly the planner before the amendment. Like
+	// plain, it is not an ordering: it decides which slots a candidate
+	// has. See countsTriggerMana and autoTapFundedLocked.
+	noTriggerMana bool
+
 	g          *Game
 	controller uuid.UUID
 	card       *Card
@@ -397,6 +404,13 @@ func (w *autoTapWish) withoutRestricted() *autoTapWish {
 	c := *w
 	c.plain = true
 	return &c
+}
+
+// countsTriggerMana reports whether a gather under this wish counts the
+// mana triggered mana abilities would add (ADR 0074 amendment, #4716):
+// always, but in the payers' fallback plan.
+func (w *autoTapWish) countsTriggerMana() bool {
+	return w == nil || !w.noTriggerMana
 }
 
 // kindSet is #1212's source wish, zero for no wish.

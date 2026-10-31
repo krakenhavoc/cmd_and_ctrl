@@ -1,0 +1,6 @@
+---
+title: "A creature becoming tapped: its cause, and once per object per turn"
+date: 2026-10-29
+issues: [4534, 4576]
+---
+**A creature becoming tapped: its cause, and once per object per turn** (#4534, #4576, CR 701.26a, CR 702.194a, CR 400.7) — `Event.TapCause` says why an `EventTapCard` happened when a card asks: the teamwork payment (`payTeamworkLocked`) stamps `game.TapCauseTeamwork`, and `effects.ThisTappedToPayTeamwork` is the When for it (Agent Maria Hill); every other tap leaves it empty. `TurnTally.BecameTapped` counts, per OBJECT, how many times a permanent became tapped this turn, keyed by `ObjectTallyKey(id, epoch, "tapped")` and read through `Game.TimesBecameTappedThisTurn`: the tally listener writes it from an `EventTapCard` and from an `EventAttack` whose attacker is tapped (the engine taps an attacker without an `EventTapCard`, and a vigilance attacker does not tap), so it reads 1 as the first tap triggers, a flickered or bounced permanent is a new object that reads 0, and the turn boundary flushes it (Captain America, Living Legend). Both fields are additive within snapshot v9 (`events[].tap_cause`, `turnTally.becameTapped`), recorded in `snapshot_shape/v9.txt`; no closure route, no ledger key. **Not counted:** a regenerating creature is tapped without any event (`regenerateLocked`), so it does not trigger or count.

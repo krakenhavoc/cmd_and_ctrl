@@ -27,39 +27,7 @@ import (
 // No simplification.
 func init() {
 	enters := WhenThisEnters("Torrential Gearhulk — you may cast target instant card from your graveyard without paying its mana cost",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				z := g.FindCardZoneForEffect(t.ID)
-				c, ok := g.LookupCardForEffect(t.ID)
-				if !ok || z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-					Player:                  item.Controller,
-					Zone:                    game.ZoneGraveyard,
-					Duration:                g.UntilEndOfTurnDuration(),
-					Cost:                    "{0}",
-					AltCostKey:              game.AltCostKeyGrantedCost,
-					Timing:                  game.TimingFlash,
-					CastOnly:                true,
-					ExileInsteadOfGraveyard: true,
-					// A pass closes the window; nothing moves, the card
-					// stays in the graveyard.
-					LapseOnPass: game.LapseStaysInHand,
-					Source:      item.SourceCardID,
-					SourceName:  "Torrential Gearhulk",
-					Label:       "Torrential Gearhulk — cast " + c.Name + " without paying its mana cost",
-				}, []game.Card{c})
-				// #4250: cast during the resolution (CR 608.2g).
-				offerResolutionCastOver(g, item.Controller, item.SourceCardID, "Torrential Gearhulk", game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
-				return nil
-			}
-			return nil
-		})
+		freeCastTargetFromYourGraveyardExilingIt("Torrential Gearhulk"))
 	enters.Targets = TargetCardInGraveyard("target instant card from your graveyard", Instant(), YouOwn())
 	Register(Spec{
 		OracleID:        "a6395447-677d-4c39-8eda-2d57e527c94e",

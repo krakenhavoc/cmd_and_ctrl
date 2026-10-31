@@ -146,6 +146,7 @@ describe("Settings → Gameplay: Advanced (ADR 0143 §3.1)", () => {
       "What counts as a response",
       "Counterspells",
       "Instants and flash",
+      L.respondValueInstantsToggle,
       "Targeted and protective abilities",
       "Value abilities (Mind Stone, fetch lands, cycling)",
       "Special actions (foretell, suspend, face-up)",
@@ -213,6 +214,49 @@ describe("Settings → Gameplay: Advanced (ADR 0143 §3.1)", () => {
       cleanup();
       resetModals();
     }
+  });
+});
+
+// #2877 (owner, 2026-10-30, option (a)): value instants on an
+// opponent's spell, off by default, a narrowing of "Instants and flash".
+describe("Settings → Gameplay: value instants (#2877)", () => {
+  const box = (root: HTMLElement) => {
+    const label = [...advanced(root).querySelectorAll("label")].find((l) =>
+      l.textContent?.includes(L.respondValueInstantsToggle),
+    );
+    const input = label?.querySelector<HTMLInputElement>("input[type=checkbox]");
+    if (!input) throw new Error("no value instants checkbox");
+    return input;
+  };
+
+  it("is off by default, and ticking it turns the setting on", () => {
+    const input = box(openGameplay());
+    expect(input.checked).toBe(false);
+    expect(input.disabled).toBe(false);
+    input.click();
+    flushSync();
+    let on = false;
+    settings.subscribe((s) => (on = s.gameplay.respondValueInstants))();
+    expect(on).toBe(true);
+  });
+
+  it("is disabled while instants do not count at all", () => {
+    settings.update((s) => ({ ...s, gameplay: { ...s.gameplay, respondInstants: false } }));
+    expect(box(openGameplay()).disabled).toBe(true);
+  });
+
+  it("says an answer counts only when it fits what is happening (#4734)", () => {
+    const text = advanced(openGameplay()).textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toContain(
+      "A card that answers only certain things, like Ranger-Captain of Eos, counts only when one of them is happening: a threat to you or your permanents, a combat you are in, or an opponent's spell. A card the game knows nothing about always counts.",
+    );
+  });
+
+  it("says where a value instant still stops you", () => {
+    const text = advanced(openGameplay()).textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toContain(
+      "A value instant, like Opt or Brainstorm, counts in combat and at an opponent's end step, and on an opponent's spell only when you tick it above.",
+    );
   });
 });
 

@@ -55,14 +55,34 @@ type MayPay struct {
 	// them as PayUnlessAnswer.Objects and can tell the object from a new
 	// one the same card has become (CR 400.7).
 	CarryObjects []game.ObjectRef
+
+	// Pay is a payment that is not mana (#4566), in place of Cost: "you
+	// may sacrifice an artifact or discard a card. If you do, …" is
+	// EitherPayment(SacrificePayment(…), DiscardPayment(1)), one prompt
+	// whose answer names the branch (ADR 0187 §5). The pay branch runs
+	// once the chosen branch has been paid, and a branch the chooser
+	// can't pay is never offered (CR 118.3). Zero is a mana payment of
+	// Cost.
+	Pay UpkeepPayment
 }
 
 func (p MayPay) Apply(ctx *Context) error {
 	if p.Then.Key() == "" {
 		return fmt.Errorf("%w: MayPay with no registered branches (PayUnlessBranches)", game.ErrInvalidParam)
 	}
+	cost, action := p.Cost, p.Pay.Action
+	if action != nil {
+		cost = p.Pay.Words
+		// CR 118.3: a payment the chooser can make no way at all (no
+		// artifact to sacrifice and no card to discard) can't be chosen,
+		// so nobody is asked and "if you do" is false. The prompt would
+		// otherwise offer nothing but "Don't pay".
+		if !ctx.Game.PayActionCanPayForEffect(p.Chooser, action) {
+			return nil
+		}
+	}
 	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
-		Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+		Chooser: p.Chooser, Source: ctx.Source(), Cost: cost, Question: p.Question, Action: action,
 		Then: p.Then, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
 		InThisStep: p.InThisStep, MayPay: true, Asked: game.NewAskedItem(ctx.Item),
 		Objects: p.CarryObjects,
@@ -78,3 +98,28 @@ var mayPayDrawACard = PayUnlessBranches("pay-unless/draw-a-card",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 	}, nil)
+
+// SacrificeAnArtifactOrDiscard is the payment "sacrifice an artifact or
+// discard a card" (#4566) — K'un-Lun Warrior, Contract Hero, Vision of
+// Love — and, with nonland, "… or discard a nonland card" (Bullseye,
+// Death Dealer). One either payment: the chooser names the branch, and a
+// branch they can't pay (no artifact, no matching card) is not offered.
+func SacrificeAnArtifactOrDiscard(nonland bool) UpkeepPayment {
+	discard := DiscardPayment(1)
+	if nonland {
+		discard = DiscardNonlandPayment(1)
+	}
+	return EitherPayment(SacrificePayment(1, "artifact", "artifacts", game.PermanentQuery{Types: []string{"artifact"}}), discard)
+}
+
+// DiscardNonlandPayment is "Discard N nonland cards" as a payment
+// (#4566): only a nonland card in the payer's hand can pay it.
+func DiscardNonlandPayment(n int) UpkeepPayment {
+	p := DiscardPayment(n)
+	p.Action.Nonland = true
+	p.Words = "Discard a nonland card"
+	if n != 1 {
+		p.Words = "Discard " + numberWord(n) + " nonland cards"
+	}
+	return p
+}

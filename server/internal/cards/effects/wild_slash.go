@@ -19,7 +19,7 @@ func init() {
 		Name:         "Wild Slash",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
-		Purpose:      ForTargets(DamageToTarget(0, 2)),
+		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 2)), Answers: game.AnswerRemove}, // #4734: damages a creature, planeswalker or player
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if b24ControlsCreatureWithPowerAtLeast(ctx.Game, ctx.Controller(), 4) {
 				if err := (DamageCantBePreventedThisTurn{}).Apply(ctx); err != nil {

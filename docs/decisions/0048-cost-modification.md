@@ -939,3 +939,31 @@ holding when exile joins the sources.
   untouched.
 - Nothing in a card file changes. `Spec` and the keyword constructors
   are as they were.
+
+## Amendment (2026-10-30, #4707): a coloured reduction (Flying Drone)
+
+§3 says a reduction spends generic mana and nothing else, and the `CostReduction` doc said "no card does" reduce a coloured
+requirement. Flying Drone (Marvel Super Heroes, #4455) does: "{1}{U}, {T}: Draw a card, then discard a card. This ability
+costs {1}{U} less to activate if another creature with flying entered the battlefield under your control this turn". CR 601.2f
+(via 602.2b, the activation cost standing in for the mana cost) subtracts cost reductions and floors the mana component at
+{0}; CR 118.7a to 118.7d say which mana a reduction by a coloured symbol takes: one of that colour, or one generic when the
+cost has none left. The engine already had that spend, `reduceByManaCost` (written for the power-up reduction, CR 702.193a);
+only the modifier could not reach it. Checked on `origin/develop` at `9c223b6b9`.
+
+`CostModifier.Unit`, which was "increases only", is now also what one point of a **`CostReduction`'s** Amount takes off.
+`reduceBy(cost, n, unit)` (beside `increaseBy`) runs `reduceByManaCost` once per point, or `reduceGeneric` with no Unit, so
+every existing reduction is unchanged. `UnitProblem` allows a Unit on an increase or a reduction and keeps refusing a Unit
+carrying {X}, a hybrid or a Phyrexian symbol, and a Unit on a floor or a zero-alternative; `effects.Register` and the cast
+path both read it, so the boot guard and the cast-time refusal cannot drift. §3 is otherwise intact: increases land first,
+the floor is {0}, a negative amount refuses the cast. The card-side vocabulary is
+`effects.ActivationCostsLessMana("{1}{U}", label, when...)`, the ability-own-clause form (`ActivatedAbility.CostModifiers`).
+
+The condition is `effects.AnotherFlierEnteredUnderYourControlThisTurn()`, reading ADR 0049's turn tally (see its
+2026-10-30 amendment).
+
+Tests: `TestColouredReductionUnitSpendsItsColourThenGeneric` (`internal/game`, through the real pricer),
+`TestMsc4707FlyingDroneCostsFullPriceWithoutAnotherFlier` and
+`TestMsc4707FlyingDroneCostsOnlyTapAfterAnotherFlierEntersUnderYourControl` (Strict mana: refused with none floating
+before, allowed after), `TestRegisterAcceptsWellFormedCostModifiers`.
+
+Back-out: take the `reduceBy` call back to `reduceGeneric` and the Drone stays at {1}{U} after a flier enters.

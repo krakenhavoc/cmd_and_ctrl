@@ -46,6 +46,11 @@ import (
 //     free sacrifice outlet or Selfless Spirit stops you for removal, a
 //     wipe or a fight, and not for every opponent spell. That is read
 //     from the game too.
+//
+// answer_window.go (#4734) reads the same declarations a second way, for
+// Move.AnswersNow: kind by kind, against the window the seat is in. These
+// flags are unchanged by it, for every reader that does not know that
+// field.
 
 // CostAnswers is what an activated ability's cost alone answers: a
 // creature sacrifice, exile or return outlet (sac_outlet), or crew
@@ -118,8 +123,9 @@ func selfSacrificeThreatened(g *game.Game, source *game.Card, zone game.ZoneKind
 // answers an item that reaches for your things, not an opponent's
 // Divination. survive is the half of protect that ADR 0142's 2026-10-15
 // amendment split off (regenerate, indestructible), so it is gated with
-// it. remove and restrict act on what an opponent has or may do next, so
-// they keep counting against any item.
+// it. remove, restrict and graveyard (split from restrict by #4734's Q5)
+// act on what an opponent has, may do next or can bring back, so they
+// keep counting against any item.
 const threatGated = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | game.AnswerPrevent | game.AnswerSacOutlet
 
 // stackThreatens reports whether an item on the stack that `seat` does

@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - tapped BY HAND, it queues the same mana_pick a Birds of Paradise
 //     activation queues, all five colours with the commander's
 //     identity first;
-//   - tapped by the AUTO-TAPPER, it picks greedily against what the
-//     cast still owes, because the auto-tapper's contract is "no
+//   - tapped by the AUTO-TAPPER, it makes the colour the plan booked
+//     for it, or picks greedily against what the cast still owes when
+//     the plan booked none, because the auto-tapper's contract is "no
 //     further player decisions" and a prompt appearing halfway through
 //     a cast would break it.
 //
@@ -25,8 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // answering it adds mana and stops: a triggered mana ability does not
 // re-trigger, and nothing was tapped for its mana.
 //
-// Same declared auto-tap simplification as Wild Growth: the planner
-// does not count the extra mana (ADR 0074 §7).
+// The auto-tap planner counts the extra mana as a five-colour pick and
+// books it like any other slot (ADR 0074, amendment of 2026-10-30), so
+// the pick cannot take a pip that another source in the plan was booked
+// for.
 //
 // No simplification of the card itself.
 func init() {

@@ -23,6 +23,7 @@ func init() {
 		OracleID:     "73d8c33d-916a-4220-96ae-9622aad36210",
 		Name:         "Call the Coppercoats",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerMakesBlocker}, // #4734: creature tokens at instant speed
 		Targets:      TargetPlayer("any number of target opponents", Opponent()).WithCount(0, 0),
 		SelfCostModifiers: []game.CostModifier{
 			CostsMorePerTargetBeyondFirst("{1}{W}", "Strive — This spell costs {1}{W} more to cast for each target beyond the first."),

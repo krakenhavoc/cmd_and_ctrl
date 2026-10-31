@@ -28,13 +28,7 @@ func init() {
 				BounceTheModesTarget),
 			ModeDoing("Return target instant or sorcery card from your graveyard to your hand.",
 				TargetCardInGraveyard("target instant or sorcery card in your graveyard", Or(Instant(), Sorcery()), YouOwn()),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetCard {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-				}),
+				ReturnTheModesGraveyardTargetToHand),
 		),
 	})
 }

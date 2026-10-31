@@ -35,6 +35,7 @@ func bitingSpell(oracleID, name string) Spec {
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: one-sided fight, damages a creature or planeswalker
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			TargetPermanent("target creature or planeswalker you don't control",

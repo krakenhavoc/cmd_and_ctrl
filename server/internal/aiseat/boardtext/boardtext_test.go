@@ -133,6 +133,20 @@ func TestRenderCompoundWardLifeCost(t *testing.T) {
 	}
 }
 
+// #4613: a confirm that gives poison counters says so, so an agent seat reading
+// the board alone does not take "Get 5 poison counters" for a free button.
+func TestRenderConfirmPoisonCost(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "ward", Kind: "confirm", Chooser: "a", Reason: "Ward — get 5 poison counters, or it is countered",
+		PoisonCost: 5,
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "(accepting gives you 5 poison counters)") {
+		t.Fatalf("the poison cost is missing: %s", got)
+	}
+}
+
 // A stack item aimed at a card in a graveyard names it: agent seats read
 // Animate Dead, Victimize and Eternal Witness as "targets: something".
 func TestRenderNamesAGraveyardTarget(t *testing.T) {

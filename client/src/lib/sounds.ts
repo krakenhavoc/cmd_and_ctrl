@@ -82,7 +82,10 @@ export type SoundName =
   | "sig_toxic_deluge"
   | "sig_bitter_triumph"
   | "sig_nicol_bolas"
-  | "sig_dragons_approach";
+  | "sig_dragons_approach"
+  // #4544: an extort drain resolving (a soul sucked out, a coin on the scale).
+  // Plays damage until its file lands (SOUND_FALLBACK, ADR 0209 §6).
+  | "extort";
 
 // The volume buses a sound can belong to. The music bus is music.ts's.
 export type SoundCategory = "interface" | "cards" | "combat" | "effects" | "voice";
@@ -133,6 +136,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   sig_bitter_triumph: "effects",
   sig_nicol_bolas: "effects",
   sig_dragons_approach: "effects",
+  extort: "effects",
 };
 
 // Each event has two takes. pickVariant() chooses uniformly at
@@ -179,6 +183,11 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
     "/sounds/sig_dragons_approach-1.mp3",
     "/sounds/sig_dragons_approach-2.mp3",
   ],
+  // #4544: file not made yet (ADR 0209 §6). No takes are listed, so none is
+  // fetched and the cue plays damage through SOUND_FALLBACK. The PR that adds
+  // extort-1.mp3 lists it here (client/public/sounds/README.md, "Files not
+  // made yet").
+  extort: [],
 };
 
 // What a sound plays when none of its own files exist. Only the cues that
@@ -197,6 +206,7 @@ export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   sig_bitter_triumph: "destroy",
   sig_nicol_bolas: "pw_enter",
   sig_dragons_approach: "board_wipe",
+  extort: "damage",
 };
 
 // Sounds preloadAll leaves alone: a signature's files are fetched the
@@ -212,6 +222,16 @@ export const DUCK_FACTOR = 0.5012;
 // never fires (a stalled load, a tab suspended mid-sound). Generous: an
 // interface cue is at most 1.5 s (ADR 0209 §6).
 const DUCK_MAX_MS = 2000;
+// A sound longer than it should be is cut at the length named here (#4567):
+// the war cry's takes run 5 and 7 s and would bury whatever follows combat.
+// The volume ramps to 0 over the last SOUND_FADE_MS, then the take is
+// paused and released. A take shorter than its cap plays untouched.
+export const SOUND_MAX_MS: Partial<Record<SoundName, number>> = {
+  combat_resolve: 2000,
+};
+export const SOUND_FADE_MS = 300;
+// The ramp moves in steps this far apart.
+const FADE_STEP_MS = 25;
 // How many event batches the burst cap remembers.
 const BURST_MEMORY = 64;
 
@@ -433,6 +453,8 @@ interface Playing {
   // Caller hint x master x category: the volume before any ducking.
   base: number;
   category: SoundCategory;
+  // 1 until the length cap starts fading the take out, then falls to 0.
+  fade: number;
 }
 
 const playing = new Set<Playing>();
@@ -452,11 +474,13 @@ function duckFactor(): number {
   return duckCount > 0 ? DUCK_FACTOR : 1;
 }
 
+function setVolume(p: Playing, duck: number): void {
+  p.audio.volume = clamp01((p.category === "interface" ? p.base : p.base * duck) * p.fade);
+}
+
 function applyDuck(): void {
   const f = duckFactor();
-  for (const p of playing) {
-    p.audio.volume = clamp01(p.category === "interface" ? p.base : p.base * f);
-  }
+  for (const p of playing) setVolume(p, f);
   duckListener?.(f);
 }
 
@@ -497,6 +521,38 @@ export function play(name: SoundName, opts?: PlayOptions): void {
   fire(name, opts);
 }
 
+// capLength schedules the length cap for one take: a fade-out starting
+// SOUND_FADE_MS before the maximum, then a pause. It returns the function
+// that clears its timers, which the take's end, error or rejection calls.
+function capLength(name: SoundName, entry: Playing): () => void {
+  const max = SOUND_MAX_MS[name];
+  if (max === undefined) return () => {};
+  const fadeMs = Math.min(SOUND_FADE_MS, max);
+  let ramp: ReturnType<typeof setInterval> | undefined;
+  const start = setTimeout(() => {
+    const steps = Math.max(1, Math.round(fadeMs / FADE_STEP_MS));
+    let step = 0;
+    ramp = setInterval(() => {
+      step++;
+      entry.fade = Math.max(0, 1 - step / steps);
+      setVolume(entry, duckFactor());
+      if (step >= steps) clearInterval(ramp);
+    }, FADE_STEP_MS);
+  }, max - fadeMs);
+  const cut = setTimeout(() => {
+    clearInterval(ramp);
+    entry.fade = 0;
+    setVolume(entry, duckFactor());
+    entry.audio.pause?.();
+    playing.delete(entry);
+  }, max);
+  return () => {
+    clearTimeout(start);
+    clearTimeout(cut);
+    clearInterval(ramp);
+  };
+}
+
 function fire(name: SoundName, opts: PlayOptions | undefined): void {
   const url = pickVariant(name);
   if (!url) return;
@@ -516,12 +572,16 @@ function fire(name: SoundName, opts: PlayOptions | undefined): void {
   // mute checkbox.
   const category = SOUND_CATEGORY[name];
   const callerVol = clamp01(opts?.volume ?? 1);
-  const entry: Playing = { audio, base: callerVol * soundGain(name), category };
-  audio.volume = clamp01(category === "interface" ? entry.base : entry.base * duckFactor());
+  const entry: Playing = { audio, base: callerVol * soundGain(name), category, fade: 1 };
+  setVolume(entry, duckFactor());
   if (opts?.rate !== undefined) audio.playbackRate = opts.rate;
 
   playing.add(entry);
-  const done = () => playing.delete(entry);
+  const stopCap = capLength(name, entry);
+  const done = () => {
+    playing.delete(entry);
+    stopCap();
+  };
   audio.addEventListener?.("ended", done);
   audio.addEventListener?.("error", () => {
     markMissing(url);

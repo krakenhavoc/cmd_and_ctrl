@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // mode_choice.go — #764 / ADR 0065 §4: the mode choice of a
 // TRIGGERED ability, made as the ability is put on the stack
@@ -45,8 +49,9 @@ type modePickFrame struct {
 // queueModePickLocked queues the CR 603.3c mode choice for a modal
 // triggered ability. Returns false when the ability cannot be put on
 // the stack at all — too few choosable options to fill Min, which for
-// a Repeatable spec means none at all — in which case the caller
-// drops the trigger (CR 603.3d).
+// a Repeatable spec means none at all, or a "choose up to X" whose X
+// is 0 (#4617) — in which case the caller drops the trigger (CR
+// 603.3d, CR 700.2b).
 //
 // Caller must hold g.mu.
 func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) bool {
@@ -68,21 +73,49 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	// removed, so a raised minimum asks for no more than the bullets
 	// actually on offer. The printed Min keeps its old meaning, which
 	// EnoughChoosableModes has already enforced above.
-	if ms.AtRandom {
+	q := g.modeQueryForSourceLocked(source, source.Controller)
+	// "Choose one at random. If <condition>, you choose one instead":
+	// while the condition holds the controller picks, and the prompt
+	// below is the ordinary "Choose one".
+	chosenInstead := ms.AtRandom && ms.NotRandomIf.holds(g, q)
+	if ms.AtRandom && !chosenInstead {
 		g.pickModeAtRandomLocked(tc, source, lki, t, doubledBy, options)
 		return true
 	}
-	modeMin, modeMax := g.modeBoundsLocked(ms, g.modeQueryForSourceLocked(source, source.Controller))
+	if ms.UpToCastX {
+		// #4617, CR 107.3m: "choose up to X" in an enters trigger reads
+		// the X paid for the spell that became the source. `source` is
+		// the dispatch's copy of the permanent as it entered, and the
+		// entry finisher stamped its CastProvenance before EventETB, so
+		// the X is already there; a permanent that was not cast has none.
+		q.X = source.CastX()
+	}
+	modeMin, modeMax := g.modeBoundsLocked(ms, q)
 	if !ms.Repeatable && modeMin > len(options) {
 		modeMin = max(ms.Min, len(options))
+	}
+	if ms.UpToCastX {
+		if modeMax == 0 {
+			// X = 0: "choose up to 0" chooses no mode, and a modal
+			// trigger with no mode chosen is removed from the stack
+			// (CR 700.2b, CR 603.3c). Nobody is asked.
+			return false
+		}
+		// The bullets on offer are the most that can be chosen (CR
+		// 700.2d), so the prompt's count says what is reachable.
+		modeMax = min(modeMax, len(options))
 	}
 	labels := make([]string, 0, len(options))
 	for _, i := range options {
 		labels = append(labels, ms.Options[i].Label)
 	}
 	prompt := ms.Prompt
-	if prompt == "" {
+	if prompt == "" || chosenInstead {
 		prompt = "Choose one"
+	}
+	if ms.UpToCastX {
+		// The printed "choose up to X" with the X it was cast for.
+		prompt += " (X is " + strconv.Itoa(q.X) + ")"
 	}
 	usedIdx, usedLabel := usedModeOptions(ms, g.modesChosenLocked(ms, ab))
 	g.QueueChoiceForEffect(PendingChoice{
@@ -199,6 +232,15 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 	// the re-narrowing of the ability's other open prompts never
 	// touches this one.
 	g.recordModesChosenLocked(frame.ability.Modes, ModeAbilityOf(frame.source, frame.ability.Key), modes)
+	if len(modes) == 0 {
+		// A "choose up to" answered with no mode (#4617): "If no mode
+		// is chosen, the ability is removed from the stack" (CR 603.3c,
+		// CR 700.2b). It is not built and never reaches the stack.
+		// Passing the empty answer on would also be read as "not asked
+		// yet" (a nil `modes`) and ask the same question again.
+		g.runStateChecksLocked()
+		return nil
+	}
 	g.buildOrPickTriggerLocked(frame.tc, frame.source, frame.lki, frame.ability, frame.doubledBy, append([]int(nil), modes...))
 	// Answering is the moment the ability is put on the stack (CR
 	// 603.3), so drain and run SBAs here rather than waiting for the

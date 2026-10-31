@@ -47,3 +47,23 @@ export function exileCostNote(ability: ExileCostFields): string {
 export function exileCostWhere(ability: ExileCostFields): string {
   return exileCostZone(ability) === "graveyard" ? "in your graveyard" : "in hand";
 }
+
+// The mana symbols of one colour in a printed mana cost: {B}, a hybrid
+// {B/G}, a Phyrexian {B/P} and a {2/B} each count once, which is how the
+// engine counts them (game.Card.ColorSymbols, CR 700.5).
+export function colorSymbolCount(manaCost: string | undefined, color: string): number {
+  let n = 0;
+  for (const m of (manaCost ?? "").matchAll(/\{([^}]*)\}/g)) {
+    if (m[1].toUpperCase().split("/").includes(color.toUpperCase())) n++;
+  }
+  return n;
+}
+
+// "Exile any number of … with N or more <colour> mana symbols" (Baron
+// Helmut Zemo's boast): the running total of the picked cards.
+export function exileCostSymbolTotal(cards: CardView[], ids: string[], color: string): number {
+  const picked = new Set(ids);
+  return cards
+    .filter((c) => picked.has(c.instance_id))
+    .reduce((sum, c) => sum + colorSymbolCount(c.mana_cost, color), 0);
+}

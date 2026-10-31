@@ -115,7 +115,7 @@ var giftsUngivenSettle = RegisterRevealPick("choose-cards/gifts-ungiven-settle",
 })
 
 // DifferentNames is the set-level legality hook behind "cards with
-// different names" (CR 701.19c's reading of a search clause): no two
+// different names" (CR 701.23a's reading of a search clause): no two
 // cards in the picked set share a name.
 //
 // Here rather than in the card file because it is the shape of the

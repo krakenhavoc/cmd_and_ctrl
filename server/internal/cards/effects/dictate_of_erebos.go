@@ -22,6 +22,7 @@ func init() {
 		OracleID:        "7c777a41-e40a-4b40-96bf-8ddd5c12924c",
 		Name:            "Dictate of Erebos",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Answers: game.AnswerRemove}, // #4734: an edict when a creature dies, as its trigger declares
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(WheneverACreatureYouControlDies("Dictate of Erebos — each opponent sacrifices a creature", Do(EachPlayerSacrifices{

@@ -44,6 +44,7 @@ func init() {
 		OracleID:     "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
 		Name:         "Chaos Warp",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: shuffles a permanent away
 		Targets:      TargetPermanent("target permanent", Permanent()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)

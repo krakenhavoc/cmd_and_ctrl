@@ -42,6 +42,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "437b2dab-15e0-4b9a-a204-58622d37a3b3",
 		Name:         "Fact or Fiction",
+		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: card advantage answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return factOrFictionReveal(ctx)

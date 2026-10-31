@@ -123,6 +123,16 @@ type CardCopyOffer struct {
 	// (CastPermission.ManaValueBudget). Nil keeps the one-offer-per-copy
 	// shape, where each copy is its own free cast and there is no total.
 	ManaValueBudget *int
+
+	// MaxCasts is "you may cast up to N of the copies" (Baron Helmut
+	// Zemo's boast, N = 3): one permission names every copy and carries the
+	// number of casts left (CastPermission.CastsLeft), so the third cast
+	// closes it and the copies not cast cease to exist. Zero keeps one offer
+	// per copy with no limit. It may be combined with ManaValueBudget. The
+	// copies of one set sit in one zone (the cards copied are all in exile,
+	// or all in the graveyard); a set split across both would get a count
+	// for each.
+	MaxCasts int
 }
 
 // CopyCardsAndOfferCastsForEffect makes a copy of each named card
@@ -198,13 +208,20 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			left := *offer.ManaValueBudget
 			perm.ManaValueBudget = &left
 		}
+		if offer.MaxCasts > 0 {
+			// One permission over the set with a count of casts left. A
+			// cast strikes only its own copy (AnyNumber) until the count is
+			// spent (CastsLeft).
+			perm.AnyNumber = true
+			perm.CastsLeft = offer.MaxCasts
+		}
 		if offer.FollowUpObject.ID != uuid.Nil {
 			ref := offer.FollowUpObject
 			perm.FollowUpObject = &ref
 		}
 		g.GrantCastPermissionToCardsForEffect(perm, cards)
 	}
-	if offer.ManaValueBudget != nil {
+	if offer.ManaValueBudget != nil || offer.MaxCasts > 0 {
 		// One permission over the whole set: the budget is shared, so the
 		// copies cannot be separate offers. A permission has one zone, so
 		// a set whose copies sit in two (exile and a graveyard) gets one
@@ -221,8 +238,12 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			}
 			byZone[z] = append(byZone[z], cp)
 		}
+		label := offer.SourceName + " — cast up to " + strconv.Itoa(offer.MaxCasts) + " of the copies"
+		if offer.ManaValueBudget != nil {
+			label = offer.SourceName + " — cast copies with total mana value " + strconv.Itoa(*offer.ManaValueBudget) + " or less"
+		}
 		for _, z := range order {
-			grant(byZone[z], z, offer.SourceName+" — cast copies with total mana value "+strconv.Itoa(*offer.ManaValueBudget)+" or less")
+			grant(byZone[z], z, label)
 		}
 	} else {
 		for _, cp := range made {

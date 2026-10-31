@@ -90,6 +90,8 @@ describe("SYNCED_FIELDS", () => {
     expect(SYNCED_FIELDS.display.battlefieldArt).toBe("synced");
     expect(SYNCED_FIELDS.display.handArt).toBe("synced");
     expect(SYNCED_FIELDS.display.theme).toBe("synced");
+    // #4555: which way opponents' cards face is a taste, not a screen.
+    expect(SYNCED_FIELDS.display.opponentCardFacing).toBe("synced");
     expect(SYNCED_FIELDS.display.stackStyle).toBe("synced");
   });
 

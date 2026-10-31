@@ -16,7 +16,14 @@ import "strings"
 // never derived. The engine never reads it. internal/legal reads it to
 // set a move's interacts and combat_interacts flags (untargetedFlags),
 // and counts a row that declares none as interacting (ADR 0142 owner
-// answer 3).
+// answer 3). On a spell, a mode or an alternative cost it reads it for
+// a cast's value_only (castAnswersOf, #2877): only a cast declared
+// exactly AnswerValue changes anything there; any other declaration,
+// and none, keeps the cast an instant that stops you. And it matches
+// every declaration but AnswerValue and AnswerRemove to the window the
+// seat is in, for a move's answers_now (answer_window.go, ADR 0009's
+// amendment of 2026-10-30, #4734). AnswerGraveyard is split from
+// AnswerRestrict by that amendment's owner decision Q5.
 
 // Answers is a set of declared answers. The zero value is "not
 // declared".
@@ -52,6 +59,15 @@ const (
 	// AnswerRestrict stops what an opponent may do next: can't cast,
 	// can't activate.
 	AnswerRestrict
+	// AnswerGraveyard exiles cards from graveyards, which answers a
+	// reanimation or regrowth trigger whose target is gone by the time
+	// it resolves (CR 608.2b): "exile each opponent's graveyard",
+	// "exile all graveyards". Split from AnswerRestrict by ADR 0009's
+	// amendment of 2026-10-30 (#4734, Q5), as AnswerSurvive was split
+	// from AnswerProtect. A targeted graveyard exile (Scavenging Ooze)
+	// declares nothing: its move carries has_targets, which already
+	// stops smart auto-pass.
+	AnswerGraveyard
 	// AnswerCombatGrant grants a combat keyword or permission: flying,
 	// menace, trample, haste, lifelink, vigilance, reach, first strike,
 	// double strike, deathtouch, "can't be blocked", "can block an
@@ -103,6 +119,7 @@ var answerTable = []answerInfo{
 	{AnswerRemove, "remove", TierStack},
 	{AnswerSacOutlet, "sac_outlet", TierStack},
 	{AnswerRestrict, "restrict", TierStack},
+	{AnswerGraveyard, "graveyard", TierStack},
 	{AnswerCombatGrant, "combat_grant", TierCombat},
 	{AnswerAnimate, "animate", TierCombat},
 	{AnswerMakesBlocker, "makes_blocker", TierCombat},

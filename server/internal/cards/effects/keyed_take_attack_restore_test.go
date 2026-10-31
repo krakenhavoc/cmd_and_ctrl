@@ -355,7 +355,7 @@ func TestUltraMagnusPicksAreRestorePoints(t *testing.T) {
 	robot := handCardForTest(me, "Hired Robot", "Artifact Creature — Robot", "")
 
 	transformerAttacks(t, g, id, opp.ID)
-	openKeyedPick(t, g, me.ID, ultraMagnusPicked.Key())
+	openKeyedPick(t, g, me.ID, ultraMagnusPutter.picked.Key())
 	g = restoreRoundTrip(t, g, true)
 	me = g.Seats[0]
 	answerChooseCards(t, g, me.ID, robot)
@@ -364,8 +364,8 @@ func TestUltraMagnusPicksAreRestorePoints(t *testing.T) {
 	if pick == nil {
 		t.Fatal("no defender pick is open")
 	}
-	if pick.PickThen != ultraMagnusAttacks.Key() {
-		t.Fatalf("the defender pick's continuation is %q, want %q", pick.PickThen, ultraMagnusAttacks.Key())
+	if pick.PickThen != ultraMagnusPutter.attacks.Key() {
+		t.Fatalf("the defender pick's continuation is %q, want %q", pick.PickThen, ultraMagnusPutter.attacks.Key())
 	}
 	g = restoreRoundTrip(t, g, true)
 	me = g.Seats[0]

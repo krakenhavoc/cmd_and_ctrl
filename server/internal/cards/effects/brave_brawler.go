@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Brave Brawler — {1}{W} Creature — Human Warrior Hero 2/1:
 //
 //	"Lifelink
@@ -21,7 +19,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Activated: []ActivatedAbility{
-			powerUpAnswering(game.AnswerPump, "{4}{W}: Put two +1/+1 counters on this creature.",
+			powerUpAnswering("{4}{W}: Put two +1/+1 counters on this creature.",
 				ManaCost("{4}{W}"), plusOneCountersOnThis(2)),
 		},
 	})

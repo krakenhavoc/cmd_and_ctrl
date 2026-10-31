@@ -15,6 +15,7 @@ func init() {
 		OracleID:     "938b4e2c-88d9-4637-bc00-e228920c9a78",
 		Name:         "Murder",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
