@@ -1096,8 +1096,12 @@ type cardSnapshot struct {
 	// there this turn" for the rest of the turn the game was saved in.
 	// Absent from every earlier file, which restores as "arrived
 	// nowhere", the state before the record existed.
-	PutInGraveyardFrom       ZoneKind  `json:"putInGraveyardFrom,omitempty"`
-	PutInGraveyardThisTurn   bool      `json:"putInGraveyardThisTurn,omitempty"`
+	PutInGraveyardFrom     ZoneKind `json:"putInGraveyardFrom,omitempty"`
+	PutInGraveyardThisTurn bool     `json:"putInGraveyardThisTurn,omitempty"`
+	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
+	// effect gave suspend. Absent from every earlier file, which restores as
+	// "has only its printed abilities".
+	SuspendGranted           bool      `json:"suspendGranted,omitempty"`
 	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
 	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
@@ -2923,6 +2927,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		SuspendGranted:           c.SuspendGranted,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4033,6 +4038,7 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		SuspendGranted:           c.SuspendGranted,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,

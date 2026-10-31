@@ -1446,6 +1446,7 @@ tail engine/explore-ask
 tail engine/explore-done
 tail engine/face-down-permitted-granted
 tail engine/foretold-exiled
+tail engine/gain-suspend-exiled
 tail engine/impulse-exile-granted
 tail engine/library-order-leg-landed
 tail engine/manifest-dread-entered
@@ -1548,6 +1549,7 @@ tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
+tail kang-prime/time-counters
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile

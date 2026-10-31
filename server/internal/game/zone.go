@@ -229,6 +229,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// of a bestowed spell seeds it afresh (bestow.go), and a countered
 	// or bounced one is an ordinary creature card in its new zone.
 	c.Bestowed = false
+	// #4455 / CR 400.7: suspend an effect gave an exiled card belonged to
+	// that object. The card in its new zone has only what it prints.
+	c.SuspendGranted = false
 	// ADR 0154 / CR 400.7, CR 611.2c: Animate Dead's gained enchant
 	// clause belongs to the Aura object that resolved the trigger. The
 	// card in its new zone never had it.

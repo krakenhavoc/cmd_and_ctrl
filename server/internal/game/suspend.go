@@ -177,8 +177,13 @@ func SuspendUpkeepTrigger() TriggeredAbility {
 }
 
 // suspendTickBody registers suspendTick under "suspend/tick" (ADR 0041
-// P9, #1497, tier 4).
-var suspendTickBody = SimpleDelayedBody("suspend/tick", suspendTick)
+// P9, #1497, tier 4). Registered in init, not by a var initialiser: the
+// trigger reaches suspendTick, which reaches the counter code, which reads
+// the triggers of a card (triggersOf derives these two for a card an effect
+// gave suspend), and an initialiser would close that loop (#4455).
+var suspendTickBody BodyRef
+
+func init() { suspendTickBody = SimpleDelayedBody("suspend/tick", suspendTick) }
 
 // suspendTick is the upkeep trigger's resolution, and the whole of it:
 // remove one time counter (CR 702.62a).
@@ -243,8 +248,13 @@ func SuspendLastCounterTrigger() TriggeredAbility {
 }
 
 // suspendFreeCastBody registers suspendLastCounterRemoved under
-// "suspend/free-cast" (ADR 0041 P9, #1497, tier 4).
-var suspendFreeCastBody = SimpleDelayedBody("suspend/free-cast", suspendLastCounterRemoved)
+// "suspend/free-cast" (ADR 0041 P9, #1497, tier 4), in init for the reason
+// suspendTickBody is.
+var suspendFreeCastBody BodyRef
+
+func init() {
+	suspendFreeCastBody = SimpleDelayedBody("suspend/free-cast", suspendLastCounterRemoved)
+}
 
 // suspendLastCounterRemoved is the second trigger's resolution: the
 // CR 702.62a offer, made against the game as it is now (CR 608.2).
@@ -376,3 +386,76 @@ func (g *Game) grantHasteForCastLocked(player, cardID uuid.UUID) {
 func SuspendLabel(n int, cost string) string {
 	return "Suspend " + strconv.Itoa(n) + "—" + cost
 }
+
+// grantedSuspendZones adds exile to the zones an upkeep or a counter
+// event walks (#4455): a card an effect gave suspend carries the two
+// exile triggers without the catalog declaring them, so the index cannot be
+// the only reason the exile zone is read for these two events. Any other
+// event, or a walk that already names exile, is returned as it came.
+func grantedSuspendZones(kind EventKind, zones []ZoneKind) []ZoneKind {
+	if kind != EventBeginUpkeep && kind != EventCounterPlaced {
+		return zones
+	}
+	for _, z := range zones {
+		if z == ZoneExile {
+			return zones
+		}
+	}
+	return append(append([]ZoneKind(nil), zones...), ZoneExile)
+}
+
+// CardHasSuspend reports whether the card has suspend (CR 702.62a): it
+// prints it, or an effect gave it (Card.SuspendGranted). The question
+// "if it doesn't have suspend" asks.
+func CardHasSuspend(c Card) bool {
+	if c.SuspendGranted {
+		return true
+	}
+	for _, sa := range SpecialActionsFor(CatalogKey(c)) {
+		if sa.Kind == SpecialActionSuspend {
+			return true
+		}
+	}
+	return false
+}
+
+// GainSuspendForEffect is "Put N time counters on that card. If it doesn't
+// have suspend, it gains suspend." (Kang Prime, Doom's Time Platform, CR
+// 702.62a), over a card that is in exile: the counters go on first, then a
+// card without suspend is marked as having been given it, which is what
+// puts the two exile triggers on it (triggersOf). A card that prints
+// suspend, or was already given it, gets only the counters, so it never
+// has two instances. A card that is no longer in exile is left alone
+// (CR 608.2b): there is nothing to count down.
+//
+// Caller must hold g.mu (write).
+func (g *Game) GainSuspendForEffect(player, cardID uuid.UUID, n int) error {
+	c := exiledCardByIDLocked(g, cardID)
+	if c == nil || n <= 0 {
+		return nil
+	}
+	if err := g.AddCounterByForEffect(player, cardID, CounterTime, n); err != nil {
+		return err
+	}
+	// Re-read: the counter placement may have rewritten the zone's slice.
+	c = exiledCardByIDLocked(g, cardID)
+	if c == nil || CardHasSuspend(*c) {
+		return nil
+	}
+	c.SuspendGranted = true
+	return nil
+}
+
+// GainSuspendExileTail is the keyed continuation that finishes an exile
+// whose cards "gain suspend": Tail.Player is the controller and N the
+// number of time counters. Every card the exile reached is counted down
+// from here, so a CR 616 prompt on the exile is a restore point. An
+// on-disk key.
+var GainSuspendExileTail = RegisterTail("engine/gain-suspend-exiled", func(g *Game, o TailOutcome) error {
+	for _, id := range o.IDs {
+		if err := g.GainSuspendForEffect(o.Tail.Player, id, o.Tail.N); err != nil {
+			return err
+		}
+	}
+	return nil
+})

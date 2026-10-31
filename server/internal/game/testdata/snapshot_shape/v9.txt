@@ -407,6 +407,7 @@ battlefield.cards[].stickers[].sheetName	string
 battlefield.cards[].summonedThisTurn	bool
 battlefield.cards[].suspected	bool
 battlefield.cards[].suspectedAt	number:int64
+battlefield.cards[].suspendGranted	bool
 battlefield.cards[].tapOnPhaseIn	bool
 battlefield.cards[].tapped	bool
 battlefield.cards[].tokenArtOnly	bool
@@ -935,6 +936,7 @@ enteringTokens[].stickers[].sheetName	string
 enteringTokens[].summonedThisTurn	bool
 enteringTokens[].suspected	bool
 enteringTokens[].suspectedAt	number:int64
+enteringTokens[].suspendGranted	bool
 enteringTokens[].tapOnPhaseIn	bool
 enteringTokens[].tapped	bool
 enteringTokens[].tokenArtOnly	bool
@@ -1419,6 +1421,7 @@ exile.cards[].stickers[].sheetName	string
 exile.cards[].summonedThisTurn	bool
 exile.cards[].suspected	bool
 exile.cards[].suspectedAt	number:int64
+exile.cards[].suspendGranted	bool
 exile.cards[].tapOnPhaseIn	bool
 exile.cards[].tapped	bool
 exile.cards[].tokenArtOnly	bool
@@ -8159,6 +8162,7 @@ frozenEntries[].event.keywordActionTail.armyToken.stickers[].sheetName	string
 frozenEntries[].event.keywordActionTail.armyToken.summonedThisTurn	bool
 frozenEntries[].event.keywordActionTail.armyToken.suspected	bool
 frozenEntries[].event.keywordActionTail.armyToken.suspectedAt	number:int64
+frozenEntries[].event.keywordActionTail.armyToken.suspendGranted	bool
 frozenEntries[].event.keywordActionTail.armyToken.tapOnPhaseIn	bool
 frozenEntries[].event.keywordActionTail.armyToken.tapped	bool
 frozenEntries[].event.keywordActionTail.armyToken.tokenArtOnly	bool
@@ -10275,6 +10279,7 @@ frozenEntries[].event.millTail.run.planned[].stickers[].sheetName	string
 frozenEntries[].event.millTail.run.planned[].summonedThisTurn	bool
 frozenEntries[].event.millTail.run.planned[].suspected	bool
 frozenEntries[].event.millTail.run.planned[].suspectedAt	number:int64
+frozenEntries[].event.millTail.run.planned[].suspendGranted	bool
 frozenEntries[].event.millTail.run.planned[].tapOnPhaseIn	bool
 frozenEntries[].event.millTail.run.planned[].tapped	bool
 frozenEntries[].event.millTail.run.planned[].tokenArtOnly	bool
@@ -10659,6 +10664,7 @@ frozenEntries[].event.millTail.run.seen[].stickers[].sheetName	string
 frozenEntries[].event.millTail.run.seen[].summonedThisTurn	bool
 frozenEntries[].event.millTail.run.seen[].suspected	bool
 frozenEntries[].event.millTail.run.seen[].suspectedAt	number:int64
+frozenEntries[].event.millTail.run.seen[].suspendGranted	bool
 frozenEntries[].event.millTail.run.seen[].tapOnPhaseIn	bool
 frozenEntries[].event.millTail.run.seen[].tapped	bool
 frozenEntries[].event.millTail.run.seen[].tokenArtOnly	bool
@@ -12691,6 +12697,7 @@ frozenEntries[].event.tokenGroups[].template.stickers[].sheetName	string
 frozenEntries[].event.tokenGroups[].template.summonedThisTurn	bool
 frozenEntries[].event.tokenGroups[].template.suspected	bool
 frozenEntries[].event.tokenGroups[].template.suspectedAt	number:int64
+frozenEntries[].event.tokenGroups[].template.suspendGranted	bool
 frozenEntries[].event.tokenGroups[].template.tapOnPhaseIn	bool
 frozenEntries[].event.tokenGroups[].template.tapped	bool
 frozenEntries[].event.tokenGroups[].template.tokenArtOnly	bool
@@ -13651,6 +13658,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].stickers[].sheetName	st
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].summonedThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspected	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspectedAt	number:int64
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspendGranted	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].tapOnPhaseIn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].tapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].tokenArtOnly	bool
@@ -14035,6 +14043,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].stickers[].sheetName	strin
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].summonedThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspected	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspectedAt	number:int64
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspendGranted	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].tapOnPhaseIn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].tapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].tokenArtOnly	bool
@@ -17384,6 +17393,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].stickers[].sheetName	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].summonedThisTurn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].suspected	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].suspectedAt	number:int64
+frozenEntries[].event.zoneRoute.simultaneousExit[].suspendGranted	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].tapOnPhaseIn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].tapped	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].tokenArtOnly	bool
@@ -18355,6 +18365,7 @@ lastKnownStack[].card.stickers[].sheetName	string
 lastKnownStack[].card.summonedThisTurn	bool
 lastKnownStack[].card.suspected	bool
 lastKnownStack[].card.suspectedAt	number:int64
+lastKnownStack[].card.suspendGranted	bool
 lastKnownStack[].card.tapOnPhaseIn	bool
 lastKnownStack[].card.tapped	bool
 lastKnownStack[].card.tokenArtOnly	bool
@@ -20490,6 +20501,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.stickers[].sheetName	stri
 pendingChoices[].attackSplit.settled.chosen[].template.summonedThisTurn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.suspected	bool
 pendingChoices[].attackSplit.settled.chosen[].template.suspectedAt	number:int64
+pendingChoices[].attackSplit.settled.chosen[].template.suspendGranted	bool
 pendingChoices[].attackSplit.settled.chosen[].template.tapOnPhaseIn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.tapped	bool
 pendingChoices[].attackSplit.settled.chosen[].template.tokenArtOnly	bool
@@ -20893,6 +20905,7 @@ pendingChoices[].attackSplit.settled.groups[].template.stickers[].sheetName	stri
 pendingChoices[].attackSplit.settled.groups[].template.summonedThisTurn	bool
 pendingChoices[].attackSplit.settled.groups[].template.suspected	bool
 pendingChoices[].attackSplit.settled.groups[].template.suspectedAt	number:int64
+pendingChoices[].attackSplit.settled.groups[].template.suspendGranted	bool
 pendingChoices[].attackSplit.settled.groups[].template.tapOnPhaseIn	bool
 pendingChoices[].attackSplit.settled.groups[].template.tapped	bool
 pendingChoices[].attackSplit.settled.groups[].template.tokenArtOnly	bool
@@ -21844,6 +21857,7 @@ pendingChoices[].attackSplit.template.stickers[].sheetName	string
 pendingChoices[].attackSplit.template.summonedThisTurn	bool
 pendingChoices[].attackSplit.template.suspected	bool
 pendingChoices[].attackSplit.template.suspectedAt	number:int64
+pendingChoices[].attackSplit.template.suspendGranted	bool
 pendingChoices[].attackSplit.template.tapOnPhaseIn	bool
 pendingChoices[].attackSplit.template.tapped	bool
 pendingChoices[].attackSplit.template.tokenArtOnly	bool
@@ -22580,6 +22594,7 @@ pendingChoices[].copyWalk.src.stickers[].sheetName	string
 pendingChoices[].copyWalk.src.summonedThisTurn	bool
 pendingChoices[].copyWalk.src.suspected	bool
 pendingChoices[].copyWalk.src.suspectedAt	number:int64
+pendingChoices[].copyWalk.src.suspendGranted	bool
 pendingChoices[].copyWalk.src.tapOnPhaseIn	bool
 pendingChoices[].copyWalk.src.tapped	bool
 pendingChoices[].copyWalk.src.tokenArtOnly	bool
@@ -33032,6 +33047,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.stickers[].
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.summonedThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspected	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspectedAt	number:int64
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspendGranted	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.tapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.tokenArtOnly	bool
@@ -35148,6 +35164,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].stickers[].sheet
 pendingChoices[].replacementResume.event.millTail.run.planned[].summonedThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].suspected	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].suspectedAt	number:int64
+pendingChoices[].replacementResume.event.millTail.run.planned[].suspendGranted	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].tapped	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].tokenArtOnly	bool
@@ -35532,6 +35549,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].stickers[].sheetNam
 pendingChoices[].replacementResume.event.millTail.run.seen[].summonedThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].suspected	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].suspectedAt	number:int64
+pendingChoices[].replacementResume.event.millTail.run.seen[].suspendGranted	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].tapped	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].tokenArtOnly	bool
@@ -37564,6 +37582,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.stickers[].sheet
 pendingChoices[].replacementResume.event.tokenGroups[].template.summonedThisTurn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.suspected	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.suspectedAt	number:int64
+pendingChoices[].replacementResume.event.tokenGroups[].template.suspendGranted	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.tapped	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.tokenArtOnly	bool
@@ -38524,6 +38543,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].stic
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].summonedThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspectedAt	number:int64
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspendGranted	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].tapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].tokenArtOnly	bool
@@ -38908,6 +38928,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].sticker
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].summonedThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspectedAt	number:int64
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspendGranted	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].tapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].tokenArtOnly	bool
@@ -42257,6 +42278,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].stickers[]
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].summonedThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspectedAt	number:int64
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspendGranted	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].tapOnPhaseIn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].tapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].tokenArtOnly	bool
@@ -44251,6 +44273,7 @@ pendingChoices[].targetWalk.frame.source.stickers[].sheetName	string
 pendingChoices[].targetWalk.frame.source.summonedThisTurn	bool
 pendingChoices[].targetWalk.frame.source.suspected	bool
 pendingChoices[].targetWalk.frame.source.suspectedAt	number:int64
+pendingChoices[].targetWalk.frame.source.suspendGranted	bool
 pendingChoices[].targetWalk.frame.source.tapOnPhaseIn	bool
 pendingChoices[].targetWalk.frame.source.tapped	bool
 pendingChoices[].targetWalk.frame.source.tokenArtOnly	bool
@@ -44923,6 +44946,7 @@ pendingChoices[].triggerFrame.source.stickers[].sheetName	string
 pendingChoices[].triggerFrame.source.summonedThisTurn	bool
 pendingChoices[].triggerFrame.source.suspected	bool
 pendingChoices[].triggerFrame.source.suspectedAt	number:int64
+pendingChoices[].triggerFrame.source.suspendGranted	bool
 pendingChoices[].triggerFrame.source.tapOnPhaseIn	bool
 pendingChoices[].triggerFrame.source.tapped	bool
 pendingChoices[].triggerFrame.source.tokenArtOnly	bool
@@ -45747,6 +45771,7 @@ phasedOut.cards[].stickers[].sheetName	string
 phasedOut.cards[].summonedThisTurn	bool
 phasedOut.cards[].suspected	bool
 phasedOut.cards[].suspectedAt	number:int64
+phasedOut.cards[].suspendGranted	bool
 phasedOut.cards[].tapOnPhaseIn	bool
 phasedOut.cards[].tapped	bool
 phasedOut.cards[].tokenArtOnly	bool
@@ -46358,6 +46383,7 @@ resolving.card.stickers[].sheetName	string
 resolving.card.summonedThisTurn	bool
 resolving.card.suspected	bool
 resolving.card.suspectedAt	number:int64
+resolving.card.suspendGranted	bool
 resolving.card.tapOnPhaseIn	bool
 resolving.card.tapped	bool
 resolving.card.tokenArtOnly	bool
@@ -47303,6 +47329,7 @@ seats[].attractionDeck.cards[].stickers[].sheetName	string
 seats[].attractionDeck.cards[].summonedThisTurn	bool
 seats[].attractionDeck.cards[].suspected	bool
 seats[].attractionDeck.cards[].suspectedAt	number:int64
+seats[].attractionDeck.cards[].suspendGranted	bool
 seats[].attractionDeck.cards[].tapOnPhaseIn	bool
 seats[].attractionDeck.cards[].tapped	bool
 seats[].attractionDeck.cards[].tokenArtOnly	bool
@@ -47810,6 +47837,7 @@ seats[].command.cards[].stickers[].sheetName	string
 seats[].command.cards[].summonedThisTurn	bool
 seats[].command.cards[].suspected	bool
 seats[].command.cards[].suspectedAt	number:int64
+seats[].command.cards[].suspendGranted	bool
 seats[].command.cards[].tapOnPhaseIn	bool
 seats[].command.cards[].tapped	bool
 seats[].command.cards[].tokenArtOnly	bool
@@ -48199,6 +48227,7 @@ seats[].companion.cards[].stickers[].sheetName	string
 seats[].companion.cards[].summonedThisTurn	bool
 seats[].companion.cards[].suspected	bool
 seats[].companion.cards[].suspectedAt	number:int64
+seats[].companion.cards[].suspendGranted	bool
 seats[].companion.cards[].tapOnPhaseIn	bool
 seats[].companion.cards[].tapped	bool
 seats[].companion.cards[].tokenArtOnly	bool
@@ -48597,6 +48626,7 @@ seats[].emblems.cards[].stickers[].sheetName	string
 seats[].emblems.cards[].summonedThisTurn	bool
 seats[].emblems.cards[].suspected	bool
 seats[].emblems.cards[].suspectedAt	number:int64
+seats[].emblems.cards[].suspendGranted	bool
 seats[].emblems.cards[].tapOnPhaseIn	bool
 seats[].emblems.cards[].tapped	bool
 seats[].emblems.cards[].tokenArtOnly	bool
@@ -48985,6 +49015,7 @@ seats[].graveyard.cards[].stickers[].sheetName	string
 seats[].graveyard.cards[].summonedThisTurn	bool
 seats[].graveyard.cards[].suspected	bool
 seats[].graveyard.cards[].suspectedAt	number:int64
+seats[].graveyard.cards[].suspendGranted	bool
 seats[].graveyard.cards[].tapOnPhaseIn	bool
 seats[].graveyard.cards[].tapped	bool
 seats[].graveyard.cards[].tokenArtOnly	bool
@@ -49370,6 +49401,7 @@ seats[].hand.cards[].stickers[].sheetName	string
 seats[].hand.cards[].summonedThisTurn	bool
 seats[].hand.cards[].suspected	bool
 seats[].hand.cards[].suspectedAt	number:int64
+seats[].hand.cards[].suspendGranted	bool
 seats[].hand.cards[].tapOnPhaseIn	bool
 seats[].hand.cards[].tapped	bool
 seats[].hand.cards[].tokenArtOnly	bool
@@ -49760,6 +49792,7 @@ seats[].junkyard.cards[].stickers[].sheetName	string
 seats[].junkyard.cards[].summonedThisTurn	bool
 seats[].junkyard.cards[].suspected	bool
 seats[].junkyard.cards[].suspectedAt	number:int64
+seats[].junkyard.cards[].suspendGranted	bool
 seats[].junkyard.cards[].tapOnPhaseIn	bool
 seats[].junkyard.cards[].tapped	bool
 seats[].junkyard.cards[].tokenArtOnly	bool
@@ -50154,6 +50187,7 @@ seats[].library.cards[].stickers[].sheetName	string
 seats[].library.cards[].summonedThisTurn	bool
 seats[].library.cards[].suspected	bool
 seats[].library.cards[].suspectedAt	number:int64
+seats[].library.cards[].suspendGranted	bool
 seats[].library.cards[].tapOnPhaseIn	bool
 seats[].library.cards[].tapped	bool
 seats[].library.cards[].tokenArtOnly	bool
@@ -50579,6 +50613,7 @@ seats[].sideboard.cards[].stickers[].sheetName	string
 seats[].sideboard.cards[].summonedThisTurn	bool
 seats[].sideboard.cards[].suspected	bool
 seats[].sideboard.cards[].suspectedAt	number:int64
+seats[].sideboard.cards[].suspendGranted	bool
 seats[].sideboard.cards[].tapOnPhaseIn	bool
 seats[].sideboard.cards[].tapped	bool
 seats[].sideboard.cards[].tokenArtOnly	bool
@@ -51240,6 +51275,7 @@ stack.cards[].stickers[].sheetName	string
 stack.cards[].summonedThisTurn	bool
 stack.cards[].suspected	bool
 stack.cards[].suspectedAt	number:int64
+stack.cards[].suspendGranted	bool
 stack.cards[].tapOnPhaseIn	bool
 stack.cards[].tapped	bool
 stack.cards[].tokenArtOnly	bool
