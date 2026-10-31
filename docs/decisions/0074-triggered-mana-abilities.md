@@ -33,9 +33,9 @@ counting triggered mana in the auto-tap PLAN (§7), triggers on mana produced
 without a tap (§3)
 **Amended:** 2026-10-14, [a spell-made mana trigger for its controller
 only](#amendment-2026-10-14-3504-a-spell-made-mana-trigger-for-its-controller-only)
-(#3504). 2026-10-30, **Proposed**: [the auto-tap planner counts triggered
+(#3504). 2026-10-30, accepted the same day: [the auto-tap planner counts triggered
 mana](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana)
-(#4716), which replaces §7 (Decision 6) once accepted.
+(#4716), which replaces §7 (Decision 6).
 
 ---
 
@@ -226,10 +226,10 @@ arrived no longer has to read the pool.
 
 ## 7. Decision 6 — the auto-tap PLANNER does not count triggered mana
 
-> **Amendment proposed 2026-10-30** ([#4716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4716)):
+> **Amended 2026-10-30** ([#4716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4716), accepted the same day):
 > the planner counts what a triggered mana ability would add, judged by the
 > trigger's own condition. See [the amendment](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana).
-> Until it is accepted and built, this section describes the code.
+> Until slice 2 of the amendment is built, this section still describes the code.
 
 The planner (`gatherTapSources` / the solver) models only what a source's own
 mana ability produces. A land enchanted with Wild Growth is planned as a
@@ -285,8 +285,9 @@ High Tide / Bubbling Muck tests keep passing.
 
 ## Amendment of 2026-10-30 ([#4716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4716)): the auto-tap planner counts triggered mana
 
-**Status:** Proposed · 2026-10-30 · S78 — Launch week: player reports, flakes and first-game polish (tracker [#4648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4648)). This amendment changes no code. The build starts once the owner accepts it, in the [slices](#slices) below.
-**Owner decision (2026-10-30, on #4716):** option 1. Amend Decision 6 so the auto-pay planner counts the mana a triggered mana ability would add (Crypt Ghast, Wild Growth and the like). It checks the real trigger's own condition, so the plan and its preview are right before anything is tapped, and nothing is over-tapped or sacrificed (CR 605.1b, 605.4a). The questions the decision leaves open are under [Open questions for the owner](#open-questions-for-the-owner). Calls this amendment makes on its own are under [Calls made here](#calls-made-here).
+**Status:** Accepted (owner decisions 2026-10-30) · 2026-10-30 · S78 — Launch week: player reports, flakes and first-game polish (tracker [#4648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4648)). This amendment changes no code. The owner wants it built next, in the [slices](#slices) below.
+**Owner decision (2026-10-30, on #4716):** option 1. Amend Decision 6 so the auto-pay planner counts the mana a triggered mana ability would add (Crypt Ghast, Wild Growth and the like). It checks the real trigger's own condition, so the plan and its preview are right before anything is tapped, and nothing is over-tapped or sacrificed (CR 605.1b, 605.4a). Calls this amendment makes on its own are under [Calls made here](#calls-made-here).
+**Owner decisions (2026-10-30):** the owner accepted the amendment the same day and chose the recommended option on all three of its questions. The answers are under [Owner decisions](#owner-decisions-2026-10-30) and are binding. The options not chosen are kept under [Questions for the owner (answered)](#questions-for-the-owner-answered).
 **Replaces:** §7 (Decision 6), and the header's "counting triggered mana in the auto-tap PLAN" under "Designs, does not implement".
 **Composes with:** [ADR 0013](0013-replacement-effects.md) §5ab Decision 3 and its amendment of 2026-10-16 (#3939): the planner already prices CR 106.12b replacements through the replacement's own predicate, and this does the same for triggers. [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the auto-tapper, its tiers and the #1285 preview). [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) §1 (every payer plans through `autoTapTopUpLocked`).
 **Why an amendment and not a new ADR:** it reverses one decision of this ADR, and the mechanism is this ADR's own firing function, called by one more reader. It adds no seam, no event, no prompt and no wire field. That is the in-file amendment convention (ADR 0011, ADR 0013 and ADR 0136 all amend in place). [ADR 0136](0136-planning-the-turns-mana.md) explains when a new ADR is right instead: when the change adds a new decision step with its own measurement and config. This one does not.
@@ -352,7 +353,7 @@ For a source with a pick (a dual land, Birds of Paradise, a filter land's two pi
 
 **Rejected shortcut:** modelling "one mana of any type that land produced" on a `{W|U}` land as a second `{W|U}` slot. That would let one dual land and a Mirari's Wake pay {W}{U}. The card cannot do that: the Wake adds the type the land made. It is stronger than printed, which is the wrong direction (AGENTS.md §7).
 
-How far to expand a source with several picks is [open question 1](#open-questions-for-the-owner).
+How far to expand a source with several picks was the amendment's first question. [Owner decision 1](#owner-decisions-2026-10-30): every combination, capped at 36.
 
 #### 5. A trigger's own choice is booked, and the executor makes what was booked
 
@@ -375,7 +376,7 @@ The walk covers every permanent on the battlefield, as `fireManaTriggersLocked`'
 
 `autoTapTopUpLocked` is the one planning entry point (ADR 0118 §1). It serves the cast, an activation, a special action, an attack tax, a pay-unless prompt, the enumerator's affordability probe and the `/auto-tap-preview` endpoint. So the payment, the move list, the strict gate, the ready ring and the bots all agree on what is payable.
 
-The preview (`GET /games/{id}/auto-tap-preview`) returns the plan itself (`plan`, plus the `sources` that `describePlanLocked` reads through the executor's own pickers, ADR 0011 #1285). On the #4716 board, the drag highlight and the preview rows name three Swamps and no Treasure, before anything is tapped. No wire field changes. Whether the rows should also say what the triggers add is [open question 3](#open-questions-for-the-owner).
+The preview (`GET /games/{id}/auto-tap-preview`) returns the plan itself (`plan`, plus the `sources` that `describePlanLocked` reads through the executor's own pickers, ADR 0011 #1285). On the #4716 board, the drag highlight and the preview rows name three Swamps and no Treasure, before anything is tapped. No wire field changes. The rows do not also say what the triggers add ([owner decision 3](#owner-decisions-2026-10-30)).
 
 The preview is advisory. The cast plans again at the moment it pays (`applyAutoTapLocked`), so a Crypt Ghast destroyed between the drag and the release changes the payment. The preview was right for the board it was asked about.
 
@@ -393,7 +394,7 @@ When a plan that counts trigger mana fails the clone check, the payer plans once
 - **Triggered mana does not re-trigger** (Decision 2), so the planner counts no chains: the Wild Growth {G} that Mana Flare does not see is not counted twice.
 - **Mana can still float.** A land cannot be half-tapped. Paying {G} with a Wild Growth Forest still leaves a {G} floating. What ends is tapping a second land, or cracking a Treasure, for mana the first land was already going to make.
 - **Riders on the tap.** Winter's Night's "doesn't untap" rider and an opponent's Vorinclex trigger are not tiers today, and they still are not. Counting their lands' mana only means fewer of those lands get tapped.
-- **The heuristic bot's own mana model** (ADR 0136 §2) reads the view, not the planner. See [open question 2](#open-questions-for-the-owner).
+- **The heuristic bot's own mana model** (ADR 0136 §2) reads the view, not the planner. Teaching it trigger mana is [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770) ([owner decision 2](#owner-decisions-2026-10-30)).
 - **Snapshots, events and the wire.** The plan is transient. No snapshot key, event kind or prompt is added.
 
 ### Rules
@@ -437,21 +438,35 @@ Each number was checked against the pinned text, the Comprehensive Rules effecti
 - **One production per source, judged once,** exactly as the executor fires (item 2).
 - **CR 106.7 stays as Decision 5 wrote it,** and the view's `produced` does not change (item 9).
 
-### Open questions for the owner
+### Owner decisions (2026-10-30)
 
-Each question lists the recommended option first. Where one option is more CR-faithful, that is the recommendation.
+The owner accepted this amendment on 2026-10-30 and chose the recommended option on all three questions below. The answers are binding, and the slices are written to them. The owner wants the build next.
+
+1. **Every combination of picks is expanded, capped at 36** (question 1, option 1; item 4). Above the cap a source gets no colour-dependent extra, and a test names the shape.
+2. **The bot's mana model learns trigger mana in a follow-up, [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770)** (question 2, option 1): an additive view field, read by the bot behind a `Config` switch and measured in the arena (ADR 0136 §8). None of this amendment's slices changes the bot.
+3. **The preview gets no new field** (question 3, option 1; item 7). Slice 4 is not planned.
+
+### Questions for the owner (answered)
+
+Each question lists the recommended option first. Where one option is more CR-faithful, that is the recommendation. The owner chose the recommended option for all three on 2026-10-30 ([Owner decisions](#owner-decisions-2026-10-30)). The questions are kept with the options not chosen.
 
 1. **A source with more than one pick, whose trigger mana depends on the picks** (a filter land such as Flooded Grove, `{G|U}{G|U}`, under Mirari's Wake, Zendikar Resurgent, Mana Flare or Vorinclex).
    1. **(Recommended, the most CR-faithful)** Expand every combination of picks, as item 4 describes, with a cap that only bounds the search: 36 combinations. That covers every source with two picks (a filter land is 4, two five-colour picks are 25). Above the cap, the source gets no colour-dependent extra, and a test names the shape: Cascading Cataracts' "five mana in any combination of colors" under Mirari's Wake is the printed example. The plan counts what the cards add on every board short of that.
    2. Expand only a source with a single pick, and give no colour-dependent extra to any source with more than one pick. This is the decline-the-source posture of #2558 and #3939. It is simpler, but a filter land under Mirari's Wake is planned as two mana, and the planner may tap one land more than it needs.
 
+   **Answered: option 1, as recommended (owner decision 1).**
+
 2. **The heuristic bot's own turn plan** ([ADR 0136](0136-planning-the-turns-mana.md) §2) reads `produced` off the view, so it will still count a Swamp under Crypt Ghast as one {B}. CR 106.7 keeps trigger mana out of `produced`, so that field cannot carry it.
    1. **(Recommended)** Open a follow-up issue for an additive view field: the mana a tap of your own permanent would add through triggers, judged by the same pass one. The bot's mana model reads it behind a `Config` switch, measured in the arena as ADR 0136 §8 requires. Until then the bot's turn plan stays conservative. Once slice 2 lands, the enumerator offers every cast the trigger mana pays for, so the bot already casts those one at a time.
    2. Leave the bot's model as it is. It keeps under-planning two-spell turns on such boards, and the plan-miss counter does not show it, because the model never planned those turns.
 
+   **Answered: option 1, as recommended (owner decision 2). The follow-up is [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770).**
+
 3. **Should the preview say what the triggers add?**
    1. **(Recommended)** No new field. The preview's rows say what paying with each source costs (ADR 0011, #1285), and trigger mana costs nothing. The drag highlight and the rows are already right, because they read the plan. The preview modal opens only for a refused cast that was not auto-tapped (ADR 0118).
    2. Add an additive `adds` field to each preview source: the mana its tap makes, triggers included (for example "{B}{B}"). The row would show it, so a player can see why three Swamps pay a six-drop. It is one wire field and one client row, built as a fourth slice.
+
+   **Answered: option 1, as recommended (owner decision 3).**
 
 ### Slices
 
@@ -460,9 +475,9 @@ Each slice targets `develop`, references S78 and #4716, and runs `scripts/go-doc
 | # | Slice | Files | Tests | Model |
 |---|---|---|---|---|
 | 1 | **The judge.** Pass one of `fireManaTriggersLocked` becomes the read-only `manaTriggerFiringsLocked`. Add the `manaTriggersExistLocked` gate. Change the `ManaTrigger` doc to "either lock mode". No behaviour change. | `game/mana_trigger.go`, `cards/effects/mana_triggers.go` (doc), `docs/adding-cards.md` (the authors' three rules, item 1) | Existing `mana_trigger*_test.go` pass unchanged. `TestManaTriggerFiringsMatchWhatFires`: with stubbed triggers, delayed records included, the judge's list equals what the firing resolves. `TestEveryCatalogManaTriggerIsReadOnly` (`cards/effects`): for every `Spec` with `ManaTriggers`, on a board built for it, calling the judge under `ReadSnapshot` leaves the game's snapshot byte-identical. | Sonnet |
-| 2 | **The planner counts it.** Trigger slots on candidates (`tapSource.TriggerSlots`). Per-pick expansion with the picks carried (`OneColor`, per-slot colours) and the open question 1 cap. Trigger output priced with `fromTap` false. `plannedTap.TriggerColors`, taken by the executor's adder. The fallback in every payer that runs `planFundsLocked`. | `game/autotap.go`, `game/autotap_topup.go`, `game/autotap_costed.go`, `game/mutations.go`, `game/mana_trigger.go`, `game/produce_mana.go` | The engine tests and the #4716 regression under [Tests](#tests-that-prove-it). Existing `autotap*_test.go` and `mana_trigger*_test.go` pass; a test whose expectation changes says why in the PR. | Opus |
-| 3 | **Cards and docs.** Remove the "ADR 0074 §7" simplification from the comments of the 10 card files that cite it, and from the `mutations.go` and test comments. Replace the "Declared" paragraph of the triggered-mana recipe in `docs/adding-cards.md`. Add a closed-seam fragment under `docs/engine-seams/closed/`, never the generated block. Mark this amendment Accepted with the owner's answers. | `cards/effects/{blighted_burgeoning,crypt_ghast,fertile_ground,forsaken_monument,mana_flare,overgrowth,ultima_origin_of_oblivion,utopia_sprawl,wild_growth,winters_night}.go`, `cards/effects/mana_trigger_cards_test.go`, `game/mana_trigger_test.go`, `game/mutations.go` (comments only), `docs/adding-cards.md`, `docs/engine-seams/closed/`, this file | `go test ./internal/roadmap/` (the closed-seams fragment) and `./internal/docsguard/` | Sonnet |
-| 4 | *Only if open question 3 is answered with option 2.* The preview's `adds` field and the row. | `game/autotap.go` (`AutoTapPlanEntry`), `lobby/http.go`, `docs/lobby.md`, `client/src/lib/api.ts`, `client/src/lib/autoTapPlan.ts`, `AutoTapPreviewModal.svelte` | A lobby test for the field on the #4716 board; `autoTapPlan.test.ts` for the row | Sonnet |
+| 2 | **The planner counts it.** Trigger slots on candidates (`tapSource.TriggerSlots`). Per-pick expansion with the picks carried (`OneColor`, per-slot colours) and owner decision 1's cap of 36 combinations. Trigger output priced with `fromTap` false. `plannedTap.TriggerColors`, taken by the executor's adder. The fallback in every payer that runs `planFundsLocked`. | `game/autotap.go`, `game/autotap_topup.go`, `game/autotap_costed.go`, `game/mutations.go`, `game/mana_trigger.go`, `game/produce_mana.go` | The engine tests and the #4716 regression under [Tests](#tests-that-prove-it). Existing `autotap*_test.go` and `mana_trigger*_test.go` pass; a test whose expectation changes says why in the PR. | Opus |
+| 3 | **Cards and docs.** Remove the "ADR 0074 §7" simplification from the comments of the 10 card files that cite it, and from the `mutations.go` and test comments. Replace the "Declared" paragraph of the triggered-mana recipe in `docs/adding-cards.md`. Add a closed-seam fragment under `docs/engine-seams/closed/`, never the generated block. The amendment is already Accepted (owner decisions of 2026-10-30), so this slice does not change its status. | `cards/effects/{blighted_burgeoning,crypt_ghast,fertile_ground,forsaken_monument,mana_flare,overgrowth,ultima_origin_of_oblivion,utopia_sprawl,wild_growth,winters_night}.go`, `cards/effects/mana_trigger_cards_test.go`, `game/mana_trigger_test.go`, `game/mutations.go` (comments only), `docs/adding-cards.md`, `docs/engine-seams/closed/` | `go test ./internal/roadmap/` (the closed-seams fragment) and `./internal/docsguard/` | Sonnet |
+| 4 | *Not planned* ([owner decision 3](#owner-decisions-2026-10-30)). It would have added the preview's `adds` field and its row. | — | — | — |
 
 ### Tests that prove it
 
