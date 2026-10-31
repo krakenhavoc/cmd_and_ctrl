@@ -91,17 +91,21 @@ func offerChangesTheSpell(offer *game.AlternativeCost) bool {
 // effects.Register refuses `value` beside such a printed cost; this
 // catches the rest (an alternative cost, a choice of what to give up).
 func castValueOnly(g *game.Game, answers game.Answers, targetsStack bool, costIDs ...[]uuid.UUID) bool {
-	if answers != game.AnswerValue || targetsStack {
-		return false
-	}
+	return answers == game.AnswerValue && !targetsStack && !givesUpCreature(g, costIDs...)
+}
+
+// givesUpCreature reports whether any of a cast's cost picks (the
+// creatures it sacrifices, exiles or returns) is a creature on the
+// battlefield: that cast is a sacrifice outlet whatever it declares.
+func givesUpCreature(g *game.Game, costIDs ...[]uuid.UUID) bool {
 	for _, ids := range costIDs {
 		for _, id := range ids {
 			if c := battlefieldCardByID(g, id); c != nil && c.IsCreature() {
-				return false
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }
 
 // AdditionalCostAnswers is what a spell's additional cost alone answers,

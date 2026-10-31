@@ -19,7 +19,10 @@ import "strings"
 // answer 3). On a spell, a mode or an alternative cost it reads it for
 // a cast's value_only (castAnswersOf, #2877): only a cast declared
 // exactly AnswerValue changes anything there; any other declaration,
-// and none, keeps the cast an instant that stops you.
+// and none, keeps the cast an instant that stops you. And it matches
+// every declaration but AnswerValue and AnswerRemove to the window the
+// seat is in, for a move's answers_now (answer_window.go, ADR 0009's
+// amendment of 2026-10-30, #4734).
 
 // Answers is a set of declared answers. The zero value is "not
 // declared".

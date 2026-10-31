@@ -252,8 +252,8 @@ type GameView struct {
 	// LegalMovesTruncated is true when capLegalMoves dropped anything
 	// from LegalMoves — the list on this frame is then one move per
 	// (source, kind, targets_stack, has_targets, interacts,
-	// combat_interacts, combat_defender_only, value_only) rather than
-	// every move
+	// combat_interacts, combat_defender_only, value_only, answers_now)
+	// rather than every move
 	// (ADR 0122 §6.1). Absent otherwise. A seat that needs the rest sends a
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
@@ -5965,8 +5965,8 @@ const legalMovesWireCap = 48
 //
 // So the degraded list keeps the FIRST move of every (source, kind,
 // targets_stack, has_targets, interacts, combat_interacts,
-// combat_defender_only, value_only) tuple and drops only the
-// alternatives.
+// combat_defender_only, value_only, answers_now) tuple and drops only
+// the alternatives.
 // Every card that had a move still has one; what is lost is the choice between
 // its twelve targets, which no client consumes today (targeting is
 // driven by CardView.legal_targets, and targeting.ts stays the
@@ -5981,8 +5981,12 @@ const legalMovesWireCap = 48
 // would tell smart autopass the seat has nothing to answer with.
 // CombatInteracts and CombatDefenderOnly ride along for the same reason
 // (#2871), and so does ValueOnly (#2877): a modal spell's draw-only
-// announcement and its other modes are different answers.
-// docs/protocol.md states all six as part of the fields' contract.
+// announcement and its other modes are different answers. AnswersNow
+// rides along too (#4734), with absent, false and true kept apart: a
+// modal cast's modes can declare different answers, and keeping only
+// the one that matches nothing would tell smart autopass the seat has
+// nothing to answer with.
+// docs/protocol.md states all seven as part of the fields' contract.
 //
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
@@ -6032,6 +6036,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		combat       bool
 		defenderOnly bool
 		valueOnly    bool
+		answersNow   int8
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
@@ -6042,7 +6047,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 			out = append(out, m)
 			continue
 		}
-		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly, m.ValueOnly}
+		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly, m.ValueOnly, verdictKey(m.AnswersNow)}
 		if seen[k] {
 			continue
 		}
@@ -6050,6 +6055,18 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		out = append(out, m)
 	}
 	return out, len(out) < len(moves)
+}
+
+// verdictKey is a move's answers_now as a cap key: 0 absent, 1 false,
+// 2 true.
+func verdictKey(v *bool) int8 {
+	switch {
+	case v == nil:
+		return 0
+	case !*v:
+		return 1
+	}
+	return 2
 }
 
 // stampLegalTargets walks the PER-SEAT cast surfaces — hand, the

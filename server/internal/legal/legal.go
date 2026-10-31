@@ -225,6 +225,18 @@ type Move struct {
 	// activation, whose answers are Interacts and CombatInteracts.
 	ValueOnly bool `json:"value_only,omitempty"`
 
+	// AnswersNow is whether this cast, activation or mana move can answer
+	// what is happening now (ADR 0009's amendment of 2026-10-30, #4734):
+	// true when one of its declared answers (ADR 0142) matches the window
+	// the seat holds priority in, false when none does. Nil, and absent
+	// on the wire, on a move that keeps today's class: one that declares
+	// nothing, exactly `value`, or `remove`. Computed for the seat being
+	// enumerated (answer_window.go), so smart autopass in the browser and
+	// in the MCP seat read one answer. A reader that knows it reads it
+	// first and ignores Interacts, CombatInteracts and CombatDefenderOnly
+	// on that move; those keep their meaning for every other reader.
+	AnswersNow *bool `json:"answers_now,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
@@ -1003,6 +1015,10 @@ type enumerator struct {
 	// rowEquip is whether that row is an equip ability, for the spend
 	// context's ManaRestrictEquip (#4600).
 	rowEquip bool
+	// window is the answer window the seat is in (answer_window.go,
+	// #4734), read on first use by answerWindow: the moves of one
+	// enumeration share it.
+	window *answerWindow
 }
 
 // abilitySpend is the spend context of the activated ability row being

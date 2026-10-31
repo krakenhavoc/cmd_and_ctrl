@@ -1031,6 +1031,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// ADR 0142: the row's declared answers, by tier
 								// (an undeclared row interacts).
 								interacts, combat := untargetedFlags(g, e.seat, source, zone, ab, targets)
+								targetsStack := targetsStackObject(g, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -1042,12 +1043,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// See the same note on the cast emitter:
 									// a modal ability's stack-targeting mode
 									// is flagged on its own.
-									TargetsStack: targetsStackObject(g, targets),
+									TargetsStack: targetsStack,
 									HasTargets:   hasTargets(targets),
 									Interacts:    interacts,
 									// #2871: a combat ability, counted only in combat.
 									CombatInteracts:    combat.any,
 									CombatDefenderOnly: combat.defenderOnly,
+									// #4734: whether the row's declared answers
+									// match the window, a targeted row's included.
+									AnswersNow: e.answerWindow().verdict(ab.Purpose.Answers, targetsStack,
+										selfSacrificed(source, zone, ab.Cost.SacrificeSelf)),
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      wireIndex,
@@ -2562,6 +2567,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							// still answers removal (ADR 0142: declared,
 							// or read from the cost).
 							Interacts: manaMoveInteracts(g, e.seat, source, zone, ab),
+							// #4734: a declared or read sacrifice outlet,
+							// matched to the window.
+							AnswersNow: e.answerWindow().verdict(manaAnswersOf(ab), false,
+								selfSacrificed(source, zone, ab.SacrificeCost)),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

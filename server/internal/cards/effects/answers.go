@@ -13,7 +13,8 @@ import (
 // spell, a spell's mode or an alternative cost. The vocabulary and its
 // tiers are game/answers.go; the reader is internal/legal's
 // untargetedFlags (manaMoveInteracts for a mana ability, castAnswersOf
-// for a cast).
+// for a cast), and answer_window.go matches the same declarations to the
+// window for a move's answers_now (#4734).
 //
 // A declaration is the only thing the reader reads, so the guard keeps
 // it honest where it can without reading text. It refuses:

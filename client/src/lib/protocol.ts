@@ -966,6 +966,18 @@ export interface LegalMoveView {
   // like any other. Never on an activation. Absent on older servers
   // and on every cast that declares something else or nothing.
   value_only?: boolean;
+  // #4734 (ADR 0009's amendment of 2026-10-30): on a cast, activation or
+  // mana move whose declared answers (ADR 0142) are something other than
+  // `value` alone, whether one of them can answer what is happening now:
+  // true when one matches the window the viewer holds priority in, false
+  // when none does. The server computes it for the viewer's seat. Absent
+  // on a move that keeps today's class (it declares nothing, exactly
+  // `value`, or `remove`) and on older servers. A reader that knows it
+  // reads it first and ignores interacts, combat_interacts and
+  // combat_defender_only on that move, which keep their meaning for
+  // every other reader. In the viewer's own main phase with an empty
+  // stack a cast or activation is a play whatever this says.
+  answers_now?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never
