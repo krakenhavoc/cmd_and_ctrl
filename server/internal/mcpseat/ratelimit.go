@@ -64,3 +64,48 @@ func (b *bucket) wait(ctx context.Context) error {
 		}
 	}
 }
+
+// spanLimit allows n events in any span of per, the shape of the server's
+// own limit on legal_moves_request (ws.legalMovesLimiter, n a second). The
+// seat fetches several cut cards for one window on its own (#4737), and a
+// request the server refused would leave a card cut; waiting its turn here
+// costs at most the rest of the second. The server's refusal is still
+// retried (requestMoves) for the clock skew between the two.
+type spanLimit struct {
+	mu   sync.Mutex
+	per  time.Duration
+	at   []time.Time
+	next int
+	now  func() time.Time
+}
+
+func newSpanLimit(n int, per time.Duration, now func() time.Time) *spanLimit {
+	if now == nil {
+		now = time.Now
+	}
+	return &spanLimit{per: per, at: make([]time.Time, n), now: now}
+}
+
+// wait blocks until one more event fits, records it, or ctx ends.
+func (l *spanLimit) wait(ctx context.Context) error {
+	for {
+		l.mu.Lock()
+		t := l.now()
+		oldest := l.at[l.next]
+		if oldest.IsZero() || t.Sub(oldest) >= l.per {
+			l.at[l.next] = t
+			l.next = (l.next + 1) % len(l.at)
+			l.mu.Unlock()
+			return nil
+		}
+		d := l.per - t.Sub(oldest)
+		l.mu.Unlock()
+		timer := time.NewTimer(d)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}

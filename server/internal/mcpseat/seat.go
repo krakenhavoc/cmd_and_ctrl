@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -125,6 +126,8 @@ type Seat struct {
 	actions *bucket // 4/s, burst 8 — Layer A's answers count
 	chat    *bucket // one line per 5 s
 	cards   *bucket // 5 lookups/s
+	// moveReqs paces legal_moves_request to the server's own limit.
+	moveReqs *spanLimit
 
 	opMu sync.Mutex // serialises join, set_deck and leave
 
@@ -199,15 +202,17 @@ func NewSeat(cfg Config) (*Seat, error) {
 	}
 	sec := newSecrets()
 	s := &Seat{
-		cfg:        cfg,
-		sec:        sec,
-		log:        newLogger(cfg.LogOutput, sec, cfg.LogLevel),
-		api:        newAPI(cfg.HTTPClient),
-		store:      stateStore{root: cfg.StateDir},
-		now:        now,
-		actions:    newBucket(4, 8, now),
-		chat:       newBucket(0.2, 1, now),
-		cards:      newBucket(5, 5, now),
+		cfg:     cfg,
+		sec:     sec,
+		log:     newLogger(cfg.LogOutput, sec, cfg.LogLevel),
+		api:     newAPI(cfg.HTTPClient),
+		store:   stateStore{root: cfg.StateDir},
+		now:     now,
+		actions: newBucket(4, 8, now),
+		chat:    newBucket(0.2, 1, now),
+		cards:   newBucket(5, 5, now),
+		// A margin over the server's second, for the frames' transit.
+		moveReqs:   newSpanLimit(protocol.LegalMovesRequestsPerSecond, time.Second+50*time.Millisecond, nil),
 		changed:    make(chan struct{}),
 		pending:    map[string]chan reply{},
 		moveSem:    make(chan struct{}, 1),
@@ -313,6 +318,9 @@ func (s *Seat) probeWire() {
 		return
 	}
 	defer func() { <-s.moveSem }()
+	if err := s.moveReqs.wait(ctx); err != nil {
+		return
+	}
 	ch, err := s.sendFrame(protocol.KindLegalMovesRequest, protocol.LegalMovesRequestPayload{})
 	if err != nil {
 		return
@@ -536,12 +544,15 @@ func (s *Seat) step(ctx context.Context) {
 		s.mu.Unlock()
 		return
 	}
-	w := &window{key: key, token: key.token(), moves: append([]legal.Move(nil), s.moves...), state: winPending, me: s.sess.PlayerID.String()}
+	w := &window{key: key, token: key.token(), moves: append([]legal.Move(nil), s.moves...),
+		cuts: digestCuts(s.view, s.moves), state: winPending, me: s.sess.PlayerID.String()}
 	s.win = w
 	if key != s.lastCounted {
 		s.lastCounted = key
 		s.stats.windows++
-		if s.truncated {
+		// #4737: a list is cut when the wire degraded it OR the enumerator
+		// cut a card's moves; only the first raises legal_moves_truncated.
+		if s.truncated || len(w.cuts) > 0 {
 			s.stats.truncatedWindows++
 		}
 	}
@@ -595,6 +606,25 @@ func (s *Seat) step(ctx context.Context) {
 	view, me := s.view, s.sess.PlayerID
 	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passMode)
 	if !auto {
+		// #4737: every card the enumerator cut is fetched in full before
+		// the model sees the window. Layer A has answered from the list as
+		// it came: a card with a cut has a dozen moves of its own, so no
+		// rule it runs turns on which of them the list holds.
+		if len(cutCards(w.cuts)) > 0 && !s.noMoveReq {
+			s.mu.Unlock()
+			moved := s.expandCards(ctx, w)
+			s.mu.Lock()
+			if s.win != w {
+				s.mu.Unlock()
+				return
+			}
+			if moved || s.key != w.key {
+				s.win = nil
+				s.mu.Unlock()
+				s.pokeAutopilot()
+				return
+			}
+		}
 		s.openDecisionLocked(w)
 		s.mu.Unlock()
 		return
@@ -661,6 +691,162 @@ func (s *Seat) expandSearches(ctx context.Context, w *window) {
 		mergeMoves(w, rep, req)
 		s.mu.Unlock()
 	}
+}
+
+// digestCuts is the enumerator's cut report as a snapshot carries it
+// (ADR 0122 §6.2): each card's entry in the seat's own legal_actions, and
+// in the digest of each seat it plays for (ADR 0167 §7), names the count
+// caps that left some of that card's moves out. legal_moves_truncated says
+// only whether the 48-move wire cap degraded the list, so a list under it
+// whose cards were cut carries the news here alone (#4737). The cuts come
+// in the order their cards' moves do.
+func digestCuts(v *protocol.GameView, moves []legal.Move) []protocol.LegalCutView {
+	if v == nil {
+		return nil
+	}
+	digests := []*protocol.LegalActionsView{v.LegalActions}
+	for _, d := range v.ControlledLegalActions {
+		digests = append(digests, d)
+	}
+	bySource := map[string][]protocol.LegalCutView{}
+	for _, d := range digests {
+		if d == nil {
+			continue
+		}
+		for id, src := range d.Sources {
+			for _, c := range src.Truncated {
+				c.Source = id
+				bySource[id] = append(bySource[id], c)
+			}
+		}
+	}
+	var out []protocol.LegalCutView
+	for _, m := range moves {
+		id := m.Source.String()
+		if cs, ok := bySource[id]; ok && m.Source != uuid.Nil {
+			out = append(out, cs...)
+			delete(bySource, id)
+		}
+	}
+	// A card the list has no move for is still named (render.go).
+	rest := make([]string, 0, len(bySource))
+	for id := range bySource {
+		rest = append(rest, id)
+	}
+	sort.Strings(rest)
+	for _, id := range rest {
+		out = append(out, bySource[id]...)
+	}
+	return out
+}
+
+// Bounds on what the binary fetches for one window on its own (#4737).
+const (
+	// maxCardExpansions is how many cut cards are fetched.
+	maxCardExpansions = 6
+	// expandLineBudget is how many lines, once folded (fold.go), the
+	// fetched cards may add to the window's list. A removal spell over a
+	// busy board is a few dozen; a sacrifice outlet that also targets
+	// (Goblin Bombardment) is every creature times every target, which
+	// is the 512-move ceiling's worth.
+	expandLineBudget = 128
+)
+
+// cutCards is each card with a cut a request for the card could lift, in
+// the order the cuts come. A cut at the ceiling is already past what one
+// request returns, and a prompt's cut is the prompt's to lift.
+func cutCards(cuts []protocol.LegalCutView) []string {
+	var ids []string
+	seen := map[string]bool{}
+	for _, c := range cuts {
+		if c.Choice != "" || c.Source == "" || c.Cap == string(legal.CapCeiling) || seen[c.Source] {
+			continue
+		}
+		seen[c.Source] = true
+		ids = append(ids, c.Source)
+	}
+	return ids
+}
+
+// expandCards fetches in full each card the enumerator cut, as
+// legal_moves(card: …) would, and adds its moves to the window (#4737).
+// docs/mcp-seat.md promises the agent every move a card has, and a
+// removal spell offered the first twelve permanents the engine walked is
+// a removal spell that cannot reach the thirteenth.
+//
+// The window keeps a fetched card's moves when they fit what is left of
+// expandLineBudget; a card whose moves do not fit keeps its listed ones,
+// and its cut, now counted exactly, still names the call that lists the
+// rest. So does every card past maxCardExpansions, and every card whose
+// request failed. moved reports that the board changed while a request
+// was out.
+func (s *Seat) expandCards(ctx context.Context, w *window) (moved bool) {
+	s.mu.Lock()
+	ids := cutCards(w.cuts)
+	view, me := s.view, w.me
+	s.mu.Unlock()
+	if len(ids) > maxCardExpansions {
+		ids = ids[:maxCardExpansions]
+	}
+	fd := newFolder(view, me, newNameWrapper(view))
+	budget := expandLineBudget
+	for _, id := range ids {
+		req := moveRequest{Source: id}
+		rep, err := s.requestMoves(ctx, req)
+		if errors.Is(err, errNoDecision) {
+			return true
+		}
+		if err != nil {
+			s.log.Info("card not expanded", "card", id, "err", err)
+			return false
+		}
+		s.mu.Lock()
+		if s.win != w {
+			s.mu.Unlock()
+			return false
+		}
+		if rep.Generation != w.key.gen || rep.Seq != w.key.seq {
+			s.mu.Unlock()
+			return true
+		}
+		var listed []legal.Move
+		for _, m := range w.moves {
+			if m.Source.String() == id {
+				listed = append(listed, m)
+			}
+		}
+		added := fd.lines(rep.Moves) - fd.lines(listed)
+		if added <= budget {
+			budget -= max(added, 0)
+			mergeMoves(w, rep, req)
+		} else {
+			recount(w, id, len(listed), rep)
+		}
+		s.mu.Unlock()
+	}
+	return false
+}
+
+// recount replaces a card's cut with the exact count a request for the
+// card found, when the window does not take the card's moves.
+func recount(w *window, id string, listed int, rep *protocol.LegalMovesPayload) {
+	atLeast := false
+	for _, c := range rep.Truncated {
+		atLeast = atLeast || c.Source == id
+	}
+	cuts := w.cuts[:0:0]
+	done := false
+	for _, c := range w.cuts {
+		if c.Source != id || c.Choice != "" {
+			cuts = append(cuts, c)
+			continue
+		}
+		if !done {
+			done = true
+			cuts = append(cuts, protocol.LegalCutView{Source: id, Cap: c.Cap, Omitted: max(len(rep.Moves)-listed, 0), AtLeast: atLeast})
+		}
+	}
+	w.cuts = cuts
 }
 
 // openDecisionLocked hands a window to the model.
@@ -812,6 +998,9 @@ func (s *Seat) requestMoves(ctx context.Context, req moveRequest) (*protocol.Leg
 var errMovesRateLimited = errors.New("the server rate-limited the move-list request")
 
 func (s *Seat) requestMovesOnce(ctx context.Context, req moveRequest) (*protocol.LegalMovesPayload, error) {
+	if err := s.moveReqs.wait(ctx); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	s.stats.fullListRequests++
 	s.mu.Unlock()

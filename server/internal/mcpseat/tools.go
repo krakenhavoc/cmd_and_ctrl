@@ -715,7 +715,8 @@ func resolveChoice(v *protocol.GameView, me, choice string) (string, error) {
 
 // mergeMoves appends a card's expanded moves to the window, so every
 // index still names one move of one window, and replaces that card's
-// cut report with the expanded request's.
+// cut report with the expanded request's. A prompt the card raised keeps
+// its own cut: asking for the card does not lift it.
 func mergeMoves(w *window, rep *protocol.LegalMovesPayload, req moveRequest) int {
 	have := map[string]bool{}
 	for _, m := range w.moves {
@@ -731,7 +732,7 @@ func mergeMoves(w *window, rep *protocol.LegalMovesPayload, req moveRequest) int
 	}
 	cuts := w.cuts[:0:0]
 	for _, c := range w.cuts {
-		if !(req.Source != "" && c.Source == req.Source) && !(req.Choice != "" && c.Choice == req.Choice) {
+		if !(req.Source != "" && c.Source == req.Source && c.Choice == "") && !(req.Choice != "" && c.Choice == req.Choice) {
 			cuts = append(cuts, c)
 		}
 	}

@@ -268,23 +268,34 @@ func TestATruncatedListIsFetchedInFullBeforeAnyoneSeesIt(t *testing.T) {
 	v.Seats[0].Hand.Cards = []protocol.CardView{{InstanceID: bolt.String(), Name: "Lightning Bolt", ManaCost: "{R}"}}
 	capped := []legal.Move{f.pass(), f.cast(bolt, "Cast Lightning Bolt targeting Bob")}
 	full := append(append([]legal.Move(nil), capped...), f.cast(bolt, "Cast Lightning Bolt targeting Agent"))
+	// The whole list still cuts the Bolt, so the Bolt is asked for next
+	// (#4737), and that answer is the last word on it.
+	bolts := append(append([]legal.Move(nil), full[1:]...),
+		castTargeting(f, bolt, "Cast Lightning Bolt targeting Carol", map[string]any{"kind": "player", "id": uuid.New()}))
 	f.mu.Lock()
 	f.fullMoves = full
 	f.cuts = []protocol.LegalCutView{{Source: bolt.String(), Cap: "per_source", Omitted: 4, AtLeast: true}}
+	f.sourceMoves = map[string][]legal.Move{bolt.String(): bolts}
 	f.mu.Unlock()
 	f.setState(v, capped, true)
 	_, text := decisionWindow(t, s)
-	if !strings.Contains(text, "MOVES (3)") || !strings.Contains(text, "targeting «Agent»") {
+	if !strings.Contains(text, "MOVES (4)") || !strings.Contains(text, "targeting «Agent»") || !strings.Contains(text, "targeting Carol") {
 		t.Fatalf("the full list was not used:\n%s", text)
 	}
-	if !strings.Contains(text, "at least 4 more not listed") {
-		t.Errorf("the enumerator's cut is not reported:\n%s", text)
+	if strings.Contains(text, "not listed") {
+		t.Errorf("a card fetched in full still says it was cut:\n%s", text)
 	}
 	s.mu.Lock()
 	st := s.stats
 	s.mu.Unlock()
-	if st.truncatedWindows != 1 || st.fullListRequests != 1 {
+	if st.truncatedWindows != 1 || st.fullListRequests != 2 {
 		t.Errorf("stats = %+v", st)
+	}
+	f.mu.Lock()
+	reqs := append([]protocol.LegalMovesRequestPayload(nil), f.moveReqs...)
+	f.mu.Unlock()
+	if n := len(reqs); n < 2 || reqs[n-2] != (protocol.LegalMovesRequestPayload{}) || reqs[n-1].Source != bolt.String() {
+		t.Errorf("requests = %+v; want the whole list, then the Bolt", reqs)
 	}
 }
 

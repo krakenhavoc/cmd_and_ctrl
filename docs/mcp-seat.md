@@ -228,13 +228,38 @@ What to know about how they behave:
 - **The loop is `wait_for_decision`, then `act`, until `game_over`.** The
   tool descriptions tell the client so. Typically 2 to 4 tool calls per
   decision.
-- **The move list is never cut.** The wire's 48-move cap and the
-  enumerator's own per-card caps are reported, and the binary fetches
-  the full list before Layer A or the model sees anything. A card the
-  enumerator still cut says so, with how many ("at least N" where the
-  count is a floor).
-- **A capped search is fetched in full.** When the decision's list was
-  cut and the cut is a "search your library" prompt (Demonic Tutor), the
+- **The move list is never cut.** Two caps can cut what the server
+  sends, and the binary fetches what each one cut before the model sees
+  the window:
+  - The wire's 48-move cap raises `legal_moves_truncated`. The binary
+    fetches the whole list before Layer A runs.
+  - The enumerator's per-card cap keeps a card to its first 12 moves,
+    such as a removal spell over a busy board. Only that card's
+    `legal_actions` entry says so, even on a list far under 48 moves
+    (#4737). Once Layer A has passed the window on, the binary fetches
+    each such card in full, as `legal_moves(card: …)` would, up to 512
+    moves. It does this for up to 6 cards a window, as long as they add
+    no more than 128 lines to the list.
+
+  A card that is still cut says so in its header: how many moves are not
+  listed ("at least N" when the count is a floor), and the call that
+  lists them. Past the 512-move ceiling, no request lists more, so the
+  header names `legal_moves(targets_for: N)` and `act(targets: …)`
+  instead, which reach every target (see [Targets](#targets)). The
+  game-end report counts a window as truncated when either cap cut it.
+- **Moves against identical permanents share a line.** One card's moves
+  that differ only in which of several identical permanents they name
+  are printed once, with how many more there are and their numbers:
+  `13: Cast Void Rend targeting Treasure (…) [and 295 more like it, each
+  naming another identical permanent: moves 14-308]`. Every number is a
+  move `act` takes. Permanents are identical when the board would print
+  them as one entry (`Treasure x296`): same name, state and counters,
+  same controller and owner, and both tokens or both cards. A face-down
+  permanent is never folded. `match` folds nothing, so
+  `legal_moves(card: "<id>", match: "Treasure")` lists them one by one.
+- **A capped search is fetched in full.** A prompt's cut comes only with
+  the whole list, so the binary sees it when the wire cap cut the list.
+  When the cut is a "search your library" prompt (Demonic Tutor), the
   binary asks for that prompt's whole list itself, up to three searches
   a window. Other capped prompts stay capped, and every cut names the
   exact call that expands it, whether or not a card raised the prompt:
@@ -246,7 +271,9 @@ What to know about how they behave:
   always-legal move is accepted, and the binary never picks it for the
   model. A request the server answers `no_decision` closes the window
   (the board moved); `rate_limited` is retried after 300 ms, up to three
-  times.
+  times. The binary sends move-list requests no faster than the server
+  takes them, four a second, so the cards it fetches for one window wait
+  their turn instead of being refused.
 - **Attacks are declared in your own attack window, and passing ends
   it.** The list offers one move per creature and opponent, and since
   #2793 also `Attack «X» with all N creatures that can attack them` for
@@ -556,8 +583,10 @@ use a fresh session per game, keep the compact view, and turn
 **The game-end report.** At `game_over` the binary logs one line and
 returns the same in the tool result: windows seen, how many each rule
 absorbed and how many were shown to the model; `act` calls and
-rejections; truncated windows, full-list requests and the largest move
-list shown (moves and bytes); bytes returned in tool results (about
+rejections; truncated windows (cut by the wire cap or by the
+enumerator's per-card cap), full-list requests (every move-list request,
+the binary's own and `legal_moves`'), and the largest move list shown
+(moves and bytes); bytes returned in tool results (about
 4 per token); and the time from each decision opening to its `act`. It
 cannot see the model's own token count. Your client reports that.
 
