@@ -16,9 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // makes every land count. The extra mana is always {B}, whatever the
 // Swamp itself produced, and it is one {B} per Swamp tapped.
 //
-// Same declared auto-tap simplification as every triggered mana
-// ability (ADR 0074 §7): the auto-tapper does not count the extra
-// mana, so it floats the difference.
+// The auto-tap planner counts the extra {B} (ADR 0074, amendment of
+// 2026-10-30): a Swamp under Crypt Ghast plans as {B}{B}, so three
+// Swamps pay a six-mana cost and nothing is over-tapped.
 //
 // No simplification of the card itself.
 func init() {

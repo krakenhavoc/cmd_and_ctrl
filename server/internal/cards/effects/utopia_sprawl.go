@@ -29,8 +29,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // together — and Arbor Elf already works, because its untap is an
 // ordinary activated ability (see arbor_elf.go).
 //
-// Same declared auto-tap simplification as Wild Growth: the planner
-// does not count the extra mana (ADR 0074 §7).
+// The auto-tap planner counts the extra mana once a colour is chosen,
+// and nothing before, as the trigger itself adds nothing then (ADR 0074,
+// amendment of 2026-10-30).
 //
 // No simplification of the card itself.
 func init() {

@@ -27,8 +27,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the stack (CR 605.4a), and it fires for a land you control whose mana
 // ability produced {C} (CR 106.12a), a blighted land included, and adds
 // exactly one more {C} however much {C} the land made. The auto-tap
-// planner does not count the extra mana (ADR 0074 §7): it may tap one
-// land more than it needed, and the surplus floats.
+// planner counts that one {C} for each land that makes {C} (ADR 0074,
+// amendment of 2026-10-30).
 //
 // No simplification.
 const (

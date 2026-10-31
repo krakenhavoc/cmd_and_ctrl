@@ -8268,9 +8268,10 @@ Six rules the engine applies for you, none of which a card declares:
   and `AddMana` from a resolving spell (Dark Ritual) do not.
 - **Triggered mana does not re-trigger.** A second Wild Growth does not
   see the first one's `{G}`.
-- **A colour choice inside the trigger** prompts by hand and picks
-  greedily against the cast under the auto-tapper, so an auto-tapped
-  cast never stops on a prompt.
+- **A colour choice inside the trigger** prompts by hand. Under the
+  auto-tapper it makes the colour the plan booked for it, and picks
+  greedily against the cast only when the plan booked none, so an
+  auto-tapped cast never stops on a prompt.
 - **`ActiveWhen` and ability removal** work exactly as on
   `Spec.Triggered` — an Aura under Song of the Dryads has no trigger.
 
@@ -8278,7 +8279,7 @@ Three rules the card's own callbacks (`AppliesTo` and `Produced`) keep.
 The engine asks them under either lock mode: a write lock when the
 executor fires a real production, a read lock when the judge
 (`manaTriggerFiringsLocked`) is asked about one that has not happened
-yet, which is how the auto-tap planner will read them
+yet, which is how the auto-tap planner reads them
 ([ADR 0074](decisions/0074-triggered-mana-abilities.md), amendment of
 2026-10-30):
 
@@ -8295,20 +8296,58 @@ yet, which is how the auto-tap planner will read them
 runs every catalogued trigger through the judge under `ReadSnapshot` and
 fails if the game's snapshot changes.
 
-**Declared, and say so in the card comment:** the auto-tap PLANNER does
-not count the extra mana ([ADR 0074](decisions/0074-triggered-mana-abilities.md)
-§7). It may tap one land more than it needed and the surplus floats
-until the step ends — weaker than printed and safe. The mana that
-arrives is always right.
+**The auto-tap planner counts the extra mana, and a card declares
+nothing** ([ADR 0074](decisions/0074-triggered-mana-abilities.md),
+amendment of 2026-10-30, #4716). Planning a tap, the planner asks the
+judge the executor fires with (`manaTriggerFiringsLocked`) about the
+production that tap would make, and plans the source as its own mana
+plus what your `AppliesTo` and `Produced` say would be added: a Swamp
+under Crypt Ghast is `{B}{B}`, a Forest under Wild Growth `{G}{G}`.
+There is no second copy of the condition to write or to keep in step,
+so a new card is planned right the day it is catalogued and its comment
+has no "declared simplification" to make. What it does:
 
-Out of scope and still open: mana-production REPLACEMENT (CR 106.12b —
-Nyxbloom Ancient, Mana Reflection) and turn-scoped mana triggers (High
-Tide, Bubbling Muck, left to #663).
+- **It plans for a `{T}` only**, like the firing. A Treasure's
+  `{T}, sacrifice` is a tap and counts; a Gold's sacrifice-only ability
+  and a Spirit Guide's exile do not. A trigger that uses the stack
+  (CR 605.5a) is not in `Spec.ManaTriggers` and is never counted.
+- **A trigger that reads the land's pick** ("one mana of any type that
+  land produced": Mana Flare, Mirari's Wake) is judged per combination of
+  the land's picks, up to 36, and a dual becomes one candidate per pick,
+  `{W}{W}` or `{U}{U}` and never `{W}{U}`. A source gets no trigger mana
+  above the 36-combination cap, or, when the trigger mana depends on
+  its picks, with two or more picks after a production replacement has
+  changed its slots; it is then planned as it was before the amendment.
+- **A colour choice inside the trigger** (Fertile Ground's "any
+  color") is booked like any slot of the source's own, and the executor
+  makes the colour that was booked.
+- **Mana the cost does not need still floats.** A land cannot be
+  half-tapped, so paying `{G}` with a Wild Growth Forest leaves a `{G}`
+  in the pool. What ends is tapping a second land, or cracking a
+  Treasure, for mana the first land was already going to make.
+- **A counted trigger that does not arrive** (a sacrifice in the same
+  payment removes its permanent) is caught by the clone check (#2461),
+  and the payer plans again without trigger mana, which is the planner
+  as it was before. Every board that paid before still pays.
+- **CR 106.7 is untouched.** Trigger mana is not something the land
+  "could produce", so the view's `produced` leaves it out.
+
+Mana-production REPLACEMENT (CR 106.12b — Nyxbloom Ancient, Mana
+Reflection) is not a trigger and is a different family
+(`cards/effects/mana_replacements.go`); a turn-scoped mana trigger (High
+Tide, Bubbling Muck) is `TurnManaTrigger`, and the planner judges it
+through the same pass.
 
 **Tests**: `pushAuraOnLand` + `tapForMana` in
 [mana_trigger_cards_test.go](../server/internal/cards/effects/mana_trigger_cards_test.go);
 the engine rules themselves are in
 [mana_trigger_test.go](../server/internal/game/mana_trigger_test.go).
+What the planner makes of a card is tested through the real catalog in
+[autotap_trigger_mana_test.go](../server/internal/cards/effects/autotap_trigger_mana_test.go)
+(`castAutoTappedFromHand`, `plansFor`), and the planner's own rules, on
+stubbed triggers, in
+[autotap_trigger_mana_test.go](../server/internal/game/autotap_trigger_mana_test.go)
+in `game`.
 
 ### State triggers (ADR 0107, #1858)
 

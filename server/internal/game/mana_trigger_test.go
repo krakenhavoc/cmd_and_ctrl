@@ -285,9 +285,10 @@ func TestManaTriggerWithAColourChoicePicksGreedilyUnderAutoTap(t *testing.T) {
 		return nil
 	})
 
-	// The planner knows only about the Forest's own {G} (ADR 0074 §7),
-	// so it plans the Forest for the {G} and the trigger's mana pays
-	// the {U} that arrives with it.
+	// The planner counts the trigger's mana as well as the Forest's own
+	// {G} (ADR 0074, amendment of 2026-10-30), but the Forest's {G} pays
+	// the whole cost, so the trigger's pick is left unbooked and the
+	// executor makes it greedily.
 	cost, _ := ParseCost("{G}")
 	g.WithWriteLock(func() {
 		plan, ok := g.autoTapLocked(me.ID, cost, 0, nil)

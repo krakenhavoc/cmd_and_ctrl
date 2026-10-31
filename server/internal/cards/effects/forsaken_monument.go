@@ -27,8 +27,9 @@ import (
 //     and resolves even if the spell is countered. Playing a land is
 //     not casting, so a land never triggers it.
 //
-// The auto-tap planner does not count the extra {C} (ADR 0074 §7): it
-// may tap one source more than it needed, and the surplus floats.
+// The auto-tap planner counts the extra {C} once per production (ADR
+// 0074, amendment of 2026-10-30): Sol Ring's {C}{C} plans as {C}{C}{C},
+// so the Ring pays {3} alone.
 //
 // No simplification.
 func init() {

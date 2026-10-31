@@ -236,8 +236,10 @@ func TestWildGrowthFiresUnderTheAutoTapper(t *testing.T) {
 	if !ok || len(plan) != 1 || plan[0] != forest {
 		t.Fatalf("plan = %v (ok=%v), want the Forest", plan, ok)
 	}
-	// Tapping it is what runs the trigger; the planner never counted
-	// the extra mana (ADR 0074 §7), so the second {G} simply floats.
+	// Tapping it is what runs the trigger. The planner counts the extra
+	// {G} too (ADR 0074, amendment of 2026-10-30), but {G} needs one
+	// mana and a land cannot be half-tapped, so the second {G} simply
+	// floats.
 	tapForMana(t, g, me.ID, forest)
 	if got := sortedPool(me); len(got) != 2 {
 		t.Errorf("pool = %v, want two green", got)
