@@ -164,6 +164,7 @@ body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
+body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
 body monarch/crown
@@ -623,6 +624,7 @@ choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/winter-soldier-icy-assassin-attach
+choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yuffie-materia-hunter-attach
 choose choose-cards/yunas-decision-put
@@ -1591,6 +1593,7 @@ tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
+tail mass/worlds-within-worlds-exiled
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
 tail mill-then-take/something-worth-saving
@@ -1907,6 +1910,7 @@ tail will-of-the-sultai/after-mill
 tail will-of-the-sultai/counters-and-trample
 tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
+tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail zara-renegade-recruiter/return-at-end-step

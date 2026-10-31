@@ -207,7 +207,7 @@ func triggerPromptCovered(t TriggeredAbility) bool {
 	if t.OptionalPrompt != nil && t.OptionalPrompt.Trade {
 		return false
 	}
-	return t.Keyword != AltCostKeyMiracle
+	return t.Keyword != AltCostKeyMiracle && (t.OptionalPrompt == nil || !t.OptionalPrompt.BeforeStack)
 }
 
 // triggerPromptKey is the key of an optional trigger's prompt:

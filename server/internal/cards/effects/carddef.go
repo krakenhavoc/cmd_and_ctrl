@@ -346,6 +346,16 @@ func buildDef(spec Spec) *game.CardDef {
 			break
 		}
 	}
+	// "Nonland cards in your hand have miracle {0}" (Molecule Man): the
+	// granted miracle's reveal trigger belongs to the granted keyword, grown
+	// from its offer the same way.
+	for _, gr := range spec.GrantedAlternativeCosts {
+		if gr.Offer.Key == game.AltCostKeyGrantedMiracle {
+			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+				game.GrantedMiracleTrigger(gr.Offer.ManaCost))
+			break
+		}
+	}
 	if spec.Madness != "" {
 		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
 			game.MadnessReplacement())
