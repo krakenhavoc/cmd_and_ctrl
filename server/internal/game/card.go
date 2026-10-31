@@ -1701,6 +1701,20 @@ type Card struct {
 	// does not hold the game's clock. Carried by the snapshot.
 	PutInGraveyardThisTurn bool
 
+	// SuspendGranted says an effect gave this exiled card suspend (CR
+	// 702.62a, #4455): Kang Prime's and Doom's Time Platform's "If it
+	// doesn't have suspend, it gains suspend". triggersOf then derives the
+	// two exile-zone suspend triggers for the object (suspend.go), so the
+	// upkeep countdown and the free cast with haste are the printed
+	// keyword's, not a second copy of them. It is only ever set on a card
+	// with no printed suspend (GainSuspendForEffect), so no card has two
+	// instances.
+	//
+	// Per object (CR 400.7): the gain is a continuous effect on the exiled
+	// card, so it ends at the next zone change, cleared in MoveCard beside
+	// Bestowed. Carried by the snapshot.
+	SuspendGranted bool
+
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own
 	// (CR 702.26g, "phasing out indirectly"), and so "won't phase in

@@ -445,6 +445,12 @@ func triggersOf(c *Card) []TriggeredAbility {
 	// #3867, CR 702.99a: one cipher trigger per card encoded on it,
 	// derived from the layer-6 grant so each knows its own card.
 	keyword = append(keyword, cipherTriggersFor(c)...)
+	// #4455 / CR 702.62a: suspend an effect gave an exiled card (Kang
+	// Prime) is the keyword's two exile-zone triggers, derived here from the
+	// marker so the card file writes neither.
+	if c.SuspendGranted {
+		keyword = append(keyword, SuspendUpkeepTrigger(), SuspendLastCounterTrigger())
+	}
 	if CatalogTriggers == nil {
 		return keyword
 	}
