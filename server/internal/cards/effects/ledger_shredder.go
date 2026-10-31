@@ -43,26 +43,19 @@ func init() {
 	})
 }
 
-// ledgerShredderConnive is CR 702.146's "draw a card, then discard a
-// card. If you discarded a nonland card, put a +1/+1 counter on this
-// creature" for exactly one fixed creature.
+// ledgerShredderConnive makes the Shredder connive (CR 701.50a): the shared
+// ConniveEach on the one creature, so the connive is an event a replacement
+// can apply to (#4589, Leader, Super-Genius) and says it has connived
+// (CR 701.50f, #4641) like every other.
 func ledgerShredderConnive(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-		return err
-	}
-	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-		Player:   item.Controller,
-		Source:   item.SourceCardID,
-		N:        1,
-		Question: "Ledger Shredder — connive: discard a card",
-	}, ledgerShredderDiscarded, nil)
+	return sourceConnives(NewContext(g, item))
 }
 
-// ledgerShredderDiscarded is the counter once the discard has settled: only
-// for a nonland card really discarded. Keyed (#4253): the Shredder is the
-// prompt's source.
-var ledgerShredderDiscarded = game.RegisterDiscardThen("choose-cards/ledger-shredder-connive", func(g *game.Game, r game.DiscardsDone) error {
+// ledgerShredderDiscarded is the discard continuation the Shredder's own
+// connive used before it went through ConniveEach (#4589). Nothing queues it
+// now; it stays registered because a saved table can hold a discard prompt
+// that names it (an on-disk key: never renamed, never reused).
+var _ = game.RegisterDiscardThen("choose-cards/ledger-shredder-connive", func(g *game.Game, r game.DiscardsDone) error {
 	if err := ledgerShredderCounter(g, r); err != nil {
 		return err
 	}

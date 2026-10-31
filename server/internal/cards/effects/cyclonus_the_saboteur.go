@@ -56,9 +56,37 @@ func init() {
 	})
 }
 
-// cyclonusConnive is the draw and then the discard: the discard waits for a
-// prompt the draw asks (a dredge offer; CR 608.2c, #4155).
-var cyclonusConnive = Do(
+// cyclonusConnive opens the connive's window (game.ConniveForEffect, #4589:
+// "if a creature you control would connive" replaces it), and
+// cyclonusConniveTail connives once it has settled.
+func cyclonusConnive(g *game.Game, item *game.StackItem) error {
+	return g.ConniveForEffect(item.Controller, item.SourceCardID, 1, game.KeyedTail{
+		Ref:    cyclonusConniveTail,
+		Player: item.Controller,
+		Source: item.SourceCardID,
+	})
+}
+
+// cyclonusConniveTail is the connive once its window has settled: the cards a
+// replacement has the player draw first, then the draw and the discard, the
+// discard waiting for a prompt the draw asks (a dredge offer; CR 608.2c,
+// #4155). A connive that did not happen (N is 0) is followed by the "Then"
+// all the same. An on-disk key: never renamed, never reused.
+var cyclonusConniveTail = game.RegisterTail("cyclonus/connive", func(g *game.Game, o game.TailOutcome) error {
+	ctx := keyedContext(g, o.Tail.Player, o.Tail.Source)
+	if o.Tail.N <= 0 {
+		return cyclonusConvertIfPowerFive(ctx)
+	}
+	for range o.Amount {
+		if err := g.DrawNForEffect(o.Tail.Player, 1); err != nil {
+			return err
+		}
+	}
+	return cyclonusConniveDrawAndDiscard.Run(ctx)
+})
+
+// cyclonusConniveDrawAndDiscard is the draw and then the discard.
+var cyclonusConniveDrawAndDiscard = RegisterThenSteps("then-steps/cyclonus-connive-draw-and-discard",
 	DrawCards{N: 1},
 	Instruction(func(ctx *Context) error {
 		item := ctx.Item
@@ -104,19 +132,23 @@ var cyclonusConniveRest = RegisterThenSteps("then-steps/cyclonus-connive-rest",
 		g.ConnivedForEffect(source, ctx.Controller())
 		return nil
 	}),
-	Instruction(func(ctx *Context) error {
-		g, source := ctx.Game, ctx.Item.SourceCardID
-		if !onBattlefield(g, source) {
-			return nil
-		}
-		g.RecomputeLayersIfStaleLocked()
-		cyc, ok := g.LookupCardForEffect(source)
-		if !ok || cyc.CurrentPower() < 5 {
-			return nil
-		}
-		return ConvertThis{}.Apply(ctx)
-	}),
+	Instruction(cyclonusConvertIfPowerFive),
 )
+
+// cyclonusConvertIfPowerFive is "Then if Cyclonus's power is 5 or greater,
+// convert it", read with the layers current.
+func cyclonusConvertIfPowerFive(ctx *Context) error {
+	g, source := ctx.Game, ctx.Item.SourceCardID
+	if !onBattlefield(g, source) {
+		return nil
+	}
+	g.RecomputeLayersIfStaleLocked()
+	cyc, ok := g.LookupCardForEffect(source)
+	if !ok || cyc.CurrentPower() < 5 {
+		return nil
+	}
+	return ConvertThis{}.Apply(ctx)
+}
 
 func cyclonusConvertForPhase(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

@@ -49,7 +49,7 @@ func keyedFrameSample() *ReplacementEvent {
 		drawTail:       4,
 		drawThen:       DrawThen{Ref: DrawThenRef{key: "dt"}, Player: id("dt-p"), Source: id("dt-s"), N: 5},
 		keywordInstead: keywordInsteadRun{ref: KeywordInsteadRef{key: "ki"}, source: id("ki-src")},
-		KeywordAction:  KeywordActionLearn, KeywordActionCount: 1,
+		KeywordAction:  KeywordActionLearn, KeywordActionCount: 1, ConniveExtraDraws: 1,
 		keywordAction: &keywordActionTail{
 			cards: []uuid.UUID{id("kc")}, players: []uuid.UUID{id("kp")}, ask: true, choice: PendingChoiceScry, land: id("land"),
 			keyed:       KeyedTail{Ref: TailRef{key: "kt"}, Player: id("ktp")},
