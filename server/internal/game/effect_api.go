@@ -4020,9 +4020,9 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	}
 	if opts.Amount.Options != nil {
 		slots, capped := slotsFromAmount(opts.Amount)
-		return g.addManaEntriesLocked(p, source, slots, capped, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
+		return g.addManaEntriesLocked(p, source, slots, capped, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, nil, addManaReason)
 	}
-	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, nil, addManaReason)
 }
 
 // addManaSlotsLocked is the one slot walk behind every "an effect adds
@@ -4043,6 +4043,11 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 //     auto-tapper's contract is "no further player decisions", so it
 //     may not leave a prompt behind mid-cast.
 //
+// `booked` is, in the auto-tap mode only, the colour the plan booked for
+// each slot (a triggered mana ability's, plannedTap.TriggerColors): a
+// pick makes that colour when it offers it, and picks greedily otherwise.
+// Nil for every effect, which books nothing.
+//
 // `reason` labels the queued prompt. Caller must hold g.mu in write
 // mode and have checked the player is seated and not eliminated.
 func (g *Game) addManaSlotsLocked(
@@ -4053,13 +4058,14 @@ func (g *Game) addManaSlotsLocked(
 	restrictions []string,
 	riders []ManaSpendRider,
 	pending *[]ColorRequirement,
+	booked []string,
 	reason func(ProducedManaEntry) string,
 ) error {
 	slots, capped, err := parseProducedMana(produced)
 	if err != nil {
 		return err
 	}
-	return g.addManaEntriesLocked(p, source, slots, capped, narrow, restrictions, riders, pending, reason)
+	return g.addManaEntriesLocked(p, source, slots, capped, narrow, restrictions, riders, pending, booked, reason)
 }
 
 // addManaEntriesLocked is addManaSlotsLocked's body once the slots
@@ -4075,6 +4081,7 @@ func (g *Game) addManaEntriesLocked(
 	restrictions []string,
 	riders []ManaSpendRider,
 	pending *[]ColorRequirement,
+	booked []string,
 	reason func(ProducedManaEntry) string,
 ) error {
 	if capped {
@@ -4095,7 +4102,7 @@ func (g *Game) addManaEntriesLocked(
 	// source (#763, Wild Growth on a Forest) IS a permanent, and this
 	// is where its kinds are recorded.
 	srcKinds := g.manaSourceKindsLocked(source)
-	for _, slot := range slots {
+	for si, slot := range slots {
 		colorOptions := manaPickOptions(slot.Options, identity, narrow)
 		if len(colorOptions) == 0 {
 			// CR 903.4f (#844): a "commander's color identity" effect
@@ -4148,9 +4155,18 @@ func (g *Game) addManaEntriesLocked(
 			return ErrInvalidParam
 		}
 		if pending != nil {
-			// The auto-tap mode: one greedy pick, minted now. A
-			// one-colour-N-mana slot mints all N of it (#742).
-			color := pickColorForSlot(colorOptions, pending)
+			// The auto-tap mode: one pick, minted now. A one-colour-N-mana
+			// slot mints all N of it (#742). ADR 0074 amendment (#4716):
+			// the plan's booked colour when it has one on offer, so a
+			// trigger's pick pays the pip the plan booked it for; the
+			// greedy pick otherwise.
+			var color string
+			if si < len(booked) && colorOffered(colorOptions, booked[si]) {
+				color = booked[si]
+				bookColorRequirement(color, pending)
+			} else {
+				color = pickColorForSlot(colorOptions, pending)
+			}
 			if color == "" {
 				continue
 			}

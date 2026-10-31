@@ -61,10 +61,10 @@ import (
 // satisfies and changes nothing, so it is safe under a read lock and on
 // a production that has not happened yet. fireManaTriggersLocked is the
 // EXECUTOR: it calls the judge and then resolves what the judge found.
-// The auto-tap planner is meant to be a second reader of the judge
-// (#4716), so the plan and the payment cannot disagree about what a
-// trigger adds: there is one copy of each trigger's condition.
-// manaTriggersExistLocked is the cheap gate in front of both.
+// The auto-tap planner is the judge's second reader (#4716,
+// autotap_trigger_mana.go), so the plan and the payment cannot disagree
+// about what a trigger adds: there is one copy of each trigger's
+// condition. manaTriggersExistLocked is the cheap gate in front of both.
 
 // ManaProduced is one completed "tapped for mana" production (CR
 // 106.12a): a permanent's mana ability resolved and its mana landed in
@@ -375,6 +375,14 @@ func (g *Game) ManaTriggerSourcesForTest(prod ManaProduced) []uuid.UUID {
 // decisions", and a prompt appearing halfway through a cast would
 // break it. See addTriggeredManaLocked.
 //
+// `booked` is the colour the plan booked for each mana these firings add,
+// in firing order (plannedTap.TriggerColors, ADR 0074 amendment of
+// 2026-10-30), and nil everywhere but the auto-tap executor. A pick makes
+// its booked colour instead of the greedy one, so the trigger cannot take
+// a pip a later source in the plan was booked for. It is used only when
+// it names one colour per mana slot of these firings; otherwise the plan
+// was made for a different board and every pick is greedy, as before.
+//
 // Order is the judge's: simultaneous mana abilities that all simply
 // resolve have no other order the rules ask for.
 //
@@ -382,7 +390,7 @@ func (g *Game) ManaTriggerSourcesForTest(prod ManaProduced) []uuid.UUID {
 // tapped for no mana was not "tapped for mana".
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequirement) {
+func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequirement, booked []string) {
 	// The gate goes first. On a board with no mana trigger the judge
 	// would walk every permanent to say nothing. The gate walks the same
 	// permanents once and stops at the first trigger it finds, so such a
@@ -390,8 +398,23 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 	if !prod.addsMana() || !g.manaTriggersExistLocked() {
 		return
 	}
-	for _, f := range g.manaTriggerFiringsLocked(prod) {
-		g.addTriggeredManaLocked(prod.Controller, f.source, f.label, f.produced, pending)
+	firings := g.manaTriggerFiringsLocked(prod)
+	if booked != nil {
+		n := 0
+		for _, f := range firings {
+			n += producedSlotCount(f.produced)
+		}
+		if n != len(booked) {
+			booked = nil
+		}
+	}
+	for _, f := range firings {
+		var mine []string
+		if booked != nil {
+			n := producedSlotCount(f.produced)
+			mine, booked = booked[:n], booked[n:]
+		}
+		g.addTriggeredManaLocked(prod.Controller, f.source, f.label, f.produced, pending, mine)
 		if f.skip {
 			// #1997: the tapped permanent, if it is still there, skips
 			// its controller's next untap step.
@@ -400,6 +423,17 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 			}
 		}
 	}
+}
+
+// producedSlotCount is how many slots a produced-mana string parses to,
+// the unit plannedTap.TriggerColors counts in; 0 for one that does not
+// parse, which adds nothing.
+func producedSlotCount(produced string) int {
+	slots, err := ParseProducedMana(produced)
+	if err != nil {
+		return 0
+	}
+	return len(slots)
 }
 
 // addTriggeredManaLocked adds the mana a triggered mana ability
@@ -415,8 +449,11 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 // It does NOT fire mana triggers. That is the whole re-entrancy guard,
 // and it is also the rule: nothing was tapped for this mana.
 //
+// `booked` is the plan's colour for each slot of `produced`, or nil (see
+// fireManaTriggersLocked).
+//
 // Caller must hold g.mu in write mode.
-func (g *Game) addTriggeredManaLocked(playerID, source uuid.UUID, label, produced string, pending *[]ColorRequirement) {
+func (g *Game) addTriggeredManaLocked(playerID, source uuid.UUID, label, produced string, pending *[]ColorRequirement, booked []string) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return
@@ -427,7 +464,7 @@ func (g *Game) addTriggeredManaLocked(playerID, source uuid.UUID, label, produce
 		}
 		return addManaReason(slot)
 	}
-	if err := g.addManaSlotsLocked(p, source, produced, false, nil, nil, pending, reason); err != nil {
+	if err := g.addManaSlotsLocked(p, source, produced, false, nil, nil, pending, booked, reason); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    playerID,
