@@ -2259,6 +2259,7 @@ frozenEntries[].event.canceled	bool
 frozenEntries[].event.cantBeRegenerated	bool
 frozenEntries[].event.cardId	custom(uuid.UUID)
 frozenEntries[].event.commanderAnswer	number:uint8
+frozenEntries[].event.conniveExtraDraws	number:int
 frozenEntries[].event.copySource	custom(uuid.UUID)
 frozenEntries[].event.copyUntilEndOfTurn	bool
 frozenEntries[].event.counterDelta	number:int
@@ -27131,6 +27132,7 @@ pendingChoices[].replacementResume.event.canceled	bool
 pendingChoices[].replacementResume.event.cantBeRegenerated	bool
 pendingChoices[].replacementResume.event.cardId	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.commanderAnswer	number:uint8
+pendingChoices[].replacementResume.event.conniveExtraDraws	number:int
 pendingChoices[].replacementResume.event.copySource	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.copyUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.counterDelta	number:int

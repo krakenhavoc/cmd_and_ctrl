@@ -1254,6 +1254,7 @@ steps then-steps/braids-arisen-nightmare-consequence
 steps then-steps/cease-gain-and-draw
 steps then-steps/cirdan-the-shipwright-draws
 steps then-steps/court-of-ambition-loss
+steps then-steps/cyclonus-connive-draw-and-discard
 steps then-steps/cyclonus-connive-rest
 steps then-steps/damocles-base-lose-and-draw
 steps then-steps/dawn-of-a-new-age-draw
@@ -1356,6 +1357,8 @@ tail claim-jumper/repeat
 tail clash-of-elements/damage-owner-if-tucked
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
+tail connive/each
+tail connive/x
 tail copy-and-cast/cast-copies-then-exile-self
 tail cori-steel-cutter/offer-attach
 tail counter/double-if-grew
@@ -1380,6 +1383,7 @@ tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
 tail currency-converter/token-for-graveyarded-card
 tail curse-of-the-swine/boar-per-exiled
+tail cyclonus/connive
 tail dack-fayden-helping-hand/shuffle-goad-and-give
 tail dain-ironfoot/axe-created
 tail damage-steps/next

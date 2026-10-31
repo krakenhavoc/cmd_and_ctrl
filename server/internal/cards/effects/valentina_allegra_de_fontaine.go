@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Valentina Allegra de Fontaine — Legendary Creature — Human Spy Villain
 // {2}{B}, 2/3 (Marvel Super Heroes Commander, #4455):
@@ -48,15 +44,7 @@ func init() {
 			Cost:         TapCost(),
 			Targets:      TargetCreature("target Hero you control", YouControl(), HasSubtype("Hero")),
 			SorcerySpeed: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{t.ID}}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:       theTargetCreatureConnives,
 		}},
 	})
 }

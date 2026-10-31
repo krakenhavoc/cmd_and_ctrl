@@ -29,9 +29,14 @@ import (
 // Each creature has connived once its discard and its counter are done
 // (CR 701.50f), and that is game.EventConnived (#4641): emitted per
 // creature, on every branch, by the discard's continuation. Iron Monger
-// watches it ("whenever a creature you control connives"). Ledger Shredder
-// and Cyclonus run their own connive and emit it from their own
-// continuations.
+// watches it ("whenever a creature you control connives"). Cyclonus runs
+// its own draw and discard and emits it from its own continuation.
+//
+// Connive is an event a replacement can apply to (#4589,
+// game.ConniveForEffect): every connive opens its CR 614 window first and
+// draws and discards from a registered tail with what the window settled on,
+// the cards a replacement has the player draw first included. Leader,
+// Super-Genius is the replacement (DrawACardThenConniveInstead).
 
 // ConniveEach makes every creature in `ids` connive in turn for
 // `controller`.
@@ -50,23 +55,66 @@ func conniveChain(g *game.Game, _ *game.StackItem, controller uuid.UUID, ids []u
 }
 
 // conniveNext makes the first of `ids` connive and, from the discard's
-// continuation, the rest. The creatures still to go ride the discard as its
-// Carry (#4253), so a table waiting on the discard is a restore point; the
+// continuation, the rest. Connive is an event a replacement can apply to
+// (#4589, game.ConniveForEffect), so the creature connives from
+// conniveEachTail, which the window runs once it has settled; the
+// creatures still to go ride the tail's Carry and then the discard's (#4253),
+// so a table waiting on the window or the discard is a restore point. The
 // creature conniving is the prompt's source.
 func conniveNext(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	creature, rest := ids[0], ids[1:]
-	if err := g.DrawNForEffect(controller, 1); err != nil {
+	return g.ConniveForEffect(controller, ids[0], 1, game.KeyedTail{
+		Ref:    conniveEachTail,
+		Player: controller,
+		Carry:  append([]uuid.UUID(nil), ids...),
+	})
+}
+
+// conniveEachTail is one creature of a chain connived, or not: Carry is the
+// creature and then the ones still to go. A tail told nothing connived (N
+// is 0: the window cancelled it) goes on to the next creature. An on-disk
+// key: never renamed, never reused.
+//
+// Registered in init, not at package level: the answer connives the next
+// creature, so it refers to itself.
+var conniveEachTail game.TailRef
+
+func init() {
+	conniveEachTail = game.RegisterTail("connive/each", func(g *game.Game, o game.TailOutcome) error {
+		carry := o.Tail.Carry
+		if len(carry) == 0 {
+			return nil
+		}
+		if o.Tail.N <= 0 {
+			return conniveNext(g, o.Tail.Player, carry[1:])
+		}
+		return conniveDrawAndDiscard(g, o.Tail.Player, carry[0], o.Amount, o.Tail.N,
+			"Connive: discard a card", conniveDiscarded, carry[1:])
+	})
+}
+
+// conniveDrawAndDiscard is connive's draw and discard once its window has
+// settled (CR 701.50a): the cards a replacement has the player draw first
+// ("instead you draw a card, then that creature connives"), the connive's own
+// `n` cards, and then the discard of `n`, whose continuation puts the counters
+// on and says the creature has connived. Shared by every conniving card.
+func conniveDrawAndDiscard(g *game.Game, controller, creature uuid.UUID, extraDraws, n int, question string, then game.DiscardThen, carry []uuid.UUID) error {
+	for range extraDraws {
+		if err := g.DrawNForEffect(controller, 1); err != nil {
+			return err
+		}
+	}
+	if err := g.DrawNForEffect(controller, n); err != nil {
 		return err
 	}
 	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   controller,
 		Source:   creature,
-		N:        1,
-		Question: "Connive: discard a card",
-	}, conniveDiscarded, rest)
+		N:        n,
+		Question: question,
+	}, then, carry)
 }
 
 // conniveDiscarded puts the +1/+1 counter for a nonland card discarded and
@@ -111,22 +159,28 @@ type ConniveX struct {
 	X          int
 }
 
-// Apply draws, then queues the discard whose continuation adds counters.
+// Apply opens the connive's window (game.ConniveForEffect); connive X is
+// a connive, so Leader replaces it (#4589).
 func (c ConniveX) Apply(ctx *Context) error {
 	if c.X <= 0 {
 		return nil
 	}
-	g := ctx.Game
-	if err := (DrawCards{Player: c.Controller, N: c.X}).Apply(ctx); err != nil {
-		return err
-	}
-	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-		Player:   c.Controller,
-		Source:   c.Creature,
-		N:        c.X,
-		Question: "Connive: discard cards",
-	}, conniveXDiscarded, []uuid.UUID{c.Creature})
+	return ctx.Game.ConniveForEffect(c.Controller, c.Creature, c.X, game.KeyedTail{
+		Ref:    conniveXTail,
+		Player: c.Controller,
+		Carry:  []uuid.UUID{c.Creature},
+	})
 }
+
+// conniveXTail draws and discards for a connive X that happened. An on-disk
+// key: never renamed, never reused.
+var conniveXTail = game.RegisterTail("connive/x", func(g *game.Game, o game.TailOutcome) error {
+	if o.Tail.N <= 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return conniveDrawAndDiscard(g, o.Tail.Player, o.Tail.Carry[0], o.Amount, o.Tail.N,
+		"Connive: discard cards", conniveXDiscarded, []uuid.UUID{o.Tail.Carry[0]})
+})
 
 // conniveXDiscarded puts a +1/+1 counter on the creature for each nonland
 // card discarded. An on-disk key: never renamed, never reused.
@@ -149,6 +203,20 @@ var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discard
 	g.ConnivedForEffect(creature, r.Player)
 	return nil
 })
+
+// theTargetCreatureConnives is "target creature connives": the first
+// creature the ability targeted connives for its controller (Valentina,
+// Leader, Super-Genius). A target gone by now has no entry and nothing
+// connives (CR 608.2b).
+func theTargetCreatureConnives(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{t.ID}}.Apply(ctx)
+		}
+	}
+	return nil
+}
 
 // WhenThisEntersItConnives is "When this creature enters, it connives"
 // (A.I.M. Scientists, Red Room Recruit): ConniveEach for the one creature
@@ -179,4 +247,45 @@ func ACreatureYouControlConnived(ev game.Event, source *game.Card, _ game.Charac
 // one after another).
 func WheneverACreatureYouControlConnives(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventConnived, ACreatureYouControlConnived, label, effect)
+}
+
+// DrawACardThenConniveInstead is "if a creature you control would connive,
+// instead you draw a card, then that creature connives" (Leader,
+// Super-Genius, #4589, CR 614.1a).
+//
+// Connive is an event (game.ConniveForEffect): the replacement adds a card
+// drawn first and leaves the creature conniving, with the "N" dropped, since
+// "that creature connives" is a plain connive (CR 701.50a). It gets one
+// opportunity on the event and the modified event after it (CR 614.5), so one
+// Leader is one extra card however the connive is made; a second Leader is a
+// second effect and draws a second (CR 616.1f). It applies to a creature of
+// yours conniving, whoever's effect makes it, and not to an opponent's
+// creature. The event's Actor is the controller as the creature connived
+// (CR 701.50b), which is whose draw it is.
+func DrawACardThenConniveInstead(label string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventKeywordAction},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventKeywordAction || ev.KeywordAction != game.KeywordActionConnive || src == nil {
+				return false
+			}
+			if ev.Actor != src.Controller {
+				return false
+			}
+			if c, ok := g.LookupCardForEffect(ev.Source); ok {
+				return c.IsCreature()
+			}
+			return true
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.ConniveExtraDraws++
+			ev.KeywordActionCount = 1
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label:    label,
+		RowLabel: "If a creature you control would connive, instead you draw a card, then that creature connives.",
+	}
 }
