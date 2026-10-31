@@ -7190,6 +7190,23 @@ answers CR 610.3a/b — an "until" whose event has already happened
 exiles nothing. See [palace_jailer.go](../server/internal/cards/effects/palace_jailer.go)
 and [ossification.go](../server/internal/cards/effects/ossification.go).
 
+**An "until" that returns a card to a HAND (#4585, CR 610.3).** The return
+sends an object to "its previous zone", so a card exiled out of a hand
+(Cloak and Dagger, Entwined's "exile a nonland card from their hand …
+until Cloak and Dagger leave the battlefield") goes back to its owner's
+hand, not the battlefield. `ExileUntil` is the battlefield form. For the
+hand form, exile the card with `ChooseFromRevealedHand{Exile: true,
+Linked: true}` (the card is exiled with the source object, CR 607.2a) and
+in its `Then` call `ScheduleUntilReturnForEffect(card, game.UntilReturn{
+Leaves: game.ObjectRef(card.ExiledWith), ToHand: true, …})`. The record
+rides `Params.Name`, so no snapshot field was added.
+`ChooseFromRevealedHand.Revealed` says an earlier instruction already
+revealed the hand, so the pick does not reveal it twice. A related
+target ("the creature they control", "up to one target creature that
+player controls") needs no new relation: `ControlledByTargetsController`
+takes a PLAYER anchor too (Down for Repairs, Ravager of the Fells,
+Cloak and Dagger, Entwined).
+
 **Adventure cards (CR 715, #719, ADR 0034 step 6).** A card file writes
 nothing for the lifecycle — the engine owns it
 ([game/adventure.go](../server/internal/game/adventure.go)). What a card

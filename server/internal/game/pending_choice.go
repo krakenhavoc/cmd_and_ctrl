@@ -3325,6 +3325,11 @@ type RevealedHandDiscard struct {
 	// Optional is "You may choose": the chooser may choose nothing
 	// (Nightsnare, Extract the Truth).
 	Optional bool
+	// Revealed says the hand was already revealed this resolution (Cloak
+	// and Dagger, Entwined reveals it, then asks whether to take a card
+	// from it), so the pick does not reveal it a second time. Read when
+	// the pick is raised; never stored.
+	Revealed bool
 	// Look is "Look at target opponent's hand" rather than "reveals
 	// their hand": only the chooser learns the hand (Word of Command,
 	// ADR 0166).
