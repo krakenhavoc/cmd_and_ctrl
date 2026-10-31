@@ -164,13 +164,10 @@ func (r *TargetTotal) valueOf(g *Game, c Card) (int, bool) {
 	}
 	switch r.Stat {
 	case TargetTotalManaValue:
-		// CR 708.2a: a face-down permanent has no mana cost, so its
-		// mana value is 0 (CR 202.3a). Its card's own cost is the face
-		// it hides, which the total must not read, and which the view
-		// that ships these values must not tell.
-		if c.faceDownPermanent() {
-			return 0, true
-		}
+		// A face-down permanent reads 0 here (CR 708.2a, CR 202.3a):
+		// ManaValueForEffect does not look through the face-down state,
+		// so neither this total nor the view that ships its values can
+		// tell what the permanent hides.
 		return g.ManaValueForEffect(c)
 	}
 	return 0, false

@@ -1348,9 +1348,11 @@ the picks' total of one statistic may not exceed `Max`. `Stat` is a closed enum 
 for TargetSameness's reason: the clause is reachable from a stack item and a paused pick_target frame, and a func there
 is a new closure route (testdata/closure_fields.txt is untouched). The value is `Game.ManaValueForEffect`, the read
 `ManaValueLE` uses: {X} is zero off the stack, an object with no mana cost is zero, and a card whose cost the engine
-cannot read has no value and fits no total, as it meets no "mana value N or less". One read differs: a face-down
-permanent is zero (CR 708.2a gives it no mana cost), where `ManaValueForEffect` would read the cost of the card it
-hides, and the view would then tell every seat what that card is. The same four readers answer it:
+cannot read has no value and fits no total, as it meets no "mana value N or less". One read differed when this was
+written: a face-down permanent is zero (CR 708.2a gives it no mana cost), where `ManaValueForEffect` read the cost of the
+card it hides, and the view would then tell every seat what that card is. #4682 fixed that at the source, so
+`ManaValueForEffect` is zero for a face-down permanent too and the total has no special case. The same four readers
+answer it:
 
 | Reader | What it does with the total |
 |---|---|

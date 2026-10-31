@@ -787,9 +787,7 @@ func SourceCharacteristicsX(c *Card, x int) *Characteristic {
 // the announced X of a spell on the stack, zero everywhere else. A
 // face-down permanent has no mana cost (CR 708.2a), so it is 0.
 func stampSourceFacts(ch *Characteristic, c *Card, x int) {
-	if c.FaceDown {
-		ch.SourceManaValue, ch.SourceManaValueKnown = 0, true
-	} else if cost, err := ParseCost(manaCostForValue(*c)); err == nil {
+	if cost, err := ParseCost(manaCostForValue(*c)); err == nil {
 		ch.SourceManaValue, ch.SourceManaValueKnown = cost.ManaValueWithX(x), true
 	} else {
 		ch.SourceManaValue, ch.SourceManaValueKnown = 0, false

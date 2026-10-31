@@ -266,15 +266,6 @@ func (p PermanentInfo) TextReader() *Card {
 	return textReaderOf(textWordsFromEntries(p.TextWords))
 }
 
-// permanentManaValue is PermanentInfo.ManaValue's reading of a
-// battlefield card.
-func permanentManaValue(c *Card) int {
-	if c.FaceDown {
-		return 0
-	}
-	return c.ManaValue()
-}
-
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
 // caller decides whether the layer cache is fresh enough.
 func permanentInfoOf(c *Card) PermanentInfo {
@@ -295,7 +286,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		ChosenOption:   c.ChosenOption,
 		NamedTribe:     c.NamedTribe,
 		ChosenNumber:   c.ChosenNumber,
-		ManaValue:      permanentManaValue(c),
+		ManaValue:      c.ManaValue(),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
 		Suspected:      c.Suspected,
 		Renowned:       c.Renowned,

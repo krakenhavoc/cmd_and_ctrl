@@ -5769,7 +5769,7 @@ field directly. Seven kinds, in two families:
   rules put it there (#1209, [ADR 0082's 2026-09-23
   amendment](decisions/0082-casting-face-down-and-turning-face-up.md)).
 
-Four things a card therefore never has to do:
+Five things a card therefore never has to do:
 
 - **Who may look is written into `KnownBy`, not kept separately.** The
   face-down landing (`applyFaceDownLandingLocked`) REPLACES the
@@ -5788,6 +5788,14 @@ Four things a card therefore never has to do:
   replacement, activated or mana ability, fires no ETB hook and has no
   printed keywords. Turning it face up needs no restore step — the
   key simply answers again.
+- **Its mana value is zero.** `Card.ManaValue`, `Card.ParsedManaValue` and
+  `Game.ManaValueForEffect`, and so `ManaValueLE`, `ManaValueGE`, the X
+  bound on a target clause and the protection source's value, all answer 0
+  for a CR 708.2 object, because `manaCostForValue` gives it no cost
+  (CR 708.2a, CR 202.3a; #4682). Read a mana value through them, never
+  `Card.ManaCost`, which is the card it hides: that field is only for
+  paying to turn the permanent face up (CR 701.40b, CR 702.37e). A card
+  face down in exile is not a CR 708.2 object and keeps its printed cost.
 - **`MoveCard` clears the state on every zone change** (CR 400.7), so
   a new mover is covered by the rule and not by a code review; the
   DESTINATION sets it back if the destination is itself a face-down
