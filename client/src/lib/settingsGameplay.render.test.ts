@@ -245,6 +245,13 @@ describe("Settings → Gameplay: value instants (#2877)", () => {
     expect(box(openGameplay()).disabled).toBe(true);
   });
 
+  it("says an answer counts only when it fits what is happening (#4734)", () => {
+    const text = advanced(openGameplay()).textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toContain(
+      "A card that answers only certain things, like Ranger-Captain of Eos, counts only when one of them is happening: a threat to you or your permanents, a combat you are in, or an opponent's spell. A card the game knows nothing about always counts.",
+    );
+  });
+
   it("says where a value instant still stops you", () => {
     const text = advanced(openGameplay()).textContent?.replace(/\s+/g, " ") ?? "";
     expect(text).toContain(

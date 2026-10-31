@@ -1310,7 +1310,10 @@
                   when you have one of these. Mana abilities and land drops never count. In combat,
                   crewing, animating a land or granting a keyword counts as a targeted ability. A
                   value instant, like Opt or Brainstorm, counts in combat and at an opponent's end
-                  step, and on an opponent's spell only when you tick it above.
+                  step, and on an opponent's spell only when you tick it above. A card that answers
+                  only certain things, like Ranger-Captain of Eos, counts only when one of them is
+                  happening: a threat to you or your permanents, a combat you are in, or an
+                  opponent's spell. A card the game knows nothing about always counts.
                 </p>
               </fieldset>
 

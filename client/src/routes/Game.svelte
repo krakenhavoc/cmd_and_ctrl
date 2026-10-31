@@ -227,7 +227,14 @@
     clampAttackLife,
     type AttackLifePrompt,
   } from "../lib/attackLife";
-  import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
+  import {
+    hasMatchedResponse,
+    hasPlay,
+    hasResponse,
+    hasUnmatchedAnswer,
+    keyWindow,
+    type ResponseCategories,
+  } from "../lib/responseWindow";
   import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
     attackAllParams,
@@ -754,12 +761,18 @@
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
       hasResponse: respond,
       hasPlay: hasPlay(view, viewerID, cats),
+      // #4734: rule 7's new clause. A move the server marked
+      // answers_now: true in an enabled category holds any empty-stack
+      // window, not only the key windows.
+      matchedResponse: hasMatchedResponse(view, viewerID, cats),
       // #2877: only for the pass chip's wording, never the verdict.
       heldValueInstant:
         !respond &&
         !cats.valueInstant &&
         !stackEmpty(view) &&
         hasResponse(view, viewerID, { ...cats, valueInstant: true }),
+      // #4734: likewise, a held answer the server says fits nothing here.
+      heldUnmatchedAnswer: !respond && hasUnmatchedAnswer(view, viewerID, cats),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.
       engineMayMissMana: engineMayMissMana(view, viewerID),
       combatWindow: kw.combat,

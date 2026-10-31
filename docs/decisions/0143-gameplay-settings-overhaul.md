@@ -80,7 +80,7 @@ A player who wants a stop at an opponent's upkeep or beginning of combat ticks i
    - You have a response → hold.
    - Bluff armed → bluff.
    - Otherwise → pass.
-7. Empty stack, in a combat or opponent-end-step key window: a response → hold; an instant bluff → bluff. This runs in Smart and Careful.
+7. Empty stack, in a combat or opponent-end-step key window: a response → hold; an instant bluff → bluff. This runs in Smart and Careful. In any other window, an answer the server marked `answers_now: true` (#4734) → hold, with no bluff.
 8. The active player's column ticks this step → hold, unless Skip empty stops finds nothing to do. `engineMayMissMana` still counts as something to do (ADR 0118 decision 8).
 9. Otherwise → pass.
 
@@ -303,6 +303,10 @@ Each question lists the recommended option first. The owner chose (a), the recom
 ## Amendment 2026-10-30 — value instants on an opponent's spell (#2877)
 
 The owner decided [#2877](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2877) on 2026-10-30 (option (a)): a value instant (Opt, Brainstorm) no longer stops Smart on an opponent's stack item by default. §3.1's "What counts as a response" list gains a sixth checkbox under Instants and flash, `gameplay.respondValueInstants` (schema v31, synced, off by default): **Value instants (Opt, Brainstorm) on an opponent's spell**. It narrows Instants and flash and is disabled while that is off, so §2.5's "read in every mode, never greyed out" stays true of every control that is read. §3.2's help for the list gains one sentence: "A value instant, like Opt or Brainstorm, counts in combat and at an opponent's end step, and on an opponent's spell only when you tick it above." §2.2's promise is unchanged: combat and an opponent's end step still stop for a value instant. The rules are in [ADR 0009's #2877 amendment](0009-smart-priority-autopass.md#amendment-a-value-instant-does-not-stop-you-on-an-opponents-spell-2877).
+
+## Amendment 2026-10-31 — an answer counts only when it fits the window (#4734)
+
+[ADR 0009's amendment of 2026-10-30](0009-smart-priority-autopass.md#amendment-of-2026-10-30-4734-a-held-answer-stops-you-only-when-it-can-answer-now) (slice 3, the browser) changes what "a response" means in rules 4 to 8 for a card that declares what it answers. The server says, on each such move, whether it can answer what is happening now (`answers_now`); the client reads that before its own flags. `true` is a response in the same category as before, `false` is neither a response nor something to play outside your own sorcery window, and absent is classed as before. Only rule 7 changes shape. After its combat and opponent-end-step test it gains one clause: with the stack empty, in any other window (an opponent's upkeep, the first-strike damage step), a move marked `answers_now: true` in an enabled category → hold. A move with no verdict never holds there, and nothing bluffs at it. Careful and Smart both run it, Manual holds everywhere, and Skip to my turn passes everything, as in §2.5. §3.2's help for the list gains one sentence: "A card that answers only certain things, like Ranger-Captain of Eos, counts only when one of them is happening: a threat to you or your permanents, a combat you are in, or an opponent's spell. A card the game knows nothing about always counts." The dock's chip, when the pass is because a held answer does not fit, reads "Passed for you: nothing you hold answers this", with its Undo (`passReason.ts`, gate `heldUnmatchedAnswer`, which the decision never reads).
 
 ## Appendix: the audit
 

@@ -40,7 +40,13 @@
 //     response → hold; an instant bluff (Smart only) → bluff; else
 //     fall through. ADR 0143 §2.2: this runs in Smart and Careful
 //     alike, with no switch, so no setting can cost the viewer a
-//     window they can respond in.
+//     window they can respond in. Then, in any other window (an
+//     opponent's upkeep, the first-strike damage step), a move the
+//     server marked `answers_now: true` in an enabled category →
+//     hold (ADR 0009's amendment of 2026-10-30, #4734). That clause
+//     reads only a matched answer, so a move with no verdict, which
+//     rule 7 leaves to the key windows, never holds here; and nothing
+//     bluffs at it.
 //  8. The active player's column ticks this step (ADR 0143 §2.3:
 //     stepStops on the viewer's turn, stepStopsOpponents otherwise;
 //     stepStopFor) → hold, unless "only when I can act"
@@ -51,6 +57,12 @@
 //     a manual mana source is out counts as something to play (ADR
 //     0118 owner decision 8, engineMayMissMana).
 //  9. Otherwise → pass.
+//
+// What counts as "a response" in rules 6 to 8 reads the server's
+// `answers_now` first (responseWindow.ts, #4734): an answer that cannot
+// answer what is happening is neither a response nor a play outside the
+// viewer's own sorcery window, so rule 6 passes it (after the stack
+// hold) and rule 8 does not tick a step for it.
 //
 // Bluffing is Smart's alone (ADR 0143 §4.3). Careful stops at every
 // opponent item anyway, Manual stops everywhere, and the dock's bluff
@@ -151,6 +163,20 @@ export interface AutopassGates {
   // instant to respond with"), so the player knows why Opt did not
   // stop them. Absent is false.
   heldValueInstant?: boolean;
+  // hasMatchedResponse(view, viewerID, categories) — the viewer holds a
+  // move the server marked `answers_now: true` in an enabled category
+  // (responseWindow.ts, #4734). Rule 7's new clause reads it: in an
+  // empty-stack window that is neither a combat nor an opponent's-end-step
+  // key window, a matched answer holds. Absent is false.
+  matchedResponse?: boolean;
+  // #4734: the viewer holds a move that would have counted as a response
+  // but the server says answers nothing in this window, and nothing else
+  // holds it (`!hasResponse && hasUnmatchedAnswer`). The decision never
+  // reads it; it is only what passReason.ts says about the pass,
+  // "nothing you hold answers this", so the player knows why their
+  // Ranger-Captain or Flawless Maneuver did not stop them. Absent is
+  // false.
+  heldUnmatchedAnswer?: boolean;
   // engineMayMissMana(view, viewerID) — the viewer's own main phase,
   // a spell in hand the move list leaves out for mana alone, and a
   // manual mana source on the battlefield (ADR 0118 owner decision 8,
@@ -257,6 +283,13 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
     if (g.hasResponse) return "hold";
     if (smart && g.bluffInstant) return bluff;
   }
+  // #4734 (ADR 0009's amendment of 2026-10-30): any other empty-stack
+  // window holds for an answer the server says fits it, such as a
+  // restrict row in an opponent's upkeep or a survive row in the
+  // first-strike damage step. The server judged the window, so the
+  // verdict is the whole test: a move with no verdict is not matched,
+  // and a bluff has no place here.
+  if (g.matchedResponse) return "hold";
 
   // 8. The stops grid. stepStopsOnlyWhenCanAct (#2871; until then
   // part of the old smartAutoPass setting) is the escape hatch: a stop the viewer

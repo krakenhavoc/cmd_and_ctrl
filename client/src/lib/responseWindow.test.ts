@@ -4,8 +4,10 @@ import {
   ALL_RESPONSES,
   DEFAULT_RESPONSES,
   classifyMove,
+  hasMatchedResponse,
   hasPlay,
   hasResponse,
+  hasUnmatchedAnswer,
   inCombatWindow,
   inSorceryWindow,
   isDefending,
@@ -576,5 +578,248 @@ describe("value instants (#2877)", () => {
   it("a ticked step with the stack empty counts it like any instant", () => {
     const upkeep = snap({ step: "upkeep", active: 1, holder: 0, moves: [pass, opt] });
     expect(hasPlay(upkeep, "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+});
+
+// #4734, ADR 0009's amendment of 2026-10-30: the server says on each cast,
+// activation and mana move that declares what it answers whether it can
+// answer what is happening now. classifyMove reads that before the flags.
+describe("answers_now (#4734)", () => {
+  const cast = (answers_now?: boolean, extras: Partial<LegalMoveView> = {}) =>
+    move("cast", { source: "maneuver", answers_now, ...extras });
+  const act = (answers_now?: boolean, extras: Partial<LegalMoveView> = {}) =>
+    move("activate", { source: "captain", answers_now, ...extras });
+  const mana = (answers_now?: boolean, extras: Partial<LegalMoveView> = {}) =>
+    move("mana", { source: "altar", answers_now, ...extras });
+  // An opponent's spell on the stack, the viewer holding priority.
+  const oppSpell = (moves: LegalMoveView[], step = "precombat_main") =>
+    snap({ step, active: 1, holder: 0, moves, stackItems: [stackItem("p1")] });
+
+  describe("classifyMove", () => {
+    it("true is a response: a cast is an instant, an activation or a mana move an ability", () => {
+      expect(classifyMove(cast(true), false)).toBe("instant");
+      expect(classifyMove(act(true), false)).toBe("ability");
+      expect(classifyMove(mana(true), false)).toBe("ability");
+    });
+
+    it("true holds with none of the old flags set, and wherever the flags would not", () => {
+      // An untargeted activation with no interacts is "untargeted" and off
+      // by default; the server's verdict makes it an ability.
+      expect(classifyMove(act(), false)).toBe("untargeted");
+      expect(classifyMove(act(true), false)).toBe("ability");
+      // A combat ability outside combat is untargeted; matched, it is not.
+      const crew = act(undefined, { combat_interacts: true });
+      expect(classifyMove(crew, false, undefined, null, false)).toBe("untargeted");
+      expect(classifyMove({ ...crew, answers_now: true }, false, undefined, null, false)).toBe(
+        "ability",
+      );
+    });
+
+    it("true on a move that targets the stack is still a counter", () => {
+      expect(classifyMove(cast(true, { targets_stack: true }), false)).toBe("counter");
+      expect(classifyMove(act(true, { targets_stack: true }), false)).toBe("counter");
+    });
+
+    it("false is neither a response nor a play, whatever the old flags say", () => {
+      expect(classifyMove(cast(false), false)).toBe("none");
+      expect(classifyMove(act(false), false)).toBe("none");
+      expect(classifyMove(act(false, { has_targets: true }), false)).toBe("none");
+      expect(classifyMove(act(false, { interacts: true }), false)).toBe("none");
+      expect(
+        classifyMove(act(false, { combat_interacts: true }), false, undefined, null, true),
+      ).toBe("none");
+      expect(classifyMove(mana(false, { interacts: true }), false)).toBe("none");
+      expect(
+        classifyMove(cast(false, { value_only: true }), false, undefined, null, false, false, true),
+      ).toBe("none");
+    });
+
+    it("absent is classed exactly as before", () => {
+      expect(classifyMove(cast(), false)).toBe("instant");
+      expect(classifyMove(act(undefined, { interacts: true }), false)).toBe("ability");
+      expect(classifyMove(act(undefined, { has_targets: true }), false)).toBe("ability");
+      expect(classifyMove(mana(undefined, { interacts: true }), false)).toBe("ability");
+      expect(classifyMove(mana(), false)).toBe("none");
+      expect(
+        classifyMove(
+          cast(undefined, { value_only: true }),
+          false,
+          undefined,
+          null,
+          false,
+          false,
+          true,
+        ),
+      ).toBe("valueInstant");
+    });
+
+    it("a null on the wire is absent", () => {
+      const m = {
+        ...act(undefined, { interacts: true }),
+        answers_now: null,
+      } as unknown as LegalMoveView;
+      expect(classifyMove(m, false)).toBe("ability");
+    });
+
+    it("the viewer's own sorcery window still comes first: a cast or activation is a play", () => {
+      for (const v of [true, false, undefined]) {
+        expect(classifyMove(cast(v), true), String(v)).toBe("play");
+        expect(classifyMove(act(v), true), String(v)).toBe("play");
+        // Mana is never a play, matched or not.
+        expect(classifyMove(mana(v), true), String(v)).toBe("none");
+      }
+    });
+
+    it("an activation of another player's permanent is still none", () => {
+      const m = act(true, { source: "theirs" });
+      expect(classifyMove(m, false, new Map([["theirs", "p1"]]), "p0")).toBe("none");
+    });
+  });
+
+  describe("hasResponse and hasPlay", () => {
+    it("an unmatched answer is no response to an opponent's spell; a matched one is", () => {
+      const unmatched = oppSpell([pass, act(false, { interacts: true })]);
+      const matched = oppSpell([pass, act(true, { interacts: true })]);
+      expect(hasResponse(unmatched, "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasResponse(matched, "p0", DEFAULT_RESPONSES)).toBe(true);
+    });
+
+    it("a held instant with a verdict follows the verdict, one without keeps stopping", () => {
+      expect(hasResponse(oppSpell([pass, cast(false)]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasResponse(oppSpell([pass, cast(true)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(hasResponse(oppSpell([pass, cast()]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    });
+
+    it("another move that is a response still holds beside an unmatched one", () => {
+      const s = oppSpell([pass, cast(false), cast(undefined, { source: "bolt" })]);
+      expect(hasResponse(s, "p0", DEFAULT_RESPONSES)).toBe(true);
+    });
+
+    it("the categories still filter a matched move", () => {
+      const s = oppSpell([pass, cast(true)]);
+      expect(hasResponse(s, "p0", { ...DEFAULT_RESPONSES, instant: false })).toBe(false);
+      expect(hasResponse(s, "p0", only("instant"))).toBe(true);
+      const a = oppSpell([pass, act(true)]);
+      expect(hasResponse(a, "p0", { ...DEFAULT_RESPONSES, ability: false })).toBe(false);
+      // A matched activation is an ability, not a value ability.
+      expect(hasResponse(a, "p0", only("untargeted"))).toBe(false);
+      expect(hasResponse(a, "p0", only("ability"))).toBe(true);
+      const c = oppSpell([pass, cast(true, { targets_stack: true })]);
+      expect(hasResponse(c, "p0", only("counter"))).toBe(true);
+      expect(hasResponse(c, "p0", { ...DEFAULT_RESPONSES, counter: false })).toBe(false);
+    });
+
+    it("a ticked step: an unmatched answer is not something to play, a matched one is", () => {
+      const upkeep = (moves: LegalMoveView[]) =>
+        snap({ step: "upkeep", active: 1, holder: 0, moves });
+      expect(
+        hasPlay(upkeep([pass, act(false, { interacts: true })]), "p0", DEFAULT_RESPONSES),
+      ).toBe(false);
+      expect(hasPlay(upkeep([pass, act(true)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(hasPlay(upkeep([pass, cast(false)]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasPlay(upkeep([pass, cast()]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    });
+
+    it("the viewer's own main phase is still a play whatever it matches", () => {
+      for (const v of [true, false]) {
+        const s = snap({ moves: [pass, cast(v), act(v)] });
+        expect(hasPlay(s, "p0", DEFAULT_RESPONSES), String(v)).toBe(true);
+        // But it is no response: nothing answers anything with an empty stack.
+        expect(hasResponse(s, "p0", DEFAULT_RESPONSES), String(v)).toBe(false);
+      }
+    });
+
+    it("a declared attack on someone else leaves a combat ability unmatched", () => {
+      const attack = snap({
+        step: "declare_attackers",
+        active: 1,
+        holder: 0,
+        moves: [pass, cast(false)],
+        battlefield: [card("a", { controller: "p1", attacking_target: "p1x" })],
+      });
+      expect(keyWindow(attack, "p0").combat).toBe(true);
+      expect(hasResponse(attack, "p0", DEFAULT_RESPONSES)).toBe(false);
+    });
+  });
+
+  describe("hasMatchedResponse", () => {
+    const upkeep = (moves: LegalMoveView[] | undefined) =>
+      snap({ step: "upkeep", active: 1, holder: 0, moves });
+
+    it("is true for a move the server matched, in an enabled category", () => {
+      expect(hasMatchedResponse(upkeep([pass, act(true)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(hasMatchedResponse(upkeep([pass, cast(true)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(hasMatchedResponse(upkeep([pass, mana(true)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(
+        hasMatchedResponse(upkeep([pass, act(true)]), "p0", {
+          ...DEFAULT_RESPONSES,
+          ability: false,
+        }),
+      ).toBe(false);
+    });
+
+    it("is false for a move with no verdict, however it would have been classed", () => {
+      expect(hasMatchedResponse(upkeep([pass, cast()]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(
+        hasMatchedResponse(
+          upkeep([pass, act(undefined, { interacts: true })]),
+          "p0",
+          DEFAULT_RESPONSES,
+        ),
+      ).toBe(false);
+    });
+
+    it("is false for an unmatched move, and for no move list, no priority or no seat", () => {
+      expect(hasMatchedResponse(upkeep([pass, act(false)]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasMatchedResponse(upkeep(undefined), "p0", DEFAULT_RESPONSES)).toBe(false);
+      const away = snap({ step: "upkeep", active: 1, holder: 1, moves: [pass, act(true)] });
+      expect(hasMatchedResponse(away, "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasMatchedResponse(null, "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasMatchedResponse(upkeep([act(true)]), null, DEFAULT_RESPONSES)).toBe(false);
+    });
+
+    it("is false in the viewer's own sorcery window, where a cast or activation is a play", () => {
+      expect(
+        hasMatchedResponse(snap({ moves: [pass, cast(true), act(true)] }), "p0", DEFAULT_RESPONSES),
+      ).toBe(false);
+    });
+  });
+
+  describe("hasUnmatchedAnswer", () => {
+    it("is true for a held answer the server says answers nothing now", () => {
+      const s = oppSpell([pass, act(false, { interacts: true })]);
+      expect(hasUnmatchedAnswer(s, "p0", DEFAULT_RESPONSES)).toBe(true);
+      expect(hasUnmatchedAnswer(oppSpell([pass, cast(false)]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    });
+
+    it("is false when the move would not have counted anyway", () => {
+      // A value ability is untargeted, off by default; a value instant on a stack too.
+      expect(hasUnmatchedAnswer(oppSpell([pass, act(false)]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasUnmatchedAnswer(oppSpell([pass, mana(false)]), "p0", DEFAULT_RESPONSES)).toBe(
+        false,
+      );
+      // A category the player switched off.
+      expect(
+        hasUnmatchedAnswer(oppSpell([pass, cast(false)]), "p0", {
+          ...DEFAULT_RESPONSES,
+          instant: false,
+        }),
+      ).toBe(false);
+    });
+
+    it("is false for a matched move, a move with no verdict, and the sorcery window", () => {
+      expect(hasUnmatchedAnswer(oppSpell([pass, cast(true)]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasUnmatchedAnswer(oppSpell([pass, cast()]), "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(
+        hasUnmatchedAnswer(snap({ moves: [pass, cast(false)] }), "p0", DEFAULT_RESPONSES),
+      ).toBe(false);
+    });
+
+    it("is false without priority, a seat or a move list", () => {
+      const away = snap({ active: 1, holder: 1, moves: [pass, cast(false)] });
+      expect(hasUnmatchedAnswer(away, "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasUnmatchedAnswer(null, "p0", DEFAULT_RESPONSES)).toBe(false);
+      expect(hasUnmatchedAnswer(snap({ active: 1 }), "p0", DEFAULT_RESPONSES)).toBe(false);
+    });
   });
 });
