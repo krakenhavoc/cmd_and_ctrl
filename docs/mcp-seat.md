@@ -304,18 +304,60 @@ What to know about how they behave:
   default settings, and it also covers the seat's own turn. It stops at
   your main phases, any attack or block you are asked to declare, any
   choice, a mulligan, the loop notice, and a stack item you hold a response
-  to, unless every item on the stack is your own. It passes the rest, even with an instant in hand: upkeep, draw,
-  beginning of combat, combat damage, end of combat and end step of your
-  own turn, and every step of an opponent's turn that is not their end
-  step or combat. A response is what the browser counts: a counterspell,
-  an instant, an ability that targets or protects (a sacrifice outlet,
-  regeneration, a pump), a special action; in combat, crew or a manland
-  too. A land, a mana ability and a pure value ability (a fetch, Mind
-  Stone, cycling) are not. In a declared attack, and at an opponent's end
+  to, unless every item on the stack is your own. It passes the rest, even
+  with an instant in hand: upkeep, draw, beginning of combat, combat
+  damage, end of combat and end step of your own turn, and every step of an
+  opponent's turn that is not their end step or combat. The exception is a
+  move the server says can answer what is happening now (below), which
+  stops you in any step. In a declared attack, and at an opponent's end
   step, it stops only when you hold a response. Unlike `my_turn_or_stack`
   it is not cleared by the start of your turn, and it asks for every call,
   like the other mode. It is a shorter route to the same answers: if you
   hold something to cast in a step it passes, use `none`.
+
+  **A response is the server's call (#4734).** Each cast, activation and
+  mana move whose card declares what it answers ([ADR
+  0142](decisions/0142-declared-answers-on-catalog-abilities.md)) carries
+  `answers_now` in the move list: `true` when one of those answers fits the
+  window you are in, `false` when none does. The seat reads it before
+  anything else, and never works a threat or a combat out of the board
+  itself: `true` is a response, `false` is not, whatever else the move
+  looks like. What fits, in short ([ADR
+  0009](decisions/0009-smart-priority-autopass.md)'s amendment of
+  2026-10-30 has the tables):
+
+  - a protective answer (`protect`, `survive`, `pump`, `prevent`,
+    `sac_outlet`) fits an opponent's stack item that threatens you or yours,
+    or a combat that involves you: you or yours attacked, or a creature of
+    yours attacking or blocking in the step where it can still matter. It
+    does not fit a combat between other players or an empty end step;
+  - `restrict` (Ranger-Captain of Eos's "your opponents can't cast
+    noncreature spells this turn") fits an opponent's upkeep and an
+    opponent's spell on the stack, not an opponent's ability;
+  - a counterspell fits any opponent's item on the stack;
+  - a combat answer (`combat_grant`, `animate`, `makes_blocker`) fits a
+    combat that involves you, and `combat_grant` and `animate` also the
+    beginning of combat on your own turn;
+  - "Sacrifice this creature" fits while an opponent's item targets that
+    creature, or it is attacking or blocking.
+
+  A move with no `answers_now` is classed as before, and so is every move
+  when the server predates the field: a card that declares nothing (most
+  instants until ADR 0142's sweep declares them), a value ability, and a
+  `remove` effect. That is a counterspell, an instant, an ability that
+  targets or interacts, or a special action; in combat, crew or a manland
+  too. A land, a mana ability and a pure value ability (a fetch, Mind
+  Stone, cycling) are not, and nor is a value instant (Opt) against an
+  opponent's stack item. So a card that declares nothing still stops you
+  where it did: that costs a click, never a window.
+
+  **A matched answer stops you with the stack empty in any step** (ADR 0009
+  rule 7's new clause), not only in a declared attack and at an opponent's
+  end step: Ranger-Captain at each opponent's upkeep, a protective answer in
+  the first-strike damage step when your blocker is blocked. An unmatched
+  move stops you nowhere outside your main phases. The same frames, in
+  `server/internal/legal/testdata/smart_pass_agreement.json`, are asserted
+  by the browser and the seat, so the two cannot drift.
 
   Holding an instant (#4186) it matches the browser at its defaults. A
   stack that is entirely your own (your spell, your trigger, your upkeep
