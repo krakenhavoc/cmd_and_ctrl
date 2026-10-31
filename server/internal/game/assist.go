@@ -272,11 +272,7 @@ func (g *Game) assistFundsLocked(helper uuid.UUID, n int, spend ManaSpendContext
 	if n <= 0 || hp.ManaPool.CanPayFor(share, 0, spend) {
 		return nil, ParsedCost{}, n >= 0
 	}
-	plan, short, ok := g.autoTapTopUpLocked(helper, share, 0, spend, nil, 0)
-	if !ok || !g.planFundsLocked(hp, plan, short, share, 0, spend) {
-		return nil, ParsedCost{}, false
-	}
-	return plan, short, true
+	return g.autoTapFundedLocked(hp, share, 0, spend, nil, 0)
 }
 
 // assistCeilingLocked is the most generic mana `helper` could pay now,
@@ -481,8 +477,7 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 		return nil
 	}
 	if params.AutoTap {
-		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spend, excluded, WantedManaSourcesFor(card))
-		if ok && g.planFundsLocked(p, plan, short, cost, params.XValue, spend) {
+		if _, _, ok := g.autoTapFundedLocked(p, cost, params.XValue, spend, excluded, WantedManaSourcesFor(card)); ok {
 			return nil
 		}
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spend)}

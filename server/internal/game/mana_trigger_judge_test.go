@@ -189,7 +189,7 @@ func TestManaTriggerFiringsMatchWhatFires(t *testing.T) {
 		}
 	}
 
-	b.g.WithWriteLock(func() { b.g.fireManaTriggersLocked(prod, nil) })
+	b.g.WithWriteLock(func() { b.g.fireManaTriggersLocked(prod, nil, nil) })
 	got := map[token]int{}
 	for _, tok := range b.me.ManaPool.Units() {
 		got[token{tok.Source, tok.Color}]++
@@ -416,7 +416,7 @@ func TestManaTriggersExistLockedIsSoundForTheJudge(t *testing.T) {
 	}
 
 	// The executor takes the gate's no as an answer: it mints nothing.
-	g.WithWriteLock(func() { g.fireManaTriggersLocked(prod, nil) })
+	g.WithWriteLock(func() { g.fireManaTriggersLocked(prod, nil, nil) })
 	if got := me.ManaPool.Units(); len(got) != 0 {
 		t.Errorf("the executor minted %v on a board with no trigger", got)
 	}

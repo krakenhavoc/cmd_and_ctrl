@@ -2765,11 +2765,13 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// ADR 0118 §1: the plan pays only what the floating pool is
 	// missing, so mana already in the pool is spent first, and it is
 	// colour-picked against that shortfall (autotap_topup.go).
-	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
+	//
 	// #2461: and the plan, carried out, must fund the cost — asked on a
 	// clone before anything here is tapped, so a refusal leaves no land
-	// tapped and no mana floating.
-	if !ok || !g.planFundsLocked(p, plan, short, cost, params.XValue, spendCtx) {
+	// tapped and no mana floating. ADR 0074 amendment: with a plan
+	// without trigger mana as the fallback (autoTapFundedLocked).
+	plan, short, ok := g.autoTapFundedLocked(p, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
+	if !ok {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	g.materializePlanInLocked(p, plan, short, spendCtx)
@@ -3238,6 +3240,10 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// slots. The extra mana was never PLANNED (ADR 0074 §7), so
 		// whatever it does not pay for simply floats.
 		//
+		// ADR 0074 amendment (#4716): `planned.TriggerColors` is the
+		// colour the plan booked for each mana the triggers add, and a
+		// pick makes it rather than the greedy one.
+		//
 		// #1242: only for a source that was TAPPED for mana. CR 605.1b's
 		// triggered mana abilities watch a permanent tapped for mana,
 		// and a cracked Eldrazi Spawn was not — the same `ab.TapCost &&`
@@ -3265,7 +3271,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				Source:     tappedForMana,
 				Controller: p.ID,
 				Colors:     addedColors,
-			}, &pending)
+			}, &pending, planned.TriggerColors)
 		}
 	}
 }
@@ -8043,11 +8049,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			if !params.AutoTap {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
-			plan, short, ok := g.autoTapTopUpLocked(playerID, manaCost, 0, spendCtx,
-				ManaActivationAutoTapExclusions(cardID, params), 0)
 			// #2461: refused here, before the activation begins, when the
 			// plan carried out would not fund the cost.
-			if !ok || !g.planFundsLocked(p, plan, short, manaCost, 0, spendCtx) {
+			plan, short, ok := g.autoTapFundedLocked(p, manaCost, 0, spendCtx,
+				ManaActivationAutoTapExclusions(cardID, params), 0)
+			if !ok {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
 			manaPlan, manaShort = plan, short
@@ -8634,7 +8640,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			Source:     tappedForMana,
 			Controller: playerID,
 			Colors:     addedColors,
-		}, nil)
+		}, nil, nil)
 	}
 	return nil
 }

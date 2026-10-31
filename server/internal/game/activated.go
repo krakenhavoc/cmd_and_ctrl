@@ -2889,10 +2889,10 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 	}
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
-		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, x, spendCtx, excluded, 0)
 		// #2461: a plan that would not fund the cost is refused before
 		// anything taps.
-		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
+		plan, short, ok := g.autoTapFundedLocked(p, cost, x, spendCtx, excluded, 0)
+		if !ok {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanInLocked(p, plan, short, spendCtx)

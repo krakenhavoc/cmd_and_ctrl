@@ -1982,7 +1982,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 				Source:     *card,
 				Controller: chooserID,
 				Colors:     colors,
-			}, nil)
+			}, nil, nil)
 		}
 	}
 	return nil
@@ -4791,10 +4791,10 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 	)
 	if !p.ManaPool.CanPay(cost, 0) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
-		var ok bool
-		plan, short, ok = g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
 		// #2461: a plan that would not fund the cost taps nothing.
-		if !ok || !g.planFundsLocked(p, plan, short, cost, 0, ManaSpendContext{}) {
+		var ok bool
+		plan, short, ok = g.autoTapFundedLocked(p, cost, 0, ManaSpendContext{}, excluded, 0)
+		if !ok {
 			return false
 		}
 		tap = true
