@@ -19,8 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller's next untap step and untaps the one after.
 //
 // The snow supertype is read off the land as it was when it produced,
-// so an effect that makes a land snow counts. Like Mana Flare, the
-// auto-tap planner does not count the extra mana (ADR 0074 §7).
+// so an effect that makes a land snow counts. Like Mana Flare's, its
+// extra mana is counted by the auto-tap planner (ADR 0074, amendment
+// of 2026-10-30), for a snow land only.
 //
 // A world permanent: the world rule (CR 704.5k, ADR 0109 §8) puts it
 // into its owner's graveyard when a newer one enters.

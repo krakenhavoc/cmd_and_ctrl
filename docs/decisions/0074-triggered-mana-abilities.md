@@ -29,13 +29,16 @@ written as an ordinary `TriggeredAbility`
 Nyxbloom Ancient, Mana Reflection: its own engine-seams row), turn-scoped mana
 triggers (High Tide, Bubbling Muck — left to
 [#663](https://github.com/krakenhavoc/cmd_and_ctrl/issues/663)'s registry),
-counting triggered mana in the auto-tap PLAN (§7), triggers on mana produced
-without a tap (§3)
+triggers on mana produced without a tap (§3). Counting triggered mana in the
+auto-tap PLAN was listed here until the [amendment of
+2026-10-30](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana)
+replaced §7 and built it
 **Amended:** 2026-10-14, [a spell-made mana trigger for its controller
 only](#amendment-2026-10-14-3504-a-spell-made-mana-trigger-for-its-controller-only)
 (#3504). 2026-10-30, accepted the same day: [the auto-tap planner counts triggered
 mana](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana)
-(#4716), which replaces §7 (Decision 6).
+(#4716), which replaces §7 (Decision 6) and was built on 2026-10-31 ([as
+built](#as-built-2026-10-31)).
 
 ---
 
@@ -184,7 +187,10 @@ inventing a third:
   cast's still-unpaid colour requirements with `pickColorForSlot`, the same
   function `materializePlanLocked` uses for the source's own slots. The
   auto-tapper's contract is "no further player decisions", and a prompt
-  appearing halfway through a cast would break it.
+  appearing halfway through a cast would break it. Since the [amendment of
+  2026-10-30](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana)
+  (item 5) the colour the plan booked for the pick comes first, and the
+  greedy pick is the fallback when the plan booked none.
 
 One body serves all of it: `AddManaWithOptionsForEffect`'s slot walk was
 extracted into `addManaSlotsLocked(p, source, produced, narrow, pending)`, and
@@ -226,10 +232,13 @@ arrived no longer has to read the pool.
 
 ## 7. Decision 6 — the auto-tap PLANNER does not count triggered mana
 
-> **Amended 2026-10-30** ([#4716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4716), accepted the same day):
+> **Superseded 2026-10-30** ([#4716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4716), accepted the same day,
+> built 2026-10-31 in [#4775](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4775)):
 > the planner counts what a triggered mana ability would add, judged by the
-> trigger's own condition. See [the amendment](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana).
-> Until slice 2 of the amendment is built, this section still describes the code.
+> trigger's own condition. See [the amendment](#amendment-of-2026-10-30-4716-the-auto-tap-planner-counts-triggered-mana)
+> and [as built](#as-built-2026-10-31). This section no longer describes the
+> code. It is kept as written, the decision the amendment replaced, so read its
+> present tense as 2026-09-18.
 
 The planner (`gatherTapSources` / the solver) models only what a source's own
 mana ability produces. A land enchanted with Wild Growth is planned as a
@@ -509,3 +518,12 @@ A second case asks the `/auto-tap-preview` endpoint on the same board (`lobby`) 
 **Catalog cards** (`cards/effects`): Mirari's Wake on a dual land, Caged Sun when the land did and did not make the chosen colour, Forsaken Monument with Sol Ring, Utopia Sprawl with no colour chosen, and Sasaya counting its same-name lands.
 
 **Back-outs.** If the trigger pricing in the gather is dropped, the #4716 regression fails with five Swamps and the Treasure spent. If the executor goes back to the greedy pick, `TestTriggerPickMakesTheBookedColour` fails. If the fallback is dropped, `TestPlannerFallsBackWhenTheTriggerManaWillNotArrive` fails. If the gate is dropped, nothing fails; the gate only saves work, and `TestPlanUnchangedWithoutManaTriggers` shows that it is safe to drop.
+
+### As built (2026-10-31)
+
+Slice 1 is [#4772](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4772) and slice 2 is [#4775](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4775). Slice 3 brought the card comments, the recipe in `docs/adding-cards.md` and the closed-seam fragment in line with them, and changed no behaviour. Four things slice 2 settled that the sections above leave open or give differently:
+
+- **The sort tiebreak.** `sortTapSources` scores a source's restrictiveness (`restrictivenessScore`) on its own slots only; its trigger slots are left out. A tie goes to the source with more trigger slots (`tapSource.TriggerSlots`). Scoring them would rank a Forest under Wild Growth (two slots) behind a plain Forest (one), and a cost of {G}{G} would tap both. With the tiebreak the Wild Growth Forest pays it alone. On a board with no trigger slot both keys are the old score and the order is unchanged.
+- **Costed plans count trigger mana too.** The #2455 planner (`autotap_costed.go`) books against a source's trigger slots as well. `plannedTap.Slots` stays the source's own slots and the trigger's booked colours go to `plannedTap.TriggerColors`. When trigger mana funds a Signet's cost, the token names the trigger's permanent (`tapSource.TriggerFrom`), not the land, as the executor mints it.
+- **A source gets no trigger mana in three shapes**, and is planned as it was before the amendment. Above the 36-combination cap of [owner decision 1](#owner-decisions-2026-10-30), whether or not the combinations differ. With two or more picks whose trigger mana depends on them, when a CR 106.12b production replacement changed its slots, because the planner's slot *k* is then no longer the executor's slot *k* and the picks cannot be pinned per slot. And a "N mana of one color" source with a further pick, a shape no printed card has. A source with one pick is carried as `OneColor` and is not affected by the replacement rule. When every combination gets the same extra mana, it is appended to the one candidate, as item 4 says.
+- **The booked-pick example is {1}{U/R}{B}, not {U/R}{B}.** Item 5's example and `TestTriggerPickMakesTheBookedColour` differ by the {1}. With a cost of {U/R}{B} the Forest's own {G} would have nothing to pay and would float, which fails the test's "no mana floating" check for a reason that has nothing to do with the pick. With {1}{U/R}{B} the Forest's {G} pays the {1}, the trigger is booked for {U/R} and the Swamp for {B}; the greedy pick takes {B} and leaves {U/R} unpaid, as item 5 says.

@@ -3232,17 +3232,17 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		}
 		// #763, CR 605.1b / 605.4a: the third and last production
 		// site. `pending` goes in, so a trigger whose output is a
-		// colour CHOICE (Fertile Ground's "any color") picks greedily
-		// against what this cast still owes instead of leaving a
+		// colour CHOICE (Fertile Ground's "any color") never leaves a
 		// prompt open halfway through an auto-tapped cast — the
 		// auto-tapper's "no further player decisions" contract, kept
 		// by the same function that keeps it for the source's own
-		// slots. The extra mana was never PLANNED (ADR 0074 §7), so
-		// whatever it does not pay for simply floats.
+		// slots. Whatever the extra mana does not pay for simply floats.
 		//
 		// ADR 0074 amendment (#4716): `planned.TriggerColors` is the
 		// colour the plan booked for each mana the triggers add, and a
-		// pick makes it rather than the greedy one.
+		// pick makes it. Only a pick with no booked colour (its mana
+		// pays nothing, or only generic) picks greedily against what
+		// this cast still owes.
 		//
 		// #1242: only for a source that was TAPPED for mana. CR 605.1b's
 		// triggered mana abilities watch a permanent tapped for mana,
