@@ -920,6 +920,8 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
     expect(decide(none, true)).toBe("pass");
   });
 
+  // #4734: the server sends no verdict on these moves at your own beginning
+  // of combat, so they stay in this class and the ticked step still holds.
   it("a crew or a manland stops you at beginning of combat when the step is ticked", () => {
     const view = frame({ step: "begin_combat", active: 1, moves: [...quiet, manland] });
     expect(decide(view, true)).toBe("hold");

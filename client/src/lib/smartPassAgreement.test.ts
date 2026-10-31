@@ -211,3 +211,33 @@ describe("without answers_now the browser stops where #4734 reported", () => {
     }
   });
 });
+
+// The owner's decision of 2026-10-31 (#4734): animate and combat_grant (a
+// manland, a Crew row, a keyword grant) no longer stop the table at the
+// viewer's own beginning of combat. The step is not ticked by default, so
+// the frame passes; a player who ticks it still stops there through the
+// step grid, with "only when I can do something" on, because the server
+// sends no verdict on those moves there and they keep the class they had.
+describe("your own beginning of combat with a manland or a keyword grant", () => {
+  const f = frames.find((x) => x.name === "own_beginning_of_combat_manland_and_keyword_grant");
+
+  it("the fixture holds the frame", () => {
+    expect(f).toBeDefined();
+    expect(f?.view.turn.step).toBe("begin_combat");
+  });
+
+  it("passes at the default settings, where the step is not ticked", () => {
+    if (!f) return;
+    const g = gatesFor(f.view, f.viewer);
+    expect(g.stepStop).toBe(false);
+    expect(browserVerdict(g)).toBe("pass");
+    expect(g.matchedResponse).toBe(false);
+  });
+
+  it("still stops once the player ticks the step", () => {
+    if (!f) return;
+    const g = gatesFor(f.view, f.viewer);
+    expect(g.stepStopsOnlyWhenCanAct).toBe(true);
+    expect(browserVerdict({ ...g, stepStop: true })).toBe("stop");
+  });
+});

@@ -17485,5 +17485,564 @@
     ],
     "verdict": "pass",
     "why": "nothing the seat holds matches"
+  },
+  {
+    "name": "own_beginning_of_combat_manland_and_keyword_grant",
+    "note": "the seat's own beginning of combat, the stack empty; the seat holds an animate row (a manland or a Crew row) and a combat_grant row (a keyword grant)",
+    "viewer": "000001d8-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001d9-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001d8-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": [
+              {
+                "instance_id": "000001da-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001d8-0000-4000-8000-000000000000",
+                "controller": "000001d8-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001db-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001d8-0000-4000-8000-000000000000",
+                "controller": "000001d8-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001dc-0000-4000-8000-000000000000",
+                "name": "Filler 0-2",
+                "owner": "000001d8-0000-4000-8000-000000000000",
+                "controller": "000001d8-0000-4000-8000-000000000000",
+                "known_by_you": true
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001dd-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001d8-0000-4000-8000-000000000000",
+                "controller": "000001d8-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001de-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001de-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001de-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001de-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001de-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001df-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001de-0000-4000-8000-000000000000",
+                "controller": "000001de-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001e0-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001e0-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001e0-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001e0-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001e0-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001e1-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001e0-0000-4000-8000-000000000000",
+                "controller": "000001e0-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001e2-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001e2-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001e2-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001e2-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001e2-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001e3-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001e2-0000-4000-8000-000000000000",
+                "controller": "000001e2-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 4,
+        "cards": [
+          {
+            "instance_id": "000001e4-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "controller": "000001d8-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001e5-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001e2-0000-4000-8000-000000000000",
+            "controller": "000001e2-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001e6-0000-4000-8000-000000000000",
+            "name": "Relic (animate)",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "controller": "000001d8-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: animate",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "animate"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: animate",
+                "purpose": {
+                  "answers": [
+                    "animate"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "instance_id": "000001e7-0000-4000-8000-000000000000",
+            "name": "Relic (combat_grant)",
+            "owner": "000001d8-0000-4000-8000-000000000000",
+            "controller": "000001d8-0000-4000-8000-000000000000",
+            "type_line": "Artifact",
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "Answer: combat_grant",
+                "ref": "own:0",
+                "purpose": {
+                  "answers": [
+                    "combat_grant"
+                  ]
+                }
+              }
+            ],
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "Answer: combat_grant",
+                "purpose": {
+                  "answers": [
+                    "combat_grant"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "combat",
+        "step": "begin_combat",
+        "next_seat": 1,
+        "phase_id": 3,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001d8-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001d8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001e6-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (animate): Answer: animate",
+          "source": "000001e6-0000-4000-8000-000000000000",
+          "combat_interacts": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001d8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001e7-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Relic (combat_grant): Answer: combat_grant",
+          "source": "000001e7-0000-4000-8000-000000000000",
+          "combat_interacts": true
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001e6-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          },
+          "000001e7-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 1,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — Claude · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — Claude · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — Claude · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "Claude drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — Claude · precombat main"
+        },
+        {
+          "seq": 9,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "begin_combat",
+          "batch": 5,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — Claude · begin combat"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001e6-0000-4000-8000-000000000000",
+        "name": "Relic (animate)",
+        "kind": "activate",
+        "answers_now": null,
+        "why": "animate no longer matches the seat's own beginning of combat (owner decision of 2026-10-31): no verdict, so the row keeps its old class and a ticked step still stops"
+      },
+      {
+        "source": "000001e7-0000-4000-8000-000000000000",
+        "name": "Relic (combat_grant)",
+        "kind": "activate",
+        "answers_now": null,
+        "why": "combat_grant no longer matches the seat's own beginning of combat (owner decision of 2026-10-31): no verdict, so the row keeps its old class and a ticked step still stops"
+      }
+    ],
+    "verdict": "pass",
+    "why": "nothing the seat holds matches, and beginning of combat is not a default stop; a player who ticks it still stops there"
   }
 ]

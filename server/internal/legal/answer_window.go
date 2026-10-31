@@ -30,7 +30,10 @@ import (
 //     by its kind like any other;
 //   - a move whose only answer is `value`: #2877's value_only covers a
 //     cast, and a value activation was never a response;
-//   - a move that declares `remove`, which keeps today's windows (Q1).
+//   - a move that declares `remove`, which keeps today's windows (Q1);
+//   - a move that declares animate or combat_grant, at the seat's own
+//     beginning of combat with no opponent's item on the stack, when none
+//     of its answers matches (the owner's decision of 2026-10-31, below).
 //
 // The old flags (interacts, combat_interacts, combat_defender_only,
 // value_only) are still computed as before, beside this, so a reader
@@ -64,9 +67,20 @@ import (
 //   - a counter (targets_stack, read from the announcement, not a kind):
 //     an opponent's item on the stack;
 //   - combat_grant, animate, makes_blocker: a combat that involves you,
-//     in the steps where they can still change it (Q1), and beginning of
-//     combat on your own turn for combat_grant and animate (CR 507.2:
-//     the last priority before attacks).
+//     in the steps where they can still change it (Q1). Not beginning of
+//     combat, your own or anyone's. They matched your own beginning of
+//     combat (CR 507.2: the last priority before attacks) until the owner
+//     decided on 2026-10-31 (#4734) that a manland, a Crew row or a
+//     keyword grant must not stop smart auto-pass there every turn. An
+//     opponent's item on the stack still matches there, as in any step.
+//     At your own beginning of combat, with no opponent's item on the
+//     stack, an animate or combat_grant move that nothing else matches
+//     carries no verdict rather than false: it keeps the class it had
+//     before the amendment. So it is no stop at the default settings,
+//     where the step is not ticked, and a player who ticks the step still
+//     stops there through the stops grid, as the owner decided, even with
+//     "only when I can do something" on, which a false verdict would end.
+//     Animating in the first main phase is a play and unaffected.
 //
 // A combat that involves you (CR 506.3, 802.2: the rule asks whether
 // you are attacked, not whether you are a defending player):
@@ -125,6 +139,11 @@ type answerWindow struct {
 	// targetedByOpp holds every card an opponent's item on the stack
 	// targets: owner answer 4's threatened creature.
 	targetedByOpp map[uuid.UUID]bool
+	// ownBeginCombat is set at the seat's own beginning of combat with no
+	// opponent's item on the stack: where an unmatched animate or
+	// combat_grant move carries no verdict (the owner's decision of
+	// 2026-10-31, #4734) instead of false.
+	ownBeginCombat bool
 }
 
 // answerWindow is the enumerator's window, read on first use.
@@ -141,10 +160,11 @@ func readAnswerWindow(g *game.Game, seat uuid.UUID) answerWindow {
 	w := answerWindow{}
 	active := isActiveSeat(g, seat)
 	w.readStack(g, seat)
-	w.readCombat(g, seat, active)
+	w.readCombat(g, seat)
 	if g.Turn.Step == game.StepUpkeep && !active {
 		w.matched |= game.AnswerRestrict
 	}
+	w.ownBeginCombat = active && g.Turn.Step == game.StepBeginCombat && !w.oppItem
 	return w
 }
 
@@ -290,16 +310,14 @@ func untargetedSpellReaches(g *game.Game, seat uuid.UUID, e stackEntry) bool {
 }
 
 // readCombat reads what a combat that involves `seat` lets each kind
-// answer, by step.
-func (w *answerWindow) readCombat(g *game.Game, seat uuid.UUID, active bool) {
+// answer, by step. Beginning of combat has no case: no combat exists
+// yet, and animate and combat_grant no longer match it on the seat's own
+// turn (the owner's decision of 2026-10-31, #4734).
+func (w *answerWindow) readCombat(g *game.Game, seat uuid.UUID) {
 	if g.Battlefield == nil {
 		return
 	}
 	switch g.Turn.Step {
-	case game.StepBeginCombat:
-		if active {
-			w.matched |= game.AnswerCombatGrant | game.AnswerAnimate
-		}
 	case game.StepDeclareAttackers:
 		w.combatStep = true
 		attacked, attacking := false, false
@@ -359,11 +377,20 @@ func (w *answerWindow) readCombat(g *game.Game, seat uuid.UUID, active bool) {
 // of its answers matches the window. targetsStack is the announcement's
 // counter half; self is owner answer 4's creature, nil when the move
 // does not sacrifice a creature on the battlefield as its own cost.
+//
+// At the seat's own beginning of combat with no opponent's item on the
+// stack, a move that declares animate or combat_grant and matches nothing
+// else carries no verdict (ownBeginCombat), not false: false would end a
+// ticked step's stop under "only when I can do something", which the
+// owner kept (2026-10-31, #4734).
 func (w *answerWindow) verdict(answers game.Answers, targetsStack bool, self *game.Card) *bool {
 	if answers == 0 || answers == game.AnswerValue || answers.HasAny(game.AnswerRemove) {
 		return nil
 	}
 	now := answers.HasAny(w.matched) || (targetsStack && w.oppItem) || w.selfSacrificeMatches(self)
+	if !now && w.ownBeginCombat && answers.HasAny(game.AnswerCombatGrant|game.AnswerAnimate) {
+		return nil
+	}
 	return &now
 }
 

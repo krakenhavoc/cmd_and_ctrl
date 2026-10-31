@@ -335,6 +335,27 @@ func buildSmartPassFrames(t *testing.T) []smartPassFrame {
 			declared{gy: {verdict(false), "graveyard matches an opponent's spell or an item aimed at a graveyard card, not their upkeep: that is restrict's"}},
 			false, "nothing the seat holds matches"))
 	}
+	// The owner's decision of 2026-10-31 (#4734): animate and combat_grant,
+	// which a manland, a Crew row and a keyword grant declare, no longer
+	// match the seat's own beginning of combat, so a held one is no stop
+	// there at the default settings, where the step is not ticked. The
+	// server sends no verdict on them there, so they keep the class they
+	// had before the amendment and a player who ticks the step still stops
+	// (smartPassAgreement.test.ts asserts that half).
+	{
+		s := newSmall("Claude")
+		manland := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerAnimate))
+		grant := battlefieldCard(s.g, s.seat, declaredRelic(game.AnswerCombatGrant))
+		advanceTo(t, s.g, game.StepBeginCombat)
+		givePriority(s.g, s.seat)
+		out = append(out, frameOf(t, s.g, s.seat, "own_beginning_of_combat_manland_and_keyword_grant",
+			"the seat's own beginning of combat, the stack empty; the seat holds an animate row (a manland or a Crew row) and a combat_grant row (a keyword grant)",
+			declared{
+				manland: {nil, "animate no longer matches the seat's own beginning of combat (owner decision of 2026-10-31): no verdict, so the row keeps its old class and a ticked step still stops"},
+				grant:   {nil, "combat_grant no longer matches the seat's own beginning of combat (owner decision of 2026-10-31): no verdict, so the row keeps its old class and a ticked step still stops"},
+			},
+			false, "nothing the seat holds matches, and beginning of combat is not a default stop; a player who ticks it still stops there"))
+	}
 	return out
 }
 

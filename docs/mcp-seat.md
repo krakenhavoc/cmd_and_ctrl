@@ -340,8 +340,11 @@ What to know about how they behave:
     trigger), not an opponent's upkeep;
   - a counterspell fits any opponent's item on the stack;
   - a combat answer (`combat_grant`, `animate`, `makes_blocker`) fits a
-    combat that involves you, and `combat_grant` and `animate` also the
-    beginning of combat on your own turn;
+    combat that involves you, in the steps where it can still change it.
+    It does not fit your own beginning of combat (owner decision of
+    2026-10-31): a manland, a Crew row or a keyword grant does not stop
+    `smart` there, so animate in your first main phase, or use `none` for
+    the call when you want to do it in that step;
   - "Sacrifice this creature" fits while an opponent's item targets that
     creature, or it is attacking or blocking.
 
@@ -353,7 +356,10 @@ What to know about how they behave:
   too. A land, a mana ability and a pure value ability (a fetch, Mind
   Stone, cycling) are not, and nor is a value instant (Opt) against an
   opponent's stack item. So a card that declares nothing still stops you
-  where it did: that costs a click, never a window.
+  where it did: that costs a click, never a window. A manland, a Crew row
+  or a keyword grant carries no `answers_now` either at your own beginning
+  of combat while the stack holds nothing of an opponent's, and `smart`
+  passes that step.
 
   **A matched answer stops you with the stack empty in any step** (ADR 0009
   rule 7's new clause), not only in a declared attack and at an opponent's
