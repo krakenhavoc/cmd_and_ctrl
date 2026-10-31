@@ -58,7 +58,10 @@ sacrifice) stops you only when one of its declared answers can answer what
 is happening now: a threat to you or yours for `protect` and `survive`, an
 opponent's upkeep or spell for `restrict`, and the other kinds by what they
 can change. A move that declares nothing stops as before. See "Amendment of
-2026-10-30 (#4734)" below.
+2026-10-30 (#4734)" below. On 2026-10-31 the owner also took your own
+beginning of combat out of that match: a manland, a Crew row or a keyword
+grant no longer stops you there every turn (see "Owner decision (2026-10-31):
+your own beginning of combat").
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -981,7 +984,7 @@ card declares the union (ADR 0142 sweep ruling 4).
 | `restrict` | it is an opponent's upkeep, or an opponent's spell is on the stack | owner decision |
 | a counter (`targets_stack`) | an opponent's item is on the stack | owner decision; already true, unchanged |
 | `pump`, `prevent`, `sac_outlet` | as `protect` and `survive` | Q1 |
-| `combat_grant`, `animate`, `makes_blocker` | a combat involves you (the table below) | Q1 |
+| `combat_grant`, `animate`, `makes_blocker` | a combat involves you (the table below); never beginning of combat | Q1; the owner decision of 2026-10-31 |
 | `remove` | today's windows: an opponent's item on the stack, a declared attack, an opponent's end step | Q1 |
 | `graveyard` (a new kind) | an opponent's spell is on the stack, or an opponent's item targets a card in a graveyard | Q5 |
 | `value` | unchanged: #2877 | — |
@@ -1029,12 +1032,16 @@ you are attacked, not whether you are a defending player. The steps:
 | `combat_grant` (Q1) | the same | a creature you control is in combat |
 | `animate`, `makes_blocker` (Q1) | you or yours is attacked (today's `isDefending`) | never: blockers are already declared (CR 509.1) |
 
-Beginning of combat matches only `animate` and `combat_grant`, and only on
-your own turn: it is the last moment to crew or animate an attacker, or to
-give one a keyword before attacks (CR 507.2). Otherwise it matches nothing,
-because nothing is attacking yet. The regular combat damage step and end of
-combat match nothing: the damage is dealt and state-based actions are
-checked before anyone gets priority (CR 117.5, 704.5g). Under Q4 (b) the
+Beginning of combat matches no kind from the combat itself, because nothing
+is attacking yet. As first written, `animate` and `combat_grant` matched it
+on your own turn, as the last moment to crew or animate an attacker, or to
+give one a keyword before attacks (CR 507.2). The owner's decision of
+2026-10-31 (below) took that out: a manland, a Crew row or a keyword grant
+would otherwise stop you there every turn, with the step unticked. An
+opponent's item on the stack still matches there, as in any step. The
+regular combat damage step and end of combat match nothing: the damage is
+dealt and state-based actions are checked before anyone gets priority
+(CR 117.5, 704.5g). Under Q4 (b) the
 saving kinds' rows become one: in any of the three steps, you or yours is
 attacked, or a creature you control is attacking or blocking.
 
@@ -1318,6 +1325,9 @@ revisited in a slice's review.
   unmatched opponent item passes at once. Undo and Careful remain.
 - `remove` keeps today's windows (Q1), so Pestilence with {B} open still
   stops you on every opponent item.
+- A manland, a Crew row or a keyword grant no longer stops you at your own
+  beginning of combat (owner decision of 2026-10-31). To animate or crew in
+  that step, tick it in the grid; the main phase before it is a stop anyway.
 
 ### Tests that prove it
 
@@ -1334,7 +1344,9 @@ builds them:
   - an attack on you, on your planeswalker, on a battle you protect, and on
     another player;
   - your blocker, and your attacker blocked and unblocked;
-  - beginning of combat, the first-strike damage step and the regular one;
+  - beginning of combat on your turn (no match: see
+    `TestAnswersNowOwnBeginningOfCombat`), the first-strike damage step and
+    the regular one;
   - an opponent's upkeep, empty and with a trigger, their draw step and their
     end step;
   - an opponent's spell against an opponent's ability, for `restrict`.
@@ -1522,6 +1534,41 @@ recommended option (a). The answers bind slices 2 to 9.
    a graveyard. `restrict` keeps the decided windows.
 
 The owner asked for the build to start next, from slice 2.
+
+### Owner decision (2026-10-31): your own beginning of combat
+
+Slice 3 (#4776) parked a question. Rule 7's new clause holds the table in
+any empty-stack window where a held answer matches, and the server matched
+`animate` and `combat_grant` at the viewer's own beginning of combat
+(CR 507.2). So a player holding a manland, a Crew row or a keyword-granting
+row stopped there every turn, although the step is not ticked in the default
+grid. Before the amendment it stopped only when the step was ticked.
+
+The owner decided that the server stops matching `animate` and
+`combat_grant` at the viewer's own beginning of combat, so the browser and
+the seat agree. A player who ticks that step still stops there through the
+step grid, and the old ticked-step logic is unchanged. Animating in the
+first main phase is unaffected, and so are declare attackers and the steps
+after it. Nothing else matched at beginning of combat, so the step now
+matches nothing from the combat itself; an opponent's item on the stack
+still matches there, as in any step.
+
+One detail keeps the ticked step working. A `false` verdict means "neither a
+response nor a play", so rule 8 under "only when I can do something" (call 6)
+would not hold a ticked step for a manland that matches nothing. So at the
+viewer's own beginning of combat, with no opponent's item on the stack, a
+move that declares `animate` or `combat_grant` and matches nothing else
+carries **no verdict** instead of `false`. It keeps the class it had before
+the amendment (`combat_interacts`, a response in the combat window). With
+the step unticked, which is the default, nothing holds it. Ticked, rule 8
+holds it, as before. With an opponent's item on the stack the verdict is
+`false`, as for every unmatched move. The seat needs no change: it has no
+step grid, and a move with no verdict is classed as before, so the seat
+revision stays at 4.
+
+The agreement fixture gains `own_beginning_of_combat_manland_and_keyword_grant`
+(verdict pass at the default settings), and the browser test asserts the
+ticked half. The text of `docs/protocol.md` and `docs/mcp-seat.md` follows.
 
 ## Context
 

@@ -459,7 +459,21 @@ func TestAnswersNowByKind(t *testing.T) {
 			givePriority(b.g, b.seat)
 			return b
 		}, 0},
-		{"beginning of combat, your turn", at(0, game.StepBeginCombat), game.AnswerCombatGrant | game.AnswerAnimate},
+		// Beginning of combat matches nothing on its own, even on your
+		// turn (the owner's decision of 2026-10-31, #4734): a manland, a
+		// Crew row or a keyword grant does not stop smart auto-pass there.
+		// With nothing on the stack, an animate or combat_grant row there
+		// carries no verdict instead of false, which
+		// TestAnswersNowOwnBeginningOfCombat pins. An opponent's item on
+		// the stack still matches, as in any step, and the two rows are
+		// false beside it.
+		{"beginning of combat, your turn, with an opponent's Murder on your creature", func(t *testing.T) *kindBoard {
+			b := newKindBoard(t, 0, false)
+			advanceTo(t, b.g, game.StepBeginCombat)
+			pushSpellAW(b.g, b.other, murder, game.TargetRef{Kind: game.TargetCard, ID: b.bear})
+			givePriority(b.g, b.seat)
+			return b
+		}, saving | onSpell},
 		{"beginning of combat, an opponent's turn", at(1, game.StepBeginCombat), 0},
 		{"the first-strike damage step: your blocker", func(t *testing.T) *kindBoard {
 			b := newKindBoard(t, 1, false)
@@ -522,6 +536,74 @@ func TestAnswersNowByKind(t *testing.T) {
 			b.check(t, tc.want)
 		})
 	}
+}
+
+// TestAnswersNowOwnBeginningOfCombat is the owner's decision of
+// 2026-10-31 (#4734): animate and combat_grant no longer match the seat's
+// own beginning of combat, so a manland, a Crew row or a keyword grant is
+// no stop there every turn. With nothing of an opponent's on the stack the
+// two kinds carry no verdict rather than false, so the move keeps the
+// class it had before the amendment: a player who ticks the step still
+// stops there through the stops grid, even with "only when I can do
+// something" on, which a false verdict would end. Every other kind is
+// false. At an opponent's beginning of combat, with an opponent's item on
+// the stack (where only what that item threatens is true) and in the
+// declare attackers step, the two kinds are false too.
+func TestAnswersNowOwnBeginningOfCombat(t *testing.T) {
+	both := game.AnswerCombatGrant | game.AnswerAnimate
+	// check asserts each kind row: true for the kinds in wantTrue, absent
+	// for the kinds in wantAbsent, false for the rest.
+	check := func(t *testing.T, b *kindBoard, wantTrue, wantAbsent game.Answers) {
+		t.Helper()
+		moves := legal.EnumerateFor(b.g, b.seat.ID)
+		for _, k := range answerKinds {
+			want := verdict(wantTrue.HasAny(k))
+			if wantAbsent.HasAny(k) {
+				want = nil
+			}
+			wantVerdict(t, moves, k.String(), b.rows[k], legal.KindActivate, want)
+		}
+	}
+	t.Run("your own beginning of combat", func(t *testing.T) {
+		b := newKindBoard(t, 0, false)
+		advanceTo(t, b.g, game.StepBeginCombat)
+		givePriority(b.g, b.seat)
+		check(t, b, 0, both)
+	})
+	t.Run("a row that declares animate and a kind that does not match", func(t *testing.T) {
+		b := newKindBoard(t, 0, false)
+		row := battlefieldCard(b.g, b.seat, declaredRelic(game.AnswerAnimate|game.AnswerRestrict))
+		advanceTo(t, b.g, game.StepBeginCombat)
+		givePriority(b.g, b.seat)
+		wantVerdict(t, legal.EnumerateFor(b.g, b.seat.ID), "animate and restrict", row, legal.KindActivate, nil)
+	})
+	t.Run("an opponent's beginning of combat", func(t *testing.T) {
+		b := newKindBoard(t, 1, false)
+		advanceTo(t, b.g, game.StepBeginCombat)
+		givePriority(b.g, b.seat)
+		check(t, b, 0, 0)
+	})
+	t.Run("your own beginning of combat, an opponent's Murder on the stack", func(t *testing.T) {
+		b := newKindBoard(t, 0, false)
+		advanceTo(t, b.g, game.StepBeginCombat)
+		pushSpellAW(b.g, b.other, game.Card{Name: "Murder", TypeLine: "Instant", ManaCost: "{1}{B}{B}", OracleID: oracleMurder},
+			game.TargetRef{Kind: game.TargetCard, ID: b.bear})
+		givePriority(b.g, b.seat)
+		check(t, b, saving|onSpell, 0)
+	})
+	t.Run("your own beginning of combat, your own spell on the stack", func(t *testing.T) {
+		b := newKindBoard(t, 0, false)
+		advanceTo(t, b.g, game.StepBeginCombat)
+		pushSpellAW(b.g, b.seat, game.Card{Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}"})
+		givePriority(b.g, b.seat)
+		check(t, b, 0, both)
+	})
+	t.Run("your own declare attackers step with no attack", func(t *testing.T) {
+		b := newKindBoard(t, 0, false)
+		advanceTo(t, b.g, game.StepDeclareAttackers)
+		givePriority(b.g, b.seat)
+		check(t, b, 0, 0)
+	})
 }
 
 // TestAnswersNowCounter: a move that targets an item on the stack is a
