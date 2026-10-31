@@ -55,6 +55,12 @@ import (
 //   - restrict: an opponent's upkeep (the first step anyone gets
 //     priority in, CR 502.4 and 503.1), or an opponent's spell on the
 //     stack, a copy included (CR 707.10). Never an opponent's ability;
+//   - graveyard (Q5, split from restrict): an opponent's spell on the
+//     stack, or an opponent's item, spell or ability, that targets a card
+//     in a graveyard. A reanimation or regrowth trigger is such an item,
+//     and exiling the card in response leaves it with an illegal target
+//     (CR 608.2b). Not an opponent's upkeep, and not an opponent's
+//     ability that targets nothing in a graveyard;
 //   - a counter (targets_stack, read from the announcement, not a kind):
 //     an opponent's item on the stack;
 //   - combat_grant, animate, makes_blocker: a combat that involves you,
@@ -193,7 +199,7 @@ func (w *answerWindow) readStack(g *game.Game, seat uuid.UUID) {
 		}
 		w.oppItem = true
 		if e.spell() {
-			w.matched |= game.AnswerRestrict
+			w.matched |= game.AnswerRestrict | game.AnswerGraveyard
 		}
 		var targets []game.TargetRef
 		if e.item != nil {
@@ -219,6 +225,8 @@ func (w *answerWindow) readStack(g *game.Game, seat uuid.UUID) {
 					}
 				} else if it := g.StackMeta[r.ID]; it != nil && it.Controller == seat {
 					w.matched |= game.AnswerProtect
+				} else if inAGraveyard(g, r.ID) {
+					w.matched |= game.AnswerGraveyard
 				}
 			case game.TargetSelf:
 				targeted = true
@@ -231,6 +239,26 @@ func (w *answerWindow) readStack(g *game.Game, seat uuid.UUID) {
 			w.matched |= savingAnswers
 		}
 	}
+}
+
+// inAGraveyard reports whether the card with this id is in any player's
+// graveyard: the target of a reanimation or regrowth item that exiling
+// graveyards answers (the graveyard kind, Q5).
+func inAGraveyard(g *game.Game, id uuid.UUID) bool {
+	if id == uuid.Nil {
+		return false
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for i := range p.Graveyard.Cards {
+			if p.Graveyard.Cards[i].InstanceID == id {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // untargetedSpellReaches reports whether an opponent's spell with no

@@ -47,7 +47,7 @@ func init() {
 			// give (ADR 0142's ruling for a conditional row).
 			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive | game.AnswerPump |
 				game.AnswerPrevent | game.AnswerRemove | game.AnswerSacOutlet | game.AnswerRestrict |
-				game.AnswerCombatGrant | game.AnswerAnimate | game.AnswerMakesBlocker},
+				game.AnswerGraveyard | game.AnswerCombatGrant | game.AnswerAnimate | game.AnswerMakesBlocker},
 			Effect: isochronCopyAndCast,
 		}},
 	})

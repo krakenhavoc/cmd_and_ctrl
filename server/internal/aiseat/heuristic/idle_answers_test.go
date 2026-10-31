@@ -8,7 +8,7 @@ import (
 )
 
 func TestAnswerOnlyRowsWaitForSomethingToAnswer(t *testing.T) {
-	for _, answer := range []string{"survive", "protect", "prevent", "restrict"} {
+	for _, answer := range []string{"survive", "protect", "prevent", "restrict", "graveyard"} {
 		t.Run(answer, func(t *testing.T) {
 			for _, sacrifice := range []bool{true, false} {
 				c := savior("creatures", false, answer)

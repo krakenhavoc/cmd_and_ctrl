@@ -1737,8 +1737,8 @@ response (`activated_abilities[].purpose.answers`,
 [ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)).
 With `PriceAnswers` on (`answers.go`), the bot reads it while anything
 is on the stack. With `PriceAnswerOnlyRows` also on (#4318), an
-untargeted row that declares only `survive`, `protect`, `prevent` or
-`restrict` is held when the stack is empty. In response it pays for
+untargeted row that declares only `survive`, `protect`, `prevent`,
+`restrict` or `graveyard` is held when the stack is empty. In response it pays for
 sacrificing its source even when its benefit has no declared amount.
 A draw, pump, target entry or other declared payoff keeps its existing
 price, as do fetch lands. This stops Selfless Spirit and Ranger-Captain

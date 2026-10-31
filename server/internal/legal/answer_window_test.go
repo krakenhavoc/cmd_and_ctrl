@@ -35,12 +35,16 @@ const (
 // remove and value carry no verdict and are TestAnswersNowAbsentKeepsTodaysClass's.
 var answerKinds = []game.Answers{
 	game.AnswerProtect, game.AnswerSurvive, game.AnswerPump, game.AnswerPrevent,
-	game.AnswerSacOutlet, game.AnswerRestrict,
+	game.AnswerSacOutlet, game.AnswerRestrict, game.AnswerGraveyard,
 	game.AnswerCombatGrant, game.AnswerAnimate, game.AnswerMakesBlocker,
 }
 
 // saving is the five kinds that keep or trade away something of yours.
 const saving = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | game.AnswerPrevent | game.AnswerSacOutlet
+
+// onSpell is what an opponent's spell on the stack matches whatever it
+// targets: restrict, and graveyard, which Q5 split out of it.
+const onSpell = game.AnswerRestrict | game.AnswerGraveyard
 
 // declaredRelic is an artifact carrying one free, untargeted row that
 // declares `a`.
@@ -295,32 +299,32 @@ func TestAnswersNowByKind(t *testing.T) {
 		// The stack (Q4 (a)).
 		{"an opponent's Murder on your creature", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, murder, game.TargetRef{Kind: game.TargetCard, ID: b.bear})
-		}), saving | game.AnswerRestrict},
+		}), saving | onSpell},
 		{"an opponent's Murder on another player's creature", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, murder, game.TargetRef{Kind: game.TargetCard, ID: b.otherBear})
-		}), game.AnswerRestrict},
+		}), onSpell},
 		{"an opponent's Lightning Bolt at you", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, bolt, game.TargetRef{Kind: game.TargetPlayer, ID: b.seat.ID})
-		}), game.AnswerProtect | game.AnswerPrevent | game.AnswerSacOutlet | game.AnswerRestrict},
+		}), game.AnswerProtect | game.AnswerPrevent | game.AnswerSacOutlet | onSpell},
 		{"an opponent's Counterspell at your spell", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			mine := pushSpellAW(b.g, b.seat, bolt, game.TargetRef{Kind: game.TargetCard, ID: b.otherBear})
 			pushSpellAW(b.g, b.active, counter, game.TargetRef{Kind: game.TargetCard, ID: mine})
-		}), game.AnswerProtect | game.AnswerRestrict},
+		}), game.AnswerProtect | onSpell},
 		{"an opponent's declared creature sweep, with a creature of yours", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, wrath)
-		}), saving | game.AnswerRestrict},
+		}), saving | onSpell},
 		{"an opponent's declared creature sweep, with no creature of yours", onTheirMain(true, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, wrath)
-		}), game.AnswerRestrict},
+		}), onSpell},
 		{"an opponent's declared-value instant (Opt)", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, opt)
-		}), game.AnswerRestrict},
+		}), onSpell},
 		{"an opponent's undeclared untargeted sorcery", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, mystery)
-		}), saving | game.AnswerRestrict},
+		}), saving | onSpell},
 		{"an opponent's creature spell", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.active, bears)
-		}), game.AnswerRestrict},
+		}), onSpell},
 		{"Fleshbag Marauder's edict, a trigger", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			src := battlefieldCard(b.g, b.active, marauder)
 			ref, label := triggerRefAW(t, marauder, "each player sacrifices")
@@ -340,6 +344,42 @@ func TestAnswersNowByKind(t *testing.T) {
 			pushAbilityAW(b.g, b.active, src, game.StackItemTriggered, "Trigger Source — damage", nil,
 				game.TargetRef{Kind: game.TargetCard, ID: b.bear})
 		}), saving},
+		// The graveyard kind (Q5): an opponent's item that targets a card
+		// in a graveyard, which exiling the graveyard answers (CR 608.2b).
+		{"an opponent's reanimation trigger on a card in their graveyard (Eternal Witness)", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			src := battlefieldCard(b.g, b.active, creature("Trigger Source", "{1}{G}{G}", 2, 1))
+			card := graveyardCard(b.active, creature("Fallen Bear", "{1}{G}", 2, 2))
+			pushAbilityAW(b.g, b.active, src, game.StackItemTriggered, "Trigger Source — return target card from your graveyard to your hand", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: card})
+		}), game.AnswerGraveyard},
+		{"an opponent's reanimation trigger on a card in your graveyard", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			src := battlefieldCard(b.g, b.active, creature("Trigger Source", "{1}{B}{B}", 2, 1))
+			card := graveyardCard(b.seat, creature("Fallen Bear", "{1}{G}", 2, 2))
+			pushAbilityAW(b.g, b.active, src, game.StackItemTriggered, "Trigger Source — return target creature card from a graveyard to the battlefield", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: card})
+		}), game.AnswerGraveyard},
+		{"an opponent's reanimation spell on a card in a graveyard", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			card := graveyardCard(b.other, creature("Fallen Bear", "{1}{G}", 2, 2))
+			pushSpellAW(b.g, b.active, game.Card{Name: "Reanimate", TypeLine: "Sorcery", ManaCost: "{B}"},
+				game.TargetRef{Kind: game.TargetCard, ID: card})
+		}), onSpell},
+		{"an opponent's trigger on a graveyard card that has left it", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			src := battlefieldCard(b.g, b.active, creature("Trigger Source", "{1}{G}{G}", 2, 1))
+			pushAbilityAW(b.g, b.active, src, game.StackItemTriggered, "Trigger Source — return target card from your graveyard to your hand", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: uuid.New()})
+		}), 0},
+		{"an opponent's trigger on a creature in play, with a graveyard beside it", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			graveyardCard(b.active, creature("Fallen Bear", "{1}{G}", 2, 2))
+			src := battlefieldCard(b.g, b.active, creature("Trigger Source", "{G}", 1, 1))
+			pushAbilityAW(b.g, b.active, src, game.StackItemTriggered, "Trigger Source — damage", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: b.otherBear})
+		}), 0},
+		{"your own reanimation trigger", onTheirMain(false, func(t *testing.T, b *kindBoard) {
+			src := battlefieldCard(b.g, b.seat, creature("Own Trigger Source", "{1}{G}{G}", 2, 1))
+			card := graveyardCard(b.seat, creature("Fallen Bear", "{1}{G}", 2, 2))
+			pushAbilityAW(b.g, b.seat, src, game.StackItemTriggered, "Own Trigger Source — return target card from your graveyard to your hand", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: card})
+		}), 0},
 		{"your own Murder", onTheirMain(false, func(t *testing.T, b *kindBoard) {
 			pushSpellAW(b.g, b.seat, murder, game.TargetRef{Kind: game.TargetCard, ID: b.otherBear})
 		}), 0},
@@ -457,6 +497,17 @@ func TestAnswersNowByKind(t *testing.T) {
 			givePriority(b.g, b.seat)
 			return b
 		}, game.AnswerRestrict},
+		{"an opponent's upkeep, with their reanimation trigger on the stack", func(t *testing.T) *kindBoard {
+			b := newKindBoard(t, 3, false)
+			advanceTo(t, b.g, game.StepUpkeep)
+			upkeeper := b.g.Seats[b.g.Turn.ActiveSeat]
+			src := battlefieldCard(b.g, upkeeper, creature("Upkeep Source", "{G}", 1, 1))
+			card := graveyardCard(upkeeper, creature("Fallen Bear", "{1}{G}", 2, 2))
+			pushAbilityAW(b.g, upkeeper, src, game.StackItemTriggered, "Upkeep Source — return target card from your graveyard to your hand", nil,
+				game.TargetRef{Kind: game.TargetCard, ID: card})
+			givePriority(b.g, b.seat)
+			return b
+		}, game.AnswerRestrict | game.AnswerGraveyard},
 		{"your own upkeep", at(1, game.StepUpkeep), 0},
 		{"an opponent's draw step", at(1, game.StepDraw), 0},
 		{"an opponent's end step", at(1, game.StepEnd), 0},
@@ -782,7 +833,7 @@ func TestAnswersNowAbsentKeepsTodaysClass(t *testing.T) {
 	// so the saving kinds are combat answers and restrict interacts.
 	for _, k := range answerKinds {
 		for _, m := range movesFrom(moves, b.rows[k], legal.KindActivate) {
-			wantInteracts := k == game.AnswerRestrict
+			wantInteracts := k == game.AnswerRestrict || k == game.AnswerGraveyard
 			if m.Interacts != wantInteracts || m.CombatInteracts == wantInteracts {
 				t.Errorf("%s: interacts=%v combat_interacts=%v, want %v/%v", k, m.Interacts, m.CombatInteracts, wantInteracts, !wantInteracts)
 			}
