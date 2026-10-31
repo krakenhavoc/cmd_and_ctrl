@@ -37,12 +37,16 @@ const (
 //     seat's own main phases (always: that is where its turn is played,
 //     and where the browser's engineMayMissMana case lives), a
 //     declare-attackers or declare-blockers step with an attack in
-//     progress while the seat holds a response, and an opponent's end step
-//     while it holds one.
+//     progress while the seat holds a response, an opponent's end step
+//     while it holds one, and, in any other step, a move the server says
+//     can answer now (answers_now true; ADR 0009's amendment of
+//     2026-10-30, #4734, rule 7's new clause).
 //
 // So every other step of the seat's own turn (upkeep, draw, beginning of
 // combat, combat damage, end of combat, end) and of an opponent's turn
-// passes even when the seat holds an instant-speed move. Unlike
+// passes even when the seat holds an instant-speed move, unless one of
+// its moves is a matched answer: Ranger-Captain of Eos in an opponent's
+// upkeep, a survive ability in the first-strike damage step. Unlike
 // "my_turn_or_stack" it is not cleared by the start of the seat's own
 // turn, and it does not pass for an opponent's stack item the seat could
 // answer.
@@ -51,6 +55,11 @@ const (
 // browser's do: there the instant is a cast in the seat's sorcery window,
 // which classifyMove counts as a play on a ticked step (the default grid
 // ticks both main phases).
+//
+// answers_now is the server's: the seat works out no threat, combat or
+// window from the view (ADR 0009 "One rule for the browser and the
+// seat"). smart_pass_agreement.json holds the frames this and
+// autopassDecision.ts must both reach the same verdict on.
 func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int, bool) {
 	self, ok := passGuards(v, me, moves)
 	if !ok {
@@ -62,7 +71,6 @@ func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int,
 	}
 	mine := v.Turn.ActiveSeat == self.Seat
 	step := v.Turn.Step
-	respond := func() bool { return hasResponseMove(v, me, moves, mine) }
 
 	if len(v.StackItems) > 0 {
 		// #4186: a stack that is entirely the seat's own passes, as the
@@ -73,7 +81,7 @@ func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int,
 		if ownsEveryStackItem(v, me) {
 			return pass, true
 		}
-		if respond() {
+		if respond, _ := scanResponses(v, me, moves, mine); respond {
 			return 0, false
 		}
 		return pass, true
@@ -81,9 +89,16 @@ func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int,
 	if mine && (step == stepPrecombatMain || step == stepPostcombatMain) {
 		return 0, false
 	}
+	respond, matched := scanResponses(v, me, moves, mine)
 	combat := (step == stepDeclareAttackers || step == stepDeclareBlock) && anyAttacking(v)
 	oppEnd := step == stepEnd && !mine
-	if (combat || oppEnd) && respond() {
+	if (combat || oppEnd) && respond {
+		return 0, false
+	}
+	// Rule 7's new clause (#4734): with the stack empty, a matched move
+	// holds in any window, not only the two above. Nothing in the seat
+	// bluffs, so there is no bluff to keep at these windows.
+	if matched {
 		return 0, false
 	}
 	return pass, true
@@ -99,13 +114,15 @@ func anyAttacking(v *protocol.GameView) bool {
 	return false
 }
 
-// hasResponseMove is responseWindow.ts's hasResponse at the default
-// "Stop for" categories (DEFAULT_RESPONSES): a counter, an instant, a
-// targeted or interacting ability and a special action count; a pure
-// value ability (a fetch, Mind Stone, cycling), a mana ability, a land and
-// a declaration do not, and nor does a value instant (Opt, Brainstorm:
-// a cast marked value_only, #2877) while something is on the stack.
-func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine bool) bool {
+// scanResponses is responseWindow.ts's hasResponse at the default "Stop
+// for" categories (DEFAULT_RESPONSES): a counter, an instant, a targeted
+// or interacting ability and a special action count; a pure value ability
+// (a fetch, Mind Stone, cycling), a mana ability, a land and a declaration
+// do not, and nor does a value instant (Opt, Brainstorm: a cast marked
+// value_only, #2877) while something is on the stack. It reports whether
+// any move is a response, and whether any is a matched answer: a cast,
+// activation or mana move whose answers_now is true (#4734).
+func scanResponses(v *protocol.GameView, me string, moves []legal.Move, mine bool) (respond, matched bool) {
 	sorcery := mine && len(v.StackItems) == 0 && (v.Turn.Step == stepPrecombatMain || v.Turn.Step == stepPostcombatMain)
 	onStack := len(v.StackItems) > 0
 	combat := inCombatWindow(v)
@@ -126,8 +143,23 @@ func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine b
 			}
 		}
 		if moveIsResponse(m, sorcery, onStack, combat, defending) {
-			return true
+			respond = true
+			if answersNow(m) {
+				matched = true
+			}
 		}
+	}
+	return respond, matched
+}
+
+// answersNow reports whether the server marked a cast, activation or mana
+// move as able to answer the window the seat holds priority in
+// (Move.AnswersNow true). A move with no verdict, or a false one, is not
+// matched.
+func answersNow(m legal.Move) bool {
+	switch m.Kind {
+	case legal.KindCast, legal.KindActivate, legal.KindMana:
+		return m.AnswersNow != nil && *m.AnswersNow
 	}
 	return false
 }
@@ -138,14 +170,27 @@ func hasResponseMove(v *protocol.GameView, me string, moves []legal.Move, mine b
 // (#2877; the browser's respondValueInstants, off by default). The
 // caller has already passed a stack that is entirely the seat's own, so
 // onStack means an opponent's item is there.
+//
+// A cast, activation or mana move that carries answers_now (#4734) is
+// classed by it alone, before any of the old flags: true is a response (a
+// cast an instant, an activation or a mana move an ability, both on by
+// default), false is neither a response nor, outside the sorcery window,
+// a play. A move without it is classed exactly as before, which is also
+// how an older server's moves are read.
 func moveIsResponse(m legal.Move, sorcery, onStack, combat, defending bool) bool {
 	switch m.Kind {
 	case legal.KindMana:
+		if m.AnswersNow != nil {
+			return *m.AnswersNow && !sorcery
+		}
 		// A sacrifice outlet that makes mana still answers removal.
 		return m.Interacts && !sorcery
 	case legal.KindCast, legal.KindActivate:
 		if sorcery {
 			return false
+		}
+		if m.AnswersNow != nil {
+			return *m.AnswersNow
 		}
 		if m.TargetsStack {
 			return true
