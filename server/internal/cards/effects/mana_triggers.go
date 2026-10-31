@@ -18,8 +18,15 @@ import (
 // trigger that fires on a CAST or an ATTACK (Electro, Fire Nation
 // Palace) is an ordinary stack trigger, CR 605.5a, and stays there.
 //
-// Every callback here runs under the write lock the mana production
-// path holds. READ-ONLY: *ForEffect accessors only.
+// Every callback here runs under g.mu in EITHER lock mode: the write
+// lock the mana production path holds, or the read lock of the judge
+// (game.Game's manaTriggerFiringsLocked) when the auto-tap planner asks
+// what a production it has not made yet would trigger (ADR 0074,
+// amendment of 2026-10-30). So a callback is READ-ONLY, and keeps three
+// rules: read the tapped permanent through prod.Source and not through a
+// fresh battlefield lookup, read nothing from the mana pool, and write
+// nothing (*ForEffect accessors only). TestEveryCatalogManaTriggerIsReadOnly
+// checks every catalogued trigger.
 
 // WheneverAttachedTapsForMana is the Aura family's condition:
 // "Whenever enchanted land is tapped for mana, its controller adds

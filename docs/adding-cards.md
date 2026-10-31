@@ -8242,6 +8242,27 @@ Six rules the engine applies for you, none of which a card declares:
 - **`ActiveWhen` and ability removal** work exactly as on
   `Spec.Triggered` — an Aura under Song of the Dryads has no trigger.
 
+Three rules the card's own callbacks (`AppliesTo` and `Produced`) keep.
+The engine asks them under either lock mode: a write lock when the
+executor fires a real production, a read lock when the judge
+(`manaTriggerFiringsLocked`) is asked about one that has not happened
+yet, which is how the auto-tap planner will read them
+([ADR 0074](decisions/0074-triggered-mana-abilities.md), amendment of
+2026-10-30):
+
+- **Read the tapped permanent through `prod.Source`**, never through a
+  fresh battlefield lookup. The land may not have been tapped yet, and
+  a Lotus Petal is gone by the time the trigger resolves.
+- **Read nothing from the mana pool.** The production has not landed in
+  it when the judge is asked.
+- **Write nothing**, and use the `*ForEffect` accessors, never a public
+  locking mutator, which would deadlock under the read lock.
+
+`TestEveryCatalogManaTriggerIsReadOnly` in
+[mana_trigger_judge_test.go](../server/internal/cards/effects/mana_trigger_judge_test.go)
+runs every catalogued trigger through the judge under `ReadSnapshot` and
+fails if the game's snapshot changes.
+
 **Declared, and say so in the card comment:** the auto-tap PLANNER does
 not count the extra mana ([ADR 0074](decisions/0074-triggered-mana-abilities.md)
 §7). It may tap one land more than it needed and the surplus floats
