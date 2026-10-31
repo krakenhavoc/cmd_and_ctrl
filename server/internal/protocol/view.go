@@ -4970,6 +4970,16 @@ type ActivatedAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ExileCostAnyNumber marks "Exile any number of <kind> cards from your
+	// graveyard with <N> or more <colour> mana symbols among their mana
+	// costs" (Baron Helmut Zemo's boast): ExileCostN is absent, the picker
+	// takes any number of ExileCostOptions, and the picks are enough once
+	// their printed costs hold ExileCostSymbolMin symbols of
+	// ExileCostSymbolColor (a colour letter). The engine refuses a pick
+	// below the floor; the client only shows the running total.
+	ExileCostAnyNumber   bool   `json:"exile_cost_any_number,omitempty"`
+	ExileCostSymbolColor string `json:"exile_cost_symbol_color,omitempty"`
+	ExileCostSymbolMin   int    `json:"exile_cost_symbol_min,omitempty"`
 	// ReturnLabel / ReturnOptions describe a "Return a permanent you
 	// control to its owner's hand" cost component (#1213) — Quirion
 	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
@@ -13088,6 +13098,19 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ExileCostLabel = ec.Label
 			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
 			v.ExileCostZone = string(ec.Zone())
+		}
+		if ec := a.Cost.ExileCards; ec != nil && ec.AnyNumber {
+			v.ExileCostAnyNumber = true
+			v.ExileCostLabel = ec.Label
+			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
+			v.ExileCostZone = string(ec.Zone())
+			if st := ec.SymbolTotal; st != nil {
+				v.ExileCostSymbolColor = st.Color
+				v.ExileCostSymbolMin = st.AtLeast
+			}
+			if v.CantActivate == "" && !g.ExileCostPayableForEffect(caster, c.InstanceID, ec) {
+				v.CantActivate = "Your graveyard does not hold enough to exile for this cost."
+			}
 		}
 		// #1213: the return-to-hand component, stamped from the same
 		// walk the engine validates against.

@@ -2563,6 +2563,12 @@
     // #1297: the exile pick next — the same card-shaped question one
     // component over, skipped the same way when the pile holds exactly
     // what the clause demands.
+    if (ability.exile_cost_any_number) {
+      // "Exile any number of … with N or more <colour> mana symbols":
+      // always a choice, so the picker opens and names the running total.
+      abilityExilePrompt = { card, ability };
+      return;
+    }
     if (ability.exile_cost_n) {
       const options = ability.exile_cost_options ?? [];
       if (options.length > ability.exile_cost_n) {
@@ -4493,6 +4499,9 @@
     options={abilityExileOptions}
     need={abilityExilePrompt?.ability.exile_cost_n}
     label={abilityExilePrompt?.ability.exile_cost_label}
+    variable={abilityExilePrompt?.ability.exile_cost_any_number}
+    symbolColor={abilityExilePrompt?.ability.exile_cost_symbol_color}
+    symbolMin={abilityExilePrompt?.ability.exile_cost_symbol_min}
     verb="Exile"
     note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
     where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}

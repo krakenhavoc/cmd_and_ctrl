@@ -71,6 +71,12 @@ type CopyAndCast struct {
 	// free cast locks it) and refused once it would pass N. Nil is no
 	// total, the ordinary "any number of the copies".
 	TotalManaValueAtMost *int
+
+	// AtMostCasts is "you may cast up to N of the copies" (Baron Helmut
+	// Zemo's boast, N = 3): the copies share one permission that allows N
+	// casts (game.CastPermission.CastsLeft); the copies not cast cease to
+	// exist. Zero is no limit. The copies of one call sit in one zone.
+	AtMostCasts int
 }
 
 // Apply makes the copies and the offers.
@@ -90,6 +96,7 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 
 		FollowUpObject: c.FollowUpObject,
 		LastKnown:      c.LastKnown,
+		MaxCasts:       c.AtMostCasts,
 	}
 	if c.TotalManaValueAtMost != nil {
 		n := *c.TotalManaValueAtMost

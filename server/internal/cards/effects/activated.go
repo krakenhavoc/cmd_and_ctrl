@@ -864,6 +864,22 @@ func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.Ab
 	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
 }
 
+// ExileAnyNumberFromGraveyardWithSymbols is "Exile any number of <kind>
+// cards from your graveyard with <N> or more <colour> mana symbols among
+// their mana costs" as a CR 602 activated ability's cost (Baron Helmut
+// Zemo's boast): the activator names the cards at announce, and the
+// activation is refused unless their printed costs hold N symbols of the
+// colour letter (game.ManaSymbolTotal).
+func ExileAnyNumberFromGraveyardWithSymbols(label, color string, atLeast int, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{
+		AnyNumber:   true,
+		Label:       label,
+		From:        game.ZoneGraveyard,
+		Match:       match,
+		SymbolTotal: &game.ManaSymbolTotal{Color: color, AtLeast: atLeast},
+	}}
+}
+
 // ExileFromHand is "Exile N <kind> cards from your hand" as a CR 602
 // activated ability's cost (#1297) — Holistic Wisdom's "{2}, Exile a
 // card from your hand:". The mana ability's component (#1283) wrapped

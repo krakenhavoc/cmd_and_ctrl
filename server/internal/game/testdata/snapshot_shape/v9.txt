@@ -51773,6 +51773,8 @@ turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.prevNoncombatVictims	array
 turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
+turnTally.replacementsApplied	map:string
+turnTally.replacementsApplied{}	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
 turnTally.sacrificedSubtypes	map:string

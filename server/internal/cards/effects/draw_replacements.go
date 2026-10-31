@@ -47,6 +47,14 @@ type DrawBecomes struct {
 	// exempts only the first completed draw.
 	ExceptInOwnDrawStep bool
 
+	// FirstTimeEachTurn is Reed Richards' "the first time you would draw a
+	// card each turn": the replacement applies once per turn per object,
+	// and the draw it exempts (ExceptInOwnDrawStep) does not use the turn's
+	// first time up, because the exemption is part of what "would draw"
+	// means for this effect. The mark is game.TurnTally.ReplacementsApplied,
+	// written when the replacement applies (replacement_turn_mark.go).
+	FirstTimeEachTurn bool
+
 	Label string
 }
 
@@ -85,9 +93,15 @@ func (d DrawBecomes) Build() game.ReplacementEffect {
 			if d.ExceptInOwnDrawStep && g.FirstDrawInOwnDrawStepForEffect(ev.DrawPlayer) {
 				return false
 			}
+			if d.FirstTimeEachTurn && g.ReplacementAppliedThisTurnForEffect(src, d.Label) {
+				return false
+			}
 			return d.scopeMatches(ev.DrawPlayer, src)
 		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+			if d.FirstTimeEachTurn {
+				g.MarkReplacementAppliedThisTurnForEffect(src, d.Label)
+			}
 			if d.Count == nil {
 				return nil
 			}
@@ -119,6 +133,19 @@ func (d DrawBecomes) scopeMatches(drawer uuid.UUID, src *game.Card) bool {
 // instead" — Thought Reflection.
 func YouDrawTwiceInstead(label string) game.ReplacementEffect {
 	return DrawBecomes{Count: timesTwo, Scope: DrawsByController, Label: label}.Build()
+}
+
+// YouDrawFourInsteadTheFirstTimeEachTurn is Reed Richards' "the first time
+// you would draw a card each turn except the first card you draw during
+// each of your draw steps, you draw four cards instead".
+func YouDrawFourInsteadTheFirstTimeEachTurn(label string) game.ReplacementEffect {
+	return DrawBecomes{
+		Count:               func(int) int { return 4 },
+		Scope:               DrawsByController,
+		ExceptInOwnDrawStep: true,
+		FirstTimeEachTurn:   true,
+		Label:               label,
+	}.Build()
 }
 
 // YouDrawTwiceInsteadExceptTheFirst is the same sentence with

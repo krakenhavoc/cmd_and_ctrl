@@ -610,6 +610,9 @@ func checkEitherCost(spec Spec) {
 // count or the X form ("exile X cards"), which has no printed count of
 // its own (ExileCost.CountFromX, N zero).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
+	if ec.AnyNumber {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
+	}
 	if ec.Zone() != game.ZoneGraveyard {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — a cast exiles from the graveyard (#3536)", name, where, ec.Zone()))
 	}
