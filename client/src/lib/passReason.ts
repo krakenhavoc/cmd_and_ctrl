@@ -54,6 +54,14 @@ export const HOLD_PASS_REASON = "stack hold ended, nothing to respond with";
  */
 export const VALUE_INSTANT_PASS_REASON = "only a value instant to respond with";
 
+/**
+ * #4734 (ADR 0009's amendment of 2026-10-30): the viewer holds a response
+ * the server says answers nothing in this window, such as Ranger-Captain
+ * of Eos against a spell that is not an opponent's, or Flawless Maneuver
+ * in an attack on another player.
+ */
+export const UNMATCHED_ANSWER_PASS_REASON = "nothing you hold answers this";
+
 /** The reason for a pass that is the second half of the player's own click. */
 export const ATTACK_PASS_REASON = "attackers declared";
 export const NO_BLOCKS_PASS_REASON = "no blocks declared";
@@ -73,13 +81,19 @@ export function autopassReason(g: AutopassGates): string {
   if (g.autopassToggle) return "skipping to your turn";
   if (!g.stackEmpty) {
     if (g.ownsEveryStackItem) return "everything on the stack is yours";
+    if (g.heldUnmatchedAnswer) return UNMATCHED_ANSWER_PASS_REASON;
     return g.heldValueInstant ? VALUE_INSTANT_PASS_REASON : "nothing to respond with";
   }
   const step = stepLabel(g.step);
   const where = step ? ` in ${step}` : "";
-  if (g.stepStop === true) return `nothing to do${where}`;
+  // A held answer is blamed only where it would have held this window
+  // before the verdict: a ticked step, or a combat or end-step key window.
+  // Anywhere else the pass is the quiet step it always was.
+  if (g.stepStop === true) {
+    return g.heldUnmatchedAnswer ? UNMATCHED_ANSWER_PASS_REASON : `nothing to do${where}`;
+  }
   if ((g.combatWindow || g.oppEndWindow) && !g.hasResponse) {
-    return `nothing to respond with${where}`;
+    return g.heldUnmatchedAnswer ? UNMATCHED_ANSWER_PASS_REASON : `nothing to respond with${where}`;
   }
   return step ? `no stop set for ${step}` : "no stop set here";
 }
@@ -99,6 +113,7 @@ export function timedPassReason(
 ): string {
   if (isBluff(verdict)) return BLUFF_PASS_REASON;
   if (kind === "hold") {
+    if (g.heldUnmatchedAnswer) return `stack hold ended, ${UNMATCHED_ANSWER_PASS_REASON}`;
     return g.heldValueInstant ? `stack hold ended, ${VALUE_INSTANT_PASS_REASON}` : HOLD_PASS_REASON;
   }
   return autopassReason(g);
