@@ -254,8 +254,9 @@ func WheneverACreatureYouControlConnives(label string, effect Effect) game.Trigg
 // Super-Genius, #4589, CR 614.1a).
 //
 // Connive is an event (game.ConniveForEffect): the replacement adds a card
-// drawn first and leaves the creature conniving, with the "N" dropped, since
-// "that creature connives" is a plain connive (CR 701.50a). It gets one
+// drawn first and leaves the creature conniving as it would have, so a
+// connive N stays a connive N (CR 701.50d): "that creature connives" refers
+// back to the replaced connive. It gets one
 // opportunity on the event and the modified event after it (CR 614.5), so one
 // Leader is one extra card however the connive is made; a second Leader is a
 // second effect and draws a second (CR 616.1f). It applies to a creature of
@@ -279,7 +280,6 @@ func DrawACardThenConniveInstead(label string) game.ReplacementEffect {
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.ConniveExtraDraws++
-			ev.KeywordActionCount = 1
 			return nil
 		},
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {

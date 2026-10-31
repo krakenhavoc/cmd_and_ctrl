@@ -181,9 +181,9 @@ func TestTwoLeadersDrawTwoCards(t *testing.T) {
 	}
 }
 
-// Connive X is a connive: "that creature connives" is then a plain connive,
-// so a card is drawn first and one is discarded.
-func TestLeaderReplacesConniveXWithAPlainConnive(t *testing.T) {
+// Connive X keeps its X under Leader: a card is drawn first, then the
+// creature connives X as it would have (CR 701.50d), drawing and discarding X.
+func TestLeaderKeepsConniveX(t *testing.T) {
 	b := newLeaderBoard(t, true)
 	var err error
 	b.g.WithWriteLock(func() {
@@ -194,15 +194,15 @@ func TestLeaderReplacesConniveXWithAPlainConnive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConniveX: %v", err)
 	}
-	if got := b.handSize(b.me); got != 2 {
-		t.Fatalf("hand = %d, want 2 (Leader's card and a connive 1)", got)
+	if got := b.handSize(b.me); got != 4 {
+		t.Fatalf("hand = %d, want 4 (Leader's card and a connive 3)", got)
 	}
 	c := discardChoiceFor(b.g, b.me.ID)
 	if c == nil {
 		t.Fatal("no discard prompt")
 	}
-	if c.ChooseMin != 1 || c.ChooseMax != 1 {
-		t.Errorf("discard %d..%d, want exactly 1", c.ChooseMin, c.ChooseMax)
+	if c.ChooseMin != 3 || c.ChooseMax != 3 {
+		t.Errorf("discard %d..%d, want exactly 3", c.ChooseMin, c.ChooseMax)
 	}
 }
 
