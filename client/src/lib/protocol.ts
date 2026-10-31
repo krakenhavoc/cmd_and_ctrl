@@ -2329,6 +2329,14 @@ export interface DamageAssignmentView {
   blocker_card_ids: string[];
   attacker_power: number;
   allow_trample?: boolean;
+  // CR 510.1c, Wolverine, Claws Out: "you may have [it] assign its combat
+  // damage as though it weren't blocked". Besides the division among
+  // blocker_card_ids the answer may put the whole attacker_power on what
+  // the attacker attacks: every blocker 0, trample_to_player =
+  // attacker_power, no lethal damage owed to any blocker.
+  // blocker_card_ids may be empty (every blocker has left combat). The
+  // sheet shows the player row and never auto-sends the suggested split.
+  as_though_unblocked?: boolean;
   has_deathtouch?: boolean;
   // #1706, CR 510.1d: the card in attacker_card_id is a BLOCKER that
   // blocks every creature in blocker_card_ids, and its controller

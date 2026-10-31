@@ -64,6 +64,8 @@
     stepTrample,
     toAnswer,
     trampleShort,
+    unblockedMixed,
+    assignAllToPlayer,
     type DamageShares,
   } from "../../damageAssignment";
   import {
@@ -1769,7 +1771,8 @@
       choiceID: c.id,
       attackerID: frame.attacker_card_id,
       power: frame.attacker_power,
-      allowTrample: !!frame.allow_trample && !frame.blocker_divides,
+      allowTrample:
+        (!!frame.allow_trample || !!frame.as_though_unblocked) && !frame.blocker_divides,
       blockerDivides: !!frame.blocker_divides,
       lethal,
       shares: damageShares,
@@ -1784,6 +1787,11 @@
     if (!sameShares(s.shares, mine)) damageShares = s.shares;
   });
   onDestroy(() => publishBoardDamage(null));
+
+  function assignAllToDefender(): void {
+    if (!damageFrame) return;
+    damageShares = assignAllToPlayer(damageFrame);
+  }
 
   function setDamageAmount(id: string, raw: string): void {
     damageShares = setBlocker(damageShares, id, Number(raw));
@@ -2077,7 +2085,15 @@
                 ? `Assign exactly ${damageFrame.attacker_power}`
                 : undefined,
         }),
-        secondary: [],
+        secondary: damageFrame.as_though_unblocked
+          ? [
+              {
+                id: "all-to-player",
+                label: "All to the defending player",
+                onPress: assignAllToDefender,
+              },
+            ]
+          : [],
       };
     }
     if (isDivideShield && divideFrame) {
@@ -2816,6 +2832,21 @@
           is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
           {damageFrame.attacker_power} damage among them however you like.
         </p>
+      {:else if damageFrame.as_though_unblocked}
+        <!-- CR 510.1c, Wolverine, Claws Out: divide the damage among the
+               blockers as usual, or assign all of it as though unblocked. -->
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          {damageFrame.blocker_card_ids.length === 0
+            ? "is blocked, but nothing is blocking it now."
+            : `is blocked by ${damageFrame.blocker_card_ids.length} creature${damageFrame.blocker_card_ids.length === 1 ? "" : "s"}.`}
+          Divide its {damageFrame.attacker_power} damage among
+          {damageFrame.blocker_card_ids.length === 0 ? "no one" : "them"}, or assign all of it to
+          the defending player as though it weren't blocked.
+          {#if damageFrame.has_deathtouch}
+            Deathtouch makes 1 damage lethal.
+          {/if}
+        </p>
       {:else}
         <p class="prompt-hint">
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
@@ -2869,9 +2900,13 @@
             </span>
           </li>
         {/each}
-        {#if damageFrame.allow_trample && !damageFrame.blocker_divides}
+        {#if (damageFrame.allow_trample || damageFrame.as_though_unblocked) && !damageFrame.blocker_divides}
           <li class="assign-row trample">
-            <span class="assign-name">Defending player (trample)</span>
+            <span class="assign-name"
+              >Defending player ({damageFrame.allow_trample
+                ? "trample"
+                : "as though unblocked"})</span
+            >
             <span class="assign-step">
               <button
                 type="button"
@@ -2901,7 +2936,12 @@
           </li>
         {/if}
       </ul>
-      {#if damageShortOfLethal.length > 0}
+      {#if unblockedMixed(damageFrame, damageShares)}
+        <p class="prompt-hint sub warn">
+          Either divide the damage among the blockers or assign all of it to the defending player,
+          not both.
+        </p>
+      {:else if damageShortOfLethal.length > 0}
         <p class="prompt-hint sub warn">
           Trample damage goes over only once every blocker has lethal damage. Short:
           {damageShortOfLethal.map(blockerName).join(", ")}.

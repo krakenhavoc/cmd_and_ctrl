@@ -30,7 +30,15 @@ func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error
 // during the resolution (CR 608.2g) and lapsing with the card still in
 // exile. An {X} in its cost is 0 (CR 107.3b).
 func exileUntilNonlandCastFree(ctx *Context, sourceName string) error {
-	return exileUntilNonlandGrantingCast(ctx, game.CastPermission{
+	return exileUntilNonlandGrantingCast(ctx, exileUntilNonlandFreeCastPermission(ctx, sourceName))
+}
+
+// exileUntilNonlandFreeCastPermission is the permission exileUntilNonlandCastFree
+// grants: flash-speed, cast-only, priced {0}, lapsing with the card still in
+// exile. Lady Loki, Agent of Chaos grants the same one from her own tail,
+// after the damage she deals between the walk and the offer.
+func exileUntilNonlandFreeCastPermission(ctx *Context, sourceName string) game.CastPermission {
+	return game.CastPermission{
 		Cost:        "{0}",
 		Timing:      game.TimingFlash,
 		CastOnly:    true,
@@ -39,7 +47,7 @@ func exileUntilNonlandCastFree(ctx *Context, sourceName string) error {
 		Source:      ctx.Source(),
 		SourceName:  sourceName,
 		Label:       "Cast without paying its mana cost (" + sourceName + ")",
-	})
+	}
 }
 
 // exileUntilNonlandGranted is the run's "then", told the cards exiled.

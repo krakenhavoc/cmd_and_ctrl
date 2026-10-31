@@ -315,6 +315,18 @@ func (g *Game) damageRecipientsMatchLocked(e ScopedEffect, m Mod, target uuid.UU
 
 // characteristicHasType reports whether a characteristics snapshot has
 // the card type t (case-insensitive).
+func characteristicHasSubtype(ch *Characteristic, sub string) bool {
+	if ch.AllCreatureTypes && IsCreatureType(sub) {
+		return true
+	}
+	for _, have := range ch.Subtypes {
+		if strings.EqualFold(have, sub) {
+			return true
+		}
+	}
+	return false
+}
+
 func characteristicHasType(ch *Characteristic, t string) bool {
 	for _, have := range ch.Types {
 		if strings.EqualFold(have, t) {

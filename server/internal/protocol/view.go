@@ -2204,7 +2204,15 @@ type DamageAssignmentView struct {
 	BlockerCardIDs []string `json:"blocker_card_ids"`
 	AttackerPower  int      `json:"attacker_power"`
 	AllowTrample   bool     `json:"allow_trample,omitempty"`
-	HasDeathtouch  bool     `json:"has_deathtouch,omitempty"`
+	// AsThoughUnblocked is Wolverine, Claws Out's "you may have [it] assign
+	// its combat damage as though it weren't blocked" (CR 510.1c): besides the
+	// division among blocker_card_ids the answer may put the whole
+	// attacker_power on what the attacker attacks (every blocker 0 and
+	// trample_to_player = attacker_power), with no lethal damage owed to any
+	// blocker. blocker_card_ids may be empty. The client shows the player row
+	// and never auto-sends the suggested split.
+	AsThoughUnblocked bool `json:"as_though_unblocked,omitempty"`
+	HasDeathtouch     bool `json:"has_deathtouch,omitempty"`
 	// BlockerDivides marks the CR 510.1d prompt (#1706): the card
 	// named by attacker_card_id is a BLOCKER that blocks two or more
 	// attackers, blocker_card_ids are those attackers, and its
@@ -10174,12 +10182,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				blockers[i] = id.String()
 			}
 			v.DamageAssignment = &DamageAssignmentView{
-				AttackerCardID: frame.AttackerID.String(),
-				BlockerCardIDs: blockers,
-				AttackerPower:  frame.AttackerPower,
-				AllowTrample:   frame.AllowTrample,
-				HasDeathtouch:  frame.HasDeathtouch,
-				BlockerDivides: frame.BlockerDivides,
+				AttackerCardID:    frame.AttackerID.String(),
+				BlockerCardIDs:    blockers,
+				AttackerPower:     frame.AttackerPower,
+				AllowTrample:      frame.AllowTrample,
+				AsThoughUnblocked: frame.AsThoughUnblocked,
+				HasDeathtouch:     frame.HasDeathtouch,
+				BlockerDivides:    frame.BlockerDivides,
 			}
 			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
 				shares := make([]DamageShareView, len(split.Assignments))

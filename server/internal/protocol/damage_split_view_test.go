@@ -74,3 +74,36 @@ func TestDamageAssignmentCarriesTheCanonicalSplit(t *testing.T) {
 		t.Errorf("suggested %v, trample %d; want 4/3/2 and 35", got, da.Suggested.TrampleToPlayer)
 	}
 }
+
+// #4455, CR 510.1c: a prompt whose attacker may assign "as though it
+// weren't blocked" (Wolverine, Claws Out) says so on the wire, with no
+// blocker left or with some; every other prompt omits the field.
+func TestDamageAssignmentCarriesAsThoughUnblocked(t *testing.T) {
+	for _, flagged := range []bool{true, false} {
+		g := threeSeatsInDeclareAttackers(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		atk := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: atk, Name: "Attacker", TypeLine: "Creature — Test",
+			Power: 4, Toughness: 4, Owner: active.ID, Controller: active.ID,
+		})
+		g.WithWriteLock(func() {
+			g.QueueChoiceForEffect(game.PendingChoice{
+				Kind: game.PendingChoiceDamageAssignment, Chooser: active.ID, Source: atk,
+				DamageAssignment: &game.DamageAssignmentFrame{AttackerID: atk, AttackerPower: 4, AsThoughUnblocked: flagged},
+			})
+		})
+		var da *DamageAssignmentView
+		for _, pc := range ViewOfGameFor(g, active.ID.String()).PendingChoices {
+			if pc.DamageAssignment != nil {
+				da = pc.DamageAssignment
+			}
+		}
+		if da == nil {
+			t.Fatalf("flagged %v: no damage assignment on the wire", flagged)
+		}
+		if da.AsThoughUnblocked != flagged {
+			t.Errorf("as_though_unblocked = %v, want %v", da.AsThoughUnblocked, flagged)
+		}
+	}
+}

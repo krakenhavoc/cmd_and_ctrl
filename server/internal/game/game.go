@@ -1998,6 +1998,12 @@ type CastTally struct {
 	// sorcery spell each turn" is InstantSorcery == 1 once the tally is
 	// bumped, which is before EventCast.
 	InstantSorcery int `json:"instantSorcery,omitempty"`
+	// InstantSorceryVillain counts the spells the player cast this turn that
+	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
+	// "your first instant, sorcery, or Villain spell each turn"), read as
+	// each spell became cast like InstantSorcery: a spell of two of the
+	// three counts once. Additive within the snapshot version.
+	InstantSorceryVillain int `json:"instantSorceryVillain,omitempty"`
 	// ManaSpent is the total mana the player spent to cast spells this
 	// turn (#3172), counted as each spell became cast off its payment
 	// record, so a cost reduction, X and every additional cost's mana all
