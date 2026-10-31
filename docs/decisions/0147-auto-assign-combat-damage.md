@@ -71,3 +71,15 @@ A blocker drawn as part of a stacked token group gets no stepper; the sheet stil
 **Bounds.** Power that covers lethal for every blocker still has one split (#2956). Past 8 blockers only the canonical split is offered (2^8 masks is the most the search walks), and a prompt offers at most 12 splits.
 
 **Consequences.** A window with a real choice is no longer `forced`, so Layer A leaves it to the seat. `resolve_choice` params are unchanged (`assignments`, `trample_to_player`), and `ResolveDamageAssignment` checks every answer as before, so there is no wire change and no snapshot change.
+
+## Amendment (2026-10-30): assigning as though it weren't blocked (#4455)
+
+**Status:** Accepted · S76 — Cards: incubate, face-down and outside the game. **Issue:** [#4455](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4455).
+
+Wolverine, Claws Out ("You may have Wolverine assign his combat damage as though he weren't blocked") is a choice, so §1's auto-assign must never make it for the player, and a single blocker, which never had a prompt, needs one.
+
+**Decision.** `Characteristic.AssignsAsThoughUnblocked` is a layered flag, set by a layer 6 static on the creature itself, so a Wolverine that loses his abilities (CR 613.1f) loses the option. The combat damage step reads it through `Card.assignsAsThoughUnblocked`: a blocked attacker that has it queues the damage-assignment prompt even with one blocker, or with none left (a blocked creature with no blocker assigns nothing, CR 510.1c, but this one may still hit what it attacks), with `DamageAssignmentFrame.AsThoughUnblocked` set (omitempty, additive under snapshot v9). A trampler with no blocker left assigns everything to the player already, so it asks nothing. The extra answer is every blocker 0 and `trample_to_player` equal to the whole power: `ResolveDamageAssignment` takes it without trample and without lethal damage to any blocker, and the damage goes out the way a trampler's excess does (so lifelink, deathtouch and commander damage read the same frame). Part on the player and part on a blocker is still refused without trample.
+
+**Surfaces.** The wire adds `damage_assignment.as_though_unblocked` (omitempty; `docs/protocol.md`). `legal.DamageSplits` offers the unblocked split after the canonical one, so the bots, which answer with the canonical split, keep dividing among the blockers and a text seat can choose the other; with no blocker left the unblocked split is the canonical one. The client shows the defending-player row, an "All to the defending player" button, and never auto-sends `suggested` for such a prompt (`autoAssignAnswer`).
+
+**Consequences.** A prompt costs a Wolverine controller one click per blocked combat. No stack, replacement or layer machinery changes.

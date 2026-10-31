@@ -90,7 +90,7 @@ func TestCecilyFreeCastOfferWithAnUnknownKeyIsRefused(t *testing.T) {
 	g.WithWriteLock(func() { me.Hand.Cards = nil })
 	rot := handCardFull(me, "Mind Rot", "Sorcery", "{2}{B}", mindRotOracle, []string{"B"})
 	offerFrom(t, g, me, func(ctx *Context) error {
-		offerFreeHandCast(ctx, me.ID, cecilyFreeCastOffer, "an instant or sorcery spell", Or(Instant(), Sorcery()))
+		offerFreeHandCast(ctx, me.ID, cecilyFreeCastOffer, "an instant or sorcery spell", freeInstantOrSorcery())
 		return nil
 	})
 	if pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID); pick == nil || pick.PickThen != cecilyFreeCastOffer.then.Key() {

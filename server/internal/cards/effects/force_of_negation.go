@@ -30,6 +30,7 @@ func init() {
 		OracleID:     "ac2173f9-f223-440a-9231-fd98762bdc6f",
 		Name:         "Force of Negation",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		AlternativeCosts: []game.AlternativeCost{
 			{

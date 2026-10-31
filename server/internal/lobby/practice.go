@@ -246,6 +246,7 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 		Seat:         humanP.Seat,
 		DeckName:     human.DeckName,
 		DeckUploaded: true,
+		commanders:   l.commandersOf(human.Cards),
 	}
 	if human.Identity.Populated() {
 		humanSeat.DiscordID = human.Identity.ID
@@ -268,6 +269,7 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 			IsBot:        true,
 			BotTier:      bot.Tier,
 			BotDeck:      bot.DeckID,
+			commanders:   l.commandersOf(bot.Cards),
 		}},
 		State:    string(game.StateLobby),
 		Practice: true,

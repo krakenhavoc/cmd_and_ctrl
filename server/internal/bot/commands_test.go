@@ -253,6 +253,34 @@ func TestGamesListResponse_Populated(t *testing.T) {
 	}
 }
 
+// The bot lists tables with its admin session, which the server lets
+// see each seat's commanders (ADR 0212 owner decision 3: the admin is one
+// of a table's own people). /c2-games answers whoever asked in the guild,
+// so it names the table, its state and its seat count and never a seat's
+// deck or commanders.
+func TestGamesListResponseNamesNoCommander(t *testing.T) {
+	raw := `{"games":[{"id":"` + uuid.NewString() + `","name":"FNM","state":"lobby","players":[{
+		"player_id":"` + uuid.NewString() + `","name":"Alice","seat":0,"deck_uploaded":true,"deck_name":"Wizard Tribal",
+		"commander_cards":[{"name":"Tymna the Weaver","scryfall_id":"0196e7b8-1b2a-4cd0-a1f2-5d5f2b6a9999","color_identity":["W","B"]}],
+		"color_identity":["W","B"]}]}]}`
+	var list listResponse
+	if err := json.Unmarshal([]byte(raw), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Games) != 1 || len(list.Games[0].Players[0].CommanderCards) != 1 {
+		t.Fatalf("decoded %+v, want the seat's commander (the bot's client decodes what the server sends)", list.Games)
+	}
+	c := gamesListResponse(list.Games).Data.Content
+	for _, leak := range []string{"Tymna", "0196e7b8-1b2a-4cd0-a1f2-5d5f2b6a9999", "Wizard Tribal"} {
+		if strings.Contains(c, leak) {
+			t.Errorf("/c2-games names %q: %q", leak, c)
+		}
+	}
+	if !strings.Contains(c, "`FNM`") || !strings.Contains(c, "1 seat") {
+		t.Errorf("/c2-games lost the table: %q", c)
+	}
+}
+
 func TestEphemeralResponse(t *testing.T) {
 	resp := ephemeralResponse("hi")
 	if resp.Data.Flags&discordgo.MessageFlagsEphemeral == 0 {

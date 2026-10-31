@@ -1329,3 +1329,104 @@ fails.
 "Target nonartifact creature that player controls of their choice" (The Abyss, Magus of the Abyss) is chosen by the player the trigger's event names, the player whose upkeep it is, even when that is not the ability's controller. `TargetSpec.ChosenByTriggerActor` (`effects.OfThatPlayersChoice`) is the clause. The #2055 amendment's opponent's choice asks the controller to name an opponent first. This clause asks nothing first, because the event names the chooser. So nothing is recorded on the item: the CR 608.2b re-check reads the same event. `ControlledByChooser` reads "that player controls" against the event's player. Legality is still judged for the controller. Triggers only. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the detail.
 
 Back-out: skip the event-player gate in `chooserAdmits` and `TestTheAbyssTargetIsChosenByTheUpkeepPlayer` and `TestMagusOfTheAbyssOnItsControllersUpkeepMustChooseItself` fail; send the prompt to the controller and `TestTheAbyssTargetIsChosenByTheUpkeepPlayer` fails.
+
+## Amendment (2026-10-30, #4616): a ceiling on the total of the chosen targets
+
+The 2026-09-24 amendment (#1559) left one family out of scope: "Rules that are not pairwise-distinct — 'total mana value
+4 or less' over a set of targets". The Super Hero Civil War (Marvel Super Heroes, #4455) prints one, chapter I: "Gain
+control of up to two target creatures with total mana value 6 or less for as long as this Saga remains on the
+battlefield". A key cannot say it: whether a 3 fits depends on what the other pick adds up to, not on a value two picks
+share. Every claim below was checked on `origin/develop` at `2edf3b5dd`, and every rule against the pinned Comprehensive
+Rules (`MagicCompRules 20260925.txt`): CR 601.2c (targets are announced), CR 603.3d (a trigger's are announced the same
+way), CR 608.2b (each is checked again on resolution), CR 115.7d and 115.7e (a retarget), CR 202.3a and 202.3e (mana value),
+CR 708.2a (a face-down permanent).
+
+### 1. `TargetSpec.Total`, the third set rule
+
+`game.TargetTotal{Label, Stat, Max}`, attached with `.WithTotal(…)` and built with `effects.TotalManaValueAtMost(n)`:
+the picks' total of one statistic may not exceed `Max`. `Stat` is a closed enum (`TargetTotalManaValue`), not a func,
+for TargetSameness's reason: the clause is reachable from a stack item and a paused pick_target frame, and a func there
+is a new closure route (testdata/closure_fields.txt is untouched). The value is `Game.ManaValueForEffect`, the read
+`ManaValueLE` uses: {X} is zero off the stack, an object with no mana cost is zero, and a card whose cost the engine
+cannot read has no value and fits no total, as it meets no "mana value N or less". One read differed when this was
+written: a face-down permanent is zero (CR 708.2a gives it no mana cost), where `ManaValueForEffect` read the cost of the
+card it hides, and the view would then tell every seat what that card is. #4682 fixed that at the source, so
+`ManaValueForEffect` is zero for a face-down permanent too and the total has no special case. The same four readers
+answer it:
+
+| Reader | What it does with the total |
+|---|---|
+| announce gate (`validateAnnouncedTargetsWithLocked`) | sums the step's picks; refuses `illegal target: those targets must have total mana value 6 or less`, and refuses a pick with no value |
+| CR 608.2b re-check (`TargetStillLegalForEffect` → `totalRuleBrokenLocked`) | sums the surviving picks (§2) |
+| enumerator (`internal/legal`, `setRuleKeys.total`) | never extends a set past the ceiling; a lone candidate takes the set walk, so "choose nothing" is still offered when none fits |
+| client picker (`breaksSetRule`) | greys a candidate whose value would pass the ceiling, from `total: {label, max, values}`; the dock shows "total 4 of 6" |
+
+Fillability (CR 603.3d and the cast offer) counts the smallest values first (`totalCountLocked`): no set of k picks has a
+smaller total than the k smallest. The one-slot retarget offer narrows to the cards that fit beside the staying slots,
+and the gate judges the final list (CR 115.7e), so an unchanged slot is counted but not refused on its own (CR 115.7d).
+
+### 2. Resolution: the survivors are summed, and over the ceiling NONE is legal
+
+CR 608.2b re-checks every target against the targeting requirements, and the total is one of them. What happens when a
+target's mana value has changed so the total now exceeds 6 is settled by the printed rulings on this family. Nethroi,
+Apex of Death (2020-04-17) and Reunion of the House (2025-04-04), whose totals can grow while the targets sit in a
+graveyard: "the total power of the creature cards may become greater than 10. If this happens, the entire selection of
+targets is illegal. In this case, Reunion of the House won't resolve and none of its effects will happen." So:
+
+- a pick that became illegal on its own (it left, stopped being a creature, gained protection) is dropped first and adds
+  nothing, as §3 of the 2026-09-24 amendment drops it. A creature that leaves in response costs exactly that creature,
+  and removing a pick can only lower the total;
+- the picks still individually legal are summed, and when the sum exceeds the ceiling EVERY one of them is illegal. With
+  one clause that is every target, so the chapter does not resolve (CR 608.2b), which is the rulings' "nothing is
+  returned". None is preferred: the same reading §3 gives a collision under a key;
+- a survivor whose value can no longer be read fits no total and is illegal itself; the others are summed without it.
+
+This is a ruling Wizards has published, so no owner decision was needed.
+
+### 3. Scope
+
+`effects.Register` (`checkTotalRule`) refuses a total with no statistic or Label, a negative ceiling, a clause that can
+pick a player, a total beside a key rule or `EachOf`, a total with an X (count or bound), on an opponent's or the
+triggering player's choice, and on a sacrifice clause. No printed card needs any of those yet, and the fillability count
+and the enumerator answer one set rule per clause. "Total power N or less" (Nethroi, Reunion of the House) and "total
+mana value X or less" (Orcus, Rampaging Yao Guai) are a new `TargetTotalStat` and an X binding, each its own change.
+
+**Card.** The Super Hero Civil War, `full`.
+
+**Tests.** `game/target_total_test.go` (the announce gate, an unreadable cost, the resolution re-check over survivors,
+fillability, the retarget offer and gate, the values), `cards/effects/the_super_hero_civil_war_test.go` (every chapter
+through the real catalog, the total growing before resolution, a target leaving), `cards/effects/target_set_test.go`
+(the boot checks), `legal/target_total_test.go` (every offered set within the total and dispatched, a lone candidate over
+it, the view's `total`), `aiseat/super_hero_civil_war_bot_test.go` (the heuristic answers the prompt within the total and
+takes what it names) and `client/src/lib/targetSet.test.ts` (the picker and the dock).
+
+Back-out: skip the total in the announce gate and `TestTotalRefusesASetOverTheTotalAtAnnounce` fails; drop
+`totalRuleBrokenLocked` from the re-check and `TestTotalIsRejudgedOverTheSurvivorsAtResolution` and
+`TestTheSuperHeroCivilWarChapterITakesNothingWhenTheTotalGrows` fail; drop `setRuleKeys.total` and
+`TestSuperHeroCivilWarEnumeratesOnlySetsWithinTheTotal` fails; let a lone candidate take the single-slot answers and
+`TestSuperHeroCivilWarLoneCandidateOverTheTotalStillHasAnAnswer` fails.
+
+## Amendment (2026-10-30, #4707): "that player controls", where that player is the event's Actor
+
+`TargetSpec.ControlledByThatPlayer` (the 2026-10-16 amendment's second decision) reads the triggering event's **Target**:
+the player a Dragon just damaged. Black Bolt, Inhuman King (Marvel Super Heroes, #4455) prints the other reading:
+"Whenever Black Bolt becomes the target of a spell or ability an opponent controls, destroy target nonland permanent that
+player controls". On `EventBecomesTarget` the Target is Black Bolt; "that player" is the controller of the targeting spell
+or ability, which `emitBecameTargetLocked` stamps as the event's **Actor**. Every claim here was checked on
+`origin/develop` at `9c223b6b9`.
+
+`TargetSpec.ControlledByEventActor` (bool, built with `effects.ControlledByThatEventActor(spec)`) is the clause. It is
+`ControlledByThatPlayer`'s twin in every respect but the field it reads: data, not a closure, judged in `sourceAdmits`
+(`eventActorAdmits`, through the same `triggerActorOf` that `ChosenByTriggerActor` uses) against `TargetSource.Trigger`,
+so the legal set, the announce check (CR 601.2c), the resolution re-check (CR 608.2b, a permanent that changes hands
+before the ability resolves is no longer a legal target), the picker and the bot's moves are one answer. A walk with no
+fired trigger, or an event with no Actor, admits NOTHING, never everything. The ability's controller still chooses the
+target; it is the candidates, not the chooser, that the event narrows (contrast `ChosenByTriggerActor`, where the event's
+player chooses). No snapshot or wire change: the field rides the catalog's spec, as `ControlledByThatPlayer` does, and
+`closure_fields.txt` is untouched.
+
+Tests: `TestMsc4707BlackBoltDestroysAPermanentOfTheOpponentWhoTargetedIt`,
+`TestMsc4707BlackBoltNamesTheTargetingPlayerNotJustAnyOpponent` and
+`TestMsc4707BlackBoltIgnoresItsOwnControllersTargeting` (`internal/cards/effects`).
+
+Back-out: drop `eventActorAdmits` from `sourceAdmits` and the first test offers every permanent on the table.

@@ -251,9 +251,11 @@ type Purpose struct {
 	// the reader (internal/legal's untargetedFlags) counts as
 	// interacting (ADR 0142 owner answer 3), and every catalog row it
 	// reads declares. AnswerValue declares "answers nothing".
-	// Declared on an activated row only, for now: effects.Register
-	// refuses it on a spell, a mode, an alternative cost and a
-	// triggered row, which nothing reads it on yet (ADR 0142 §2).
+	// Declared on an activated row, and since #2877 (ADR 0142's
+	// amendment of 2026-10-30) on a spell, a spell's mode and an
+	// alternative cost, where internal/legal's castAnswersOf reads it
+	// for a cast's value_only. On a triggered row only AnswerRemove (an
+	// edict, ADR 0009 #3882). effects.Register refuses it elsewhere.
 	Answers Answers
 
 	// Saves says which of its controller's permanents a `survive` or
@@ -763,7 +765,12 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations + o.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse + o.Impulse,
-		Answers:                   p.Answers | o.Answers,
+	}
+	// #2877: a fused spell answers what either half does, and a half
+	// that declares nothing leaves the whole undeclared, which a reader
+	// counts as answering (ADR 0142 owner answer 3), never as `value`.
+	if p.Answers != 0 && o.Answers != 0 {
+		out.Answers = p.Answers | o.Answers
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump

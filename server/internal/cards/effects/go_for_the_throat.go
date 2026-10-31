@@ -16,6 +16,7 @@ func init() {
 		OracleID:     "2f092562-9e17-43cd-aeb8-d0567f99363e",
 		Name:         "Go for the Throat",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetCreature("target nonartifact creature", Not(Artifact())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

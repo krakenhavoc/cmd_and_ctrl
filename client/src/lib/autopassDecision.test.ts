@@ -200,6 +200,12 @@ describe("autopassDecision — guards above every toggle", () => {
     expect(autopassDecision(gates({ owesFreeCast: false }))).toBe("pass");
   });
 
+  it("holds while the viewer demonstrates a loop by hand (ADR 0193, #4736)", () => {
+    expect(autopassDecision(gates({ loopDemo: true }))).toBe("hold");
+    expect(autopassDecision(gates({ loopDemo: true, autopassToggle: true }))).toBe("hold");
+    expect(autopassDecision(gates({ loopDemo: false }))).toBe("pass");
+  });
+
   it("holds while the CR 732 loop breaker is up (#628)", () => {
     expect(autopassDecision(gates({ loopSuspended: true, autopassToggle: true }))).toBe("hold");
   });
@@ -914,6 +920,8 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
     expect(decide(none, true)).toBe("pass");
   });
 
+  // #4734: the server sends no verdict on these moves at your own beginning
+  // of combat, so they stay in this class and the ticked step still holds.
   it("a crew or a manland stops you at beginning of combat when the step is ticked", () => {
     const view = frame({ step: "begin_combat", active: 1, moves: [...quiet, manland] });
     expect(decide(view, true)).toBe("hold");
@@ -938,6 +946,51 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
       });
       expect(decide(view, true), ability.source).toBe("pass");
     }
+  });
+
+  // #2877 (owner, 2026-10-30, option (a)): a value instant does not stop
+  // you on an opponent's spell, and still stops you at their end step
+  // and in their attack, where it is cast. The setting brings the stack
+  // stop back, and Careful sees every spell anyway.
+  it("a value instant passes an opponent's spell and stops at their end step and attack", () => {
+    const opt = mv("cast", { source: "opt", value_only: true });
+    const divination: StackItemView = {
+      id: "s",
+      kind: "spell",
+      controller: "p1",
+      owner: "p1",
+      source_card_id: "c",
+      label: "Divination",
+    };
+    const onStack = frame({
+      step: "precombat_main",
+      active: 1,
+      moves: [...quiet, opt],
+      stack: [divination],
+    });
+    expect(decide(onStack, false)).toBe("pass");
+    expect(
+      decide(onStack, false, {
+        hasResponse: hasResponse(onStack, me, { ...DEFAULT_RESPONSES, valueInstant: true }),
+      }),
+    ).toBe("hold");
+    expect(decide(onStack, false, { passMode: "careful" })).toBe("hold");
+    // A real instant beside it still stops you.
+    const both = frame({
+      step: "precombat_main",
+      active: 1,
+      moves: [...quiet, opt, instant],
+      stack: [divination],
+    });
+    expect(decide(both, false)).toBe("hold");
+    expect(decide(frame({ step: "end", active: 1, moves: [...quiet, opt] }), false)).toBe("hold");
+    const attack = frame({
+      step: "declare_attackers",
+      active: 1,
+      moves: [...quiet, opt],
+      attacking: true,
+    });
+    expect(decide(attack, false)).toBe("hold");
   });
 
   // Owner answer: a creature-token maker counts only for a player who
@@ -1100,5 +1153,96 @@ describe("autopassDecision — ADR 0143: stops by whose turn it is", () => {
         "hold",
       );
     }
+  });
+});
+
+// #4734, ADR 0009's amendment of 2026-10-30: rule 7 gains a clause after
+// its combat and end-step test. With the stack empty, in any other window,
+// an answer the server matched to the window holds. The windows are ones
+// no key window covers: an opponent's upkeep, the first-strike damage step.
+describe("autopassDecision — #4734: rule 7's new clause", () => {
+  // The viewer at an opponent's upkeep, the stack empty, a matched answer.
+  const matched = (over: Partial<AutopassGates> = {}) =>
+    gates({ step: "upkeep", hasResponse: true, matchedResponse: true, ...over });
+
+  it("holds an opponent's upkeep for a matched answer, with no stop ticked", () => {
+    expect(autopassDecision(matched({ stepStop: false }))).toBe("hold");
+    expect(autopassDecision(matched({ stepStop: undefined }))).toBe("hold");
+  });
+
+  it("holds the first-strike damage step for a matched answer", () => {
+    const g = matched({ step: "first_strike_damage", stepStop: false });
+    expect(autopassDecision(g)).toBe("hold");
+    expect(autopassDecision({ ...g, matchedResponse: false, hasResponse: false })).toBe("pass");
+  });
+
+  it("holds in any window, whoever's turn it is", () => {
+    for (const step of ["upkeep", "draw", "begin_combat", "first_strike_damage", "end_combat"]) {
+      for (const viewerIsActive of [true, false]) {
+        expect(
+          autopassDecision(matched({ step, viewerIsActive })),
+          `${step} ${viewerIsActive}`,
+        ).toBe("hold");
+      }
+    }
+  });
+
+  it("does not hold a window for an answer with no verdict, which rule 7 leaves to the key windows", () => {
+    // hasResponse is true (a response by today's class) and matchedResponse is not.
+    const g = gates({ step: "upkeep", hasResponse: true, matchedResponse: false });
+    expect(autopassDecision(g)).toBe("pass");
+    expect(autopassDecision({ ...g, matchedResponse: undefined })).toBe("pass");
+  });
+
+  it("holds in Careful as in Smart: it runs in both (ADR 0143 §2.2)", () => {
+    expect(autopassDecision(matched({ passMode: "careful" }))).toBe("hold");
+    expect(autopassDecision(matched({ passMode: "smart" }))).toBe("hold");
+  });
+
+  it("leaves Manual, Skip to my turn and the pin where they were", () => {
+    expect(autopassDecision(matched({ passMode: "manual" }))).toBe("hold");
+    expect(autopassDecision(matched({ autopassToggle: true }))).toBe("pass");
+    expect(autopassDecision(matched({ matchedResponse: false, manualStop: true }))).toBe("hold");
+  });
+
+  it("still lets a guard out-vote it, and the safety belt clear the toggle", () => {
+    expect(autopassDecision(matched({ viewerHasPriority: false }))).toBe("hold");
+    expect(autopassDecision(matched({ owesBlockDecision: true }))).toBe("hold");
+    expect(
+      autopassDecision(
+        matched({ autopassToggle: true, step: "precombat_main", viewerIsActive: true }),
+      ),
+    ).toBe("clear-toggle");
+  });
+
+  it("never bluffs at its windows: a held answer holds, and nothing held passes", () => {
+    const armed = { bluffInstant: true, bluffCounter: true };
+    expect(autopassDecision(matched(armed))).toBe("hold");
+    const nothing = gates({ step: "upkeep", ...armed });
+    expect(autopassDecision(nothing)).toBe("pass");
+    const firstStrike = gates({ step: "first_strike_damage", ...armed });
+    expect(autopassDecision(firstStrike)).toBe("pass");
+  });
+
+  it("keeps the key windows' bluffs and their holds as before", () => {
+    // A combat or opponent's end-step key window with no response still bluffs.
+    for (const w of [{ combatWindow: true }, { oppEndWindow: true }]) {
+      const g = gates({ step: "end", ...w, bluffInstant: true });
+      expect(isBluff(autopassDecision(g))).toBe(true);
+      expect(autopassDecision({ ...g, hasResponse: true })).toBe("hold");
+    }
+  });
+
+  it("is not read with something on the stack: rule 6 asks hasResponse", () => {
+    const g = gates({ stackEmpty: false, hasResponse: false, matchedResponse: true });
+    expect(autopassDecision(g)).toBe("pass");
+    expect(autopassDecision({ ...g, hasResponse: true })).toBe("hold");
+  });
+
+  it("lets a ticked step pass for an answer that does not fit it (call 6)", () => {
+    // hasPlay is what rule 8 asks, and an unmatched move is no play.
+    const g = gates({ step: "upkeep", stepStop: true, hasPlay: false, hasResponse: false });
+    expect(autopassDecision(g)).toBe("pass");
+    expect(autopassDecision({ ...g, stepStopsOnlyWhenCanAct: false })).toBe("hold");
   });
 });

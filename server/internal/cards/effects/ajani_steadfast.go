@@ -86,6 +86,23 @@ func init() {
 // they control, the event's amount drops to 1. `src` is the emblem; its
 // controller is its owner and never changes (CR 114.2).
 func ajaniSteadfastEmblemPrevention() game.ReplacementEffect {
+	return preventAllButOneOfTheDamage(
+		"Ajani Steadfast emblem — prevent all but 1 of that damage",
+		"Prevent all but 1 of the damage dealt to you or a planeswalker you control.",
+		func(target uuid.UUID, g *game.Game, src *game.Card) bool {
+			if target == src.Controller {
+				return true
+			}
+			c, ok := g.LookupCardForEffect(target)
+			return ok && g.Battlefield.Contains(target) && c.IsPlaneswalker() && c.Controller == src.Controller
+		})
+}
+
+// preventAllButOneOfTheDamage is the CR 615 "prevent all but 1 of that
+// damage" replacement, for any recipient `to` accepts (Ajani Steadfast's
+// emblem, Hyperion, Supreme Hero): damage to a recipient it names drops to
+// 1, and damage of 1 or less is left alone.
+func preventAllButOneOfTheDamage(label, rowLabel string, to func(target uuid.UUID, g *game.Game, src *game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
@@ -93,19 +110,15 @@ func ajaniSteadfastEmblemPrevention() game.ReplacementEffect {
 			if src == nil || ev.Kind != game.RepEventDamage || ev.DamageAmount <= 1 {
 				return false
 			}
-			if ev.DamageTarget == src.Controller {
-				return true
-			}
-			c, ok := g.LookupCardForEffect(ev.DamageTarget)
-			return ok && g.Battlefield.Contains(ev.DamageTarget) && c.IsPlaneswalker() && c.Controller == src.Controller
+			return to(ev.DamageTarget, g, src)
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.DamageAmount = 1
 			return nil
 		},
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
-		Label:      "Ajani Steadfast emblem — prevent all but 1 of that damage",
-		RowLabel:   "Prevent all but 1 of the damage dealt to you or a planeswalker you control.",
+		Label:      label,
+		RowLabel:   rowLabel,
 	}
 }
 

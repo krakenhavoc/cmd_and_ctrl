@@ -280,6 +280,13 @@ var canonicalKeywords = map[string]bool{
 	// constructor the Hierarchs carried. CUMULATIVE (CR 113.2c), and an
 	// exalted counter is one instance per counter.
 	KeywordExalted: true,
+	// melee (CR 702.121) joins with #4722, in the same change that
+	// teaches the engine to honour it. A TRIGGERED keyword built like
+	// exalted (keywordTriggersFor, melee.go), so a printed, token or
+	// granted melee ("Other creatures you control have melee", Titania,
+	// Proud Pummeler) all trigger. CUMULATIVE (CR 702.121b: each
+	// instance triggers separately).
+	KeywordMelee: true,
 	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
 	// change that teaches the engine to honour it. Its consumer is the
 	// stack's graveyard route (routeStackCardToGraveyardLocked, through

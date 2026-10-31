@@ -77,22 +77,21 @@ func registerFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
 // library and asks which nonland card of them, if any, to cast free. The
 // rest go to the bottom in a random order. Nothing is queued when no
 // card of them can be cast, but the rest still go to the bottom.
-func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int) error {
+// `spell` is the clause the cast is held to (Cosmic Cube's mana value
+// cap; anySpell for none), carried by the permission and judged on the
+// face being cast (#4509); the cards with no spell it admits still go to
+// the bottom.
+func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int, spell freeCastSpell) error {
 	name := offer.name
 	looked := g.LookAtTopOfLibraryForEffect(controller, n)
 	if len(looked) == 0 {
 		return nil
 	}
-	var eligible []uuid.UUID
-	for _, id := range looked {
-		if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-			eligible = append(eligible, id)
-		}
-	}
+	perm := spell.on(g.FreeCastFromLibraryPermission(controller, source, name))
+	eligible := freeCastCandidates(g, &perm, looked)
 	if len(eligible) == 0 {
 		return finishFreeCastFromLooked(g, controller, source, name, looked, uuid.Nil)
 	}
-	perm := g.FreeCastFromLibraryPermission(controller, source, name)
 	// Nothing moves on the decline: lookedAtRestToBottom bottoms every
 	// looked-at card left, the declined ones with the rest, in one order.
 	perm.LapseOnPass = game.LapseStaysInHand
@@ -111,7 +110,13 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer
 		return nil
 	}
 	// Keyed (#4246): the looked-at cards ride on the prompt as its Carry,
-	// so a table waiting on the pick is a restore point.
+	// so a table waiting on the pick is a restore point. Its grant
+	// carries no clause, so it offers only the cards no face of which the
+	// clause refuses (freeCastAdmitsEveryFace).
+	eligible = keyedFreeCastCandidates(g, &perm, eligible)
+	if len(eligible) == 0 {
+		return finishFreeCastFromLooked(g, controller, source, name, looked, uuid.Nil)
+	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     controller,
 		Source:      source,

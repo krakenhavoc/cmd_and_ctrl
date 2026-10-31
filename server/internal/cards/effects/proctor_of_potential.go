@@ -19,9 +19,10 @@ import (
 // turn's scry or surveil (rfCreatureBScriedOrSurveilledThisTurn). The
 // trigger is "a creature you control enters", which includes the
 // Proctor itself (Impact Tremors' reading), so it surveils as it comes
-// back. The finality counter is two self-replacements — it enters with
-// one only when it comes from a graveyard, and a Proctor carrying one
-// is exiled instead of dying.
+// back. The finality counter is half the card's and half the engine's:
+// the Proctor enters with one only when it comes from a graveyard (a
+// self-replacement), and a permanent carrying one is exiled instead of
+// dying by the engine's CR 122.1h replacement (game/finality_counters.go).
 //
 // No simplification.
 func init() {
@@ -32,7 +33,6 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			rfCreatureBEntersWithCounterFromGraveyard(rfCreatureBFinalityCounter, 1,
 				"Proctor of Potential: enters with a finality counter"),
-			rfMiscAFinalityExile("Proctor of Potential: exile instead of dying (finality counter)"),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, CreatureEnteredUnderYourControl,

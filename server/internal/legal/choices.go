@@ -327,7 +327,15 @@ func (e *enumerator) choiceMoves() bool {
 				// decline always is.
 				for i := range action.Either {
 					branch := action.Either[i]
-					if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
+					if branch.Kind == game.PayActionMana {
+						// #4566: a mana branch is affordable as a plain
+						// mana pay-unless is (zero spend context, #352),
+						// through the one probe every mana move asks.
+						cost, err := game.ParseCost(branch.Mana)
+						if err != nil || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+							continue
+						}
+					} else if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
 						continue
 					}
 					option := i
@@ -611,7 +619,19 @@ func (e *enumerator) choiceMoves() bool {
 			if d := game.PickTargetDivideForEffect(c); d != nil && hi > d.TotalFor(0) {
 				hi = d.TotalFor(0)
 			}
-			if lo == 0 && hi == 1 || lo == 1 && hi == 1 {
+			// #1559: a clause with a set rule offers only the sets the
+			// engine accepts, pruned inside the expansion so the budget
+			// is never spent on a refused set.
+			// #1807: a sameness rule too.
+			_, diffKeys := g.PickTargetSetRuleForEffect(c)
+			_, sameKeys := g.PickTargetSameRuleForEffect(c)
+			// #4616: and a total rule, which judges even a lone pick (a
+			// card over the ceiling fits no set), so a prompt with one
+			// candidate takes the set walk below rather than the
+			// single-slot answers, and keeps its "choose nothing".
+			totalRule, totalValues := g.PickTargetTotalRuleForEffect(c)
+			setKeys := setRuleKeys{different: diffKeys, same: sameKeys, total: totalBudgetOf(totalRule, totalValues)}
+			if (lo == 0 && hi == 1 || lo == 1 && hi == 1) && setKeys.total == nil {
 				// Single-slot prompt: the resolver reads `target`.
 				for _, t := range cands {
 					p := base()
@@ -621,13 +641,6 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				continue
 			}
-			// #1559: a clause with a set rule offers only the sets the
-			// engine accepts, pruned inside the expansion so the budget
-			// is never spent on a refused set.
-			// #1807: a sameness rule too.
-			_, diffKeys := g.PickTargetSetRuleForEffect(c)
-			_, sameKeys := g.PickTargetSameRuleForEffect(c)
-			setKeys := setRuleKeys{different: diffKeys, same: sameKeys}
 			for _, set := range e.refCombos(cands, lo, hi, e.opts.MaxExpansionPerSource, setKeys) {
 				p := base()
 				p.Targets = wireTargets(set)
@@ -882,7 +895,7 @@ func (e *enumerator) choiceMoves() bool {
 						Label:  reason + ": " + verb,
 						Source: c.Source,
 						Params: mustJSON(p),
-						Cost:   moveCost(c.LifeCost, 0),
+						Cost:   confirmAcceptCost(c),
 					})
 					continue
 				}
@@ -2208,6 +2221,24 @@ type OfferedDamageSplit struct {
 //
 // Caller must hold g's lock (read or write).
 func DamageSplits(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
+	out := damageSplitsAmongBlockers(g, c)
+	pl, ok := planDamage(g, c)
+	if !ok || !pl.f.AsThoughUnblocked || len(out) == 0 {
+		return out
+	}
+	// CR 510.1c, Wolverine, Claws Out: "as though it weren't blocked" is
+	// one more answer, the whole power on what the attacker attacks.
+	un := pl.unblocked()
+	for _, o := range out {
+		if splitKey(o.Split) == splitKey(un) {
+			return out
+		}
+	}
+	return append(out, OfferedDamageSplit{Split: un, Label: pl.label(un)})
+}
+
+// damageSplitsAmongBlockers is DamageSplits' divisions among the blockers.
+func damageSplitsAmongBlockers(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
 	pl, ok := planDamage(g, c)
 	if !ok {
 		return nil
@@ -2335,6 +2366,11 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 // canonical is the split that kills the most the power can buy.
 func (pl splitPlan) canonical() (DamageSplit, bool) {
 	n := len(pl.f.BlockerIDs)
+	if n == 0 && pl.f.AsThoughUnblocked && pl.f.AttackerPower > 0 {
+		// Every blocker has left combat: nothing to divide among, so the
+		// damage Wolverine may still assign is all of it to the player.
+		return pl.unblocked(), true
+	}
 	kill := KillingSet(pl.cost, pl.value, pl.f.AttackerPower)
 	if pl.covers {
 		for i := range kill {
@@ -2353,6 +2389,18 @@ func (pl splitPlan) canonical() (DamageSplit, bool) {
 		sink = n - 1
 	}
 	return pl.build(kill, sink)
+}
+
+// unblocked is the split that assigns the whole power as though the
+// attacker weren't blocked (CR 510.1c): nothing on any blocker, all of
+// it on the player or permanent it is attacking.
+func (pl splitPlan) unblocked() DamageSplit {
+	out := DamageSplit{Lethal: pl.cost, CoversLethal: pl.covers, TrampleTo: pl.f.AttackerPower}
+	out.Assignments = make([]DamageShare, 0, len(pl.f.BlockerIDs))
+	for _, id := range pl.f.BlockerIDs {
+		out.Assignments = append(out.Assignments, DamageShare{BlockerID: id})
+	}
+	return out
 }
 
 // build is the split that assigns lethal damage to each blocker in
@@ -2406,6 +2454,9 @@ func (pl splitPlan) build(kill []bool, sink int) (DamageSplit, bool) {
 // label says who takes what, so a seat choosing between splits sees
 // the difference: "3 to Tidus (lethal), 3 to Gatta".
 func (pl splitPlan) label(s DamageSplit) string {
+	if pl.f.AsThoughUnblocked && s.TrampleTo == pl.f.AttackerPower && !slices.ContainsFunc(s.Assignments, func(a DamageShare) bool { return a.Amount != 0 }) {
+		return fmt.Sprintf("%d to what it is attacking, as though unblocked", s.TrampleTo)
+	}
 	idx := make(map[uuid.UUID]int, len(pl.f.BlockerIDs))
 	for i, id := range pl.f.BlockerIDs {
 		idx[id] = i
@@ -2499,9 +2550,9 @@ func KillingSet(cost, value []int, power int) []bool {
 
 // combinationsRefs is combinations over TargetRefs, including the
 // empty set when lo is 0. `keys` is a clause's set-rule keys: no set
-// with two picks sharing a difference key (#1559), or holding two
-// sameness keys (#1807), is built. Zero for every clause without a
-// rule.
+// with two picks sharing a difference key (#1559), holding two
+// sameness keys (#1807) or totalling more than a total rule allows
+// (#4616) is built. Zero for every clause without a rule.
 func combinationsRefs(cands []game.TargetRef, lo, hi, limit int, keys setRuleKeys) [][]game.TargetRef {
 	var out [][]game.TargetRef
 	if lo == 0 {

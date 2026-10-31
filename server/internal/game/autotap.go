@@ -373,10 +373,24 @@ type plannedTap struct {
 
 	// Slots is the colour the plan booked for each mana this entry
 	// makes, in slot order, and whether that mana funds a Costed
-	// entry rather than the cost being paid (#2455). Only a plan with
-	// a Costed entry carries it; every other plan leaves the executor
-	// to colour-pick greedily, as before.
+	// entry rather than the cost being paid (#2455). A plan with a
+	// Costed entry carries it, and so does a candidate with two or more
+	// picks that the planner expanded because a triggered mana ability
+	// reads the colours (tapSource.PinnedSlots, ADR 0074 amendment of
+	// 2026-10-30); there a slot left "" is a free pick. Every other plan
+	// leaves the executor to colour-pick greedily, as before.
 	Slots []plannedSlot
+
+	// TriggerColors is the colour the plan booked for each mana the
+	// triggered mana abilities add when this source is tapped
+	// (tapSource.TriggerSlots), in firing order, "" for one booked to
+	// nothing but generic (ADR 0074, amendment of 2026-10-30, item 5).
+	// The executor hands it to the trigger's adder, which makes the
+	// booked colour of a pick rather than a greedy one: the trigger fires
+	// right after its own land, so a greedy walk can take the pip a later
+	// source was booked for and leave a hybrid unpaid (the #273
+	// disagreement). Nil on a source the plan counted no trigger mana on.
+	TriggerColors []string
 }
 
 // fundToken names one mana of the pool by what made it and its colour
@@ -521,8 +535,13 @@ func (g *Game) autoTapWishedLocked(
 	// started at slot 1 and found that same {U} again, so {U}{U} was
 	// "paid" by one {G}{U} land.
 	consumed := make([][]bool, len(sources))
+	// ADR 0074 amendment (#4716): the colour each booked slot was booked
+	// for, so a trigger slot's booking reaches the executor
+	// (plannedTap.TriggerColors).
+	booked := make([][]string, len(sources))
 	for i := range sources {
 		consumed[i] = make([]bool, len(sources[i].Slots))
+		booked[i] = make([]string, len(sources[i].Slots))
 	}
 	// A plan taps each source at most once, so it is never longer than
 	// the sources; the requirements can be as many as an announced X
@@ -543,7 +562,7 @@ func (g *Game) autoTapWishedLocked(
 	// #2392: the life a plan may spend on pain-tier sources, shared by
 	// both passes — see painBudgetFor.
 	pain := autoTapSpendBudget(g, controller)
-	if !solveColored(sources, used, consumed, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
+	if !solveColored(sources, used, consumed, booked, &plan, widenedLast(cost.Required), 0, &budget, &deferred, &pain) {
 		return nil, false
 	}
 	if budget <= 0 {
@@ -552,6 +571,7 @@ func (g *Game) autoTapWishedLocked(
 	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain, newColorSpread(wish, cost, sources, used)) {
 		return nil, false
 	}
+	stampTriggerColors(plan, sources, used, booked)
 	return plan, true
 }
 
@@ -642,7 +662,16 @@ func sortTapSources(sources []tapSource) {
 		if sources[i].Restricted != sources[j].Restricted {
 			return sources[i].Restricted
 		}
-		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
+		// ADR 0074 amendment (#4716): restrictiveness is the source's OWN
+		// slots, and between two sources equal on those, the one triggers
+		// add more to comes first. A Forest under Wild Growth then pays
+		// {G}{G} alone, where scoring its extra {G} would rank it behind
+		// the plain Forest and tap both. With no trigger slot anywhere both
+		// keys are the old score and a tie, so the order is unchanged.
+		if ri, rj := restrictivenessScore(sources[i]), restrictivenessScore(sources[j]); ri != rj {
+			return ri < rj
+		}
+		return sources[i].TriggerSlots > sources[j].TriggerSlots
 	})
 }
 
@@ -874,7 +903,53 @@ type tapSource struct {
 	// green spell needs. It never drops a candidate, so what is payable
 	// is exactly what was payable before it existed.
 	HandDemand int
+
+	// TriggerSlots is how many of the LAST slots are not the source's
+	// own mana but what triggered mana abilities add when it is tapped
+	// (CR 605.1b, 605.4a; ADR 0074, amendment of 2026-10-30): Crypt
+	// Ghast's {B} on a Swamp, Wild Growth's {G} on a Forest. The judge
+	// that decides them is the one the executor fires them with
+	// (manaTriggerFiringsLocked), so the plan counts exactly the mana
+	// that arrives. Zero on every board with no mana trigger, and on a
+	// source that is not tapped for mana. See autotap_trigger_mana.go.
+	TriggerSlots int
+
+	// TriggerFrom is the permanent each trigger slot's mana comes from
+	// (the Aura, the Crypt Ghast), one per trigger slot: the token the
+	// trigger mints names it, not the land, which is what #2455's costed
+	// plan has to name when that mana funds a Signet (fundToken).
+	TriggerFrom []uuid.UUID
+
+	// PinnedSlots fixes the colour of each of the source's own slots
+	// for a candidate the planner expanded per pick (ADR 0074 amendment,
+	// item 4): a source with two or more picks whose trigger mana
+	// depends on them, so each combination is its own candidate. One
+	// entry per own slot, "" for a slot that is not a pick. Carried to
+	// plannedTap.Slots. Nil on every other candidate; a source with one
+	// such pick carries it as OneColor instead.
+	PinnedSlots []string
 }
+
+// plannedEntry is the plan entry booking this candidate, before the
+// solve stamps what it booked (TriggerColors) or the generic recruit
+// what it recruited the source for (Prefer).
+func (s tapSource) plannedEntry() plannedTap {
+	e := plannedTap{CardID: s.CardID, OneColor: s.OneColor, DifferentColors: s.DifferentColors, Ref: s.Ref}
+	if len(s.PinnedSlots) > 0 {
+		e.Slots = make([]plannedSlot, len(s.PinnedSlots))
+		for k, c := range s.PinnedSlots {
+			e.Slots[k] = plannedSlot{Color: c}
+		}
+	}
+	if s.TriggerSlots > 0 {
+		e.TriggerColors = make([]string, s.TriggerSlots)
+	}
+	return e
+}
+
+// ownSlots is how many of the candidate's slots are the source's own
+// mana, the rest being trigger slots.
+func (s tapSource) ownSlots() int { return len(s.Slots) - s.TriggerSlots }
 
 // lastResort is the tier #1215 opened for the sources a plan should
 // spend only when nothing else can pay: one the cost eats, and — ADR
@@ -927,6 +1002,12 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	// pricing below is a gather per colour per slot per source. See
 	// producesManaReplacementsExistLocked.
 	priceProduction := g.producesManaReplacementsExistLocked()
+	// ADR 0074, amendment of 2026-10-30 (#4716): does any triggered mana
+	// ability exist that a tap could fire? Asked ONCE, for the reason the
+	// replacement question above is: on nearly every board the answer is
+	// no, and then no production is built or judged and the gather is the
+	// one it was. Off for the payers' fallback plan (countsTriggerMana).
+	triggers := wish.countsTriggerMana() && g.manaTriggersExistLocked()
 	// ADR 0166: while Word of Command makes this player play a card,
 	// only their lands' mana abilities may be activated.
 	landsOnly := g.LandManaOnlyLocked(controller)
@@ -1049,7 +1130,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// leaves with nothing to add is not a mana source, wished-for
 			// or not, and tapping a land for no mana is worse than not
 			// tapping it.
-			slots := manaPlannableSlotsLocked(g, controller, c, picked, identity, priceProduction, true)
+			slots, printed := manaPlannableSlotsShapeLocked(g, controller, c, picked, identity, priceProduction, true)
 			if len(slots) == 0 {
 				continue
 			}
@@ -1060,7 +1141,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// the KINDS it produces are unaffected by that — CR 106.12b
 			// replaces how much mana is produced, not what produced it.
 			wanted := wish.kindSet() != 0 && manaSourceKindsOf(c).HasAny(wish.kindSet())
-			out = appendTapSource(out, tapSource{
+			proto := tapSource{
 				CardID: c.InstanceID,
 				// #3853: what this ability's spend riders would do for
 				// the spell being cast.
@@ -1071,7 +1152,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
-				Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions) || g.untapSkippedForLocked(&c, controller)),
+				Frozen:             picked.TapCost && (untapStepRestrictedBy(&c, g, restrictions, false) || g.untapSkippedForLocked(&c, controller)),
 				Wanted:             wanted,
 				Sacrifices:         picked.SacrificeCost,
 				SacrificesCreature: picked.SacrificeCost && c.IsCreature(),
@@ -1090,7 +1171,17 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				Energy: picked.EnergyCost,
 				// #2455: the mana the ability owes; zero unless costed.
 				Cost: cand.cost,
-			}, slots)
+			}
+			// ADR 0074 amendment (#4716): CR 106.12 — only an ability
+			// whose cost includes {T} taps the permanent for mana, so only
+			// it can fire a triggered mana ability (the executor's own
+			// `tapped` bit). A Gold, an Eldrazi Spawn and Vivi's {0} get
+			// no trigger mana in the plan, as none fires in the pool.
+			if triggers && picked.TapCost {
+				out = g.appendTriggeredTapSourceLocked(out, proto, slots, c, controller, priceProduction, printed)
+				continue
+			}
+			out = appendTapSource(out, proto, slots)
 		}
 	}
 	if costed || landsOnly {
@@ -1237,10 +1328,29 @@ func manaPlannableSlotsLocked(
 	identity commanderIdentity,
 	priceProduction, fromTap bool,
 ) []ProducedManaEntry {
+	slots, _ := manaPlannableSlotsShapeLocked(g, controller, c, picked, identity, priceProduction, fromTap)
+	return slots
+}
+
+// manaPlannableSlotsShapeLocked is manaPlannableSlotsLocked plus whether
+// the CR 106.12b window left the slots as the activation prints them
+// (`printed`): then the planner's slot k is the executor's slot k, and a
+// colour pinned per slot (tapSource.PinnedSlots) means the same slot to
+// both. True on every board with no production replacement.
+//
+// Caller must hold g.mu.
+func manaPlannableSlotsShapeLocked(
+	g *Game,
+	controller uuid.UUID,
+	c Card,
+	picked *ManaAbilityShape,
+	identity commanderIdentity,
+	priceProduction, fromTap bool,
+) (out []ProducedManaEntry, printed bool) {
 	slots, err := manaAbilitySlotsLocked(g, controller, c.InstanceID, picked,
 		g.maxCounterPaymentLocked(controller, c.InstanceID, picked.RemoveCounters))
 	if err != nil || len(slots) == 0 {
-		return nil
+		return nil, false
 	}
 	live := slots[:0]
 	for _, slot := range slots {
@@ -1252,12 +1362,33 @@ func manaPlannableSlotsLocked(
 	}
 	slots = live
 	if len(slots) == 0 {
-		return nil
+		return nil, false
 	}
 	if priceProduction {
-		slots = g.priceProducedSlotsLocked(controller, c.InstanceID, slots, fromTap)
+		priced := g.priceProducedSlotsLocked(controller, c.InstanceID, slots, fromTap)
+		return priced, sameSlotShapes(slots, priced)
 	}
-	return slots
+	return slots, true
+}
+
+// sameSlotShapes reports whether two slot lists are the same slots: the
+// same options in the same order, the same amounts and the same
+// different-colours count, slot for slot.
+func sameSlotShapes(a, b []ProducedManaEntry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !sameOptions(a[i].Options, b[i].Options) || a[i].Distinct != b[i].Distinct || len(a[i].Amounts) != len(b[i].Amounts) {
+			return false
+		}
+		for c, n := range a[i].Amounts {
+			if b[i].Amounts[c] != n {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // Return values of oneColorSlot.
@@ -2063,9 +2194,13 @@ func manaSourceTappedOut(c *Card, ab *ManaAbilityShape) bool {
 // first). For multi-slot sources, the score is the sum of per-slot
 // option counts — Sol Ring [{C},{C}] = 2, Forest [{G}] = 1,
 // Birds [{W,U,B,R,G}] = 5, Arcane Signet (Bant) [{W,U,G}] = 3.
+//
+// Over the source's OWN slots: its trigger slots are left out (ADR 0074
+// amendment, #4716), and sortTapSources breaks a tie toward the source
+// triggers add more to.
 func restrictivenessScore(s tapSource) int {
 	n := 0
-	for _, slot := range s.Slots {
+	for _, slot := range s.Slots[:s.ownSlots()] {
 		n += len(slot.Options)
 	}
 	return n
@@ -2084,10 +2219,15 @@ func restrictivenessScore(s tapSource) int {
 // pool solver gives (ManaPool.attemptSpend): the two must agree on
 // which widened slots end up paid as generic, or the plan would make
 // mana the payment then spends differently.
+//
+// `booked` records the colour each consumed slot was booked for (the
+// first colour it makes that the requirement prints), "" when the slot
+// is free. Only a trigger slot's is read afterwards (stampTriggerColors).
 func solveColored(
 	sources []tapSource,
 	used []bool,
 	consumed [][]bool,
+	booked [][]string,
 	plan *tapPlan,
 	reqs []ColorRequirement,
 	reqIdx int,
@@ -2131,13 +2271,15 @@ func solveColored(
 			if !wasUsed {
 				used[i] = true
 				pain.spend(sources[i])
-				*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, DifferentColors: sources[i].DifferentColors, Ref: sources[i].Ref})
+				*plan = append(*plan, sources[i].plannedEntry())
 			}
 			consumed[i][slotIdx] = true
-			if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+			booked[i][slotIdx] = slotColorFor(sources[i].Slots[slotIdx], req)
+			if solveColored(sources, used, consumed, booked, plan, reqs, reqIdx+1, budget, deferred, pain) {
 				return true
 			}
 			consumed[i][slotIdx] = false
+			booked[i][slotIdx] = ""
 			if !wasUsed {
 				used[i] = false
 				pain.refund(sources[i])
@@ -2153,7 +2295,7 @@ func solveColored(
 	// after every placement on a matching slot.
 	if req.AnyMana {
 		*deferred++
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+		if solveColored(sources, used, consumed, booked, plan, reqs, reqIdx+1, budget, deferred, pain) {
 			return true
 		}
 		*deferred--
@@ -2162,7 +2304,7 @@ func solveColored(
 	// generic — the pool solver's foldUnpaidTwobrid.
 	if req.isTwobrid() && !req.AnyMana {
 		*deferred += req.NumericAlt
-		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+		if solveColored(sources, used, consumed, booked, plan, reqs, reqIdx+1, budget, deferred, pain) {
 			return true
 		}
 		*deferred -= req.NumericAlt
@@ -2320,11 +2462,9 @@ func recruitGeneric(
 		pick = spread.refine(sources, candidateOrder, eligible, pick, deficit)
 		pain.spend(sources[pick])
 		used[pick] = true
-		*plan = append(*plan, plannedTap{
-			CardID: sources[pick].CardID, OneColor: sources[pick].OneColor,
-			DifferentColors: sources[pick].DifferentColors, Ref: sources[pick].Ref,
-			Prefer: spread.colorFor(sources[pick]),
-		})
+		entry := sources[pick].plannedEntry()
+		entry.Prefer = spread.colorFor(sources[pick])
+		*plan = append(*plan, entry)
 		deficit -= len(sources[pick].Slots)
 	}
 	return true

@@ -3745,3 +3745,157 @@ reduction fails the reduction table and the Brawler and Hulk prices; dropping th
 the Advancing the Spirit test and the event and snapshot tests; dropping the your-turn predicate or Hulk's "other
 creature" predicate fails their card tests; dropping `Event.PowerUp` fails `TestAPowerUpActivationIsAnnouncedAsOne`;
 letting the alternative reach an {X} cost fails `TestPowerUpZeroAlternativeReplacesTheCostButNeverAnXCost`.
+
+## Amendment 2026-10-29 ([#4571](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4571)): three more rules on the power-up bit
+
+The amendment above left three small additions to the power-up seam as "out of scope". All three read the one bit
+(`ActivatedAbilityShape.PowerUp`) in the place the rule already lives, so none adds a gate; they are Decisions 72
+to 74. CR text checked against the 2026-09-25 edition (CR 106.6, 101.2, 113.6, 500.7, 611.2a, 614.10a, 702.193a).
+
+### Decision 72: "an additional time" is a static that adds to the printed once
+
+Wonder Man, Hollywood Hero prints "Each power-up ability of permanents you control can be activated an additional
+time." CR 702.193a's "Activate this ability only once" is the number it changes, so the number moved out of
+`PowerUpUsed` into `Game.PowerUpLimitFor`: the printed 1, plus the `Times` of every `PowerUpExtra` (a struct of hooks
+on `CardDef.PowerUpExtras`, built with `effects.YourPowerUpAbilitiesActivateAnAdditionalTime`) that a battlefield
+permanent contributes and whose `Applies` reaches the ability's source. `PowerUpUsed` is now "activations recorded
+>= the limit", reading the same activation record as before (per object and label, written at the announce), and it
+takes the source card, not its id, because `Applies` reads the permanent's controller.
+
+It is the shape of `BoastLimits` with two differences. The text says "an additional time", so the entries add
+(two sources make three) where Birgi's "twice rather than once" takes the largest; the printed card is legendary, so
+two at once needs a clone, and the choice costs nothing today. And it is read at the moment of activation and
+stores nothing: when Wonder Man leaves, an ability activated twice is simply spent (two against a limit of one), and
+a restore recomputes the limit from the battlefield. His own power-up is one of "each power-up ability of permanents
+you control", so he can be powered up twice, and each activation the turn he entered is reduced (CR 702.193a,
+"this ability's cost").
+
+The registry refuses an entry with no `Applies` (it would reach every permanent of every player), no label, or
+`Times` below 1. `CardDef.PowerUpExtras` is `defFieldInert` (a static the battlefield reads) and has an ability-row
+fallback ("Power-up abilities can be activated an additional time"). Nothing is added to the snapshot.
+
+### Decision 73: the ban is a rules effect queued with the extra turn
+
+Kang the Conqueror's power-up ends "Take an extra turn after this one. During that turn, power-up abilities can't
+be activated." That is ADR 0188 Decision 3b's shape, "During that turn, damage can't be prevented": a game-wide
+`ScopedEffect` carried on the queued `ExtraTurn` (`TakeExtraTurn.DuringThatTurn`), registered with
+`UntilEndOfTurnDuration` as that turn begins (CR 500.7, CR 611.2a) and swept at its cleanup step. A skipped extra turn
+takes the effect with it (CR 614.10a), and the turn the ability resolved in is untouched. The new mod kind is
+`cantActivatePowerUp` (`ModCantActivatePowerUp`, reader `readerRule`). It is an on-disk identity: never renamed,
+never reused, and a binary from before it refuses a file that carries it (`ErrUnknownEffect`) instead of banning
+nothing.
+
+`ActivationGateLocked` is where "can't beats may" (CR 101.2) is asked of an activation, and its header already
+named the extension point, "a restriction with a duration ... a third source slots into this function without
+changing its signature". The ban is that source: `ActivationAbility` gained `PowerUp` (derived from the shape by
+`ActivationAbilityOf`, never set by a card file), and the gate refuses a power-up ability with a `CantActivateError`
+naming "Power-up abilities can't be activated — Kang the Conqueror" while `powerUpBanLocked` finds the effect, for
+every player, Kang's controller included. `AnyActivationRestrictionsForEffect`, the fast negative the view and the
+enumerator take before asking the gate, also reports the ban, so `internal/legal` drops the move and the view stamps
+`cant_activate` with the same clause. The two call sites that built an `ActivationAbility` by hand
+(`protocol/view.go`) now carry the bit.
+
+### Decision 74: power-up-only mana is a purpose tag the payer sets
+
+Quinjet Technician's "Spend this mana only to activate power-up abilities" (CR 106.6) is
+`game.ManaRestrictPowerUp` (`"purpose:power_up"`), a purpose tag beside `ManaRestrictActivate`. A tag is matched
+against `ManaSpendContext`, which gained `PowerUp bool`: true when the ability being paid for is a power-up ability,
+set where the payment is built for a row (`ActivateCatalogAbility`, the enumerator's `abilitySpend`, the cost
+preview). The tag matches only an activation with that bit; a cast, an unlock, a mana ability's own cost and a
+payment that names no purpose all refuse it, so a context that forgot to say what it pays for makes the mana weaker
+than printed, never stronger. The #2059 purpose guard (`TestRestrictedManaNamingAnObjectPropertyAlsoNamesAPurpose`)
+accepts it as a purpose tag. The auto-tapper plans restricted mana for casts only (the existing rule for every
+activation-only restriction, Gwenna and Boommobile among them), so the player taps the {R}{R} row first. The wire
+carries the tag in `mana_abilities[].restrictions` as it does the others; the client does not parse tags, so no
+label changed.
+
+### Cards
+
+Wonder Man, Hollywood Hero, Kang the Conqueror and Quinjet Technician, all Full. `effects.powerUpAnswering` lost its
+always-`AnswerPump` parameter (the three rows that counter themselves call it with three arguments) and Kang, whose
+row also queues a turn, builds `PowerUp` and sets `Purpose{Answers: AnswerPump, ExtraTurns: 1}`.
+
+### Snapshot, closure and ledger
+
+Two additions, both additive within v9. `cantActivatePowerUp` is a new value of the existing `mods[].kind` string on
+an existing record (a binary from before it refuses the file, as above). `ManaSpendContext` is stored in an assist
+prompt (`pendingChoices[].assist.spend`), so its new `PowerUp` bool is a new key there, recorded in
+`snapshot_shape/v9.txt`; a file written without it restores as "not a power-up", the only direction an older file can
+mean, since no earlier binary could produce power-up-only mana. No `Game` route to a func is added (the new hook lives
+on `CardDef`, reached through the catalog, as `BoastLimits` is), so the closure counts do not move. The effect-key
+ledger takes none: the cards write no keyed body, and the mod kind is the only new on-disk identity.
+
+### Tests and back-outs
+
+`game/power_up_additions_test.go` (the tag's matcher table and the pool solver, the ban refusing only power-ups for
+every player, the fast negative, the sweep at the turn's end, the bit on the gate identity),
+`effects/power_up_additions_test.go` (the three cards: twice and not thrice, other players' permanents untouched,
+his own power-up twice at the reduced price, the sum of two sources, leaving takes it back, a restore between
+activations; Kang's price, counter and queued turn, the ban for everyone in the extra turn and not before or after,
+a restore before the extra turn; Quinjet's {R}{R} paying a power-up and nothing else, the plain row staying
+ordinary), `legal/power_up_test.go` and `protocol/power_up_view_test.go`. Backing out the limit (nothing added in
+`PowerUpLimitFor`) fails the Wonder Man tests in `effects`, `legal` and `protocol`; dropping the gate's ban check fails
+the Kang tests and the `game`, `legal` and `protocol` ban tests; dropping the ban from the fast negative fails those
+three packages' tests; dropping `riderCtx.PowerUp` in the activation fails
+`TestQuinjetTechnicianManaPaysAPowerUpAbility`; dropping the enumerator's row bit fails
+`TestPowerUpOnlyManaMakesAPowerUpAbilityAMove`; matching the tag on any activation fails
+`TestQuinjetTechnicianPowerUpManaPaysNothingElse` and the matcher table; dropping the bit from the view's
+`ActivationAbility` fails `TestPowerUpAdditionalTimeAndBanAreProjected`; dropping `DuringThatTurn` from Kang fails his
+two ban tests.
+
+## Amendment 2026-10-30 ([#4600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4600)): equip-only mana, a second purpose bit
+
+Ronin, Shadow Stalker's "Spend this mana only to cast Equipment spells or activate equip abilities" needs the payer to
+say that the ability being paid for is an equip ability. The source cannot say it: the spend context for an activation
+is built from the source card alone (`ManaSpendForAbility`), so an Equipment's equip ability and its other abilities
+(Shadowspear's "{1}: Permanents your opponents control lose hexproof and indestructible") look identical. This is
+Decision 74's shape, one keyword over. CR text checked against the 2026-09-25 edition (CR 106.6, 702.6a, 702.6d, 119.4).
+
+### Decision 75: equip-only mana is a purpose tag the payer sets
+
+`game.ManaRestrictEquip` (`"purpose:equip"`) is a purpose tag beside `ManaRestrictPowerUp`, matched against
+`ManaSpendContext.Equip`, a new bool: true when the ability being paid for is an equip ability
+(`ActivatedAbilityShape.Equip`, CR 702.6a). It is set at the same three places `PowerUp` is, and for the same reason
+each one builds its own context: `ActivateCatalogAbility` (`riderCtx.Equip = ab.Equip`), the legal-move enumerator
+(`enumerator.rowEquip`, read by `abilitySpend`) and the `?ability=` cost preview in `lobby/http.go`. The {0} twin of an
+equip ability (Decision on #4475) is a copy of the row, so it carries the bit through the enumerator unchanged. The
+tag matches only an activation with the bit; a cast, an unlock, a mana ability's own cost and a payment that names no
+purpose all refuse it, so a context that forgot the bit makes the mana weaker than printed, never stronger.
+
+The "Equipment spell" half is not new: it is `ManaRestrictCast` with `ManaRestrictSubtype("Equipment")`. Ronin's clause
+is the two halves joined by `ManaRestrictAnyOf`, the shape Creeping Peeper uses for its three-way restriction. The
+#2059 guard accepts it (the tag is a `purpose:` one and the `anyof:` wrapper counts as naming a purpose).
+
+Two consequences are existing rules rather than choices. The auto-tapper plans restricted mana for casts only, so it
+does not plan the activation half; and it never plans a mana ability whose cost is life with no {T} (the only
+costless shape it takes is the bounded, wholly costless `OncePerTurn`, `autoTapFreeOncePerTurn`), so the player fires
+Ronin's ability first and the mana floats, exactly as with every other "Pay N life" mana ability that does not tap.
+The auto-tap top-up and the pool solver then read the floating mana through the same `ManaSpendContext.allows`, so
+the equip is finished with it and a creature spell or the Equipment's other ability is not. "Activate only once each
+turn" is the existing `ManaAbility.OncePerTurn` bit (#1621), per object and label.
+
+### Cards
+
+Ronin, Shadow Stalker (Full). His second ability, "{T}, Sacrifice an Equipment attached to Ronin: Target creature gets
+-4/-4 until end of turn. Activate only as a sorcery.", is the existing `AttachedToThis` sacrifice clause
+(Faunsbane Troll) with `HarmUntilEOT(0, -4, -4)`.
+
+### Snapshot, closure and ledger
+
+One addition, additive within v9: `ManaSpendContext` is stored in an assist prompt (`pendingChoices[].assist.spend`),
+so its new `Equip` bool is a new key there, recorded in `snapshot_shape/v9.txt`. A file written without it restores as
+"not an equip ability", the only direction an older file can mean, since no earlier binary could produce equip-only
+mana. No `Game` route to a func is added, so the closure counts do not move, and no keyed body or mod kind is added,
+so the effect-key ledger takes none.
+
+### Tests and back-outs
+
+`game/equip_mana_test.go` (the tag's matcher table, Ronin's whole clause as a table, and the pool solver),
+`cards/effects/ronin_shadow_stalker_test.go` (the mana paying an Equipment spell and an equip ability, and paying
+nothing else: not a creature spell, a plain artifact spell, an instant, or Shadowspear's non-equip ability; the
+auto-tap top-up; once per turn; the -4/-4 needing an attached Equipment, killing a 4/4, and sorcery speed),
+`legal/equip_mana_test.go` and `lobby/auto_tap_preview_equip_mana_test.go`. Dropping `riderCtx.Equip` in the activation
+fails the equip-ability tests in `effects`; dropping the enumerator's `rowEquip` fails
+`TestEquipOnlyManaMakesAnEquipAbilityAMoveAndNothingElse`; dropping the preview's bit fails
+`TestAutoTapPreviewAbilityReadsTheEquipBitOfTheRow`; matching the tag on any activation fails the matcher tables and
+`TestRoninManaPaysNothingButEquipmentSpellsAndEquipAbilities`.

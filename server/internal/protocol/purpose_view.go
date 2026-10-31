@@ -133,10 +133,12 @@ type PurposeView struct {
 	Targets *[]TargetPurposeView `json:"targets,omitempty"`
 	// Answers is what the row can do in response (ADR 0142): the wire
 	// names of game.Answers, in the vocabulary's order ("protect", "survive",
-	// "pump", "prevent", "remove", "sac_outlet", "restrict",
+	// "pump", "prevent", "remove", "sac_outlet", "restrict", "graveyard",
 	// "combat_grant", "animate", "makes_blocker", "value"). Absent when
 	// the row declares none; ["value"] is a declared "answers nothing".
-	// On an activated row only. It is not an amount: a purpose that
+	// On an activated row, a triggered row (only "remove"), and since
+	// #2877 a card, a spell's mode and an alternative cost, which a
+	// cast's value_only reads. It is not an amount: a purpose that
 	// declares only answers is not Priced. A pointer so PurposeView
 	// stays comparable.
 	Answers *[]string `json:"answers,omitempty"`

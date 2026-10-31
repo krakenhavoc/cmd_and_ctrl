@@ -683,6 +683,9 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 // of keeping a second, hand-rolled copy of the same shape.
 export interface AbilityCost {
   tap_cost?: boolean;
+  // #4566: the branches of an either/or cost, each with whether it can
+  // be paid now. Activated abilities only.
+  cost_branches?: { label: string; payable?: boolean }[];
   // #1190: mana_cost is the PRINTED mana component and
   // charged_mana_cost what the engine actually charges right now,
   // after every CR 601.2f cost modifier on the battlefield — see
@@ -1010,6 +1013,11 @@ export function abilityBlocked(
     a.sacrifice_label ?? "a permanent",
   );
   if (sacrifice) return sacrifice;
+  // #4566: an either/or cost none of whose branches can be paid now
+  // (CR 118.3) — "needs: sacrifice an artifact or discard a nonland card".
+  if (a.cost_branches && a.cost_branches.length > 0 && !a.cost_branches.some((b) => b.payable)) {
+    return "needs: " + a.cost_branches.map((b) => b.label.toLowerCase()).join(" or ");
+  }
   // #1213: the same question one verb over.
   const returned = returnShortfall(a.return_options, a.return_label);
   if (returned) return returned;
@@ -1710,7 +1718,10 @@ function tapItems(card: CardView): MenuItem[] {
     {
       id: "untap",
       label: "Untap",
-      disabled: !tapped,
+      // #4574: nothing untaps a permanent that can't become untapped, so
+      // the sandbox does not offer it.
+      disabled: !tapped || !!card.no_untap?.never,
+      hint: card.no_untap?.never ? "it can't become untapped" : undefined,
       action: { type: "untap", params: { instance_id: card.instance_id } },
     },
   ];

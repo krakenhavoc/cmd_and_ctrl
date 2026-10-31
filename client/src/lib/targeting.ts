@@ -437,6 +437,9 @@ export interface TargetingState {
   // #1807: the CURRENT step's sameness rule ("from a single
   // graveyard"), when it has one — every pick must share its key.
   same?: SetRule;
+  // #4616: the CURRENT step's total rule ("total mana value 6 or
+  // less"), when it has one — the picks' values may not exceed `max`.
+  total?: TotalRule;
   // #1563: the CURRENT step's divided amount, when its clause is
   // "divided as you choose" — like `legal`, it always describes the
   // step being asked. Already resolved against the X the caster
@@ -461,6 +464,16 @@ export interface TargetingState {
 export interface SetRule {
   label: string;
   keys: Record<string, string>;
+}
+
+// TotalRule is a clause's rule over the TOTAL of its picks (#4616, CR
+// 601.2c): the picks' values summed may not exceed `max`. `label`
+// completes "those targets must …". A card missing from `values` fits
+// no total.
+export interface TotalRule {
+  label: string;
+  max: number;
+  values: Record<string, number>;
 }
 
 // TargetStep is one clause of an announcement: which mode occurrence
@@ -489,6 +502,8 @@ export interface TargetStep {
   different?: SetRule;
   // #1807: the clause's sameness rule, when it prints one.
   same?: SetRule;
+  // #4616: the clause's total rule, when it prints one.
+  total?: TotalRule;
   // #3860: the extra life naming each card costs (CR 601.2f), and the
   // cards whose tax the viewer cannot pay — already left out of `legal`.
   lifeTaxes?: Record<string, number>;
@@ -743,6 +758,9 @@ export function stepsFor(
               ? { label: c.different.label, keys: c.different.keys ?? {} }
               : undefined,
             same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
+            total: c.total
+              ? { label: c.total.label, max: c.total.max, values: c.total.values ?? {} }
+              : undefined,
             relation: c.relation,
             divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
             divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
@@ -886,6 +904,7 @@ export function openWalk(
     done: [],
     different: first.different,
     same: first.same,
+    total: first.total,
     divide: first.divide,
     divideUpTo: first.divideUpTo,
     divideFromXUnresolved: first.divideFromXUnresolved,
@@ -941,6 +960,7 @@ export function advance(t: TargetingState): TargetingState | null {
     done,
     different: s.different,
     same: s.same,
+    total: s.total,
     divide: s.divide,
     divideUpTo: s.divideUpTo,
     divideFromXUnresolved: s.divideFromXUnresolved,
@@ -1390,6 +1410,9 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
   // present-and-empty is an offer the board cannot pay right now.
   if (offer.teamwork_options) return offer.teamwork_options.cards ?? [];
   if (offer.blight_options) return offer.blight_options.cards ?? [];
+  // #4642: "you may behold a Hero" — nothing to behold is an offer that
+  // cannot be taken now.
+  if (offer.reveal_options) return offer.reveal_options.cards ?? [];
   // #4092: a replicate cost that taps — too few to tap is an offer that
   // cannot be taken now.
   if (offer.tap_others_options) {
@@ -1486,6 +1509,18 @@ export function castRevealCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedRevealCost | undefined {
+  // #4642: or a ticked "you may behold a Hero" offer, which asks the same
+  // question over its own options.
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer?.reveal) {
+      return {
+        label: offer.label ?? (offer.behold ? "Behold" : "Reveal a card from your hand"),
+        behold: offer.behold === true,
+        options: offer.reveal_options?.cards ?? [],
+      };
+    }
+  }
   const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
   if (!branch?.reveal) return undefined;
   return {
@@ -1994,8 +2029,29 @@ export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolea
 // `id` breaks the rule when an earlier pick's key DIFFERS from its
 // own ("from a single graveyard", with a card from another graveyard
 // already picked). With no pick yet every candidate is open.
+//
+// #4616: under a total rule picking `id` breaks it when its value,
+// added to the other picks', passes the ceiling — or when it has no
+// value at all, since such a card fits no total.
 export function breaksSetRule(t: TargetingState, id: string): boolean {
-  return breaksDifferent(t, id) || breaksSame(t, id);
+  return breaksDifferent(t, id) || breaksSame(t, id) || breaksTotal(t, id);
+}
+
+function breaksTotal(t: TargetingState, id: string): boolean {
+  const rule = t.total;
+  if (!rule) return false;
+  if (t.picked.some((p) => p.id === id)) return false;
+  const value = rule.values[id];
+  if (value === undefined) return true;
+  return pickedTotal(t) + value > rule.max;
+}
+
+// pickedTotal is the current step's picks summed under its total rule
+// (#4616), or 0 for a step without one.
+export function pickedTotal(t: TargetingState): number {
+  const rule = t.total;
+  if (!rule) return 0;
+  return t.picked.reduce((sum, p) => sum + (rule.values[p.id] ?? 0), 0);
 }
 
 function breaksDifferent(t: TargetingState, id: string): boolean {

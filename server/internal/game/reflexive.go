@@ -200,6 +200,7 @@ func (g *Game) dispatchReflexiveTriggerLocked(sourceCardID, controller uuid.UUID
 		// is handed the match rather than asked to find one.
 		Key:            label,
 		Targets:        targets,
+		Modes:          reflexiveModeSpecFor(body, source.InstanceID, params),
 		OptionalPrompt: rt.Optional,
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			item := NewKeyedTriggeredItem(source, label, rt.Body, params)

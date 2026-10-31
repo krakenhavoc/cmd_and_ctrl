@@ -180,6 +180,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	// Tactician, Arc-Slogger), a mill without the graveyard fuel
 	// (library_exile_cost.go). Its floor is valueOf's too.
 	v -= p.libraryExileCostValue(st, c.LibraryExile)
+	// #4613: "Get N poison counters" (a ward payment). Reaching ten loses
+	// the game (CR 704.5c), so it is refused like a payment of the last
+	// life; short of ten it is priced on the life scale (poison_cost.go).
+	if poisonCostLethal(st, c.Poison) {
+		return 0, true
+	}
+	v -= poisonCostValue(st, c.Poison)
 	return v, false
 }
 

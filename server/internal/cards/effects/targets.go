@@ -231,7 +231,12 @@ func PowerGE(n int) CardPredicate {
 // Murdock's Crusade's "target creature with toughness 4 or greater"
 // (#1703).
 func ToughnessGE(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.CurrentToughness() >= n }
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if g != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+			return g.ToughnessAnywhereForEffect(c) >= n
+		}
+		return c.CurrentToughness() >= n
+	}
 }
 
 // ManaValueLE passes when the card's mana value is ≤ n (Swan Song
@@ -646,6 +651,22 @@ func ChosenAtRandom(spec *game.TargetSpec) *game.TargetSpec {
 // or activated ability it admits nothing too.
 func ControlledByThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
 	spec.ControlledByThatPlayer = true
+	return spec
+}
+
+// ControlledByThatEventActor narrows a TRIGGERED ability's clause to what
+// the player who caused the triggering event controls (Black Bolt, Inhuman
+// King's "destroy target nonland permanent that player controls" after
+// "becomes the target of a spell or ability an opponent controls", #4707).
+// ControlledByThatPlayer's twin: that one reads the event's Target (the
+// player hit), this reads its Actor (on EventBecomesTarget, the controller
+// of the targeting spell or ability). Data on the clause
+// (game.TargetSpec.ControlledByEventActor), judged in the one shared walk;
+// on a spell, an activation or an event with no Actor it admits nothing.
+//
+//	ControlledByThatEventActor(TargetPermanent("target nonland permanent that player controls", Nonland()))
+func ControlledByThatEventActor(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByEventActor = true
 	return spec
 }
 

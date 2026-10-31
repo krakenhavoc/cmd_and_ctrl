@@ -74,6 +74,9 @@ export interface PendingChoice {
   reason?: string;
   pay_cost?: string;
   choose_destination?: string;
+  // resolution_cast (#4243, #4250): the rule or effect a "you may cast
+  // it" offer is asked under ("rebound", "hand_cast", ...).
+  may_cast_keyword?: string;
 }
 
 export interface SnapshotStackItem {
@@ -82,6 +85,7 @@ export interface SnapshotStackItem {
   controller: string;
   source_card_id: string;
   label?: string;
+  targets?: { kind: string; id: string }[];
 }
 
 export interface SnapshotTurn {

@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -150,8 +151,37 @@ func postDM(t *testing.T, s userStack, gameID uuid.UUID, tok string, body any) (
 	return resp.StatusCode, string(raw)
 }
 
+// sitter is a signed-in person to seat: their user id and the Discord
+// identity their seat carries.
+type sitter struct {
+	id    uuid.UUID
+	ident DiscordIdentity
+}
+
+// sitterOf is a sitter for a user created by dmTarget.
+func sitterOf(u users.User, snowflake, name string) sitter {
+	return sitter{id: u.ID, ident: DiscordIdentity{ID: snowflake, Username: strings.ToLower(name), GlobalName: name}}
+}
+
+// shareATable seats everyone in who at one earlier table, which is all
+// it takes to be each other's tablemates. It returns the table.
+func shareATable(t *testing.T, l *Lobby, name string, who ...sitter) GameMeta {
+	t.Helper()
+	meta, err := l.Create(name)
+	if err != nil {
+		t.Fatalf("Create %s: %v", name, err)
+	}
+	for _, w := range who {
+		if _, _, err := l.JoinAs(meta.ID, meta.InviteToken, "", w.ident, w.id); err != nil {
+			t.Fatalf("JoinAs %s at %s: %v", w.ident.GlobalName, name, err)
+		}
+	}
+	return meta
+}
+
 // seatedStack is the common arrangement: a signed-in Alice holding a
-// seat at a table she created, and a Bob to invite.
+// seat at a table she created, and a Bob to invite, who is her
+// tablemate from an earlier table.
 type seatedStack struct {
 	userStack
 	stub  *dmStub
@@ -161,11 +191,22 @@ type seatedStack struct {
 	// actually holds once she has sat down).
 	aliceSeat string
 	bob       users.User
+	// aliceIdent is the identity Alice's seats carry.
+	aliceIdent DiscordIdentity
+	// earlier is the table Alice and Bob shared before this one.
+	earlier GameMeta
 }
 
 func newSeatedStack(t *testing.T, token string) seatedStack {
 	t.Helper()
-	s, stub := newDMStack(t, token, dmInviteBase, true)
+	return seatedStackWith(t, token, true)
+}
+
+// seatedStackWith is newSeatedStack with the rate limiters' setting
+// chosen: pass relax=false for the one test that needs them on.
+func seatedStackWith(t *testing.T, token string, relax bool) seatedStack {
+	t.Helper()
+	s, stub := newDMStack(t, token, dmInviteBase, relax)
 	tok := identityTokenFromCallback(t, s.srv, s.state)
 	alice := mustValidate(t, s.auth, tok).UserID
 
@@ -173,15 +214,18 @@ func newSeatedStack(t *testing.T, token string) seatedStack {
 	if err != nil {
 		t.Fatalf("CreateBy: %v", err)
 	}
-	_, playerID, err := s.lobby.JoinAs(meta.ID, meta.InviteToken, "",
-		DiscordIdentity{ID: "discord-99", Username: "alice", GlobalName: "Alice"}, alice)
+	aliceIdent := DiscordIdentity{ID: "discord-99", Username: "alice", GlobalName: "Alice"}
+	_, playerID, err := s.lobby.JoinAs(meta.ID, meta.InviteToken, "", aliceIdent, alice)
 	if err != nil {
 		t.Fatalf("JoinAs: %v", err)
 	}
 	seat := playerTokenWithUser(t, s.auth, meta.ID, playerID, alice, "Alice")
+	bob := dmTarget(t, s, "d-bob", "Bob")
+	earlier := shareATable(t, s.lobby, "Last week",
+		sitter{id: alice, ident: aliceIdent}, sitterOf(bob, "d-bob", "Bob"))
 	return seatedStack{
 		userStack: s, stub: stub, meta: meta, alice: alice,
-		aliceSeat: seat, bob: dmTarget(t, s, "d-bob", "Bob"),
+		aliceSeat: seat, bob: bob, aliceIdent: aliceIdent, earlier: earlier,
 	}
 }
 
@@ -247,6 +291,7 @@ func TestInviteDMAuthorization(t *testing.T) {
 		// Carol creates a table and never sits down. Her identity
 		// session is not bound to the game at all.
 		carol := dmTarget(t, s.userStack, "d-carol", "Carol")
+		shareATable(t, s.lobby, "Carol and Bob", sitterOf(carol, "d-carol", "Carol"), sitterOf(s.bob, "d-bob", "Bob"))
 		meta, err := s.lobby.CreateBy("Carol's table", carol.ID)
 		if err != nil {
 			t.Fatalf("CreateBy: %v", err)
@@ -315,6 +360,149 @@ func TestInviteDMDiscordIDIsAdminOnly(t *testing.T) {
 	}
 	if _, _, recipients, _ := s.stub.snapshot(); len(recipients) != 1 || recipients[0] != "d-someone-else" {
 		t.Errorf("recipients = %v, want the snowflake straight through", recipients)
+	}
+}
+
+// TestInviteDMNamesOnlyATablemate pins the target rule: an ordinary
+// caller can DM somebody they have shared a table with and nobody
+// else. Everyone who is not a tablemate answers one way, whether or not
+// the account exists, so the route cannot be used to test whether a
+// user id is real.
+func TestInviteDMNamesOnlyATablemate(t *testing.T) {
+	s := newSeatedStack(t, "bot-token-shhh")
+	// Carol has an account and a Discord identity, and has never sat
+	// with Alice. She shares a table with Bob, which makes her Bob's
+	// tablemate and not Alice's.
+	carol := dmTarget(t, s.userStack, "d-carol", "Carol")
+	shareATable(t, s.lobby, "Bob and Carol", sitterOf(s.bob, "d-bob", "Bob"), sitterOf(carol, "d-carol", "Carol"))
+
+	refused := func(t *testing.T, tok, userID string) string {
+		t.Helper()
+		status, raw := postDM(t, s.userStack, s.meta.ID, tok, map[string]string{"user_id": userID})
+		if status != http.StatusNotFound {
+			t.Fatalf("status %d, want 404: %s", status, raw)
+		}
+		if !strings.Contains(raw, "no such tablemate") {
+			t.Errorf("the 404 does not say why: %s", raw)
+		}
+		if opens, _, _, _ := s.stub.snapshot(); opens != 0 {
+			t.Errorf("a refused request still reached Discord (%d opens)", opens)
+		}
+		return raw
+	}
+
+	var strangerBody string
+	t.Run("a stranger with a Discord account is refused", func(t *testing.T) {
+		strangerBody = refused(t, s.aliceSeat, carol.ID.String())
+	})
+
+	t.Run("an id that names nobody answers the same", func(t *testing.T) {
+		// Same words as a real stranger: a different answer would
+		// confirm which user ids are accounts.
+		if got := refused(t, s.aliceSeat, uuid.NewString()); got != strangerBody {
+			t.Errorf("unknown id answered %q, a real stranger %q; they must be indistinguishable", got, strangerBody)
+		}
+	})
+
+	t.Run("the caller cannot name themselves", func(t *testing.T) {
+		refused(t, s.aliceSeat, s.alice.String())
+	})
+
+	t.Run("a guest seat has no tablemates", func(t *testing.T) {
+		_, pid, err := s.lobby.Join(s.meta.ID, s.meta.InviteToken, "Guesty")
+		if err != nil {
+			t.Fatalf("Join: %v", err)
+		}
+		refused(t, playerToken(t, s.auth, s.meta.ID, pid, "Guesty"), s.bob.ID.String())
+	})
+
+	// Only now does anything reach Discord: the refusals above each
+	// check that nothing had.
+	t.Run("a tablemate is sent the invite", func(t *testing.T) {
+		if status, raw := postDM(t, s.userStack, s.meta.ID, s.aliceSeat,
+			map[string]string{"user_id": s.bob.ID.String()}); status != http.StatusOK {
+			t.Fatalf("status %d: %s", status, raw)
+		}
+		if _, _, recipients, _ := s.stub.snapshot(); len(recipients) != 1 || recipients[0] != "d-bob" {
+			t.Errorf("recipients = %v, want Bob", recipients)
+		}
+	})
+
+	t.Run("the admin token may name anyone", func(t *testing.T) {
+		if status, raw := postDM(t, s.userStack, s.meta.ID, adminToken(t, s.srv),
+			map[string]string{"user_id": carol.ID.String()}); status != http.StatusOK {
+			t.Fatalf("status %d: %s", status, raw)
+		}
+		if _, _, recipients, _ := s.stub.snapshot(); len(recipients) != 2 || recipients[1] != "d-carol" {
+			t.Errorf("recipients = %v, want Bob then Carol", recipients)
+		}
+	})
+}
+
+// TestInviteDMAdminModeIsNotHeldToTablemates: an allowlisted person in
+// admin mode is an admin (isAdmin), so the tablemate rule does not
+// apply to them any more than to the bot's token. The stack has no
+// users database, so getting past the rule shows as the user lookup's
+// "no such user" and not the rule's "no such tablemate".
+func TestInviteDMAdminModeIsNotHeldToTablemates(t *testing.T) {
+	s := newAdminStackWith(t, nil, func(c *Config) {
+		c.DiscordBot = discord.Bot{Token: "bot-token-shhh"}
+		c.InviteBaseURL = dmInviteBase
+	}, listedDiscordID)
+	tok, user := s.signedIn(t, listedDiscordID, "Owner")
+	s.adminModeOn(t, user)
+	meta, err := s.lobby.Create("dm table")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/games/" + meta.ID.String() + "/invites/dm"
+	for name, cred := range map[string]string{"allowlisted person in admin mode": tok, "shared token": s.adminToken(t)} {
+		resp := do(t, s.srv, "POST", path, cred, dmInviteRequest{UserID: uuid.NewString()})
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound || !strings.Contains(string(raw), "no such user") {
+			t.Errorf("%s: %d %s, want the user lookup's 404 \"no such user\" (past the tablemate rule)", name, resp.StatusCode, raw)
+		}
+	}
+}
+
+// TestInviteDMRefusesADeletedTablemate: deleting an account leaves its
+// seats behind as "Deleted player". That person is nobody's tablemate
+// any more, so they are neither offered by the picker nor reachable
+// through the route.
+func TestInviteDMRefusesADeletedTablemate(t *testing.T) {
+	s := newSeatedStack(t, "bot-token-shhh")
+	carol := dmTarget(t, s.userStack, "d-carol", "Carol")
+	shareATable(t, s.lobby, "Alice and Carol", sitterOf(carol, "d-carol", "Carol"), sitter{id: s.alice, ident: s.aliceIdent})
+
+	// Account deletion refuses while the person holds a seat at a table
+	// that has not ended, so end the tables Bob sat at.
+	if _, err := s.db.Exec(`UPDATE games SET state = 'ended' WHERE id = ?`, s.earlier.ID.String()); err != nil {
+		t.Fatalf("end the earlier table: %v", err)
+	}
+	if _, err := accountdelete.NewSQLStore(s.db).Delete(context.Background(), s.bob.ID); err != nil {
+		t.Fatalf("delete Bob's account: %v", err)
+	}
+
+	status, mates, raw := getTablemates(t, s.userStack, s.aliceSeat)
+	if status != http.StatusOK {
+		t.Fatalf("GET /me/tablemates: %d: %s", status, raw)
+	}
+	if len(mates) != 1 || mates[0].UserID != carol.ID {
+		t.Errorf("tablemates = %+v, want just Carol: the deleted account must not be offered", mates)
+	}
+	for _, m := range mates {
+		if m.DisplayName == accountdelete.DeletedPlayerName {
+			t.Errorf("the picker offers %q", m.DisplayName)
+		}
+	}
+
+	status, raw = postDM(t, s.userStack, s.meta.ID, s.aliceSeat, map[string]string{"user_id": s.bob.ID.String()})
+	if status != http.StatusNotFound {
+		t.Errorf("DM to a deleted account: status %d, want 404: %s", status, raw)
+	}
+	if opens, _, _, _ := s.stub.snapshot(); opens != 0 {
+		t.Errorf("a deleted account was sent to Discord (%d opens)", opens)
 	}
 }
 
@@ -472,29 +660,19 @@ func TestInviteDMWithoutTheInvitePlaintextIs409(t *testing.T) {
 // call in a row is refused even though the IP bucket would still
 // allow it.
 func TestInviteDMIsRateLimitedPerCaller(t *testing.T) {
-	s, stub := newDMStack(t, "bot-token-shhh", dmInviteBase, false)
-	meta, err := s.lobby.Create("rate me")
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	_, pid, err := s.lobby.Join(meta.ID, meta.InviteToken, "Alice")
-	if err != nil {
-		t.Fatalf("Join: %v", err)
-	}
-	tok := playerToken(t, s.auth, meta.ID, pid, "Alice")
-	bob := dmTarget(t, s, "d-bob", "Bob")
-	body := map[string]string{"user_id": bob.ID.String()}
+	s := seatedStackWith(t, "bot-token-shhh", false)
+	body := map[string]string{"user_id": s.bob.ID.String()}
 
 	for i := 1; i <= 3; i++ {
-		if status, raw := postDM(t, s, meta.ID, tok, body); status != http.StatusOK {
+		if status, raw := postDM(t, s.userStack, s.meta.ID, s.aliceSeat, body); status != http.StatusOK {
 			t.Fatalf("DM %d: status %d, want 200: %s", i, status, raw)
 		}
 	}
-	status, raw := postDM(t, s, meta.ID, tok, body)
+	status, raw := postDM(t, s.userStack, s.meta.ID, s.aliceSeat, body)
 	if status != http.StatusTooManyRequests {
 		t.Fatalf("the fourth DM in a row: status %d, want 429: %s", status, raw)
 	}
-	if opens, _, _, _ := stub.snapshot(); opens != 3 {
+	if opens, _, _, _ := s.stub.snapshot(); opens != 3 {
 		t.Errorf("Discord saw %d opens, want the 3 that were allowed", opens)
 	}
 }

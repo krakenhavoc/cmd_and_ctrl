@@ -1,0 +1,6 @@
+---
+title: "Assigning combat damage as though a creature weren't blocked"
+date: 2026-10-30
+issues: [4455]
+---
+**Assigning combat damage as though a creature weren't blocked** (#4455, [ADR 0147](decisions/0147-auto-assign-combat-damage.md) amended 2026-10-30; CR 510.1b, CR 510.1c) — "you may have this creature assign its combat damage as though it weren't blocked". `Characteristic.AssignsAsThoughUnblocked` is a layer 6 flag a creature's own static sets (it goes with its abilities); a blocked creature that has it is asked the damage-assignment prompt even with one blocker or none left, with `DamageAssignmentFrame.AsThoughUnblocked` (and `damage_assignment.as_though_unblocked` on the wire). The extra answer puts the whole power on what it attacks (every blocker 0, `trample_to_player` the full power), owing no blocker lethal damage and needing no trample. `legal.DamageSplits` offers it after the canonical split, and the client never auto-sends the suggested split for such a prompt. Also additive: `CastTally.InstantSorceryVillain`, "your first instant, sorcery, or Villain spell each turn". **Cards** (2, both Full): Wolverine, Claws Out and Lady Loki, Agent of Chaos (whose damage rides between the exile walk and the free-cast offer, as a registered tail over the existing exile-until-nonland loop).

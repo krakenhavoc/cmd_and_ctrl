@@ -284,6 +284,15 @@ type CastSpellParams struct {
 	XValue       int
 	Distribution map[uuid.UUID]int
 	HoldPriority bool
+	// TargetsStamped says every ref in Targets names the clause it
+	// answers, a zero Slot and Mode included (#4497). The wire decoder
+	// sets it when any target carries `slot` or `mode`, which is every
+	// target the browser client sends. The refs are then read as
+	// given: a pick its clause refuses is refused, never moved to
+	// another clause. False is a list that names no clause, filed by
+	// what each pick can target (fitAnnouncedSlotsLocked). Persisted
+	// with a parked announcement (AssistAnnounce), omitted when false.
+	TargetsStamped bool `json:"targetsStamped,omitempty"`
 	// SplitSecond is the S13.1 sandbox flag: "treat this spell as
 	// having split second". Since #1519 a spell that PRINTS split
 	// second has it without the flag (castHasSplitSecond reads the
@@ -783,16 +792,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the card moves: CR 406.3a turns a foretold card face up as it is
 	// cast, which ADR 0069 decision 5 makes MoveCard's business.
 	foretold := CardIsForetold(card)
-	// CR 702.62a (#659): a permanent cast from a suspended card has
-	// haste. It is the PERMISSION that says so, not the card, so it is
-	// read here where the permission is consumed and registered
-	// against the object the cast produces. See
-	// grantHasteForCastLocked for the layer-6 grant and its declared
-	// duration simplification.
-	grantsHaste := grant != nil && grant.GrantsHaste
-	// #3768: the permission's other riders on the permanent this cast
-	// produces, copied out for the same reason.
-	castGains := permissionCastGainsOf(grant)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -810,6 +809,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// gates were judged against.
 	params.Face = face
 	card.SetFace(params.Face)
+	// #4509: a permission whose filter is about the spell ("cast an
+	// instant or sorcery spell from your graveyard", "creature spells
+	// from the top of your library") judges the face just settled
+	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
+	// permission for this cast, from here down: the path gate refuses a
+	// zone nothing else opens, and a hand cast is an ordinary one.
+	grant = grant.ForSpell(card)
+	// CR 702.62a (#659): a permanent cast from a suspended card has
+	// haste. It is the PERMISSION that says so, not the card, so it is
+	// read here where the permission is consumed and registered
+	// against the object the cast produces. See
+	// grantHasteForCastLocked for the layer-6 grant and its declared
+	// duration simplification.
+	grantsHaste := grant != nil && grant.GrantsHaste
+	// #3768: the permission's other riders on the permanent this cast
+	// produces, copied out for the same reason.
+	castGains := permissionCastGainsOf(grant)
 	// ADR 0103, CR 702.102a: a FUSED cast announces both halves of a
 	// split card with fuse, from hand, and the spell is both at once
 	// (CR 702.102b). Materialised here, on the copy every gate below
@@ -1281,10 +1297,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
 		Controller: playerID, Source: cardID, AltCost: AltCostKeyword(params.AlternativeCost),
 	})
+	// CR 702.16b: the source of a SPELL is the spell itself, so the
+	// quality protection is tested against is the card's own colour
+	// and type — not its caster's (#662).
+	// CR 202.3e: the X announced with the cast counts in the spell's mana
+	// value, which "protection from mana value N or less" reads (#2181).
+	castSrc := SourceObject(playerID, &card)
+	castSrc.X = params.XValue
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
-	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	// #4497: a pick that names no clause is filed by what it can target.
+	params.Targets = g.fitAnnouncedSlotsLocked(castSrc, StepsChosenByController(steps), params.Targets, params.TargetsStamped)
 	ownTargets := params.Targets
 	oppTargets, oppErr := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
 	if oppErr != nil {
@@ -1340,13 +1364,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			return err
 		}
 	}
-	// CR 702.16b: the source of a SPELL is the spell itself, so the
-	// quality protection is tested against is the card's own colour
-	// and type — not its caster's (#662).
-	// CR 202.3e: the X announced with the cast counts in the spell's mana
-	// value, which "protection from mana value N or less" reads (#2181).
-	castSrc := SourceObject(playerID, &card)
-	castSrc.X = params.XValue
 	if err := g.validateAnnouncedTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
@@ -1361,7 +1378,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// clause list and judged from this spell (CR 702.47c: the spell keeps
 	// its own characteristics). A text with a required target that cannot
 	// be given one cannot be spliced (CR 702.47b).
-	if err := g.validateSplicedTargetsLocked(castSrc, spliced, splicedRefs); err != nil {
+	if err := g.validateSplicedTargetsLocked(castSrc, spliced, splicedRefs, params.TargetsStamped); err != nil {
 		slog.Warn("cast_spell rejected: illegal target for a spliced text",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1679,7 +1696,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if !g.LandPlayWindowOpenLocked(playerID, cardID) {
 			return ErrSorcerySpeedRequired
 		}
-	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
+	} else if !g.CastTimingForCastOpenLocked(playerID, card, src.Kind, grant, alt,
+		OptionalCostsOpenCastWindow(optionalCosts, params.OptionalCosts)) {
 		return ErrSorcerySpeedRequired
 	}
 	// #3156: whether the cast needed the card's own "as though it had
@@ -2222,6 +2240,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// is a card leaving hand while the counterspell is on the stack,
 	// and a Daze returns its Island before the spell it is answering
 	// has resolved.
+	//
+	// #4586, CR 702.190b: what the creature a sneak cost returns was
+	// attacking, read before the return clears it, onto the spell's
+	// paid-cost record, the field ninjutsu keeps it in. The resolution
+	// enters the permanent attacking it (applySneakEntryLocked).
+	if alt != nil && alt.Sneak && len(params.AltCostIDs) > 0 {
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.ReturnedAttacking = g.sneakDefenderLocked(params.AltCostIDs[0])
+		}
+	}
 	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
@@ -2330,9 +2358,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	for i := range g.Stack.Cards {
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
 			ch := SourceCharacteristics(sc)
+			tally = tally.withSpellColors(ch.Colors)
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+			}
+			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
+				characteristicHasSubtype(ch, "Villain") {
+				tally.InstantSorceryVillain++
 			}
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
@@ -2732,11 +2765,13 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// ADR 0118 §1: the plan pays only what the floating pool is
 	// missing, so mana already in the pool is spent first, and it is
 	// colour-picked against that shortfall (autotap_topup.go).
-	plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
+	//
 	// #2461: and the plan, carried out, must fund the cost — asked on a
 	// clone before anything here is tapped, so a refusal leaves no land
-	// tapped and no mana floating.
-	if !ok || !g.planFundsLocked(p, plan, short, cost, params.XValue, spendCtx) {
+	// tapped and no mana floating. ADR 0074 amendment: with a plan
+	// without trigger mana as the fallback (autoTapFundedLocked).
+	plan, short, ok := g.autoTapFundedLocked(p, cost, params.XValue, spendCtx, excluded, WantedManaSourcesFor(card))
+	if !ok {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	g.materializePlanInLocked(p, plan, short, spendCtx)
@@ -3197,13 +3232,17 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		}
 		// #763, CR 605.1b / 605.4a: the third and last production
 		// site. `pending` goes in, so a trigger whose output is a
-		// colour CHOICE (Fertile Ground's "any color") picks greedily
-		// against what this cast still owes instead of leaving a
+		// colour CHOICE (Fertile Ground's "any color") never leaves a
 		// prompt open halfway through an auto-tapped cast — the
 		// auto-tapper's "no further player decisions" contract, kept
 		// by the same function that keeps it for the source's own
-		// slots. The extra mana was never PLANNED (ADR 0074 §7), so
-		// whatever it does not pay for simply floats.
+		// slots. Whatever the extra mana does not pay for simply floats.
+		//
+		// ADR 0074 amendment (#4716): `planned.TriggerColors` is the
+		// colour the plan booked for each mana the triggers add, and a
+		// pick makes it. Only a pick with no booked colour (its mana
+		// pays nothing, or only generic) picks greedily against what
+		// this cast still owes.
 		//
 		// #1242: only for a source that was TAPPED for mana. CR 605.1b's
 		// triggered mana abilities watch a permanent tapped for mana,
@@ -3232,7 +3271,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				Source:     tappedForMana,
 				Controller: p.ID,
 				Colors:     addedColors,
-			}, &pending)
+			}, &pending, planned.TriggerColors)
 		}
 	}
 }
@@ -3700,7 +3739,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// of the precedence would be two chances to disagree about which
 	// cost this cast is paying.
 	srcKind, _ := castZoneFromWire(params.FromZone)
-	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost)
+	// #4509: `card` is the face being cast, so a permission whose filter
+	// does not admit it prices nothing, as CastSpell casts nothing
+	// through it (ForSpell).
+	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost).ForSpell(card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
@@ -4274,6 +4316,9 @@ func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, ciphe
 		// doubles them — rather than an afterthought stapled on once
 		// the permanent has landed.
 		g.applyAltCostEntryCountersLocked(ev, top, item)
+		// #4586, CR 702.190b: a sneak permanent enters tapped and
+		// attacking, seeded here for the same reason.
+		g.applySneakEntryLocked(ev, top, item)
 		// #1002, CR 614.1c: the card's OWN "this permanent enters with
 		// X +1/+1 counters on it", read off the same still-reachable
 		// StackItem the line above reads. Two clauses, one entry
@@ -8004,11 +8049,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			if !params.AutoTap {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
-			plan, short, ok := g.autoTapTopUpLocked(playerID, manaCost, 0, spendCtx,
-				ManaActivationAutoTapExclusions(cardID, params), 0)
 			// #2461: refused here, before the activation begins, when the
 			// plan carried out would not fund the cost.
-			if !ok || !g.planFundsLocked(p, plan, short, manaCost, 0, spendCtx) {
+			plan, short, ok := g.autoTapFundedLocked(p, manaCost, 0, spendCtx,
+				ManaActivationAutoTapExclusions(cardID, params), 0)
+			if !ok {
 				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
 			}
 			manaPlan, manaShort = plan, short
@@ -8595,7 +8640,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			Source:     tappedForMana,
 			Controller: playerID,
 			Colors:     addedColors,
-		}, nil)
+		}, nil, nil)
 	}
 	return nil
 }
@@ -10295,6 +10340,13 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// assignsAsThoughUnblocked reports whether the creature may assign its
+// combat damage as though it weren't blocked (Characteristic.
+// AssignsAsThoughUnblocked, CR 510.1c), read through the layered view.
+func (c *Card) assignsAsThoughUnblocked() bool {
+	return c.effective != nil && c.effective.AssignsAsThoughUnblocked
+}
+
 // combatDamagePower is the amount of combat damage a combatant assigns
 // (CR 510.1a): its power, or its toughness when an effect says it assigns
 // damage equal to its toughness rather than its power and its toughness
@@ -10490,9 +10542,27 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				// never blocked deals its damage to what it attacked,
 				// as it always did.
 				blocked := g.attackerBlockedLocked(atkID)
-				if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
+				if atkPower > 0 && blocked && !HasKeyword(atk, "trample") && atk.assignsAsThoughUnblocked() {
+					// Wolverine, Claws Out: "you may have [it] assign its
+					// combat damage as though it weren't blocked" is a
+					// choice even with no blocker left, so it is asked
+					// (nothing else could be assigned, so the answer is
+					// all of it or none).
+					atk, p := atk, atkPower
+					prompts = append(prompts, func() {
+						g.queueDamageAssignmentPromptLocked(atk, nil, p, step)
+					})
+				} else if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
 					markAttackTarget(atk.AttackingTarget, atkID, atkPower)
 				}
+			} else if atkPower > 0 && atk.assignsAsThoughUnblocked() {
+				// CR 510.1c: the choice between dividing the damage among
+				// the blockers and assigning it as though unblocked. It is
+				// the controller's, so it is a prompt even for one blocker.
+				atk, blockers, p := atk, liveBlockers, atkPower
+				prompts = append(prompts, func() {
+					g.queueDamageAssignmentPromptLocked(atk, blockers, p, step)
+				})
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
 				// overflows to the defending player if the blocker
@@ -10621,6 +10691,7 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
 		AttackerPower:     atkPower,
 		AllowTrample:      HasKeyword(atk, "trample"),
+		AsThoughUnblocked: atk.assignsAsThoughUnblocked(),
 		HasDeathtouch:     HasKeyword(atk, "deathtouch"),
 		FirstStrike:       step == CombatStepFirstStrike,
 		CombatStep:        step,

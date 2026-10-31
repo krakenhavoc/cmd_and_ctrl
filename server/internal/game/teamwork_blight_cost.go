@@ -334,7 +334,10 @@ func (g *Game) payTeamworkLocked(playerID uuid.UUID, ids []uuid.UUID) {
 			continue
 		}
 		c.Tapped = true
-		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+		// #4534: the cause rides the event, so "becomes tapped to pay a
+		// teamwork cost" (Agent Maria Hill) is told apart from every
+		// other tap.
+		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id, TapCause: TapCauseTeamwork})
 	}
 }
 

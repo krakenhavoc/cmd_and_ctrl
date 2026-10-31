@@ -43,31 +43,35 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Undead Butler — mill three cards", Do(MillCards{N: 3})),
 			Optional(
-				WhenThisDies("Undead Butler — exile it", b41UndeadButlerExileThenRebuy),
+				WhenThisDies("Undead Butler — exile it", exileItThenRebuyACreatureCard("Undead Butler")),
 				"Undead Butler — exile it to return a creature card from your graveyard to your hand?"),
 		},
 	})
 }
 
-// b41UndeadButlerExileThenRebuy is the dies trigger's body: exile the
-// Butler out of the graveyard, and only if that actually happened
-// create the CR 603.12 reflexive trigger that returns a creature card.
+// exileItThenRebuyACreatureCard is the dies trigger's body for "When this
+// creature dies, you may exile it. When you do, return target creature card
+// from your graveyard to your hand" (Undead Butler, Doombot Harbinger): exile
+// the source out of the graveyard, and only if that actually happened create
+// the CR 603.12 reflexive trigger that returns a creature card.
 //
 // "Only if that actually happened" is the reflexive contract: nothing
 // in the engine re-checks the condition, so the `if` is the card's. A
-// Butler already moved out of the graveyard in response is not
-// exiled, and the rebuy does not happen.
-func b41UndeadButlerExileThenRebuy(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {
-		return err
+// card already moved out of the graveyard in response is not exiled, and
+// the rebuy does not happen.
+func exileItThenRebuyACreatureCard(name string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {
+			return err
+		}
+		z := g.FindCardZoneForEffect(item.SourceCardID)
+		if z == nil || z.Kind != game.ZoneExile {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: name + " — return target creature card from your graveyard to your hand",
+			Body:  undeadButlerReturnBody,
+		}.Apply(ctx)
 	}
-	z := g.FindCardZoneForEffect(item.SourceCardID)
-	if z == nil || z.Kind != game.ZoneExile {
-		return nil
-	}
-	return ReflexiveTrigger{
-		Label: "Undead Butler — return target creature card from your graveyard to your hand",
-		Body:  undeadButlerReturnBody,
-	}.Apply(ctx)
 }

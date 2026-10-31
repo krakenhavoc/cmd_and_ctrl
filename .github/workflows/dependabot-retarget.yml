@@ -1,0 +1,151 @@
+name: cmd_and_ctrl dependabot retarget
+
+permissions: {}
+
+# Moves Dependabot PRs opened against main onto develop (#4661).
+#
+# Dependabot security updates (Go, npm) always open against the default
+# branch, which is still main. `target-branch` in .github/dependabot.yml
+# does not apply to them. main only takes promotions, so a PR from a
+# dependabot/* branch fails the required promotion-guard check there and
+# can never merge (#4553).
+#
+# Changing the base is the easy half. The hard half is running CI again,
+# against develop this time. These don't work:
+#
+# - A base change fires only `edited`, which ci-cd.yml does not listen
+#   to. An `edited` caused by this workflow's GITHUB_TOKEN starts no
+#   runs anyway.
+# - `gh run rerun` replays the old payload, base main included.
+# - A workflow_dispatch run of ci-cd.yml on the branch reports on the
+#   right commit, but a dispatch run's checks never satisfy a ruleset's
+#   required check.
+# - Closing and reopening the PR records an ignore for that version, and
+#   Dependabot deletes a closed PR's branch within seconds. A deleted
+#   branch can't be reopened, and the fix is lost.
+# - Merging develop into the branch (the update-branch API) is refused
+#   whenever develop's workflow files differ from main's. The merge would
+#   change them, and that needs the `workflows` permission, which
+#   GITHUB_TOKEN can't have.
+#
+# So after the move this pushes an empty commit: the head's own tree,
+# with the head as its parent. It changes no file, so `contents: write`
+# is enough. The new head fires `synchronize`, and ci-cd.yml then runs as
+# it does for any other PR, on refs/pull/N/merge, which is the branch
+# merged into develop. `[dependabot skip]` in its message means this
+# commit is never what stops Dependabot from rebasing the PR.
+#
+# GitHub holds pull_request runs caused by GITHUB_TOKEN until someone
+# with write access approves them: "Approve workflows to run" in the
+# merge box. A GitHub App token would skip the click, but the app would
+# need Contents: write here, a long-lived key that can push to any
+# unprotected branch. For the odd security PR, the click is cheaper.
+#
+# pull_request_target runs this file as it is on main, so none of this
+# takes effect until a promotion lands it there. The job holds a write
+# token, so it must never check out or run the PR's code. Every step is
+# a REST call keyed on the PR number. The branch name and SHA reach the
+# shell only through env, never through an expression in the script.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+    branches: [main]
+
+concurrency:
+  group: dependabot-retarget-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  retarget:
+    # A login ending in [bot] belongs to the app, so nobody else can
+    # match the first line. The other two keep this to Dependabot's own
+    # branches in this repository.
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'dependabot/')
+    # Never the self-hosted runners: they hold deploy credentials.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write       # the empty commit on the PR's branch
+      pull-requests: write  # the base change and the comment
+    steps:
+      - name: Move the PR to develop and start CI there
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_API: ${{ github.api_url }}/repos/${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          COMMIT_MESSAGE: |-
+            ci: run CI against develop [dependabot skip]
+
+            Empty commit. Dependabot opened this PR on main, and
+            dependabot-retarget.yml moved it to develop. The new head
+            makes pull_request CI run against develop.
+          # The PR comments, one paragraph per line (GitHub keeps line
+          # breaks in comments). On a failure the error is appended.
+          SAY_MOVED: |-
+            Moved to `develop`. Dependabot opens security updates against `main`, the default branch, but `main` only takes promotions: this PR fails `promotion-guard` there and can never merge.
+
+            An empty commit gave the PR a new head, so CI runs against `develop`. GitHub holds runs started by a workflow's own token until a maintainer approves them: **Awaiting approval** at the top of the PR, then **Approve workflows to run**. See [Dependabot PRs](${{ github.server_url }}/${{ github.repository }}/blob/develop/docs/environments.md#dependabot-prs).
+          SAY_NO_CI: |-
+            Moved to `develop`: Dependabot opens security updates against `main`, which only takes promotions. Starting CI against `develop` failed, though. A maintainer can start it with `gh pr update-branch ${{ github.event.pull_request.number }}`, which merges `develop` in.
+          SAY_NOT_MOVED: |-
+            This PR targets `main`, which only takes promotions, so it can never merge there. Moving it to `develop` failed. A maintainer can run `gh pr edit ${{ github.event.pull_request.number }} --base develop`, then `gh pr update-branch ${{ github.event.pull_request.number }}` to start CI.
+        run: |
+          set -euo pipefail
+
+          resp=$(mktemp)
+
+          # api METHOD PATH [JSON] prints the HTTP status and leaves the
+          # body in $resp. A transport failure prints 000 instead of
+          # ending the script, so the PR still gets a comment.
+          api() {
+            local args=(-sS -o "${resp}" -w '%{http_code}' -X "$1"
+              -H "Authorization: Bearer ${GH_TOKEN}"
+              -H "Accept: application/vnd.github+json"
+              -H "X-GitHub-Api-Version: 2022-11-28")
+            if [ -n "${3:-}" ]; then args+=(-d "$3"); fi
+            curl "${args[@]}" "${REPO_API}$2" || true
+          }
+
+          message() { jq -r '.message // empty' "${resp}" 2>/dev/null || true; }
+
+          comment() {
+            local code
+            code=$(api POST "/issues/${PR_NUMBER}/comments" "$(jq -nc --arg body "$1" '{body: $body}')")
+            if [ "${code}" != 201 ]; then
+              echo "::warning::commenting on #${PR_NUMBER} failed with HTTP ${code}: $(message)"
+            fi
+          }
+
+          # fail TEXT ERROR: log the error, comment, end the job red.
+          fail() {
+            echo "::error::$2"
+            comment "$(printf '%s\n\nError: %s' "$1" "$2")"
+            exit 1
+          }
+
+          code=$(api PATCH "/pulls/${PR_NUMBER}" '{"base":"develop"}')
+          [ "${code}" = 200 ] || fail "${SAY_NOT_MOVED}" "moving #${PR_NUMBER} to develop failed with HTTP ${code}: $(message)"
+          echo "#${PR_NUMBER} now targets develop."
+
+          code=$(api GET "/git/commits/${HEAD_SHA}")
+          [ "${code}" = 200 ] || fail "${SAY_NO_CI}" "reading ${HEAD_SHA} failed with HTTP ${code}: $(message)"
+          tree=$(jq -r '.tree.sha' "${resp}")
+
+          code=$(api POST /git/commits "$(jq -nc --arg msg "${COMMIT_MESSAGE}" --arg tree "${tree}" --arg parent "${HEAD_SHA}" \
+            '{message: $msg, tree: $tree, parents: [$parent]}')")
+          [ "${code}" = 201 ] || fail "${SAY_NO_CI}" "creating the empty commit failed with HTTP ${code}: $(message)"
+          commit=$(jq -r '.sha' "${resp}")
+
+          # force: false, so a push Dependabot made since the event is
+          # never overwritten; this fails instead.
+          ref=$(jq -rn --arg ref "${HEAD_REF}" '$ref | split("/") | map(@uri) | join("/")')
+          code=$(api PATCH "/git/refs/heads/${ref}" "$(jq -nc --arg sha "${commit}" '{sha: $sha, force: false}')")
+          [ "${code}" = 200 ] || fail "${SAY_NO_CI}" "moving ${HEAD_REF} to ${commit} failed with HTTP ${code}: $(message)"
+          echo "${HEAD_REF}: ${HEAD_SHA} -> ${commit}"
+
+          comment "${SAY_MOVED}"

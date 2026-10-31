@@ -18,6 +18,7 @@ func init() {
 		OracleID:     "94f0a572-e91c-4b56-a5d1-6cbbeabd210d",
 		Name:         "Infernal Grasp",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

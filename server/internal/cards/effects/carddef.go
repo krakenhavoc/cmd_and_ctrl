@@ -218,6 +218,7 @@ func buildDef(spec Spec) *game.CardDef {
 		SelfCostModifiers:                   spec.SelfCostModifiers,
 		ExhaustPermissions:                  spec.ExhaustPermissions,
 		BoastLimits:                         spec.BoastLimits,
+		PowerUpExtras:                       spec.PowerUpExtras,
 		AttackTaxes:                         spec.AttackTaxes,
 		EquipCostAlternatives:               spec.EquipCostAlternatives,
 		TargetTaxes:                         spec.TargetTaxes,
@@ -342,6 +343,16 @@ func buildDef(spec Spec) *game.CardDef {
 		if ac.Key == game.AltCostKeyMiracle {
 			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
 				game.MiracleTrigger(spec.Name, ac.ManaCost))
+			break
+		}
+	}
+	// "Nonland cards in your hand have miracle {0}" (Molecule Man): the
+	// granted miracle's reveal trigger belongs to the granted keyword, grown
+	// from its offer the same way.
+	for _, gr := range spec.GrantedAlternativeCosts {
+		if gr.Offer.Key == game.AltCostKeyGrantedMiracle {
+			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+				game.GrantedMiracleTrigger(gr.Offer.ManaCost))
 			break
 		}
 	}

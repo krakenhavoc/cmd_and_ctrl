@@ -392,6 +392,22 @@ type AlternativeCost struct {
 	// its haste and never dies.
 	Blitz bool
 
+	// Sneak is sneak's two riders (CR 702.190, #4586), set with
+	// effects.Sneak, never by hand. The price is ManaCost plus the
+	// ReturnToHand component narrowed to an unblocked creature you
+	// control; this bit adds what the price alone cannot say:
+	//
+	//   - the window (CR 702.190a): the offer may be claimed only in its
+	//     caster's own declare blockers step, any time they could cast an
+	//     instant then. CastTimingForOfferOpenLocked reads it, so
+	//     CastSpell, the enumerator and the view agree (sneak.go);
+	//   - the entry (CR 702.190b): a permanent spell cast this way enters
+	//     tapped and attacking whatever the returned creature was
+	//     attacking. The cast reads that defender before the return
+	//     clears it and keeps it on PaidCost.ReturnedAttacking, ninjutsu's
+	//     field; the resolution seeds both onto the entry event.
+	Sneak bool
+
 	// EntersWithCounterName / EntersWithCounterCount is "this
 	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the
@@ -449,6 +465,23 @@ type AlternativeCost struct {
 	// both call, so an offer this gates is neither shown, enumerated
 	// nor accepted. See miracle.go.
 	RequiresGrant bool
+
+	// RequiresDiscardedThisTurn makes this printed offer claimable only
+	// while the player discarded THIS card object this turn — Mayhem's
+	// "as long as you discarded this card this turn, you may cast it
+	// from your graveyard by paying [cost]" (CR 702.187b, #4628). The
+	// record is Game.DiscardedThisTurn: per object (CR 400.7), so a card
+	// that left the graveyard and came back is a new object that was not
+	// discarded, and flushed with the turn tally.
+	//
+	// Checked by validateCastPathLocked beside RequiresGrant, so it
+	// holds for the engine, the view's offer stamp and the bot's offer
+	// list alike, and under a permission that opens the same zone (a
+	// Yawgmoth's Will in front of a card that was milled) too. The card
+	// still opens its own graveyard through Spec.CastableZonesIf with
+	// effects.MayhemCastableZone; this flag is what keeps the PRICE from
+	// being claimed where only another permission opens the zone.
+	RequiresDiscardedThisTurn bool
 
 	// CastsFace is the face this offer casts — disturb's "you may cast
 	// this card TRANSFORMED from your graveyard" (CR 702.146a, ADR 0107
@@ -728,6 +761,9 @@ func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone Zo
 	if key == "" {
 		return nil, nil
 	}
+	// #4509: `card` is the face being cast, and a permission whose filter
+	// does not admit that spell offers it nothing to claim (ForSpell).
+	grant = grant.ForSpell(card)
 	if base, ok := grantedInstanceClaim(key); ok {
 		return grantedInstanceOffer(card, grant, base, key, targets)
 	}

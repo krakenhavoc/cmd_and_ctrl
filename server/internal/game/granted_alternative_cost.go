@@ -76,6 +76,19 @@ type GrantedAlternativeCost struct {
 	// filter is every spell, which is Jodah's and Omniscience's.
 	Spells PermissionFilter
 
+	// SpellsAnyOf narrows Spells to a union: when set, the spell must also
+	// match AT LEAST ONE of these filters. Vision, Spectral Synthezoid's
+	// "a noncreature or Robot spell" is two filters (NoncreatureOnly, and
+	// CreatureType "Robot") under one offer and one once-each-turn claim,
+	// which two statics could not share (an offer key is declared once per
+	// card). Judged against the face being cast, like Spells. Needs
+	// SpellsText (Register panics without it).
+	SpellsAnyOf []PermissionFilter
+
+	// SpellsText words the spells a SpellsAnyOf union reaches for the
+	// ability row: "noncreature or Robot spells".
+	SpellsText string
+
 	// MaxManaValue caps the mana value of the spell the offer reaches:
 	// Primal Prayers' "with mana value 3 or less". Nil means no cap.
 	// The mana value is the card's as it is cast for this offer, which
@@ -205,6 +218,18 @@ func lifeEqualToManaValue(card Card) (int, bool) {
 func (gr GrantedAlternativeCost) covers(g *Game, caster uuid.UUID, card Card) bool {
 	if !gr.Spells.Matches(card) {
 		return false
+	}
+	if len(gr.SpellsAnyOf) > 0 {
+		reached := false
+		for _, f := range gr.SpellsAnyOf {
+			if f.Matches(card) {
+				reached = true
+				break
+			}
+		}
+		if !reached {
+			return false
+		}
 	}
 	if gr.MaxManaValue != nil && card.ManaValue() > *gr.MaxManaValue {
 		return false
@@ -408,6 +433,18 @@ func (g *Game) grantedAlternativeCostByKeyLocked(playerID uuid.UUID, card Card, 
 //
 // Caller must hold g.mu.
 func (g *Game) grantedOfferClaimableLocked(card Card, zone ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
+	// A granted miracle ("Nonland cards in your hand have miracle {0}",
+	// Molecule Man) is the printed miracle's shape (#1665): the offer is
+	// the PRICE, claimable only under a live hand permission naming its
+	// key, which is the revealed trigger's resolution. The permission is
+	// the reason the claim is legal, so it is not the "already priced"
+	// permission the rule below refuses.
+	if alt.RequiresGrant {
+		if zone != ZoneHand || grant == nil || grant.AltCostKey != alt.Key {
+			return ErrAltCostNotGranted
+		}
+		return nil
+	}
 	under := grant.ForClaim(alt)
 	if err := g.validateCastPathLocked(card, zone, nil, under); err != nil {
 		return err
@@ -455,7 +492,7 @@ func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *Altern
 func (a *AlternativeCost) onlyMana() bool {
 	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && a.XCeiling == 0 && !a.PaysCards() &&
 		a.Targets == nil && !a.ClearsTargets && !a.SacrificeOnEntry &&
-		!a.ExileOnLeavingStack && !a.WarpExile && !a.Dash && !a.Blitz && a.EntersWithCounterName == "" &&
+		!a.ExileOnLeavingStack && !a.WarpExile && !a.Dash && !a.Blitz && !a.Sneak && a.EntersWithCounterName == "" &&
 		a.FaceDown == nil && !a.RequiresGrant && a.CastsFace == 0
 }
 

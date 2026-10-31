@@ -395,3 +395,41 @@ func tapBattlefieldCard(t *testing.T, g *Game, id uuid.UUID) {
 	}
 	t.Fatalf("card %s not on the battlefield", id)
 }
+
+// #4707 (Flying Drone): a reduction with a Unit takes mana off by CR 118.7,
+// not generic only. A coloured symbol takes its own colour first, then a
+// generic when the cost has none of it; the cost never goes below {0}; and
+// a reduction with no Unit is still generic-only.
+func TestColouredReductionUnitSpendsItsColourThenGeneric(t *testing.T) {
+	const reducer = "test-coloured-reduction"
+	for _, tc := range []struct {
+		name, base      string
+		unit            *ParsedCost
+		wantGeneric     int
+		wantRequiredLen int
+	}{
+		{"exact", "{1}{U}", mustParse(t, "{1}{U}"), 0, 0},
+		{"floors at zero", "{U}", mustParse(t, "{1}{U}"), 0, 0},
+		{"leaves other colours", "{2}{U}{R}", mustParse(t, "{1}{U}"), 1, 1},
+		{"missing colour comes off generic", "{2}{R}", mustParse(t, "{1}{U}"), 0, 1},
+		{"no unit stays generic only", "{1}{U}", nil, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			me := g.Seats[0]
+			withCatalogCostModifiers(t, modifiersFor(reducer, CostModifier{
+				Kind:   CostReduction,
+				Label:  "Spells you cast cost {1}{U} less to cast.",
+				Amount: fixed(1),
+				Unit:   tc.unit,
+			}))
+			modifierSource(t, g, me, "Coloured Reducer", reducer)
+			spell := spellInHand(t, g, me, "Test Spell", "Creature — Test", tc.base)
+			got := priceOf(t, g, me, spell, CastSpellParams{})
+			if got.Generic != tc.wantGeneric || len(got.Required) != tc.wantRequiredLen {
+				t.Errorf("%s under {1}{U} less = %+v, want generic %d and %d coloured",
+					tc.base, got, tc.wantGeneric, tc.wantRequiredLen)
+			}
+		})
+	}
+}

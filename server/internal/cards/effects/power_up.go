@@ -34,12 +34,44 @@ func PowerUp(text string, cost game.AbilityCost, effect Effect) ActivatedAbility
 	}
 }
 
-// powerUpAnswering is PowerUp with its ADR 0142 declaration: what the
-// row can do in response, read by smart autopass and the bot.
-func powerUpAnswering(answers game.Answers, text string, cost game.AbilityCost, effect Effect) ActivatedAbility {
+// powerUpAnswering is PowerUp with its ADR 0142 declaration: a row that
+// only grows its source (counters), so the one thing it can do in
+// response is pump (game.AnswerPump), read by smart autopass and the bot.
+// Every power-up row so far is one; a row that does something else
+// builds PowerUp and sets its own Purpose.
+func powerUpAnswering(text string, cost game.AbilityCost, effect Effect) ActivatedAbility {
 	ab := PowerUp(text, cost, effect)
-	ab.Purpose.Answers = answers
+	ab.Purpose.Answers = game.AnswerPump
 	return ab
+}
+
+// YourPowerUpAbilitiesActivateAnAdditionalTime — "Each power-up ability
+// of permanents you control can be activated an additional time" (Wonder
+// Man, Hollywood Hero). It ADDS to the printed once rather than replacing
+// it, so two of them make it three: the engine sums every static that
+// reaches the ability (game.Game.PowerUpLimitFor).
+//
+// It reaches the permanents its controller controls, whichever turn it
+// is, and ends when its permanent leaves the battlefield (CR 113.6):
+// nothing is stored, so an ability activated twice under it is simply
+// spent afterwards.
+func YourPowerUpAbilitiesActivateAnAdditionalTime(label string) game.PowerUpExtra {
+	return game.PowerUpExtra{
+		Label: label,
+		Times: 1,
+		Applies: func(_ *game.Game, source game.Card, grantor game.Card) bool {
+			return source.Controller == grantor.Controller
+		},
+	}
+}
+
+// PowerUpAbilitiesCantBeActivatedDuringThatTurn is Kang the Conqueror's
+// "During that turn, power-up abilities can't be activated": the rules
+// effect an extra turn carries (TakeExtraTurn.DuringThatTurn), registered
+// as the turn begins and gone at its cleanup step. Game-wide, so it
+// bans every player's power-up abilities, Kang's controller's included.
+func PowerUpAbilitiesCantBeActivatedDuringThatTurn() []game.Mod {
+	return []game.Mod{{Kind: game.ModCantActivatePowerUp}}
 }
 
 // APowerUpAbility — the activation event is of a power-up ability

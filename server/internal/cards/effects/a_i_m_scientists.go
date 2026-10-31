@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // A.I.M. Scientists — Creature — Human Scientist Villain {3}{U}, 3/3
 // (Marvel Super Heroes, #4455):
@@ -28,9 +24,7 @@ func init() {
 		Name:         "A.I.M. Scientists",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("A.I.M. Scientists — it connives", Do(Instruction(func(ctx *Context) error {
-				return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{ctx.Item.SourceCardID}}.Apply(ctx)
-			}))),
+			WhenThisEntersItConnives("A.I.M. Scientists — it connives"),
 		},
 		Activated: []ActivatedAbility{BasicLandcycling("{2}")},
 	})

@@ -102,7 +102,8 @@ const (
 	// CostReduction is "spells you cast cost {N} less to cast" —
 	// Goblin Electromancer, Heartless Summoning, Animar. Amount is
 	// the generic mana removed, floored at the cost's generic
-	// component; coloured requirements are never touched.
+	// component; coloured requirements are never touched unless the
+	// modifier carries a Unit (#4707), which names the mana it removes.
 	CostReduction
 
 	// CostFloor is a cost-SETTING effect: "each spell that would
@@ -441,12 +442,18 @@ type CostModifier struct {
 	// of {1}{W}, so an Amount of 2 adds {2}{W}{W}. Nil — every other
 	// modifier — means one generic mana per point.
 	//
-	// Increases only (ADR 0048 addendum, open question 3). A
-	// reduction still spends generic mana and nothing else (§3), and
-	// a Unit on any other kind, or a Unit carrying {X}, a hybrid or a
-	// Phyrexian symbol, refuses the cast rather than guessing what it
-	// meant (§16). effects.Register refuses the same shapes at boot;
-	// both read UnitProblem.
+	// Increases (ADR 0048 addendum, open question 3) and, from #4707,
+	// reductions: on a CostReduction a Unit is what one point of Amount
+	// takes OFF, so Flying Drone's "This ability costs {1}{U} less to
+	// activate" is Amount 1 with a Unit of {1}{U}. It is spent by
+	// reduceByManaCost (CR 118.7): a coloured symbol takes one mana of
+	// its colour off the cost, or one generic when the cost has none left,
+	// and nothing goes below {0} (CR 601.2f). A reduction with no Unit
+	// still spends generic mana and nothing else (§3). A Unit on any other
+	// kind, or a Unit carrying {X}, a hybrid or a Phyrexian symbol,
+	// refuses the cast rather than guessing what it meant (§16).
+	// effects.Register refuses the same shapes at boot; both read
+	// UnitProblem.
 	Unit *ParsedCost
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
@@ -516,8 +523,8 @@ type CostModifier struct {
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
-// when it can: no Unit, or a Unit on an increase made only of generic
-// mana and single-colour symbols. ADR 0048 addendum §16: no printed
+// when it can: no Unit, or a Unit on an increase or a reduction made
+// only of generic mana and single-colour symbols. ADR 0048 addendum §16: no printed
 // increase adds {X}, a hybrid or a Phyrexian symbol, and §3 keeps
 // every other kind generic-only, so each of those shapes is a card
 // file mistake. One function, so the boot guard and the cast-time
@@ -527,8 +534,8 @@ func (m CostModifier) UnitProblem() string {
 	if u == nil {
 		return ""
 	}
-	if m.Kind != CostIncrease {
-		return "a mana unit on something other than an increase"
+	if m.Kind != CostIncrease && m.Kind != CostReduction {
+		return "a mana unit on something other than an increase or a reduction"
 	}
 	if u.XSlots > 0 {
 		return "a mana unit carrying {X}"
@@ -874,7 +881,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			return ParsedCost{}, err
 		}
 		if ok {
-			cost = reduceGeneric(cost, n)
+			cost = reduceBy(cost, n, bm.modifier.Unit)
 		}
 	}
 	// CR 702.193a/b: the power-up reduction, with the others and in
@@ -1274,8 +1281,8 @@ func amountFor(bm boundCostModifier, q CostQuery, cost ParsedCost) (int, bool, e
 	if !bm.modifier.ReadsTargets {
 		q.Targets = nil
 	}
-	// A Unit is an increase's shape (open question 3). On any other
-	// kind, or carrying an {X} no announcement could size, or a hybrid
+	// A Unit is an increase's or a reduction's shape (open question 3,
+	// #4707). On any other kind, or carrying an {X} no announcement could size, or a hybrid
 	// or Phyrexian symbol whose payment no printed increase defines
 	// (§16), there is no honest price: refuse, as for a negative
 	// amount.
@@ -1324,6 +1331,20 @@ func increaseBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 	// through UnitProblem before the increase pass runs.
 	out.HasSnow = cost.HasSnow || unit.HasSnow
 	return out
+}
+
+// reduceBy takes `n` units of a reduction off a cost: `n` generic mana when
+// unit is nil, and otherwise `n` times the unit's mana, spent by
+// reduceByManaCost (CR 118.7) so a coloured symbol takes its own colour
+// first. The coloured twin of increaseBy (#4707, Flying Drone).
+func reduceBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
+	if unit == nil {
+		return reduceGeneric(cost, n)
+	}
+	for i := 0; i < n; i++ {
+		cost = reduceByManaCost(cost, *unit)
+	}
+	return cost
 }
 
 // reduceGeneric spends `n` generic mana out of a cost, stopping at
@@ -1442,7 +1463,8 @@ func (c ParsedCost) totalManaWithX(x int) int {
 
 // ManaValue is the card's printed mana value, or zero when the cost
 // can't be read. Lands parse to the zero cost and so are zero, which
-// is right (CR 202.3a).
+// is right (CR 202.3a). A face-down permanent has no mana cost, so it
+// is zero too (CR 708.2a, manaCostForValue).
 //
 // Deliberately printed-cost-only: cost modifiers, alternative costs
 // and the commander tax all change what a spell COSTS and none of
@@ -1467,7 +1489,21 @@ func (c Card) ParsedManaValue() (mv int, ok bool) {
 }
 
 // manaCostForValue is the cost a MANA VALUE is computed from, which is
-// the card's own printed cost for everything but one case.
+// the card's own printed cost for everything but three cases. It is the
+// one place a card's mana value is decided, so a rule about WHICH cost
+// counts goes here and every reader (Card.ManaValue,
+// Card.ParsedManaValue, Card.ManaValueWithX, Game.ManaValueForEffect,
+// the protection source's mana value) inherits it.
+//
+// CR 708.2a, CR 708.4, CR 202.3a: a face-down permanent, and a face-down
+// spell on the stack, has no mana cost, so its mana value is 0 whatever
+// card it hides (#4682). The card's own cost is the face it hides: an
+// effect that compares mana values must not read it, and a view that
+// ships the values must not tell. A caller that really wants the hidden
+// card's cost (turning it face up, CR 701.40b and CR 702.37e, which show
+// and pay it) reads Card.ManaCost, never a mana value. Only a CR 708.2
+// object is zero: a card face down in EXILE is not one and keeps its
+// printed cost (FaceDownKind.IsPermanentState).
 //
 // CR 712.8e: "While a nonmodal double-faced permanent has its back
 // face up, it has only the characteristics of its back face. However,
@@ -1484,6 +1520,9 @@ func (c Card) ParsedManaValue() (mv int, ok bool) {
 // value 0 and reading its front face here would make a land cost seven.
 // Added in S46 (ADR 0079 decision 8, #343).
 func manaCostForValue(c Card) string {
+	if c.faceDownPermanent() {
+		return ""
+	}
 	// CR 712.8g, 202.3c (ADR 0145): a melded permanent's mana value is
 	// the sum of its cards' front-face mana values. A copy of one has
 	// no cards behind it, and its printed cost is the back face's
@@ -1521,6 +1560,9 @@ func (c Card) ManaValueWithX(x int) int {
 // Card.ParsedManaValue. A predicate should reject such a card rather
 // than treat it as mana value zero.
 //
+// A face-down permanent, or a face-down spell, has no mana cost, so it
+// reads 0 with ok true (CR 708.2a, CR 708.4, CR 202.3a; manaCostForValue).
+//
 // "On the stack" means the card is in the stack zone AND has a spell
 // entry in StackMeta. The entry holds the announced X. A card that
 // has left the stack keeps its InstanceID, but its entry is dropped
@@ -1539,12 +1581,10 @@ func (g *Game) ManaValueForEffect(c Card) (mv int, ok bool) {
 // castManaValueLocked is the mana value of the spell `sc` on the stack,
 // as the cast tally and "other spells you've cast this turn" count it
 // (#2743): the X it was cast with (CR 202.3e), and 0 for a spell cast
-// face down, which has no mana cost (CR 708.4, CR 202.3a). ok is false
-// when the cost can't be read. Caller must hold g.mu.
+// face down, which has no mana cost (CR 708.4, CR 202.3a; the read is
+// ManaValueForEffect's, which answers 0 for it). ok is false when the
+// cost can't be read. Caller must hold g.mu.
 func (g *Game) castManaValueLocked(sc *Card) (int, bool) {
-	if sc.FaceDown {
-		return 0, true
-	}
 	return g.ManaValueForEffect(*sc)
 }
 

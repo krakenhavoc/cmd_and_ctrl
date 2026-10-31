@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultBotTier, tierNote, tierOptionLabel, type TierChoice } from "./botTier";
+import { defaultBotTier, tierLabel, tierNote, unavailableNotes, type TierChoice } from "./botTier";
 
 const t = (tier: string, available = true): TierChoice => ({
   tier,
@@ -22,11 +22,29 @@ describe("defaultBotTier", () => {
   });
 });
 
-describe("tierOptionLabel", () => {
+describe("tierLabel", () => {
   it("marks random as testing only", () => {
-    expect(tierOptionLabel(t("random"))).toBe("Random (testing only)");
-    expect(tierOptionLabel(t("heuristic"))).toBe("Heuristic");
-    expect(tierOptionLabel(t("strong", false))).toBe("Strong — not built yet");
+    expect(tierLabel(t("random"))).toBe("Random (testing only)");
+    expect(tierLabel(t("heuristic"))).toBe("Heuristic");
+    expect(tierLabel(t("strong", false))).toBe("Strong");
+  });
+});
+
+describe("unavailableNotes", () => {
+  it("says why, once per reason", () => {
+    const keyless = "this server has no model API key";
+    expect(
+      unavailableNotes([
+        t("random"),
+        t("heuristic"),
+        { ...t("assisted", false), reason: keyless },
+        { ...t("strong", false), reason: keyless },
+        t("odd", false),
+      ]),
+    ).toEqual([`Assisted and Strong: ${keyless}`, "Odd: not available on this server"]);
+  });
+  it("is empty when every tier is offered", () => {
+    expect(unavailableNotes([t("random"), t("heuristic")])).toEqual([]);
   });
 });
 

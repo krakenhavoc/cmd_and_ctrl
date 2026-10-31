@@ -83,6 +83,13 @@ var DeliriumForModes = game.ModeCondition("delirium", func(g *game.Game, chooser
 	return b16CardTypesInGraveyard(g, chooser) >= 4
 })
 
+// YouDiscardedACardThisTurn is "If you discarded a card this turn, you choose
+// one instead" (Typhoid Mary, Fractured): the chooser's discard tally for the
+// turn, read as the trigger is put on the stack.
+var YouDiscardedACardThisTurn = game.ModeCondition("you-discarded-a-card-this-turn", func(g *game.Game, chooser uuid.UUID) bool {
+	return g.TurnTallyFor(chooser).CardsDiscarded > 0
+})
+
 // ChooseOne — "Choose one —".
 func ChooseOne(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Choose one", Options: options, Min: 1, Max: 1}
@@ -114,6 +121,18 @@ func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *
 // a spell or an activated ability.
 func ChooseOneAtRandom(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Choose one at random", Options: options, Min: 1, Max: 1, AtRandom: true}
+}
+
+// ChooseUpToX — "When this enters, choose up to X —" (The Ruinous
+// Wrecking Crew, #4617), where X is the X paid for the spell that
+// became this permanent (CR 107.3m). The engine reads that X as the
+// trigger goes on the stack and asks for up to that many bullets, each
+// at most once, so it never asks for more than the card prints (CR
+// 700.2d). With X = 0, or a permanent that was not cast, no bullet can
+// be chosen and the trigger is removed (CR 700.2b). For an enters
+// trigger only: effects.Register refuses it anywhere else.
+func ChooseUpToX(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: "Choose up to X", Options: options, Min: 0, Max: len(options), UpToCastX: true}
 }
 
 // ChooseOneNotChosenThisTurn — "Choose one that hasn't been chosen

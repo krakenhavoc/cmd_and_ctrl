@@ -15,6 +15,7 @@
 // so "visible" and "playable by you" are different questions and only
 // the first one decides what the pile face shows.
 
+import { castableFaces } from "./faces";
 import type { CardView, ZoneView } from "./protocol";
 
 // visibleLibraryTop returns the top card of a library when this viewer
@@ -50,9 +51,22 @@ export function visibleLibraryTop(zone: ZoneView | undefined): CardView | null {
 // Visibility is still a separate question, and visibleLibraryTop's
 // note says why: Oracle of Mul Daya reveals the top card to the whole
 // table while opening only lands.
+//
+// #4509: the answer is the union over the card's block and its
+// castable `faces[i]` blocks, as castableFromZone's is for a graveyard
+// (#1173). A permission about the spell or the land played judges the
+// face being cast, so a modal DFC on top whose BACK is a land is
+// playable under Oracle of Mul Daya as that face alone: `castable_here`
+// is on `faces[1]` and not on the card, which is showing its sorcery.
 export function libraryTopPlayable(zone: ZoneView | undefined): boolean {
   const top = visibleLibraryTop(zone);
-  return top !== null && top.castable_here === true;
+  return top !== null && playableTopFaces(top).length > 0;
+}
+
+// playableTopFaces is the faces of the top card the server marked
+// playable for this viewer: the card itself for a single-faced card.
+function playableTopFaces(top: CardView): CardView[] {
+  return castableFaces(top, "library").filter((f) => f.castable_here === true);
 }
 
 // libraryTopActionLabel is the verb for the affordance on a visible,
@@ -65,11 +79,16 @@ export function libraryTopPlayable(zone: ZoneView | undefined): boolean {
 // answers the land-play rule rather than the spell rules (#1407,
 // #1441), so this reads the type line and nothing else — no second
 // legality check.
+//
+// Read off the faces that are playable (#4509), so a modal DFC whose
+// land back is the only face open says "play" though it shows a
+// sorcery, and one that may also be cast as a spell says "cast".
 export function libraryTopActionLabel(zone: ZoneView | undefined): "play" | "cast" | null {
-  if (!libraryTopPlayable(zone)) return null;
   const top = visibleLibraryTop(zone);
   if (!top) return null;
-  return (top.type_line ?? "").toLowerCase().includes("land") ? "play" : "cast";
+  const faces = playableTopFaces(top);
+  if (faces.length === 0) return null;
+  return faces.every((f) => (f.type_line ?? "").toLowerCase().includes("land")) ? "play" : "cast";
 }
 
 // LibraryTopSpecialAction is one pill beside the library pile for a

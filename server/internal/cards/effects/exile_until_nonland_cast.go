@@ -23,6 +23,33 @@ func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error
 	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 0, game.ZoneExile, UntilNonland, t)
 }
 
+// exileUntilNonlandCastFree is "Exile cards from the top of your library
+// until you exile a nonland card. You may cast that card without paying its
+// mana cost." (Nico Minoru, Runaway; Wanda's Vision): the exile loop with a
+// flash-speed, cast-only permission over the nonland card, priced {0}, made
+// during the resolution (CR 608.2g) and lapsing with the card still in
+// exile. An {X} in its cost is 0 (CR 107.3b).
+func exileUntilNonlandCastFree(ctx *Context, sourceName string) error {
+	return exileUntilNonlandGrantingCast(ctx, exileUntilNonlandFreeCastPermission(ctx, sourceName))
+}
+
+// exileUntilNonlandFreeCastPermission is the permission exileUntilNonlandCastFree
+// grants: flash-speed, cast-only, priced {0}, lapsing with the card still in
+// exile. Lady Loki, Agent of Chaos grants the same one from her own tail,
+// after the damage she deals between the walk and the offer.
+func exileUntilNonlandFreeCastPermission(ctx *Context, sourceName string) game.CastPermission {
+	return game.CastPermission{
+		Cost:        "{0}",
+		Timing:      game.TimingFlash,
+		CastOnly:    true,
+		Duration:    ctx.Game.UntilEndOfTurnDuration(),
+		LapseOnPass: game.LapseStaysInExile,
+		Source:      ctx.Source(),
+		SourceName:  sourceName,
+		Label:       "Cast without paying its mana cost (" + sourceName + ")",
+	}
+}
+
 // exileUntilNonlandGranted is the run's "then", told the cards exiled.
 var exileUntilNonlandGranted = CardTail("exile-until-nonland/grant-cast", func(ctx *Context, o game.TailOutcome) error {
 	if o.Tail.Permission == nil {

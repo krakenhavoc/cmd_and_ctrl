@@ -31,7 +31,7 @@ func init() {
 				APowerUpAbilityCost(), OfAnotherCreatureYouControl()),
 		},
 		Activated: []ActivatedAbility{
-			powerUpAnswering(game.AnswerPump, "{6}{R}{G}: Put five +1/+1 counters on Hulk.",
+			powerUpAnswering("{6}{R}{G}: Put five +1/+1 counters on Hulk.",
 				ManaCost("{6}{R}{G}"), plusOneCountersOnThis(5)),
 		},
 	})

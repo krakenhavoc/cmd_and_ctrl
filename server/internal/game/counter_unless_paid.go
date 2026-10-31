@@ -132,6 +132,13 @@ type CounterUnlessPaidPrompt struct {
 	// which is HARDER to pay than printed — the card stronger than
 	// it is, the #259 direction.
 	Waterbend *TapPermanentsCost
+
+	// Action is a payment that is not plain mana (ADR 0108 §5), Cost then
+	// being its words: #4566's either payment for a ward with two ways to
+	// pay — Titania, Rugged Rumbler's "Ward—Discard a card or pay {2}" is
+	// an Either of a discard and a PayActionMana branch. Nil is the
+	// ordinary mana payment Cost names. Never beside Waterbend.
+	Action *PayAction
 }
 
 // QueueCounterUnlessPaidForEffect queues the CR 118.12 prompt for
@@ -175,10 +182,13 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	if p.Waterbend != nil && tap == nil {
 		return fmt.Errorf("%w: counter-unless-pays tap clause %q is not registered", ErrInvalidParam, p.Waterbend.Key)
 	}
+	if p.Action != nil && p.Waterbend != nil {
+		return fmt.Errorf("%w: counter-unless-pays with both a payment action and a tap clause", ErrInvalidParam)
+	}
 	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
 		Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
 		Then: then, Carry: carry, Guards: p.StackItem, LifeCost: p.LifeCost, Asked: p.Asked,
-		Tap: tap,
+		Tap: tap, Action: p.Action,
 	})
 }
 

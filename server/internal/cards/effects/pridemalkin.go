@@ -43,7 +43,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Pridemalkin — +1/+1 counter on target creature you control",
-					plusOneCounterOnChosen),
+					PlusOneCounterOnTheTarget),
 				PermanentYouControl("target creature you control", Creature())),
 		},
 	})

@@ -72,7 +72,7 @@ func (g *Game) AltSacrificeManaValueForEffect(id uuid.UUID) int {
 	}
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == id {
-			return permanentManaValue(&g.Battlefield.Cards[i])
+			return g.Battlefield.Cards[i].ManaValue()
 		}
 	}
 	return 0

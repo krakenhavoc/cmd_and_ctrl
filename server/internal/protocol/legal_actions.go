@@ -20,7 +20,8 @@ import (
 //
 // It is built from the UNCAPPED list, before capLegalMoves degrades an
 // over-long one to one move per (source, kind, targets_stack,
-// has_targets, interacts, combat_interacts, combat_defender_only). So
+// has_targets, interacts, combat_interacts, combat_defender_only,
+// value_only, answers_now). So
 // a board past legalMovesWireCap still says which ability rows are
 // live, which faces are castable and from which zones, which the capped
 // legal_moves cannot.

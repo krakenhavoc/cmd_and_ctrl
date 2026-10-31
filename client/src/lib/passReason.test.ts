@@ -7,6 +7,8 @@ import { autopassDecision, type AutopassGates } from "./autopassDecision";
 import {
   BLUFF_PASS_REASON,
   HOLD_PASS_REASON,
+  UNMATCHED_ANSWER_PASS_REASON,
+  VALUE_INSTANT_PASS_REASON,
   autopassReason,
   passNoticeRequest,
   passNoticeText,
@@ -58,6 +60,75 @@ describe("autopassReason — worded from the branch that passed", () => {
 
   it("names an opponent's item with nothing to answer it", () => {
     expect(autopassReason(gates({ stackEmpty: false }))).toBe("nothing to respond with");
+  });
+
+  it("#2877: names a value instant that did not stop an opponent's item", () => {
+    const g = gates({ stackEmpty: false, heldValueInstant: true });
+    expect(autopassDecision(g)).toBe("pass");
+    expect(autopassReason(g)).toBe(VALUE_INSTANT_PASS_REASON);
+    expect(VALUE_INSTANT_PASS_REASON).toBe("only a value instant to respond with");
+  });
+
+  describe("#4734: nothing you hold answers this", () => {
+    it("is the amendment's wording", () => {
+      expect(UNMATCHED_ANSWER_PASS_REASON).toBe("nothing you hold answers this");
+      expect(
+        passNoticeText({ frame: "f", reason: UNMATCHED_ANSWER_PASS_REASON, actionsSent: 1 }),
+      ).toBe("Passed for you: nothing you hold answers this");
+    });
+
+    it("names a held answer that did not stop an opponent's item", () => {
+      const g = gates({ stackEmpty: false, heldUnmatchedAnswer: true });
+      expect(autopassDecision(g)).toBe("pass");
+      expect(autopassReason(g)).toBe(UNMATCHED_ANSWER_PASS_REASON);
+    });
+
+    it("outranks the value instant's reason: nothing held answers, Opt or not", () => {
+      const g = gates({ stackEmpty: false, heldUnmatchedAnswer: true, heldValueInstant: true });
+      expect(autopassReason(g)).toBe(UNMATCHED_ANSWER_PASS_REASON);
+    });
+
+    it("names it in an empty-stack key window with nothing to respond with", () => {
+      for (const w of [{ combatWindow: true }, { oppEndWindow: true }]) {
+        const g = gates({ step: "declare_attackers", ...w, heldUnmatchedAnswer: true });
+        expect(autopassDecision(g)).toBe("pass");
+        expect(autopassReason(g)).toBe(UNMATCHED_ANSWER_PASS_REASON);
+        expect(autopassReason({ ...g, heldUnmatchedAnswer: false })).toBe(
+          "nothing to respond with in Declare Attackers",
+        );
+      }
+    });
+
+    it("names it on a ticked step with nothing to do", () => {
+      const g = gates({ step: "upkeep", stepStop: true, heldUnmatchedAnswer: true });
+      expect(autopassDecision(g)).toBe("pass");
+      expect(autopassReason(g)).toBe(UNMATCHED_ANSWER_PASS_REASON);
+    });
+
+    it("leaves a quiet step as it was: it would have passed with no verdict at all", () => {
+      const g = gates({ step: "upkeep", heldUnmatchedAnswer: true });
+      expect(autopassDecision(g)).toBe("pass");
+      expect(autopassReason(g)).toBe("no stop set for Upkeep");
+    });
+
+    it("never replaces Skip to my turn's or the viewer's own stack's reason", () => {
+      expect(autopassReason(gates({ autopassToggle: true, heldUnmatchedAnswer: true }))).toBe(
+        "skipping to your turn",
+      );
+      expect(
+        autopassReason(
+          gates({ stackEmpty: false, ownsEveryStackItem: true, heldUnmatchedAnswer: true }),
+        ),
+      ).toBe("everything on the stack is yours");
+    });
+
+    it("rides on the stack hold's pass too", () => {
+      const g = gates({ stackEmpty: false, heldUnmatchedAnswer: true });
+      expect(timedPassReason("hold", "pass", g)).toBe(
+        `stack hold ended, ${UNMATCHED_ANSWER_PASS_REASON}`,
+      );
+      expect(timedPassReason("hold", "pass", gates({ stackEmpty: false }))).toBe(HOLD_PASS_REASON);
+    });
   });
 
   it("names a stack that is all the viewer's own", () => {
@@ -122,6 +193,12 @@ describe("timedPassReason", () => {
 
   it("says the hold ran out for a plain pass after a stack hold", () => {
     expect(timedPassReason("hold", "pass", gates({ stackEmpty: false }))).toBe(HOLD_PASS_REASON);
+  });
+
+  it("#2877: says a value instant was all there was when the hold ran out", () => {
+    expect(
+      timedPassReason("hold", "pass", gates({ stackEmpty: false, heldValueInstant: true })),
+    ).toBe("stack hold ended, only a value instant to respond with");
   });
 
   it("falls back to the ordinary reason when settings moved during a bluff wait", () => {

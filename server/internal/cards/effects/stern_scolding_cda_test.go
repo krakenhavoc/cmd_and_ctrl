@@ -84,6 +84,38 @@ func TestHobSternScoldingReadsATarmogoyfSpellsCDA(t *testing.T) {
 	}
 }
 
+// ToughnessGE must read a creature spell's characteristic-defining toughness
+// while the spell is on the stack.
+func TestToughnessGEReadsATarmogoyfSpellCDA(t *testing.T) {
+	g := newCatalogGame(t)
+	sternFillGraveyard(g, 0, 3)
+	sternCastGoyf(t, g)
+
+	var spell game.Card
+	g.WithWriteLock(func() {
+		var err error
+		spell, err = g.Stack.Top()
+		if err != nil {
+			t.Fatalf("get Tarmogoyf spell: %v", err)
+		}
+	})
+	if spell.InstanceID == uuid.Nil {
+		t.Fatal("expected the Tarmogoyf spell on the stack")
+	}
+	passes := func(n int) bool {
+		var pass bool
+		g.WithWriteLock(func() { pass = ToughnessGE(n)(g, uuid.Nil, spell) })
+		return pass
+	}
+	if !passes(4) || passes(5) {
+		t.Fatal("with three card types in graveyards, Tarmogoyf's 4 toughness should pass 4 and fail 5")
+	}
+	sternFillGraveyard(g, 3, 4)
+	if !passes(5) {
+		t.Fatal("with four card types in graveyards, Tarmogoyf's 5 toughness should pass 5")
+	}
+}
+
 // The target is checked again on resolution: a Goyf that grows past 2/2
 // while Stern Scolding waits is no longer a legal target, so the Scolding
 // does nothing and the Goyf resolves.

@@ -32,7 +32,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice a Desert: Exile all graveyards.",
-			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 			Cost: Plus(ManaCost("{2}"), TapCost(),
 				game.AbilityCost{SacrificeOther: sacrificeSpec("a Desert", b02IsDesert)}),
 			Effect: b02ExileAllGraveyards,

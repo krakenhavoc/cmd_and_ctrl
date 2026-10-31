@@ -53,7 +53,19 @@ export function initialShares(frame: DamageAssignmentView): DamageShares {
   for (const a of s.assignments) {
     if (a.blocker_id in amounts) amounts[a.blocker_id] = Math.max(0, a.amount);
   }
-  return { amounts, trample: frame.allow_trample ? Math.max(0, s.trample_to_player ?? 0) : 0 };
+  const toPlayer = frame.allow_trample || frame.as_though_unblocked;
+  return { amounts, trample: toPlayer ? Math.max(0, s.trample_to_player ?? 0) : 0 };
+}
+
+/**
+ * assignAllToPlayer is a Wolverine prompt's "as though it weren't
+ * blocked" (CR 510.1c): nothing on any blocker, the whole power on the
+ * player or permanent the attacker is attacking.
+ */
+export function assignAllToPlayer(frame: DamageAssignmentView): DamageShares {
+  const amounts: Record<string, number> = {};
+  for (const id of frame.blocker_card_ids) amounts[id] = 0;
+  return { amounts, trample: frame.attacker_power };
 }
 
 export function assignedTotal(s: DamageShares): number {
@@ -154,14 +166,41 @@ export function setTrample(s: DamageShares, n: number): DamageShares {
  */
 export function trampleShort(frame: DamageAssignmentView, s: DamageShares): string[] {
   if (s.trample <= 0) return [];
+  // All of it on the player and none on a blocker is "as though it
+  // weren't blocked", which owes no blocker lethal damage.
+  if (frame.as_though_unblocked && !hasBlockerDamage(s)) return [];
   return frame.blocker_card_ids.filter((id) => {
     const lethal = lethalOf(frame, id);
     return lethal !== null && (s.amounts[id] ?? 0) < lethal;
   });
 }
 
+function hasBlockerDamage(s: DamageShares): boolean {
+  return Object.values(s.amounts).some((v) => v > 0);
+}
+
+/**
+ * unblockedMixed is a split the server refuses on a prompt that only has
+ * "as though it weren't blocked" and no trample: damage on the player
+ * AND on a blocker.
+ */
+export function unblockedMixed(frame: DamageAssignmentView, s: DamageShares): boolean {
+  return (
+    !!frame.as_though_unblocked && !frame.allow_trample && s.trample > 0 && hasBlockerDamage(s)
+  );
+}
+
 export function canDealDamage(frame: DamageAssignmentView, s: DamageShares): boolean {
-  return assignedTotal(s) === frame.attacker_power && trampleShort(frame, s).length === 0;
+  // With no blocker left to divide among, assigning nothing is the
+  // other answer (CR 510.1c: a blocked creature with no blocker).
+  if (frame.as_though_unblocked && frame.blocker_card_ids.length === 0 && assignedTotal(s) === 0) {
+    return true;
+  }
+  return (
+    assignedTotal(s) === frame.attacker_power &&
+    trampleShort(frame, s).length === 0 &&
+    !unblockedMixed(frame, s)
+  );
 }
 
 /** toAnswer is the resolve_choice payload, in the frame's blocker order. */
@@ -191,7 +230,9 @@ export function autoAssignAnswer(
   if (!enabled || !choice || !viewerID) return null;
   if (choice.kind !== "damage_assignment" || choice.chooser !== viewerID) return null;
   const frame = choice.damage_assignment;
-  if (!frame || !frame.covers_lethal || !frame.suggested) return null;
+  // "As though it weren't blocked" is the viewer's choice (CR 510.1c):
+  // never made for them.
+  if (!frame || !frame.covers_lethal || !frame.suggested || frame.as_though_unblocked) return null;
   const s = initialShares(frame);
   if (assignedTotal(s) !== frame.attacker_power) return null;
   return toAnswer(frame, s);

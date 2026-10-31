@@ -158,6 +158,22 @@ type AttackTargetRestriction struct {
 	// not a relation read live off the attacker. A battle that player
 	// protects is not covered, because the text does not say it.
 	NotPlayer uuid.UUID `json:",omitempty"`
+	// NotPlayerOnly narrows NotPlayer to the player alone: the planeswalkers
+	// they control stay open to attack. "Creatures with flying can't attack
+	// you" (Storm, Windrider, #4601) says "you", not "or planeswalkers you
+	// control", so a flier may still attack one.
+	NotPlayerOnly bool `json:",omitempty"`
+	// OnlyAttackersMatching, when set, makes the whole restriction bind
+	// only an attacker that matches ANY of these queries, judged on its
+	// effective characteristics at the moment of declaration (CR 508.1c):
+	// the flying in "creatures with flying can't attack you" is read live,
+	// so a creature that loses or gains flying mid-turn is judged as it
+	// stands when attackers are declared. The static writes the
+	// restriction onto every creature and this filter does the choosing,
+	// rather than the static's AppliesTo, because AppliesTo runs inside the
+	// layer pass where a keyword another effect grants may not have landed
+	// yet (#4601).
+	OnlyAttackersMatching []PermanentQuery `json:",omitempty"`
 	// PlayerMustHaveActedLastTurn forbids attacking a PLAYER who neither
 	// cast a spell nor put a nontoken permanent onto the battlefield
 	// during their last turn: Arboria's "Creatures can't attack a player
@@ -180,6 +196,8 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
 		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn && r.NotPlayer == o.NotPlayer &&
+		r.NotPlayerOnly == o.NotPlayerOnly &&
+		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
 }
@@ -287,6 +305,9 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 	}
 	if e.Protected != "" {
 		s := e.AttackerName + " can't attack " + e.Protected + " or planeswalkers " + e.Protected + " controls"
+		if e.Restriction.NotPlayerOnly {
+			s = e.AttackerName + " can't attack " + e.Protected
+		}
 		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
 			s += " (" + e.Restriction.SourceName + ")"
 		}
@@ -315,6 +336,9 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 //
 // Caller must hold g.mu with fresh layers.
 func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) (bool, uuid.UUID, string) {
+	if !r.bindsAttackerLocked(g, attacker) {
+		return false, uuid.Nil, ""
+	}
 	if r.ownerRefuses(g, attacker, target) {
 		return true, uuid.Nil, ""
 	}
@@ -339,6 +363,23 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 		}
 	}
 	return false, uuid.Nil, ""
+}
+
+// bindsAttackerLocked reports whether r applies to `attacker` at all:
+// always, unless OnlyAttackersMatching narrows it to attackers with some
+// characteristic, read live off the attacker's effective values.
+//
+// Caller must hold g.mu with fresh layers.
+func (r AttackTargetRestriction) bindsAttackerLocked(g *Game, attacker *Card) bool {
+	if len(r.OnlyAttackersMatching) == 0 {
+		return true
+	}
+	for _, q := range r.OnlyAttackersMatching {
+		if q.matchesLocked(g, attacker) {
+			return true
+		}
+	}
+	return false
 }
 
 // alreadyAttackedPlayerLocked reports whether `target` is a player this
@@ -369,6 +410,9 @@ func (r AttackTargetRestriction) notPlayerRefuses(g *Game, target uuid.UUID) boo
 	case AttackTargetPlayer:
 		return target == r.NotPlayer
 	case AttackTargetPlaneswalker:
+		if r.NotPlayerOnly {
+			return false
+		}
 		pw := findBattlefieldCard(g, target)
 		return pw != nil && pw.Controller == r.NotPlayer
 	}
@@ -471,6 +515,17 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 	}
 	var out []DefenderRefusal
 	for _, r := range c.Effective().AttackTargetRestrictions {
+		if len(r.OnlyAttackersMatching) > 0 && r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller && r.bindsAttackerLocked(g, c) {
+			// #4601: "creatures with flying can't attack you", a fixed
+			// player and a filter on the attacker. It is a row only while
+			// the filter binds this creature, so one that loses flying
+			// drops the chip.
+			out = append(out, DefenderRefusal{
+				Player: r.NotPlayer, Restriction: r,
+				Why:        "it's a " + PermanentQueriesNoun(r.OnlyAttackersMatching),
+				PlayerOnly: r.NotPlayerOnly,
+			})
+		}
 		if r.PlayerMustHaveActedLastTurn {
 			// #1997: a player clause, not a defending-player one.
 			for _, p := range g.Seats {

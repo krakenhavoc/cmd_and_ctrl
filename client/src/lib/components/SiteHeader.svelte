@@ -4,11 +4,11 @@
   //
   // Grouped, not flat:
   //   - Signed in: the wordmark, then Tables | Decks, Catalog and
-  //     Roadmap. (My games is Tables' History since ADR 0158 §1.) On the right the C2 Discord, Help, and the
+  //     Roadmap. (My games is Tables' History since ADR 0158 §1.) On the right the CMD & CTRL Discord, Help, and the
   //     account menu. In admin mode an accent-tinted Admin link follows
   //     as its own group, and the account menu keeps its Admin item.
   //   - Signed out: the wordmark, then Decks, Roadmap and About. On the
-  //     right the C2 Discord, Help, and Sign in.
+  //     right the CMD & CTRL Discord, Help, and Sign in.
   //
   // "Tables" is the Lobby (the route stays #/lobby); its name is a
   // contract label (L.navTables). The Discord link shows only when the
@@ -23,7 +23,7 @@
   //
   // Below 600px (a public page's phone layout, #3877) the header is one
   // row: the wordmark, Help, Sign in or the account button, and a menu
-  // button. The nav links, the C2 Discord and the bug report move into
+  // button. The nav links, the CMD & CTRL Discord and the bug report move into
   // a panel the menu button opens (a disclosure: aria-expanded, focus
   // goes into it, Escape closes it and hands focus back). From 600px up
   // the links sit in the row as before and the button is hidden. The
@@ -321,14 +321,14 @@
           {@render navLink(ABOUT_HASH, "about", "About")}
         </div>
       {/if}
-      <!-- Phone layout only (#3877): the C2 Discord and the bug report as
+      <!-- Phone layout only (#3877): the CMD & CTRL Discord and the bug report as
            labelled rows, since their icon buttons leave the row below
            600px. Hidden from 600px up, where the icons show. -->
       {#if invite || (hasLinkedUser && bugReportOn)}
         <div class="panel-util">
           {#if invite}
             <a href={invite} target="_blank" rel="noopener noreferrer">
-              <Icon name="discord" size={18} /> C2 Discord
+              <Icon name="discord" size={18} /> CMD & CTRL Discord
             </a>
           {/if}
           {#if hasLinkedUser && bugReportOn}
@@ -344,15 +344,15 @@
     <div class="account">
       <span class="ping-slot"><ServerPing /></span>
       {#if invite}
-        <!-- ADR 0156 §6: the C2 Discord on every page outside the table.
+        <!-- ADR 0156 §6: the CMD & CTRL Discord on every page outside the table.
              Hidden when the server names no invite. -->
         <a
           class="discord-link"
           href={invite}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="the C2 Discord server"
-          title="Join the C2 Discord server"
+          aria-label="the CMD & CTRL Discord server"
+          title="Join the CMD & CTRL Discord server"
         >
           <Icon name="discord" size={18} />
         </a>

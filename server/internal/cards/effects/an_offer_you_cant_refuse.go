@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "234a734b-ba28-4f1b-9d01-3c3e7d516590",
 		Name:         "An Offer You Can't Refuse",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

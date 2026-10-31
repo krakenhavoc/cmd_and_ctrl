@@ -39,3 +39,18 @@ func TestLoopHeadLinesNameTheLoopAndTheChoosersSteps(t *testing.T) {
 		t.Error("a table with no loop has loop lines")
 	}
 }
+
+// #4736: an armed recording and a stop that waits for priority are
+// named too, so an agent knows its next actions will be steps.
+func TestLoopHeadLinesNameAnArmedOrStoppingRecording(t *testing.T) {
+	me, them := "seat-me", "seat-them"
+	seats := []protocol.PlayerView{{ID: them, Name: "Ann", Seat: 0}, {ID: me, Name: "Bob", Seat: 1}}
+	armed := &protocol.GameView{Seats: seats, LoopRecording: &protocol.LoopRecordingView{Recorder: them, Status: "armed"}}
+	if got := strings.Join(loopHeadLines(armed, me, newViewerNameWrapper(armed, me)), "\n"); !strings.Contains(got, "will record a loop from their next priority") {
+		t.Errorf("armed header %q", got)
+	}
+	stopping := &protocol.GameView{Seats: seats, LoopRecording: &protocol.LoopRecordingView{Recorder: them, Status: "recording", Steps: 2, Stopping: true}}
+	if got := strings.Join(loopHeadLines(stopping, me, newViewerNameWrapper(stopping, me)), "\n"); !strings.Contains(got, "2 steps so far") || !strings.Contains(got, "It ends at their next priority") {
+		t.Errorf("stopping header %q", got)
+	}
+}

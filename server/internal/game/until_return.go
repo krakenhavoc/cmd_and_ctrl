@@ -120,6 +120,16 @@ type UntilReturn struct {
 	// Leaves is "until <this object> leaves the battlefield".
 	Leaves ObjectRef
 
+	// ToHand returns the card to its owner's HAND, not the battlefield:
+	// CR 610.3 sends the object back to "its previous zone", and a card
+	// exiled out of a hand (Cloak and Dagger, Entwined's "exile a nonland
+	// card from their hand ... until Cloak and Dagger leave the
+	// battlefield") came from there. It rides the record as
+	// Params.Name = untilToHandWord, a field the until body never reads,
+	// so no snapshot field is added and an older file restores as a
+	// battlefield return.
+	ToHand bool
+
 	// On, Condition and CondParams are "until <an event>", in the same
 	// vocabulary an event-conditioned delayed trigger uses.
 	On         []EventKind
@@ -171,13 +181,17 @@ func (g *Game) ScheduleUntilReturnForEffect(cardID uuid.UUID, u UntilReturn) uui
 		}
 	}
 	duration := IndefiniteDuration()
+	params := EffectParams{Object: ObjectRef{ID: cardID, Epoch: c.ObjectEpoch}}
+	if u.ToHand {
+		params.Name = untilToHandWord
+	}
 	return g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 		Controller:   u.Controller,
 		SourceCardID: u.SourceCardID,
 		Label:        u.Label,
 		Cards:        []uuid.UUID{cardID},
 		Body:         untilReturnBody,
-		Params:       EffectParams{Object: ObjectRef{ID: cardID, Epoch: c.ObjectEpoch}},
+		Params:       params,
 		On:           append([]EventKind(nil), u.On...),
 		Condition:    u.Condition,
 		CondParams:   cloneEffectParams(u.CondParams),
@@ -305,6 +319,7 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 		return false
 	}
 	var due []ObjectRef
+	var dueHand []*DelayedTrigger
 	changed := false
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
@@ -317,7 +332,11 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 			continue
 		}
 		if g.untilRecordDueLocked(dt) {
-			due = append(due, dt.Params.Object)
+			if dt.Params.Name == untilToHandWord {
+				dueHand = append(dueHand, dt)
+			} else {
+				due = append(due, dt.Params.Object)
+			}
 			changed = true
 			continue
 		}
@@ -334,7 +353,7 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 	// listener reading a queue that still held these records would see
 	// them twice.
 	g.DelayedTriggers = kept
-	if len(due) == 0 {
+	if len(due) == 0 && len(dueHand) == 0 {
 		return false
 	}
 	if err := g.returnUntilObjectsLocked(due); err != nil {
@@ -343,7 +362,38 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 			ErrorMsg: "CR 610.3: an until return failed: " + err.Error(),
 		})
 	}
+	if err := g.returnUntilObjectsToHandLocked(dueHand); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "CR 610.3: an until return to a hand failed: " + err.Error(),
+		})
+	}
 	return true
+}
+
+// untilToHandWord marks an "until" record whose card returns to its
+// owner's hand (UntilReturn.ToHand). An on-disk spelling: never renamed.
+const untilToHandWord = "to-hand"
+
+// returnUntilObjectsToHandLocked puts the card of every record in `dts`
+// that is still in exile as the object it exiled into its owner's hand
+// (CR 610.3: the previous zone of a card exiled from a hand). Like the
+// battlefield return, a token has nothing to return and an owner who has
+// left the game (CR 800.4a) takes their cards with them.
+//
+// Caller must hold g.mu (write).
+func (g *Game) returnUntilObjectsToHandLocked(dts []*DelayedTrigger) error {
+	for _, dt := range dts {
+		ref := dt.Params.Object
+		c, ok := g.cardInZoneLocked(g.Exile, ref.ID)
+		if !ok || c.ObjectEpoch != ref.Epoch || c.IsToken() || !g.playerStillInLocked(c.Owner) {
+			continue
+		}
+		if _, err := g.ReturnFromAnyZoneToHandForEffect(c.Owner, dt.SourceCardID, ref.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // returnUntilObjectsLocked puts every object in `refs` that is still in

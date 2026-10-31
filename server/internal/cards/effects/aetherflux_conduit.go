@@ -72,6 +72,6 @@ func conduitYouCastASpell(ev game.Event, source *game.Card, _ game.Characteristi
 // conduitAfterDraw is the rest of the ability, once the seven are in
 // hand: the free casts over everything castable there.
 var conduitAfterDraw = game.RegisterDrawThen("aetherflux-conduit-after-draw", func(g *game.Game, d game.DrawThen) error {
-	grantFreeHandCastsFrom(g, d.Player, d.Source, "Aetherflux Conduit", nil)
+	grantFreeHandCastsFrom(g, d.Player, d.Source, "Aetherflux Conduit")
 	return nil
 })

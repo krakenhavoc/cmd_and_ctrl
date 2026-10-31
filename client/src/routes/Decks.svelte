@@ -957,7 +957,7 @@
                 <span>{prebuiltError}</span>
               </p>
             {:else}
-              <ul class="decks prebuilt-decks" aria-label="pre-built decks">
+              <ul class="decks prebuilt-decks" aria-label={L.prebuiltDecks}>
                 {#each prebuilt as p (p.id)}
                   {@const cov = summariseCoverage(p.coverage)}
                   <li class="deck">

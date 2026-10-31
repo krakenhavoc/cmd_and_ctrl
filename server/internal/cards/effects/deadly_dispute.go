@@ -19,7 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "457af74a-02b3-4659-846d-63e482667f34",
 		Name:           "Deadly Dispute",
-		Purpose:        game.Purpose{Draws: 2, Tokens: 1},
+		Purpose:        game.Purpose{Draws: 2, Tokens: 1, Answers: game.AnswerSacOutlet}, // #2877: its cost can sacrifice a creature (ADR 0142 §3)
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact or creature", Or(Artifact(), Creature())),
 		OnResolve: ResolveSteps(

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Cathar Commando — Creature — Human Soldier {1}{W}, 3/1 (EDHREC
 // rank 1416):
 //
@@ -20,6 +22,7 @@ func init() {
 		OracleID:        "774dce79-67e0-4820-8013-c7a7347993ce",
 		Name:            "Cathar Commando",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Answers: game.AnswerMakesBlocker}, // #4734: a creature with flash is a blocker (sweep ruling 7)
 		PrintedKeywords: []string{"flash"},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Sacrifice this creature: Destroy target artifact or enchantment.",

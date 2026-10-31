@@ -36,8 +36,12 @@ func init() {
 		Name:         "Return of the Wildspeaker",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Draw cards equal to the greatest power among non-Human creatures you control."),
-			Mode("Non-Human creatures you control get +3/+3 until end of turn."),
+			// #4734: a draw answers nothing.
+			ModeWithPurpose(Mode("Draw cards equal to the greatest power among non-Human creatures you control."),
+				game.Purpose{Answers: game.AnswerValue}),
+			// #4734: +3/+3 is a pump.
+			ModeWithPurpose(Mode("Non-Human creatures you control get +3/+3 until end of turn."),
+				game.Purpose{Answers: game.AnswerPump}),
 		),
 		OnResolve: ResolveSteps(
 			// The second bullet waits for a prompt the first one's draw asks (CR 608.2c, #4155).

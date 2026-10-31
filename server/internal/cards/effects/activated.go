@@ -449,8 +449,41 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Exert {
 			out.Exert = true
 		}
+		// #4566: and the either/or part. A composed "{3}, {T}, Sacrifice
+		// an artifact or discard a nonland card" that dropped it would
+		// ping for {3} alone — stronger than printed, the #259 direction.
+		if len(c.Either) > 0 {
+			out.Either = c.Either
+		}
 	}
 	return out
+}
+
+// OrCost is an either/or part of an activated ability's cost (#4566,
+// game.AbilityCost.Either): "Sacrifice an artifact or discard a nonland
+// card" is
+//
+//	OrCost(SacrificeBranch(1, "an artifact", game.PermanentQuery{Types: []string{"artifact"}}),
+//	    DiscardBranch(1, "a nonland card", true))
+//
+// composed with the rest by Plus. The activator announces which branch
+// they pay (CR 602.2b, 601.2b), and a branch they can't pay can't be
+// chosen (CR 118.3). Register refuses fewer than two branches and a rest
+// of the cost that has its own sacrifice or discard clause (checkOrCost).
+func OrCost(branches ...game.AbilityCostBranch) game.AbilityCost {
+	return game.AbilityCost{Either: append([]game.AbilityCostBranch(nil), branches...)}
+}
+
+// SacrificeBranch is "Sacrifice <n> <label>" as a branch of an OrCost:
+// permanents the activator controls matching `of`.
+func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchSacrifice, Count: n, Label: label, Of: of}
+}
+
+// DiscardBranch is "Discard <n> <label>" as a branch of an OrCost:
+// nonland cards only when `nonland`.
+func DiscardBranch(n int, label string, nonland bool) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchDiscard, Count: n, Label: label, Nonland: nonland}
 }
 
 // TapAnotherUntapped is "Tap another untapped <permanent> you control"
@@ -829,6 +862,22 @@ func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *g
 // (game.ExileCost).
 func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.AbilityCost {
 	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
+}
+
+// ExileAnyNumberFromGraveyardWithSymbols is "Exile any number of <kind>
+// cards from your graveyard with <N> or more <colour> mana symbols among
+// their mana costs" as a CR 602 activated ability's cost (Baron Helmut
+// Zemo's boast): the activator names the cards at announce, and the
+// activation is refused unless their printed costs hold N symbols of the
+// colour letter (game.ManaSymbolTotal).
+func ExileAnyNumberFromGraveyardWithSymbols(label, color string, atLeast int, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{
+		AnyNumber:   true,
+		Label:       label,
+		From:        game.ZoneGraveyard,
+		Match:       match,
+		SymbolTotal: &game.ManaSymbolTotal{Color: color, AtLeast: atLeast},
+	}}
 }
 
 // ExileFromHand is "Exile N <kind> cards from your hand" as a CR 602

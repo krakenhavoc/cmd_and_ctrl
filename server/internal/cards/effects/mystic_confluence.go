@@ -47,7 +47,7 @@ func init() {
 			ModeWithPurpose(ModeDoing("Draw a card.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				}), game.Purpose{Draws: 1}),
+				}), game.Purpose{Draws: 1, Answers: game.AnswerValue}), // #2877: three draws answer nothing
 		),
 	})
 }

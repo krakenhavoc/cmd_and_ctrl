@@ -499,6 +499,10 @@ func main() {
 	cardStart := time.Now()
 	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
 	metrics.BootPhase(metrics.BootPhaseCardIndex, time.Since(cardStart))
+	// ADR 0212 phase B2: a seat's commanders are resolved against the
+	// index, and RestoreFromDisk below reads a restored table's back
+	// from its game, so the lobby gets the index before the restore.
+	l.SetCardIndex(cardIdx)
 	// #3830: the stack shows an ability's printed text, read from the
 	// same index.
 	if cardIdx != nil {

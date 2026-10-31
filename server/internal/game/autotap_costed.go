@@ -616,11 +616,19 @@ func (s *costedSolver) plan() tapPlan {
 	entry := func(i int) plannedTap {
 		src := s.srcs[i]
 		e := plannedTap{CardID: src.CardID, OneColor: src.OneColor, DifferentColors: src.DifferentColors, Ref: src.Ref}
-		e.Slots = make([]plannedSlot, len(src.Slots))
+		// ADR 0074 amendment (#4716): the source's own slots are the
+		// executor's slots; what its triggers add is booked apart, in
+		// TriggerColors, for the trigger's adder.
+		own := src.ownSlots()
+		e.Slots = make([]plannedSlot, own)
 		for k, slot := range src.Slots {
 			c := s.color[i][k]
 			if c == "" {
 				c = genericColorFor(slot)
+			}
+			if k >= own {
+				e.TriggerColors = append(e.TriggerColors, c)
+				continue
 			}
 			o := s.owner[i][k]
 			e.Slots[k] = plannedSlot{Color: c, Funds: o >= 0 && o < s.m}
@@ -643,7 +651,7 @@ func (s *costedSolver) plan() tapPlan {
 			for fi := range s.srcs {
 				for k, o := range s.owner[fi] {
 					if o == j {
-						e.FundedBy = append(e.FundedBy, fundToken{Source: s.srcs[fi].CardID, Color: s.color[fi][k]})
+						e.FundedBy = append(e.FundedBy, fundToken{Source: s.srcs[fi].tokenSource(k), Color: s.color[fi][k]})
 					}
 				}
 			}
@@ -651,6 +659,17 @@ func (s *costedSolver) plan() tapPlan {
 		}
 	}
 	return out
+}
+
+// tokenSource is the source the mana of slot k is minted with: the
+// candidate's permanent for its own slots, and the trigger's permanent
+// for a trigger slot (ADR 0074 amendment, #4716), which is what the token
+// names (addTriggeredManaLocked).
+func (s tapSource) tokenSource(k int) uuid.UUID {
+	if t := k - s.ownSlots(); t >= 0 && t < len(s.TriggerFrom) {
+		return s.TriggerFrom[t]
+	}
+	return s.CardID
 }
 
 // slotColorFor is the colour a slot makes to pay a requirement: its

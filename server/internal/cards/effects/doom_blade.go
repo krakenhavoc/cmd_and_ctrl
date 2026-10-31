@@ -17,6 +17,7 @@ func init() {
 		OracleID:     "59e7f2ae-4535-4191-98be-3e65b6b2befa",
 		Name:         "Doom Blade",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetCreature("target nonblack creature", NonBlack()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

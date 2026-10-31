@@ -2,13 +2,16 @@
   // ContextMenu — the site's own right-click menu (#3499), opened by
   // lib/menuTrigger.ts at a point on the screen. The items are a ⋯
   // menu's (MoreMenu's MoreItem), so a surface can hand the same list
-  // to either.
+  // to either. A table's Invite menu (ADR 0212 §4) is one too, opened
+  // under its button with `align="end"`; its items carry a glyph, a
+  // line that says what each does, and a heading over the last group.
   //
   // Fixed to the viewport and clamped inside it once it knows its own
   // size. It takes focus when it opens, moves with the arrow keys, Home
   // and End, and closes on Escape (focus goes back to whatever opened
   // it), Tab, a choice, a click outside, a scroll or a resize.
   import { onMount, tick } from "svelte";
+  import Icon from "./Icon.svelte";
   import type { MoreItem } from "./MoreMenu.svelte";
 
   interface Props {
@@ -16,12 +19,26 @@
     label: string;
     x: number;
     y: number;
+    /** "end": x is where the menu's right edge goes, as under a button at the right. */
+    align?: "start" | "end";
     items: MoreItem[];
     /** Called once; `restoreFocus` is true when Escape closed it. */
     onclose: (restoreFocus: boolean) => void;
   }
 
-  const { label, x, y, items, onclose }: Props = $props();
+  const { label, x, y, align = "start", items, onclose }: Props = $props();
+
+  // The items in runs that share a heading, in order; an item with no
+  // group is a run of its own with no heading.
+  const sections = $derived.by(() => {
+    const out: { group?: string; items: MoreItem[] }[] = [];
+    for (const item of items) {
+      const last = out[out.length - 1];
+      if (last && item.group && last.group === item.group) last.items.push(item);
+      else out.push({ group: item.group, items: [item] });
+    }
+    return out;
+  });
 
   // The gap kept between the menu and the viewport's edge.
   const EDGE = 8;
@@ -53,7 +70,8 @@
   function place(): void {
     const w = menu?.offsetWidth ?? 0;
     const h = menu?.offsetHeight ?? 0;
-    left = Math.max(EDGE, Math.min(x, window.innerWidth - w - EDGE));
+    const want = align === "end" ? x - w : x;
+    left = Math.max(EDGE, Math.min(want, window.innerWidth - w - EDGE));
     top = Math.max(EDGE, Math.min(y, window.innerHeight - h - EDGE));
   }
 
@@ -123,30 +141,65 @@
   onkeydown={onKey}
   oncontextmenu={(e) => e.preventDefault()}
 >
-  {#each items as item (item.label)}
-    {#if item.href}
-      <a
-        class="mi"
-        class:danger={item.danger}
-        role="menuitem"
-        href={item.href}
-        download={item.download}
-        title={item.title}
-        onclick={() => close()}>{item.label}</a
-      >
+  {#each sections as section, i (i)}
+    {#if section.group}
+      {#if i > 0}<div class="msep" role="separator"></div>{/if}
+      <div role="group" aria-label={section.group}>
+        <div class="mhead" aria-hidden="true">{section.group}</div>
+        {#each section.items as item (item.label)}
+          {@render entry(item)}
+        {/each}
+      </div>
     {:else}
-      <button
-        type="button"
-        class="mi"
-        class:danger={item.danger}
-        role="menuitem"
-        disabled={item.disabled}
-        title={item.title}
-        onclick={() => choose(item)}>{item.label}</button
-      >
+      {#each section.items as item (item.label)}
+        {@render entry(item)}
+      {/each}
     {/if}
   {/each}
 </div>
+
+{#snippet entry(item: MoreItem)}
+  {#if item.href}
+    <a
+      class="mi"
+      class:danger={item.danger}
+      role="menuitem"
+      href={item.href}
+      download={item.download}
+      title={item.title}
+      onclick={() => close()}>{item.label}</a
+    >
+  {:else if item.icon || item.hint}
+    <!-- The hint is read as the title, not as part of the name, so the
+         item is still called by its label. -->
+    <button
+      type="button"
+      class="mi rich"
+      class:danger={item.danger}
+      role="menuitem"
+      aria-label={item.hint ? item.label : undefined}
+      disabled={item.disabled}
+      title={item.title ?? item.hint}
+      onclick={() => choose(item)}
+    >
+      {#if item.icon}<Icon name={item.icon} size={14} />{/if}
+      <span class="mtext">
+        <span>{item.label}</span>
+        {#if item.hint}<small>{item.hint}</small>{/if}
+      </span>
+    </button>
+  {:else}
+    <button
+      type="button"
+      class="mi"
+      class:danger={item.danger}
+      role="menuitem"
+      disabled={item.disabled}
+      title={item.title}
+      onclick={() => choose(item)}>{item.label}</button
+    >
+  {/if}
+{/snippet}
 
 <style>
   .ctx-menu {
@@ -193,5 +246,40 @@
   }
   .mi.danger {
     color: var(--danger);
+  }
+  /* An item with a glyph and a line under it (the Invite menu). */
+  .mi.rich {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 10px;
+    white-space: normal;
+  }
+  .mi.rich :global(.icon) {
+    flex: none;
+    margin-top: 2px;
+    color: var(--fg-muted);
+  }
+  .mtext {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+  .mtext small {
+    font: 400 11.5px/1.35 var(--font-ui);
+    color: var(--fg-muted);
+  }
+  .msep {
+    height: 1px;
+    margin: 5px 4px;
+    background: var(--border);
+  }
+  .mhead {
+    padding: 6px 10px 2px;
+    font: 700 9.5px/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
   }
 </style>

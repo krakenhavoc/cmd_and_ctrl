@@ -23,6 +23,7 @@ func init() {
 		OracleID:     "8ddfc283-c9b4-41a5-af88-cf0068e986cc",
 		Name:         "Swan Song",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target enchantment, instant, or sorcery spell", Or(Enchantment(), Instant(), Sorcery())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {

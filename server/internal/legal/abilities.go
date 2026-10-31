@@ -77,9 +77,13 @@ type activateParams struct {
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
-	PhyrexianLife int  `json:"phyrexian_life,omitempty"`
-	Strict        bool `json:"strict,omitempty"`
-	AutoTap       bool `json:"auto_tap,omitempty"`
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #4566: the branch of an either/or cost this move pays
+	// (game.ActivateAbilityParams.CostBranch). Omitted for every
+	// ability whose cost has none.
+	CostBranch *int `json:"cost_branch,omitempty"`
+	Strict     bool `json:"strict,omitempty"`
+	AutoTap    bool `json:"auto_tap,omitempty"`
 }
 
 // activatedMoves enumerates catalog activated abilities on the
@@ -232,7 +236,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// protection against. Never the seat: a red player's colourless
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
-	defer func() { e.rowOrigin = game.AbilityOrigin{} }()
+	defer func() { e.rowOrigin, e.rowPowerUp, e.rowEquip = game.AbilityOrigin{}, false, false }()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
 	// with the mirrored row's origin for every gate below.
@@ -244,13 +248,20 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			abilities[own+k] = tw.Shape
 		}
 	}
-	for row, ab := range abilities {
+	// #4566: an either/or cost is one row per branch here, each with the
+	// branch folded into its cost (game.ChosenAbilityCost), so every gate
+	// and payment below is the ordinary one and a branch nothing can pay
+	// offers no move (CR 118.3). The move names its branch (cost_branch).
+	for _, er := range expandCostBranches(abilities) {
+		row, ab, costBranch := er.row, er.ab, er.branch
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
 			idx, wireIndex, wireRef = tw.Of, tw.Index, tw.Ref
 		}
 		e.rowOrigin = origins.At(idx)
+		e.rowPowerUp = ab.PowerUp
+		e.rowEquip = ab.Equip
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -312,7 +323,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		}
 		// CR 702.193a (#4527): a power-up ability this object has
 		// already activated, the reader ActivateCatalogAbility refuses on.
-		if g.PowerUpUsed(source.InstanceID, ab) {
+		if g.PowerUpUsed(source, ab) {
 			continue
 		}
 		// ADR 0155 Decision 7: a once-each-turn lent row this borrower
@@ -962,6 +973,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									label += fmt.Sprintf(" waterbending with %d", len(waterbendIDs))
 								}
 								label += sacrificeLabel(g, sacs)
+								// #4566: a discard branch names its card, as
+								// the sacrifice branch's label already does.
+								if costBranch != nil {
+									label += discardLabel(g, discardIDs)
+								}
 								label += returnLabel(g, rets)
 								label += exileLabel(g, perms)
 								label += tapLabel(g, taps)
@@ -1015,6 +1031,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// ADR 0142: the row's declared answers, by tier
 								// (an undeclared row interacts).
 								interacts, combat := untargetedFlags(g, e.seat, source, zone, ab, targets)
+								targetsStack := targetsStackObject(g, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -1026,12 +1043,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// See the same note on the cast emitter:
 									// a modal ability's stack-targeting mode
 									// is flagged on its own.
-									TargetsStack: targetsStackObject(g, targets),
+									TargetsStack: targetsStack,
 									HasTargets:   hasTargets(targets),
 									Interacts:    interacts,
 									// #2871: a combat ability, counted only in combat.
 									CombatInteracts:    combat.any,
 									CombatDefenderOnly: combat.defenderOnly,
+									// #4734: whether the row's declared answers
+									// match the window, a targeted row's included.
+									AnswersNow: e.answerWindow().verdict(ab.Purpose.Answers, targetsStack,
+										selfSacrificed(source, zone, ab.Cost.SacrificeSelf)),
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      wireIndex,
@@ -1055,6 +1076,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 										XValue:            tapXValue,
 										Distribution:      distributionWire(dist),
 										PhyrexianLife:     phyrexianLife,
+										CostBranch:        costBranch,
 										Strict:            true,
 										AutoTap:           true,
 									}),
@@ -2545,6 +2567,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							// still answers removal (ADR 0142: declared,
 							// or read from the cost).
 							Interacts: manaMoveInteracts(g, e.seat, source, zone, ab),
+							// #4734: a declared or read sacrifice outlet,
+							// matched to the window.
+							AnswersNow: e.answerWindow().verdict(manaAnswersOf(ab), false,
+								selfSacrificed(source, zone, ab.SacrificeCost)),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,
@@ -2665,6 +2691,22 @@ func handDiscardLabel(dc *game.DiscardCost, n int) string {
 // A nil component is a payment of nothing and ok. ok is false when the
 // pile cannot cover the count, which means the ability is not offered.
 func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if ec != nil && ec.AnyNumber {
+		// "Exile any number of … with a total" (Baron Helmut Zemo's boast):
+		// the cheapest fuel first, until the floor is reached; the ability
+		// is not offered when the whole pile falls short.
+		skip := make(map[uuid.UUID]bool, len(taken))
+		for _, id := range taken {
+			skip[id] = true
+		}
+		var pool []uuid.UUID
+		for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
+			if !skip[id] {
+				pool = append(pool, id)
+			}
+		}
+		return e.g.ExileCostCheapestSufficientForEffect(e.seat, ec, pool)
+	}
 	if ec == nil || ec.N <= 0 {
 		return nil, true
 	}

@@ -51,8 +51,12 @@ func init() {
 		Name:         "Six",
 		Completeness: CompletenessFull,
 		CastPermissions: []game.CastPermission{{
-			Zone:            game.ZoneGraveyard,
-			Filter:          game.PermissionFilter{NonLandPermanentOnly: true},
+			Zone: game.ZoneGraveyard,
+			// "Nonland permanent CARDS in your graveyard": the card in the
+			// graveyard, not the spell (CR 715.4, 712.8a; #4509). Retrace
+			// names no type, so a card that has it may be cast as either
+			// face: an adventurer card as its Adventure too.
+			Filter:          game.PermissionFilter{CardInZone: true, NonLandPermanentOnly: true},
 			AltCostKey:      game.AltCostKeyRetrace,
 			DiscardLandCard: true,
 			Timing:          game.TimingYourTurnOnly,

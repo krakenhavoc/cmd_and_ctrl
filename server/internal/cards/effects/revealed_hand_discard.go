@@ -53,6 +53,10 @@ type ChooseFromRevealedHand struct {
 	Linked bool
 	// Optional is "You may choose".
 	Optional bool
+	// Revealed says an earlier instruction of this resolution already
+	// revealed the hand, so the pick does not show it again (Cloak and
+	// Dagger, Entwined).
+	Revealed bool
 	// Look is "Look at target opponent's hand": only you learn it
 	// (Word of Command). The default reveals it to everyone.
 	Look bool
@@ -123,11 +127,12 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 		d.ExiledWith, _ = ctx.SourceRef()
 	}
 	d.Look = e.Look
+	d.Revealed = e.Revealed
 	if e.Measure != nil {
 		g, measure := ctx.Game, e.Measure
 		d.Measure = func(c game.Card) int { return measure(g, c) }
 	}
-	if e.Exile || e.Keep || e.Look || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
+	if e.Exile || e.Keep || e.Look || e.Revealed || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
 		_, err := ctx.Game.RevealedHandPickForEffect(d)
 		return err
 	}

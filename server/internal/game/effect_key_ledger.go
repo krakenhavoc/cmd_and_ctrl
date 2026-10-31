@@ -2,7 +2,6 @@ package game
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -42,7 +41,9 @@ func CheckEffectKeyLedger(path string, update, complete bool) (missing, stale []
 		}
 	}
 	sort.Strings(missing)
-	if update && len(missing) > 0 {
+	if update {
+		// Always rewrite on update, so a hand-merged ledger is put back in
+		// sorted order even when nothing is missing.
 		if err := appendEffectKeyLedger(path, missing); err != nil {
 			return nil, nil, err
 		}
@@ -164,31 +165,69 @@ func ledgerLineResolves(line string) bool {
 	return false
 }
 
-// appendEffectKeyLedger appends lines, writing the header first only
-// when the file does not exist or is empty — never again into a file
-// that already holds it, even one holding nothing but the header.
+// appendEffectKeyLedger adds lines to the ledger at path and rewrites its
+// body in sorted order, keeping the header comments and every existing
+// line. The ledger is a set (readEffectKeyLedger), so order carries no
+// meaning; keeping it sorted means two branches that each add a key insert
+// at different places and merge cleanly, where appending at the end made
+// every pair of card PRs conflict on the last line.
 func appendEffectKeyLedger(path string, lines []string) error {
-	fresh := true
-	if st, err := os.Stat(path); err == nil && st.Size() > 0 {
-		fresh = false
-	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	header, body, err := splitEffectKeyLedger(path)
 	if err != nil {
 		return err
 	}
-	if fresh {
-		if _, err := fmt.Fprint(f, effectKeysHeader); err != nil {
-			_ = f.Close()
-			return err
+	if header == "" {
+		header = effectKeysHeader
+	}
+	seen := map[string]bool{}
+	var all []string
+	for _, line := range append(body, lines...) {
+		if !seen[line] {
+			seen[line] = true
+			all = append(all, line)
 		}
 	}
-	for _, line := range lines {
-		if _, err := fmt.Fprintln(f, line); err != nil {
-			_ = f.Close()
-			return err
+	sort.Strings(all)
+	return os.WriteFile(path, []byte(header+strings.Join(all, "\n")+"\n"), 0o644)
+}
+
+// splitEffectKeyLedger returns the ledger's leading comment block (with
+// its trailing blank line) and its key lines in file order.
+func splitEffectKeyLedger(path string) (header string, body []string, err error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, nil
+		}
+		return "", nil, err
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	i := 0
+	for i < len(lines) && (strings.HasPrefix(lines[i], "#") || strings.TrimSpace(lines[i]) == "") {
+		i++
+	}
+	if i > 0 {
+		header = strings.Join(lines[:i], "\n") + "\n"
+		if strings.TrimSpace(lines[i-1]) != "" {
+			header += "\n"
 		}
 	}
-	return f.Close()
+	for _, line := range lines[i:] {
+		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
+			body = append(body, line)
+		}
+	}
+	return header, body, nil
+}
+
+// EffectKeyLedgerIsSorted reports whether the ledger's key lines are in
+// sorted order, the order appendEffectKeyLedger writes.
+func EffectKeyLedgerIsSorted(path string) (bool, error) {
+	_, body, err := splitEffectKeyLedger(path)
+	if err != nil {
+		return false, err
+	}
+	return sort.StringsAreSorted(body), nil
 }
 
 const effectKeysHeader = `# effect_keys.txt — ADR 0041 phase 3's effect-key ledger (tier 2, #1497).
@@ -196,14 +235,14 @@ const effectKeysHeader = `# effect_keys.txt — ADR 0041 phase 3's effect-key le
 # Every delayed-trigger body, event condition and alias key a production
 # binary registers, one per line: "body <key>", "condition <key>" or
 # "alias <old> <new>". A restore point can name any of them, so they are
-# on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
+# on-disk identities: never delete or edit a line; rename a
 # key with game.EffectAlias(old, new), which keeps the old one resolving.
 # "pick <key>" is a revealed-hand pick's continuation (#2115), which
 # has no alias: never rename one. "option <key>" is a keyed option
 # pick's continuation (#2854), on the same terms, and so is "choose
 # <key>", a keyed choose_cards pick's (#2040).
 #
-# Append new keys with:
+# Add new keys (kept in sorted order, so branches merge cleanly) with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
 
 `

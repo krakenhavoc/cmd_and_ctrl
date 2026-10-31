@@ -463,7 +463,9 @@ func chatLine(p protocol.ChatPayload) string {
 
 // renderMoves is the window's numbered list, grouped by card (§5). It is
 // never cut: a cut list would be a partial list again (§6). Only the
-// card header and one short line per alternative are written.
+// card header and one short line per alternative are written, and a
+// card's alternatives that differ only in which of several identical
+// permanents they name share one line (fold.go, #4737).
 func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 	return renderMovesMatching(v, w, onlySource, "")
 }
@@ -471,7 +473,8 @@ func renderMoves(v *protocol.GameView, w *window, onlySource string) string {
 // renderMovesMatching is renderMoves limited to the moves whose label
 // holds match (case-insensitive; "" keeps every move). Numbers are the
 // window's own, so a filtered line is answered with the same index it
-// would have had in the whole list (#2277).
+// would have had in the whole list (#2277). A filtered list folds
+// nothing: it is how the agent lists folded moves one by one.
 func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match string) string {
 	nw := newNameWrapper(v)
 	match = strings.ToLower(strings.TrimSpace(match))
@@ -520,10 +523,22 @@ func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match stri
 		b.WriteString("NOTE: three moves were refused in this window, so only an always-legal move is accepted now.\n")
 	}
 	cuts := cutsBySource(w.cuts)
+	var fd *folder
+	if match == "" {
+		fd = newFolder(v, w.me, nw)
+	}
 	for _, g := range groups {
-		b.WriteString(groupHeader(v, g.source, cuts[g.source]))
-		for _, i := range g.idx {
-			b.WriteString(moveLine(i, w.moves[i], v, w.me, nw))
+		b.WriteString(groupHeader(v, g.source, cuts[g.source], g.idx[0], len(moveTargets(w.moves[g.idx[0]])) > 0))
+		lines, under := g.idx, map[int][]int(nil)
+		if fd != nil {
+			lines, under = fd.fold(w.moves, g.idx)
+		}
+		for _, i := range lines {
+			line := moveLine(i, w.moves[i], v, w.me, nw)
+			if more := under[i]; len(more) > 0 {
+				line = strings.TrimSuffix(line, "\n") + foldNote(more) + "\n"
+			}
+			b.WriteString(line)
 		}
 	}
 	// A cut for a prompt is always named by its own id, whether or not a
@@ -572,18 +587,31 @@ func cutsBySource(cuts []protocol.LegalCutView) map[string][]protocol.LegalCutVi
 	return out
 }
 
-// groupHeader names a group's card, its cost and where it is.
-func groupHeader(v *protocol.GameView, source string, cuts []protocol.LegalCutView) string {
+// groupHeader names a group's card, its cost and where it is, and each
+// cut the enumerator made in its moves with the call that lists the rest.
+// first is the group's first move, and targets says whether it targets.
+//
+// A cut at the ceiling is past what any one request returns, so asking
+// for the card again would list nothing new. What still reaches every
+// target is picking it (#2276): the clause's legal set is the server's
+// whole one, not the capped list.
+func groupHeader(v *protocol.GameView, source string, cuts []protocol.LegalCutView, first int, targets bool) string {
 	if source == "" {
 		return "general:\n"
 	}
 	h := cardRef(v, source)
 	for _, c := range cuts {
-		if c.Choice != "" {
+		switch {
+		case c.Choice != "":
 			h += fmt.Sprintf(" [%s answers not listed, cap %s: legal_moves(choice: %q) expands it]", omitted(c), c.Cap, c.Choice)
-			continue
+		case c.Cap == string(legal.CapCeiling) && targets:
+			h += fmt.Sprintf(" [%s more not listed, past the %d moves one request returns: legal_moves(targets_for: %d) lists every target, and act(move: %d, targets: …) picks any]",
+				omitted(c), legal.ExpandCeiling, first, first)
+		case c.Cap == string(legal.CapCeiling):
+			h += fmt.Sprintf(" [%s more not listed, past the %d moves one request returns]", omitted(c), legal.ExpandCeiling)
+		default:
+			h += fmt.Sprintf(" [%s more not listed, cap %s: legal_moves(card: %q) expands it]", omitted(c), c.Cap, source)
 		}
-		h += fmt.Sprintf(" [%s more not listed, cap %s: legal_moves(card: %q) expands it]", omitted(c), c.Cap, source)
 	}
 	return h + ":\n"
 }
@@ -638,6 +666,10 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 			notes = append(notes, "exiles the top card of your library")
 		} else if m.Cost.LibraryExile > 1 {
 			notes = append(notes, fmt.Sprintf("exiles the top %d cards of your library", m.Cost.LibraryExile))
+		}
+		// #4613: the poison counters a ward payment gives the seat.
+		if m.Cost.Poison > 0 {
+			notes = append(notes, fmt.Sprintf("gives you %d poison counters", m.Cost.Poison))
 		}
 		// ADR 0130 §4: an exert cost keeps the source tapped through the
 		// seat's next untap step.

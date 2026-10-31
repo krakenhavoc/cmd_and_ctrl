@@ -22,6 +22,14 @@ describe("no untap projection helpers", () => {
     expect(noUntapAppliesToController(card({ no_untap: { static: true } }))).toBe(false);
   });
 
+  it("says a permanent that can't become untapped can't, not that it skips a step", () => {
+    expect(
+      noUntapFooterLines(card({ no_untap: { static: true, never: true } }), [
+        { id: "alice", name: "Alice" },
+      ]),
+    ).toEqual(["can't become untapped"]);
+  });
+
   it("names static and player-keyed next-step restrictions with a fallback", () => {
     expect(
       noUntapFooterLines(card({ no_untap: { static: true, next: ["bob", "gone"] } }), [

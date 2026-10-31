@@ -471,3 +471,135 @@ describe("on the board", () => {
     expect(soundCalls()).toHaveLength(1);
   });
 });
+
+// ---- where the stone sits (#4552) ------------------------------------------
+
+describe("where the stone sits", () => {
+  function mountBoard(view: GameView) {
+    return render(
+      Board as never,
+      {
+        view,
+        viewerID: "me",
+        isAdmin: false,
+        sendAction: () => {},
+        combatMode: "idle",
+        selectedCombatCardID: null,
+        onSelectCombatCard: () => {},
+        onDeclareAttack: () => {},
+        onDeclareBlock: () => {},
+      } as never,
+    );
+  }
+  const stoneOf = (id: string) => document.querySelector<HTMLElement>(`[data-tombstone="${id}"]`);
+
+  it("is the same on every full panel: the panel's own tomb layer, one deep, full size", () => {
+    updateSettings("display", "expandStyle", "overlay");
+    const r = mountBoard(gameView());
+    r.setProps({ view: gameView([2, 1, 0]) } as never);
+    flushSync();
+    // Cat and Bob are top-row-style seats, Me is the viewer's own: all
+    // three get the stone by one rule, as a direct child of their panel.
+    for (const id of ["cat", "bob", "me"]) {
+      const el = stoneOf(id)!;
+      const panel = el.parentElement!;
+      expect(panel.classList.contains("panel"), id).toBe(true);
+      expect(panel.getAttribute("aria-label"), id).toBeTruthy();
+      expect(el.classList.contains("tomb"), id).toBe(true);
+      expect(el.classList.contains("compact"), id).toBe(false);
+      // Never inside the identity or the rows it must stay clear of.
+      expect(el.closest(".identity"), id).toBeNull();
+      expect(el.closest(".grid-bottom, .grid-middle, .grid-creatures, .rail"), id).toBeNull();
+    }
+    // And the layer is one box over the panel, not offset per seat.
+    expect(new Set(["cat", "bob", "me"].map((id) => stoneOf(id)!.className)).size).toBe(1);
+  });
+
+  it("is the small stone in the place of the read-out on a collapsed seat's card", () => {
+    updateSettings("display", "expandStyle", "reflow");
+    const r = mountBoard(gameView([], [], 1));
+    r.setProps({ view: gameView([2, 0], [], 1) } as never);
+    flushSync();
+    const el = stoneOf("cat")!;
+    const card = el.parentElement!;
+    expect(card.classList.contains("avatar-card")).toBe(true);
+    expect(el.classList.contains("tomb")).toBe(true);
+    expect(el.classList.contains("compact")).toBe(true);
+    // Under the card's identity, where the read-out would be, and in the
+    // flow rather than over it.
+    const identity = card.querySelector(".card-identity")!;
+    expect(identity.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(card.querySelector(".readout")).toBeNull();
+    expect(el.style.getPropertyValue("--tomb-top")).toBe("");
+    // The viewer's own panel still has the full stone.
+    expect(stoneOf("me")!.classList.contains("compact")).toBe(false);
+  });
+
+  describe("measured against the identity", () => {
+    type Cb = () => void;
+    let observers: Cb[] = [];
+    let frames: Array<() => void> = [];
+
+    beforeEach(() => {
+      observers = [];
+      frames = [];
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(cb: Cb) {
+            observers.push(cb);
+          }
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      vi.stubGlobal("requestAnimationFrame", (cb: () => void) => frames.push(cb));
+      vi.stubGlobal("cancelAnimationFrame", () => {});
+    });
+
+    // A stone on a panel whose box and identity are at the given heights,
+    // measured once the page has laid out.
+    function onPanel(panel: [number, number], identity: [number, number]) {
+      const view = gameView([2]);
+      const r = render(Tombstone as never, { seat: view.seats[2], view } as never);
+      flushSync();
+      const host = r.container;
+      host.getBoundingClientRect = () => new DOMRect(0, panel[0], 500, panel[1] - panel[0]);
+      const id = document.createElement("div");
+      id.className = "identity";
+      id.getBoundingClientRect = () =>
+        new DOMRect(200, identity[0], 100, identity[1] - identity[0]);
+      host.appendChild(id);
+      for (const run of observers) run();
+      for (const f of frames.splice(0)) f();
+      flushSync();
+      const el = document.querySelector<HTMLElement>("[data-tombstone]")!;
+      return {
+        top: el.style.getPropertyValue("--tomb-top"),
+        bottom: el.style.getPropertyValue("--tomb-bottom"),
+        snug: el.classList.contains("snug"),
+      };
+    }
+
+    it("sits under an identity at the top edge of the panel", () => {
+      expect(onPanel([0, 300], [8, 130])).toEqual({ top: "140px", bottom: "10px", snug: false });
+    });
+
+    it("sits over an identity at the bottom edge of the panel", () => {
+      expect(onPanel([0, 600], [480, 592])).toEqual({ top: "10px", bottom: "130px", snug: false });
+    });
+
+    it("is under the avatar on a short panel and on a tall one alike", () => {
+      const short = onPanel([0, 330], [8, 130]);
+      const tall = onPanel([0, 900], [8, 130]);
+      expect(short.top).toBe(tall.top);
+      expect(short.snug).toBe(false);
+      expect(tall.snug).toBe(false);
+    });
+
+    it("steps down to the small stone when the room under the avatar is too short", () => {
+      expect(onPanel([0, 217], [8, 135]).snug).toBe(true);
+    });
+  });
+});

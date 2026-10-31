@@ -1,0 +1,6 @@
+---
+title: "Gains suspend"
+date: 2026-10-30
+issues: [4455]
+---
+**Gains suspend** (#4455, CR 702.62a) — "if it doesn't have suspend, it gains suspend" is a marker on the exiled card object, `Card.SuspendGranted`, set by `Game.GainSuspendForEffect(player, card, n)` after it puts `n` time counters on the card (`CardHasSuspend` is false for a card that prints suspend or was already given it, so no card ever has two instances). `triggersOf` derives the keyword's two exile-zone triggers (`SuspendUpkeepTrigger`, `SuspendLastCounterTrigger`) from the marker, the declared-zone harvest reads exile for upkeep and counter events whenever a card carries it, and the upkeep countdown, the free cast on the last counter and the haste on a creature cast this way are the printed keyword's own code, not a copy. The gain belongs to the exiled object: `MoveCard` clears it with the rest of CR 400.7's per-object state, so a card that leaves exile and returns is a plain card again. `GainSuspendExileTail` (`engine/gain-suspend-exiled`) is the keyed continuation for an exile whose cards gain suspend (Doom's Time Platform); the exile-until-nonland walk of Kang Prime uses its own card tail. The marker is an additive snapshot field (`suspendGranted`, omitted when false). **Cards:** Kang Prime, Doom's Time Platform — Full.

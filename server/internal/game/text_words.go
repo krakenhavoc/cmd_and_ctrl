@@ -552,6 +552,9 @@ func (f PermissionFilter) ThroughTextOf(reader *Card) PermissionFilter {
 	if f.CreatureType != "" && !f.FromChosenType {
 		f.CreatureType = reader.TextSubtype(f.CreatureType)
 	}
+	if f.NoncreatureOrCreatureType != "" {
+		f.NoncreatureOrCreatureType = reader.TextSubtype(f.NoncreatureOrCreatureType)
+	}
 	for i, t := range f.CreatureTypesAny {
 		if t != "" {
 			f.CreatureTypesAny[i] = reader.TextSubtype(t)

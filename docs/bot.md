@@ -1737,8 +1737,8 @@ response (`activated_abilities[].purpose.answers`,
 [ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)).
 With `PriceAnswers` on (`answers.go`), the bot reads it while anything
 is on the stack. With `PriceAnswerOnlyRows` also on (#4318), an
-untargeted row that declares only `survive`, `protect`, `prevent` or
-`restrict` is held when the stack is empty. In response it pays for
+untargeted row that declares only `survive`, `protect`, `prevent`,
+`restrict` or `graveyard` is held when the stack is empty. In response it pays for
 sacrificing its source even when its benefit has no declared amount.
 A draw, pump, target entry or other declared payoff keeps its existing
 price, as do fetch lands. This stops Selfless Spirit and Ranger-Captain
@@ -2936,6 +2936,14 @@ A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
 every legal multiset of the bullets the prompt carries, capped by the
 same budget, and labels each move with the bullets rather than their
 indexes so the decision log reads.
+
+A "choose up to" prompt (`ModeMin` 0) offers the empty answer first,
+and the empty answer removes the ability (CR 700.2b). "Choose up to X"
+(#4617, The Ruinous Wrecking Crew) carries the X paid for the spell as
+the prompt's `ModeMax`, so the bot is offered no selection of more than
+X bullets, and at X = 0 it is not asked at all. The heuristic does not
+value bullets yet, so it takes the first selection offered, which on an
+"up to" prompt is none.
 
 ## Enumerating an optional additional cost (#664)
 

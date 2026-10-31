@@ -1051,6 +1051,14 @@ type PendingChoice struct {
 	// affordability when it runs, because life can move between the question and the answer.
 	LifeCost int
 
+	// PoisonCost is the poison counters a PendingChoiceConfirm's ACCEPT branch
+	// gives the chooser (#4613, "Ward—Get five poison counters"). It is
+	// LifeCost's sibling, on the choice and the wire for the same reason: a
+	// policy holding only the wire payload would otherwise price "get five
+	// poison counters" like "shuffle your library". The engine does not
+	// place them here; the frame's accept branch does. Zero is no counters.
+	PoisonCost int
+
 	// DeclineEndsLoop marks a confirm whose ACCEPT would continue a loop
 	// the table is already in (#2040): Channel Harm asked to deal damage
 	// that it prevented from another Channel Harm. Declining is how the
@@ -1545,6 +1553,18 @@ type DamageAssignmentFrame struct {
 	// and in a frame restored from before the field, which is what
 	// those frames were.
 	BlockerDivides bool `json:",omitempty"`
+	// AsThoughUnblocked marks a prompt whose attacker may assign all of its
+	// damage "as though it weren't blocked" (CR 510.1c, Wolverine, Claws
+	// Out): read off Characteristic.AssignsAsThoughUnblocked as the prompt
+	// was queued. Besides the ordinary division among BlockerIDs the
+	// answer may put the whole AttackerPower on the player, planeswalker
+	// or battle the attacker is attacking: every blocker 0 and
+	// trample_to_player the full power, with no lethal damage owed to any
+	// blocker and no trample needed. BlockerIDs may be empty (every
+	// blocker has left combat): the attacker then assigns nothing or all
+	// of it to what it attacks. Zero in every other prompt, and in a
+	// frame restored from before the field, which is what those were.
+	AsThoughUnblocked bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
@@ -1962,7 +1982,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 				Source:     *card,
 				Controller: chooserID,
 				Colors:     colors,
-			}, nil)
+			}, nil, nil)
 		}
 	}
 	return nil
@@ -3317,6 +3337,11 @@ type RevealedHandDiscard struct {
 	// Optional is "You may choose": the chooser may choose nothing
 	// (Nightsnare, Extract the Truth).
 	Optional bool
+	// Revealed says the hand was already revealed this resolution (Cloak
+	// and Dagger, Entwined reveals it, then asks whether to take a card
+	// from it), so the pick does not reveal it a second time. Read when
+	// the pick is raised; never stored.
+	Revealed bool
 	// Look is "Look at target opponent's hand" rather than "reveals
 	// their hand": only the chooser learns the hand (Word of Command,
 	// ADR 0166).
@@ -3551,7 +3576,16 @@ func (g *Game) ResolveDamageAssignment(
 	if trampleToPlayer < 0 {
 		return ErrInvalidParam
 	}
-	if trampleToPlayer > 0 && !frame.AllowTrample {
+	// CR 510.1c, Wolverine, Claws Out: "as though it weren't blocked" is
+	// the whole power on what the attacker attacks and nothing on any
+	// blocker, which needs neither trample nor lethal damage to anyone.
+	asUnblocked := frame.AsThoughUnblocked && trampleToPlayer == frame.AttackerPower
+	for _, e := range ordered {
+		if e.Amount != 0 {
+			asUnblocked = false
+		}
+	}
+	if trampleToPlayer > 0 && !frame.AllowTrample && !asUnblocked {
 		return ErrInvalidParam
 	}
 	// Sum check.
@@ -3559,7 +3593,10 @@ func (g *Game) ResolveDamageAssignment(
 	for _, e := range ordered {
 		total += e.Amount
 	}
-	if total != frame.AttackerPower {
+	// With no blocker left to divide among, the same attacker may also
+	// decline (assign nothing): the only other thing it could do.
+	declined := frame.AsThoughUnblocked && len(frame.BlockerIDs) == 0 && total == 0
+	if total != frame.AttackerPower && !declined {
 		return ErrInvalidParam
 	}
 	// CR 510.1c: a blocked creature's damage is "divided as its
@@ -3574,7 +3611,7 @@ func (g *Game) ResolveDamageAssignment(
 	// max(1, toughness less damage marked), and 1 from deathtouch (CR
 	// 702.2c). A blocker that has left the battlefield, or that already
 	// carries lethal damage, needs nothing.
-	if trampleToPlayer > 0 {
+	if trampleToPlayer > 0 && !asUnblocked {
 		for _, e := range ordered {
 			lethal := 1
 			blk := findBattlefieldCard(g, e.BlockerID)
@@ -3856,8 +3893,9 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// side). That is CR 603.3d's "no legal targets" too, and a
 		// prompt for it could never be answered. #1807: so can one
 		// whose picks must share a key, when no key group is big
-		// enough.
-		if (clause.Different != nil || clause.Same != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
+		// enough. #4616: and one whose picks must stay within a total,
+		// when not enough of them fit together.
+		if (clause.Different != nil || clause.Same != nil || clause.Total != nil) && clause.Min > 0 && g.fillableCountLocked(clause, lt) < clause.Min {
 			return
 		}
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
@@ -4565,6 +4603,18 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if frame == nil {
 		return
 	}
+	// #4566: a mana branch of an either payment (Titania's "Ward—Discard
+	// a card or pay {2}") is paid as the prompt's own mana is, at the
+	// branch's cost, so the pool, the auto-tapper and an unfundable
+	// "yes" all behave as they do for a plain mana pay-unless.
+	manaCost := frame.cost
+	if action != nil && action.Kind == PayActionMana {
+		parsed, err := ParseCost(action.Mana)
+		if err != nil {
+			apply = false
+		}
+		manaCost, action = parsed, nil
+	}
 	if choice.GuardsStackItem != uuid.Nil && g.StackItemForEffect(choice.GuardsStackItem) == nil {
 		g.runStateChecksLocked()
 		return
@@ -4595,7 +4645,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	paid := false
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
+			cost := WaterbendReduced(manaCost, 0, len(tapIDs))
 			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
@@ -4741,10 +4791,10 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 	)
 	if !p.ManaPool.CanPay(cost, 0) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
-		var ok bool
-		plan, short, ok = g.autoTapTopUpLocked(p.ID, cost, 0, ManaSpendContext{}, excluded, 0)
 		// #2461: a plan that would not fund the cost taps nothing.
-		if !ok || !g.planFundsLocked(p, plan, short, cost, 0, ManaSpendContext{}) {
+		var ok bool
+		plan, short, ok = g.autoTapFundedLocked(p, cost, 0, ManaSpendContext{}, excluded, 0)
+		if !ok {
 			return false
 		}
 		tap = true

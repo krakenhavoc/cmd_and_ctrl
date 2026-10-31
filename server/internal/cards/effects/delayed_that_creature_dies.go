@@ -77,6 +77,13 @@ func thatCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p gam
 // longer on the battlefield creates nothing: the trigger could never
 // fire.
 func whenThatCreatureDiesThisTurn(ctx *Context, creature uuid.UUID, label string, body game.BodyRef) error {
+	return whenThatCreatureDiesThisTurnIf(ctx, creature, label, thatCreatureDiedCondition, body)
+}
+
+// whenThatCreatureDiesThisTurnIf is whenThatCreatureDiesThisTurn with an
+// intervening "if" folded into the registered condition (CR 603.4): a
+// condition built from thatCreatureDied that also tests the clause.
+func whenThatCreatureDiesThisTurnIf(ctx *Context, creature uuid.UUID, label string, cond game.ConditionRef, body game.BodyRef) error {
 	if creature == uuid.Nil {
 		return nil
 	}
@@ -87,7 +94,7 @@ func whenThatCreatureDiesThisTurn(ctx *Context, creature uuid.UUID, label string
 	return DelayedOnEvent{
 		Label:      label,
 		On:         []game.EventKind{game.EventLTB},
-		Condition:  thatCreatureDiedCondition,
+		Condition:  cond,
 		CondParams: game.EffectParams{Object: game.ObjectRef{ID: creature, Epoch: c.ObjectEpoch}},
 		Body:       body,
 	}.Apply(ctx)

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Fleeting Flight — Instant {W}:
 //
 //	"Put a +1/+1 counter on target creature. It gains flying until end of
@@ -21,12 +19,7 @@ func init() {
 		// Each sentence is a step: the keyword and the shield wait for a prompt
 		// the counter asks (a CR 616 order; CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				if id, ok := b16FirstLegalTargetCard(ctx); ok {
-					return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				}
-				return nil
-			}),
+			Instruction(func(ctx *Context) error { return PlusOneCounterOnTheTarget(ctx.Game, ctx.Item) }),
 			Instruction(func(ctx *Context) error {
 				if id, ok := b16FirstLegalTargetCard(ctx); ok {
 					return GrantKeywordUntilEOT{Target: id, Keywords: []string{"flying"}, Label: "Fleeting Flight — flying"}.Apply(ctx)

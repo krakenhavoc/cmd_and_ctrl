@@ -27,6 +27,7 @@
 
 import { getContext, setContext } from "svelte";
 import { popupCombatDamage } from "./faceHit";
+import { popupIsExtort } from "./extort";
 import type { CardView, GameView, LogEvent } from "./protocol";
 
 function namedIn(cards: readonly CardView[] | undefined, id: string): string | null {
@@ -131,12 +132,31 @@ export function provideLifeCauses(getView: () => GameView): void {
     );
   };
   setContext(HIT_KEY, combat);
+  // #4544: whether a popup shows an extort drain, which the `extort` cue sounds.
+  const extort: ExtortDrainLookup = (seatID, deltas) => {
+    const view = getView();
+    return popupIsExtort(
+      view,
+      (view.seats ?? []).findIndex((s) => s.id === seatID),
+      deltas,
+    );
+  };
+  setContext(EXTORT_KEY, extort);
 }
 
 /** The combat damage to a seat that its popup deltas hold, 0 for none. */
 export type CombatHitLookup = (seatID: string, deltas: readonly number[]) => number;
 
 const HIT_KEY = Symbol("combatHits");
+const EXTORT_KEY = Symbol("extortDrains");
+
+/** Whether a seat's popup deltas are an extort drain (#4544). */
+export type ExtortDrainLookup = (seatID: string, deltas: readonly number[]) => boolean;
+
+/** extortDrainLookup is the avatar's: whether a seat's popup deltas are an extort drain. Undefined with no board above. */
+export function extortDrainLookup(): ExtortDrainLookup | undefined {
+  return getContext<ExtortDrainLookup | undefined>(EXTORT_KEY);
+}
 
 /** combatHitLookup is the avatar's: call it during component init. Undefined with no board above. */
 export function combatHitLookup(): CombatHitLookup | undefined {

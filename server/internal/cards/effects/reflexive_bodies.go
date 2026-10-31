@@ -57,6 +57,10 @@ var (
 	// itself is card-agnostic).
 	leylineTyrantDamageBody = game.ReflexiveBody("leyline-tyrant/damage", breechesBlastEffect, constTargets(TargetAny))
 
+	// Bullseye, Death Dealer (#4566): "When you do, Bullseye deals 2
+	// damage to any target" — the amount rides Params.Amount.
+	bullseyeDamageBody = game.ReflexiveBody("bullseye-death-dealer/damage", breechesBlastEffect, constTargets(TargetAny))
+
 	// Gilgamesh, Master-at-Arms: "you may attach one of them to a
 	// Samurai you control" — untargeted, the Equipment ride the payload.
 	gilgameshAttachBody = game.SimpleDelayedBody("gilgamesh/attach-equipment", gilgameshAttach)

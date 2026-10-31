@@ -52,7 +52,7 @@
       <p>
         cmd_and_ctrl (CMD &amp; CTRL, or C2) is run by {OPERATOR_NAME} (“we”, “us”). These terms are an
         agreement between you and {OPERATOR_NAME}. They cover the website, its game tables and the
-        C2 Discord bot. What we store about you is described separately in the
+        CMD & CTRL Discord bot. What we store about you is described separately in the
         <a href={PRIVACY_HASH}>privacy notice</a>.
       </p>
     </section>
@@ -65,10 +65,10 @@
       </p>
       <p>
         An account comes from signing in with Discord, so Discord’s own terms apply to that account
-        too. When sign-up is limited to members of the C2 Discord server who hold its account role,
-        holding that role is a condition of having an account, and the server’s moderators decide
-        who gets it. Without an account you can still read the public pages, check a deck, play a
-        practice game, and sit at a table you were invited to.
+        too. When sign-up is limited to members of the CMD & CTRL Discord server who hold its
+        account role, holding that role is a condition of having an account, and the server’s
+        moderators decide who gets it. Without an account you can still read the public pages, check
+        a deck, play a practice game, and sit at a table you were invited to.
       </p>
     </section>
 
@@ -265,8 +265,8 @@
       <h2 id="changes-title">Changes to these terms</h2>
       <p>
         We may change these terms. The date at the top says when they last changed, and we will
-        announce important changes on the site or the C2 Discord server. If you keep using the site
-        after a change, you accept the new terms.
+        announce important changes on the site or the CMD & CTRL Discord server. If you keep using
+        the site after a change, you accept the new terms.
       </p>
     </section>
 

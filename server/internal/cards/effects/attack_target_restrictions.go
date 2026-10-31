@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -133,6 +135,65 @@ func CreaturesCantAttackPlayersWhoDidNothingLastTurn() game.StaticAbility {
 				r.Source, r.SourceName = source.InstanceID, source.Name
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
+		},
+	}
+}
+
+// CreaturesMatchingCantAttackYou is "<creatures matching the queries>
+// can't attack you" (CR 508.1c, #4601): the PLAYER alone, not their
+// planeswalkers or battles, so a matching creature may still attack
+// those. Storm, Windrider's "Creatures with flying can't attack you":
+//
+//	Static: []game.StaticAbility{CreaturesMatchingCantAttackYou(
+//	    "Creatures with flying can't attack you.", game.PermanentQuery{Types: []string{"creature"}, Keyword: "flying"})},
+//
+// "You" is the controller of the permanent that prints it, read when the
+// layer pass runs, so it follows a change of control. Every creature, any
+// controller's, gets the restriction with this permanent as its source
+// (it is not the creature's own ability, so it survives a creature losing
+// all abilities), and the engine decides at declaration whether the
+// attacker matches the queries (AttackTargetRestriction.OnlyAttackersMatching),
+// on its effective characteristics at that moment: a creature that
+// gains or loses flying before attackers are declared is judged as it
+// then stands. Any-of across queries.
+func CreaturesMatchingCantAttackYou(label string, attackers ...game.PermanentQuery) game.StaticAbility {
+	return CreaturesMatchingCantAttackYouWhile(label, nil, attackers...)
+}
+
+// CreaturesMatchingCantAttackYouWhile is CreaturesMatchingCantAttackYou
+// that applies only while `while` holds of the printing permanent's
+// controller: Queen Mother Ramonda's "As long as you're the monarch,
+// creatures with power 2 or less can't attack you" (#4659):
+//
+//	CreaturesMatchingCantAttackYouWhile("…", YoureTheMonarch,
+//	    game.PermanentQuery{Types: []string{"creature"}}.WithPowerAtMost(2))
+//
+// The condition is a layer input, read when the layer pass runs, so what
+// it reads must invalidate the layers when it changes (the crown does:
+// EventMonarchChanged). The attackers' power is a different thing: it is
+// judged at declaration, on the attacker's effective power then (see
+// game.PermanentQuery.PowerAtMost). A nil `while` is unconditional.
+func CreaturesMatchingCantAttackYouWhile(label string, while func(g *game.Game, you uuid.UUID) bool, attackers ...game.PermanentQuery) game.StaticAbility {
+	return game.StaticAbility{
+		Label: label,
+		Layer: game.Layer6Ability,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			if !target.IsCreature() {
+				return false
+			}
+			return while == nil || (source != nil && while(g, source.Controller))
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			if source == nil {
+				return
+			}
+			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, game.AttackTargetRestriction{
+				Source:                source.InstanceID,
+				SourceName:            source.Name,
+				NotPlayer:             source.Controller,
+				NotPlayerOnly:         true,
+				OnlyAttackersMatching: append([]game.PermanentQuery(nil), attackers...),
+			})
 		},
 	}
 }

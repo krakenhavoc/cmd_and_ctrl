@@ -545,7 +545,7 @@
         <span class="loop-label">loop detected</span>
         <span class="loop-text">{loopNotice} Autopass paused.</span>
       </div>
-    {:else if loop && loop.state.mode !== "none" && loop.state.mode !== "record"}
+    {:else if loop && loop.state.mode !== "none"}
       <!-- ADR 0193 §9: a loop being recorded or proposed, for every seat. -->
       <LoopControl {...loop} />
     {:else if bluffLine}

@@ -4726,3 +4726,104 @@ resolution finishes, a decline leaves the card in exile, a strict restore mid-pr
 restored table) and the updated `guile_test.go`; `aiseat/guile_resolution_cast_bot_test.go` (the bot answers for a hard counter,
 a declined Pierce, a ward and Hinder). Back-outs: asking no prompt in `finishCounterSpellLocked` fails every one of those;
 dropping the pass-closed fallback fails `TestAReplacedCounterWithNoResolutionOpenKeepsThePassClosedGrant`.
+
+## Amendment — 2026-10-30 (#4615): `PermissionFilter.ColorsAny`, an any-of colour clause
+
+World War Hulk's chapter I ("The next red or green creature spell you cast this turn can be cast without paying its mana
+cost") is Apex Observatory's free-cast promise with a colour on the spell. The filter had a card-type clause and no colour one.
+
+- **The clause.** `PermissionFilter.ColorsAny` is a string of colour letters in the card's own vocabulary (`"RG"`): a card
+  qualifies when it has at least one of them (CR 105.2b: a multicoloured object is each of its colours). It is read through
+  `Card.HasColor`, the card's effective colours, so a spell is judged by its characteristics as it is cast; a colourless
+  card has no colour and never matches (CR 105.2c). It is a further AND beside every other clause, so `CreatureOnly` plus `"RG"`
+  is "red or green creature spell", and empty constrains nothing. It is a string rather than the two-slot array
+  `CreatureTypesAny` uses because the filter must stay comparable and a one-field string writes nothing when empty (`omitempty`),
+  where an array is always written; it also covers a third colour with no widening.
+- **Who sees it.** The clause lives in `PermissionFilter.Matches`, the one predicate every consumer already calls: the promise's
+  flash, price and free-cast reads (`NextSpellPromise.Filter`), the granted-cost offers the view and `CastSpell` read, and the
+  enumerator the bot plays from. No consumer was changed, and `legal/coloured_next_spell_promise_test.go` pins the move list.
+- **Snapshot.** Additive: `colorsAny` (omitempty) under every path that reaches a `PermissionFilter`, recorded in
+  `testdata/snapshot_shape/v9.txt` with `-update-shape`. An older binary drops the key and reads the filter without the colour clause, which
+  widens a restored promise to every creature spell for the rest of that turn; promises end at end of turn.
+- **Cards.** World War Hulk (Full). Tests: `game/permission_filter_colors_test.go`, `cards/effects/world_war_hulk_test.go`,
+  `legal/coloured_next_spell_promise_test.go`. Back-out: dropping the `ColorsAny` line in `Matches` fails all three.
+
+## Amendment — 2026-10-30 (#4509): a type filter judges the face being cast, unless it is about the card in its zone
+
+A permission's `PermissionFilter` was read off the card as it sat in its zone, so its front face. Bilbo, Thief in the Night's
+"cast an artifact, instant, or sorcery spell from your graveyard" never offered Bonecrusher Giant for Stomp, and the other way
+round, Vizier of the Menagerie's "creature spells from the top of your library" covered the Giant and then let the face choice
+cast Stomp. The owner's option 1 at the 2026-10-30 triage: judge the face that would be cast, for every type-filtered cast
+permission, and recheck the Full stamps.
+
+**The rules, by phrasing.** Checked against the pinned CR (2026-09-25) and the cards' rulings.
+
+| Phrasing | Judged on | Rules |
+|---|---|---|
+| "cast a [type] **spell**", "[type] spells from the top of your library", "play **lands** from your graveyard" | the face being cast or played | CR 601.3e; split card: only the chosen half (CR 709.3a); double-faced card: only the face that will be up (CR 712.11b, 712.11c), and the MDFC ruling of 2020-09-25, "you may play or cast a modal double-faced card with any face that fits the criteria of that effect"; Adventure and Omen: only the alternative characteristics when cast as one (CR 715.3a, 720.3a), and CR 715.3d's last sentence lets another effect cast it as an Adventure from anywhere. Bilbo's ruling of 2026-06-29 says it in as many words for Stomp; Bonecrusher Giant's 2019-10-04 ruling gives the converse (Giant Killer exiled by Vivien's "if it's a creature spell" can't be cast as Chop Down). |
+| "each instant and sorcery **card** in your graveyard has flashback", "nonland permanent **cards** in your graveyard have retrace", "target instant **card**" | the card in its zone | an adventurer card has only its normal characteristics off the stack (CR 715.4; Bonecrusher Giant's ruling: in a graveyard it is a creature card); a double-faced card only its front face's (CR 712.8a); a split card both halves' types (CR 709.4c). The granted ability then says which casts it opens: flashback and jump-start only an instant or sorcery spell (CR 702.34a, 702.133a), retrace and escape name no type (CR 702.81a, 702.138a), so Six's retrace casts Bonecrusher Giant as Stomp too. |
+
+No case was ambiguous once phrased this way, so no question was parked.
+
+**The engine.**
+
+- `PermissionFilter.CardInZone` (bool, `omitempty`) marks the second phrasing. The zero value is the first: almost every printed
+  permission says "spells", and a card file that forgets the flag gets the rules' reading of "spells". A filter with no clause a
+  face decides (ownership, counters, "exiled with", "put there this turn") reads the same either way.
+- `CoversCard` asks a spell filter of every face a cast through the permission may choose (its `Faces`, or `CastableFaces`),
+  each materialised as CastSpell materialises it, and covers the card when one is admitted. A `CardInZone` filter is asked of the
+  card's zone characteristics, re-read off whatever copy it is handed (`asCardInZone`): the pricer re-derives the permission from
+  the copy already turned to the face being cast, which used to make Six refuse Stomp at payment.
+- `CastableFacesUnder` narrows to the admitted faces, so the enumerator, the view's per-face stamps and the client's picker
+  default agree. `CastPermission.ForSpell(spell)` is the same rule at announce: CastSpell narrows its grant right after the face
+  is settled, and `validateCastPathLocked` (the gate the view's offer list, the bot and CastSpell share), claim resolution, the
+  printed-cost pricer, `CostLess` and the granted tap cost do the same. A cast of a face the permission does not admit is a cast
+  with no permission: refused out of exile (`ErrNoPlayPermission`) and out of a graveyard or library the card does not open
+  itself (`ErrCastZoneNotAllowed`), and the permission's own price, claimed anyway, is refused.
+- A HAND permission prices only its own claim (`ForClaim`), so it narrows that claim and not the card's ordinary cast from hand
+  (CR 601.2): neither its filter nor its `MaxSpellManaValue` applies to a cast that does not claim its offer.
+- `CastPermission.OffersASpell(c)` is what an offer picks its cards by: some face it lets the cast choose is not a land
+  (CR 305.9), is admitted by the filter, and is within `MaxSpellManaValue`. `OfferResolutionCastForEffect` asks it of the stored
+  permission instead of "is the card a land", so a Town whose Adventure is a sorcery is a candidate for its Adventure.
+
+**Cards.**
+
+- Bilbo, Thief in the Night: its permission carries `ArtifactInstantOrSorceryOnly` and its offer is over the cards
+  `OffersASpell` picks. An Adventure cast this way that resolves gives its controller CR 616.1's choice between the Adventure's
+  exile and Bilbo's (`resolution_exits.go` already asked it); one countered is exiled by Bilbo's, with no creature grant.
+- Lier, Disciple of the Drowned; Wrenn and Six's emblem; Six; Deeproot Historian; Underworld Breach: `CardInZone`. Past in
+  Flames and The Grim Captain's Locker were already right: `GrantCastFromYourGraveyard` picks the set by the card in the
+  graveyard and stores no filter.
+- The free casts: "a spell [with quality] from your hand / from among them without paying its mana cost" (Cecily, Surtland
+  Elementalist, Glamdring, Gandalf, Party Guest, Kari Zev's Expertise, Rishkar's Expertise, Buster Sword, Great Intelligence's
+  Plan, Cosmic Cube, Aetherworks Marvel, Aetherflux Conduit, The Great Synthesis, Mad Wizard's Lair) describe the spell too. The
+  clause is data on the permission (`effects.freeCastSpell`: its `Filter` and `MaxSpellManaValue`) instead of a predicate on the
+  candidates, so Valki, God of Lies is cast free under Kari Zev's Expertise as Valki and never as Tibalt, and a mana value 7
+  creature whose Adventure costs 3 is cast free under Rishkar's Expertise as its Adventure. The keyed pick outside a resolution
+  (no catalog card reaches it) grants no clause, so it offers only cards no face of which the clause refuses.
+- Every other spell- or land-phrased permission takes the rule with no card change: Vizier of the Menagerie, Garruk's Horde,
+  Elven Chorus, Summoning Materia, Realmwalker, Conspicuous Snoop, Mystic Forge, Crystal Skull, Edgar, Gisa and Geralf, Banon,
+  Nivix, Narset, Vivien's −2, Wrenn and Realmbreaker's emblem, and the "play lands from" family (Crucible of Worlds, Ramunap
+  Excavator, Oracle of Mul Daya, Courser of Kruphix and the rest). Their Full stamps, and Bilbo's, now hold for a multi-face
+  card as well; none carried a caveat about one.
+- Not changed: cast bans, timing grants, next-spell promises (Urza, Planeswalker's +2), counter shields and granted alternative
+  costs are handed the spell already faced (CastSpell sets the face before every one of those gates), so they already judged it.
+
+**Snapshot.** Additive: `cardInZone` under every path that reaches a `PermissionFilter`, in `testdata/snapshot_shape/v9.txt`.
+No permission stored before this carried a type filter about the card, so every one reads as it was written; an older binary
+drops the key, and the only permissions that set it are derived from the battlefield, never stored.
+
+**Client.** The library-top pile button reads `castable_here` across the card's castable faces, as the graveyard browser has
+since #1173, so a modal DFC whose land back face is the face Oracle of Mul Daya opens is playable from the pile, labelled "play".
+
+**Still open.**
+
+- Two live permissions over one card that open different faces: the lookup answers with the first that covers the card, so a
+  face only the second opens is not offered. The same was already true of permissions that name faces.
+- The game-level free-or-hand offers (Beseech the Mirror's `CastExiledFreeOrToHandForEffect`, Ziatora's Envoy's
+  `OfferFreePlayFromTopOrHandForEffect`) still choose by the card's front face. Their caps are judged on the face cast, so they
+  are only narrower than printed: a card whose cheap face is the back goes to the hand.
+
+**Tests.** `game/permission_spell_face_test.go`, `cards/effects/permission_spell_face_4509_test.go`,
+`protocol/permission_spell_face_view_test.go`, `client/src/lib/libraryTop.test.ts`. Back-out: making `judgesSpell` answer false
+fails the spell-phrased ones; dropping `CardInZone` from `filterOpens` fails the card-phrased ones.

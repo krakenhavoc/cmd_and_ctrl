@@ -17,8 +17,9 @@ import (
 // Glamdring's offer with a different number: the beginning-of-combat trigger
 // counts the legendary Wizards its controller controls as it resolves (Gandalf
 // himself is one while he is on the battlefield; a Gandalf that left in
-// response counts the Wizards that remain), doubles it, and asks for an
-// instant or sorcery card in hand at most that mana value. The cast is the
+// response counts the Wizards that remain), doubles it, and asks for a
+// card in hand with an instant or sorcery spell of at most that mana value,
+// judged on the face being cast (#4509). The cast is the
 // engine's own, so its targets, modes and X are chosen as it goes on the
 // stack, and declining leaves the card in hand.
 //
@@ -35,7 +36,7 @@ func init() {
 					x := 2 * len(wizards)
 					offerFreeHandCast(ctx, ctx.Controller(), gandalfPartyGuestFreeCast,
 						"an instant or sorcery spell with mana value "+strconv.Itoa(x)+" or less",
-						And(Or(Instant(), Sorcery()), ManaValueLE(x)))
+						freeInstantOrSorcery().withManaValueAtMost(x))
 					return nil
 				}))),
 		},

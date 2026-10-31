@@ -228,13 +228,38 @@ What to know about how they behave:
 - **The loop is `wait_for_decision`, then `act`, until `game_over`.** The
   tool descriptions tell the client so. Typically 2 to 4 tool calls per
   decision.
-- **The move list is never cut.** The wire's 48-move cap and the
-  enumerator's own per-card caps are reported, and the binary fetches
-  the full list before Layer A or the model sees anything. A card the
-  enumerator still cut says so, with how many ("at least N" where the
-  count is a floor).
-- **A capped search is fetched in full.** When the decision's list was
-  cut and the cut is a "search your library" prompt (Demonic Tutor), the
+- **The move list is never cut.** Two caps can cut what the server
+  sends, and the binary fetches what each one cut before the model sees
+  the window:
+  - The wire's 48-move cap raises `legal_moves_truncated`. The binary
+    fetches the whole list before Layer A runs.
+  - The enumerator's per-card cap keeps a card to its first 12 moves,
+    such as a removal spell over a busy board. Only that card's
+    `legal_actions` entry says so, even on a list far under 48 moves
+    (#4737). Once Layer A has passed the window on, the binary fetches
+    each such card in full, as `legal_moves(card: …)` would, up to 512
+    moves. It does this for up to 6 cards a window, as long as they add
+    no more than 128 lines to the list.
+
+  A card that is still cut says so in its header: how many moves are not
+  listed ("at least N" when the count is a floor), and the call that
+  lists them. Past the 512-move ceiling, no request lists more, so the
+  header names `legal_moves(targets_for: N)` and `act(targets: …)`
+  instead, which reach every target (see [Targets](#targets)). The
+  game-end report counts a window as truncated when either cap cut it.
+- **Moves against identical permanents share a line.** One card's moves
+  that differ only in which of several identical permanents they name
+  are printed once, with how many more there are and their numbers:
+  `13: Cast Void Rend targeting Treasure (…) [and 295 more like it, each
+  naming another identical permanent: moves 14-308]`. Every number is a
+  move `act` takes. Permanents are identical when the board would print
+  them as one entry (`Treasure x296`): same name, state and counters,
+  same controller and owner, and both tokens or both cards. A face-down
+  permanent is never folded. `match` folds nothing, so
+  `legal_moves(card: "<id>", match: "Treasure")` lists them one by one.
+- **A capped search is fetched in full.** A prompt's cut comes only with
+  the whole list, so the binary sees it when the wire cap cut the list.
+  When the cut is a "search your library" prompt (Demonic Tutor), the
   binary asks for that prompt's whole list itself, up to three searches
   a window. Other capped prompts stay capped, and every cut names the
   exact call that expands it, whether or not a card raised the prompt:
@@ -246,7 +271,9 @@ What to know about how they behave:
   always-legal move is accepted, and the binary never picks it for the
   model. A request the server answers `no_decision` closes the window
   (the board moved); `rate_limited` is retried after 300 ms, up to three
-  times.
+  times. The binary sends move-list requests no faster than the server
+  takes them, four a second, so the cards it fetches for one window wait
+  their turn instead of being refused.
 - **Attacks are declared in your own attack window, and passing ends
   it.** The list offers one move per creature and opponent, and since
   #2793 also `Attack «X» with all N creatures that can attack them` for
@@ -277,18 +304,70 @@ What to know about how they behave:
   default settings, and it also covers the seat's own turn. It stops at
   your main phases, any attack or block you are asked to declare, any
   choice, a mulligan, the loop notice, and a stack item you hold a response
-  to, unless every item on the stack is your own. It passes the rest, even with an instant in hand: upkeep, draw,
-  beginning of combat, combat damage, end of combat and end step of your
-  own turn, and every step of an opponent's turn that is not their end
-  step or combat. A response is what the browser counts: a counterspell,
-  an instant, an ability that targets or protects (a sacrifice outlet,
-  regeneration, a pump), a special action; in combat, crew or a manland
-  too. A land, a mana ability and a pure value ability (a fetch, Mind
-  Stone, cycling) are not. In a declared attack, and at an opponent's end
+  to, unless every item on the stack is your own. It passes the rest, even
+  with an instant in hand: upkeep, draw, beginning of combat, combat
+  damage, end of combat and end step of your own turn, and every step of an
+  opponent's turn that is not their end step or combat. The exception is a
+  move the server says can answer what is happening now (below), which
+  stops you in any step. In a declared attack, and at an opponent's end
   step, it stops only when you hold a response. Unlike `my_turn_or_stack`
   it is not cleared by the start of your turn, and it asks for every call,
   like the other mode. It is a shorter route to the same answers: if you
   hold something to cast in a step it passes, use `none`.
+
+  **A response is the server's call (#4734).** Each cast, activation and
+  mana move whose card declares what it answers ([ADR
+  0142](decisions/0142-declared-answers-on-catalog-abilities.md)) carries
+  `answers_now` in the move list: `true` when one of those answers fits the
+  window you are in, `false` when none does. The seat reads it before
+  anything else, and never works a threat or a combat out of the board
+  itself: `true` is a response, `false` is not, whatever else the move
+  looks like. What fits, in short ([ADR
+  0009](decisions/0009-smart-priority-autopass.md)'s amendment of
+  2026-10-30 has the tables):
+
+  - a protective answer (`protect`, `survive`, `pump`, `prevent`,
+    `sac_outlet`) fits an opponent's stack item that threatens you or yours,
+    or a combat that involves you: you or yours attacked, or a creature of
+    yours attacking or blocking in the step where it can still matter. It
+    does not fit a combat between other players or an empty end step;
+  - `restrict` (Ranger-Captain of Eos's "your opponents can't cast
+    noncreature spells this turn") fits an opponent's upkeep and an
+    opponent's spell on the stack, not an opponent's ability;
+  - `graveyard` (Soul-Guide Lantern's "exile each opponent's graveyard")
+    fits an opponent's spell on the stack, and an opponent's spell or
+    ability that targets a card in a graveyard (an Eternal Witness
+    trigger), not an opponent's upkeep;
+  - a counterspell fits any opponent's item on the stack;
+  - a combat answer (`combat_grant`, `animate`, `makes_blocker`) fits a
+    combat that involves you, in the steps where it can still change it.
+    It does not fit your own beginning of combat (owner decision of
+    2026-10-31): a manland, a Crew row or a keyword grant does not stop
+    `smart` there, so animate in your first main phase, or use `none` for
+    the call when you want to do it in that step;
+  - "Sacrifice this creature" fits while an opponent's item targets that
+    creature, or it is attacking or blocking.
+
+  A move with no `answers_now` is classed as before, and so is every move
+  when the server predates the field: a card that declares nothing (most
+  instants until ADR 0142's sweep declares them), a value ability, and a
+  `remove` effect. That is a counterspell, an instant, an ability that
+  targets or interacts, or a special action; in combat, crew or a manland
+  too. A land, a mana ability and a pure value ability (a fetch, Mind
+  Stone, cycling) are not, and nor is a value instant (Opt) against an
+  opponent's stack item. So a card that declares nothing still stops you
+  where it did: that costs a click, never a window. A manland, a Crew row
+  or a keyword grant carries no `answers_now` either at your own beginning
+  of combat while the stack holds nothing of an opponent's, and `smart`
+  passes that step.
+
+  **A matched answer stops you with the stack empty in any step** (ADR 0009
+  rule 7's new clause), not only in a declared attack and at an opponent's
+  end step: Ranger-Captain at each opponent's upkeep, a protective answer in
+  the first-strike damage step when your blocker is blocked. An unmatched
+  move stops you nowhere outside your main phases. The same frames, in
+  `server/internal/legal/testdata/smart_pass_agreement.json`, are asserted
+  by the browser and the seat, so the two cannot drift.
 
   Holding an instant (#4186) it matches the browser at its defaults. A
   stack that is entirely your own (your spell, your trigger, your upkeep
@@ -556,8 +635,10 @@ use a fresh session per game, keep the compact view, and turn
 **The game-end report.** At `game_over` the binary logs one line and
 returns the same in the tool result: windows seen, how many each rule
 absorbed and how many were shown to the model; `act` calls and
-rejections; truncated windows, full-list requests and the largest move
-list shown (moves and bytes); bytes returned in tool results (about
+rejections; truncated windows (cut by the wire cap or by the
+enumerator's per-card cap), full-list requests (every move-list request,
+the binary's own and `legal_moves`'), and the largest move list shown
+(moves and bytes); bytes returned in tool results (about
 4 per token); and the time from each decision opening to its `act`. It
 cannot see the model's own token count. Your client reports that.
 

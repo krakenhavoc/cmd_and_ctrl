@@ -1096,8 +1096,12 @@ type cardSnapshot struct {
 	// there this turn" for the rest of the turn the game was saved in.
 	// Absent from every earlier file, which restores as "arrived
 	// nowhere", the state before the record existed.
-	PutInGraveyardFrom       ZoneKind  `json:"putInGraveyardFrom,omitempty"`
-	PutInGraveyardThisTurn   bool      `json:"putInGraveyardThisTurn,omitempty"`
+	PutInGraveyardFrom     ZoneKind `json:"putInGraveyardFrom,omitempty"`
+	PutInGraveyardThisTurn bool     `json:"putInGraveyardThisTurn,omitempty"`
+	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
+	// effect gave suspend. Absent from every earlier file, which restores as
+	// "has only its printed abilities".
+	SuspendGranted           bool      `json:"suspendGranted,omitempty"`
 	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
 	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
@@ -1915,6 +1919,7 @@ type pendingChoiceSnapshot struct {
 	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel          string      `json:"acceptLabel,omitempty"`
 	LifeCost             int         `json:"lifeCost,omitempty"`
+	PoisonCost           int         `json:"poisonCost,omitempty"`
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
 	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
 	DeclineLabel    string `json:"declineLabel,omitempty"`
@@ -2922,6 +2927,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		SuspendGranted:           c.SuspendGranted,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -3189,6 +3195,9 @@ func stackSpecsRederivable(s stackItemSnapshot) bool {
 	if s.Body != "" && reflexiveTargetSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
 		return true
 	}
+	if s.Body != "" && reflexiveModeSpecFor(s.Body, s.SourceCardID, effectParamsValue(s.Params)) != nil {
+		return true
+	}
 	return false
 }
 
@@ -3371,6 +3380,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		PoisonCost:            c.PoisonCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		Private:               c.private,
 		OwedInStep:            c.OwedInStep,
@@ -4028,6 +4038,7 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		SuspendGranted:           c.SuspendGranted,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4321,6 +4332,10 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	}
 	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
 		out.modeSpec = CatalogModeSpec(s.OracleID)
+	} else if s.HasModeSpec && s.Body != "" {
+		// A modal CR 603.12 reflexive trigger (#4579): its mode clause was
+		// declared with the body (ReflexiveModalBody).
+		out.modeSpec = reflexiveModeSpecFor(s.Body, s.SourceCardID, out.Params)
 	}
 	return out, true
 }
@@ -4453,6 +4468,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		PoisonCost:            c.PoisonCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		private:               c.Private,
 		OwedInStep:            c.OwedInStep,

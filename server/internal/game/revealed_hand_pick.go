@@ -317,7 +317,7 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 				p.Hand.Cards[i].AddKnower(d.Chooser)
 			}
 		}
-	} else {
+	} else if !d.Revealed {
 		g.RevealForEffect(RevealSpec{
 			Player: d.FromPlayer,
 			Source: d.Source,

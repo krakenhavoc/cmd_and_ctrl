@@ -17,14 +17,19 @@ import (
 // sequence of game choices, for all players", repeated a number of
 // times. This file is the game half of that conversation:
 //
-//   - Record. The priority holder starts a recording; from then on every
-//     action any seat dispatches is a step (actions.Dispatch writes them
-//     through BeginLoopStep / CommitLoopStep). The game stores a step's
-//     params as JSON text and never decodes them.
-//   - Stop. The recorder holds priority again and the closure check
-//     (loopSignatureLocked, compareLoopSignatures) says whether the board
-//     came back to where it started. A recording that does not close is
-//     discarded, with the first difference in the log.
+//   - Record. Any seat in the game asks to record. The recording itself
+//     begins at the recorder's next quiet priority (holding priority, no
+//     prompt open, no trigger waiting), at once if they are there now;
+//     until then it is armed and captures nothing (#4736). From the
+//     start on, every action any seat dispatches is a step
+//     (actions.Dispatch writes them through BeginLoopStep /
+//     CommitLoopStep). The game stores a step's params as JSON text and
+//     never decodes them.
+//   - Stop. At the recorder's next quiet priority, at once if they are
+//     there now, the closure check (loopSignatureLocked,
+//     compareLoopSignatures) says whether the board came back to where
+//     it started. A recording that does not close is discarded, with
+//     the first difference in the log.
 //   - Propose and answer. The recorder names N; each other seat, in turn
 //     order after them, accepts or shortens (CR 732.2b) through a
 //     blocking loop_proposal prompt.
@@ -40,6 +45,11 @@ import (
 type LoopRecordingStatus string
 
 const (
+	// LoopStatusArmed: the recorder asked to record while they could not
+	// start (a prompt was open partway through a resolution, or another
+	// seat held priority). Nothing is captured yet; the recording begins
+	// at their next quiet priority (TendLoopRecording, #4736).
+	LoopStatusArmed LoopRecordingStatus = "armed"
 	// LoopStatusRecording: the iteration is being played by hand.
 	LoopStatusRecording LoopRecordingStatus = "recording"
 	// LoopStatusReady: the recording closed; the recorder may propose.
@@ -85,7 +95,7 @@ var (
 	ErrLoopNotRecorder      = errors.New("game: only the player recording the loop may do that")
 	ErrLoopNoRecording      = errors.New("game: there is no loop recording")
 	ErrLoopAlreadyRecording = errors.New("game: a loop is already being recorded")
-	ErrLoopNeedsPriority    = errors.New("game: you need priority to record, stop or propose a loop")
+	ErrLoopNeedsPriority    = errors.New("game: you need priority to propose a loop")
 	ErrLoopPromptOpen       = errors.New("game: answer the open prompt first")
 	ErrLoopNotRecording     = errors.New("game: the loop is not being recorded")
 	ErrLoopEmpty            = errors.New("game: nothing has been recorded yet")
@@ -102,11 +112,16 @@ var (
 type LoopRecording struct {
 	Recorder uuid.UUID           `json:"recorder"`
 	Status   LoopRecordingStatus `json:"status"`
+	// StopAtPriority is set when the recorder stopped while they could
+	// not end the iteration (no priority, or a prompt open): the closure
+	// check runs at their next quiet priority, the first place CR 732.2a
+	// lets the sequence end (#4736). Recording goes on until then.
+	StopAtPriority bool `json:"stopAtPriority,omitempty"`
 	// StartSeq is the event seq when the recording began. It names the
 	// recording, so a step drafted against one never lands on another.
 	StartSeq uint64 `json:"startSeq,omitempty"`
 	// Start is the loop signature at the start (ADR 0193 §3): what every
-	// iteration must give back.
+	// iteration must give back. Zero while the recording is armed.
 	Start LoopSignature `json:"start"`
 	// Totals is the allowed-to-differ part of the board at the start,
 	// the baseline of the net change.
@@ -891,7 +906,9 @@ func (g *Game) emitLoopLineLocked(actor uuid.UUID, call, label string, amount in
 
 // Loop event phases, EventLoopRecording's Call.
 const (
+	LoopPhaseArmed     = "armed"
 	LoopPhaseStarted   = "started"
+	LoopPhaseStopping  = "stopping"
 	LoopPhaseReady     = "ready"
 	LoopPhaseDiscarded = "discarded"
 	LoopPhaseProposed  = "proposed"
@@ -899,10 +916,10 @@ const (
 	LoopPhaseShortened = "shortened"
 )
 
-// requireLoopPriorityLocked checks player may act on a loop right now:
-// the game is active, they hold priority and no prompt is open. Caller
-// must hold g.mu.
-func (g *Game) requireLoopPriorityLocked(player uuid.UUID) error {
+// requireLoopSeatLocked checks player is still in an active game past
+// its opening: the condition for asking to record at all. Caller must
+// hold g.mu.
+func (g *Game) requireLoopSeatLocked(player uuid.UUID) error {
 	if g.State != StateActive || g.OpeningRoll != nil || g.MulligansOpen {
 		return ErrGameNotActive
 	}
@@ -913,6 +930,17 @@ func (g *Game) requireLoopPriorityLocked(player uuid.UUID) error {
 	if p.Eliminated {
 		return ErrPlayerEliminated
 	}
+	return nil
+}
+
+// requireLoopPriorityLocked checks player may propose a loop right now:
+// the game is active, they hold priority and no prompt is open
+// (CR 732.2a: "the player with priority may suggest a shortcut").
+// Caller must hold g.mu.
+func (g *Game) requireLoopPriorityLocked(player uuid.UUID) error {
+	if err := g.requireLoopSeatLocked(player); err != nil {
+		return err
+	}
 	if g.seatIDLocked(g.Turn.PriorityHolder) != player {
 		return ErrLoopNeedsPriority
 	}
@@ -922,37 +950,68 @@ func (g *Game) requireLoopPriorityLocked(player uuid.UUID) error {
 	return nil
 }
 
-// StartLoopRecording begins recording a loop for player, who must hold
-// priority with no prompt open (ADR 0193 §1, CR 732.2a).
+// loopQuietPriorityLocked reports whether player holds priority at a
+// point a demonstrated iteration can start or end: the game active and
+// past its opening, no prompt open and no trigger waiting to be put on
+// the stack. Partway through a resolution there is always a prompt
+// open (that is what paused it), so this is never true there. Caller
+// must hold g.mu.
+func (g *Game) loopQuietPriorityLocked(player uuid.UUID) bool {
+	return g.requireLoopPriorityLocked(player) == nil
+}
+
+// StartLoopRecording asks to record a loop for player (ADR 0193 §1, CR
+// 732.2a). Any seat still in the game may ask, while no other recording
+// stands: recording only captures what happens next, and it is the
+// proposal, not the recording, that CR 732.2a gives the priority holder.
+// When player holds priority with nothing open the recording starts
+// now. Otherwise, partway through a resolution or while another seat
+// holds priority, it is armed and starts at their next quiet priority,
+// so the demonstrated iteration always runs from one priority point of
+// theirs to the next (#4736; the closure check needs both ends there).
 func (g *Game) StartLoopRecording(player uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.LoopRecording != nil {
 		return ErrLoopAlreadyRecording
 	}
-	if err := g.requireLoopPriorityLocked(player); err != nil {
+	if err := g.requireLoopSeatLocked(player); err != nil {
 		return err
 	}
-	g.emitLoopLineLocked(player, LoopPhaseStarted, "started recording a loop (CR 732.2a)", 0)
+	r := &LoopRecording{Recorder: player, Status: LoopStatusArmed}
+	g.LoopRecording = r
+	if g.loopQuietPriorityLocked(player) {
+		g.beginLoopRecordingLocked(r)
+		return nil
+	}
+	g.emitLoopLineLocked(player, LoopPhaseArmed, "will record a loop from their next priority (CR 732.2a)", 0)
+	return nil
+}
+
+// beginLoopRecordingLocked starts capturing an armed recording: the
+// start signature, the baseline of the net change and the objects that
+// already exist. Caller must hold g.mu, with the recorder at a quiet
+// priority.
+func (g *Game) beginLoopRecordingLocked(r *LoopRecording) {
+	g.emitLoopLineLocked(r.Recorder, LoopPhaseStarted, "started recording a loop (CR 732.2a)", 0)
 	objs := g.loopObjectsLocked()
 	ids := make([]uuid.UUID, len(objs))
 	for i, o := range objs {
 		ids[i] = o.ID
 	}
-	g.LoopRecording = &LoopRecording{
-		Recorder:     player,
-		Status:       LoopStatusRecording,
-		StartSeq:     g.eventSeq,
-		Start:        g.loopSignatureLocked(),
-		Totals:       g.loopTotalsLocked(),
-		StartObjects: ids,
-	}
-	return nil
+	r.Status = LoopStatusRecording
+	r.StartSeq = g.eventSeq
+	r.Start = g.loopSignatureLocked()
+	r.Totals = g.loopTotalsLocked()
+	r.StartObjects = ids
 }
 
-// StopLoopRecording ends the demonstration. The recorder must hold
-// priority again. A recording that closes is ready to propose; one that
-// does not is discarded, and the log says why.
+// StopLoopRecording ends the demonstration. CR 732.2a ends a shortcut's
+// sequence where a player has priority, and the closure check compares
+// two such points of the recorder's, so the check runs at their quiet
+// priority: now if they are there, else at the next one, recording
+// until then (#4736). A recording that closes is ready to propose; one
+// that does not is discarded, and the log says why.
 func (g *Game) StopLoopRecording(player uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -969,18 +1028,31 @@ func (g *Game) StopLoopRecording(player uuid.UUID) error {
 	if len(r.Steps) == 0 {
 		return ErrLoopEmpty
 	}
-	if g.seatIDLocked(g.Turn.PriorityHolder) != player {
-		return ErrLoopNeedsPriority
+	if !g.loopQuietPriorityLocked(player) {
+		if !r.StopAtPriority {
+			r.StopAtPriority = true
+			g.emitLoopLineLocked(player, LoopPhaseStopping,
+				fmt.Sprintf("will stop recording the loop at their next priority (%d steps so far)", len(r.Steps)), len(r.Steps))
+		}
+		return nil
 	}
+	g.closeLoopRecordingLocked(r)
+	return nil
+}
+
+// closeLoopRecordingLocked runs the closure check (ADR 0193 §3) with
+// the recorder at a quiet priority: the recording is ready, or it is
+// discarded with the first difference in the log. Caller must hold g.mu.
+func (g *Game) closeLoopRecordingLocked(r *LoopRecording) {
+	r.StopAtPriority = false
 	if why := g.compareLoopSignaturesLocked(r.Start, g.loopSignatureLocked(), r.Recorder); why != "" {
 		g.discardLoopRecordingLocked("the loop does not close: " + why)
-		return nil
+		return
 	}
 	r.Status = LoopStatusReady
 	r.Net = loopDeltas(r.Totals, g.loopTotalsLocked())
-	g.emitLoopLineLocked(player, LoopPhaseReady,
+	g.emitLoopLineLocked(r.Recorder, LoopPhaseReady,
 		fmt.Sprintf("recorded a loop of %d steps (each time: %s)", len(r.Steps), g.loopNetTextLocked(r.Net, 1)), len(r.Steps))
-	return nil
 }
 
 // CancelLoopRecording discards the recording and withdraws any
@@ -1158,11 +1230,13 @@ func (g *Game) ResolveLoopProposal(choiceID, chooser uuid.UUID, shorten *LoopPoi
 	return nil
 }
 
-// TendLoopRecording ends a recording the game has moved past — the
-// game ended, a player left, the step or turn changed — and re-asks the
-// proposal when the seat it was waiting on has left. actions.Dispatch
-// and the room call it after every commit; it is cheap when there is
-// no recording.
+// TendLoopRecording moves a recording along with the game: an armed one
+// starts, and a stopping one is checked, once the recorder holds
+// priority with nothing open (#4736); one the game has moved past — the
+// game ended, a player left, the step or turn changed — ends; and the
+// proposal is re-asked when the seat it was waiting on has left.
+// actions.Dispatch and the room call it after every commit; it is cheap
+// when there is no recording.
 func (g *Game) TendLoopRecording() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -1179,12 +1253,25 @@ func (g *Game) TendLoopRecording() {
 		g.discardLoopRecordingLocked("they left the game")
 		return
 	}
+	if r.Status == LoopStatusArmed {
+		// Nothing is captured yet, so the step and the seats may move
+		// on: the recording begins wherever the recorder next holds
+		// priority with nothing open.
+		if g.loopQuietPriorityLocked(r.Recorder) {
+			g.beginLoopRecordingLocked(r)
+		}
+		return
+	}
 	if g.Turn.Seq != r.Start.Turn || g.Turn.Step != r.Start.Step || g.seatIDLocked(g.Turn.ActiveSeat) != r.Start.Active {
 		g.discardLoopRecordingLocked("the step changed")
 		return
 	}
 	if g.liveSeatsLocked() != r.Start.Live {
 		g.discardLoopRecordingLocked("a player left the game")
+		return
+	}
+	if r.Status == LoopStatusRecording && r.StopAtPriority && g.loopQuietPriorityLocked(r.Recorder) {
+		g.closeLoopRecordingLocked(r)
 		return
 	}
 	g.askNextLoopSeatLocked()

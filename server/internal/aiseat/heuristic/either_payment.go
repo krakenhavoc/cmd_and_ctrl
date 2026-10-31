@@ -47,9 +47,33 @@ func (p *Policy) eitherPaymentValue(
 			return phyrexianLifeDeclined, "either: the life would take it below the floor"
 		}
 		return 0.9, "either: pay with life"
+	case "mana":
+		// #4566: a ward's "or pay {2}". The enumerator offers it only
+		// when the seat can afford it, and mana spent on another
+		// player's ward is the cheapest way to keep a spell: no card
+		// leaves, so it sits above every card branch and below the
+		// damage branch's 0.9.
+		return 0.88, "either: pay the mana"
+	case "discard":
+		// #4566: "sacrifice an artifact or discard a card". A discard is
+		// priced by what the card is worth to the seat, on the same curve
+		// as a sacrifice below, so the cheaper of the two branches wins.
+		var loss float64
+		for _, id := range cardIDs {
+			if c := lookup(id); c != nil {
+				loss += st.cardValue(p.cfg, c)
+			}
+		}
+		if loss < 0 {
+			loss = 0
+		}
+		return 0.85 - 0.3*loss/(1+loss), "either: discard the least valuable card"
 	case "sacrifice":
-		// The seat's lands, after the ones this move sacrifices.
-		lands := 0
+		// The seat's lands, after the ones this move sacrifices. The
+		// floor is about lands, so it is asked only of a move that
+		// sacrifices one (#4566: a Treasure sacrificed to Bullseye is
+		// not a land the seat needs).
+		lands, sacrificesLand := 0, false
 		for i := range st.view.Battlefield.Cards {
 			c := &st.view.Battlefield.Cards[i]
 			if c.Controller == st.me && isLand(c) {
@@ -59,9 +83,10 @@ func (p *Policy) eitherPaymentValue(
 		for _, id := range cardIDs {
 			if c := lookup(id); c != nil && isLand(c) {
 				lands--
+				sacrificesLand = true
 			}
 		}
-		if lands < eitherLandFloor {
+		if sacrificesLand && lands < eitherLandFloor {
 			return 0.25, "either: not enough lands to spare"
 		}
 		var loss float64
@@ -77,7 +102,7 @@ func (p *Policy) eitherPaymentValue(
 		// cheapest lands first, and only when the life is not on offer.
 		return 0.85 - 0.3*loss/(1+loss), "either: sacrifice the least valuable lands"
 	}
-	// A branch the policy has no price for (a discard, an exile, energy)
+	// A branch the policy has no price for (an exile, energy)
 	// is a payment like any other card or energy cost: take it over the
 	// decline, the way a plain payment of that kind is.
 	return 0.6, "either: pay"

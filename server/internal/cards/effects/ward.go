@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -66,6 +67,13 @@ import (
 //     Oathless, #3172) — the same Confirm, whose accept branch queues
 //     the payer's own discard prompt over their hand.
 //
+//   - "Ward—Get five poison counters" (The Serpent Society, #4613) — the
+//     same Confirm with PoisonCost declared, whose accept branch gives the
+//     payer the counters. A player can always get counters, so the cost is
+//     always offered (CR 118.12a); the tenth one loses the game as a
+//     state-based action (CR 704.5c, CR 122.1f), and a payer who takes it
+//     at five has chosen to.
+//
 // The mana, life and sacrifice shapes needed no engine work: the
 // Confirm and ChooseCards kinds take any Chooser, have bot enumerator
 // cases in legal/, and are rendered by the client. The waterbend shape
@@ -104,6 +112,23 @@ type WardCost struct {
 	// refused unless every card chosen is one. Nil is any card. Build it
 	// with WardDiscardKind.Cost.
 	DiscardKind *WardDiscardKind
+	// Poison is "ward—get N poison counters" (The Serpent Society, #4613):
+	// the payer gets that many poison counters. Always payable.
+	Poison int
+
+	// Either is a ward with two ways to pay (#4566): Titania, Rugged
+	// Rumbler's "Ward—Discard a card or pay {2}". Each branch is a ward
+	// cost of its own — mana, life, or a chosen discard — and the payer
+	// is asked once, naming the branch (an either payment, ADR 0187 §5).
+	// Build it with WardEither; no other field is set beside it.
+	Either []WardCost
+}
+
+// WardEither builds a ward with two or more ways to pay: WardEither(
+// WardDiscard(1), WardMana("{2}")) is "Ward—Discard a card or pay {2}"
+// (#4566).
+func WardEither(branches ...WardCost) WardCost {
+	return WardCost{Either: append([]WardCost(nil), branches...)}
 }
 
 // WardSacrificeCost is the "sacrifice a <thing>" half of a ward cost:
@@ -154,6 +179,13 @@ func WardWaterbend(cost string) WardCost { return WardCost{Waterbend: cost} }
 
 // WardLife builds the "ward—pay N life" cost.
 func WardLife(n int) WardCost { return WardCost{Life: n} }
+
+// WardPoison builds the "ward—get N poison counters" cost (The Serpent
+// Society, "Ward—Get five poison counters"). The payer is offered the
+// counters and the spell is countered on a decline; there is no "can't
+// pay", since a player can always get counters (the tenth loses the game,
+// CR 704.5c).
+func WardPoison(n int) WardCost { return WardCost{Poison: n} }
 
 // WardSacrifice builds the "ward—sacrifice <label>" cost, where every
 // predicate must pass: WardSacrifice("a creature", Creature()).
@@ -230,8 +262,15 @@ func (k *WardDiscardKind) Cost() WardCost { return WardCost{Discard: 1, DiscardK
 // from Ward() at catalog init, so a malformed card fails at boot rather
 // than charging the first component it happens to check.
 func (c WardCost) validate() {
+	if len(c.Either) > 0 {
+		c.validateEither()
+		return
+	}
 	if c.Life < 0 {
 		panic("effects: a ward life cost cannot be negative")
+	}
+	if c.Poison < 0 {
+		panic("effects: a ward poison cost cannot be negative")
 	}
 	n := 0
 	if c.Mana != "" {
@@ -247,6 +286,9 @@ func (c WardCost) validate() {
 		n++
 	}
 	if c.Discard > 0 {
+		n++
+	}
+	if c.Poison > 0 {
 		n++
 	}
 	compound := n == 2 && c.Mana != "" && c.Life > 0
@@ -419,12 +461,16 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return nil
 	}
 	switch {
+	case len(cost.Either) > 0:
+		return wardEitherOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
 	case cost.Life > 0 && cost.Mana == "":
 		return wardPayLifeOrCounter(g, item.SourceCardID, payer, cost.Life, targetingItem)
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem)
 	case cost.Discard > 0:
 		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
+	case cost.Poison > 0:
+		return wardPoisonOrCounter(g, item.SourceCardID, payer, cost.Poison, targetingItem)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with
@@ -492,6 +538,56 @@ var wardPayLifeAnswer = game.RegisterConfirmThen("confirm/ward-pay-life", func(g
 	// countered-or-not question hanging on a CR 616 prompt.
 	return g.PayLifeForEffect(r.Source, r.Chooser, r.LifeCost)
 })
+
+// wardGetPoisonAnswer is the payer's answer to "get N poison counters, or it
+// is countered". N is the count the prompt declares (PoisonCost, #4613).
+var wardGetPoisonAnswer = game.RegisterConfirmThen("confirm/ward-get-poison", func(g *game.Game, r game.ConfirmAnswer) error {
+	targetingItem := wardTargetingItem(r.Carry)
+	if !r.Accepted {
+		return wardCounter(g, targetingItem)
+	}
+	if g.StackItemForEffect(targetingItem) == nil {
+		// Nothing left to pay for.
+		return nil
+	}
+	// Getting counters is a cost paid in full or not at all (CR 118.3). The
+	// placement goes through the CR 614 window as every counter does, and
+	// the state-based action that loses the game at ten (CR 704.5c) runs at
+	// the next check, not here.
+	if err := g.AddPlayerCounterByForEffect(r.Chooser, r.Chooser, game.CounterPoison, r.PoisonCost); err != nil {
+		if errors.Is(err, game.ErrPlayerEliminated) {
+			return wardCounter(g, targetingItem)
+		}
+		return err
+	}
+	return nil
+})
+
+// wardPoisonOrCounter is "counter it unless that player gets N poison
+// counters": a Confirm whose accept branch gives them. Unlike every other
+// non-mana ward it has no unpayable case to settle without a prompt, since a
+// player can always get counters. PoisonCost is declared on the Confirm so
+// the bot's move list prices the accept branch (legal.MoveCost.Poison); a
+// bot at nine poison weighs a payment that loses the game as one.
+func wardPoisonOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetingItem uuid.UUID) error {
+	_, err := g.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
+		Chooser:      payer,
+		Source:       source,
+		Question:     fmt.Sprintf("Ward — get %s, or it is countered", wardPoisonLabel(n)),
+		AcceptLabel:  "Get " + wardPoisonLabel(n),
+		DeclineLabel: "Let it be countered",
+		PoisonCost:   n,
+	}, wardGetPoisonAnswer, []uuid.UUID{targetingItem})
+	return err
+}
+
+// wardPoisonLabel is "5 poison counters" (a single one is "a poison counter").
+func wardPoisonLabel(n int) string {
+	if n == 1 {
+		return "a poison counter"
+	}
+	return fmt.Sprintf("%d poison counters", n)
+}
 
 // wardTargetingItem is the stack ID a ward leg carries.
 func wardTargetingItem(carry []uuid.UUID) uuid.UUID {

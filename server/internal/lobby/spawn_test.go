@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -43,6 +44,13 @@ type spawnFixture struct {
 // with the card index and the token templates wired.
 func newSpawnFixture(t *testing.T) *spawnFixture {
 	t.Helper()
+	return newSpawnFixtureWith(t, devIndex(t))
+}
+
+// newSpawnFixtureWith is newSpawnFixture over a card index of the
+// caller's choosing.
+func newSpawnFixtureWith(t *testing.T, idx *cards.Index) *spawnFixture {
+	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
@@ -51,7 +59,7 @@ func newSpawnFixture(t *testing.T) *spawnFixture {
 		Lobby:      l,
 		Auth:       a,
 		AdminToken: "shared-admin-token",
-		Cards:      devIndex(t),
+		Cards:      idx,
 		Tokens:     effects.Tokens(),
 		Env:        appenv.EnvProd,
 		Features:   appenv.LoadFeatures(appenv.EnvProd),
