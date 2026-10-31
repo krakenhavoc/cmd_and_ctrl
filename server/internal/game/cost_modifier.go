@@ -1463,7 +1463,8 @@ func (c ParsedCost) totalManaWithX(x int) int {
 
 // ManaValue is the card's printed mana value, or zero when the cost
 // can't be read. Lands parse to the zero cost and so are zero, which
-// is right (CR 202.3a).
+// is right (CR 202.3a). A face-down permanent has no mana cost, so it
+// is zero too (CR 708.2a, manaCostForValue).
 //
 // Deliberately printed-cost-only: cost modifiers, alternative costs
 // and the commander tax all change what a spell COSTS and none of
@@ -1488,7 +1489,21 @@ func (c Card) ParsedManaValue() (mv int, ok bool) {
 }
 
 // manaCostForValue is the cost a MANA VALUE is computed from, which is
-// the card's own printed cost for everything but one case.
+// the card's own printed cost for everything but three cases. It is the
+// one place a card's mana value is decided, so a rule about WHICH cost
+// counts goes here and every reader (Card.ManaValue,
+// Card.ParsedManaValue, Card.ManaValueWithX, Game.ManaValueForEffect,
+// the protection source's mana value) inherits it.
+//
+// CR 708.2a, CR 708.4, CR 202.3a: a face-down permanent, and a face-down
+// spell on the stack, has no mana cost, so its mana value is 0 whatever
+// card it hides (#4682). The card's own cost is the face it hides: an
+// effect that compares mana values must not read it, and a view that
+// ships the values must not tell. A caller that really wants the hidden
+// card's cost (turning it face up, CR 701.40b and CR 702.37e, which show
+// and pay it) reads Card.ManaCost, never a mana value. Only a CR 708.2
+// object is zero: a card face down in EXILE is not one and keeps its
+// printed cost (FaceDownKind.IsPermanentState).
 //
 // CR 712.8e: "While a nonmodal double-faced permanent has its back
 // face up, it has only the characteristics of its back face. However,
@@ -1505,6 +1520,9 @@ func (c Card) ParsedManaValue() (mv int, ok bool) {
 // value 0 and reading its front face here would make a land cost seven.
 // Added in S46 (ADR 0079 decision 8, #343).
 func manaCostForValue(c Card) string {
+	if c.faceDownPermanent() {
+		return ""
+	}
 	// CR 712.8g, 202.3c (ADR 0145): a melded permanent's mana value is
 	// the sum of its cards' front-face mana values. A copy of one has
 	// no cards behind it, and its printed cost is the back face's
@@ -1542,6 +1560,9 @@ func (c Card) ManaValueWithX(x int) int {
 // Card.ParsedManaValue. A predicate should reject such a card rather
 // than treat it as mana value zero.
 //
+// A face-down permanent, or a face-down spell, has no mana cost, so it
+// reads 0 with ok true (CR 708.2a, CR 708.4, CR 202.3a; manaCostForValue).
+//
 // "On the stack" means the card is in the stack zone AND has a spell
 // entry in StackMeta. The entry holds the announced X. A card that
 // has left the stack keeps its InstanceID, but its entry is dropped
@@ -1560,12 +1581,10 @@ func (g *Game) ManaValueForEffect(c Card) (mv int, ok bool) {
 // castManaValueLocked is the mana value of the spell `sc` on the stack,
 // as the cast tally and "other spells you've cast this turn" count it
 // (#2743): the X it was cast with (CR 202.3e), and 0 for a spell cast
-// face down, which has no mana cost (CR 708.4, CR 202.3a). ok is false
-// when the cost can't be read. Caller must hold g.mu.
+// face down, which has no mana cost (CR 708.4, CR 202.3a; the read is
+// ManaValueForEffect's, which answers 0 for it). ok is false when the
+// cost can't be read. Caller must hold g.mu.
 func (g *Game) castManaValueLocked(sc *Card) (int, bool) {
-	if sc.FaceDown {
-		return 0, true
-	}
 	return g.ManaValueForEffect(*sc)
 }
 
