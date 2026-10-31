@@ -14,6 +14,7 @@ func init() {
 		OracleID:     "bdb3ca68-ec1f-4e16-81cc-d23f8f52c728",
 		Name:         "Naturalize",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

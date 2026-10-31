@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target nonland permanent", Nonland()),
 		// #2679: what the target's controller is given back.
-		Purpose: ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 1, TokenToughness: 1})),
+		Purpose: game.Purpose{Targets: game.ForTargets(RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 1, TokenToughness: 1})), Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

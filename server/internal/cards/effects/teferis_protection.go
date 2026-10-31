@@ -80,6 +80,7 @@ func init() {
 		OracleID:     "0d4ecdb1-ec90-497f-a7a4-1c68092b8757",
 		Name:         "Teferi's Protection",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerProtect}, // #4734: phases out its controller's permanents and gives protection from everything
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()
 			// "Your life total can't change" (CR 119.7, CR 119.8).

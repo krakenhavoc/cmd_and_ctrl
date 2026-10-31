@@ -13,6 +13,7 @@ func init() {
 		OracleID:     "3407fe41-fdd3-4119-8f70-4bc4590a379f",
 		Name:         "Negate",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target noncreature spell", Noncreature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {

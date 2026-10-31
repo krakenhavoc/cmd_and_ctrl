@@ -33,6 +33,7 @@ func init() {
 		OracleID:        "4d6120d6-fcce-40bc-9fc6-e1f5beb6c728",
 		Name:            "Embercleave",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant}, // #4734: flash; +1/+1, double strike and trample on the attacker
 		PrintedKeywords: []string{"flash"},
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessEach(PermanentsYouControl(AttackingCreature()),

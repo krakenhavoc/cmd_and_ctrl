@@ -16,7 +16,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		// #2679: what the target's controller is given back.
-		Purpose:   ForTargets(RemovalReturning(0, game.TargetReturn{LifeEqualToPower: true})),
+		Purpose:   game.Purpose{Targets: game.ForTargets(RemovalReturning(0, game.TargetReturn{LifeEqualToPower: true})), Answers: game.AnswerRemove}, // #4734: exiles a permanent
 		OnResolve: swordsToPlowsharesOnResolve,
 	})
 }

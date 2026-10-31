@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "132ca99a-a3c7-4ed6-b4d0-0edcd7140ca2",
 		Name:         "Absorb",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return b35CounterChosenSpellThenGainLife(item, ctx, 3)

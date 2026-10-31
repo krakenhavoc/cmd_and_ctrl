@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Incinerate — Instant {1}{R}:
 //
 //	"Incinerate deals 3 damage to any target. A creature dealt damage
@@ -16,7 +18,7 @@ func init() {
 		Name:         "Incinerate",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
-		Purpose:      ForTargets(DamageToTarget(0, 3)),
+		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 3)), Answers: game.AnswerRemove}, // #4734: damages a creature, planeswalker or player
 		OnResolve:    damageAnyTargetNoRegenIfDealt(fixedAmount(3)),
 	})
 }

@@ -19,6 +19,7 @@ func init() {
 		OracleID:     "bd16434d-55ea-4c5a-a9ef-752971a4af16",
 		Name:         "Despark",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: exiles a permanent
 		Targets:      TargetPermanent("target permanent with mana value 4 or greater", ManaValueGE(4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

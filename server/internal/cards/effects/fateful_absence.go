@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "35bba442-1aec-4d33-b502-4c580d61644b",
 		Name:         "Fateful Absence",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: destroys a permanent
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
