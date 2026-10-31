@@ -956,6 +956,7 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				params.Targets = append(params.Targets, ref)
 			}
+			params.TargetsStamped = targetsStamped(p.Targets)
 		}
 		dist, err := parseDistribution(p.Distribution)
 		if err != nil {
@@ -1936,6 +1937,8 @@ func dispatch(g *game.Game, a Action) error {
 				WaterbendIDs:      waterbendIDs,
 				CostBranch:        p.CostBranch,
 				Targets:           refs,
+				// #4497: a list that names its clauses is read as given.
+				TargetsStamped: targetsStamped(p.Targets),
 				// #1563, CR 601.2d via 602.2b: the division, with
 				// the targets it divides among.
 				Distribution: dist,
@@ -2967,8 +2970,13 @@ type castTargetWire struct {
 	// single-clause non-modal cast has always meant — a client that
 	// never sends them keeps working, and the server fills them in
 	// by walking the clauses in order.
-	Slot int `json:"slot,omitempty"`
-	Mode int `json:"mode,omitempty"`
+	//
+	// Pointers so that a 0 sent is told from a 0 omitted (#4497): a
+	// list in which any target sends either one is read as given
+	// (game.CastSpellParams.TargetsStamped), and one in which none does
+	// is filed by what each pick can target.
+	Slot *int `json:"slot,omitempty"`
+	Mode *int `json:"mode,omitempty"`
 	// Splice names the spliced text this pick answers (ADR 0202,
 	// CR 702.47d): the 1-based position of its card in the cast's
 	// `splices`. Absent (0) is the spell's own text.
@@ -3031,6 +3039,17 @@ func parseDistribution(distribution map[string]int) (map[uuid.UUID]int, error) {
 	return out, nil
 }
 
+// targetsStamped reports whether any target names its clause, with a
+// `slot` or a `mode`, zero included (#4497).
+func targetsStamped(targets []castTargetWire) bool {
+	for _, t := range targets {
+		if t.Slot != nil || t.Mode != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (t castTargetWire) toRef() (game.TargetRef, error) {
 	// ADR 0202: only a cast splices; anywhere else a spliced text's
 	// target is a payload that meant something else.
@@ -3043,7 +3062,13 @@ func (t castTargetWire) toRef() (game.TargetRef, error) {
 // toCastRef is toRef for a cast_spell target, which may answer a
 // spliced text (ADR 0202, CR 702.47d).
 func (t castTargetWire) toCastRef() (game.TargetRef, error) {
-	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Slot: t.Slot, Mode: t.Mode, Splice: t.Splice}
+	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Splice: t.Splice}
+	if t.Slot != nil {
+		ref.Slot = *t.Slot
+	}
+	if t.Mode != nil {
+		ref.Mode = *t.Mode
+	}
 	if ref.Slot < 0 || ref.Mode < 0 || ref.Splice < 0 {
 		return game.TargetRef{}, fmt.Errorf("slot / mode / splice must not be negative")
 	}

@@ -253,10 +253,10 @@ func (g *Game) announcedSplicesLocked(caster uuid.UUID, spell Card, spellID uuid
 // the same gate.
 //
 // Caller must hold g.mu.
-func (g *Game) validateSplicedTargetsLocked(src TargetSource, spliced []SplicedText, refs [][]TargetRef) error {
+func (g *Game) validateSplicedTargetsLocked(src TargetSource, spliced []SplicedText, refs [][]TargetRef, stamped bool) error {
 	for i := range spliced {
 		steps := spliceTextSteps(spliced[i])
-		mine := assignAnnouncedSlots(steps, refs[i])
+		mine := g.fitAnnouncedSlotsLocked(src, steps, refs[i], stamped)
 		if len(steps) == 0 && len(mine) > 0 {
 			return fmt.Errorf("%w: %s's text takes no target", ErrInvalidParam, spliced[i].Name)
 		}

@@ -213,8 +213,17 @@ func TestMscM4StunningShotRefusesTheWrongSides(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	if _, err := mscM4TryCast(t, g, "Stunning Shot", "Sorcery", mscM4ShotOracle, nil, []game.TargetRef{
-		{Kind: game.TargetCard, ID: theirs, Slot: 0},
+	// #4497: stamped, so the zero slot is the caller's word and the pick
+	// is refused rather than filed under the clause it could answer.
+	active, shot := g.Seats[g.Turn.ActiveSeat], uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: shot, Name: "Stunning Shot", TypeLine: "Sorcery", OracleID: mscM4ShotOracle,
+		Owner: active.ID, Controller: active.ID,
+	})
+	advanceToMain(t, g)
+	if err := g.CastSpell(active.ID, shot, game.CastSpellParams{
+		Targets:        []game.TargetRef{{Kind: game.TargetCard, ID: theirs, Slot: 0}},
+		TargetsStamped: true,
 	}); err == nil {
 		t.Error("an opponent's creature was accepted for the counters")
 	}

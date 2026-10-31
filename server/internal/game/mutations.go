@@ -284,6 +284,15 @@ type CastSpellParams struct {
 	XValue       int
 	Distribution map[uuid.UUID]int
 	HoldPriority bool
+	// TargetsStamped says every ref in Targets names the clause it
+	// answers, a zero Slot and Mode included (#4497). The wire decoder
+	// sets it when any target carries `slot` or `mode`, which is every
+	// target the browser client sends. The refs are then read as
+	// given: a pick its clause refuses is refused, never moved to
+	// another clause. False is a list that names no clause, filed by
+	// what each pick can target (fitAnnouncedSlotsLocked). Persisted
+	// with a parked announcement (AssistAnnounce), omitted when false.
+	TargetsStamped bool `json:"targetsStamped,omitempty"`
 	// SplitSecond is the S13.1 sandbox flag: "treat this spell as
 	// having split second". Since #1519 a spell that PRINTS split
 	// second has it without the flag (castHasSplitSecond reads the
@@ -1288,10 +1297,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
 		Controller: playerID, Source: cardID, AltCost: AltCostKeyword(params.AlternativeCost),
 	})
+	// CR 702.16b: the source of a SPELL is the spell itself, so the
+	// quality protection is tested against is the card's own colour
+	// and type — not its caster's (#662).
+	// CR 202.3e: the X announced with the cast counts in the spell's mana
+	// value, which "protection from mana value N or less" reads (#2181).
+	castSrc := SourceObject(playerID, &card)
+	castSrc.X = params.XValue
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
-	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	// #4497: a pick that names no clause is filed by what it can target.
+	params.Targets = g.fitAnnouncedSlotsLocked(castSrc, StepsChosenByController(steps), params.Targets, params.TargetsStamped)
 	ownTargets := params.Targets
 	oppTargets, oppErr := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
 	if oppErr != nil {
@@ -1347,13 +1364,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			return err
 		}
 	}
-	// CR 702.16b: the source of a SPELL is the spell itself, so the
-	// quality protection is tested against is the card's own colour
-	// and type — not its caster's (#662).
-	// CR 202.3e: the X announced with the cast counts in the spell's mana
-	// value, which "protection from mana value N or less" reads (#2181).
-	castSrc := SourceObject(playerID, &card)
-	castSrc.X = params.XValue
 	if err := g.validateAnnouncedTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
@@ -1368,7 +1378,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// clause list and judged from this spell (CR 702.47c: the spell keeps
 	// its own characteristics). A text with a required target that cannot
 	// be given one cannot be spliced (CR 702.47b).
-	if err := g.validateSplicedTargetsLocked(castSrc, spliced, splicedRefs); err != nil {
+	if err := g.validateSplicedTargetsLocked(castSrc, spliced, splicedRefs, params.TargetsStamped); err != nil {
 		slog.Warn("cast_spell rejected: illegal target for a spliced text",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

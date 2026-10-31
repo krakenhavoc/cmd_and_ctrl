@@ -44,6 +44,7 @@ tests-e2e/
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
+    ├── skipped-first-target-4497.spec.ts # #4497: Meager Meal cast with its "up to one target creature" left empty (Done with nothing picked), the opponent picked for "target player": on the stack at slot 1, and they gain 2 life
     ├── smoke.spec.ts          # router + entry pages + healthz
     ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
 ├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
