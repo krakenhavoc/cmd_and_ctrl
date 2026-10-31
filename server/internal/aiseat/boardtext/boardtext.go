@@ -495,6 +495,15 @@ func PermanentLabel(c *protocol.CardView, opts Options) string {
 	return permanentLabelWith(c, opts, nil)
 }
 
+// GroupLabel is the label the battlefield line groups a permanent under:
+// permanents of one controller with the same label print once, as
+// "Treasure x3". A reader that folds moves naming such permanents (the
+// MCP seat, #4737) groups by this same text, so it never merges two
+// permanents the board tells apart.
+func GroupLabel(v *protocol.GameView, c *protocol.CardView, opts Options) string {
+	return permanentLabelWith(c, opts, relationPhrases(v, c))
+}
+
 // permanentLabelWith is PermanentLabel plus relation phrases the view
 // alone can answer ("attached to X", "exiling Y"), appended last.
 func permanentLabelWith(c *protocol.CardView, opts Options, extra []string) string {

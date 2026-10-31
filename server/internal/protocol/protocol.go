@@ -16,7 +16,7 @@ const Version = 0
 // than its own and tells its agent to update. Bump it when a seat change
 // fixes something an agent would notice (wrong text, extra stops), never
 // for a refactor. docs/mcp-seat.md#out-of-date-seats has the rule.
-const SeatRevision = 2
+const SeatRevision = 3
 
 // SeatRevisionHeader carries the server's SeatRevision on its responses.
 const SeatRevisionHeader = "X-Cmdctrl-Seat-Revision"

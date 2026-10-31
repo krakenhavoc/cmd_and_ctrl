@@ -61,6 +61,9 @@ type fakeServer struct {
 	cuts      []protocol.LegalCutView
 	// choiceMoves answers a legal_moves_request that names a choice.
 	choiceMoves map[string][]legal.Move
+	// sourceMoves and sourceCuts answer one that names a card (#4737).
+	sourceMoves map[string][]legal.Move
+	sourceCuts  map[string][]protocol.LegalCutView
 	meStatus    int
 	joinCode    int
 	joinMsg     string
@@ -263,6 +266,9 @@ func (f *fakeServer) handleWS(w http.ResponseWriter, r *http.Request) {
 			rep := protocol.LegalMovesPayload{Seq: f.seq, Generation: f.gen, Moves: f.fullMoves, Truncated: f.cuts}
 			if cm, ok := f.choiceMoves[req.Choice]; ok && req.Choice != "" {
 				rep.Moves, rep.Truncated = cm, nil
+			}
+			if sm, ok := f.sourceMoves[req.Source]; ok && req.Source != "" {
+				rep.Moves, rep.Truncated = sm, f.sourceCuts[req.Source]
 			}
 			f.mu.Unlock()
 			if old {
