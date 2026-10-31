@@ -1556,6 +1556,8 @@ tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
 tail krenko-tin-street-kingpin/goblins
 tail krosan-verge/plains-search
+tail lady-loki/damage-then-cast
+tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail life-exchange/second-half

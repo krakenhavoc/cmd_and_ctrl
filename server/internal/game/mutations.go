@@ -2353,6 +2353,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
 			}
+			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
+				characteristicHasSubtype(ch, "Villain") {
+				tally.InstantSorceryVillain++
+			}
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
@@ -10320,6 +10324,13 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// assignsAsThoughUnblocked reports whether the creature may assign its
+// combat damage as though it weren't blocked (Characteristic.
+// AssignsAsThoughUnblocked, CR 510.1c), read through the layered view.
+func (c *Card) assignsAsThoughUnblocked() bool {
+	return c.effective != nil && c.effective.AssignsAsThoughUnblocked
+}
+
 // combatDamagePower is the amount of combat damage a combatant assigns
 // (CR 510.1a): its power, or its toughness when an effect says it assigns
 // damage equal to its toughness rather than its power and its toughness
@@ -10515,9 +10526,27 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				// never blocked deals its damage to what it attacked,
 				// as it always did.
 				blocked := g.attackerBlockedLocked(atkID)
-				if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
+				if atkPower > 0 && blocked && !HasKeyword(atk, "trample") && atk.assignsAsThoughUnblocked() {
+					// Wolverine, Claws Out: "you may have [it] assign its
+					// combat damage as though it weren't blocked" is a
+					// choice even with no blocker left, so it is asked
+					// (nothing else could be assigned, so the answer is
+					// all of it or none).
+					atk, p := atk, atkPower
+					prompts = append(prompts, func() {
+						g.queueDamageAssignmentPromptLocked(atk, nil, p, step)
+					})
+				} else if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
 					markAttackTarget(atk.AttackingTarget, atkID, atkPower)
 				}
+			} else if atkPower > 0 && atk.assignsAsThoughUnblocked() {
+				// CR 510.1c: the choice between dividing the damage among
+				// the blockers and assigning it as though unblocked. It is
+				// the controller's, so it is a prompt even for one blocker.
+				atk, blockers, p := atk, liveBlockers, atkPower
+				prompts = append(prompts, func() {
+					g.queueDamageAssignmentPromptLocked(atk, blockers, p, step)
+				})
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
 				// overflows to the defending player if the blocker
@@ -10646,6 +10675,7 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
 		AttackerPower:     atkPower,
 		AllowTrample:      HasKeyword(atk, "trample"),
+		AsThoughUnblocked: atk.assignsAsThoughUnblocked(),
 		HasDeathtouch:     HasKeyword(atk, "deathtouch"),
 		FirstStrike:       step == CombatStepFirstStrike,
 		CombatStep:        step,

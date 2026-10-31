@@ -1553,6 +1553,18 @@ type DamageAssignmentFrame struct {
 	// and in a frame restored from before the field, which is what
 	// those frames were.
 	BlockerDivides bool `json:",omitempty"`
+	// AsThoughUnblocked marks a prompt whose attacker may assign all of its
+	// damage "as though it weren't blocked" (CR 510.1c, Wolverine, Claws
+	// Out): read off Characteristic.AssignsAsThoughUnblocked as the prompt
+	// was queued. Besides the ordinary division among BlockerIDs the
+	// answer may put the whole AttackerPower on the player, planeswalker
+	// or battle the attacker is attacking: every blocker 0 and
+	// trample_to_player the full power, with no lethal damage owed to any
+	// blocker and no trample needed. BlockerIDs may be empty (every
+	// blocker has left combat): the attacker then assigns nothing or all
+	// of it to what it attacks. Zero in every other prompt, and in a
+	// frame restored from before the field, which is what those were.
+	AsThoughUnblocked bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
@@ -3564,7 +3576,16 @@ func (g *Game) ResolveDamageAssignment(
 	if trampleToPlayer < 0 {
 		return ErrInvalidParam
 	}
-	if trampleToPlayer > 0 && !frame.AllowTrample {
+	// CR 510.1c, Wolverine, Claws Out: "as though it weren't blocked" is
+	// the whole power on what the attacker attacks and nothing on any
+	// blocker, which needs neither trample nor lethal damage to anyone.
+	asUnblocked := frame.AsThoughUnblocked && trampleToPlayer == frame.AttackerPower
+	for _, e := range ordered {
+		if e.Amount != 0 {
+			asUnblocked = false
+		}
+	}
+	if trampleToPlayer > 0 && !frame.AllowTrample && !asUnblocked {
 		return ErrInvalidParam
 	}
 	// Sum check.
@@ -3572,7 +3593,10 @@ func (g *Game) ResolveDamageAssignment(
 	for _, e := range ordered {
 		total += e.Amount
 	}
-	if total != frame.AttackerPower {
+	// With no blocker left to divide among, the same attacker may also
+	// decline (assign nothing): the only other thing it could do.
+	declined := frame.AsThoughUnblocked && len(frame.BlockerIDs) == 0 && total == 0
+	if total != frame.AttackerPower && !declined {
 		return ErrInvalidParam
 	}
 	// CR 510.1c: a blocked creature's damage is "divided as its
@@ -3587,7 +3611,7 @@ func (g *Game) ResolveDamageAssignment(
 	// max(1, toughness less damage marked), and 1 from deathtouch (CR
 	// 702.2c). A blocker that has left the battlefield, or that already
 	// carries lethal damage, needs nothing.
-	if trampleToPlayer > 0 {
+	if trampleToPlayer > 0 && !asUnblocked {
 		for _, e := range ordered {
 			lethal := 1
 			blk := findBattlefieldCard(g, e.BlockerID)

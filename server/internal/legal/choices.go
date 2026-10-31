@@ -2221,6 +2221,24 @@ type OfferedDamageSplit struct {
 //
 // Caller must hold g's lock (read or write).
 func DamageSplits(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
+	out := damageSplitsAmongBlockers(g, c)
+	pl, ok := planDamage(g, c)
+	if !ok || !pl.f.AsThoughUnblocked || len(out) == 0 {
+		return out
+	}
+	// CR 510.1c, Wolverine, Claws Out: "as though it weren't blocked" is
+	// one more answer, the whole power on what the attacker attacks.
+	un := pl.unblocked()
+	for _, o := range out {
+		if splitKey(o.Split) == splitKey(un) {
+			return out
+		}
+	}
+	return append(out, OfferedDamageSplit{Split: un, Label: pl.label(un)})
+}
+
+// damageSplitsAmongBlockers is DamageSplits' divisions among the blockers.
+func damageSplitsAmongBlockers(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
 	pl, ok := planDamage(g, c)
 	if !ok {
 		return nil
@@ -2348,6 +2366,11 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 // canonical is the split that kills the most the power can buy.
 func (pl splitPlan) canonical() (DamageSplit, bool) {
 	n := len(pl.f.BlockerIDs)
+	if n == 0 && pl.f.AsThoughUnblocked && pl.f.AttackerPower > 0 {
+		// Every blocker has left combat: nothing to divide among, so the
+		// damage Wolverine may still assign is all of it to the player.
+		return pl.unblocked(), true
+	}
 	kill := KillingSet(pl.cost, pl.value, pl.f.AttackerPower)
 	if pl.covers {
 		for i := range kill {
@@ -2366,6 +2389,18 @@ func (pl splitPlan) canonical() (DamageSplit, bool) {
 		sink = n - 1
 	}
 	return pl.build(kill, sink)
+}
+
+// unblocked is the split that assigns the whole power as though the
+// attacker weren't blocked (CR 510.1c): nothing on any blocker, all of
+// it on the player or permanent it is attacking.
+func (pl splitPlan) unblocked() DamageSplit {
+	out := DamageSplit{Lethal: pl.cost, CoversLethal: pl.covers, TrampleTo: pl.f.AttackerPower}
+	out.Assignments = make([]DamageShare, 0, len(pl.f.BlockerIDs))
+	for _, id := range pl.f.BlockerIDs {
+		out.Assignments = append(out.Assignments, DamageShare{BlockerID: id})
+	}
+	return out
 }
 
 // build is the split that assigns lethal damage to each blocker in
@@ -2419,6 +2454,9 @@ func (pl splitPlan) build(kill []bool, sink int) (DamageSplit, bool) {
 // label says who takes what, so a seat choosing between splits sees
 // the difference: "3 to Tidus (lethal), 3 to Gatta".
 func (pl splitPlan) label(s DamageSplit) string {
+	if pl.f.AsThoughUnblocked && s.TrampleTo == pl.f.AttackerPower && !slices.ContainsFunc(s.Assignments, func(a DamageShare) bool { return a.Amount != 0 }) {
+		return fmt.Sprintf("%d to what it is attacking, as though unblocked", s.TrampleTo)
+	}
 	idx := make(map[uuid.UUID]int, len(pl.f.BlockerIDs))
 	for i, id := range pl.f.BlockerIDs {
 		idx[id] = i

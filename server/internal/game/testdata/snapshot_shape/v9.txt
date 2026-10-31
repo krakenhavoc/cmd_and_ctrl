@@ -4002,6 +4002,7 @@ frozenEntries[].event.damageTail.sourceLki.AbilitiesRemoved	bool
 frozenEntries[].event.damageTail.sourceLki.Abilities[]	string
 frozenEntries[].event.damageTail.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
+frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -11844,6 +11845,7 @@ frozenEntries[].event.sourceLki.AbilitiesRemoved	bool
 frozenEntries[].event.sourceLki.Abilities[]	string
 frozenEntries[].event.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.sourceLki.AllCreatureTypes	bool
+frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -17412,6 +17414,7 @@ heldCombatDamage.answers	array
 heldCombatDamage.answers[]	object
 heldCombatDamage.answers[].frame	object
 heldCombatDamage.answers[].frame.AllowTrample	bool
+heldCombatDamage.answers[].frame.AsThoughUnblocked	bool
 heldCombatDamage.answers[].frame.AttackerID	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.AttackerPower	number:int
 heldCombatDamage.answers[].frame.BlockerDivides	bool
@@ -17429,6 +17432,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AbilitiesRemoved	bool
 heldCombatDamage.answers[].frame.SourceLKI.Abilities[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AdditionalBlocks	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
+heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AfterTurn	number:int
@@ -17600,6 +17604,7 @@ lastKnownBattlefield{}.AbilitiesRemoved	bool
 lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
+lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
@@ -17774,6 +17779,7 @@ lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
 lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
+lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
@@ -22651,6 +22657,7 @@ pendingChoices[].councilVote.zone	string
 pendingChoices[].count	number:int
 pendingChoices[].damageAssignment	object
 pendingChoices[].damageAssignment.AllowTrample	bool
+pendingChoices[].damageAssignment.AsThoughUnblocked	bool
 pendingChoices[].damageAssignment.AttackerID	custom(uuid.UUID)
 pendingChoices[].damageAssignment.AttackerPower	number:int
 pendingChoices[].damageAssignment.BlockerDivides	bool
@@ -22668,6 +22675,7 @@ pendingChoices[].damageAssignment.SourceLKI.AbilitiesRemoved	bool
 pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
+pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	number:int
@@ -23457,6 +23465,7 @@ pendingChoices[].divideShield.staged[].lki.AbilitiesRemoved	bool
 pendingChoices[].divideShield.staged[].lki.Abilities[]	string
 pendingChoices[].divideShield.staged[].lki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
+pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AfterTurn	number:int
@@ -23617,6 +23626,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AbilitiesRemoved	bool
 pendingChoices[].divideShield.staged[].sourceLki.Abilities[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
+pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -28887,6 +28897,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AbilitiesRemoved	b
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -36729,6 +36740,7 @@ pendingChoices[].replacementResume.event.sourceLki.AbilitiesRemoved	bool
 pendingChoices[].replacementResume.event.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
+pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -43756,6 +43768,7 @@ pendingChoices[].targetWalk.frame.lki.AbilitiesRemoved	bool
 pendingChoices[].targetWalk.frame.lki.Abilities[]	string
 pendingChoices[].targetWalk.frame.lki.AdditionalBlocks	number:int
 pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
+pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AfterTurn	number:int
@@ -44429,6 +44442,7 @@ pendingChoices[].triggerFrame.lki.AbilitiesRemoved	bool
 pendingChoices[].triggerFrame.lki.Abilities[]	string
 pendingChoices[].triggerFrame.lki.AdditionalBlocks	number:int
 pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
+pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AfterTurn	number:int
@@ -50897,6 +50911,7 @@ spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.colors	string
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
+spellsCastThisTurn{}.instantSorceryVillain	number:int
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int

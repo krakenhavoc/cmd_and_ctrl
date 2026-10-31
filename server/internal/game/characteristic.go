@@ -391,6 +391,18 @@ type Characteristic struct {
 	// ASSIGNED, not a number a layer computes.
 	DamageAsPositivePower bool `json:",omitempty"`
 
+	// AssignsAsThoughUnblocked is "you may have this creature assign its
+	// combat damage as though it weren't blocked" (CR 510.1c, Thorn
+	// Elemental, Wolverine, Claws Out): a blocked creature that has it is
+	// asked, as the combat damage step assigns, whether to divide its
+	// damage among its blockers as usual or to assign all of it to the
+	// player, planeswalker or battle it is attacking. A fact about HOW
+	// damage is assigned, not a number a layer computes, so it is only
+	// ever set, by a layer 6 static that says so, and it goes with the
+	// creature's abilities. The combat damage pass reads it through
+	// Card.assignsAsThoughUnblocked.
+	AssignsAsThoughUnblocked bool `json:",omitempty"`
+
 	// CostPower is how much this creature counts for when it is tapped
 	// to pay a crew or saddle cost (ADR 0186 Decision 4, #2705): "this
 	// creature saddles Mounts and crews Vehicles as though its power

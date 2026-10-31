@@ -4,6 +4,7 @@ import {
   assignedTotal,
   autoAssignAnswer,
   autoAssignHolds,
+  assignAllToPlayer,
   autoAssignText,
   canDealDamage,
   initialShares,
@@ -13,6 +14,7 @@ import {
   stepTrample,
   toAnswer,
   trampleShort,
+  unblockedMixed,
 } from "./damageAssignment";
 import type { DamageShares } from "./damageAssignment";
 import type { DamageAssignmentView, PendingChoiceView } from "./protocol";
@@ -292,5 +294,68 @@ describe("stepGroup (a token group's stepper)", () => {
   it("only counts members that are in the assignment", () => {
     expect(stepGroup(zero, ["x", "y"], 1, 5, lethal)).toBe(zero);
     expect(stepGroup(zero, ["x", "t2"], 1, 5, lethal).amounts.t2).toBe(1);
+  });
+});
+
+// Wolverine, Claws Out (CR 510.1c): "you may have Wolverine assign his
+// combat damage as though he weren't blocked". One blocker covers lethal,
+// so the prompt would be auto-assigned, but the choice is the player's.
+describe("as though it weren't blocked", () => {
+  const wolverine: DamageAssignmentView = {
+    attacker_card_id: "wolverine",
+    blocker_card_ids: ["wall"],
+    attacker_power: 4,
+    as_though_unblocked: true,
+    lethal: [3],
+    covers_lethal: true,
+    suggested: { assignments: [{ blocker_id: "wall", amount: 4 }] },
+  };
+
+  it("is never auto-assigned, even when the damage covers lethal", () => {
+    expect(autoAssignAnswer(choice(wolverine), "me", true)).toBeNull();
+  });
+
+  it("opens on the canonical split: everything on the blocker", () => {
+    const s = initialShares(wolverine);
+    expect(s).toEqual({ amounts: { wall: 4 }, trample: 0 });
+    expect(canDealDamage(wolverine, s)).toBe(true);
+  });
+
+  it("answers all of it on the player with every blocker at 0, owing no lethal damage", () => {
+    const s = assignAllToPlayer(wolverine);
+    expect(s).toEqual({ amounts: { wall: 0 }, trample: 4 });
+    expect(trampleShort(wolverine, s)).toEqual([]);
+    expect(canDealDamage(wolverine, s)).toBe(true);
+    expect(toAnswer(wolverine, s)).toEqual({
+      assignments: [{ blocker_id: "wall", amount: 0 }],
+      trample_to_player: 4,
+    });
+  });
+
+  it("refuses part on the player and part on a blocker, which the server refuses", () => {
+    const s: DamageShares = { amounts: { wall: 1 }, trample: 3 };
+    expect(unblockedMixed(wolverine, s)).toBe(true);
+    expect(canDealDamage(wolverine, s)).toBe(false);
+  });
+
+  it("with no blocker left, assigning nothing or all of it are both answers", () => {
+    const gone: DamageAssignmentView = {
+      ...wolverine,
+      blocker_card_ids: [],
+      lethal: [],
+      suggested: undefined,
+    };
+    expect(canDealDamage(gone, { amounts: {}, trample: 0 })).toBe(true);
+    expect(canDealDamage(gone, assignAllToPlayer(gone))).toBe(true);
+    expect(canDealDamage(gone, { amounts: {}, trample: 2 })).toBe(false);
+  });
+
+  it("is not a trample prompt: an ordinary multi-block with no flag is unchanged", () => {
+    const plain: DamageAssignmentView = {
+      ...wolverine,
+      as_though_unblocked: undefined,
+      blocker_card_ids: ["a", "b"],
+    };
+    expect(unblockedMixed(plain, { amounts: { a: 1, b: 0 }, trample: 3 })).toBe(false);
   });
 });
