@@ -31,6 +31,9 @@
     activeChips,
     removeChip,
     toggle,
+    findSet,
+    setOptionLabel,
+    setSummary,
     catalogImageURL,
     COLOR_FILTERS,
     COLOR_LABELS,
@@ -39,6 +42,7 @@
     COMPLETENESS_BLURBS,
     type CatalogEntry,
     type CatalogCounts,
+    type CatalogSet,
     type Completeness,
     type ColorFilter,
     type TypeFilter,
@@ -46,6 +50,9 @@
 
   let cards = $state<CatalogEntry[]>([]);
   let counts = $state<CatalogCounts | null>(null);
+  // The set picker's data, newest set first; empty when the server has no
+  // card data, in which case the picker is not drawn (#4790).
+  let sets = $state<CatalogSet[]>([]);
   let loading = $state(true);
   let error = $state("");
 
@@ -63,19 +70,22 @@
   let colors = $state<ColorFilter[]>([]);
   let types = $state<TypeFilter[]>([]);
   let completeness = $state<Completeness[]>([]);
+  let setCode = $state("");
 
   const buckets: Completeness[] = ["full", "caveats", "unreviewed"];
 
-  const filter = $derived({ query, colors, types, completeness });
+  const filter = $derived({ query, colors, types, completeness, set: setCode });
   const shown = $derived(filterCatalog(cards, filter));
   const facets = $derived(facetCounts(cards, filter));
-  const chips = $derived(activeChips(filter));
+  const chips = $derived(activeChips(filter, sets));
+  const pickedSet = $derived(setCode ? findSet(sets, setCode) : undefined);
 
   function reset() {
     query = "";
     colors = [];
     types = [];
     completeness = [];
+    setCode = "";
   }
 
   // The catalogue's rows carry no "added" order (the server sorts by
@@ -90,7 +100,7 @@
   async function openSheet() {
     sheetOpen = true;
     await tick();
-    sheetEl?.querySelector<HTMLElement>("button, input")?.focus();
+    sheetEl?.querySelector<HTMLElement>("button, input, select")?.focus();
   }
   function closeSheet() {
     if (!sheetOpen) return;
@@ -104,7 +114,7 @@
       return;
     }
     if (ev.key !== "Tab" || !sheetEl) return;
-    const els = [...sheetEl.querySelectorAll<HTMLElement>("button, input, [href]")].filter(
+    const els = [...sheetEl.querySelectorAll<HTMLElement>("button, input, select, [href]")].filter(
       (e) => !e.hasAttribute("disabled"),
     );
     if (els.length === 0) return;
@@ -134,6 +144,7 @@
       .then((res) => {
         cards = res.cards;
         counts = res.counts;
+        sets = res.sets ?? [];
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -161,6 +172,18 @@
 {/snippet}
 
 {#snippet facetPanel()}
+  {#if sets.length > 0}
+    <fieldset class="facet">
+      <legend>Set</legend>
+      <select class="set-select" aria-label={L.filterCatalogueBySet} bind:value={setCode}>
+        <option value="">All sets</option>
+        {#each sets as s (s.code)}
+          <option value={s.code}>{setOptionLabel(s)}</option>
+        {/each}
+      </select>
+    </fieldset>
+  {/if}
+
   <fieldset class="facet">
     <legend>Completeness</legend>
     <ul class="rows">
@@ -292,6 +315,7 @@
                     colors = f.colors;
                     types = f.types;
                     completeness = f.completeness;
+                    setCode = f.set;
                   }}
                 >
                   <span class:cap={chip.kind === "types"}>{chip.label}</span>
@@ -304,6 +328,23 @@
               <button type="button" class="ghost sm" onclick={reset}>clear filters</button>
             </li>
           </ul>
+        {/if}
+
+        {#if !loading && pickedSet}
+          <!-- The picked set's answer: how much of it plays, in words and in a bar. The
+               grid below lists only the cards that do, so the unsupported count is the
+               one place the cards that are missing show up. -->
+          <div class="setline">
+            <p class="setline-text">{setSummary(pickedSet)}</p>
+            {#if pickedSet.total > 0}
+              <div class="setbar" aria-hidden="true">
+                <span class="seg k-full" style:flex-grow={pickedSet.full}></span>
+                <span class="seg k-caveats" style:flex-grow={pickedSet.caveats}></span>
+                <span class="seg k-unreviewed" style:flex-grow={pickedSet.unreviewed}></span>
+                <span class="seg k-none" style:flex-grow={pickedSet.unsupported}></span>
+              </div>
+            {/if}
+          </div>
         {/if}
 
         {#if loading}
@@ -499,6 +540,50 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--fg-dim);
+  }
+  .set-select {
+    width: 100%;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+  }
+  .setline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .setline-text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .setbar {
+    display: flex;
+    height: 6px;
+    gap: 2px;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .seg {
+    flex-basis: 0;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+  .seg.k-full {
+    background: var(--mint);
+  }
+  .seg.k-caveats {
+    background: var(--accent);
+  }
+  .seg.k-unreviewed {
+    background: var(--fg-dim);
+  }
+  .seg.k-none {
+    background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
   }
   .rows {
     list-style: none;

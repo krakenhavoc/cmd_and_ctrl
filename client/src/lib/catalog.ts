@@ -2,7 +2,7 @@
 // filtering the page runs over a few hundred cards.
 //
 // Mirrors server/internal/catalog/catalog.go (Entry / Face / Counts /
-// Response). Hand-maintained, like protocol.ts — update both sides in
+// Response) and sets.go (SetSummary). Hand-maintained, like protocol.ts — update both sides in
 // lockstep.
 //
 // The filter lives here rather than in Catalog.svelte for the reason
@@ -40,6 +40,11 @@ export interface CatalogEntry {
   /** Present exactly when completeness is "caveats". */
   caveats?: string[];
   faces?: CatalogFace[];
+  /**
+   * Codes of the sets the card is printed in, newest set first; each is a
+   * `CatalogSet.code`. Absent for a card with no counted printing (#4790).
+   */
+  sets?: string[];
   /** The catalog registers this card but the dump has no printing for it. */
   missing?: boolean;
 }
@@ -52,9 +57,30 @@ export interface CatalogCounts {
   missing: number;
 }
 
+/**
+ * One set in the set picker (#4790): its unique cards (oracle ids, with
+ * tokens, emblems, art-series cards, digital-only printings and basic lands
+ * left out) and how many the engine plays. `full + caveats + unreviewed` is
+ * the supported part; `unsupported` is the rest, so the four add up to
+ * `total`. Sorted newest first by the server.
+ */
+export interface CatalogSet {
+  code: string;
+  name: string;
+  /** "YYYY-MM-DD". */
+  released?: string;
+  total: number;
+  full: number;
+  caveats: number;
+  unreviewed: number;
+  unsupported: number;
+}
+
 export interface CatalogResponse {
   counts: CatalogCounts;
   cards: CatalogEntry[];
+  /** Absent when the server has no card data loaded. */
+  sets?: CatalogSet[];
 }
 
 /**
@@ -119,6 +145,8 @@ export interface CatalogFilter {
   types: TypeFilter[];
   /** Empty means "any". Multiple selections are OR'd. */
   completeness: Completeness[];
+  /** A set code, or "" for any set. One set at a time (#4790). */
+  set: string;
 }
 
 export const EMPTY_FILTER: CatalogFilter = {
@@ -126,6 +154,7 @@ export const EMPTY_FILTER: CatalogFilter = {
   colors: [],
   types: [],
   completeness: [],
+  set: "",
 };
 
 /**
@@ -184,6 +213,7 @@ export function filterCatalog(entries: CatalogEntry[], filter: CatalogFilter): C
     if (filter.completeness.length > 0 && !filter.completeness.includes(e.completeness)) {
       return false;
     }
+    if (filter.set && !(e.sets ?? []).includes(filter.set)) return false;
     return true;
   });
 }
@@ -254,11 +284,22 @@ export type FilterChip =
   | { kind: "query"; value: string; label: string }
   | { kind: "colors"; value: ColorFilter; label: string }
   | { kind: "types"; value: TypeFilter; label: string }
-  | { kind: "completeness"; value: Completeness; label: string };
+  | { kind: "completeness"; value: Completeness; label: string }
+  | { kind: "set"; value: string; label: string };
 
-/** activeChips lists one chip per active filter value, in sidebar order. */
-export function activeChips(filter: CatalogFilter): FilterChip[] {
+/**
+ * activeChips lists one chip per active filter value, in sidebar order.
+ * `sets` names the selected set; without it the chip reads the set's code.
+ */
+export function activeChips(filter: CatalogFilter, sets: CatalogSet[] = []): FilterChip[] {
   const chips: FilterChip[] = [];
+  if (filter.set) {
+    chips.push({
+      kind: "set",
+      value: filter.set,
+      label: findSet(sets, filter.set)?.name ?? filter.set.toUpperCase(),
+    });
+  }
   const q = filter.query.trim();
   if (q) chips.push({ kind: "query", value: q, label: `“${q}”` });
   for (const b of filter.completeness) {
@@ -280,7 +321,51 @@ export function removeChip(filter: CatalogFilter, chip: FilterChip): CatalogFilt
       return { ...filter, types: filter.types.filter((v) => v !== chip.value) };
     case "completeness":
       return { ...filter, completeness: filter.completeness.filter((v) => v !== chip.value) };
+    case "set":
+      return { ...filter, set: "" };
   }
+}
+
+/** findSet looks a set up by its code. */
+export function findSet(sets: CatalogSet[], code: string): CatalogSet | undefined {
+  return sets.find((s) => s.code === code);
+}
+
+/** supportedCount is how many of a set's cards the engine plays at all. */
+export function supportedCount(s: CatalogSet): number {
+  return s.full + s.caveats + s.unreviewed;
+}
+
+/**
+ * setOptionLabel is a set's line in the picker: the name, then how many of
+ * its cards are supported out of how many it has ("Marvel's Spider-Man
+ * (120/188)"). The name leads so typing a set's first letters jumps to it.
+ */
+export function setOptionLabel(s: CatalogSet): string {
+  return `${s.name} (${supportedCount(s)}/${s.total})`;
+}
+
+/**
+ * setSummary is the one-line answer for the selected set: how many of its
+ * cards the engine plays, what the supported ones are like, and how many
+ * it does not play yet. Parts that are zero are left out.
+ *
+ *   Marvel's Spider-Man: 120 of 188 supported — 118 complete, 2 with caveats; 68 not yet supported
+ */
+export function setSummary(s: CatalogSet): string {
+  const supported = supportedCount(s);
+  if (s.total === 0) return `${s.name}: no cards to support.`;
+  if (supported === 0) {
+    return s.total === 1
+      ? `${s.name}: its one card is not supported yet.`
+      : `${s.name}: none of its ${s.total} cards supported yet.`;
+  }
+  const parts: string[] = [];
+  if (s.full > 0) parts.push(`${s.full} complete`);
+  if (s.caveats > 0) parts.push(`${s.caveats} with caveats`);
+  if (s.unreviewed > 0) parts.push(`${s.unreviewed} unreviewed`);
+  const head = `${s.name}: ${supported} of ${s.total} supported — ${parts.join(", ")}`;
+  return s.unsupported > 0 ? `${head}; ${s.unsupported} not yet supported` : `${head}.`;
 }
 
 export const COMPLETENESS_BLURBS: Record<Completeness, string> = {

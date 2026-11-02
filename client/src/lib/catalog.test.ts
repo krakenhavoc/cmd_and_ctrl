@@ -5,12 +5,17 @@ import {
   removeChip,
   catalogImageURL,
   filterCatalog,
+  findSet,
   matchesColor,
   matchesQuery,
+  setOptionLabel,
+  setSummary,
+  supportedCount,
   toggle,
   EMPTY_FILTER,
   type CatalogEntry,
   type CatalogFilter,
+  type CatalogSet,
 } from "./catalog";
 
 function card(over: Partial<CatalogEntry> = {}): CatalogEntry {
@@ -216,5 +221,128 @@ describe("activeChips and removeChip", () => {
     const q = chips.find((c) => c.kind === "query")!;
     expect(removeChip(f, q).query).toBe("");
     expect(removeChip(f, q).types).toEqual(["instant"]);
+  });
+});
+
+function setOf(over: Partial<CatalogSet> = {}): CatalogSet {
+  return {
+    code: "spm",
+    name: "Marvel's Spider-Man",
+    released: "2026-09-26",
+    total: 188,
+    full: 118,
+    caveats: 2,
+    unreviewed: 0,
+    unsupported: 68,
+    ...over,
+  };
+}
+
+describe("the set filter", () => {
+  const entries = [
+    card({ oracle_id: "a", name: "In Spider-Man", sets: ["spm", "old"] }),
+    card({ oracle_id: "b", name: "Only Old", sets: ["old"] }),
+    card({ oracle_id: "c", name: "In Neither", sets: ["other"] }),
+    card({ oracle_id: "d", name: "No Sets At All", sets: undefined }),
+  ];
+
+  it("shows every card when no set is picked", () => {
+    expect(filterCatalog(entries, filter())).toHaveLength(4);
+  });
+
+  it("keeps only the cards printed in the set, whichever of their sets it is", () => {
+    expect(filterCatalog(entries, filter({ set: "old" })).map((e) => e.name)).toEqual([
+      "In Spider-Man",
+      "Only Old",
+    ]);
+    expect(filterCatalog(entries, filter({ set: "spm" })).map((e) => e.name)).toEqual([
+      "In Spider-Man",
+    ]);
+  });
+
+  it("drops a card with no set list, and every card for an unknown set", () => {
+    expect(filterCatalog(entries, filter({ set: "nope" }))).toEqual([]);
+    expect(filterCatalog(entries, filter({ set: "other" })).map((e) => e.name)).toEqual([
+      "In Neither",
+    ]);
+  });
+
+  it("ANDs with the other facets", () => {
+    const mixed = [
+      card({ oracle_id: "a", name: "Red Full", sets: ["spm"], completeness: "full" }),
+      card({ oracle_id: "b", name: "Red Unreviewed", sets: ["spm"], completeness: "unreviewed" }),
+      card({ oracle_id: "c", name: "Elsewhere", sets: ["old"], completeness: "full" }),
+    ];
+    const got = filterCatalog(mixed, filter({ set: "spm", completeness: ["full"] }));
+    expect(got.map((e) => e.name)).toEqual(["Red Full"]);
+  });
+
+  it("is applied to the facet counts, so a count says what ticking it would show", () => {
+    const mixed = [
+      card({ oracle_id: "a", sets: ["spm"], completeness: "full", types: ["creature"] }),
+      card({ oracle_id: "b", sets: ["spm"], completeness: "caveats", types: ["instant"] }),
+      card({ oracle_id: "c", sets: ["old"], completeness: "full", types: ["creature"] }),
+    ];
+    const counts = facetCounts(mixed, filter({ set: "spm" }));
+    expect(counts.completeness).toEqual({ full: 1, caveats: 1, unreviewed: 0 });
+    expect(counts.types.creature).toBe(1);
+  });
+
+  it("gives the set a chip that carries its name and clears with it", () => {
+    const f = filter({ set: "spm", query: "web" });
+    const chips = activeChips(f, [setOf()]);
+    expect(chips.map((c) => `${c.kind}:${c.label}`)).toEqual([
+      "set:Marvel's Spider-Man",
+      "query:“web”",
+    ]);
+    const cleared = removeChip(f, chips[0]);
+    expect(cleared.set).toBe("");
+    expect(cleared.query).toBe("web");
+  });
+
+  it("falls back to the code when the set is not in the list", () => {
+    expect(activeChips(filter({ set: "spm" }))[0].label).toBe("SPM");
+  });
+});
+
+describe("set summaries", () => {
+  it("states supported of total, the split, and the unsupported rest", () => {
+    expect(setSummary(setOf())).toBe(
+      "Marvel's Spider-Man: 120 of 188 supported — 118 complete, 2 with caveats; 68 not yet supported",
+    );
+  });
+
+  it("names unreviewed cards too and leaves out empty buckets", () => {
+    expect(
+      setSummary(setOf({ full: 10, caveats: 0, unreviewed: 5, total: 20, unsupported: 5 })),
+    ).toBe(
+      "Marvel's Spider-Man: 15 of 20 supported — 10 complete, 5 unreviewed; 5 not yet supported",
+    );
+  });
+
+  it("says so plainly when a set is fully supported", () => {
+    expect(setSummary(setOf({ total: 10, full: 10, caveats: 0, unsupported: 0 }))).toBe(
+      "Marvel's Spider-Man: 10 of 10 supported — 10 complete.",
+    );
+  });
+
+  it("says so plainly when nothing is supported", () => {
+    expect(setSummary(setOf({ total: 188, full: 0, caveats: 0, unsupported: 188 }))).toBe(
+      "Marvel's Spider-Man: none of its 188 cards supported yet.",
+    );
+    expect(setSummary(setOf({ total: 1, full: 0, caveats: 0, unsupported: 1 }))).toBe(
+      "Marvel's Spider-Man: its one card is not supported yet.",
+    );
+  });
+
+  it("labels a picker option name first, then supported over total", () => {
+    expect(supportedCount(setOf())).toBe(120);
+    expect(setOptionLabel(setOf())).toBe("Marvel's Spider-Man (120/188)");
+  });
+
+  it("finds a set by code", () => {
+    const sets = [setOf(), setOf({ code: "old", name: "Old" })];
+    expect(findSet(sets, "old")?.name).toBe("Old");
+    expect(findSet(sets, "zzz")).toBeUndefined();
   });
 });
