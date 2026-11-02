@@ -13,6 +13,17 @@ func ThatMuchDamage() *game.BatchEndCondition {
 	return &game.BatchEndCondition{Total: game.BatchTotalDamage}
 }
 
+// ThatMuchLifeLost makes a "whenever a player loses life, … that much"
+// ability read the TOTAL life that player lost at the same time, over
+// every source (CR 603.2c; two creatures connecting together are one
+// loss): one trigger per player and batch, with
+// `item.Trigger.Event.Amount` the sum, positive whichever event kind
+// opened it. The ability's AppliesTo says which losses it watches
+// (Hela, Mistress of Darkness).
+func ThatMuchLifeLost() *game.BatchEndCondition {
+	return &game.BatchEndCondition{Total: game.BatchTotalLifeLost}
+}
+
 // ThatManyEvents is the counting twin for "whenever you [do X] one or
 // more times … that many" (Cryptcaller Chariot, Magmakin Artillerist,
 // Ingenious Artillerist): one trigger per batch, with

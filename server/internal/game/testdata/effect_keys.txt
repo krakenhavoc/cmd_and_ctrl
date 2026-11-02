@@ -918,6 +918,7 @@ option option-pick/coin-of-fate-opponent
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
+option option-pick/dark-tutor-placed
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
@@ -1406,6 +1407,8 @@ tail dain-ironfoot/axe-created
 tail damage-steps/next
 tail daredevil-man-without-fear/hero-boost
 tail dark-impostor/after-exile
+tail dark-tutor/after-hand
+tail dark-tutor/found
 tail dawn-of-a-new-age/after-removal
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken

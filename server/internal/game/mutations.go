@@ -2095,7 +2095,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// graveyard is exiled instead of going anywhere else as it
 		// leaves the stack, however it leaves — the same replacement
 		// flashback's cost carries.
-		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
+		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && castsOnlyFromGraveyard(card)),
 		// #3863: "if that spell would be put into your graveyard,
 		// exile it instead" — the narrower clause, carried for the same
 		// reason.
