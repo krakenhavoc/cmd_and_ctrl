@@ -25,6 +25,6 @@ func init() {
 		CastableZonesIf:  []game.ConditionalCastZone{MayhemCastableZone()},
 		AlternativeCosts: []game.AlternativeCost{Mayhem("{3}{B}")},
 		Targets:          TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()),
-		OnResolve: returnTargetCreatureWithPlusOneCounter,
+		OnResolve:        returnTargetCreatureWithPlusOneCounter,
 	})
 }
