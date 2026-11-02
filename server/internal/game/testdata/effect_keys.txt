@@ -348,6 +348,7 @@ choose choose-cards/discard-draw-three-if-two
 choose choose-cards/discard-draw-two-if-any
 choose choose-cards/discard-leg
 choose choose-cards/discard-then-each-opponent-discards
+choose choose-cards/discard-then-scarlet-spider-counter
 choose choose-cards/discard-two-unless-artifact
 choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
@@ -553,6 +554,7 @@ choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
 choose choose-cards/rejoin-the-fight-pick
+choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
@@ -1844,6 +1846,7 @@ tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
 tail then/ringsight-search
 tail then/ripples-of-potential-proliferated
+tail then/risky-research-draw-two-lose-two
 tail then/rivers-grasp-black-half
 tail then/rottenmouth-viper-punisher-sacrificed
 tail then/sacrifice-choice-done

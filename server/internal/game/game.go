@@ -1992,6 +1992,12 @@ type CastTally struct {
 	// 708.4). Call Forth the Tempest's "the total mana value of other
 	// spells you've cast this turn" subtracts its own (#2743).
 	ManaValue int `json:"manaValue,omitempty"`
+	// MaxManaValue is the highest mana value among the spells the player
+	// cast this turn, read as each spell became cast like ManaValue (CR
+	// 202.3, 601.2i). Rhino, Barreling Brute's "if you've cast a spell
+	// with mana value 4 or greater this turn" is MaxManaValue >= 4.
+	// Additive within the snapshot version.
+	MaxManaValue int `json:"maxManaValue,omitempty"`
 	// InstantSorcery counts the instant and sorcery spells the player cast
 	// this turn, read as each spell became cast like Artifact (#3258).
 	// Arcane Bombardment's "whenever you cast your first instant or

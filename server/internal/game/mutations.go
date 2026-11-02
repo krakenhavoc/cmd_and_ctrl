@@ -2376,6 +2376,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// way, face down included.
 			if mv, ok := g.castManaValueLocked(sc); ok {
 				tally.ManaValue += mv
+				if mv > tally.MaxManaValue {
+					tally.MaxManaValue = mv
+				}
 			}
 			break
 		}
