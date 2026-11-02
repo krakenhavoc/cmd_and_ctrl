@@ -1287,3 +1287,53 @@ spell. Only a pay-unless can be answered after the table moves on; every other
 keyed prompt blocks, so no other caller that names the resolving spell has this
 exposure. Mystic Remora, Rhystic Study, Esper Sentinel and Smothering Tithe read
 nothing off the spell.
+
+## Amendment (2026-11-02, [#4797](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4797)): enter as a copy of a card in a graveyard, and "when you do"
+
+Sprint S76 (the Marvel's Spider-Man push, #4460). Body Double: "You may have
+this creature enter as a copy of any creature card in a graveyard." Superior
+Spider-Man adds an except clause and "When you do, exile that card." CR 707.2:
+"When copying an object, the copy acquires the copiable values of the original
+object's characteristics". A card in a graveyard is an object, and its copiable
+values are its printed ones.
+
+**Decision 1: the candidate list decides the zone.** `ResolveCopyTarget` found
+the pick only on the battlefield (`battlefieldCardLocked`), so a graveyard card
+a card's `Candidates` offered was silently declined. It now reads the pick
+through `copySourceCardLocked`: the battlefield first, then a graveyard. There
+is no flag: what a card may copy is what its `Candidates` returns (Clone's
+creatures on the battlefield, `effects.anyCreatureCardInAGraveyard`'s creature
+cards in every graveyard), re-evaluated when the answer arrives, so a card that
+left the graveyard in response is declined like any stale pick. The entry path
+reads the source's card-carried ability slices off the battlefield only, as
+before; a graveyard card has none (only a token does).
+
+**Decision 2: the except clause can name what it copies.** The copied object's
+ID (`ReplacementEvent.copySourceID`) is now set before `Except` runs, and read
+through `ReplacementEvent.CopySourceForEffect`. Superior Spider-Man's except
+clause uses it to declare "When you do, exile that card" with
+`QueueReflexiveTriggerAfterReplacedMoveForEffect` (ADR 0178's 2026-10-29
+amendment, #4517): a CR 603.12 reflexive trigger the replacement creates,
+created once the permanent has landed on the battlefield and not at all if the
+entry is cancelled. An exit created its declared triggers in `runMoveTailLocked`;
+an entry's finisher, `executeEntryToBattlefieldLocked`, did not, so it now calls
+`queueReflexiveTriggersAfterMoveLocked` after the landing (a no-op for every
+entry that declared none). Its body exiles the card only if it is still that object in
+a graveyard (CR 400.7). The copy itself is settled before the trigger exists,
+so exiling the card changes nothing about it. Nothing new is persisted: the
+instruction already rides the paused event's frame.
+
+The wire is unchanged: the copy_target prompt already inlines its candidates as
+`options` through `LookupCardForEffect`, which finds a graveyard card, and the
+client's sheet shows them (the board highlight covers only the ones on the
+battlefield).
+
+Tests: `cards/effects/graveyard_copy_cards_test.go` (Body Double offers creature
+cards in every graveyard and nothing else, and copies one that stays put; Voq's
+types and menace; Superior Spider-Man's name, 4/4 and types, the card exiled
+only when the trigger resolves; declined, he is himself and exiles nothing) and
+`game/copy_graveyard_source_test.go`.
+
+Proof cards: Superior Spider-Man, Body Double, Voq, Torchbearer (Full).
+Activated Sleeper ("put there from the battlefield this turn") and Invasion of
+Amonkhet // Lazotep Convert need only their candidate filter and except clause.

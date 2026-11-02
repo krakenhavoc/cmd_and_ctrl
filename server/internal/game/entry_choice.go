@@ -348,6 +348,12 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	// after its prunes: a withdrawal settles a run leg, and that
 	// continuation is the rest of somebody's card.
 	g.pruneChoicesAfterArrivalLocked()
+	// #4797: a reflexive trigger an entry replacement declared ("enter as
+	// a copy … When you do, exile that card", Superior Spider-Man) is
+	// created now that the permanent has landed where the replacement
+	// left it (move_reflexive.go). An exit gets the same from
+	// runMoveTailLocked; this finisher is the entry's.
+	g.queueReflexiveTriggersAfterMoveLocked(ev)
 	return l.entered, nil
 }
 

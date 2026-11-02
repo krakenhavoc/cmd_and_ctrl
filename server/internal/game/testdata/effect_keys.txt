@@ -249,6 +249,7 @@ body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
+body superior-spider-man/exile-that-card
 body suspend/free-cast
 body suspend/tick
 body swans-of-bryn-argoll/source-controller-draws

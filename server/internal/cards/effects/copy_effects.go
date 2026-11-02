@@ -171,3 +171,28 @@ func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.
 		return c.IsCreature()
 	})
 }
+
+// anyCreatureCardInAGraveyard is the `candidates` argument for "enter as
+// a copy of any creature card in a graveyard" (Body Double, Superior
+// Spider-Man; Voq, Torchbearer's "a creature card in a graveyard", #4797):
+// every creature card in every graveyard, in seat order. Not targeting,
+// so nothing that stops targeting narrows it (CR 115.10a). The engine
+// copies the pick's printed values (CR 707.2) and declines it if it has
+// left the graveyard by the time the answer arrives.
+func anyCreatureCardInAGraveyard(g *game.Game, _ uuid.UUID, _ uuid.UUID) []uuid.UUID {
+	if g == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for _, c := range p.Graveyard.Cards {
+			if c.IsCreature() {
+				out = append(out, c.InstanceID)
+			}
+		}
+	}
+	return out
+}
