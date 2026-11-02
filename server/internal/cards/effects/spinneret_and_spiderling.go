@@ -63,7 +63,7 @@ func attackedWithASpider(ev game.Event, source *game.Card, _ game.Characteristic
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype("Spider")
+	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Spider"))
 }
 
 // spinneretDealtDamage is one slice of the damage Spinneret dealt: a
