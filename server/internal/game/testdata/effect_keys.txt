@@ -606,6 +606,7 @@ choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/transpose-after-discard
 choose choose-cards/twilight-prophet-take
+choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
 choose choose-cards/ultra-magnus-tactician-put
 choose choose-cards/under-the-skin-return
@@ -1219,6 +1220,7 @@ run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/tenured-tethermage-tokens
+run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-legend-of-yangchen-exile
