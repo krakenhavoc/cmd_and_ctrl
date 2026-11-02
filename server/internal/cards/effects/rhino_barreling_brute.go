@@ -22,10 +22,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance", "trample", "haste"},
 		Triggered: []game.TriggeredAbility{
-			InterveningIf(condCastSpellWithManaValueAtLeast{N: 4},
-				On(game.EventAttack, AllOf(ThisAttacked, castSpellWithManaValueAtLeast(4)),
-					"Rhino — you've cast a spell with mana value 4 or greater this turn: draw a card",
-					Do(DrawCards{N: 1}))),
+			On(game.EventAttack, AllOf(ThisAttacked, castSpellWithManaValueAtLeast(4)),
+				"Rhino — you've cast a spell with mana value 4 or greater this turn: draw a card",
+				Do(If{
+					Cond: condCastSpellWithManaValueAtLeast{N: 4},
+					Then: []Applier{DrawCards{N: 1}},
+				})),
 		},
 	})
 }
@@ -46,6 +48,6 @@ func (c condCastSpellWithManaValueAtLeast) Holds(ctx *Context) bool {
 	return ctx.Game.CastTallyFor(ctx.Controller()).MaxManaValue >= c.N
 }
 
-func (condCastSpellWithManaValueAtLeast) condition() (game.FootprintStep, bool) {
-	return game.FootprintStep{}, false
+func (c condCastSpellWithManaValueAtLeast) condition() (game.FootprintStep, bool) {
+	return condStep(game.FootprintCondCastSpellMV, c.N), true
 }

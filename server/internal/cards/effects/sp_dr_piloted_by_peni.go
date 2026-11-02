@@ -27,13 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("SP//dr — put a +1/+1 counter on target creature",
 				onePlusOneCounterOnFirstLegalTarget), TargetCreature("target creature")),
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !combatDamageToPlayerBy(ev, source.Controller, g) {
-					return false
-				}
-				dealer, ok := g.LookupCardForEffect(ev.Source)
-				return ok && b07IsModified(g, dealer)
-			}, "SP//dr — a modified creature dealt combat damage to a player: draw a card",
+			On(game.EventDealDamage, modifiedCreatureDealtCombatDamageToPlayer, "SP//dr — a modified creature dealt combat damage to a player: draw a card",
 				Do(DrawCards{N: 1})),
 		},
 	})

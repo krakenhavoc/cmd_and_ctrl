@@ -1292,3 +1292,14 @@ func WheneverOneOrMoreOpponentsEachLoseExactly(n int, label string, effect Effec
 	t.AtBatchEnd = &game.BatchEndCondition{OpponentLostExactly: n}
 	return t
 }
+
+// modifiedCreatureDealtCombatDamageToPlayer is the shared trigger test
+// for "whenever a modified creature you control deals combat damage to a
+// player".
+func modifiedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+		return false
+	}
+	dealer, ok := g.LookupCardForEffect(ev.Source)
+	return ok && b07IsModified(g, dealer)
+}

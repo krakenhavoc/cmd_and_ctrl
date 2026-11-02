@@ -107,6 +107,10 @@ const (
 	// FootprintCondNoSpellsCast: the item's controller cast no spells
 	// this turn (Edgar). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
+	// FootprintCondCastSpellMV: the item's controller has cast a spell
+	// with mana value N or greater this turn (Rhino, Barreling Brute).
+	// No step in the vocabulary casts a spell.
+	FootprintCondCastSpellMV FootprintCond = "cast_spell_mv"
 	// FootprintCondMonarch: the item's controller is the monarch (Ginger).
 	FootprintCondMonarch FootprintCond = "monarch"
 	// FootprintCondInitiative: the item's controller has the initiative
@@ -728,6 +732,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CitysBlessingForEffect(you)
 	case FootprintCondNoSpellsCast:
 		return g.CastTallyFor(you).Total == 0
+	case FootprintCondCastSpellMV:
+		return g.CastTallyFor(you).MaxManaValue >= s.N
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
