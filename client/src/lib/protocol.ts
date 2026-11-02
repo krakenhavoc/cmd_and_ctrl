@@ -3734,6 +3734,14 @@ export interface ActivatedAbilityView {
   // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #4799: an "Unattach an Equipment from <this>" cost (Captain America,
+  // First Avenger). The Equipment attached to this permanent right now,
+  // whoever controls them, min / max the cost's count (1). The pick rides
+  // activate_ability as `unattach_ids`. An empty list means the cost
+  // cannot be paid (CR 118.3). A divided clause whose amount is read from
+  // the pick carries `divide.by_unattach`.
+  unattach_label?: string;
+  unattach_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
   // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
   // shape a hand card's convoke / waterbend ships as `tap_cost`, so
@@ -4312,6 +4320,12 @@ export interface DivideView {
   // Judgment's madness X) arrives already resolved into the fields
   // above; there is nothing for the client to compute.
   up_to?: boolean;
+  // #4799: an amount read from the Equipment an "Unattach an Equipment
+  // from <this>" cost names (Captain America, First Avenger): the amount
+  // each candidate in the row's `unattach_options` would announce, by id.
+  // When present, the division is by_unattach[the picked Equipment] and
+  // `total` is ignored.
+  by_unattach?: Record<string, number>;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`

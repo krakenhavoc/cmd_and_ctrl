@@ -1304,11 +1304,19 @@ type SacrificeGroupView struct {
 // never learns there was a rule. `up_to` is "distribute UP TO that
 // many" (Lathiel): the shares may sum to less than the amount, each
 // target still at least 1.
+//
+// #4799: `by_unattach` is an amount read from the Equipment an "Unattach
+// an Equipment from <this>" cost names (Captain America's "damage equal
+// to that Equipment's mana value"): the amount each candidate in the
+// row's `unattach_options` would announce, by wire id. When it is
+// present the division is by_unattach[the picked Equipment], and
+// `total` (the amount with no pick, 0) is ignored.
 type DivideView struct {
-	Total       int  `json:"total,omitempty"`
-	FromX       bool `json:"from_x,omitempty"`
-	DoubleFromX int  `json:"double_from_x,omitempty"`
-	UpTo        bool `json:"up_to,omitempty"`
+	Total       int            `json:"total,omitempty"`
+	FromX       bool           `json:"from_x,omitempty"`
+	DoubleFromX int            `json:"double_from_x,omitempty"`
+	UpTo        bool           `json:"up_to,omitempty"`
+	ByUnattach  map[string]int `json:"by_unattach,omitempty"`
 }
 
 // divideView projects a clause's division, or nil for none. The spec
@@ -5022,6 +5030,19 @@ type ActivatedAbilityView struct {
 	// is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// UnattachLabel / UnattachOptions describe an "Unattach an Equipment
+	// from <this>" cost component (#4799) — Captain America, First
+	// Avenger's throw. The same LegalTargetsView the return and exile
+	// picks ship: min and max the cost's count (1), and cards the
+	// Equipment attached to this permanent right now, whoever controls
+	// them (game.UnattachCostOptionsForEffect). The chosen Equipment go
+	// back as `unattach_ids`. Absent when the cost has no such
+	// component; present with too few cards means the cost cannot be
+	// paid (CR 118.3). Not a target list: unattaching to pay a cost does
+	// not target (CR 601.2h). A divided clause whose amount is read from
+	// the pick carries `divide.by_unattach`.
+	UnattachLabel   string            `json:"unattach_label,omitempty"`
+	UnattachOptions *LegalTargetsView `json:"unattach_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -13151,6 +13172,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ExilePermanentLabel = ec.Label
 			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
 		}
+		// #4799: the unattach component, from the walk the engine
+		// validates against.
+		if n := a.Cost.UnattachEquipment; n > 0 {
+			v.UnattachLabel = unattachCostLabel(c)
+			v.UnattachOptions = unattachCostOptions(g, c.InstanceID, n)
+		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,
 		// so a Waterbend {X} ships Max 0 and DemandsX and the client
@@ -13177,6 +13204,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// protection from that permanent's colour or type.
 			v.LegalTargets = abilityLegalTargets(g, abilitySrc, a.Targets)
 			v.Clauses = viewOfClauses(g, abilitySrc, a.Targets)
+			// #4799: a division read from the unattach pick, per pick.
+			if v.UnattachOptions != nil {
+				stampUnattachDivide(g, v.LegalTargets, abilitySrc, a.Targets, v.UnattachOptions.Cards)
+				for i := range v.Clauses {
+					stampUnattachDivide(g, &v.Clauses[i], abilitySrc, a.Targets.Clause(i), v.UnattachOptions.Cards)
+				}
+			}
 			v.TargetChargedManaCosts = targetChargedManaCosts(g, caster, c, zone, a, v.LegalTargets)
 		}
 		// #764: a modal activated ability announces its modes with
@@ -13311,6 +13345,46 @@ func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetS
 	// gate demands for two or more targets.
 	stampDivideAmount(g, v, src, "", spec)
 	return v
+}
+
+// unattachCostLabel is an unattach component's words without the verb:
+// "an Equipment from <the source's name>".
+func unattachCostLabel(c game.Card) string {
+	return "an Equipment from " + c.Name
+}
+
+// unattachCostOptions is the Equipment that could pay an
+// UnattachEquipment cost of `n` right now (#4799), min and max both n.
+// Caller must hold g.mu.
+func unattachCostOptions(g *game.Game, sourceID uuid.UUID, n int) *LegalTargetsView {
+	return &LegalTargetsView{Min: n, Max: n, Cards: cardIDStrings(g.UnattachCostOptionsForEffect(sourceID))}
+}
+
+// stampUnattachDivide writes divide.by_unattach onto a divided clause
+// whose amount rule may read the unattach pick (#4799): the amount the
+// rule answers for each candidate, read as the gate will read it
+// (game.DivideAmountArgs.Unattached). A clause that divides a fixed or
+// X amount is left alone. Caller must hold g.mu.
+func stampUnattachDivide(g *game.Game, v *LegalTargetsView, src game.TargetSource, spec *game.TargetSpec, candidates []string) {
+	if v == nil || v.Divide == nil || spec == nil || spec.Divide == nil || spec.Divide.AmountKey.IsZero() {
+		return
+	}
+	args := game.DivideAmountArgs{Controller: src.Controller}
+	if src.Object != nil {
+		args.Source = src.Object.InstanceID
+	}
+	by := make(map[string]int, len(candidates))
+	for _, raw := range candidates {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		args.Unattached = []uuid.UUID{id}
+		by[raw] = g.DivideAmountForEffect(spec.Divide, args).TotalFor(0)
+	}
+	if len(by) > 0 {
+		v.Divide.ByUnattach = by
+	}
 }
 
 // targetChargedManaCosts prices an activation of `a` once per legal

@@ -708,6 +708,14 @@ func Register(spec Spec) {
 					spec.Name, i, z, why))
 			}
 		}
+		// #4799: "Unattach an Equipment from <this>" — the one printed
+		// count is 1. The view's per-Equipment divided amount
+		// (divide.by_unattach) quotes one pick, so a larger count needs
+		// that wire shape widened first.
+		if n := ab.Cost.UnattachEquipment; n != 0 && n != 1 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d unattaches %d Equipment — only \"Unattach an Equipment\" (1) is supported",
+				spec.Name, i, n))
+		}
 		// #2028: the source pays one component (CR 118.3), so a cost
 		// cannot both return it and sacrifice or exile it. No printed
 		// card does; the activation would refuse every attempt.

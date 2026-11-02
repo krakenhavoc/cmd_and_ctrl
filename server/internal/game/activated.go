@@ -525,6 +525,27 @@ type AbilityCost struct {
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
 
+	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
+	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
+	// Avenger's "{3}, Unattach an Equipment from Captain America:". The
+	// number of Equipment the cost unattaches; zero means no such
+	// component, which is every other ability. effects.Register admits
+	// only 1, the one printed count. See unattach_cost.go.
+	//
+	// The activator names the Equipment in
+	// ActivateAbilityParams.UnattachIDs at announce, beside the other
+	// picks: each must be an Equipment attached to the source right now
+	// (CR 701.3d), whoever controls it. Unattaching moves nothing — the
+	// Equipment stays on the battlefield — so the pick is excluded from
+	// no other component. Battlefield only (AbilityNeedsPermanentSource).
+	//
+	// A divided amount may read the pick: DivideAmountArgs.Unattached is
+	// the announced list, so "damage equal to that Equipment's mana value
+	// divided as you choose" is sized from the Equipment the same
+	// announcement names (CR 601.2b's "a choice that player would make
+	// later" made at announce).
+	UnattachEquipment int
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -1226,6 +1247,13 @@ type ActivateAbilityParams struct {
 	// against different zones.
 	ExilePermanentIDs []uuid.UUID
 
+	// UnattachIDs names the Equipment paid to an UnattachEquipment cost
+	// (#4799): exactly the cost's count, each once, each an Equipment
+	// attached to the source. On the wire as `unattach_ids`. A divided
+	// amount that reads the pick (DivideAmountArgs.Unattached) is sized
+	// from this list, so the client must send it with the division.
+	UnattachIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -1763,6 +1791,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// #4799: "Unattach an Equipment from <this>" (Captain America, First
+	// Avenger). Unattaching moves nothing, so the pick competes with no
+	// other component; it is checked here with the rest so a refusal
+	// costs nothing (ADR 0020 §3, CR 118.3).
+	if err := g.validateUnattachCostLocked(cardID, srcZone, ab.Cost.UnattachEquipment, params.UnattachIDs); err != nil {
+		return err
+	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
 	// else to check: an exert cost can be paid tapped or untapped, and
 	// again after an earlier exert this turn (CR 701.43b).
@@ -1910,7 +1945,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// validated above, which Simic Manipulator's power bound reads.
 	bindStepsBound(steps, AnnouncedBound{X: params.XValue, CountersRemoved: counters.total})
 	// #1657: a divided amount read off the board, fixed at activation.
-	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
+	// #4799: and one read off the Equipment the cost unattaches, which
+	// this same announcement names (validated above).
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID, Unattached: params.UnattachIDs})
 	// #2055: the payload names targets for the controller's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
@@ -2240,6 +2277,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// #4799: the unattach component, at the same point: the Equipment
+	// stays on the battlefield, attached to nothing (CR 701.3d).
+	g.payUnattachCostLocked(params.UnattachIDs)
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}

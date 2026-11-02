@@ -77,6 +77,10 @@ export type TargetingMode =
 export interface CastChoices {
   // S20 sub-PR 3: the announced X for an {X} spell.
   xValue?: number;
+  // #4799: the Equipment an "Unattach an Equipment from <this>" cost
+  // names — the pick a divided amount may read (`divide.by_unattach`).
+  // Set only on an ability's walk.
+  unattachIDs?: string[];
   // ADR 0109 §9: how many counters the activation's cost is removing —
   // the X a clause bounded by "the counters removed this way" reads
   // (`x_from_counters_removed`). Set only on an ability's walk.
@@ -762,7 +766,9 @@ export function stepsFor(
               ? { label: c.total.label, max: c.total.max, values: c.total.values ?? {} }
               : undefined,
             relation: c.relation,
-            divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
+            divide: c.divide
+              ? divideTotal(c.divide, choices?.xValue, choices?.unattachIDs)
+              : undefined,
             divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
             divideUpTo: c.divide?.up_to === true ? true : undefined,
           },
@@ -773,7 +779,17 @@ export function stepsFor(
 // divideTotal is the amount a divided clause splits (#1563) — the
 // client twin of game.(*DivideSpec).TotalFor: a fixed total, or the X
 // the caster announced, doubled once X reaches `double_from_x`.
-export function divideTotal(d: DivideView, xValue: number | undefined): number {
+// #4799: or the amount the server quoted for the Equipment an unattach
+// cost names (`by_unattach`), summed over the picks; 0 with no pick.
+export function divideTotal(
+  d: DivideView,
+  xValue: number | undefined,
+  unattachIDs?: string[],
+): number {
+  if (d.by_unattach) {
+    const by = d.by_unattach;
+    return (unattachIDs ?? []).reduce((sum, id) => sum + (by[id] ?? 0), 0);
+  }
   if (!d.from_x) return d.total ?? 0;
   const x = Math.max(0, xValue ?? 0);
   if (d.double_from_x && d.double_from_x > 0 && x >= d.double_from_x) return 2 * x;
@@ -1917,6 +1933,7 @@ export function beginForAbility(
   counter?: CounterPayment,
   modes?: number[],
   phyrexianLife?: number,
+  unattachIDs?: string[],
 ): void {
   // #764: a modal activated ability announces its modes WITH its
   // targets (CR 602.2b), so the walk is built out of the chosen
@@ -1940,6 +1957,9 @@ export function beginForAbility(
   const choices: CastChoices = {};
   if (xValue !== undefined) choices.xValue = xValue;
   if (counter) choices.countersRemoved = countersRemovedOf(counter, ability.counter_cost_n);
+  // #4799: the Equipment the unattach cost names, picked before the
+  // targets, which a division may be sized from (divide.by_unattach).
+  if (unattachIDs && unattachIDs.length > 0) choices.unattachIDs = unattachIDs;
   const steps =
     modes && modes.length > 0
       ? abilityModeSteps(ability, modes, xValue, choices.countersRemoved)

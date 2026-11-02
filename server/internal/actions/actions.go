@@ -1777,6 +1777,11 @@ func dispatch(g *game.Game, a Action) error {
 			// harness, Altar of Bhaal). Its own field rather than
 			// exile_ids, which names cards in a hand or a graveyard.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #4799 — unattach_ids names the Equipment paid to an
+			// "Unattach an Equipment from <this>" cost (Captain America,
+			// First Avenger). A divided amount may read it, so it rides
+			// with the distribution.
+			UnattachIDs []string `json:"unattach_ids,omitempty"`
 			// #2598 — reveal_ids names the cards revealed to pay a
 			// "Reveal X black cards from your hand" cost (Martyr of
 			// Bones). The name a cast's reveal pick rides; the count
@@ -1891,6 +1896,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				exilePermanentIDs = append(exilePermanentIDs, id)
 			}
+			var unattachIDs []uuid.UUID
+			for _, raw := range p.UnattachIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability unattach_ids: %w", err)
+				}
+				unattachIDs = append(unattachIDs, id)
+			}
 			revealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
 			for _, raw := range p.RevealIDs {
 				id, err := uuid.Parse(raw)
@@ -1933,6 +1946,7 @@ func dispatch(g *game.Game, a Action) error {
 				TopIDs:            topIDs,
 				ReturnIDs:         returnIDs,
 				ExilePermanentIDs: exilePermanentIDs,
+				UnattachIDs:       unattachIDs,
 				RevealIDs:         revealIDs,
 				WaterbendIDs:      waterbendIDs,
 				CostBranch:        p.CostBranch,

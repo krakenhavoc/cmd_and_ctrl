@@ -115,6 +115,19 @@ type DivideAmountArgs struct {
 	// madness cost was paid". Empty for a cast that paid its mana
 	// cost, and always for an ability.
 	AltCost string
+
+	// Unattached is the Equipment an activation's "Unattach an Equipment
+	// from <this>" cost names (#4799, AbilityCost.UnattachEquipment) —
+	// "damage equal to that Equipment's mana value divided as you
+	// choose" (Captain America, First Avenger). CR 601.2d announces the
+	// division before CR 601.2h pays the cost, so the pick is read from
+	// the same announcement, already validated, while the Equipment is
+	// still attached: CR 601.2b's "a choice that player would make later
+	// in the announcement … that player makes that choice at this time".
+	// Nil for a cast, a trigger and every ability without the component;
+	// the protocol view and the move enumerator pass one candidate at a
+	// time to size the division each pick would announce.
+	Unattached []uuid.UUID
 }
 
 // DivideAmountFunc computes a divided amount. It answers in the DATA

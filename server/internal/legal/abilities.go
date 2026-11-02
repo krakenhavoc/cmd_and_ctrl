@@ -62,6 +62,10 @@ type activateParams struct {
 	// cost (The Soul Stone's harness). Omitted for every ability that
 	// does not print the clause.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// #4799: the Equipment paid to an "Unattach an Equipment from
+	// <this>" cost (Captain America, First Avenger). Omitted for every
+	// ability that does not print the clause.
+	UnattachIDs []string `json:"unattach_ids,omitempty"`
 	// #1310: the permanents tapped to pay part of a "Waterbend {N}"
 	// cost (CR 701.67a). Omitted when the payment taps none.
 	WaterbendIDs []string `json:"waterbend_ids,omitempty"`
@@ -252,8 +256,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// branch folded into its cost (game.ChosenAbilityCost), so every gate
 	// and payment below is the ordinary one and a branch nothing can pay
 	// offers no move (CR 118.3). The move names its branch (cost_branch).
-	for _, er := range expandCostBranches(abilities) {
-		row, ab, costBranch := er.row, er.ab, er.branch
+	// #4799: and an "Unattach an Equipment from <this>" cost is one row
+	// per Equipment attached, since a divided amount may read the pick.
+	for _, er := range e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities)) {
+		row, ab, costBranch, unattach := er.row, er.ab, er.branch, er.unattach
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -716,7 +722,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 			// #1657: a divided amount read off the board, sized as
 			// the activation gate will size it.
-			g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+			g.BindDivideAmountsForEffect(steps, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID, Unattached: unattach})
 			if game.StepsBoundByX(steps) {
 				// #1723: an X-bound target clause ("with mana value
 				// X") is NOT monotonic in X the way "X or less" is —
@@ -753,7 +759,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					}
 					for x := floor; x <= ceiling; x++ {
 						xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
-						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID, Unattached: unattach})
 						game.BindStepsXForEffect(xs, x)
 						for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
 							announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
@@ -781,7 +787,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
 				for x := floor; x <= basePay.xValue; x++ {
 					xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
-					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
+					g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID, Unattached: unattach})
 					game.BindStepsXForEffect(xs, x)
 					for _, ts := range e.legalStepSets(abilitySrc, xs, budget) {
 						announcements = append(announcements, announcement{sel: si, modes: modes, targets: ts, steps: xs, xValue: x})
@@ -987,6 +993,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								label += cc.label(g)
 								label += modesLabel(ab.Modes, ann.modes)
 								label += targetLabel(g, targets)
+								label += unattachLabel(g, unattach)
 								// #74: the life on the Move is what the
 								// controller pays at announce, so the
 								// Phyrexian half counts — a policy that saw
@@ -1071,6 +1078,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 										TopIDs:            idStrings(topIDs),
 										ReturnIDs:         idStrings(rets),
 										ExilePermanentIDs: idStrings(perms),
+										UnattachIDs:       idStrings(unattach),
 										WaterbendIDs:      idStrings(waterbendIDs),
 										TapIDs:            idStrings(taps),
 										XValue:            tapXValue,
