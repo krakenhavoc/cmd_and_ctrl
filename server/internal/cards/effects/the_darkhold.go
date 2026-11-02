@@ -55,31 +55,35 @@ func init() {
 				Label:        "{6}{B}{B}, {T}: Each player's life total becomes the lowest life total among all players. Activate only as a sorcery.",
 				Cost:         Plus(ManaCost("{6}{B}{B}"), TapCost()),
 				SorcerySpeed: true,
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					lowest, found := 0, false
-					for _, p := range g.Seats {
-						if p == nil || p.Eliminated {
-							continue
-						}
-						if !found || p.Life < lowest {
-							lowest, found = p.Life, true
-						}
-					}
-					if !found {
-						return nil
-					}
-					for _, p := range g.Seats {
-						if p == nil || p.Eliminated {
-							continue
-						}
-						if err := b31LifeBecomes(ctx, p.ID, lowest); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Effect:       darkholdLowestLifeBecomes,
 			},
 		},
 	})
+}
+
+// darkholdLowestLifeBecomes is the second ability: every player still in
+// the game has their life total become the lowest among them (CR 119.5).
+func darkholdLowestLifeBecomes(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	lowest, found := 0, false
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if !found || p.Life < lowest {
+			lowest, found = p.Life, true
+		}
+	}
+	if !found {
+		return nil
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if err := b31LifeBecomes(ctx, p.ID, lowest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
