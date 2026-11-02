@@ -48,7 +48,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			withAtBatchEnd(On(game.EventAttack, attackedWithASpider, spinneretCounterLabel,
-				putACounterOnThis(game.CounterPlusOne)), ThatManyEventsAtLeast(2)),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})), ThatManyEventsAtLeast(2)),
 			withAtBatchEnd(On(game.EventDealDamage, spinneretDealtDamage, spinneretDamageLabel,
 				Do(Instruction(func(ctx *Context) error { return ExileTopNUntilYourNextTurn(ctx, 1) }))),
 				ThatMuchDamageDealtAtLeast(4)),
