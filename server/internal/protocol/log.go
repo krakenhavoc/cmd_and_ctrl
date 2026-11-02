@@ -1515,6 +1515,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.NewZone == game.ZoneStack {
 			return LogEvent{}, false
 		}
+		// A permanent spawned onto the battlefield comes from no zone
+		// (#4763), and EventSpawned already announced it.
+		if ev.OldZone == "" && ev.NewZone == game.ZoneBattlefield {
+			return LogEvent{}, false
+		}
 		// A spell going to the graveyard off the stack is the tail of
 		// "resolved" / "was countered", not a separate fact.
 		if ev.OldZone == game.ZoneStack && ev.NewZone == game.ZoneGraveyard {

@@ -245,3 +245,84 @@ func TestRefusedSpawnAnnouncesNothing(t *testing.T) {
 		}
 	}
 }
+
+// #4763: a permanent spawned onto the battlefield enters as any card
+// does. Its static abilities apply at once, it has a CR 613.7
+// timestamp, and a planeswalker gets its starting loyalty.
+func TestSpawnedPermanentEntersThroughTheZoneMove(t *testing.T) {
+	const lordKey = "spawn-zone-move-lord-4763"
+	withStaticAbilities(t, func(key string) []StaticAbility {
+		if key != lordKey {
+			return nil
+		}
+		return []StaticAbility{{
+			Layer: Layer6Ability,
+			AppliesTo: func(target *Card, _ *Game, source *Card) bool {
+				return target.IsCreature() && target.Controller == source.Controller &&
+					target.InstanceID != source.InstanceID
+			},
+			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
+				c.Abilities = append(c.Abilities, "haste")
+			},
+		}}
+	})
+	g, alice, _ := spawnTestGame(t)
+	bear := pushTypedTestCard(g, Card{
+		Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
+		Owner: alice.ID, Controller: alice.ID,
+	})
+	// Resolve the board as it stands, so nothing is stale but the spawn.
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	before := len(g.Events)
+
+	ids, err := g.SpawnCards(alice.ID, alice.ID, ZoneBattlefield, Card{
+		Name: "Lord", TypeLine: "Creature — Elf", OracleID: lordKey, Power: 1, Toughness: 1,
+	}, 1)
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("SpawnCards: %v (%d spawned)", err, len(ids))
+	}
+	lord := ids[0]
+
+	// What every reader does: recompute only when something says the
+	// board changed.
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if c := findBattlefieldCard(g, bear); !HasKeyword(c, "haste") {
+		t.Error("the spawned lord's static did not apply until something else recalculated")
+	}
+	if c := findBattlefieldCard(g, lord); c.EnteredBattlefieldAt == 0 {
+		t.Error("the spawned permanent has no CR 613.7 timestamp")
+	}
+	move, etb := -1, -1
+	for i, ev := range g.Events[before:] {
+		if ev.CardID != lord {
+			continue
+		}
+		switch ev.Kind {
+		case EventZoneMove:
+			if ev.NewZone == ZoneBattlefield && move < 0 {
+				move = i
+			}
+		case EventETB:
+			if etb < 0 {
+				etb = i
+			}
+		}
+	}
+	if move < 0 || etb < 0 || move > etb {
+		t.Errorf("zone move at %d, ETB at %d: want a zone move onto the battlefield, then the ETB", move, etb)
+	}
+
+	// The ETB hook: a planeswalker enters with its printed loyalty
+	// (CR 306.5b) rather than none.
+	ids, err = g.SpawnCards(alice.ID, alice.ID, ZoneBattlefield, Card{
+		Name: "Walker", TypeLine: "Legendary Planeswalker — Test", StartingLoyalty: 3,
+	}, 1)
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("SpawnCards walker: %v (%d spawned)", err, len(ids))
+	}
+	if c := findBattlefieldCard(g, ids[0]); c == nil {
+		t.Error("the spawned planeswalker is not on the battlefield")
+	} else if n := c.Counters[CounterLoyalty]; n != 3 {
+		t.Errorf("spawned planeswalker loyalty = %d, want 3", n)
+	}
+}

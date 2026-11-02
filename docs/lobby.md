@@ -1190,9 +1190,11 @@ Every spawn is **announced in the public game log** ("Luke (host) spawned
 2 × Treasure onto Ana's battlefield" — see `spawn` in
 [protocol.md](protocol.md)) and is **undoable** with the ordinary undo,
 attributed to the spawner and flagged free, so repairing a typo does not cost
-the host their per-turn take-back. A battlefield spawn emits `EventETB`, so
-enters-the-battlefield triggers fire and the spawn can put abilities on the
-stack; that is the point of the feature.
+the host their per-turn take-back. A card spawned onto the battlefield enters
+like any other card (#4763): a zone move, so its static abilities apply at once
+and it gets a timestamp, then `EventETB`, so enters-the-battlefield triggers
+fire and the spawn can put abilities on the stack, then the enters hook, so a
+planeswalker gets its starting loyalty. That is the point of the feature.
 
 **Request**
 
