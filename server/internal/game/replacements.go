@@ -676,12 +676,12 @@ type ReplacementEvent struct {
 	// the permanent as its own printed self. Added in S16.5 (#159).
 	EntersAsCopyOf *PrintedValues
 
-	// copySourceID names the permanent EntersAsCopyOf was taken
-	// from. Unexported because the catalog has no business reading
-	// it: it exists so the entry path can pick up the source's
-	// card-carried ability slices (the token case, which
-	// PrintedValues cannot carry — see copy.go) and so the copy
-	// event names what was copied.
+	// copySourceID names the object EntersAsCopyOf was taken from: a
+	// permanent, or a card in a graveyard (#4797). It exists so the
+	// entry path can pick up the source's card-carried ability slices
+	// (the token case, which PrintedValues cannot carry — see copy.go)
+	// and so the copy event names what was copied. The catalog reads it
+	// only through CopySourceForEffect, from an except clause.
 	copySourceID uuid.UUID
 
 	// copyUntilEndOfTurn marks EntersAsCopyOf as a copy WITH A

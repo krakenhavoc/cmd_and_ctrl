@@ -243,13 +243,16 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	if exchange && cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		ev.exchangeTextWith = cardID
 	} else if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
-		if src, ok := g.battlefieldCardLocked(cardID); ok {
-			values := SingleFacedCopiableValuesOf(*src)
+		if src, ok := g.copySourceCardLocked(cardID); ok {
+			values := SingleFacedCopiableValuesOf(src)
+			// #4797: named before Except runs, so an except clause can
+			// read what is being copied (CopySourceForEffect) — Superior
+			// Spider-Man's "When you do, exile that card".
+			ev.copySourceID = cardID
 			if sel := chosen.effect.CopySelector; sel != nil && sel.Except != nil {
 				sel.Except(ev, &values, g, chosen.source)
 			}
 			ev.EntersAsCopyOf = &values
-			ev.copySourceID = cardID
 			ev.copyUntilEndOfTurn = chosen.effect.CopySelector != nil && chosen.effect.CopySelector.UntilEndOfTurn
 		}
 	}
@@ -291,6 +294,44 @@ func (g *Game) copyCandidateStillLegalLocked(
 		}
 	}
 	return false
+}
+
+// copySourceCardLocked is the object a copy_target answer names, as the
+// copy reads it: a permanent on the battlefield, or — for "enter as a
+// copy of any creature card in a graveyard" (Body Double, Superior
+// Spider-Man, #4797) — a card in a graveyard, whose copiable values
+// are its printed ones (CR 707.2). The candidate list decides which
+// zones a card offers; this only finds the pick where it is. Anywhere
+// else (it was exiled in response) it is no longer there to copy, and
+// the answer degrades to a decline like any other stale pick.
+//
+// Caller must hold g.mu.
+func (g *Game) copySourceCardLocked(cardID uuid.UUID) (Card, bool) {
+	if src, ok := g.battlefieldCardLocked(cardID); ok {
+		return *src, true
+	}
+	z := g.findCardZoneLocked(cardID)
+	if z == nil || z.Kind != ZoneGraveyard {
+		return Card{}, false
+	}
+	for _, c := range z.Cards {
+		if c.InstanceID == cardID {
+			return c, true
+		}
+	}
+	return Card{}, false
+}
+
+// CopySourceForEffect is the object this entry is copying, once its
+// copy_target prompt has been answered with one: a permanent, or a card
+// in a graveyard (#4797). uuid.Nil before the answer and for a decline.
+// An except clause reads it to name "that card" (Superior Spider-Man's
+// "When you do, exile that card").
+func (ev *ReplacementEvent) CopySourceForEffect() uuid.UUID {
+	if ev == nil {
+		return uuid.Nil
+	}
+	return ev.copySourceID
 }
 
 // battlefieldCardLocked returns a pointer to the named battlefield
