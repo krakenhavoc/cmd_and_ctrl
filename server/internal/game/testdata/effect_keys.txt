@@ -273,6 +273,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undying/return
 body until/return-to-battlefield
+body venom-deadly-devourer/counters
 body villainous-syndication/return
 body vronos/phase-out-the-objects
 body warp/exile
@@ -1410,6 +1411,7 @@ tail daredevil-man-without-fear/hero-boost
 tail dark-impostor/after-exile
 tail dark-tutor/after-hand
 tail dark-tutor/found
+tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
@@ -1501,6 +1503,7 @@ tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
 tail exile-until/record-event-return
 tail exile-until/record-return
