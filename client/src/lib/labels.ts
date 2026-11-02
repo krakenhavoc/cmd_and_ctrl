@@ -1181,6 +1181,13 @@ export const LABEL_SPECS = {
     owners: ["routes/Catalog.svelte"],
     doc: "the Catalogue's search field; the catalog.search hint points at it",
   }),
+  filterCatalogueBySet: label({
+    name: "filter the catalogue by set",
+    kind: "aria",
+    role: "combobox",
+    owners: ["routes/Catalog.svelte"],
+    doc: "the Catalogue's set picker (#4790): narrows the grid to one set's cards and shows how many of its cards the game plays",
+  }),
   searchRoadmap: label({
     name: "search the roadmap",
     kind: "aria",

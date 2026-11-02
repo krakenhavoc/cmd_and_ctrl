@@ -425,6 +425,56 @@ came from. A signed-in session for anyone else changes nothing.
 | 404 | game not found |
 | 409 | the table has been archived |
 
+### `GET /catalog`
+
+The public card catalogue ([ADR 0042](decisions/0042-card-catalog-page.md),
+`server/internal/catalog`): every card the engine automates, joined to its
+Scryfall printing, with how faithfully it is implemented. The client's
+`#/catalog` page renders it. No session is needed, and none is read.
+`Cache-Control: public, max-age=300`. The body is computed from the registry
+and the loaded Scryfall dump on each request (the dump changes only on a
+reload), and with no dump loaded it still lists the cards by name.
+
+**Response 200** (abridged)
+
+```json
+{
+  "counts": { "total": 3, "full": 2, "caveats": 0, "unreviewed": 1, "missing": 0 },
+  "cards": [
+    {
+      "oracle_id": "…", "scryfall_id": "…", "name": "Sol Ring",
+      "type_line": "Artifact", "types": ["artifact"],
+      "completeness": "full",
+      "sets": ["spm", "ltr", "cmm"]
+    }
+  ],
+  "sets": [
+    {
+      "code": "spm", "name": "Marvel's Spider-Man", "released": "2026-09-26",
+      "total": 188, "full": 118, "caveats": 2, "unreviewed": 0, "unsupported": 68
+    }
+  ]
+}
+```
+
+- `cards[].completeness` is `full`, `caveats` or `unreviewed`, never absent;
+  `caveats` are the player-facing sentences and are present exactly when it is
+  `caveats`.
+- `cards[].sets` (#4790, additive, omitted when empty) are the codes of the
+  sets the card is printed in, newest set first. Each is a `sets[].code`.
+- `sets` (#4790, additive, omitted with no dump loaded) is the set picker's
+  data, newest set first (by `released`, then `code`). It counts a set's
+  **unique cards** (oracle ids), not printings, and leaves out what is not a
+  card a player could play: tokens, double-faced tokens, emblems, art-series
+  and memorabilia records, planes, schemes and vanguards, digital-only
+  printings and basic lands. A set left with no card is not listed.
+  `full`, `caveats` and `unreviewed` split the set's catalogued cards by
+  `completeness`, and `unsupported` is the rest, so `full + caveats +
+  unreviewed + unsupported == total`. `released` is the date most of the
+  set's printings carry, and `name` falls back to the upper-cased code when
+  the dump has none. Only counts are published for the cards that are not
+  supported: no names, no art.
+
 ### `GET /roadmap`
 
 The public engine roadmap ([ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)):
@@ -432,8 +482,8 @@ every keyword, mechanic and engine gap in `server/internal/roadmap`'s
 registry, with a status a player can read. The client's `#/roadmap`
 page renders it. No session is needed, and none is read.
 
-It is public, while `GET /catalog` is not, because of what the body
-holds (ADR 0092 Decision 1): card **names** and caveat sentences this
+It was public before `GET /catalog` was (that one is public too now,
+ADR 0156), because of what the body holds (ADR 0092 Decision 1): card **names** and caveat sentences this
 repository wrote. It never holds card art, an image URL, a Scryfall
 printing ID or oracle text. `roadmap`'s handler tests fail if an
 `image`, `oracle_text`, `scryfall_id` or `engine_notes` key appears
