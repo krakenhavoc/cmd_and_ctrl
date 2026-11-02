@@ -612,6 +612,26 @@ func (g *Game) TimesAttackedThisTurn(cardID uuid.UUID) int {
 	return n
 }
 
+// CreaturesAttackedThisTurn is how many distinct creatures were declared
+// as attackers this turn, whoever controls them: The Mary Janes' "costs
+// {1} less to cast for each creature that attacked this turn". A creature
+// that attacked in two combats counts once; one that left and came back is
+// a new object (CR 400.7) and counts again. Creatures that have since left
+// the battlefield still count (they attacked).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesAttackedThisTurn() int {
+	type obj struct {
+		id    uuid.UUID
+		epoch int
+	}
+	seen := map[obj]bool{}
+	for _, a := range g.TurnTally.Attacks {
+		seen[obj{a.Attacker, a.Epoch}] = true
+	}
+	return len(seen)
+}
+
 // noteBecameTappedLocked counts one tap of the object `cardID` names.
 // A fresh map every time, never a write into shared storage: the undo
 // clone holds the old one (#1238's reason).
