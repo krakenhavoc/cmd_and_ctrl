@@ -1101,6 +1101,7 @@ payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
+payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
