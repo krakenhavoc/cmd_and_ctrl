@@ -30,6 +30,7 @@
   import Card from "./Card.svelte";
   import { confirmAction } from "../../dock";
   import { keywordCastWords } from "../../mayCast";
+  import { distinctCastLabels } from "../../castLineLabels";
   import DockSheet from "./DockSheet.svelte";
 
   interface Props {
@@ -65,6 +66,10 @@
     const prefix = `${source}: `;
     return m.label.startsWith(prefix) ? m.label.slice(prefix.length) : m.label;
   }
+
+  // #4709: two lines whose targets share a name (a creature and its token
+  // copy) would read the same; their labels say which is which.
+  const castLabels = $derived(distinctCastLabels(casts, moveLabel, snap, viewerID));
 
   function send(m: LegalMoveView): void {
     sendAction(m.type as ActionType, m.params, m.player);
@@ -131,7 +136,7 @@
           {#each casts as m, i (i)}
             <li>
               <button type="button" class="cast" onclick={() => send(m)}>
-                {moveLabel(m)}
+                {castLabels[i]}
               </button>
             </li>
           {/each}
