@@ -28,14 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Silver Sable, Mercenary Leader — put a +1/+1 counter on another target creature",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						id, ok := b16FirstLegalTargetCard(ctx)
-						if !ok {
-							return nil
-						}
-						return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-					}),
+					b36CounterOnChosenAnimal),
 				Another(TargetCreature("another target creature"))),
 			Targeting(
 				WheneverThisAttacks("Silver Sable, Mercenary Leader — target modified creature you control gains lifelink until end of turn",

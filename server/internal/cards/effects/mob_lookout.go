@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,14 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WhenThisEnters("Mob Lookout — target creature you control connives", func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
-				}),
+				WhenThisEnters("Mob Lookout — target creature you control connives", conniveFirstLegalTarget),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})

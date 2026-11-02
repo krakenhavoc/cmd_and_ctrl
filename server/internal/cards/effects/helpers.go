@@ -1701,3 +1701,15 @@ func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) err
 func bounceTheTargetToHand(g *game.Game, item *game.StackItem) error {
 	return bounceTheTarget(item, NewContext(g, item))
 }
+
+// conniveFirstLegalTarget is "target creature you control connives": the
+// announced creature, if still legal, connives (Mob Lookout, Scorpion,
+// Seething Striker).
+func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
+}
