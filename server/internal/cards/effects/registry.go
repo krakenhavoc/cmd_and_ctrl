@@ -59,6 +59,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -112,6 +113,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 			}
@@ -151,6 +153,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -2085,6 +2088,43 @@ func checkUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbil
 	if ms.Min != 0 || ms.Max != len(ms.Options) || ms.Repeatable || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() ||
 		ms.AtRandom || ms.NotChosen != game.ModeMemoryNone {
 		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" that is not a plain up-to count — build it with ChooseUpToX", name))
+	}
+}
+
+// checkPawprints validates a pawprint budget (CR 700.2i, #4786) at
+// boot. CR 700.2i speaks of "modal spells" only, so a trigger's or an
+// activated ability's modes may not carry one. On a spell every bullet
+// prints at least one {P} (so the count bound Max, which the helper
+// sets to the budget, stays a true upper bound), and the budget stands
+// alone: no raised, random, "up to X" or "that hasn't been chosen"
+// count and no escalate, none of which any printed pawprint card has.
+// A bullet with pawprints and no budget is refused too, since nothing
+// would read them.
+func checkPawprints(name, owner string, ms *game.ModeSpec, spell bool) {
+	if ms == nil {
+		return
+	}
+	any := ms.Pawprints != 0
+	for _, o := range ms.Options {
+		any = any || o.Pawprints != 0
+	}
+	if !any {
+		return
+	}
+	if !spell {
+		panic(fmt.Sprintf("effects.Register: %q declares pawprints on %s — CR 700.2i gives a pawprint budget to modal spells only", name, owner))
+	}
+	if ms.Pawprints <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q has pawprint bullets but no budget on %s — build it with ChooseUpToPawprints", name, owner))
+	}
+	for i, o := range ms.Options {
+		if o.Pawprints < 1 {
+			panic(fmt.Sprintf("effects.Register: %q mode %d prints no {P} under a pawprint budget (CR 700.2i)", name, i))
+		}
+	}
+	if ms.Max != ms.Pawprints || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() || ms.AtRandom || !ms.NotRandomIf.IsZero() ||
+		ms.UpToCastX || ms.NotChosen != game.ModeMemoryNone || ms.Escalate != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares a pawprint budget beside another mode count — build it with ChooseUpToPawprints", name))
 	}
 }
 

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -111,6 +113,32 @@ func ChooseOneOrMore(options ...game.ModeOption) *game.ModeSpec {
 // same mode more than once"). Each occurrence gets its own targets.
 func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max, Repeatable: true}
+}
+
+// ChooseUpToPawprints — CR 700.2i, "Choose up to N {P} worth of modes"
+// (Season of Loss, Hela's Arcanum): any number of modes whose printed
+// pawprints add up to N or less, none at all included, as "up to" reads
+// everywhere else (Min 0). Each option is built with Pawprint. Max is
+// the budget, because every bullet spends at least one {P}; the weight
+// is judged by game.ModeSpec.WithinPawprints. `repeatable` is CR
+// 700.2d's "You may choose the same mode more than once", which every
+// printed pawprint card says. For a spell only: effects.Register refuses
+// it on a trigger or an activated ability (#4786).
+func ChooseUpToPawprints(budget int, repeatable bool, options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{
+		Prompt:     "Choose up to " + strconv.Itoa(budget) + " {P} worth of modes",
+		Options:    options,
+		Min:        0,
+		Max:        budget,
+		Repeatable: repeatable,
+		Pawprints:  budget,
+	}
+}
+
+// Pawprint is a pawprint mode: `o` printed after n {P} (CR 107.18).
+func Pawprint(n int, o game.ModeOption) game.ModeOption {
+	o.Pawprints = n
+	return o
 }
 
 // ChooseOneAtRandom — "Choose one at random —" (CR 700.2, Summon:

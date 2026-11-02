@@ -400,7 +400,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
 			Cost: "{1}{U}", Used: true,
-			Purpose: &PurposeView{Sweep: &SweepView{Matches: "creatures", How: "exile"}},
+			Purpose:   &PurposeView{Sweep: &SweepView{Matches: "creatures", How: "exile"}},
+			Pawprints: 2,
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -945,6 +946,8 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// ADR 0126 §6: the catalog's declared purpose for the bullet, read
 	// off the printed card like Label, which says the same in words.
 	"Purpose": surfacePublicPile,
+	// CR 700.2i, #4786: the bullet's printed {P}, read off the card.
+	"Pawprints": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,

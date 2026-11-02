@@ -24,6 +24,11 @@
   // ADR 0111 PR 6: a sheet in the action dock; the confirm and Cancel
   // are the dock's action bar (Enter / Escape through its one key
   // handler).
+  //
+  // #4786, CR 700.2i: a pawprint spell ("Choose up to five {P} worth of
+  // modes") is bounded by the {P} its chosen modes spend, not by how
+  // many there are. Each bullet shows its {P}, the count reads in {P},
+  // and a bullet that would overspend the budget can't be added.
 
   import type { CardView, ModeOptionView } from "../../protocol";
   import { modeOptionCastable } from "../../targeting";
@@ -74,9 +79,22 @@
   }
 
   const count = $derived(chosen.length);
+  // The pawprint budget (CR 700.2i) and what the selection spends of
+  // it; 0 for a modal card without pawprints.
+  const budget = $derived(spec?.pawprints ?? 0);
+  const spent = $derived(chosen.reduce((n, i) => n + (spec?.options[i]?.pawprints ?? 0), 0));
   const canConfirm = $derived(
-    spec !== null && count >= spec.min && count <= (spec.max > 0 ? spec.max : count),
+    spec !== null &&
+      count >= spec.min &&
+      count <= (spec.max > 0 ? spec.max : count) &&
+      (budget === 0 || spent <= budget),
   );
+
+  // fitsAnother is whether one more occurrence of option i stays
+  // within the pawprint budget. Always true without one.
+  function fitsAnother(i: number): boolean {
+    return budget === 0 || spent + (spec?.options[i]?.pawprints ?? 0) <= budget;
+  }
 
   // Spree (CR 702.172a, ADR 0065's 2026-09-23 amendment): the chosen
   // modes' own costs, in announce order, for the "what am I paying"
@@ -114,6 +132,7 @@
       return;
     }
     if (spec.max > 0 && chosen.length >= spec.max) return;
+    if (!fitsAnother(i)) return;
     // Appended, never sorted: the order the player clicks in is the
     // order CR 608.2c resolves in and the order the targets are
     // asked for (#764).
@@ -136,14 +155,20 @@
 {#if card && spec}
   <DockSheet
     label={card.name}
-    src={single
-      ? "choose one"
-      : spec.min === spec.max
-        ? `choose ${spec.max}`
-        : `choose up to ${spec.max}`}
+    src={budget > 0
+      ? `choose up to ${budget} {P}`
+      : single
+        ? "choose one"
+        : spec.min === spec.max
+          ? `choose ${spec.max}`
+          : `choose up to ${spec.max}`}
     width={560}
     sheetKey={`modes:${card.instance_id}`}
-    count={single ? undefined : `${count} / ${spec.max} modes`}
+    count={budget > 0
+      ? `${spent} / ${budget} {P}`
+      : single
+        ? undefined
+        : `${count} / ${spec.max} modes`}
     primary={confirmAction(targetedCount(chosen) > 0 ? "Choose targets" : "Cast", confirm, {
       disabled: !canConfirm,
     })}
@@ -163,18 +188,26 @@
         {@const castable = modeOptionCastable(option)}
         {@const times = countOf(i)}
         {@const selected = times > 0}
+        {@const overBudget = !fitsAnother(i) && !(selected && !repeatable)}
         <li>
           <button
             type="button"
             class="prompt-opt"
             class:on={selected}
-            class:off={!castable}
+            class:off={!castable || overBudget}
             role={single ? "radio" : "checkbox"}
             aria-checked={selected}
-            aria-disabled={!castable}
+            aria-disabled={!castable || overBudget}
             onclick={() => toggle(i, option)}
           >
             <span class="prompt-radio" aria-hidden="true"></span>
+            {#if option.pawprints}
+              <span
+                class="cost paws"
+                title={`${option.pawprints} pawprint${option.pawprints === 1 ? "" : "s"}`}
+                >{"{P}".repeat(option.pawprints)}</span
+              >
+            {/if}
             <span class="label">{option.label}</span>
             {#if option.cost}
               <span class="cost" title={`additional cost ${option.cost}`}>+{option.cost}</span>
