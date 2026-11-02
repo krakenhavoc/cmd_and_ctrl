@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Web-Warriors — {4}{G/W} Creature — Spider Hero, 4/3 (Marvel's Spider-Man,
 // #4460):
@@ -23,15 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Web-Warriors — a +1/+1 counter on each other creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					var ids []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() && c.InstanceID != item.SourceCardID {
-							ids = append(ids, c.InstanceID)
-						}
-					}
-					return b13PutCounterOnEach(NewContext(g, item), ids)
-				}),
+				putCounterOnEachOtherCreatureYouControl),
 		},
 	})
 }
