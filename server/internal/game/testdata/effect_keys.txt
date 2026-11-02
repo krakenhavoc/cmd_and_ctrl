@@ -577,6 +577,7 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/run-leg
 choose choose-cards/sacrifice-choice
 choose choose-cards/seasoned-cryomancer-discarded
+choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
@@ -1752,6 +1753,8 @@ tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
 tail tablet-of-discovery/after-mill
 tail tail/eagles-are-coming-birds
+tail tail/pumpkin-bombs-after-fuse
+tail tail/sensational-spider-man-after-stun
 tail tainted-pact/after-mill
 tail take/each-moved
 tail take/moved

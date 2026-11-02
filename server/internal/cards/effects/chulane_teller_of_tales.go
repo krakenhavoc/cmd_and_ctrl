@@ -42,15 +42,7 @@ func init() {
 			Label:   "{3}, {T}: Return target creature you control to its owner's hand.",
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target creature you control", YouControl()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return BounceToHand{Target: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  bounceTheTargetToHand,
 		}},
 	})
 }
