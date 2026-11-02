@@ -116,7 +116,50 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	if !ok {
 		return ErrCardNotFound
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except)
+	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except, nil)
+	return nil
+}
+
+// copyGrant is "If the copy is a permanent spell, it gains haste"
+// (Spider-Verse, #4460): keywords the copy-making effect gives the COPY
+// once it exists, an ability-adding effect of that effect (CR 611.2,
+// 613.1f) and not a copiable value (CR 707.2), so a copy of the copy, or
+// a Clone of the token it becomes, does not have them. It rides the
+// CR 707.10c re-target walk (copyFrame, and copyWalkSnapshot on disk),
+// because the copy is created only once the walk is answered. Pure data.
+type copyGrant struct {
+	// Source is the object whose ability made the copy.
+	Source uuid.UUID `json:"source"`
+	// Keywords are given to the copy for as long as it is that object,
+	// and to the permanent it becomes (CR 400.7a).
+	Keywords []string `json:"keywords"`
+	// Label is the clause, for the log.
+	Label string `json:"label,omitempty"`
+}
+
+// CopyLastKnownSpellGainingKeywordsForEffect is CopyLastKnownSpellForEffect
+// for a copy that gains keywords once it exists: Spider-Verse's "you may
+// copy it. If you do, you may choose new targets for the copy. If the copy
+// is a permanent spell, it gains haste." The caller decides whether the
+// spell is a permanent spell (the copy has its characteristics, CR 707.10)
+// and passes no keywords when it is not. The keywords are given with no
+// duration, through GrantKeywordsToSpellForEffect, as the copy is put on
+// the stack, however long the re-target walk took.
+//
+// Errors as CopyLastKnownSpellForEffect. Caller must hold g.mu.
+func (g *Game) CopyLastKnownSpellGainingKeywordsForEffect(sourceID, spellID, controller uuid.UUID, mayChooseNewTargets bool, keywords []string, label string) error {
+	src, item, ok := g.stackSpellLocked(spellID)
+	if !ok {
+		src, item, ok = g.lastKnownSpellLocked(spellID)
+	}
+	if !ok {
+		return ErrCardNotFound
+	}
+	var gains *copyGrant
+	if len(keywords) > 0 {
+		gains = &copyGrant{Source: sourceID, Keywords: append([]string(nil), keywords...), Label: label}
+	}
+	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, nil, gains)
 	return nil
 }
 
@@ -124,7 +167,7 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 // found the spell, shared with CopyLastKnownSpellForEffect (#1255),
 // which differs only in WHERE it may find it. `src` is a value copy
 // the caller owns; `item` is only read. Caller must hold g.mu.
-func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) {
+func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues), gains *copyGrant) {
 	// "This spell can't be copied" (See Double): CR 101.2's "can't"
 	// wins, so the copy effect resolves and does nothing. Refused
 	// before the re-target prompt, for the reason CopyAbilityForEffect
@@ -140,7 +183,7 @@ func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UU
 		src.setPrintedValues(v)
 	}
 	spec := castTargetSpecForItem(CatalogKey(src), item)
-	g.offerCopyTargetsLocked(src, item, controller, spec, mayChooseNewTargets)
+	g.offerCopyTargetsLocked(src, item, controller, spec, mayChooseNewTargets, gains)
 }
 
 // offerCopyTargetsLocked is CR 707.10c, shared by the spell copy
@@ -186,14 +229,14 @@ func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UU
 // come from the item when it carries its own (see copyStepsFor).
 //
 // Caller must hold g.mu.
-func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid.UUID, spec *TargetSpec, mayChooseNewTargets bool) {
+func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid.UUID, spec *TargetSpec, mayChooseNewTargets bool, gains *copyGrant) {
 	if !mayChooseNewTargets || !itemHasChosenTarget(item) {
-		g.createCopyLocked(src, item, controller, item.Targets)
+		g.createCopyLocked(src, item, controller, item.Targets, gains)
 		return
 	}
 	steps := copyStepsFor(src, item, spec)
 	if len(steps) == 0 {
-		g.createCopyLocked(src, item, controller, item.Targets)
+		g.createCopyLocked(src, item, controller, item.Targets, gains)
 		return
 	}
 	orig := assignAnnouncedSlots(steps, item.Targets)
@@ -204,6 +247,7 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 		steps:      steps,
 		orig:       orig,
 		next:       append([]TargetRef(nil), orig...),
+		gains:      gains,
 	}
 	g.queueCopyTargetStepLocked(frame)
 }
@@ -263,6 +307,9 @@ type copyFrame struct {
 	orig       []TargetRef
 	next       []TargetRef
 	step       int
+	// gains is what the copy gains once it exists (copyGrant), nil for
+	// nearly every copy.
+	gains *copyGrant
 }
 
 // currentClause is the clause the open step asks about, or nil.
@@ -385,7 +432,7 @@ func (g *Game) queueCopyTargetStepLocked(f *copyFrame) bool {
 	// CR 115.7f: the division stays as it was, carried onto whichever
 	// object took each divided slot.
 	item.Distribution = remapDistributionLocked(item.Distribution, f.orig, f.next)
-	g.createCopyLocked(f.src, &item, f.controller, f.next)
+	g.createCopyLocked(f.src, &item, f.controller, f.next, f.gains)
 	return false
 }
 
@@ -433,12 +480,28 @@ func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 // legal set — is written once for both shapes.
 //
 // Caller must hold g.mu.
-func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) {
+func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef, gains *copyGrant) {
 	if item.Kind == StackItemSpell {
 		g.createSpellCopyLocked(src, item, controller, targets)
+		g.grantCopyKeywordsLocked(gains)
 		return
 	}
 	g.createAbilityCopyLocked(item, controller, targets)
+}
+
+// grantCopyKeywordsLocked gives the copy createSpellCopyLocked just put on
+// top of the stack what the copy-making effect says it gains (copyGrant).
+// A no-op for nil, and for a copy the verb refused to make (the top of
+// the stack is then not a copy). Caller must hold g.mu.
+func (g *Game) grantCopyKeywordsLocked(gains *copyGrant) {
+	if gains == nil || len(gains.Keywords) == 0 || g.Stack == nil || len(g.Stack.Cards) == 0 {
+		return
+	}
+	top := g.Stack.Cards[len(g.Stack.Cards)-1].InstanceID
+	if meta, ok := g.StackMeta[top]; !ok || meta == nil || !meta.IsCopy {
+		return
+	}
+	g.GrantKeywordsToSpellForEffect(gains.Source, top, gains.Keywords, IndefiniteDuration(), gains.Label)
 }
 
 // stackSpellLocked returns the card and stack item for a spell on the

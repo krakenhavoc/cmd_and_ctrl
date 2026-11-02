@@ -1327,6 +1327,13 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		// read off the sticker rather than stored on the permission.
 		out.Life = stickerGraveyardLifeOf(card)
 	}
+	if p.AltCostKey == AltCostKeyGrantedMayhem {
+		// Green Goblin's Goblin Formula (#4460): "has mayhem" is the
+		// keyword's own condition (CR 702.187b), so the granted price is
+		// claimable only for a card discarded this turn, as a printed
+		// mayhem's is. Read off the key, like madness's life below.
+		out.RequiresDiscardedThisTurn = true
+	}
 	if p.AltCostKey == AltCostKeyMadness {
 		// "Madness—{2}{B}, Pay 8 life": the life is printed on the card,
 		// not on the grant, so it is read from the catalog here rather
@@ -1474,6 +1481,17 @@ func (g *Game) castPermissionHoldersLocked(c Card) []uuid.UUID {
 	}
 	return out
 }
+
+// AltCostKeyGrantedMayhem is the key of a standing permission that gives
+// the cards in a graveyard mayhem whose cost is each card's own mana cost
+// (Green Goblin's "Each nonland card in your graveyard has mayhem. The
+// mayhem cost is equal to its mana cost.", #4460). Its own key, not the
+// printed "mayhem": resolveAlternativeCostLocked prices a key the card
+// prints from the catalog first, and a card that prints mayhem has both
+// (CR 113.2c), so the granted one must stay a separate offer the caster
+// can pick. A card reads "cast using mayhem" as either key
+// (effects.PaidMayhem). An on-disk identity: never renamed.
+const AltCostKeyGrantedMayhem = "granted-mayhem"
 
 // AltCostKeyGrantedCost is the alternative-cost key a hand grant with a
 // Cost but no AltCostKey of its own is given ("cast it without paying

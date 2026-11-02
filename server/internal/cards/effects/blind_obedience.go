@@ -23,26 +23,34 @@ func init() {
 		Name:         "Blind Obedience",
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{Extort("Blind Obedience")},
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
-					return false
-				}
-				entering, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || entering.Controller == src.Controller {
-					return false
-				}
-				return entering.IsCreature() || entering.IsArtifact()
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.EntersTapped = true
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Blind Obedience: enter tapped",
-		}},
+		Replacements: []game.ReplacementEffect{opponentsArtifactsAndCreaturesEnterTapped("Blind Obedience")},
 	})
+}
+
+// opponentsArtifactsAndCreaturesEnterTapped is "Artifacts and creatures your
+// opponents control enter tapped" (Blind Obedience; Spider-Woman, Stunning
+// Savior's Venom Blast): Kismet's CR 614 replacement narrowed to artifacts
+// and creatures entering under another player's control.
+func opponentsArtifactsAndCreaturesEnterTapped(name string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventZoneMove},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
+				return false
+			}
+			entering, ok := g.LookupCardForEffect(ev.CardID)
+			if !ok || entering.Controller == src.Controller {
+				return false
+			}
+			return entering.IsCreature() || entering.IsArtifact()
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.EntersTapped = true
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: name + ": enter tapped",
+	}
 }

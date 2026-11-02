@@ -31,6 +31,12 @@ const (
 	// controls, still answers to CR 704.5j. Appended last so no existing
 	// value moves.
 	LegendRuleExemptYourCreatures
+	// LegendRuleExemptYourSubtype is "The legend rule doesn't apply to
+	// <Spiders> you control" (Spider-Verse, #4460): only the controller's
+	// permanents that have LegendRuleExemption.Subtype right now, read
+	// through the exempting permanent's text (CR 612.2). Appended last so
+	// no existing value moves.
+	LegendRuleExemptYourSubtype
 )
 
 // LegendRuleExemption is one printed legend-rule exemption. Catalog data.
@@ -38,6 +44,8 @@ type LegendRuleExemption struct {
 	// Label is the clause as printed.
 	Label string
 	Whose LegendRuleExemptionWhose
+	// Subtype is LegendRuleExemptYourSubtype's subtype, as printed.
+	Subtype string
 }
 
 // CatalogLegendRuleExemptions returns the exemptions a permanent with the
@@ -52,6 +60,9 @@ type legendRuleExempt struct {
 	// creatureControllers are the controllers whose CREATURES are covered
 	// (LegendRuleExemptYourCreatures).
 	creatureControllers map[uuid.UUID]bool
+	// subtypeControllers are the subtypes each controller's permanents
+	// are covered for (LegendRuleExemptYourSubtype).
+	subtypeControllers map[uuid.UUID][]string
 }
 
 func (e legendRuleExempt) covers(controller uuid.UUID) bool {
@@ -61,7 +72,15 @@ func (e legendRuleExempt) covers(controller uuid.UUID) bool {
 // coversPermanent is covers for one permanent: its controller is exempt
 // outright, or it is a creature and the controller's creatures are.
 func (e legendRuleExempt) coversPermanent(c *Card) bool {
-	return e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature())
+	if e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature()) {
+		return true
+	}
+	for _, sub := range e.subtypeControllers[c.Controller] {
+		if c.HasSubtype(sub) {
+			return true
+		}
+	}
+	return false
 }
 
 // legendRuleExemptControllersLocked reads every exemption on the
@@ -110,6 +129,14 @@ func (g *Game) legendRuleExemptControllersLocked() legendRuleExempt {
 					out.creatureControllers = map[uuid.UUID]bool{}
 				}
 				out.creatureControllers[src.Controller] = true
+			case LegendRuleExemptYourSubtype:
+				if s.Subtype == "" {
+					continue
+				}
+				if out.subtypeControllers == nil {
+					out.subtypeControllers = map[uuid.UUID][]string{}
+				}
+				out.subtypeControllers[src.Controller] = append(out.subtypeControllers[src.Controller], src.TextSubtype(s.Subtype))
 			}
 		}
 	}

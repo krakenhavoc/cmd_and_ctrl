@@ -1638,6 +1638,7 @@ tail msh-a7/rick-jones-after-mill
 tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
 tail myriad/exile-tokens-at-end-of-combat
+tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail nesting-grounds/remove

@@ -80,7 +80,9 @@ func TestBecomeNamedModProblems(t *testing.T) {
 		{SetTypesMod(nil, nil), "no card type"},
 		{SetTypesMod([]string{"Artifact"}, []string{"Goblin"}), "not one of its card types"},
 		{SetTypesMod([]string{"Artifact"}, nil, "Mythic"), "not a supertype"},
-		{Mod{Kind: ModAddTypes, Types: []string{"Artifact"}, Supertypes: []string{"Legendary"}}, "only a setTypes mod reads"},
+		{Mod{Kind: ModAddTypes, Types: []string{"Artifact"}, Supertypes: []string{"Legendary"}}, "only a setTypes or addSupertypes mod reads"},
+		{AddSupertypesMod(), "names no supertype"},
+		{AddSupertypesMod("Mythic"), "not a supertype"},
 	}
 	for _, tc := range cases {
 		if got := becomeNamedModProblem(tc.mod); !strings.Contains(got, tc.want) {
@@ -90,6 +92,7 @@ func TestBecomeNamedModProblems(t *testing.T) {
 	for _, ok := range []Mod{
 		SetNameMod("Everflame, Heroes' Legacy"),
 		SetTypesMod([]string{"Artifact"}, []string{"Equipment"}, "Legendary"),
+		AddSupertypesMod("Legendary"),
 	} {
 		if got := becomeNamedModProblem(ok); got != "" {
 			t.Errorf("%+v refused: %s", ok, got)
