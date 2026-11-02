@@ -22,13 +22,8 @@ func init() {
 			CostsLess(1, "This spell costs {1} less to cast if you control a legendary creature.",
 				wrathOfTheBloodmaneControlsLegend),
 		},
-		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard || !ctx.IsTargetLegal(item.Targets[0]) {
-				return nil
-			}
-			return DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 4}.Apply(ctx)
-		},
+		Targets:   TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		OnResolve: damageToFirstTarget(4),
 	})
 }
 

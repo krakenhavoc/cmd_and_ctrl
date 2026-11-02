@@ -20,11 +20,6 @@ func init() {
 		Targets:          TargetCreature("target creature"),
 		CastableZonesIf:  []game.ConditionalCastZone{MayhemCastableZone()},
 		AlternativeCosts: []game.AlternativeCost{Mayhem("{1}{R}")},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard || !ctx.IsTargetLegal(item.Targets[0]) {
-				return nil
-			}
-			return DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 4}.Apply(ctx)
-		},
+		OnResolve:        damageToFirstTarget(4),
 	})
 }
