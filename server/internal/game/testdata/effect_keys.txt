@@ -643,6 +643,7 @@ choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-source/desperate-gambit
 choose choose-source/shield
 choose engine/outside-pick-plain
+choose grasping-tentacles/take-pick
 choose hama/exile-pick
 choose manifest-dread/pick
 choose resolution-cast/glorious-purpose-rest-to-hand
@@ -1533,6 +1534,7 @@ tail glorious-purpose/after-exile
 tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
+tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
