@@ -70,6 +70,8 @@ func TestManaRestrictionsAdmitCastAsksTheEnginesMatcher(t *testing.T) {
 		{"a symbol-level tag is not answered", []string{game.ManaRestrictNoGeneric}, CardView{TypeLine: "Creature — Elf"}, "", false},
 		{"not from hand: a graveyard cast is admitted", []string{game.ManaRestrictNotFromHand}, CardView{TypeLine: "Sorcery"}, "graveyard", true},
 		{"not from hand: a hand cast is refused", []string{game.ManaRestrictNotFromHand}, CardView{TypeLine: "Sorcery"}, "", false},
+		{"from exile: an exile cast is admitted", []string{game.ManaRestrictCastFromExile}, CardView{TypeLine: "Sorcery"}, "exile", true},
+		{"from exile: a hand cast is refused", []string{game.ManaRestrictCastFromExile}, CardView{TypeLine: "Sorcery"}, "", false},
 		{"an unknown zone is refused", legendary, CardView{TypeLine: "Legendary Creature — Elf"}, "sideboard", false},
 	}
 	for _, c := range cases {
