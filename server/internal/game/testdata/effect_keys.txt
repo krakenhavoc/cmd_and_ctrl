@@ -98,6 +98,7 @@ body draw/one-card
 body eagles-are-coming/birds
 body earthbend/return-tapped
 body eden/return-from-graveyard
+body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
 body espers-to-magicite/copy
 body evoke/sacrifice
