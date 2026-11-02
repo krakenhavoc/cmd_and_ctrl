@@ -576,6 +576,7 @@ choose choose-cards/sorin-the-mirthless-take
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
+choose choose-cards/spm-black-cat-exile
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
@@ -793,6 +794,7 @@ confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/snort-wheel
+confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
 confirm confirm/stromgald-spy-reveal-hand
