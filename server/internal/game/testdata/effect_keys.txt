@@ -99,6 +99,7 @@ body draw/one-card
 body eagles-are-coming/birds
 body earthbend/return-tapped
 body eden/return-from-graveyard
+body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
 body espers-to-magicite/copy
@@ -152,6 +153,7 @@ body invisible-woman/pump
 body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
+body kravens-last-hunt/damage
 body leyline-tyrant/damage
 body lichs-relic/destroy
 body lockjaw/unblockable
@@ -907,6 +909,7 @@ option dice/order-replacements
 option meld/order
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/apocalypse-demon-sacrifice-or-tap
+option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/attach-source-to-player
@@ -1047,6 +1050,7 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/draw-a-card
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
+payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/endless-ranks-of-hydra-return
@@ -1914,6 +1918,7 @@ tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage
 tail then/wash-out-color-chosen
+tail then/winds-of-change-shuffled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
 tail thrasios-triton-hero/reveal-top

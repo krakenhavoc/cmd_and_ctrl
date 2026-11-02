@@ -51754,6 +51754,7 @@ turnTally.damagedObjects[].source.id	custom(uuid.UUID)
 turnTally.damagedObjects[].victim	object
 turnTally.damagedObjects[].victim.epoch	number:int
 turnTally.damagedObjects[].victim.id	custom(uuid.UUID)
+turnTally.damagedObjects[].victimCreature	bool
 turnTally.diedPowerBySubtype	map:string
 turnTally.diedPowerBySubtype{}	number:int
 turnTally.diedSubtypes	map:string
