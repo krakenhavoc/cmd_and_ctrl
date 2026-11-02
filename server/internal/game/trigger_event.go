@@ -339,10 +339,12 @@ func (g *Game) triggerContextLocked(ev Event) TriggerContext {
 //
 // The two halves come from different places on purpose. Types,
 // colours, name and P/T are CHARACTERISTICS and come off the
-// snapshot; the oracle id, the owner and the mana value are facts
-// about the CARD and come off the card, because the mana value of a
-// permanent is computed from its printed cost (CR 202.3b) and
-// `Characteristic` does not carry one.
+// snapshot; the oracle id and the owner are facts about the CARD and
+// come off the card. The mana value is computed from a mana cost (CR
+// 202.3), which `Characteristic` does not carry, so it comes off the
+// live card for an object still where it was, and off the departed
+// permanent's PermanentInfo record for one that left — the card in its
+// new zone has the wrong cost for a face-down permanent (#4762).
 //
 // Returns nil when the event names no object or the object is in no
 // zone the engine can see (a token that has ceased to exist).
@@ -387,7 +389,15 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 		// The event is about the object that LEFT, written down in the
 		// same beat as lastKnownBattlefield; the card has moved on to a
 		// new epoch since (#1379).
-		out.Epoch = recs[len(recs)-1].Epoch
+		last := recs[len(recs)-1]
+		out.Epoch = last.Epoch
+		// The mana value it had there, too (CR 603.10a). The card in its
+		// new zone is not that object: a face-down permanent is turned
+		// face up as it leaves (CR 708.9) and so has its card's cost
+		// back, but it died a 2/2 with no mana cost, mana value 0 (CR
+		// 708.2a, 202.3a). The record was read off the permanent before
+		// it moved (#4762).
+		out.ManaValue = last.ManaValue
 	}
 	out.Types = copyStrings(ch.Types)
 	out.Subtypes = copyStrings(ch.Subtypes)
