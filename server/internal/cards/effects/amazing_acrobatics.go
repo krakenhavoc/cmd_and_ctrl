@@ -20,14 +20,7 @@ func init() {
 		Name:         "Amazing Acrobatics",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose one or both", 1, 2,
-			ModeDoing("Counter target spell.", TargetSpell("target spell"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return CounterTarget{StackID: t.ID}.Apply(ctx)
-				}),
+			ModeDoing("Counter target spell.", TargetSpell("target spell"), CounterTheModesTarget),
 			ModeDoing("Tap one or two target creatures.", TargetCreature("one or two target creatures").WithCount(1, 2),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					for _, t := range ctx.ModeTargets(occ) {

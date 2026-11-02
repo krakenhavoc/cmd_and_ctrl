@@ -23,10 +23,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(ManaValueGE(4), "Angry Rabble — 1 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 1)
-				}),
+			WheneverYouCast(ManaValueGE(4), "Angry Rabble — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{5}{R}: Put two +1/+1 counters on this creature. Activate only as a sorcery.",
