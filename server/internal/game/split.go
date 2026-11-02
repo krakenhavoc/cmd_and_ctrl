@@ -264,8 +264,12 @@ func isAftermathHalf(c Card) bool {
 // The other half is untouched: it casts from hand like any card, and
 // from a graveyard only under some other permission (a Snapcaster
 // Mage flashback grant opens it; aftermath never does).
+//
+// A Vengeance half (isVengeanceHalf) has the same zone rule by its own
+// reminder text and rides this one gate, so the engine, the bot
+// enumerator and the view cannot disagree about it.
 func aftermathZoneRule(c Card, zone ZoneKind) (opens bool, err error) {
-	if !isAftermathHalf(c) {
+	if !castsOnlyFromGraveyard(c) {
 		return false, nil
 	}
 	if zone != ZoneGraveyard {
