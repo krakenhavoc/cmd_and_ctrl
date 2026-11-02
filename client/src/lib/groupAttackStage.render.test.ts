@@ -16,6 +16,7 @@ import { session, type Session } from "./session";
 import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
+import { L } from "./labels";
 
 vi.mock("./components/board/Board.svelte", async () => ({
   default: (await import("./test/BoardGroupAttackStub.svelte")).default,
@@ -31,7 +32,13 @@ class FakeObserver {
 
 interface Frame {
   kind: string;
-  payload?: { type?: string; params?: { attackers?: Array<{ attacker: string; target: string }> } };
+  payload?: {
+    type?: string;
+    params?: {
+      attackers?: Array<{ attacker: string; target: string }>;
+      phyrexian_life?: number;
+    };
+  };
 }
 
 class FakeSocket {
@@ -99,6 +106,7 @@ const ATTACKERS = ["b1", "w1", "w2", "w3"];
 function declareAttackers(
   over: Record<string, Record<string, unknown>> = {},
   extraSeat = false,
+  attackTargets: Array<Record<string, unknown>> = [],
 ): GameView {
   const sources = Object.fromEntries(
     ATTACKERS.map((id) => [
@@ -129,6 +137,7 @@ function declareAttackers(
       priority_holder: 0,
       phase: "combat",
       step: "declare_attackers",
+      ...(attackTargets.length > 0 ? { attack_targets: attackTargets } : {}),
     },
     mulligans_open: false,
   } as unknown as GameView;
@@ -261,5 +270,64 @@ describe("a token group's attack joins the staged set (#4423)", () => {
       ["w3", OPP],
       ["b1", OPP2],
     ]);
+  });
+});
+
+describe("the picker a token group opens (#4430)", () => {
+  const checked = (c: ParentNode): string[] =>
+    [...c.querySelectorAll<HTMLButtonElement>('[aria-label="attackers"] [role="checkbox"]')]
+      .filter((b) => b.getAttribute("aria-checked") === "true")
+      .map((b) => b.textContent!.trim());
+
+  it("checks only the group's members, not every creature that could attack the seat", async () => {
+    // b1 could attack Opp too, but nobody asked it to.
+    const c = await mountGame(declareAttackers({ w1: { exert_on_attack: true } }));
+    pressed(c, "group-attack");
+    expect(checked(c)).toEqual(["Wolf", "Wolf", "Wolf"]);
+    click(dockButtons(c, /^Attack with 3/)[0]!);
+
+    const sent = FakeSocket.last!.declarations();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.payload!.params!.attackers!.map((a) => a.attacker)).toEqual(["w1", "w2", "w3"]);
+  });
+
+  it("also checks a creature already staged at the seat, which the player may uncheck", async () => {
+    const c = await mountGame(declareAttackers({ w1: { exert_on_attack: true } }));
+    pressed(c, "select-b1");
+    pressed(c, "group-attack");
+    expect(checked(c)).toEqual(["Grizzly Bears", "Wolf", "Wolf", "Wolf"]);
+
+    click(c.querySelector<HTMLButtonElement>('[aria-label="attackers"] [role="checkbox"]')!);
+    click(dockButtons(c, /^Attack with 3/)[0]!);
+    const sent = FakeSocket.last!.declarations();
+    expect(sent[0]!.payload!.params!.attackers!.map((a) => a.attacker)).toEqual(["w1", "w2", "w3"]);
+  });
+
+  it("counts a kept creature's Phyrexian tax in the payment it sends", async () => {
+    // b1 is staged at Cy, who has Norn's Annex; the wolves go at Opp,
+    // who taxes nothing. The one declaration owes b1's {W/P}.
+    const c = await mountGame(
+      declareAttackers({ b1: { attack_targets: [OPP2] }, w1: { exert_on_attack: true } }, true, [
+        { kind: "player", id: OPP2, tax: "{W/P}", tax_phyrexian: 1 },
+      ]),
+    );
+    pressed(c, "select-b1");
+    pressed(c, "group-attack");
+
+    const stepper = c.querySelector(`[role="group"][aria-label="${L.attackPayWithLife}"]`);
+    expect(stepper?.querySelector("output")?.textContent).toBe("0 of 1");
+    click(c.querySelector<HTMLButtonElement>('[aria-label="one more symbol"]')!);
+    expect(stepper?.querySelector("output")?.textContent).toBe("1 of 1");
+    click(dockButtons(c, /^Attack with 3/)[0]!);
+
+    const sent = FakeSocket.last!.declarations();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.payload!.params!.attackers!.map((a) => [a.attacker, a.target])).toEqual([
+      ["w1", OPP],
+      ["w2", OPP],
+      ["w3", OPP],
+      ["b1", OPP2],
+    ]);
+    expect(sent[0]!.payload!.params!.phyrexian_life).toBe(1);
   });
 });

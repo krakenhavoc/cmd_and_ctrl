@@ -56,7 +56,9 @@
     type AttackerSelection,
   } from "../lib/exert";
   import {
+    groupPickerSeed,
     isStaged,
+    keptBesidePick,
     pruneStage,
     soleTarget,
     stageAt,
@@ -2240,18 +2242,20 @@
 
   // #4423: set when the picker was opened by a token group's attack,
   // whose confirm adds to the creatures already staged by clicking
-  // rather than replacing them. "Attack with all" leaves it off: it is
-  // the action that asks for the reset.
-  let attackPickerKeepsStage = false;
-  function openAttackPicker(defenderSeatID: string, keepStage = false): void {
+  // rather than replacing them. "Attack with all" leaves it null: it is
+  // the action that asks for the reset. #4430: it is the group's
+  // members, so the picker opens with only them (and what is already
+  // staged at that seat) checked.
+  let attackPickerGroup = $state<string[] | null>(null);
+  function openAttackPicker(defenderSeatID: string, groupIDs: string[] | null = null): void {
     attackPickerLimitReason = null;
-    attackPickerKeepsStage = keepStage;
+    attackPickerGroup = groupIDs;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
     if (!bulkRefusal) return;
     attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
-    attackPickerKeepsStage = false;
+    attackPickerGroup = null;
     attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
@@ -2265,9 +2269,9 @@
     phyrexianLife = 0,
   ): void {
     const defenderSeatID = attackPickerDefenderID;
-    const keepsStage = attackPickerKeepsStage;
+    const keepsStage = attackPickerGroup !== null;
     attackPickerDefenderID = null;
-    attackPickerKeepsStage = false;
+    attackPickerGroup = null;
     if (!defenderSeatID) return;
     attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
@@ -2280,14 +2284,17 @@
     });
     if (!params) return;
     if (keepsStage) {
-      // #4423: the picker lists every creature that may attack this
-      // seat, so a staged one it shows is the player's to uncheck. A
-      // staged one it does not show (aimed at another seat) stays
-      // staged. One declaration carries both.
+      // #4423: one declaration carries the picker's choice and the rest
+      // of the staged set. A creature staged at this seat is a row the
+      // player could uncheck; one staged at another seat stays aimed
+      // there unless they checked it here (#4430). The picker sized the
+      // Phyrexian payment over the same set.
       const shown = new Set(eligibleAt(attackPlan, defenderSeatID).map((c) => c.instance_id));
-      const chosen = new Set(params.attackers.map((a) => a.attacker));
-      const kept = attackStage.filter((s) => !shown.has(s.attacker) && !chosen.has(s.attacker));
-      params.attackers = [...params.attackers, ...kept.map((s) => ({ ...s }))];
+      const chosen = params.attackers.map((a) => a.attacker);
+      params.attackers = [
+        ...params.attackers,
+        ...keptBesidePick(attackStage, defenderSeatID, shown, chosen),
+      ];
     }
     sendBulkAttack(defenderSeatID, params);
   }
@@ -2300,7 +2307,7 @@
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
     if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
-      openAttackPicker(defenderSeatID, true);
+      openAttackPicker(defenderSeatID, attackerIDs);
       return;
     }
     // #4198: the picker asks mana or life for a Phyrexian tax.
@@ -2311,7 +2318,7 @@
         actingLife,
       )
     ) {
-      openAttackPicker(defenderSeatID, true);
+      openAttackPicker(defenderSeatID, attackerIDs);
       return;
     }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
@@ -2329,6 +2336,7 @@
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
+    attackPickerGroup = null;
     attackPickerLimitReason = null;
   }
 
@@ -3879,6 +3887,10 @@
         limitReason={attackPickerLimitReason}
         legalGate={legalActions}
         life={actingLife}
+        seed={attackPickerGroup && attackPickerDefenderID
+          ? groupPickerSeed(attackStage, attackPickerDefenderID, attackPickerGroup)
+          : null}
+        keptStage={attackPickerGroup ? attackStage : null}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />
