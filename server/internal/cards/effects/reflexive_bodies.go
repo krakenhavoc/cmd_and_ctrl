@@ -57,6 +57,11 @@ var (
 	// itself is card-agnostic).
 	leylineTyrantDamageBody = game.ReflexiveBody("leyline-tyrant/damage", breechesBlastEffect, constTargets(TargetAny))
 
+	// Elektra, Femme Fatale (#4455): "she deals 4 damage to target
+	// creature", the amount carried as Params.Amount.
+	elektraDamageBody = game.ReflexiveBody("elektra-femme-fatale/damage", breechesBlastEffect,
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+
 	// Bullseye, Death Dealer (#4566): "When you do, Bullseye deals 2
 	// damage to any target" — the amount rides Params.Amount.
 	bullseyeDamageBody = game.ReflexiveBody("bullseye-death-dealer/damage", breechesBlastEffect, constTargets(TargetAny))
