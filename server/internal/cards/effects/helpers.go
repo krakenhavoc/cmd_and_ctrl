@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -1674,4 +1675,21 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 		Match:            Creature(),
 		Label:            "a creature",
 	}.Apply(NewContext(g, item))
+}
+
+// returnTargetCreatureWithPlusOneCounter is the OnResolve of "return target
+// creature card from your graveyard to the battlefield with a +1/+1 counter
+// on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
+// "enters with".
+func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return nil
+	}
+	_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(ts[0].ID, ctx.Controller(), false,
+		map[string]int{game.CounterPlusOne: 1})
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil // CR 400.7: it left the graveyard in response
+	}
+	return err
 }
