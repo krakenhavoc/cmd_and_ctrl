@@ -20,11 +20,6 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets: TargetCreature("target attacking creature with mana value 3 or less",
 			And(AttackingCreature(), ManaValueLE(3))),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
-		},
+		OnResolve: destroyTheTargetPermanent,
 	})
 }
