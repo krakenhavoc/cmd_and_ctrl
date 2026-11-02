@@ -385,6 +385,7 @@ choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
 choose choose-cards/great-intelligences-plan-cast
+choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heroes-hangout-play
 choose choose-cards/hideaway-exile-face-down
@@ -1238,6 +1239,7 @@ run prompt-run/tomb-of-annihilation-sandfall-sacrificed
 run prompt-run/tovolar-dire-overlord-transform
 run prompt-run/tragic-arrogance-sacrifice-the-rest
 run prompt-run/unstable-glyphbridge-destroy
+run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
 run prompt-run/vonas-hunger-sacrifice
@@ -1682,6 +1684,7 @@ tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail saheeli-rai/ping-each-opponent
