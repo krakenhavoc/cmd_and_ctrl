@@ -22,7 +22,6 @@ func init() {
 		OracleID:     "0d4ee553-f206-4e70-a7b2-a3670440aee7",
 		Name:         "Return to the Ranks",
 		Completeness: CompletenessFull,
-		XMatters:     true,
 		TapCost:      Convoke(),
 		Targets: targetsCountedByX(TargetCardInGraveyard("X target creature cards with mana value 2 or less from your graveyard",
 			YouOwn(), Creature(), ManaValueLE(2))),

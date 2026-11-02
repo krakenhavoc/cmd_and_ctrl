@@ -31,7 +31,6 @@ func init() {
 		OracleID:     "6dbeeb49-55c6-4ceb-94dd-3e4110dff8c0",
 		Name:         "Silkguard",
 		Completeness: CompletenessFull,
-		XMatters:     true,
 		Targets:      spec,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := putPlusOneCounterOnEachLegalTarget(ctx.Game, item); err != nil {
