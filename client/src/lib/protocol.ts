@@ -2996,6 +2996,11 @@ export interface ModeSpecView {
   // already clamped to 1 + `max_extra`, so the picker never offers a
   // count whose cards or creatures the viewer lacks.
   escalate?: EscalateView;
+  // #4786, CR 700.2i: "Choose up to five {P} worth of modes" is 5. The
+  // chosen options' `pawprints`, a repeat counted again, may not add up
+  // to more; the server refuses a selection that does. Absent for a
+  // modal card without pawprints.
+  pawprints?: number;
 }
 
 // EscalateView is ModeSpecView.escalate. Discards ride cast_spell's
@@ -4172,6 +4177,10 @@ export interface ModeOptionView {
   used?: boolean;
   // ADR 0126 §6: what this bullet does. Bot data.
   purpose?: PurposeView;
+  // #4786, CR 700.2i: the bullet's printed {P} count under a pawprint
+  // budget (ModeSpecView.pawprints) — what choosing it once spends.
+  // Absent for a bullet-point mode.
+  pawprints?: number;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its

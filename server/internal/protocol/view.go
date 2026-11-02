@@ -1424,6 +1424,11 @@ type ModeSpecView struct {
 	// and `tap_options` are the asking seat's answer and ride only its
 	// own frame (publicModeSpec drops them).
 	Escalate *EscalateView `json:"escalate,omitempty"`
+	// Pawprints is CR 700.2i's budget, "Choose up to five {P} worth of
+	// modes" is 5 (#4786): the chosen modes' `pawprints`, a repeat
+	// counted again, may not add up to more. Absent for a modal card
+	// without pawprints. Printed text, so public.
+	Pawprints int `json:"pawprints,omitempty"`
 
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
@@ -1504,6 +1509,10 @@ type ModeOptionView struct {
 	// (ADR 0126 §6): Farewell's "Exile all creatures" is a creature
 	// sweep. Public alongside `label`, which says the same in words.
 	Purpose *PurposeView `json:"purpose,omitempty"`
+	// Pawprints is the bullet's printed {P} count under a pawprint
+	// budget (CR 700.2i, #4786): what choosing it once spends of the
+	// spec's `pawprints`. Absent for a bullet-point mode. Public.
+	Pawprints int `json:"pawprints,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -8424,11 +8433,12 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
 		NotChosen:  modeMemoryWire(ms.NotChosen),
+		Pawprints:  ms.Pawprints,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i), Purpose: viewOfPurpose(o.Purpose)}
+		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i), Purpose: viewOfPurpose(o.Purpose), Pawprints: o.Pawprints}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)

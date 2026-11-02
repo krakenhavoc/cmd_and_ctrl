@@ -2178,7 +2178,7 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 		hi = len(options)
 	}
 	limit := e.opts.MaxExpansionPerSource
-	out := modeSelections(options, lo, hi, ms.Repeatable, limit+1)
+	out := modeSelections(options, lo, hi, ms.Repeatable, limit+1, ms.WithinPawprints)
 	if len(out) > limit {
 		// ADR 0122 §6.2: the walk was asked for one selection past the
 		// budget, which leaves the first ones as they were; a spare one
@@ -2191,7 +2191,16 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 
 // modeSelections is legalModeSets' walk over the choosable options:
 // every selection of size lo..hi, all-one-option first, up to budget.
-func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]int {
+//
+// `fits` is the selection's other bound, the CR 700.2i pawprint budget
+// (game.ModeSpec.WithinPawprints, #4786): a selection that spends more
+// {P} than the card allows is neither offered nor extended, because
+// every pawprint mode costs at least one {P} and a longer selection
+// can only spend more. Nil means no other bound.
+func modeSelections(options []int, lo, hi int, repeatable bool, budget int, fits func([]int) bool) [][]int {
+	if fits == nil {
+		fits = func([]int) bool { return true }
+	}
 	var out [][]int
 	add := func(sel []int) bool {
 		out = append(out, append([]int(nil), sel...))
@@ -2215,6 +2224,9 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 				for i := range sel {
 					sel[i] = opt
 				}
+				if !fits(sel) {
+					break
+				}
 				if !add(sel) {
 					return out
 				}
@@ -2227,6 +2239,9 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 	// emitted above.
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
+		if !fits(cur) {
+			return true
+		}
 		if len(cur) >= lo && len(cur) <= hi {
 			if !(repeatable && game.SameModeThroughout(cur)) && !add(cur) {
 				return false
