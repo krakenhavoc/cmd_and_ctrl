@@ -116,7 +116,12 @@ func stormItem(name string, caster, spell uuid.UUID) *game.StackItem {
 // stormEffect is storm's resolution: copy the spell the item names
 // once for each spell cast before it this turn.
 func stormEffect(g *game.Game, item *game.StackItem) error {
-	spell := item.SourceCardID
+	return stormCopies(g, item, item.SourceCardID)
+}
+
+// stormCopies copies `spell` once for each spell cast before it this turn
+// (CR 702.40a), for the controller of the item resolving.
+func stormCopies(g *game.Game, item *game.StackItem, spell uuid.UUID) error {
 	n := g.StormCountForEffect(item.Controller, spell)
 	if n <= 0 {
 		return nil

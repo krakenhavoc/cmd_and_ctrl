@@ -162,6 +162,7 @@ body magma-pummeler/remove-counters
 body magma-pummeler/strike
 body mana-drain/refund
 body mana-rider/dispatch
+body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
 body melee/pump
@@ -249,6 +250,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body storm/the-spell-just-cast
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
 body superior-spider-man/exile-that-card
@@ -574,6 +576,7 @@ choose choose-cards/run-leg
 choose choose-cards/sacrifice-choice
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
+choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
@@ -686,6 +689,7 @@ condition combat/your-creature-hit-the-player
 condition damage/each-creature-dealt-damage
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
+condition dies/a-creature
 condition dies/each-creature
 condition dies/that-creature
 condition dies/that-creature-you-control-your-commander
@@ -1610,6 +1614,7 @@ tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
 tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
+tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
 tail mass/kayas-wrath-life
 tail mass/mass-polymorph-reveal
