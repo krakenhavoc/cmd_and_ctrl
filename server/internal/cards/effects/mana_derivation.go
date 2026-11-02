@@ -63,6 +63,9 @@ const (
 	// ManaRestrictNotFromHand — "can't be spent to cast spells from
 	// your hand" (Heartwood Crafter, #2811).
 	ManaRestrictNotFromHand = game.ManaRestrictNotFromHand
+	// ManaRestrictCastFromExile — "spend this mana only to cast spells
+	// from exile" (Interdimensional Web Watch, #4460).
+	ManaRestrictCastFromExile = game.ManaRestrictCastFromExile
 	// ManaRestrictMonocolored — spend only on an object of exactly one
 	// colour (Throne of Eldraine, with ManaRestrictColor; #1600).
 	ManaRestrictMonocolored = game.ManaRestrictMonocolored

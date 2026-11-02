@@ -129,6 +129,14 @@ const (
 	// command zone, a library top). A cast whose zone is not known is
 	// refused: weaker than printed, never stronger.
 	ManaRestrictNotFromHand = "not:cast-from-hand"
+	// ManaRestrictCastFromExile is a POSITIVE clause — "spend this mana
+	// only to cast spells from exile" (Interdimensional Web Watch,
+	// #4460). It admits a spell cast from the exile zone and nothing
+	// else: not an activation, not a cast from the hand, a graveyard,
+	// the command zone or a library, and not a cast whose zone is not
+	// known (weaker than printed, never stronger). The mirror image of
+	// ManaRestrictNotFromHand, read from the same CastFrom.
+	ManaRestrictCastFromExile = "cast:from-exile"
 	// ManaRestrictMonocolored permits the token only when the object
 	// being paid for is exactly one colour (CR 105.2a) — Throne of
 	// Eldraine's "spend this mana only to cast monocolored spells of
@@ -499,6 +507,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 			return ctx.CastFrom != "" && ctx.CastFrom != ZoneHand
 		}
 		return false
+	case ManaRestrictCastFromExile:
+		return ctx.Purpose == SpendPurposeCast && ctx.CastFrom == ZoneExile
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:
