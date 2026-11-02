@@ -57,6 +57,12 @@ type ObjectDamageRecord struct {
 	Source ObjectRef `json:"source"`
 	Victim ObjectRef `json:"victim"`
 	Combat bool      `json:"combat,omitempty"`
+	// VictimCreature marks a victim that was a creature as the damage was
+	// dealt (its layered card types then), for "if this dealt damage to
+	// another creature this turn" (Wolverine, Best There Is, #4460). A
+	// record restored from before the field existed reads false: weaker,
+	// never stronger.
+	VictimCreature bool `json:"victimCreature,omitempty"`
 }
 
 // recordDamagedObjectLocked notes the damage event `ev`, dealt to a
@@ -79,6 +85,8 @@ func (g *Game) recordDamagedObjectLocked(ev Event) {
 		Source: ObjectRef{ID: src.InstanceID, Epoch: src.ObjectEpoch},
 		Victim: ObjectRef{ID: victim.InstanceID, Epoch: victim.ObjectEpoch},
 		Combat: ev.Combat,
+
+		VictimCreature: victim.IsCreature(),
 	})
 }
 
@@ -108,6 +116,26 @@ func (g *Game) objectDealtDamageSinceLocked(source, victim ObjectRef, since int)
 // Caller must hold g.mu.
 func (g *Game) ObjectDealtDamageToObjectThisTurn(source, victim ObjectRef) bool {
 	return g.objectDealtDamageSinceLocked(source, victim, 0)
+}
+
+// ObjectDealtDamageToAnotherCreatureThisTurn reports whether the object
+// `source` dealt damage this turn, combat or not, to a permanent that was
+// a creature when it was dealt and is not `source` itself: Wolverine,
+// Best There Is's "if Wolverine dealt damage to another creature this
+// turn". A source that left and came back is a new object that has dealt
+// no damage (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) ObjectDealtDamageToAnotherCreatureThisTurn(source ObjectRef) bool {
+	if source.ID == uuid.Nil {
+		return false
+	}
+	for _, rec := range g.TurnTally.DamagedObjects {
+		if rec.Source == source && rec.VictimCreature && rec.Victim.ID != source.ID {
+			return true
+		}
+	}
+	return false
 }
 
 // PermanentDealtDamageToPermanentThisTurn is "<victim> was dealt damage
