@@ -300,7 +300,8 @@ func (g *Game) RegenerateInsteadForEffect(ev *ReplacementEvent) {
 // Then the three things the rule names, in its order:
 //
 //   - TAP IT. Not "tap it if it is untapped" — a tapped permanent
-//     simply stays tapped, which is what assigning true does.
+//     simply stays tapped, which is what assigning true does. Only an
+//     untapped one becomes tapped, so only it emits EventTapCard.
 //   - REMOVE ALL DAMAGE. Through the same clearBattlefieldDamage the
 //     cleanup step and the battlefield exit use, so "what clearing
 //     means" — the damage AND the CR 702.2c deathtouch mark — is
@@ -341,14 +342,23 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 // Caller must hold g.mu (write).
 func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card) {
 	ev.Cancel()
+	// CR 701.19a/b: "its controller taps it". The creature BECOMES
+	// tapped, so "whenever ~ becomes tapped" sees it, as every other tap
+	// does (#4597). A permanent that was already tapped stays tapped and
+	// does not become tapped again, so it announces nothing.
+	becameTapped := !c.Tapped
 	c.Tapped = true
 	clearBattlefieldDamage(c)
 	g.removeFromCombatLocked(c)
+	id, controller := c.InstanceID, c.Controller
+	if becameTapped {
+		g.EmitEvent(Event{Kind: EventTapCard, Actor: controller, CardID: id})
+	}
 	g.EmitEvent(Event{
 		Kind:   EventRegenerated,
-		Actor:  c.Controller,
-		Source: c.InstanceID,
-		CardID: c.InstanceID,
+		Actor:  controller,
+		Source: id,
+		CardID: id,
 	})
 }
 
