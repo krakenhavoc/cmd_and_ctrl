@@ -247,6 +247,7 @@ body sauron-the-necromancer/exile-token-unless-ring-bearer
 body seasoned-cryomancer/tap-and-stun
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
+body shriek-treblemaker/cant-block
 body sorin-imperious-bloodlord/strike
 body speed-young-avenger/unblockable
 body speed/increase
@@ -1110,6 +1111,7 @@ payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rush-of-inspiration-discard
 payunless pay-unless/sentry-bot-counters
+payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/speed-young-avenger-unblockable
