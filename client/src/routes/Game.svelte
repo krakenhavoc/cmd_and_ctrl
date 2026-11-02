@@ -3385,6 +3385,7 @@
           {combatMode}
           {selectedCombatCardID}
           stagedAttackers={stagedAttackerIDs}
+          stagedAttacks={attackStage}
           onSelectCombatCard={handleSelectCombatCard}
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}

@@ -285,6 +285,9 @@
     selectedCombatCardID: string | null;
     // #3266: the attackers the viewer has staged, drawn as attacking.
     stagedAttackers?: ReadonlySet<string>;
+    // #4327: the same staged attackers with their targets, for the
+    // dashed lines CombatArrows draws before the declaration.
+    stagedAttacks?: readonly { attacker: string; target: string }[];
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
@@ -330,6 +333,7 @@
   }
 
   const NO_STAGED: ReadonlySet<string> = new Set();
+  const NO_STAGED_ATTACKS: readonly { attacker: string; target: string }[] = [];
 
   const {
     view,
@@ -339,6 +343,7 @@
     combatMode,
     selectedCombatCardID,
     stagedAttackers = NO_STAGED,
+    stagedAttacks = NO_STAGED_ATTACKS,
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
@@ -4120,6 +4125,7 @@
     {view}
     {boardEl}
     cues={combatCues}
+    staged={stagedAttacks}
     stackTargets={!(
       laneShowsStack &&
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
