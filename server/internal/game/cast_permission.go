@@ -240,6 +240,13 @@ type PermissionFilter struct {
 	// historic (an artifact or legendary land) qualifies as a play.
 	HistoricOnly bool `json:"historicOnly,omitempty"`
 
+	// LegendaryOnly is Peter Parker // Amazing Spider-Man's "each
+	// LEGENDARY spell you cast that's one or more colors": the card must
+	// have the legendary supertype (CR 205.4), read from its effective
+	// characteristics. Pair it with ColorsAny "WUBRG" for "one or more
+	// colors".
+	LegendaryOnly bool `json:"legendaryOnly,omitempty"`
+
 	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
 	// colorless spells": an OR of two properties read from the card's
 	// effective characteristics, so a colored artifact and a colorless
@@ -398,6 +405,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
+		return false
+	}
+	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {

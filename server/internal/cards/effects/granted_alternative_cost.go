@@ -59,6 +59,11 @@ const (
 	// equal to its mana value rather than paying its mana cost."
 	// (Access Maze, #3174).
 	GrantedAltCostLifeFromHandOnceYourTurn = "granted-life-from-hand-once-your-turn"
+	// GrantedAltCostWebSlinging is "Each legendary spell you cast that's
+	// one or more colors has web-slinging {G}{W}{U}" (Peter Parker //
+	// Amazing Spider-Man): web-slinging's offer, granted. Read it with
+	// PaidWebSlinging, never by comparing to the printed key alone.
+	GrantedAltCostWebSlinging = "granted-web-slinging"
 	// GrantedAltCostMiracle is "Nonland cards in your hand have miracle
 	// {0}." (Molecule Man). It is game.AltCostKeyGrantedMiracle: the engine
 	// half (the reveal trigger, the cast permission, the window) reads it.
@@ -73,6 +78,38 @@ const (
 // spell with two emerge costs be cast for either.
 func PaidEmerge(key string) bool {
 	return key == AltCostKeyEmerge || key == GrantedAltCostEmerge
+}
+
+// AltCostKeyWebSlinging is the key of a card's own web-slinging offer
+// (spider_sense.go, amazing_spider_girl.go): an on-disk identity.
+const AltCostKeyWebSlinging = "web_slinging"
+
+// PaidWebSlinging reports whether `key` — a StackItem's AltCost — is a
+// web-slinging cost: the card's own ("web_slinging") or one Peter Parker
+// gave it ("granted-web-slinging"). "Cast using web-slinging" is true
+// for either, since a spell given web-slinging has that cost (CR
+// 702.188a).
+func PaidWebSlinging(key string) bool {
+	return key == AltCostKeyWebSlinging || key == GrantedAltCostWebSlinging
+}
+
+// WebSlingingForSpellsYouCast is Peter Parker // Amazing Spider-Man's
+// static: "Each legendary spell you cast that's one or more colors has
+// web-slinging {G}{W}{U}." The offer is web-slinging's: the mana, and a
+// tapped creature you control returned to its owner's hand as a cost
+// (CR 702.188a). It reaches every zone the printed mana cost could be
+// paid from (CR 118.9a); the filter is read off the face being cast.
+func WebSlingingForSpellsYouCast(cost string, spells game.PermissionFilter) game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:          GrantedAltCostWebSlinging,
+			Label:        "Web-slinging " + cost,
+			ManaCost:     cost,
+			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), b751Tapped()),
+			PayLabel:     "a tapped creature you control",
+		},
+		Spells: spells,
+	}
 }
 
 // PayWUBRGForSpellsYouCast is Fist of Suns', Jodah, Archmage Eternal's
@@ -338,7 +375,13 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if emerge {
 			checkEmerge(name, o)
 		}
-		if o.Life != 0 || (o.PaysCards() && !emerge) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
+		// Peter Parker // Amazing Spider-Man: the other component a
+		// granted offer may carry is web-slinging's, the return of one
+		// permanent to its owner's hand and nothing else.
+		webSlinging := o.ReturnToHand != nil && o.Sacrifice == nil && !o.ReducedBySacrificedManaValue &&
+			o.ExileFromHand == nil && o.DiscardFromHand == nil &&
+			o.ExileFromGraveyard == nil && o.TapOthers == nil
+		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
 			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash || o.Blitz || o.Sneak ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))
