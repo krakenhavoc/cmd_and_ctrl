@@ -276,7 +276,16 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// copies of "the card's layout, unless a grant names faces" is a
 	// picker row the enumerator would not offer, or the other way
 	// round.
-	for _, face := range game.CastableFacesUnder(c, perm, e.seat) {
+	//
+	// #4696: and each face under the permission that opens it
+	// (game.CastableFaceGrantsLocked), which is the one CastSpell finds
+	// for a cast of that face: two permissions opening different faces
+	// of one card (Vizier of the Menagerie's creature spells beside an
+	// "instant and sorcery spells" permission, over Bonecrusher Giant)
+	// offer both, each priced by its own.
+	firstPerm := perm
+	for _, fg := range g.CastableFaceGrantsLocked(e.seat, c, kind, firstPerm) {
+		face, perm := fg.Face, fg.Permission
 		// The face is materialised onto a COPY, exactly as CastSpell
 		// does, so all the type, cost and catalog reads below see the
 		// chosen half without any of them learning about faces.
@@ -315,11 +324,11 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	}
 	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
 	// cast as both halves, for both costs, with no alternative cost.
-	if kind == game.ZoneHand && perm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
+	if kind == game.ZoneHand && firstPerm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
 		fused := game.FusedSpell(c)
-		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, perm) {
+		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, firstPerm) {
 			if offer == nil {
-				e.castMovesForCard(fused, from, kind, perm, nil)
+				e.castMovesForCard(fused, from, kind, firstPerm, nil)
 			}
 		}
 	}

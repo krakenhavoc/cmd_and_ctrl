@@ -151,7 +151,9 @@ func (g *Game) SpellXCeilingForOfferEffect(caster uuid.UUID, key string, offer *
 func (g *Game) SpellXCeilingForCast(caster uuid.UUID, card Card, params CastSpellParams) (ceiling int, ok bool) {
 	g.ReadSnapshot(func() {
 		srcKind, _ := castZoneFromWire(params.FromZone)
-		grant := g.CastPermissionForClaimLocked(caster, card, srcKind, params.AlternativeCost)
+		// #4696: the permission that opens the face cast, as CastSpell
+		// finds it.
+		grant := g.CastPermissionForFaceLocked(caster, card, srcKind, params.AlternativeCost, params.Face)
 		alt, err := g.resolveAlternativeCostLocked(caster, card, srcKind, grant, params.AlternativeCost, params.Targets)
 		if err != nil {
 			alt = nil

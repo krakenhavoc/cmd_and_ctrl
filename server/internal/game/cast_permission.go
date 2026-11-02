@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -1674,12 +1675,131 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // A granted instance's claim (GrantedInstanceKey, #3938) picks by the
 // keyword it is an instance of.
 func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string) *CastPermission {
+	return g.castPermissionForClaimMatchingLocked(playerID, card, zone, claim, nil)
+}
+
+// CastPermissionForFaceLocked is CastPermissionForClaimLocked for a cast
+// that has named the face it casts or plays (#4696). Two live permissions
+// can cover one multi-face card and open different faces of it: "creature
+// spells from the top of your library" opens Bonecrusher Giant and "instant
+// and sorcery spells from the top of your library" opens Stomp. A cast is
+// legal when any rule or effect allows it (CR 601.3), and each face is
+// judged as the spell it would be (CR 712.11c, 715.3a), so the permission a
+// cast of `face` uses is the first, in CastPermissionForClaimLocked's
+// order, that opens THAT face (CastPermission.opensFace): one that names
+// faces names it, and one whose filter is about the spell admits it.
+//
+// When none does, the answer is CastPermissionForClaimLocked's, unchanged:
+// a grant that names one face still settles the face for a caller that
+// sent none (faceForCastLocked), and a permission that does not admit the
+// face is still narrowed to nothing by ForSpell where it always was. So
+// the answer differs from CastPermissionForClaimLocked's only where a
+// second permission opens a face the first one does not.
+//
+// `card` is the card as it sits in its zone or a copy already turned to
+// `face`; the face is materialised on a copy here either way. CastSpell,
+// the pricer (priceCastLocked, printedCostLocked, grantReductionLocked,
+// tapCostForCastParamsLocked, claimedAltCostLocked) and the X ceiling all
+// ask this with the face they were handed, so all of them judge a cast
+// under the same permission; the enumerator and the view walk
+// CastableFaceGrantsLocked, which pairs each face with the same answer.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastPermissionForFaceLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string, face int) *CastPermission {
+	if !card.IsMultiFace() || face < 0 || face >= card.FaceCount() {
+		return g.CastPermissionForClaimLocked(playerID, card, zone, claim)
+	}
+	spell := card
+	spell.SetFace(face)
+	if perm := g.castPermissionForClaimMatchingLocked(playerID, card, zone, claim, func(perm *CastPermission) bool {
+		return perm.opensFace(spell, playerID)
+	}); perm != nil {
+		return perm
+	}
+	return g.CastPermissionForClaimLocked(playerID, card, zone, claim)
+}
+
+// CastableFaceGrantsLocked pairs every face a cast of `card` by playerID
+// out of `zone` may choose with the permission that opens it (#4696), in
+// face order. `first` is CastPermissionForLocked's answer for the card,
+// which the caller already holds: its faces are CastableFacesUnder's,
+// exactly as before, and each face it does not open is added under the
+// first other live permission that does (CR 601.3). So Bonecrusher Giant
+// on top of a library under Vizier of the Menagerie and an "instant and
+// sorcery spells" permission is two faces, each under its own permission,
+// and the face's pairing is the permission CastPermissionForFaceLocked
+// hands a cast of that face. A single-faced card, and a card no
+// permission opens (`first` nil), is CastableFacesUnder's answer under
+// `first`.
+//
+// The bot enumerator (legal/cast.go) and the view's per-face stamps
+// (protocol.stampCastableFaces) both walk this, so neither offers a face
+// the other does not, nor prices one under a different permission.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastableFaceGrantsLocked(playerID uuid.UUID, card Card, zone ZoneKind, first *CastPermission) []FaceGrant {
+	faces := CastableFacesUnder(card, first, playerID)
+	out := make([]FaceGrant, 0, len(faces))
+	for _, f := range faces {
+		out = append(out, FaceGrant{Face: f, Permission: first})
+	}
+	if first == nil || !card.IsMultiFace() || zone == ZoneHand || zone == ZoneCommand {
+		return out
+	}
+	opened := func(f int) bool {
+		for _, fg := range out {
+			if fg.Face == f {
+				return true
+			}
+		}
+		return false
+	}
+	for _, f := range card.CastableFaces() {
+		if opened(f) {
+			continue
+		}
+		perm := g.CastPermissionForFaceLocked(playerID, card, zone, "", f)
+		if perm == nil || !slices.Contains(CastableFacesUnder(card, perm, playerID), f) {
+			continue
+		}
+		out = append(out, FaceGrant{Face: f, Permission: perm})
+	}
+	slices.SortStableFunc(out, func(a, b FaceGrant) int { return a.Face - b.Face })
+	return out
+}
+
+// FaceGrant is one face a cast may choose and the permission that opens
+// it (CastableFaceGrantsLocked). Permission is nil for a face the card's
+// own rules open with no permission at all.
+type FaceGrant struct {
+	Face       int
+	Permission *CastPermission
+}
+
+// opensFace reports whether a cast of `spell`, the card with the face
+// being cast already materialised, is one this permission opens: a
+// permission that names faces names that one, and one whose filter is
+// about the spell admits it (ForSpell). Nothing about the window or the
+// zone is asked; the lookup that found the permission asked those.
+func (p *CastPermission) opensFace(spell Card, player uuid.UUID) bool {
+	if faces, ok := p.GrantsFaces(player); ok && !slices.Contains(faces, spell.ActiveFace) {
+		return false
+	}
+	return p.ForSpell(spell) != nil
+}
+
+// castPermissionForClaimMatchingLocked is CastPermissionForClaimLocked's
+// walk with a test every candidate must also pass: the first permission,
+// in that order, that `accept` takes. A nil `accept` takes the first.
+//
+// Caller must hold g.mu.
+func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string, accept func(*CastPermission) bool) *CastPermission {
 	claim = AltCostKeyword(claim)
 	if zone == ZoneHand && isMiracleKey(claim) {
 		// A card can hold a printed miracle's grant and a granted one's
 		// (Molecule Man beside a Terminus): the claim names which.
 		if p := g.playerByIDLocked(playerID); p != nil {
-			if perm := g.storedHandPermissionForLocked(p, card, claim); perm != nil {
+			if perm := g.storedHandPermissionForLocked(p, card, claim); perm != nil && acceptsPermission(accept, perm) {
 				return perm
 			}
 		}
@@ -1692,6 +1812,9 @@ func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone 
 					continue
 				}
 				out := *perm
+				if !acceptsPermission(accept, &out) {
+					continue
+				}
 				return &out
 			}
 			// #4177: and a permission a permanent of the caster's gives
@@ -1701,12 +1824,21 @@ func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone 
 			for _, perm := range g.standingCastPermissionsLocked(p) {
 				if perm.AltCostKey == claim && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
 					out := perm
+					if !acceptsPermission(accept, &out) {
+						continue
+					}
 					return &out
 				}
 			}
 		}
 	}
-	return g.castPermissionLocked(playerID, card, zone)
+	return g.castPermissionLocked(playerID, card, zone, accept)
+}
+
+// acceptsPermission is castPermissionForClaimMatchingLocked's test: nil
+// takes everything.
+func acceptsPermission(accept func(*CastPermission) bool, perm *CastPermission) bool {
+	return perm != nil && (accept == nil || accept(perm))
 }
 
 // standingPermissionOpensLocked is storedPermissionOpensLocked's test
@@ -1839,7 +1971,11 @@ func (g *Game) consumeBudgetGroupLocked(p *Player, group uuid.UUID) {
 // castPermissionLocked is CastPermissionForLocked's body.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
+//
+// `accept`, when not nil, is a further test a candidate must pass to be
+// the answer (castPermissionForClaimMatchingLocked): the walk goes on to
+// the next one when it fails.
+func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind, accept func(*CastPermission) bool) *CastPermission {
 	if zone == ZoneCommand {
 		return nil
 	}
@@ -1848,7 +1984,10 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		return nil
 	}
 	if zone == ZoneHand {
-		return g.storedHandPermissionLocked(p, card)
+		if perm := g.storedHandPermissionLocked(p, card); acceptsPermission(accept, perm) {
+			return perm
+		}
+		return nil
 	}
 	// ADR 0090: a CR 722.3c prepare copy answers for itself, and ONLY
 	// for itself. Its permission is derived from the prepared
@@ -1857,7 +1996,7 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	// would cast an object CR 722.3c keeps castable only by the
 	// prepared permanent's controller, and only while it is prepared.
 	if card.PrepareCopy {
-		if perm := g.prepareCopyPermissionLocked(card, zone); perm != nil && perm.Player == playerID {
+		if perm := g.prepareCopyPermissionLocked(card, zone); perm != nil && perm.Player == playerID && acceptsPermission(accept, perm) {
 			return perm
 		}
 		return nil
@@ -1878,6 +2017,9 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 			continue
 		}
 		out := *perm
+		if !acceptsPermission(accept, &out) {
+			continue
+		}
 		return &out
 	}
 	for _, perm := range g.standingCastPermissionsLocked(p) {
@@ -1891,11 +2033,16 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 			continue
 		}
 		out := perm
+		if !acceptsPermission(accept, &out) {
+			continue
+		}
 		return &out
 	}
 	// A permission an ability sticker on the card gives it (#4307).
 	if zone == ZoneGraveyard {
-		return g.stickerGraveyardPermissionLocked(playerID, card)
+		if perm := g.stickerGraveyardPermissionLocked(playerID, card); acceptsPermission(accept, perm) {
+			return perm
+		}
 	}
 	return nil
 }
@@ -2785,7 +2932,8 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	}
 	// #4509: `card` is the face being cast; a permission that does not
 	// admit it takes nothing off (ForSpell).
-	grant := g.CastPermissionForClaimLocked(playerID, card, from, params.AlternativeCost).ForSpell(card)
+	// #4696: the permission that opens that face, as CastSpell finds it.
+	grant := g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face).ForSpell(card)
 	if grant == nil || grant.CostLess <= 0 {
 		return 0
 	}
