@@ -1595,6 +1595,7 @@ tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
 tail mass/worlds-within-worlds-exiled
+tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
 tail mill-then-take/something-worth-saving
