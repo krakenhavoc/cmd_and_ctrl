@@ -27,8 +27,8 @@ const (
 
 // pushActivated puts an activated ability of `source` (a catalog card on
 // the board) on the stack under `by`, naming the catalog row whose label
-// contains `label`, as the activation path does.
-func (b *threatBoard) pushActivated(t *testing.T, by *game.Player, source uuid.UUID, label string) {
+// contains `label`, as the activation path does, aimed at `targets`.
+func (b *threatBoard) pushActivated(t *testing.T, by *game.Player, source uuid.UUID, label string, targets ...game.TargetRef) {
 	t.Helper()
 	var card game.Card
 	b.g.WithWriteLock(func() {
@@ -51,21 +51,21 @@ func (b *threatBoard) pushActivated(t *testing.T, by *game.Player, source uuid.U
 	}
 	b.pushItem(by, source, name, &game.AbilityRef{
 		Key: key, Slot: game.AbilitySlotActivated, Ref: game.OwnAbilityRef(row), Name: name,
-	})
+	}, targets...)
 }
 
-// pushItem puts an activated-ability item on the stack. A nil ref is a
-// sandbox activation, which names no catalog row.
-func (b *threatBoard) pushItem(by *game.Player, source uuid.UUID, label string, ref *game.AbilityRef) {
+// pushItem puts an activated-ability item on the stack: metadata alone,
+// with no card on the stack zone, as the engine keeps an ability
+// (#4779). A nil ref is a sandbox activation, which names no catalog row.
+func (b *threatBoard) pushItem(by *game.Player, source uuid.UUID, label string, ref *game.AbilityRef, targets ...game.TargetRef) {
 	id := uuid.New()
 	b.g.WithWriteLock(func() {
-		b.g.Stack.PushTop(game.Card{InstanceID: id, Name: "Stack item", Owner: by.ID, Controller: by.ID})
 		if b.g.StackMeta == nil {
 			b.g.StackMeta = make(map[uuid.UUID]*game.StackItem)
 		}
 		b.g.StackMeta[id] = &game.StackItem{
 			ID: id, Kind: game.StackItemActivated, Controller: by.ID, Owner: by.ID,
-			SourceCardID: source, Label: label, Params: game.EffectParams{Ability: ref},
+			SourceCardID: source, Label: label, Params: game.EffectParams{Ability: ref}, Targets: targets,
 		}
 	})
 }

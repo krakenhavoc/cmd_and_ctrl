@@ -96,21 +96,21 @@ func manaAnswersOf(m game.ManaAbilityShape) game.Answers {
 // item on the stack that its controller does not control, `combat` when
 // it is attacking or blocking. A source that is not a creature on the
 // battlefield, or a row that does not sacrifice its source, is neither.
+// The stack is every entry stackEntries reads: a spell card in g.Stack,
+// and an activated or triggered ability, which lives only in g.StackMeta
+// (#4779).
 func selfSacrificeThreatened(g *game.Game, source *game.Card, zone game.ZoneKind, sacrificesSelf bool) (stack, combat bool) {
 	if !sacrificesSelf || source == nil || zone != game.ZoneBattlefield || !source.IsCreature() {
 		return false, false
 	}
 	combat = source.AttackingTarget != uuid.Nil || source.BlockingTarget != uuid.Nil
-	if g.Stack != nil {
-		for i := range g.Stack.Cards {
-			item := g.StackMeta[g.Stack.Cards[i].InstanceID]
-			if item == nil || item.Controller == source.Controller {
-				continue
-			}
-			for _, r := range item.Targets {
-				if r.Kind == game.TargetCard && r.ID == source.InstanceID {
-					return true, combat
-				}
+	for _, e := range stackEntries(g) {
+		if e.item == nil || e.controller == source.Controller {
+			continue
+		}
+		for _, r := range e.item.Targets {
+			if r.Kind == game.TargetCard && r.ID == source.InstanceID {
+				return true, combat
 			}
 		}
 	}
@@ -138,17 +138,19 @@ const threatGated = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | 
 // to the board while it is on the stack; its enters trigger is an item
 // of its own, judged when it is put there. With no game to read it says
 // yes: a stop over a missed window (ADR 0009 §3).
+//
+// Every item is read the way answer_window.go's readStack reads it
+// (stackEntries): the spell cards in g.Stack with their metadata, and
+// every activated or triggered ability, which has no card on the stack
+// zone and lives only in g.StackMeta (#4779). A spell card with no
+// metadata is not read here.
 func stackThreatens(g *game.Game, seat uuid.UUID) bool {
 	if g == nil {
 		return true
 	}
-	if g.Stack == nil {
-		return false
-	}
-	for i := range g.Stack.Cards {
-		card := &g.Stack.Cards[i]
-		item := g.StackMeta[card.InstanceID]
-		if item == nil || item.Controller == seat {
+	for _, e := range stackEntries(g) {
+		item := e.item
+		if item == nil || e.controller == seat {
 			continue
 		}
 		targeted := false
@@ -168,7 +170,7 @@ func stackThreatens(g *game.Game, seat uuid.UUID) bool {
 				targeted = true
 			}
 		}
-		if !targeted && item.Kind == game.StackItemSpell && (card.IsInstant() || card.IsSorcery()) {
+		if !targeted && item.Kind == game.StackItemSpell && e.card != nil && (e.card.IsInstant() || e.card.IsSorcery()) {
 			return true
 		}
 		if abilityReaches(g, seat, item) {
