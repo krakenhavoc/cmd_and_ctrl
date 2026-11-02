@@ -44,7 +44,9 @@ func vizierAndSpellsFromTop(t *testing.T) (*game.Game, *game.Player, *game.Playe
 
 func TestVizierAndAnInstantPermissionOfferBothHalvesOfBonecrusherGiant(t *testing.T) {
 	g, me, opp, giant := vizierAndSpellsFromTop(t)
-	floatForTest(g, me, "RR")
+	// Enough for the Giant's {2}{R}, so the move list is not cut by what
+	// the seat can afford.
+	floatForTest(g, me, "RRR")
 	if faces := castMoveFaces(g, me.ID, giant); !slices.Equal(faces, []int{0, 1}) {
 		t.Fatalf("the bot is offered faces %v, want both [0 1]", faces)
 	}
