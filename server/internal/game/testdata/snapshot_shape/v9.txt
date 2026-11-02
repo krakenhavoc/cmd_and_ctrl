@@ -21926,6 +21926,11 @@ pendingChoices[].copyOptions	array
 pendingChoices[].copyOptions[]	custom(uuid.UUID)
 pendingChoices[].copyWalk	object
 pendingChoices[].copyWalk.controller	custom(uuid.UUID)
+pendingChoices[].copyWalk.gains	object
+pendingChoices[].copyWalk.gains.keywords	array
+pendingChoices[].copyWalk.gains.keywords[]	string
+pendingChoices[].copyWalk.gains.label	string
+pendingChoices[].copyWalk.gains.source	custom(uuid.UUID)
 pendingChoices[].copyWalk.item	object
 pendingChoices[].copyWalk.item.altCost	string
 pendingChoices[].copyWalk.item.altCostExiles	bool

@@ -44,6 +44,31 @@ const ModSetName ModKind = "setName"
 // 6, when the card says so.
 const ModSetTypes ModKind = "setTypes"
 
+// ModAddSupertypes is "is a legendary … in addition to its other types"
+// (layer 4) with CR 205.1b's meaning: the Supertypes are gained and every
+// card type, subtype and other supertype stays (CR 205.4b). Origin of
+// Spider-Man's "It becomes a legendary Spider Hero in addition to its
+// other types" is this beside an AddSubtypesMod in the same record. Reads
+// Supertypes (at least one, each one of CR 205.4a's).
+const ModAddSupertypes ModKind = "addSupertypes"
+
+// AddSupertypesMod is "a <supertype> … in addition to its other types"
+// (layer 4, CR 205.4b).
+func AddSupertypesMod(supertypes ...string) Mod {
+	return Mod{Kind: ModAddSupertypes, Supertypes: copyStrings(supertypes)}
+}
+
+// addSupertypes is ModAddSupertypes' Apply on one characteristic.
+func (c *Characteristic) addSupertypes(supertypes []string) {
+	super := append([]string(nil), c.Supertypes...)
+	for _, s := range supertypes {
+		if !typeListHas(super, s) {
+			super = append(super, s)
+		}
+	}
+	c.Supertypes = super
+}
+
 // SetNameMod is "named <name>" (layer 3, CR 612.8).
 func SetNameMod(name string) Mod { return Mod{Kind: ModSetName, Text: name} }
 
@@ -61,10 +86,19 @@ var knownSupertypes = []string{"Basic", "Legendary", "Ongoing", "Snow", "World"}
 // two kinds, and for the one field only ModSetTypes reads. "" when the
 // mod is sound.
 func becomeNamedModProblem(m Mod) string {
-	if m.Kind != ModSetTypes && len(m.Supertypes) > 0 {
-		return fmt.Sprintf("mod %q names supertypes, which only a setTypes mod reads", m.Kind)
+	if m.Kind != ModSetTypes && m.Kind != ModAddSupertypes && len(m.Supertypes) > 0 {
+		return fmt.Sprintf("mod %q names supertypes, which only a setTypes or addSupertypes mod reads", m.Kind)
 	}
 	switch m.Kind {
+	case ModAddSupertypes:
+		if len(m.Supertypes) == 0 {
+			return "an addSupertypes mod names no supertype"
+		}
+		for _, s := range m.Supertypes {
+			if !typeIn(s, knownSupertypes) {
+				return fmt.Sprintf("an addSupertypes mod names %q, which is not a supertype", s)
+			}
+		}
 	case ModSetName:
 		if m.Text == "" {
 			return "a setName mod names no name"

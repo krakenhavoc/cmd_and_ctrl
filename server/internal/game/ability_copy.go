@@ -111,7 +111,7 @@ func (g *Game) CopyAbilityForEffect(itemID, controller uuid.UUID, mayChooseNewTa
 	// source has ALREADY left, copyTargetSourceLocked judges against
 	// its last-known record rather than this card (#1449).
 	src := g.abilitySourceCardLocked(item)
-	g.offerCopyTargetsLocked(src, item, controller, item.targetSpec, mayChooseNewTargets)
+	g.offerCopyTargetsLocked(src, item, controller, item.targetSpec, mayChooseNewTargets, nil)
 	return nil
 }
 

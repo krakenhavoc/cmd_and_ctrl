@@ -220,6 +220,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
 			}
 		}},
+		// CR 205.4b: the supertype is gained and the type line stays.
+		{"addSupertypes", []Mod{AddSupertypesMod("Legendary")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Creature"}) || !reflect.DeepEqual(c.Subtypes, []string{"Bear"}) ||
+				!typeListHas(c.Supertypes, "Legendary") {
+				t.Errorf("type line = %v %v — %v, want Legendary Creature — Bear", c.Supertypes, c.Types, c.Subtypes)
+			}
+		}},
 		// #2144: CR 205.1a for the creature types alone: the Bear goes,
 		// the Frog comes, and the card types stay.
 		{"setCreatureTypes", []Mod{SetCreatureTypesMod("Frog")}, func(t *testing.T, _, c Characteristic, _ *Game) {
@@ -373,7 +380,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// illusion_of_choice_test.go.
 		ModVoteChooser: true,
 		// #2562: cases above.
-		ModSetName: true, ModSetTypes: true,
+		ModSetName: true, ModSetTypes: true, ModAddSupertypes: true,
 		// #2144: case above.
 		ModSetCreatureTypes: true,
 		// #4072: case above and in lose_subtypes_test.go.

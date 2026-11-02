@@ -73,6 +73,9 @@ type copyWalkSnapshot struct {
 	Orig []TargetRef `json:"orig,omitempty"`
 	Next []TargetRef `json:"next,omitempty"`
 	Step int         `json:"step"`
+	// Gains is what the copy gains once it exists (copyGrant, #4460):
+	// Spider-Verse's haste. Absent for nearly every walk.
+	Gains *copyGrant `json:"gains,omitempty"`
 }
 
 // copyStepSnapshot is one announced step's identity.
@@ -111,6 +114,7 @@ func snapshotCopyWalkOf(c *PendingChoice, cen *ContinuationCensus) *copyWalkSnap
 		Orig:       copyTargetRefs(f.orig),
 		Next:       copyTargetRefs(f.next),
 		Step:       f.step,
+		Gains:      cloneCopyGrant(f.gains),
 	}
 	for _, st := range f.steps {
 		out.Steps = append(out.Steps, copyStepSnapshot{Mode: st.Mode, Option: st.Option, Slot: st.Slot})
@@ -158,7 +162,18 @@ func (g *Game) rebuildCopyWalkLocked(s *copyWalkSnapshot) (*copyFrame, bool) {
 		orig:       copyTargetRefs(s.Orig),
 		next:       copyTargetRefs(s.Next),
 		step:       s.Step,
+		gains:      cloneCopyGrant(s.Gains),
 	}, true
+}
+
+// cloneCopyGrant is a copyGrant's deep copy, nil for nil.
+func cloneCopyGrant(c *copyGrant) *copyGrant {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	out.Keywords = append([]string(nil), c.Keywords...)
+	return &out
 }
 
 // restoreCopyWalkLocked puts a written copy walk back on its prompt and

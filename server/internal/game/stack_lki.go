@@ -186,7 +186,7 @@ func (g *Game) CopyLastKnownSpellForEffect(spellID, controller uuid.UUID, mayCho
 	if !ok {
 		return ErrCardNotFound
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except)
+	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except, nil)
 	return nil
 }
 
