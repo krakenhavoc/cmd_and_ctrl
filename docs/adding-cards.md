@@ -47,6 +47,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
+  - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4303,6 +4304,14 @@ around, and almost every ability should carry on from last known
 information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
+
+### Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)
+
+`Plus(ManaCost("{3}"), UnattachAnEquipment())` is Captain America, First Avenger's "{3}, Unattach an Equipment from
+Captain America". The activator picks one Equipment attached to the source, whoever controls it; it stays on the
+battlefield unattached. With nothing attached the ability can't be activated. A divided amount that reads the pick is
+`Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
+the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
 
 ### Adding a block-rule card (S37+, #750)
 

@@ -55,6 +55,24 @@ var DivideLifeYouGainedThisTurn = game.RegisterDivideAmount("life-you-gained-thi
 		return game.DivideSpec{Total: b15LifeGainedThisTurn(g, a.Controller)}
 	})
 
+// DivideUnattachedManaValue is "damage equal to that Equipment's mana
+// value divided as you choose", where that Equipment is the one an
+// "Unattach an Equipment from <this>" cost names (#4799, Captain
+// America, First Avenger). The pick rides the same announcement
+// (game.DivideAmountArgs.Unattached), read while the Equipment is still
+// attached; its printed mana value (CR 202.3) is the amount. No pick
+// sizes the division at 0, so no target can be chosen.
+var DivideUnattachedManaValue = game.RegisterDivideAmount("unattached-equipment-mana-value",
+	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
+		total := 0
+		for _, id := range a.Unattached {
+			if c, ok := g.LookupCardForEffect(id); ok {
+				total += c.ManaValue()
+			}
+		}
+		return game.DivideSpec{Total: total}
+	})
+
 // DivideTwoOrXIfMadness is Avacyn's Judgment's amount: "2 damage
 // divided as you choose … If this spell's madness cost was paid, it
 // deals X damage divided as you choose among those permanents and/or

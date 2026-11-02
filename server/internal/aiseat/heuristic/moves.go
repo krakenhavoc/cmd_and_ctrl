@@ -483,6 +483,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// ADR 0126 §7: priced by the chance the bot would have kept
 		// each permanent, less its death payoffs (sacrifice.go).
 		v -= p.sacrificeCost(st, cp.SacrificeIDs)
+		// #4799: an Equipment unattached to pay the cost stays on the
+		// board and can be attached again, so it costs part of itself,
+		// the share a bounced permanent costs.
+		for _, id := range cp.UnattachIDs {
+			if c := st.bf[id]; c != nil {
+				v -= bounceShare * st.permanentValue(c)
+			}
+		}
 		// #1600: a permanent exiled to pay the cost leaves the board as
 		// surely as a sacrificed one, so it costs the same.
 		for _, id := range cp.ExilePermanentIDs {

@@ -3092,6 +3092,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2598, ADR 0020's 2026-10-08 amendment, Decisions 58-60): `game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`), built by `effects.RevealX` / `effects.RevealN`. It embeds the either/or branch's `RevealCost`, so the candidate walk and the quality test are shared, and `RevealCost` gained a `Color`. The count is a printed N or the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, the mana cost stays the printed one, and X may be zero. The cards are named in `reveal_ids`, shown to the table and left in the hand (CR 701.20b), so no other component's pick excludes them. `effects.Register` refuses it beside another claim on the announced X, a zero count, an unknown colour, no label and behold. The wire carries `reveal_cost_label` / `reveal_cost_n` / `reveal_cost_count_from_x` (public) and `reveal_cost_options` (controller only); the client reuses its discard picker with the verb Reveal. The enumerator offers the first 1, 2 and 3 matching cards, holds an \"up to X\" target count to each payment's X, and never the X = 0 no-op for a card that declares `XMatters`. 5 cards shipped: the Martyr cycle. **Still open:** \"Reveal this card from your hand\" (forecast, augment, Tetzimoc) and Illuminated Folio's \"two cards that share a color\".",
 	},
 	{
+		// #4799 (ADR 0020's 2026-11-02 amendment). Closed; history in
+		// Closed seams.
+		Slug: "unattach-equipment-cost", Name: "Unattaching an Equipment as an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that unattach an Equipment from the permanent whose ability it is, such as Captain America, First Avenger's \"{3}, Unattach an Equipment from Captain America\", with damage divided by that Equipment's mana value. The Equipment stays on the battlefield.",
+		Rules:       []string{"601.2b", "601.2d", "602.2b", "701.3d"},
+		Issue:       4799,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresUnattachEquipment,
+		Examples:    []string{"Captain America, First Avenger"},
+		EngineNotes: "**Shipped** (#4799, ADR 0020's 2026-11-02 amendment, Decisions 76-77): `game.AbilityCost.UnattachEquipment` (a count, 1 on the one printed card), built by `effects.UnattachAnEquipment()`. The activator names the Equipment in `unattach_ids`: each an Equipment attached to the source, whoever controls it (`UnattachCostOptionsLocked`). Paid through `UnattachForEffect`, so `EventUnattach` fires and the Equipment stays on the battlefield. A divided amount may read the pick: `DivideAmountArgs.Unattached` is the announced list, and `effects.DivideUnattachedManaValue` sums its mana values. The wire carries `unattach_label` / `unattach_options` and, on the divided clause, `divide.by_unattach`; the enumerator makes one row per attached Equipment so each division is sized from its own pick.",
+	},
+	{
 		// #2527 (ADR 0113's 2026-10-07 amendment). Closed; history in
 		// Closed seams.
 		Slug: "variable-discard-cost", Name: "Discarding X cards as a cost", Kind: KindSeam, Status: StatusImplemented,

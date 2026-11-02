@@ -724,6 +724,10 @@ export interface AbilityCost {
     each_of?: SacrificeGroupView[];
     shares?: TargetSharesView;
   };
+  // #4799: an unattach-an-Equipment cost (Captain America, First
+  // Avenger), greyed when nothing is attached to the permanent.
+  unattach_label?: string;
+  unattach_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #759: a tap-another cost (station). Greyed on the same terms as
   // the return cost: fewer untapped creatures than the clause needs.
   tap_others_label?: string;
@@ -956,6 +960,15 @@ export function exilePermanentShortfall(
   return `nothing to exile (${label ?? "a creature you control"})`;
 }
 
+// unattachShortfall is returnShortfall for an "Unattach an Equipment
+// from <this>" cost (#4799): with no Equipment attached it cannot be
+// paid (CR 118.3).
+export function unattachShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+  if (!opts) return "";
+  if ((opts.cards?.length ?? 0) >= (opts.min ?? 1)) return "";
+  return `nothing to unattach (${label ?? "an Equipment"})`;
+}
+
 // tapOthersShortfall is returnShortfall for a tap-another cost (#759):
 // the reason it can't be paid right now, or "" when it can. The
 // server's option list already excludes tapped creatures, other
@@ -1024,6 +1037,9 @@ export function abilityBlocked(
   // #1600: and one destination over.
   const exiled = exilePermanentShortfall(a.exile_permanent_options, a.exile_permanent_label);
   if (exiled) return exiled;
+  // #4799: and the unattach cost.
+  const unattach = unattachShortfall(a.unattach_options, a.unattach_label);
+  if (unattach) return unattach;
   // #759: and the tap-another cost.
   const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
   if (tapOthers) return tapOthers;

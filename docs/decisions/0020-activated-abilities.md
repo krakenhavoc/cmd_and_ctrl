@@ -3899,3 +3899,79 @@ fails the equip-ability tests in `effects`; dropping the enumerator's `rowEquip`
 `TestEquipOnlyManaMakesAnEquipAbilityAMoveAndNothingElse`; dropping the preview's bit fails
 `TestAutoTapPreviewAbilityReadsTheEquipBitOfTheRow`; matching the tag on any activation fails the matcher tables and
 `TestRoninManaPaysNothingButEquipmentSpellsAndEquipAbilities`.
+
+## Amendment 2026-11-02 ([#4799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4799)): unattaching an Equipment as a cost, and a division read from it
+
+Captain America, First Avenger: "Throw ... — {3}, Unattach an Equipment from Captain America: He deals damage equal to
+that Equipment's mana value divided as you choose among one, two, or three targets." Two things were missing: a cost
+component that unattaches, and a divided amount that depends on which Equipment the cost names. CR text checked
+against the 2026-09-25 edition (CR 118.3, 301.5d, 601.2b, 601.2d, 601.2h, 602.2b, 701.3d).
+
+### Decision 76: "Unattach an Equipment from <this>" is a counted cost component
+
+`game.AbilityCost.UnattachEquipment` is an int, the number of Equipment the cost unattaches; `effects.Register` admits
+only 1, the one printed count, and refuses the component on an ability that functions off the battlefield
+(`AbilityNeedsPermanentSource`). The activator names the Equipment in `ActivateAbilityParams.UnattachIDs`
+(`unattach_ids` on the wire). The one candidate walk is `UnattachCostOptionsLocked`: the permanents attached to the
+source that have the subtype Equipment through the layered view, whoever controls them. The printed words are "from
+Captain America", not "you control", and CR 301.5d separates an Equipment's controller from the equipped creature's.
+
+The validator runs with every other component, before anything is paid (§3): ids sent for an ability without the
+component, a count other than the cost's, a repeated id or a source off the battlefield are `ErrInvalidParam`; an id
+that is not an Equipment attached to the source is `ErrIllegalTarget`. With nothing attached the cost can't be paid and
+the activation is refused (CR 118.3). The payment is `UnattachForEffect`, the one primitive every unattach uses, so
+the Equipment stays on the battlefield attached to nothing (CR 701.3d) and `EventUnattach` fires. It is paid with the
+reveals, before any component that moves a permanent. Nothing moves, so the pick is excluded from no other component,
+and naming an Equipment to pay a cost does not target it (CR 601.2h), so hexproof does not matter.
+
+The pick is part of the announcement a parked activation writes into the snapshot
+(`pendingChoices[].parked.activate.params.UnattachIDs`), an additive key in v9.
+
+### Decision 77: a divided amount may read the unattach pick
+
+CR 601.2d announces the division before CR 601.2h pays the cost, but the amount here is "that Equipment's mana value",
+which only the cost choice names. CR 601.2b covers the shape for a variable: "If the value of that variable is defined
+in the text of the spell by a choice that player would make later in the announcement or resolution of the spell,
+that player makes that choice at this time instead of that later time." The engine already takes the whole
+announcement in one message (CR 602.2b), so the choice is made with it: `DivideAmountArgs.Unattached` carries the
+validated `UnattachIDs` into `bindDivideAmountsLocked`, and an amount rule reads them while the Equipment is still
+attached. `effects.DivideUnattachedManaValue` sums their printed mana values (CR 202.3). The amount is fixed there, as
+every bound amount is (ADR 0065's 2026-09-28 amendment), so nothing done in response changes the division. An
+Equipment with mana value 0 sizes the division at 0, so no target can be chosen and the ability can't be activated with
+it.
+
+The protocol view can't know the pick, so the divided clause on the row carries `divide.by_unattach`: the amount each
+candidate in `unattach_options` would announce, read by the same rule (`stampUnattachDivide`). The client asks for the
+Equipment before the targets, as CR 602.2b orders the cost announcement, and sizes the split from that entry. The
+legal-move enumerator makes one row per attached Equipment (`expandUnattachPicks`, beside `expandCostBranches`), so
+each row's steps are bound with its own pick before its targets and division are built, and a row with nothing
+attached offers no move (#544). The bot prices an unattached Equipment at the share of a bounced permanent: it stays on
+the battlefield and can be attached again.
+
+### Cards
+
+Captain America, First Avenger (Full). Its "... Catch" trigger is Cloud, Ex-SOLDIER's attach at the beginning of combat
+on your turn; the shared body moved to `effects.AttachTargetsToSource`, which now also does nothing when the source
+has left the battlefield or come back as a new object (CR 400.7, CR 701.3b).
+
+### Snapshot, closure and ledger
+
+`ActivateAbilityParams.UnattachIDs` is a new key in `snapshot_shape/v9.txt` under the parked activation; a file
+written without it restores with no pick, which only an ability without the component can have. The component is an
+int and the divided amount is a registered key, so no `Game` route to a func is added and the closure counts do not
+move. The new divided-amount key is not an effect key, so the ledger takes none.
+
+### Tests and back-outs
+
+`game/unattach_cost_test.go` (the candidate walk, the validator's table, the payment and its event, a bound amount
+reading the pick, the parked announcement's round trip), `cards/effects/captain_america_first_avenger_test.go`
+(paying with one Equipment, choosing between two with one an opponent's, refusals with nothing attached under strict
+activation, a division sized for the wrong Equipment refused with nothing paid, a restore with the ability on the
+stack, and the Catch trigger answered after a restore at its target prompt), `legal/unattach_cost_test.go` (one row
+per attached Equipment, each division sized by its own mana value, every move accepted, none with nothing attached)
+`protocol/unattach_cost_view_test.go` and `aiseat/heuristic/unattach_cost_test.go` (an activation that unattaches
+prices below the same one free; dropping the price fails it). Dropping `Unattached` from the activation's `bindDivideAmountsLocked` call
+sizes every division at 0 and fails the card tests; dropping the payment leaves the Equipment attached and fails
+`TestCaptainAmericaThrowsOneEquipmentForItsManaValue`; dropping the validator lets an Equipment that is not attached
+to him pay and fails `TestCaptainAmericaCannotThrowWithNothingAttached`; dropping the enumerator's pick from its
+binding fails `TestUnattachCostIsOneRowPerEquipmentSizedByItsManaValue`.

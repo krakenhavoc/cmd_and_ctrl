@@ -94,6 +94,10 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 		return "a saddle cost"
 	case cost.Loyalty != nil:
 		return "a loyalty cost"
+	case cost.UnattachEquipment > 0:
+		// #4799: "Unattach an Equipment from <this>" — only a permanent
+		// has Equipment attached to it (CR 701.3d).
+		return "an unattach-an-Equipment cost"
 	}
 	return ""
 }

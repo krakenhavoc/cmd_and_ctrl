@@ -262,6 +262,15 @@ func LoyaltyMinusX() game.AbilityCost {
 	return game.AbilityCost{Loyalty: &zero, LoyaltyX: true}
 }
 
+// UnattachAnEquipment is "Unattach an Equipment from <this>" as a cost
+// (#4799, game.AbilityCost.UnattachEquipment): the activator names one
+// Equipment attached to the source, which stays on the battlefield
+// unattached (CR 701.3d). Compose it with Plus. A divided amount reads
+// the pick through DivideUnattachedManaValue.
+func UnattachAnEquipment() game.AbilityCost {
+	return game.AbilityCost{UnattachEquipment: 1}
+}
+
 // Plus merges cost components: Plus(ManaCost("{2}"), TapCost()) is
 // "{2}, {T}". Later components win for scalar fields, which only
 // matters if a caller passes two mana strings (they shouldn't).
@@ -442,6 +451,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// Dominion Bracelet would control a turn and stay equipped.
 		if c.ExileGrantor {
 			out.ExileGrantor = true
+		}
+		// #4799: and the unattach component; dropped, Captain America's
+		// throw would deal damage for {3} and keep the Equipment on him.
+		if c.UnattachEquipment != 0 {
+			out.UnattachEquipment = c.UnattachEquipment
 		}
 		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
 		// this creature" that dropped it would untap next turn — stronger

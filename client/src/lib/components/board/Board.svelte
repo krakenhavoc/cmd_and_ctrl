@@ -2014,6 +2014,9 @@
       if (abilityExilePermanentIDs.length > 0) {
         params.exile_permanent_ids = abilityExilePermanentIDs;
       }
+      // #4799: the Equipment unattached to pay (Captain America), which
+      // the division above was sized from.
+      if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
       // #1297: the exile-N-cards picks, made at announce with the
       // discard picks. Their own field — an exiled card is not
       // discarded — and omitted when the cost has no such component.
@@ -2044,6 +2047,7 @@
       abilityTopIDs = [];
       abilityReturnIDs = [];
       abilityExilePermanentIDs = [];
+      abilityUnattachIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
@@ -2135,6 +2139,22 @@
       me?.graveyard.cards,
       p.ability.exile_permanent_options?.cards,
     );
+  });
+
+  // #4799: "Unattach an Equipment from <this>" as a cost (Captain
+  // America, First Avenger), asked after the exile pick through the same
+  // picker with the verb "Unattach". A division may be sized from the
+  // pick (divide.by_unattach), so it is made before the targets.
+  let abilityUnattachPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityUnattachIDs: string[] = [];
+
+  const abilityUnattachOptions = $derived.by(() => {
+    const p = abilityUnattachPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.unattach_options?.cards);
   });
 
   // #1600: the same component on a MANA ability (Food Chain).
@@ -2676,7 +2696,7 @@
       return;
     }
     abilityExilePermanentIDs = auto;
-    askAbilityTapCost(card, ability);
+    askAbilityUnattachCost(card, ability);
   }
 
   function confirmAbilityExilePermanentCost(ids: string[]): void {
@@ -2684,6 +2704,32 @@
     abilityExilePermanentPrompt = null;
     if (!p) return;
     abilityExilePermanentIDs = ids;
+    askAbilityUnattachCost(p.card, p.ability);
+  }
+
+  // #4799: the unattach pick, after the exile pick, skipped when exactly
+  // the Equipment the cost demands is attached.
+  function askAbilityUnattachCost(card: CardView, ability: ActivatedAbilityView): void {
+    const opts = ability.unattach_options;
+    if (opts) {
+      const options = opts.cards ?? [];
+      const need = opts.max ?? opts.min ?? 1;
+      if (options.length > need) {
+        abilityUnattachPrompt = { card, ability };
+        return;
+      }
+      abilityUnattachIDs = options;
+    } else {
+      abilityUnattachIDs = [];
+    }
+    askAbilityTapCost(card, ability);
+  }
+
+  function confirmAbilityUnattachCost(ids: string[]): void {
+    const p = abilityUnattachPrompt;
+    abilityUnattachPrompt = null;
+    if (!p) return;
+    abilityUnattachIDs = ids;
     askAbilityTapCost(p.card, p.ability);
   }
 
@@ -3205,6 +3251,8 @@
         counter,
         modes,
         phyrexianLife,
+        // #4799: the division may be sized from the unattach pick.
+        abilityUnattachIDs,
       );
       const t = $targeting;
       if (t && t.steps.length > 0 && (t.legal || t.steps.length > 1)) return;
@@ -3241,6 +3289,8 @@
     if (abilityExilePermanentIDs.length > 0) {
       params.exile_permanent_ids = abilityExilePermanentIDs;
     }
+    // #4799: the Equipment unattached to pay, likewise.
+    if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
     // ADR 0109 §7: the card put on top of the library, likewise.
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     // #2598: the cards revealed to pay "Reveal X black cards".
@@ -3255,6 +3305,7 @@
     abilityTopIDs = [];
     abilityReturnIDs = [];
     abilityExilePermanentIDs = [];
+    abilityUnattachIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
@@ -4605,6 +4656,23 @@
     onConfirm={confirmAbilityExilePermanentCost}
     onCancel={() => {
       abilityExilePermanentPrompt = null;
+      abilityExilePermanentIDs = [];
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #4799: "Unattach an Equipment from <this>" as a cost (Captain
+       America, First Avenger). The sacrifice picker with the verb
+       "Unattach"; the answer rides unattach_ids. -->
+  <SacrificeCostModal
+    source={abilityUnattachPrompt?.card ?? null}
+    label={abilityUnattachPrompt?.ability.unattach_label ?? "an Equipment"}
+    options={abilityUnattachOptions}
+    count={abilityUnattachPrompt?.ability.unattach_options?.max ?? 1}
+    verb="Unattach"
+    onConfirm={confirmAbilityUnattachCost}
+    onCancel={() => {
+      abilityUnattachPrompt = null;
+      abilityUnattachIDs = [];
       abilityExilePermanentIDs = [];
       abilityReturnIDs = [];
     }}
