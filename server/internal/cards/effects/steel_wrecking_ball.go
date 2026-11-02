@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"When this artifact enters, it deals 5 damage to target creature.
 //	 {1}{R}, Discard this card: Destroy target artifact."
 //
-// The enters trigger is Magmatic Galleon's, aimed at any creature. The
+// The enters trigger shares Magmatic Galleon's body (sourceDealsFiveToTheChosenTarget), aimed at any creature. The
 // discard ability works only from the hand (CR 113.6), the way cycling
 // does and as Proft's does: the discard is part of the cost, so the card is
 // already in the graveyard when the ability resolves, and the destruction
@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(WhenThisEnters("Steel Wrecking Ball — 5 damage to target creature",
-				steelWreckingBallDamage),
+				sourceDealsFiveToTheChosenTarget),
 				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 5))),
 		},
 		Activated: []ActivatedAbility{{
@@ -32,15 +32,4 @@ func init() {
 			Effect:  destroyFirstLegalCardTarget,
 		}},
 	})
-}
-
-// steelWreckingBallDamage is "it deals 5 damage to target creature": the
-// first target still legal at resolution (CR 608.2b).
-func steelWreckingBallDamage(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	ts := ctx.LegalTargets()
-	if len(ts) == 0 {
-		return nil
-	}
-	return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: 5}.Apply(ctx)
 }
