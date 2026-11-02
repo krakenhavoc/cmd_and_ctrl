@@ -91,6 +91,7 @@ body dire-blunderbuss/damage
 body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
+body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
 body draw/controller-one
@@ -397,6 +398,7 @@ choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
+choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/kari-zevs-expertise-cast
@@ -699,6 +701,7 @@ condition ltb/the-listed-object
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
+condition tap/a-creature-becomes-tapped
 confirm confirm/academic-dispute-reach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
@@ -929,6 +932,7 @@ option option-pick/dwarven-armorer-counter
 option option-pick/emergent-ultimatum-opponent
 option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
+option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
 option option-pick/face-down-piles-curator-of-destinies
 option option-pick/face-down-piles-riddles-in-the-dark
@@ -1073,6 +1077,7 @@ payunless pay-unless/kazuul-ogre
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
+payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/mana-vault-untap
 payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
@@ -1820,6 +1825,7 @@ tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/iron-man-titan-of-innovation-sacrificed
 tail then/jinx-delayed-draw
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
