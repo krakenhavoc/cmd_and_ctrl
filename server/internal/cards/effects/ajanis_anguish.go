@@ -24,27 +24,6 @@ func init() {
 		Static: []game.StaticAbility{
 			TribalKeywordGrant(TribeFilter{YoursOnly: true}, "trample"),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: Self,
-			Targets:   TargetAny(),
-			Key:       label,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, label)
-				item.Params.Amount = source.CastX()
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				x := item.Params.Amount
-				if x <= 0 {
-					return nil
-				}
-				for _, t := range ctx.LegalTargets() {
-					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: x}.Apply(ctx)
-				}
-				return nil
-			},
-		}},
+		Triggered: []game.TriggeredAbility{etbDealsCastXDamage(label, TargetAny())},
 	})
 }
