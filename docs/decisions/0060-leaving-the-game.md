@@ -11,6 +11,9 @@ amendments at the end of this file; Decision 8's "Still open" list is now
 empty. Amended again 2026-10-12 — an admin removing a seat from a started
 game is a concession, with a `Removed` record for the lobby
 ([#3093](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3093)).
+**Amended by:** [ADR 0216](0216-planechase-as-a-table-option.md) (2026-11-03): CR 800.4p and CR 901.10 are
+filed there. The planar controller's designation is handed on before the CR 800.4a sweep, so the communal
+planar deck is never swept; the cases left are rows in this ADR's departure table.
 **Issue:** [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769)
 **Numbering:** on 2026-09-18, after `git fetch --all --prune`, every remote
 branch was listed with `git ls-tree docs/decisions/`. The highest number
@@ -529,7 +532,8 @@ that half of the rule has nothing to implement.
 - **800.4m** — complete by #921 / ADR 0063 Decision 3, Amendment 3.
 - **800.4b** (an object that would change to a departed player's control
   doesn't; no token is created), **800.4n** (the ante zone) and
-  **800.4p** (Planechase) remain unimplemented and unfiled. 800.4n and
+  **800.4p** (Planechase) remain unimplemented and unfiled (800.4p is filed by
+  [ADR 0216](0216-planechase-as-a-table-option.md) §8, 2026-11-03). 800.4n and
   800.4p are variants this sandbox does not play. 800.4b is partly true
   by consequence — `QueueChoiceForEffect` refuses a departed chooser and
   the trigger queue drops a departed controller's abilities — and has no
