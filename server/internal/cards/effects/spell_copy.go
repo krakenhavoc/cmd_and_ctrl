@@ -66,7 +66,13 @@ type CopySpell struct {
 	//
 	// It is applied to every copy independently, which is what a
 	// multi-copy card with an except clause would mean. Nil for the
-	// plain copies, which is every card in the family but one.
+	// plain copies.
+	//
+	// "The copy gains '<ability>'" is an except clause too (CR 707.9a,
+	// ADR 0218): AddKeyword for a keyword and GrantAbility for a quoted
+	// ability declared in Spec.Grants. Both are copiable values, so the
+	// token a creature copy becomes keeps them and a Clone of it copies
+	// them (Choreographed Sparks).
 	Except func(v *game.PrintedValues)
 
 	// FromLastKnown copies the spell from last-known information when
