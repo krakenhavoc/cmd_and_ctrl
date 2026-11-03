@@ -302,12 +302,20 @@ test.describe("#3490 rebound casts its card from exile at the next upkeep", () =
       });
       await expect(prompt).toBeVisible({ timeout: 20_000 });
       // One line per creature the caster controls: the Bears and its copy.
+      // The two would read the same, so the copy's line says it is the
+      // token (#4709).
       const casts = prompt.getByRole("button", {
         name: new RegExp(
-          `^Cast ${MISALIGNMENT} from exile targeting ${BEARS}$`,
+          `^Cast ${MISALIGNMENT} from exile targeting ${BEARS}( \\(token\\))?$`,
         ),
       });
       await expect(casts).toHaveCount(2);
+      await expect(
+        prompt.getByRole("button", {
+          name: `Cast ${MISALIGNMENT} from exile targeting ${BEARS} (token)`,
+          exact: true,
+        }),
+      ).toBeVisible();
       await expect(
         prompt.getByRole("button", { name: "Leave it in exile", exact: true }),
       ).toBeVisible();
