@@ -62,13 +62,16 @@ time.
 
 An entry here would be in `SOUND_MANIFEST` with no takes, so nothing is
 fetched (a listed file that is absent logs a 404) and it would play its
-fallback until the files land (ADR 0209 §6). `sounds.test.ts` fails if a
-manifest take has no file. In the PR that adds the files, list the takes in
-the manifest.
+fallback until the files land (ADR 0209 §6), or nothing when it has none.
+`sounds.test.ts` fails if a manifest take has no file, and if an entry with
+no takes is missing from its `NOT_MADE_YET` list. In the PR that adds the
+files, list the takes in the manifest and take the entry out of
+`NOT_MADE_YET`.
 
-| Entry    | Files          | Spec                                                                                                                                                                    | Falls back to |
-| -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `extort` | `extort-1.mp3` | About 2 s. A soul sucked out (~1.2 s rising whoosh), then a coin clinking onto a brass scale, with the clink at 1.2-1.4 s. Plays when an extort drain resolves (#4544). | `damage`      |
+| Entry          | Files                                                       | Spec                                                                                                                                                                                          | Falls back to |
+| -------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `extort`       | `extort-1.mp3`                                              | About 2 s. A soul sucked out (~1.2 s rising whoosh), then a coin clinking onto a brass scale, with the clink at 1.2-1.4 s. Plays when an extort drain resolves (#4544).                       | `damage`      |
+| `token_create` | `token_create-1.mp3` (and an optional `token_create-2.mp3`) | At most 0.6 s. A soft poof or shimmer. Plays once when one or more tokens are created together, as the first of them pops in with a soft glow (#4441): ten tokens made at once are one sound. | none (silent) |
 
 ### Hits on a player and elimination (#4543, #4449)
 
@@ -175,13 +178,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                                                                                            |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                                  |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                                     |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                                              |
-| `effects`   | `heal`, `player_eliminated`, `player_decked`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                                        |
+| Category    | Sounds                                                                                                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                                                  |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                                                     |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                                                              |
+| `effects`   | `heal`, `player_eliminated`, `player_decked`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `token_create`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                                                        |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

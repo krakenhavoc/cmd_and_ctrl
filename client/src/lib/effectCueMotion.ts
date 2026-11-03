@@ -11,7 +11,7 @@
 //
 // Nothing here touches game state, and nothing waits on it.
 
-import { EASE, run } from "./motion";
+import { EASE, run, type Run } from "./motion";
 import { SHATTER_BREAK, SHATTER_BREAK_LIGHT, sacrificeBeats } from "./tableEffects";
 import type { EffectKind, WipeTone } from "./tableEffects";
 
@@ -89,6 +89,9 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "pw_enter":
       pwEnter(node, f);
+      return;
+    case "token_create":
+      tokenGlow(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -753,6 +756,47 @@ function pwEnter(node: HTMLElement, f: CueMotion): void {
       span(f, 0, 1, EASE.power2Out),
     );
   }
+}
+
+// ---- A token is created (#4441): a small pop-in with a soft glow ----
+
+/** The token's own scale as its pop-in starts: about 80%. */
+export const TOKEN_POP_FROM = 0.8;
+
+/**
+ * tokenPop pops the new token's own tile in: from about 80% and hidden,
+ * up a touch past full size and bright, then settling at rest. It is the
+ * one cue that moves a live tile, because a batch's tokens are on the
+ * board at once and only the tile can wait for its turn: `fill:
+ * "backwards"` holds a later token hidden through its stagger, and once
+ * the pop is over the tile is its own style again (no end state is kept).
+ * The caller cancels the returned run when the cue is removed or skipped.
+ */
+export function tokenPop(tile: HTMLElement, f: CueMotion): Run {
+  return run(
+    tile,
+    [
+      { offset: 0, scale: String(TOKEN_POP_FROM), opacity: 0, filter: "brightness(1.6)" },
+      { offset: 0.55, scale: "1.04", opacity: 1, filter: "brightness(1.3)" },
+      { offset: 1, scale: "1", opacity: 1, filter: "brightness(1)" },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.power2Out, fill: "backwards" },
+  );
+}
+
+/** The soft glow that blooms over the token as it pops in, and fades. */
+function tokenGlow(node: HTMLElement, f: CueMotion): void {
+  const glow = node.querySelector<HTMLElement>(".tglow");
+  if (!glow) return;
+  run(
+    glow,
+    [
+      { offset: 0, scale: "0.7", opacity: 0 },
+      { offset: 0.4, scale: "1", opacity: 0.85 },
+      { offset: 1, scale: "1.2", opacity: 0 },
+    ],
+    span(f, 0, 1, EASE.power2Out),
+  );
 }
 
 // ---- Board wipes ----
