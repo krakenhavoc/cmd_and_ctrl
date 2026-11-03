@@ -863,6 +863,12 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
 	tmpl.Provenance.GiftOpponent = item.Paid.GiftOpponent
+	// #4673, CR 707.10, CR 107.3m: and so does X. The copy copied the
+	// X chosen for the spell (createSpellCopyLocked), so the token is a
+	// permanent whose spell had that X: an enters trigger that reads it
+	// (CastX), and The Ruinous Wrecking Crew's "choose up to X", see the
+	// same value the original does, not 0.
+	tmpl.Provenance.X = item.XValue
 	// A copy of an AURA spell enters attached to the object or player
 	// it targets (CR 303.4f, CR 707.10): the same attach a resolving
 	// Aura card gets in attachResolvedAuraLocked. The token is created
@@ -887,6 +893,12 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	if host, ok := singleAuraHost(targets); ok && !bestowed && tmpl.IsAura() {
 		entry.AttachedTo = host
 	}
+	// #4673, CR 614.1c: the copy's own "enters with X counters" clauses,
+	// counted off the copy's announcement as the ordinary permanent
+	// branch counts them (applyCastEntryCountersLocked). A token's entry
+	// has no stack item to read, so the counters ride the group as data
+	// and go through the same CR 614 counter window (Doubling Season).
+	entry.Counters = spellCopyCastEntryCounters(top, item)
 	// CR 707.10, CR 702.190b: a copy of a sneaked permanent spell copied
 	// the sneak cost, so its token enters tapped and attacking the
 	// original's defender (sneak.go). Data on the group, so a creation
@@ -922,6 +934,34 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 		}
 	}
 	return g.CreateTokensKeyedForEffect(spec, tail)
+}
+
+// spellCopyCastEntryCounters is the counters a copy of a permanent spell's
+// own EntryCountersFromCast clauses give the token it becomes (#4673), or
+// nil. The count reads the copy's item through castCountsFor, the one
+// reader of a resolving announcement: the X and the optional costs the
+// copy copied (CR 707.10), and no mana, since none was spent to cast a
+// copy. The mana-based seeds applyCastEntryCountersLocked also runs
+// (spend riders, sunburst, a promise) are zero for a copy for that reason.
+func spellCopyCastEntryCounters(card Card, item *StackItem) map[string]int {
+	clauses := EntersWithCountersFromCastFor(CatalogKey(card))
+	if len(clauses) == 0 || item == nil {
+		return nil
+	}
+	cast := castCountsFor(card, item)
+	var counters map[string]int
+	for _, clause := range clauses {
+		if clause.Count == nil {
+			continue
+		}
+		if n := clause.Count(cast); n > 0 {
+			if counters == nil {
+				counters = make(map[string]int, len(clauses))
+			}
+			counters[clause.Kind] += n
+		}
+	}
+	return counters
 }
 
 // The two flags a spellCopyTokenRef tail carries in N.

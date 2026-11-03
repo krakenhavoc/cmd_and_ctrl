@@ -353,3 +353,109 @@ func TestACopyOfANonpermanentSpellStillCeasesToExist(t *testing.T) {
 		t.Errorf("victim life = %d, want 34 — both the Bolt and its copy should have resolved", got)
 	}
 }
+
+// oracleBigBertha is Big Bertha's catalog key ({X}{G}, "enters with X
+// +1/+1 counters on her").
+const oracleBigBertha = "32654ffa-b869-4f8b-a153-4242e8f9d92e"
+
+// castXCreatureSpellForCopy casts an {X} creature card for `x` from the
+// active seat's hand and leaves it on the stack for something to copy.
+func castXCreatureSpellForCopy(t *testing.T, g *game.Game, name, typeLine, oracleID, manaCost string, p, tough, x int) uuid.UUID {
+	t.Helper()
+	active := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracleID, ManaCost: manaCost,
+		Power: p, Toughness: tough, Owner: active.ID, Controller: active.ID,
+	})
+	advanceToMain(t, g)
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{XValue: x}); err != nil {
+		t.Fatalf("cast %s for X=%d: %v", name, x, err)
+	}
+	return id
+}
+
+// TestDoubleMajorsTokenOfAnXCreatureKeepsTheX is #4673: CR 707.10
+// copies the X chosen for the spell (CR 107.3m), so a Double Major on
+// a Big Bertha cast for X = 3 makes a token that enters with three
+// +1/+1 counters and remembers X = 3, not 0.
+func TestDoubleMajorsTokenOfAnXCreatureKeepsTheX(t *testing.T) {
+	g := newCatalogGame(t)
+	spell := castXCreatureSpellForCopy(t, g, "Big Bertha", "Legendary Creature — Mutant Hero",
+		oracleBigBertha, "{X}{G}", 1, 1, 3)
+	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
+	passPriorityAroundTable(t, g)
+
+	tokens, cards := copiesOnBattlefield(g, "Big Bertha")
+	if len(tokens) != 1 || len(cards) != 1 {
+		t.Fatalf("got %d token copies and %d cards, want one of each", len(tokens), len(cards))
+	}
+	if n := countersOn(g, cards[0].InstanceID, game.CounterPlusOne); n != 3 {
+		t.Errorf("the card has %d counters, want 3", n)
+	}
+	if n := countersOn(g, tokens[0].InstanceID, game.CounterPlusOne); n != 3 {
+		t.Errorf("the token copy has %d counters, want 3 (CR 707.10: the copy keeps X)", n)
+	}
+	if x := tokens[0].CastX(); x != 3 {
+		t.Errorf("the token's X = %d, want 3", x)
+	}
+}
+
+// TestDoubleMajorsTokenOfAnXCreatureDoublesItsCounters: the copy's X
+// counters are an ordinary "enters with" replacement, so Doubling
+// Season doubles them on the token as it does on the card. The token
+// itself is doubled too: two tokens, six counters each.
+func TestDoubleMajorsTokenOfAnXCreatureDoublesItsCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, active.ID, "Doubling Season", "Enchantment", oracleDoublingSeason, false)
+	spell := castXCreatureSpellForCopy(t, g, "Big Bertha", "Legendary Creature — Mutant Hero",
+		oracleBigBertha, "{X}{G}", 1, 1, 3)
+	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
+	passPriorityAroundTable(t, g)
+
+	tokens, _ := copiesOnBattlefield(g, "Big Bertha")
+	if len(tokens) != 2 {
+		t.Fatalf("token copies = %d, want 2 under Doubling Season", len(tokens))
+	}
+	for _, tok := range tokens {
+		if n := countersOn(g, tok.InstanceID, game.CounterPlusOne); n != 6 {
+			t.Errorf("a token copy has %d counters, want 6 (3 doubled)", n)
+		}
+	}
+}
+
+// TestDoubleMajorsTokenOfTheRuinousWreckingCrewChoosesUpToTheSameX is
+// #4673's mode half: the token's own "choose up to X" reads the X its
+// spell copied (#4617), so a copy of a Crew cast for X = 2 asks for up
+// to two bullets rather than removing its trigger as X = 0 would.
+func TestDoubleMajorsTokenOfTheRuinousWreckingCrewChoosesUpToTheSameX(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	spell := castXCreatureSpellForCopy(t, g, "The Ruinous Wrecking Crew", "Legendary Creature — Human Villain",
+		theRuinousWreckingCrewOracle, "{X}{B}{R}", 2, 2, 2)
+	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
+	passPriorityAroundTable(t, g)
+
+	tokens, _ := copiesOnBattlefield(g, "The Ruinous Wrecking Crew")
+	if len(tokens) != 1 {
+		t.Fatalf("token copies = %d, want 1", len(tokens))
+	}
+	tok := tokens[0]
+	if n := countersOn(g, tok.InstanceID, game.CounterPlusOne); n != 2 {
+		t.Errorf("the token copy has %d counters, want 2", n)
+	}
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the token's trigger asked nothing: it read X = 0")
+	}
+	if c.Source != tok.InstanceID {
+		t.Fatalf("the mode prompt is for %v, want the token %v", c.Source, tok.InstanceID)
+	}
+	if c.ModeMin != 0 || c.ModeMax != 2 {
+		t.Errorf("prompt bounds %d..%d, want 0..2 (the copied X)", c.ModeMin, c.ModeMax)
+	}
+}
