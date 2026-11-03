@@ -5110,6 +5110,13 @@ abilities are not equip abilities. A mana ability whose cost is life and
 no {T} is never planned by the auto-tapper, so the player fires it first
 and the mana floats; the top-up then spends it only where the tag allows.
 
+**Mana for costs that contain {X} (#4834):** "Spend this mana only on
+costs that contain {X}" is `Restrictions: []string{game.ManaRestrictXCost}`
+(Elementalist's Palette). It matches `ManaSpendContext.CostHasX`: a
+spell whose mana cost (or the alternative cost it is cast for) has {X},
+or an activated ability with {X} in its mana, and the mana then pays the
+whole cost, not only X.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`

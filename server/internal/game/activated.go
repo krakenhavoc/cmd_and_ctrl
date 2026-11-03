@@ -2122,6 +2122,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.PowerUp = ab.PowerUp
 		// CR 702.6 (#4600): and "...or activate equip abilities".
 		riderCtx.Equip = ab.Equip
+		// #4834: "spend this mana only on costs that contain {X}".
+		riderCtx.CostHasX = ab.Cost.XSlots() > 0
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.

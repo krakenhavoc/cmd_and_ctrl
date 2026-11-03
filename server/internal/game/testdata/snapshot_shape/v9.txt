@@ -20135,6 +20135,7 @@ pendingChoices[].assist.spend.CastFrom	string
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
+pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
