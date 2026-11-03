@@ -4110,6 +4110,10 @@ export interface TargetPurposeView {
   damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
+  // #4559: the effect exiles the picked graveyard card.
+  exiles?: boolean;
+  // #4559: the card type an exiled pick must have to put a +1/+1 counter on the source.
+  exile_grows?: "permanent" | "creature";
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
   // #4302: which way a change to the picked permanent that ends with the
