@@ -51085,6 +51085,7 @@ spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 spellsCastThisTurn{}.maxManaValue	number:int
+spellsCastThisTurn{}.xSpells	number:int
 splitSecondActive	bool
 stack	object
 stack.cards	array
