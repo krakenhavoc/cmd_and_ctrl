@@ -4822,7 +4822,14 @@ since #1173, so a modal DFC whose land back face is the face Oracle of Mul Daya 
   face only the second opens is not offered. The same was already true of permissions that name faces.
 - The game-level free-or-hand offers (Beseech the Mirror's `CastExiledFreeOrToHandForEffect`, Ziatora's Envoy's
   `OfferFreePlayFromTopOrHandForEffect`) still choose by the card's front face. Their caps are judged on the face cast, so they
-  are only narrower than printed: a card whose cheap face is the back goes to the hand.
+  are only narrower than printed: a card whose cheap face is the back goes to the hand. **Spell half closed by #4697
+  (2026-11-02):** both ask `OffersASpell` of the permission they are about to stamp (`freeCastOrHandPermissionLocked`,
+  `freeCastFromTopPermissionLocked`), so a modal DFC whose back face fits, a creature card whose Adventure fits, and a Town's
+  sorcery Adventure (Rashmi; Ziatora's Envoy when the land cannot be played) are offered as a free cast of that face. Still open:
+  the Envoy's land offer reads the front face, so a modal DFC whose back face is a land is never offered as a land play, and a
+  Town whose land can be played is offered only as the land. Both need a land play of a chosen face during a resolution
+  (`PlayLandDuringResolutionForEffect` and the `play_or_hand` prompt carry no face) and a prompt that offers the land play and
+  the cast together. Tests: `game/free_offer_faces_test.go`, `cards/effects/free_offer_faces_4697_test.go`.
 
 **Tests.** `game/permission_spell_face_test.go`, `cards/effects/permission_spell_face_4509_test.go`,
 `protocol/permission_spell_face_view_test.go`, `client/src/lib/libraryTop.test.ts`. Back-out: making `judgesSpell` answer false

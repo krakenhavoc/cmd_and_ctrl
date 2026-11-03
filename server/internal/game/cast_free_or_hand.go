@@ -17,6 +17,14 @@ import "github.com/google/uuid"
 // the chooser's next pass the same way. A card that can never be cast
 // this way (a land, or a mana value over the cap) goes straight to its
 // owner's hand with no question.
+//
+// #4697: "that spell's mana value" is the spell's, so which cards can be
+// cast this way is asked face by face (CR 601.3e, 712.11c, 715.3a) of
+// the permission the offer is about to stamp (CastPermission.OffersASpell,
+// as #4509's free casts ask it): a modal DFC whose back face fits the cap,
+// a creature card whose Adventure fits it, and a Town's sorcery Adventure
+// are all offered. The permission caps the face being cast, so the cast
+// itself can only be the face that fits.
 
 // MayCastKeywordFreeOrHand is the PendingChoice.MayCastKeyword the offer
 // asks under. The client words it like discover and opens the free cast
@@ -37,7 +45,7 @@ func (g *Game) CastExiledFreeOrToHandForEffect(player, source, cardID uuid.UUID,
 	if !ok {
 		return nil
 	}
-	if c.IsLand() || c.ManaValue() > maxMV || !g.playerInGameLocked(player) {
+	if perm := g.freeCastOrHandPermissionLocked(player, source, maxMV); !perm.OffersASpell(c) || !g.playerInGameLocked(player) {
 		return g.putExiledIntoHandLocked(player, source, cardID)
 	}
 	g.grantFreeCastOrHandLocked(player, source, cardID, maxMV)
@@ -68,8 +76,19 @@ func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV
 	if !ok {
 		return
 	}
+	perm := g.freeCastOrHandPermissionLocked(player, source, maxMV)
+	g.GrantCastPermissionToCardsForEffect(*perm, []Card{c})
+}
+
+// freeCastOrHandPermissionLocked is the permission the offer stamps,
+// before it names its card: CastExiledFreeOrToHandForEffect asks it which
+// cards it could make a spell of (OffersASpell), so the offer and the
+// cast it opens judge the same faces by the same cap.
+//
+// Caller must hold g.mu.
+func (g *Game) freeCastOrHandPermissionLocked(player, source uuid.UUID, maxMV int) *CastPermission {
 	limit := maxMV
-	g.GrantCastPermissionToCardsForEffect(CastPermission{
+	return &CastPermission{
 		Player:            player,
 		Zone:              ZoneExile,
 		Duration:          g.UntilEndOfTurnDuration(),
@@ -80,7 +99,7 @@ func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV
 		LapseOnPass:       LapseToHand,
 		Source:            source,
 		Label:             FreeCastOrHandLabel,
-	}, []Card{c})
+	}
 }
 
 // putExiledIntoHandLocked moves an exiled card to its owner's hand
