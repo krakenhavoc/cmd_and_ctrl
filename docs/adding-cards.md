@@ -9872,6 +9872,16 @@ creature while the effect lasts (Werewolf Pack Leader). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
+**"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
+(#4691, layer 4, CR 613.1d): every creature type goes and none comes,
+the every-creature-type fact included (a changeling's, or an earlier
+"gains all creature types"), while the card types and other subtypes
+stay (CR 205.1a). A later "gains all creature types" wins by timestamp
+(CR 613.7). It removes no ability, so a changeling keeps the keyword.
+Put it in the same record as the card's other changes (Nameless
+Inversion's +3/-3). The kind `loseAllCreatureTypes` is an on-disk
+identity.
+
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
 the helper knows Forest on Dryad Arbor is a land type and that a

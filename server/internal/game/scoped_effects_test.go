@@ -240,6 +240,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("type line = %v — %v, want Creature with no Human", c.Types, c.Subtypes)
 			}
 		}},
+		// #4691: the Bear goes and nothing comes; the card type stays.
+		{"loseAllCreatureTypes", []Mod{LoseAllCreatureTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.Subtypes) != 0 || c.AllCreatureTypes || !reflect.DeepEqual(c.Types, []string{"Creature"}) {
+				t.Errorf("type line = %v — %v (all %v), want Creature with no creature type", c.Types, c.Subtypes, c.AllCreatureTypes)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -385,6 +391,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetCreatureTypes: true,
 		// #4072: case above and in lose_subtypes_test.go.
 		ModLoseSubtypes: true,
+		// #4691: case above and in lose_all_creature_types_test.go.
+		ModLoseAllCreatureTypes: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,

@@ -1177,6 +1177,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #4072: "isn't a Human" (lose_subtypes.go).
 	ModLoseSubtypes: {layer: Layer4Type},
+	// #4691: "loses all creature types" (lose_all_creature_types.go).
+	ModLoseAllCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
@@ -2178,6 +2180,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		subtypes := m.Subtypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.loseSubtypes(subtypes)
+		}
+	case ModLoseAllCreatureTypes:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.loseAllCreatureTypes()
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes
