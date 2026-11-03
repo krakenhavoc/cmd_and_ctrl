@@ -28,6 +28,7 @@ import {
   type BugLogEntry,
   type BugReportContext,
   type BugReportKind,
+  type ReportSettings,
 } from "./bugReport";
 
 /** What a draft is born with, taken once when the form first opens. */
@@ -39,6 +40,10 @@ export interface BugDraftOrigin {
   // The game coordinates (or page) the report was opened from, for the
   // same reason: by restore time the game has moved on.
   context: BugReportContext;
+  // The settings copy an idea attaches (#4103), scrubbed
+  // (settingsForReport) and snapshotted for the same reason as the log:
+  // what the reporter reviews is what is sent.
+  capturedSettings: ReportSettings;
 }
 
 export class BugReportDraft {
@@ -48,6 +53,8 @@ export class BugReportDraft {
   includeContext = $state(true);
   includeLog = $state(true);
   showLog = $state(false);
+  includeSettings = $state(true);
+  showSettings = $state(false);
 
   // Raw, not deep: Files are opaque and the arrays are only ever replaced.
   images = $state.raw<File[]>([]);
@@ -60,6 +67,7 @@ export class BugReportDraft {
 
   readonly capturedLog: BugLogEntry[];
   readonly context: BugReportContext;
+  readonly capturedSettings: ReportSettings;
 
   // The URL each live image owns, so adding or removing one neither
   // revokes nor re-creates the others' thumbnails.
@@ -68,6 +76,7 @@ export class BugReportDraft {
   constructor(origin: BugDraftOrigin) {
     this.capturedLog = origin.capturedLog;
     this.context = origin.context;
+    this.capturedSettings = origin.capturedSettings;
   }
 
   /** setImages replaces the attached set, minting and revoking URLs to match. */

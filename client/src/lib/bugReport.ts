@@ -5,6 +5,7 @@
 
 import type { GameView } from "./protocol";
 import { redactSecrets } from "./redact";
+import type { Settings } from "./settings";
 
 // Client-side mirrors of the server caps in
 // server/internal/lobby/bugreport.go — enforced there
@@ -46,6 +47,8 @@ export interface BugKindSpec {
   replay: boolean;
   /** the server pins the public game log (admin-only, a few KiB) */
   gameLog: boolean;
+  /** a scrubbed copy of the reporter's settings rides along (#4103) */
+  settings: boolean;
 }
 
 export const BUG_KINDS: readonly BugKindSpec[] = [
@@ -61,6 +64,7 @@ export const BUG_KINDS: readonly BugKindSpec[] = [
     log: true,
     replay: true,
     gameLog: true,
+    settings: false,
   },
   {
     kind: "idea",
@@ -74,6 +78,7 @@ export const BUG_KINDS: readonly BugKindSpec[] = [
     log: false,
     replay: false,
     gameLog: false,
+    settings: true,
   },
   {
     kind: "question",
@@ -87,6 +92,7 @@ export const BUG_KINDS: readonly BugKindSpec[] = [
     log: true,
     replay: false,
     gameLog: true,
+    settings: false,
   },
 ];
 
@@ -114,6 +120,7 @@ export function bugKindSpec(kind: BugReportKind | string): BugKindSpec {
 export function describeBugAttachments(spec: BugKindSpec, inGame: boolean): string[] {
   const bits: string[] = [];
   if (spec.log) bits.push("your recent activity log");
+  if (spec.settings) bits.push("a copy of your settings");
   const replay = inGame && spec.replay;
   const gameLog = inGame && spec.gameLog;
   // The two pins are described as one phrase when both ride along:
@@ -127,6 +134,49 @@ export function describeBugAttachments(spec: BugKindSpec, inGame: boolean): stri
     bits.push("an admin-only snapshot of this game's log");
   }
   return bits;
+}
+
+// --- settings copy (#4103) ---
+//
+// An idea attaches the reporter's settings, so whoever reads it can
+// see the table the way the reporter does. The issue is public, so the
+// copy is preferences only. settingsForReport is what the form shows
+// and sends; the server applies the same scrub again
+// (lobby.scrubBugSettings) for any client that doesn't.
+//
+// Dropped: help.seen (the hints dismissed: history, not a preference)
+// and the card and prompt text beside each auto-answer rule, which is
+// copied from a game's prompt and can hold another player's name. The
+// rule's key and answer stay. Every string is redacted (#721).
+
+export type ReportSettings = Record<string, unknown>;
+
+function redactDeep(v: unknown): unknown {
+  if (typeof v === "string") return redactSecrets(v);
+  if (Array.isArray(v)) return v.map(redactDeep);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, e] of Object.entries(v)) out[redactSecrets(k)] = redactDeep(e);
+    return out;
+  }
+  return v;
+}
+
+export function settingsForReport(s: Settings): ReportSettings {
+  const copy: ReportSettings = {
+    __version: s.__version,
+    audio: s.audio,
+    animations: s.animations,
+    display: s.display,
+    gameplay: {
+      ...s.gameplay,
+      autoAnswers: s.gameplay.autoAnswers.map((r) => ({ key: r.key, answer: r.answer })),
+    },
+    shortcuts: s.shortcuts,
+    accessibility: s.accessibility,
+    help: { tipsOff: s.help.tipsOff },
+  };
+  return redactDeep(copy) as ReportSettings;
 }
 
 // joinPhrases renders a short list as English. Kept here with the

@@ -40,6 +40,7 @@
   // is free to use meanwhile.
 
   import { onMount, untrack } from "svelte";
+  import { get } from "svelte/store";
   import { submitBugReport, type BugReportResult } from "../api";
   import {
     BUG_DESC_MAX,
@@ -55,6 +56,7 @@
     describeBugAttachments,
     formatBytes,
     joinPhrases,
+    settingsForReport,
     validateAttachments,
     validateBugReport,
     type BugLogEntry,
@@ -62,6 +64,7 @@
   import { BoardShotError, captureBoardShot } from "../boardShot";
   import { discardBugDraft, openBugDraft } from "../bugReportDraft.svelte";
   import { recentClientErrors } from "../clientErrors";
+  import { settings } from "../settings";
   import type { LogEntry } from "../ws";
   import type { GameView } from "../protocol";
   import Icon from "./Icon.svelte";
@@ -124,9 +127,12 @@
     openBugDraft(() => ({
       capturedLog: collectBugLog(wsLog, recentClientErrors()),
       context: buildBugContext(gameID, view, seq, connection, page),
+      capturedSettings: settingsForReport(get(settings)),
     })),
   );
   const capturedLog = draft.capturedLog;
+  // Shown in the disclosure exactly as it is sent.
+  const settingsJSON = JSON.stringify(draft.capturedSettings, null, 2);
   const inGame = (draft.context.game_id ?? "").length > 0;
 
   let submitting = $state(false);
@@ -299,6 +305,7 @@
         // one in the first place keeps "what the form showed" and
         // "what left the browser" the same thing.
         log: spec.log && draft.includeLog ? capturedLog : undefined,
+        settings: spec.settings && draft.includeSettings ? draft.capturedSettings : undefined,
         images: draft.images,
       });
       sent = res;
@@ -546,6 +553,30 @@
           <p class="muted small">
             Frames this browser sent and received, plus any JavaScript errors. No hidden game state
             — nothing here that wasn't already on your screen.
+          </p>
+        {/if}
+      {/if}
+
+      {#if spec.settings}
+        <label class="context">
+          <input type="checkbox" bind:checked={draft.includeSettings} disabled={submitting} />
+          <span>
+            attach a copy of your settings
+            <button
+              type="button"
+              class="peek"
+              onclick={(e) => {
+                e.preventDefault();
+                draft.showSettings = !draft.showSettings;
+              }}>{draft.showSettings ? "hide" : "show"}</button
+            >
+          </span>
+        </label>
+        {#if draft.showSettings}
+          <pre class="logpeek">{settingsJSON}</pre>
+          <p class="muted small">
+            Your display, sound, animation, accessibility, shortcut and gameplay preferences, so we
+            can see the table the way you do. No names, ids or tokens, and no card or prompt text.
           </p>
         {/if}
       {/if}
