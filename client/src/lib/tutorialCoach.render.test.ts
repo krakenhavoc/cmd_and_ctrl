@@ -1022,9 +1022,25 @@ describe("the coach's CSS contract", () => {
     expect(slot).toContain("left: var(--dock-inset, 15px)");
     expect(slot).toContain("bottom: var(--dock-inset, 15px)");
     expect(slot).toContain("width: clamp(280px, 24vw, 340px)");
-    expect(slot).toContain("z-index: 57");
+    expect(slot).toContain("z-index: 58");
     const phone = css.slice(css.indexOf("@media (max-width: 599px)"));
     expect(rule(phone, "    .coach-slot")).toContain("bottom: calc(var(--dock-h, 0px) + 6px)");
+  });
+
+  // #4410: the coach shared z 57 with the table effects, whose cues cross
+  // its corner of the board, and won only by coming later in the DOM. It
+  // has its own rung now, between the cues and the hints.
+  it("sits over the table effects and under the hints", () => {
+    const z = (p: string, sel: string) =>
+      Number(/z-index:\s*(\d+)/.exec(rule(src(p), sel))?.[1] ?? NaN);
+    const coach = z("src/lib/components/tutorial/TutorialCoach.svelte", "  .coach-slot");
+    const cues = z("src/lib/components/board/TableEffects.svelte", "  .fx-layer");
+    const hintCard = z("src/lib/components/hints/HintCard.svelte", "  .hint-card");
+    const hintRing = z("src/lib/components/hints/HintCard.svelte", "  .hint-ring");
+    expect(coach).toBeGreaterThan(cues);
+    expect(hintCard).toBeGreaterThan(coach);
+    expect(hintRing).toBeGreaterThan(coach);
+    expect(hintCard).toBeLessThan(60); // under the card-local menus
   });
 });
 

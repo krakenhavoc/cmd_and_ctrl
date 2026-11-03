@@ -376,14 +376,15 @@
      inset by the dock's --dock-inset so its edges line up with the self
      panel's content box, exactly where PlayerPanel's .coach-spacer
      keeps the cell empty. ~300px at 1280 wide, so a seven-card fan
-     still reads beside it. z 57: over the scrim (56) and the dock (55);
-     under the card-local menus (60+), the modals (200) and the hover
-     zoom (300). */
+     still reads beside it. z 58 (DESIGN.md §4): over the table effects
+     (57), whose cues cross its corner of the board (#4410), the scrim
+     (56) and the dock (55); under the hints (59), the card-local menus
+     (60+), the modals (200) and the hover zoom (300). */
   .coach-slot {
     position: absolute;
     left: var(--dock-inset, 15px);
     bottom: var(--dock-inset, 15px);
-    z-index: 57;
+    z-index: 58;
     width: clamp(280px, 24vw, 340px);
   }
   /* §2.3 on a phone: a strip stacked on the dock bar, inside the same

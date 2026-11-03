@@ -452,6 +452,23 @@ describe("sounds", () => {
       expect(played()[0].volume).toBe(1);
     });
 
+    it("ducks a voice line as well (#4410)", async () => {
+      const m = await load();
+      const { VoiceBus } = await import("./fx/voices");
+      const line = "/voices/w-enter-1.mp3";
+      const bus = new VoiceBus({ manifest: { w: { enter: [line] } } });
+      m.setCategoryVolume("voice", 0.8);
+      expect(bus.speak("w", "enter")).toBe(true);
+      const voice = FakeAudio.instances.find((a) => a.src === line)!;
+      expect(voice.volume).toBeCloseTo(0.8);
+
+      m.play("priority");
+      const cue = played().find((a) => a.src !== line)!;
+      expect(voice.volume).toBeCloseTo(0.8 * m.DUCK_FACTOR);
+      cue.fire("ended");
+      expect(voice.volume).toBeCloseTo(0.8);
+    });
+
     it("ducks on top of the category volume", async () => {
       const m = await load();
       m.setCategoryVolume("combat", 0.5);

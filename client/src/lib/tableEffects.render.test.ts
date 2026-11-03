@@ -314,6 +314,74 @@ describe("the effects layer", () => {
     expect(playSound).toHaveBeenCalledWith("counter", { volume: 1, batch: "g1:8" });
   });
 
+  it("draws a permanent and a spell that go before an animation frame has measured them (#4410)", () => {
+    const board = makeBoard([]);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    // A creature enters and a spell is cast, in one frame...
+    const tile = rectEl("data-instance-id", "z", { left: 700, top: 300, ...TILE });
+    tile.appendChild(Object.assign(document.createElement("img"), { src: "/z.jpg" }));
+    const spell = rectEl("data-stack-item-id", "item-2", {
+      left: 900,
+      top: 200,
+      width: 150,
+      height: 210,
+    });
+    board.append(tile, spell);
+    const enters = zone("z", "battlefield", {}, "stack");
+    r.setProps({ view: viewWith([enters], [permanent("z", "opp")]) } as never);
+    flushSync();
+    // ...and both go in the next, with no animation frame in between.
+    tile.remove();
+    spell.remove();
+    const counter: LogEvent = {
+      seq: ++seq,
+      kind: "counter",
+      seat: 1,
+      target: "bolt",
+      stack_item_id: "item-2",
+      batch: 9,
+      text: "",
+    };
+    r.setProps({
+      view: viewWith(
+        [enters, zone("z", "graveyard", { cause: "destroy", batch: 10 }), counter],
+        [],
+      ),
+    } as never);
+    flushSync();
+    const [destroy] = effects("destroy");
+    expect(destroy).toBeTruthy();
+    expect(destroy.style.left).toBe("740px");
+    expect(destroy.style.top).toBe("356px");
+    expect(destroy.querySelector("img")?.getAttribute("src")).toBe("/z.jpg");
+    const [countered] = effects("counter");
+    expect(countered).toBeTruthy();
+    expect(countered.style.left).toBe("975px");
+  });
+
+  it("still takes a box measured as its frame landed again on the next animation frame", () => {
+    const board = makeBoard(["a"]);
+    const r = render(
+      TableEffects as never,
+      { view: viewWith([], [permanent("a", "opp")]), boardEl: board } as never,
+    );
+    advance(50);
+    // The board reflows and a moves; the next frame's animation frame
+    // measures it where it is now.
+    const tile = board.querySelector<HTMLElement>('[data-instance-id="a"]')!;
+    tile.getBoundingClientRect = () => new DOMRect(500, 300, TILE.width, TILE.height);
+    r.setProps({ view: viewWith([], [permanent("a", "opp")]) } as never);
+    advance(50);
+    r.setProps({
+      view: viewWith([zone("a", "graveyard", { cause: "destroy", batch: 11 })], []),
+    } as never);
+    flushSync();
+    const [destroy] = effects("destroy");
+    expect(destroy).toBeTruthy();
+    expect(destroy.style.left).toBe("540px");
+  });
+
   it("a planeswalker that enters glows, and one that dies cracks", async () => {
     const board = makeBoard(IDS);
     const jace = permanent("a", "opp", { type_line: "Legendary Planeswalker — Jace" });

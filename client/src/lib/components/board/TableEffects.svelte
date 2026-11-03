@@ -57,7 +57,7 @@
   // are Tombstone.svelte's, and the sound is EliminationFx.svelte's.
   //
   // z 57 on DESIGN.md §4's ladder: above the action dock (55), below the
-  // hints (58). aria-hidden: the log and the board carry the news.
+  // tutorial's coach (58). aria-hidden: the log and the board carry the news.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
@@ -288,18 +288,23 @@
   // nothing needs. Runs after every frame, so the box of a permanent that
   // leaves in the next frame is the one it had just before.
   function measure(): void {
+    measureBoxes(false);
+  }
+
+  // `onlyNew` measures only what has no box yet (#4410).
+  function measureBoxes(onlyNew: boolean): void {
     const b = boardSize();
     if (!b || !boardEl) return;
     const live = onBattlefieldNow();
     for (const [id, el] of cardAnchors(boardEl)) {
-      if (!live.has(id) || !hasSize(el)) continue;
+      if (!live.has(id) || (onlyNew && tiles.has(id)) || !hasSize(el)) continue;
       tiles.set(id, tileOf(el, b.rect, b.size));
       const src = el.querySelector<HTMLImageElement>("img")?.getAttribute("src");
       if (src) images.set(id, src);
     }
     for (const el of boardEl.querySelectorAll<HTMLElement>("[data-stack-item-id]")) {
       const id = el.dataset.stackItemId;
-      if (!id || !hasSize(el)) continue;
+      if (!id || (onlyNew && stackBoxes.has(id)) || !hasSize(el)) continue;
       const r = el.getBoundingClientRect();
       stackBoxes.set(id, {
         x: r.left + r.width / 2 - b.rect.left,
@@ -973,6 +978,10 @@
     void view;
     void $boardExpandLayout;
     if (!boardEl) return;
+    // What is new in this frame is measured now as well (#4410): a
+    // permanent or spell that goes in the next frame, before the
+    // animation frame below has run, still has a box to be drawn from.
+    untrack(() => measureBoxes(true));
     if (typeof requestAnimationFrame === "undefined") return;
     let raf = requestAnimationFrame(measure);
     if (typeof ResizeObserver === "undefined") return () => cancelAnimationFrame(raf);
@@ -1663,7 +1672,7 @@
     inset: 0;
     pointer-events: none;
     /* The table's z-index ladder (DESIGN.md §4, ADR 0209 §4): above the
-       action dock (55), below the hints (58). */
+       action dock (55), below the coach (58). */
     z-index: 57;
     overflow: hidden;
   }
