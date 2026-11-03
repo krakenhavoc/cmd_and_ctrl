@@ -2542,6 +2542,14 @@ type PlayerView struct {
 	// still spectates, but the UI greys them out and disables their
 	// quick-action buttons. Added in S08.
 	Eliminated bool `json:"eliminated,omitempty"`
+	// LossCause is why an eliminated player left (#4879): the engine's
+	// game.LossCause, the same vocabulary as a LogEliminated entry's
+	// cause ("life", "empty_draw", "poison", "commander_damage",
+	// "effect", "concede"). Public, like the log line. Empty while the
+	// player plays, and for a player restored from a snapshot that
+	// predates it. The client draws the decked-out cue and its "Decked"
+	// stone for "empty_draw" (CR 704.5b).
+	LossCause string `json:"loss_cause,omitempty"`
 	// HandKept reflects Player.HandKept — true once the player has
 	// committed to their opening hand. Drives the per-seat
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
@@ -10603,6 +10611,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CommanderDamage:       cmdrDamage,
 		LifeHistory:           history,
 		Eliminated:            p.Eliminated,
+		LossCause:             string(p.LossCause),
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		MulliganBottom:        viewOfMulliganBottom(g, p),

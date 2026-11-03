@@ -753,6 +753,9 @@ var playerFields = plan(
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",
 	"Eliminated", carried, "",
+	// #4879: why the player left (a LossCause), for the seat view's
+	// loss_cause. Carried, additive within v9.
+	"LossCause", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
 	// it would let the removed player straight back in.

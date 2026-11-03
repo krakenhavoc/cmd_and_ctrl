@@ -850,6 +850,9 @@ type playerSnapshot struct {
 	// ends.
 	LastTurnCastOrPut bool `json:"lastTurnCastOrPut,omitempty"`
 	Eliminated        bool `json:"eliminated"`
+	// LossCause is Player.LossCause (#4879). Additive within v9: a file
+	// written before it restores an eliminated player with no cause.
+	LossCause string `json:"lossCause,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -3038,6 +3041,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
+		LossCause:             string(p.LossCause),
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
@@ -4182,6 +4186,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
+		LossCause:          LossCause(p.LossCause),
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
