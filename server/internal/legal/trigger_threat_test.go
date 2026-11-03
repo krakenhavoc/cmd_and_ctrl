@@ -31,8 +31,9 @@ const (
 
 // pushTriggered puts a triggered ability of `source` (a catalog card on
 // the board) on the stack under `by`, naming the catalog triggered row
-// whose key contains `label`, as the harvest does.
-func (b *threatBoard) pushTriggered(t *testing.T, by *game.Player, source uuid.UUID, label string) {
+// whose key contains `label`, as the harvest does: metadata alone, with
+// no card on the stack zone (#4779), aimed at `targets`.
+func (b *threatBoard) pushTriggered(t *testing.T, by *game.Player, source uuid.UUID, label string, targets ...game.TargetRef) {
 	t.Helper()
 	var card game.Card
 	b.g.WithWriteLock(func() {
@@ -52,13 +53,12 @@ func (b *threatBoard) pushTriggered(t *testing.T, by *game.Player, source uuid.U
 		}
 		id := uuid.New()
 		b.g.WithWriteLock(func() {
-			b.g.Stack.PushTop(game.Card{InstanceID: id, Name: "Stack item", Owner: by.ID, Controller: by.ID})
 			if b.g.StackMeta == nil {
 				b.g.StackMeta = make(map[uuid.UUID]*game.StackItem)
 			}
 			b.g.StackMeta[id] = &game.StackItem{
 				ID: id, Kind: game.StackItemTriggered, Controller: by.ID, Owner: by.ID,
-				SourceCardID: source, Label: row.Key, Params: game.EffectParams{Ability: ref},
+				SourceCardID: source, Label: row.Key, Params: game.EffectParams{Ability: ref}, Targets: targets,
 			}
 		})
 		return

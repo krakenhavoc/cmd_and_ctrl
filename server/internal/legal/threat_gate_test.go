@@ -79,23 +79,33 @@ func newThreatBoard(t *testing.T, step game.Step) *threatBoard {
 }
 
 // push puts an item controlled by `by` on the stack: a spell when
-// typeLine is set, else a triggered ability of a permanent of theirs.
+// typeLine is set (its card on the stack zone and its metadata, as a
+// cast leaves them), else a triggered ability of a creature of theirs,
+// which is metadata alone, with no card on the stack zone, as the engine
+// keeps an ability (#4779). The trigger names no catalog row.
 func (b *threatBoard) push(by *game.Player, typeLine string, targets ...game.TargetRef) uuid.UUID {
 	id := uuid.New()
-	kind := game.StackItemSpell
-	if typeLine == "" {
-		kind = game.StackItemTriggered
-	}
 	b.g.WithWriteLock(func() {
+		if b.g.StackMeta == nil {
+			b.g.StackMeta = make(map[uuid.UUID]*game.StackItem)
+		}
+		if typeLine == "" {
+			source := b.oppBears
+			if by.ID == b.seat.ID {
+				source = b.bears
+			}
+			b.g.StackMeta[id] = &game.StackItem{
+				ID: id, Kind: game.StackItemTriggered, Controller: by.ID, Owner: by.ID,
+				SourceCardID: source, Label: "Stack trigger", Targets: targets,
+			}
+			return
+		}
 		b.g.Stack.PushTop(game.Card{
 			InstanceID: id, Name: "Stack item", TypeLine: typeLine,
 			Owner: by.ID, Controller: by.ID,
 		})
-		if b.g.StackMeta == nil {
-			b.g.StackMeta = make(map[uuid.UUID]*game.StackItem)
-		}
 		b.g.StackMeta[id] = &game.StackItem{
-			ID: id, Kind: kind, Controller: by.ID, Owner: by.ID, SourceCardID: id, Targets: targets,
+			ID: id, Kind: game.StackItemSpell, Controller: by.ID, Owner: by.ID, SourceCardID: id, Targets: targets,
 		}
 	})
 	return id

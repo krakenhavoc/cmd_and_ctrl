@@ -52,6 +52,10 @@ Nevinyrral's Disk, Pestilence) is a threat too, read from its catalog row.
 ability that sweeps or edicts (a saga chapter that destroys all creatures, a
 Massacre Wurm's enters trigger, a Fleshbag Marauder's edict) is a threat
 too, read from its catalog row the same way.
+**Amended again by:** S75 (#4779), 2026-11-02 — the threat gate and owner
+answer 4 read the abilities on the stack, which the engine keeps as metadata
+alone, as well as the spell cards. See "Amendment of 2026-11-02: an ability
+is read where the engine keeps it (#4779)" below.
 **Amended by:** S75 (#4734), accepted 2026-10-31 — a
 response held all game (a free Flawless Maneuver, Ranger-Captain of Eos's
 sacrifice) stops you only when one of its declared answers can answer what
@@ -811,6 +815,31 @@ seat's own Fleshbag Marauder do not. The same file pins Barrensteppe Siege's
 Mardu edict, Witch of the Moors' and Winter's enters trigger as stops, and
 Barrensteppe Siege's Abzan counters and the seat's own Witch of the Moors as
 not.
+
+### Amendment of 2026-11-02: an ability is read where the engine keeps it (#4779)
+
+**Status:** Accepted · 2026-11-02 · Sprint S75 — Agents at the table: a current seat, quieter turns, sharper bots
+
+The engine keeps an activated or triggered ability on the stack as a
+`StackMeta` entry alone, with no card on the stack zone (`game/stack.go`).
+`stackThreatens` (#3555) and owner answer 4's `selfSacrificeThreatened`
+walked only the cards in `g.Stack`, so an opponent's ability aimed at your
+creature, Royal Assassin's activation or Ravenous Chupacabra's enters
+trigger, set neither a threat-gated row's `interacts` nor a self-sacrifice
+row's, while #4734's `answers_now` said yes. A move with no `answers_now`
+verdict, which the browser and the bot's Layer A read through the old flag,
+skipped a window in which you could answer it.
+
+Both helpers now read every item through `stackEntries`, the reader #4734's
+`readStack` uses: the spell cards with their metadata, then every ability.
+The rules above are unchanged; what they read is now the whole stack. The
+#3555, #3825 and #3882 tests put their abilities on the stack as metadata
+alone, as the engine does, instead of beside a placeholder card that hid
+the gap. `stack_ability_threat_test.go` pins the regression: an opponent's
+activated and triggered ability aimed at Undercity Troll stop every gated
+answer and agree with `answers_now`, one aimed at Sakura-Tribe Elder makes
+its self-sacrifice interact, and the same ability aimed at the opponent's
+own creature, or the seat's own, does not.
 
 ## Amendment: a value instant does not stop you on an opponent's spell (#2877)
 
