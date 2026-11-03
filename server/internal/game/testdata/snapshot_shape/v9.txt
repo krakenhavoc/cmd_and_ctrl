@@ -17861,6 +17861,7 @@ lastKnownPermanents{}[].attachments[]	object
 lastKnownPermanents{}[].attachments[].epoch	number:int
 lastKnownPermanents{}[].attachments[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].attacking	bool
+lastKnownPermanents{}[].basePower	number:int
 lastKnownPermanents{}[].blocking	array
 lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic	object

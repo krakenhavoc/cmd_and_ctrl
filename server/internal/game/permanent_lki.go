@@ -121,6 +121,12 @@ type PermanentInfo struct {
 	Power     int `json:"power"`
 	Toughness int `json:"toughness"`
 
+	// BasePower is the base power the layer pass had after layer 7b
+	// (Card.BasePower, CR 208.4b): the printed value as a copy effect, a
+	// characteristic-defining ability or a set-power effect changed it, and
+	// not a pump, an anthem or a counter. Primo, the Unbounded reads it.
+	BasePower int `json:"basePower,omitempty"`
+
 	// Counters is a copy of the counters it had. Nil when it had none.
 	Counters map[string]int `json:"counters,omitempty"`
 
@@ -277,6 +283,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Characteristic: c.Effective(),
 		Power:          c.PowerForComparison(),
 		Toughness:      c.CurrentToughness(),
+		BasePower:      c.BasePower(),
 		Counters:       copyStringIntMap(c.Counters),
 		AttachedTo:     c.AttachedTo,
 		Tapped:         c.Tapped,

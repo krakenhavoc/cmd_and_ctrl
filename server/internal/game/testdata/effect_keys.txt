@@ -552,6 +552,7 @@ choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
 choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
+choose choose-cards/plargg-and-nassari-picked
 choose choose-cards/plunge-into-darkness-take
 choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
@@ -992,6 +993,7 @@ option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
+option option-pick/plargg-and-nassari-opponent
 option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
 option option-pick/put-attacking-from-graveyard
@@ -1711,6 +1713,7 @@ tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
 tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
+tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
 tail portal-to-phyrexia/phyrexian
