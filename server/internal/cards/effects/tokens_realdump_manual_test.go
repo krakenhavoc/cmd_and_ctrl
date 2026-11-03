@@ -182,6 +182,7 @@ func tokenTemplatesUnderTest() []labelledTemplate {
 		{"BloodToken()", BloodToken()},
 		{"PowerstoneToken()", PowerstoneToken()},
 		{"HeartwoodToken()", HeartwoodToken()},
+		{"MutagenToken()", MutagenToken()},
 		{"EldraziSpawnToken()", EldraziSpawnToken()},
 		{"BlueShapeshifterToken()", BlueShapeshifterToken()},
 		{"ColorlessShapeshifterToken()", ColorlessShapeshifterToken()},

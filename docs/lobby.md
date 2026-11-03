@@ -1231,11 +1231,11 @@ search lists Scryfall's token printings beside cards, so a `scryfall_id` or
 `name` can name, say, a Treasure token printing. A predefined token is defined
 by the rules (CR 111.10), not by a printing, so when the printing is one the
 catalog has a template for (Treasure, Food, Gold, Shard, Clue, Blood, Powerstone,
-Incubator, Map, Junk, Lander, Vibranium, Heartwood; a double-faced token printing is
+Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood; a double-faced token printing is
 matched on its front face), the spawn makes that template, exactly as `token`
 would, and the response is a token response. Made from the printing instead,
 the object had no catalog entry: it did not run its own ability, and the board
-flagged it unimplemented. A token printing with no template (Mutagen) is
+flagged it unimplemented. A token printing with no template (a Role) is
 still spawned as the printing and flagged. `POST /games/{id}/dev/spawn` does
 the same.
 
@@ -1331,7 +1331,7 @@ would have to be added to all three or it would 404 in production only.
 Three families share one list: the plain templates from
 `server/internal/cards/effects/tokens_table.go`, keyed the way a card prints
 them; the predefined tokens of CR 111.10 that have a template (Treasure, Food,
-Gold, Shard, Clue, Blood, Powerstone, Incubator, Map, Junk, Lander, Vibranium, Heartwood),
+Gold, Shard, Clue, Blood, Powerstone, Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood),
 keyed by name because the rules name them; and the other behaviour tokens
 (the Eldrazi Spawn, the Shapeshifters, the Phyrexian Wurms), keyed stat-first
 like the table. `tokens_spawn.go` assembles the list.

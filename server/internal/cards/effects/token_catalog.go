@@ -201,6 +201,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedEldraziSpawnToken,
 	printedB28EldraziScionToken,
 	printedB16LanderToken,
+	printedMutagenToken,
 	printedB14ReplicatedRingToken,
 
 	// ADR 0083's first tokens with an ability of their own that is

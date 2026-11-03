@@ -79,7 +79,7 @@ func TestPredefinedTokensAreTheirTemplates(t *testing.T) {
 	}
 	// The ones CR 111.10 defines that have no template stay unanswered,
 	// and so does a name that is not a predefined token at all.
-	for _, name := range []string{"Mutagen", "Walker", "Soldier", "treasure"} {
+	for _, name := range []string{"Cursed", "Walker", "Soldier", "treasure"} {
 		if _, ok := lib.PredefinedToken(name); ok {
 			t.Errorf("PredefinedToken(%q) answered, want nothing", name)
 		}

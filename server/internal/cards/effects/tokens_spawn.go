@@ -43,9 +43,9 @@ func Tokens() TokenLibrary { return TokenLibrary{} }
 // PredefinedToken turn a token PRINTING into the template (#4738).
 //
 // CR 111.10 defines a few more. Walker (111.10d) is a vanilla 2/2, so
-// its printing is already the token. Mutagen (111.10v) and the Role
-// tokens (111.10j–r) have no template here, so a printing of one stays
-// a printing, and the table is told the engine does not run its text.
+// its printing is already the token. The Role tokens (111.10j–r) have
+// no template here, so a printing of one stays a printing, and the
+// table is told the engine does not run its text.
 var predefinedTokens = map[string]func() game.Card{
 	"Treasure":   TreasureToken,   // CR 111.10a
 	"Food":       FoodToken,       // CR 111.10b
@@ -58,6 +58,7 @@ var predefinedTokens = map[string]func() game.Card{
 	"Map":        MapToken,        // CR 111.10s
 	"Junk":       JunkToken,       // CR 111.10t
 	"Lander":     b16LanderToken,  // CR 111.10u
+	"Mutagen":    MutagenToken,    // CR 111.10v
 	"Vibranium":  VibraniumToken,  // CR 111.10w
 	"Heartwood":  HeartwoodToken,  // CR 111.10x
 }
