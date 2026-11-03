@@ -23,10 +23,11 @@ import (
 // …Spent…), the helpers built on them (AdamantSpent,
 // NoManaWasSpentToCast, …IfNoManaSpent, …PerManaFrom,
 // noneCastWithManaInBatch, EachSpellYouCastHasSplitSecondIfManaFrom),
-// the sunburst keyword and converge, and expend, whose tally is mana
+// the sunburst keyword and converge, the increment keyword (Increment()),
+// and expend, whose tally is mana
 // spent on spells. A new accessor joins the pattern in the change that
 // adds it.
-var manaSpentReaderVocabulary = regexp.MustCompile(`Spent|Sunburst|Converge|PerManaFrom|WheneverYouExpend|CastWithManaIn|spellPaidWithTreasureMana|SplitSecondIfManaFrom`)
+var manaSpentReaderVocabulary = regexp.MustCompile(`Spent|Sunburst|Converge|PerManaFrom|WheneverYouExpend|CastWithManaIn|spellPaidWithTreasureMana|SplitSecondIfManaFrom|Increment\(\)`)
 
 func TestManaSpentReadersDeclareIt(t *testing.T) {
 	files, err := filepath.Glob("*.go")
