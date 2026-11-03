@@ -26,14 +26,8 @@ func init() {
 		Name:         "Shang-Chi, Martial Mentor",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventCounterPlaced},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventCounter || ev.CounterName != game.CounterPlusOne || ev.CounterDelta <= 0 {
-					return false
-				}
-				target, ok := g.LookupCardForEffect(ev.CounterTarget)
-				return ok && target.IsCreature() && target.Controller == src.Controller
-			},
+			Watches:   []game.EventKind{game.EventCounterPlaced},
+			AppliesTo: plusOneCountersOnACreatureYouControl,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.CounterDelta *= 2
 				return nil

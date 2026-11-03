@@ -1707,6 +1707,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if n := ab.Cost.LoyaltyDelta(params.XValue); n < 0 && source.Counters[CounterLoyalty] < -n {
 			return ErrInsufficientLoyalty
 		}
+		// #4692, CR 118.3: a +N cost puts loyalty counters on, which a
+		// permanent that can't have counters put on it can't pay.
+		if n := ab.Cost.LoyaltyDelta(params.XValue); n > 0 && g.cantHaveCountersLocked(source) {
+			return ErrCantPayCounterCost
+		}
 	}
 	if ab.Cost.Tap {
 		if source.Tapped {

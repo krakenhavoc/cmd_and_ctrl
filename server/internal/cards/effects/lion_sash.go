@@ -32,6 +32,8 @@ func init() {
 			Label:   "{W}: Exile target card from a graveyard. If it was a permanent card, put a +1/+1 counter on this permanent.",
 			Cost:    ManaCost("{W}"),
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
+			// #4559: what the exile takes away and the counter it grows.
+			Purpose: ForTargets(ExilesFromGraveyard(0, game.ExileGrowsPermanent)),
 			Effect:  lionSashExile,
 		}}, Reconfigure("{2}")...),
 	})

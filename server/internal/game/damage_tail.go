@@ -987,6 +987,11 @@ func (g *Game) placeDamageResultCountersLocked(ev *ReplacementEvent, t *damageTa
 	} else {
 		cev.CounterTarget = ev.DamageTarget
 	}
+	if g.counterPlacementRefusedLocked(cev) {
+		// #4692: wither or infect damage to a creature that can't have
+		// counters put on it is still dealt, and marks nothing.
+		return
+	}
 	out, err := g.applyReplacementsLocked(cev)
 	if errors.Is(err, errReplacementPending) {
 		// The resume owns the placement now (ADR 0056 Decision 3).

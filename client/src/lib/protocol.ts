@@ -2575,10 +2575,13 @@ export interface VoteView {
   ballots: Record<string, number>;
 }
 
-// ManaPoolRun is one run of PlayerView.mana_pool (#3041).
+// ManaPoolRun is one run of PlayerView.mana_pool (#3041). restrictions
+// (#4694) is the spend restrictions the run's mana carries, absent for
+// ordinary mana; two runs of one colour may differ only in it.
 export interface ManaPoolRun {
   color: string;
   count: number;
+  restrictions?: string[];
 }
 
 // IgnorableEffectView is one CR 116.2d special action a seat may take
@@ -4110,6 +4113,10 @@ export interface TargetPurposeView {
   damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
+  // #4559: the effect exiles the picked graveyard card.
+  exiles?: boolean;
+  // #4559: the card type an exiled pick must have to put a +1/+1 counter on the source.
+  exile_grows?: "permanent" | "creature";
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
   // #4302: which way a change to the picked permanent that ends with the
@@ -4720,6 +4727,10 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // #4692 (CR 101.2): this permanent can't have counters put on it
+  // (Blossombind). The server refuses every placement; the card shows a
+  // chip. Public; battlefield only.
+  cant_have_counters?: boolean;
   // ADR 0187 §4 (CR 510.1a): this creature assigns no combat damage this
   // turn (Carrion Rats, Carrion Wurm). Public; battlefield only.
   assigns_no_combat_damage?: boolean;

@@ -9,6 +9,32 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Mana sinks and graveyard exiles (#4559, S75)
+
+`heuristic-nomanasink` is today's heuristic with `SinkManaLast` and
+`PriceGraveyardExile` off. Compare it with `heuristic` on the same seeds
+and rotated chairs; the curated `boros-voltron` and `mono-white-weenie`
+decks hold Lion Sash. Decision logs show a sink taken last with the
+reason suffix `mana sink last`; count Sash activations made while a cast
+that cleared the bar was on offer, and the exiled card's owner and type.
+
+The unit tests (`heuristic/mana_sink_test.go`) cast a cheap creature
+before the Sash's exile, take the exile once nothing else clears its
+bar, order exile picks as an opponent's creature, their land, the bot's
+own creature, their instant, and cast a cheap instant before the sink in
+the end step before the bot's turn, and hold the sink in the bot's own
+upkeep for the main phase. The ungated whole-engine test
+(`aiseat/mana_sink_bot_test.go`) gives the bot the real Lion Sash, two
+Plains and Mother of Runes in hand: backed out, it exiles its own
+Baneslayer Angel twice (priced +8.09 as recursion) and never casts
+Mother; with the change it casts Mother, then exiles the opponent's Sun
+Titan with the other {W} and the Sash gets its counter.
+
+No arena comparison was run with the change: the curated decks need a
+Scryfall dump the authoring machine did not have, and the synthetic
+battle decks hold no graveyard-exile sink. The labelled position suite
+kept its agreement.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every

@@ -2010,6 +2010,13 @@ type CastTally struct {
 	// each spell became cast like InstantSorcery: a spell of two of the
 	// three counts once. Additive within the snapshot version.
 	InstantSorceryVillain int `json:"instantSorceryVillain,omitempty"`
+	// XSpells counts the spells the player cast this turn with {X} in
+	// their mana cost (CR 107.3), read off the spell as it became cast
+	// like InstantSorcery: Lattice Library's "your first spell with {X}
+	// in its mana cost each turn" is XSpells == 1 once the tally is
+	// bumped, which is before EventCast. The mana cost, not a cost paid
+	// instead of it. Additive within the snapshot version.
+	XSpells int `json:"xSpells,omitempty"`
 	// ManaSpent is the total mana the player spent to cast spells this
 	// turn (#3172), counted as each spell became cast off its payment
 	// record, so a cost reduction, X and every additional cost's mana all

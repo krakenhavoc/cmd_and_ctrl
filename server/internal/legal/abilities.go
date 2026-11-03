@@ -362,6 +362,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
 				continue
 			}
+			// #4692: a +N cost can't be paid on a permanent that can't
+			// have counters put on it, as the engine refuses it.
+			if n := *ab.Cost.Loyalty; n > 0 && g.CantHaveCountersForEffect(source.InstanceID) {
+				continue
+			}
 		}
 		// #1944: a −X loyalty cost bounds X by the loyalty there
 		// (CR 606.6). -1 for every other ability.

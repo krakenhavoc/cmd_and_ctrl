@@ -1231,11 +1231,11 @@ search lists Scryfall's token printings beside cards, so a `scryfall_id` or
 `name` can name, say, a Treasure token printing. A predefined token is defined
 by the rules (CR 111.10), not by a printing, so when the printing is one the
 catalog has a template for (Treasure, Food, Gold, Shard, Clue, Blood, Powerstone,
-Incubator, Map, Junk, Lander, Vibranium, Heartwood; a double-faced token printing is
+Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood; a double-faced token printing is
 matched on its front face), the spawn makes that template, exactly as `token`
 would, and the response is a token response. Made from the printing instead,
 the object had no catalog entry: it did not run its own ability, and the board
-flagged it unimplemented. A token printing with no template (Mutagen) is
+flagged it unimplemented. A token printing with no template (a Role) is
 still spawned as the printing and flagged. `POST /games/{id}/dev/spawn` does
 the same.
 
@@ -1331,7 +1331,7 @@ would have to be added to all three or it would 404 in production only.
 Three families share one list: the plain templates from
 `server/internal/cards/effects/tokens_table.go`, keyed the way a card prints
 them; the predefined tokens of CR 111.10 that have a template (Treasure, Food,
-Gold, Shard, Clue, Blood, Powerstone, Incubator, Map, Junk, Lander, Vibranium, Heartwood),
+Gold, Shard, Clue, Blood, Powerstone, Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood),
 keyed by name because the rules name them; and the other behaviour tokens
 (the Eldrazi Spawn, the Shapeshifters, the Phyrexian Wurms), keyed stat-first
 like the table. `tokens_spawn.go` assembles the list.
@@ -5195,7 +5195,7 @@ burst of 3, then ~1 report / 30 s per client IP.
 }
 ```
 
-`kind`, `description`, `context`, and `log` (and every field inside
+`kind`, `description`, `context`, `log` and `settings` (and every field inside
 them) are optional. `title` is capped at 200 characters,
 `description` at 5000. Context strings are clipped server-side and
 never trusted; the server adds the reporter identity, server time,
@@ -5204,11 +5204,11 @@ and `User-Agent` itself.
 **Report kinds.** `kind` is what the reporter is telling us. It picks
 the GitHub label and which artifacts the report collects:
 
-| `kind` | label | client log | pinned replay | pinned game log |
-|---|---|---|---|---|
-| `bug` (default) | `bug` | yes | yes | yes |
-| `idea` | `enhancement` | no | no | no |
-| `question` | `question` | yes | no | yes |
+| `kind` | label | client log | pinned replay | pinned game log | settings copy |
+|---|---|---|---|---|---|
+| `bug` (default) | `bug` | yes | yes | yes | no |
+| `idea` | `enhancement` | no | no | no | yes |
+| `question` | `question` | yes | no | yes | no |
 
 Screenshots are attached for every kind. The client names a **kind**,
 never a label: the mapping lives in the server so a session with a
@@ -5216,8 +5216,21 @@ report button can't attach (or create) arbitrary labels on the
 tracker. An omitted or empty `kind` means `bug` — that is what every
 client built before the field existed sends, and refusing those would
 break the button mid-game. Any other value is a 400 listing the
-accepted kinds. A `log` sent with a kind that doesn't take one is
-dropped, not refused.
+accepted kinds. A `log` or `settings` sent with a kind that doesn't
+take one is dropped, not refused.
+
+`settings` is the client's settings object (`client/src/lib/settings.ts`,
+#4103). It is inlined in a collapsed block of the issue, which is public,
+so the server keeps preferences only. It keeps the groups `__version`,
+`audio`, `animations`, `display`, `gameplay`, `shortcuts`,
+`accessibility` and `help`, and drops anything else. It drops
+`help.seen`, and drops `card` and `prompt` from each
+`gameplay.autoAnswers` rule. It redacts every key and string, replaces
+backticks, and clips each string to 256 bytes. A copy that is not a JSON
+object, or is over 32 KiB or more than four levels deep (the account
+copy's rule), is left out. So is one whose rendered form is over 24 KiB.
+In either case the footer says `Settings: not attached (…)`. A bad copy
+never costs the report.
 
 The title prefix is `[in-app] ` for every kind. The kind lives in the
 label (and in a `Kind:` row in the issue body), not in the title, so

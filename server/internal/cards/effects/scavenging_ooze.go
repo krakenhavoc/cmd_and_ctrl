@@ -31,6 +31,9 @@ func init() {
 			Label:   "{G}: Exile target card from a graveyard. If it was a creature card, put a +1/+1 counter on this creature and you gain 1 life.",
 			Cost:    ManaCost("{G}"),
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
+			// #4559: what the exile takes away and the counter it grows.
+			// The life it gains is left unpriced.
+			Purpose: ForTargets(ExilesFromGraveyard(0, game.ExileGrowsCreature)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/bits"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -2159,7 +2160,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// never disagree about what the spell is. A trigger queued here is
 	// placed by the runStateChecksLocked at the bottom of the cast,
 	// above the spell.
-	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind), card)
+	// #4694: with the spell's mana value at its announced X (CR 202.3e).
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -2377,6 +2379,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
+			}
+			// Lattice Library's "first spell with {X} in its mana cost".
+			if strings.Contains(manaCostForValue(*sc), "{X}") {
+				tally.XSpells++
 			}
 			// #2743: the running mana value, with the X this spell was
 			// cast with. SourceCharacteristics already priced it that
@@ -4964,6 +4970,9 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	// not paid and then cleaned up.
 	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
 		return ErrInsufficientLoyalty
+	}
+	if delta > 0 && g.cantHaveCountersLocked(pw) {
+		return ErrCantPayCounterCost // #4692, CR 118.3
 	}
 	// payCostCounterLocked (counter_cost.go): a loyalty ability's
 	// counter change is a COST (CR 606.4), not an effect, so a
@@ -11329,6 +11338,11 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 		if z.Cards[i].InstanceID == cardID {
 			// #1824: a counter that can't be removed stays put.
 			if delta < 0 && g.counterRemovalLockedLocked(&z.Cards[i], name) {
+				return nil
+			}
+			// #4692: and one can't be put on a permanent that can't have
+			// counters put on it (cant_have_counters.go).
+			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCountersLocked(&z.Cards[i]) {
 				return nil
 			}
 			hadCounters := len(z.Cards[i].Counters) > 0

@@ -531,6 +531,7 @@ choose choose-cards/mind-extraction-discard-wubrg
 choose choose-cards/mind-extraction-discard-wug
 choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
+choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
@@ -1047,6 +1048,7 @@ payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
+payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
 payunless pay-unless/banon-the-returners-leader-discard
@@ -1542,6 +1544,7 @@ tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
 tail exile-then-token-copy/ardyn-the-usurper
+tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
@@ -1640,6 +1643,7 @@ tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail makeshift-mannequin/grant-while-counter
 tail malcolm/draw-after-counter
+tail manaform-hellkite/exile-the-token
 tail manifest-dread/again
 tail manifest-dread/attach-source
 tail manifest-dread/put-counters

@@ -1776,11 +1776,13 @@ func (c *Client) sendFrame(f protocol.Frame) {
 // client's send channel. A full buffer disconnects the client rather
 // than dropping the frame silently — letting the pong for a ping, or
 // the snapshot for an action, be quietly dropped would mask real bugs.
-// kind is what cmdctrl_ws_frames_total counts a queued frame under.
+// kind is what cmdctrl_ws_frames_total counts a queued frame under,
+// and cmdctrl_ws_sent_bytes_total its length (ADR 0205).
 func (c *Client) sendRaw(kind protocol.Kind, raw []byte) {
 	select {
 	case c.send <- raw:
 		metrics.WSFrame(metrics.FrameOut, string(kind))
+		metrics.WSSentBytes(string(kind), len(raw))
 	default:
 		c.log.Warn("ws send buffer full, disconnecting client")
 		_ = c.conn.Close()

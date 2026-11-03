@@ -67,6 +67,7 @@ var xMattersAllowlist = map[string]string{
 	"kessig_wolf_run.go Kessig Wolf Run":                          "the trample half never reads X: at X=0 the target gets +0/+0 and still gains trample until end of turn",
 	"lightning_serpent.go Lightning Serpent":                      "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
 	"mawloc.go Mawloc":                                            "2/2 body survives at X=0, and the Terror from the Deep fight is X-independent",
+	"mutagen_man_living_ooze.go Mutagen Man, Living Ooze":         "2/3 trample legendary body and the artifact-token discount: the creature stays when it brings no Mutagens",
 	"pull_from_tomorrow.go Pull from Tomorrow":                    "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
 	"spiteful_banditry.go Spiteful Banditry":                      "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":                      "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",

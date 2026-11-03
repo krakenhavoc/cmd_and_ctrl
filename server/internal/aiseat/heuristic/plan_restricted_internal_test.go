@@ -51,7 +51,7 @@ func restrictedState(t *testing.T, bf []protocol.CardView, hand ...protocol.Card
 
 func costFor(st *state, cost string, card protocol.CardView) manaCost {
 	c := parseManaCost(cost, 0)
-	c.admits = st.castAdmits(&card, "")
+	c.admits = st.castAdmits(&card, "", 0, 0)
 	return c
 }
 

@@ -48,6 +48,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
+  - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -3568,6 +3569,15 @@ same PR, and assert `dispatchAll` over the enumerated moves.
 Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
+**"Can't attack or block unless its power is N or greater"** (Technodrome,
+#4678) is not a conditional `RestrictSelf`: a layer-6 static runs before
+layer 7, so it would read the power before anthems and counters. Write
+`Static: []game.StaticAbility{CantAttackOrBlockUnlessPowerAtLeast(6)}`. It
+records the floor on `Characteristic.AttackBlockPowerFloor`, and the layer
+pass folds `CantAttack | CantBlock` in after every layer has run while the
+power (counters included) is below it (CR 613.11, `game/power_floor.go`).
+Every gate and the enumerator read the bits, so nothing else changes.
+
 **"Can't attack its owner"** ([ADR 0106 §2](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
 #1794) is not a bit either: it says WHOM the creature may not attack,
 so it is data on `Characteristic.AttackTargetRestrictions`, written by
@@ -4322,6 +4332,23 @@ Captain America". The activator picks one Equipment attached to the source, whoe
 battlefield unattached. With nothing attached the ability can't be activated. A divided amount that reads the pick is
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
+
+### "Can't have counters put on it" (#4692, CR 101.2)
+
+Blossombind's "Enchanted creature … can't have counters put on it" is
+`Static: []game.StaticAbility{AttachedCantHaveCounters()}`, which sets
+`Characteristic.CantHaveCounters` on the host. It is a prohibition, not a
+replacement: the engine refuses the placement before the CR 614 window
+opens, so Doubling Season, Hardened Scales and Vizier of Remedies never
+see it and no ordering prompt is asked. One predicate,
+`cantHaveCountersLocked` (`game/cant_have_counters.go`), is read by every
+placement door (effects, entering with counters, Sagas, wither and infect
+damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
+(a counter cost can't be paid, CR 118.3), by the blight options (CR
+701.68b) and by the proliferate candidates. A refused placement is told
+zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
+counters is unaffected. A +N loyalty cost can't be paid either. The view
+ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
 ### Adding a block-rule card (S37+, #750)
 
@@ -5116,6 +5143,17 @@ costs that contain {X}" is `Restrictions: []string{game.ManaRestrictXCost}`
 spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
+
+**Mana for spells with mana value N or greater (#4694):** "Spend this
+mana only to cast spells with mana value 4 or greater" is
+`Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
+Rimebound; `ManaRestrictManaValueAtMost(n)` is "N or less"). It matches
+`ManaSpendContext.ManaValue`, the spell's mana value as it is on the
+stack: the face being cast (a transformed spell reads its front face, CR
+712.8c), and {X} at the value announced (CR 202.3e), so an X spell with X
+large enough may spend it. Activations, unlocks and payments that name
+no spell refuse it. Floating mana keeps its restriction on the wire
+(`ManaPoolRun.restrictions`), which is what the bot plans from.
 
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
@@ -9862,6 +9900,16 @@ named subtypes and nothing else, so a Human lord stops pumping the
 creature while the effect lasts (Werewolf Pack Leader). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
+
+**"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
+(#4691, layer 4, CR 613.1d): every creature type goes and none comes,
+the every-creature-type fact included (a changeling's, or an earlier
+"gains all creature types"), while the card types and other subtypes
+stay (CR 205.1a). A later "gains all creature types" wins by timestamp
+(CR 613.7). It removes no ability, so a changeling keeps the keyword.
+Put it in the same record as the card's other changes (Nameless
+Inversion's +3/-3). The kind `loseAllCreatureTypes` is an on-disk
+identity.
 
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —

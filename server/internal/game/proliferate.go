@@ -76,7 +76,9 @@ var harmfulPlayerCounters = map[string]bool{
 // Caller must hold g.mu (read or write).
 func (g *Game) ProliferateCandidatesForEffect() (cards []uuid.UUID, players []uuid.UUID) {
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if len(sortedCounterKinds(c.Counters)) > 0 {
+		// #4692: one that can't have counters put on it would get
+		// nothing, so it is not offered.
+		if len(sortedCounterKinds(c.Counters)) > 0 && !g.CantHaveCountersForEffect(c.InstanceID) {
 			cards = append(cards, c.InstanceID)
 		}
 	}
@@ -106,7 +108,7 @@ func (g *Game) ProliferateCandidatesForEffect() (cards []uuid.UUID, players []uu
 // Caller must hold g.mu (read or write).
 func (g *Game) ProliferateSuggestionForEffect(controller uuid.UUID) (cards []uuid.UUID, players []uuid.UUID) {
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if len(c.Counters) == 0 {
+		if len(c.Counters) == 0 || g.CantHaveCountersForEffect(c.InstanceID) {
 			continue
 		}
 		if wantsMoreCounters(c.Counters, harmfulCardCounter, c.Controller == controller) {

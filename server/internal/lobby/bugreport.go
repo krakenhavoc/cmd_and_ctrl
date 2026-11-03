@@ -29,6 +29,10 @@ package lobby
 //     readable: the replay says what the state WAS at every frame, the
 //     log says what HAPPENED, and "what happened" is what a bug report
 //     is about.
+//   - for an idea, a copy of the reporter's client settings (#4103),
+//     inlined like the log once scrubbed to preferences alone
+//     (scrubBugSettings): an idea about the table is easier to weigh
+//     when you can see the table the way the reporter does.
 //
 // The split matters: ADR 0017 §4 kept ALL game state out of issues to
 // stop hidden information leaking around the wire visibility filter.
@@ -37,7 +41,9 @@ package lobby
 // (ADR 0017 §7 records the revision).
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -51,6 +57,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/redact"
 )
 
@@ -104,6 +111,18 @@ const (
 	// is inside a <details> anyway.
 	bugLogTotalMax = 24 << 10
 
+	// bugSettingsTotalMax caps the rendered settings block, like
+	// bugLogTotalMax. GitHub refuses an issue body over 65,536
+	// characters, and an idea also carries up to bugDescMax of prose.
+	// A copy that will not fit even compact is left out, and the issue
+	// says so.
+	bugSettingsTotalMax = 24 << 10
+
+	// bugSettingsStringMax clips one string in the settings copy. Every
+	// string the client stores there is short (an accent colour, a key
+	// name, an auto-answer key of at most 256 bytes).
+	bugSettingsStringMax = 256
+
 	// bugMultipartMax caps a whole multipart submission: the JSON
 	// part plus every image. Sized as bugstore.MaxTotalImageBytes
 	// plus headroom for the prose, the log, and part boundaries.
@@ -146,6 +165,12 @@ type bugKind struct {
 	// happened", which is what answers a question as often as it
 	// diagnoses a bug.
 	GameLog bool
+
+	// Settings inlines a scrubbed copy of the reporter's client
+	// settings (#4103). The issue is public, so the copy holds
+	// preferences only (scrubBugSettings): no names, ids, tokens or
+	// game text.
+	Settings bool
 }
 
 // bugKinds maps wire kind → policy. The wire word is the player's
@@ -164,8 +189,11 @@ var bugKinds = map[string]bugKind{
 	// An idea is about what the game SHOULD do, so none of the
 	// forensic artifacts apply — a screenshot of the thing being
 	// complained about is the evidence, and pinning a 30 MiB replay
-	// to "the stack panel should be wider" is pure waste.
-	"idea": {Label: "enhancement", Noun: "idea"},
+	// to "the stack panel should be wider" is pure waste. What it does
+	// get is the reporter's settings (#4103): "the stack panel should
+	// be wider" reads differently at a large card size in the
+	// overlay layout.
+	"idea": {Label: "enhancement", Noun: "idea", Settings: true},
 
 	// A question sits between the two. "Why did my creature die?" is
 	// answered from what HAPPENED — the public game log, a few KiB —
@@ -261,6 +289,11 @@ type bugReportRequest struct {
 	Description string            `json:"description,omitempty"`
 	Context     *bugReportContext `json:"context,omitempty"`
 	Log         []bugLogEntry     `json:"log,omitempty"`
+	// Settings is the client's settings object (client/src/lib/
+	// settings.ts), for the kinds that take it. The server scrubs it
+	// to preferences before rendering (scrubBugSettings) and never
+	// stores it anywhere but the issue body.
+	Settings json.RawMessage `json:"settings,omitempty"`
 }
 
 // bugReportConfig mirrors /auth/discord/config: an unauthenticated
@@ -349,6 +382,10 @@ func (g *bugGate) report(c Config, w http.ResponseWriter, r *http.Request) error
 	// what an issue carries.
 	if kind.Log {
 		in.Log = req.Log
+	}
+	// The settings copy follows the same rule.
+	if kind.Settings {
+		in.Settings = req.Settings
 	}
 
 	// The throttle decides before anything is stored or sent. A +1
@@ -863,6 +900,9 @@ type bugIssue struct {
 	Images    []bugstore.Image
 	Replay    *bugstore.ReplayPin
 	GameLog   *bugstore.GameLogPin
+	// Settings is the reporter's client settings as sent, unscrubbed:
+	// renderBugIssueBody scrubs it.
+	Settings json.RawMessage
 }
 
 // renderBugIssueBody assembles the markdown issue body: the
@@ -902,6 +942,13 @@ func renderBugIssueBody(in bugIssue) string {
 		fmt.Fprintf(&b, "\n\n---\n\n<details>\n<summary>Client log — last %d entries before the report</summary>\n\n```text\n%s```\n\n", n, block)
 		b.WriteString("<sub>Captured in the reporter's browser; times are that browser's clock. " +
 			"Contains only what that client already saw — no hidden game state.</sub>\n</details>\n")
+	}
+
+	settingsBlock, settingsNote := renderBugSettings(in.Settings)
+	if settingsBlock != "" {
+		fmt.Fprintf(&b, "\n\n---\n\n<details>\n<summary>Settings — the reporter's preferences at report time</summary>\n\n```json\n%s\n```\n\n", settingsBlock)
+		b.WriteString("<sub>Display, sound, animation, accessibility, shortcut and gameplay preferences only: " +
+			"no names, ids or tokens, and no card or prompt text.</sub>\n</details>\n")
 	}
 
 	b.WriteString("\n\n---\n\n**Reported from the app**\n\n")
@@ -959,6 +1006,9 @@ func renderBugIssueBody(in bugIssue) string {
 		// costs the operator one request.
 		fmt.Fprintf(&b, "- Pinned game log: `GET /bugreport/%s/gamelog` (admin) — %d entries, %d KiB, what happened at the table\n",
 			in.ReportID, in.GameLog.Lines-1, in.GameLog.Bytes>>10)
+	}
+	if settingsNote != "" {
+		fmt.Fprintf(&b, "- Settings: not attached (%s)\n", settingsNote)
 	}
 	fmt.Fprintf(&b, "- Server time: %s\n", in.Now.Format(time.RFC3339))
 	if in.UserAgent != "" {
@@ -1045,6 +1095,133 @@ func renderBugLog(entries []bugLogEntry) (string, int) {
 		return "", 0
 	}
 	return b.String(), n
+}
+
+// bugSettingsGroups are the top-level groups of the client's Settings
+// (client/src/lib/settings.ts) a report's copy keeps. Anything else in
+// the object is dropped, so a group the client adds later is left out
+// of a public issue until someone has read it and listed it here.
+var bugSettingsGroups = map[string]bool{
+	"__version":     true,
+	"audio":         true,
+	"animations":    true,
+	"display":       true,
+	"gameplay":      true,
+	"shortcuts":     true,
+	"accessibility": true,
+	"help":          true,
+}
+
+// renderBugSettings renders a report's settings copy for the issue
+// body: scrubbed (scrubBugSettings), indented, or compact if indented
+// would not fit bugSettingsTotalMax. It returns the JSON, or a short
+// reason the copy was left out ("" for both when none was sent).
+func renderBugSettings(raw json.RawMessage) (block, note string) {
+	if len(raw) == 0 {
+		return "", ""
+	}
+	// The shape rule the account's copy is held to (ADR 0110 §4): a
+	// JSON object of at most 32 KiB, nested at most four deep.
+	if err := usersettings.Validate(usersettings.MinVersion, raw); err != nil {
+		return "", "not a settings object"
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var m map[string]any
+	if err := dec.Decode(&m); err != nil {
+		return "", "not a settings object"
+	}
+	m = scrubBugSettings(m)
+	out, err := json.MarshalIndent(m, "", "  ")
+	if err == nil && len(out) > bugSettingsTotalMax {
+		out, err = json.Marshal(m)
+	}
+	switch {
+	case err != nil:
+		return "", "not a settings object"
+	case len(out) > bugSettingsTotalMax:
+		return "", fmt.Sprintf("over %d KiB", bugSettingsTotalMax>>10)
+	}
+	return string(out), ""
+}
+
+// scrubBugSettings keeps the preferences of a settings object and
+// nothing that could name or follow a person (#4103, ADR 0149), since
+// the copy is published in a public issue:
+//
+//   - only the groups in bugSettingsGroups;
+//   - help keeps tipsOff and drops seen, the hints dismissed, which is
+//     history rather than a preference;
+//   - each gameplay.autoAnswers rule keeps its key and answer and
+//     drops the card and prompt text shown beside it, which is copied
+//     from a game's prompt and can hold another player's name;
+//   - every string, key or value, is redacted (redact.Secrets), has its
+//     backticks replaced (the copy sits in a fenced block) and is
+//     clipped to bugSettingsStringMax.
+func scrubBugSettings(m map[string]any) map[string]any {
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		if !bugSettingsGroups[k] {
+			continue
+		}
+		switch k {
+		case "help":
+			if h, ok := v.(map[string]any); ok {
+				kept := map[string]any{}
+				if t, ok := h["tipsOff"]; ok {
+					kept["tipsOff"] = t
+				}
+				v = kept
+			}
+		case "gameplay":
+			if g, ok := v.(map[string]any); ok {
+				if rules, ok := g["autoAnswers"].([]any); ok {
+					kept := make([]any, 0, len(rules))
+					for _, r := range rules {
+						rule, ok := r.(map[string]any)
+						if !ok {
+							continue
+						}
+						kept = append(kept, map[string]any{"key": rule["key"], "answer": rule["answer"]})
+					}
+					g["autoAnswers"] = kept
+				}
+			}
+		}
+		out[k] = v
+	}
+	return scrubBugSettingsValue(out).(map[string]any)
+}
+
+// scrubBugSettingsValue applies scrubBugSettings' string rule to every
+// key and string value under v.
+func scrubBugSettingsValue(v any) any {
+	switch t := v.(type) {
+	case string:
+		return scrubBugSettingsString(t)
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, e := range t {
+			out[scrubBugSettingsString(k)] = scrubBugSettingsValue(e)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = scrubBugSettingsValue(e)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
+func scrubBugSettingsString(s string) string {
+	s = strings.ReplaceAll(redact.Secrets(s), "`", "'")
+	if len(s) > bugSettingsStringMax {
+		s = strings.ToValidUTF8(s[:bugSettingsStringMax], "")
+	}
+	return s
 }
 
 // bugLogTime renders a client epoch-millis stamp as a UTC wall clock.

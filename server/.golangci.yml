@@ -15,8 +15,12 @@ version: "2"
 
 run:
   # 6m: the old 3m budget measured 3m11s on the self-hosted runner with zero headroom (#1245).
+  # 10m (#4200): a change to a package internal/game imports (internal/metrics)
+  # makes lint rebuild the type data of nearly the whole tree, cards/effects
+  # included, and twice ran past 6m on GitHub-hosted runners with 0 issues;
+  # an ordinary PR lints in about 5m.
   # `migrate` drops this key (v2 has no timeout by default); it is kept on purpose.
-  timeout: 6m
+  timeout: 10m
 
 linters:
   default: none

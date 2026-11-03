@@ -74,6 +74,28 @@ func RestrictSelf(r game.Restriction) game.StaticAbility {
 	}
 }
 
+// CantAttackOrBlockUnlessPowerAtLeast is "This creature can't attack or
+// block unless its power is N or greater" (Technodrome, #4678). Not a
+// RestrictSelf with a condition: the condition is the creature's own
+// power, which a layer-6 static cannot read (layer 7 has not run yet).
+// The static records the floor and the engine folds it into
+// CantAttack | CantBlock once every layer has run (CR 613.11,
+// game/power_floor.go), so an anthem or counters that lift it to N make
+// it eligible and a -N/-N takes it back out. A self static, so it goes
+// with the creature's abilities (CR 613.1f).
+func CantAttackOrBlockUnlessPowerAtLeast(n int) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     fmt.Sprintf("This creature can't attack or block unless its power is %d or greater.", n),
+		Layer:     game.Layer6Ability,
+		AppliesTo: selfOnly,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			if n > c.AttackBlockPowerFloor {
+				c.AttackBlockPowerFloor = n
+			}
+		},
+	}
+}
+
 // selfRestrictionLabel is RestrictSelf's tile label (#2219): the
 // printed clause for the three single restrictions a permanent prints
 // on itself, and nothing for any other set, which the tile then

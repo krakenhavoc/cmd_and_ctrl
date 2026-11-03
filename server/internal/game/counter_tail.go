@@ -88,6 +88,11 @@ func (g *Game) runCounterTailLocked(ev *ReplacementEvent, placed int) error {
 //
 // Caller must hold g.mu.
 func (g *Game) applyResolvedCounterThenLocked(ev *ReplacementEvent) error {
+	// #4692: a placement that paused on a CR 616 prompt is asked again
+	// as it lands; a refused one is told zero.
+	if g.counterPlacementRefusedLocked(ev) {
+		return g.runCounterTailLocked(ev, 0)
+	}
 	if err := g.applyResolvedCounterLocked(ev); err != nil {
 		if tailErr := g.runCounterTailLocked(ev, 0); tailErr != nil {
 			g.EmitEvent(Event{
@@ -164,6 +169,11 @@ func (g *Game) addCounterWithTailLocked(placer, cardID uuid.UUID, name string, d
 //
 // Caller must hold g.mu.
 func (g *Game) placeCountersThroughReplacementsLocked(ev *ReplacementEvent) error {
+	// #4692, CR 101.2: "can't have counters put on it" stops the
+	// placement before any replacement sees it.
+	if g.counterPlacementRefusedLocked(ev) {
+		return g.runCounterTailLocked(ev, 0)
+	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
 		// A prompt is queued and the resume owns the placement now.
@@ -243,6 +253,9 @@ func (g *Game) AddCounterByMustSettleNowForEffect(placer, cardID uuid.UUID, name
 //
 // Caller must hold g.mu.
 func (g *Game) addCounterMustSettleNowLocked(ev *ReplacementEvent) (int, error) {
+	if g.counterPlacementRefusedLocked(ev) {
+		return 0, nil // #4692: nothing lands, and no replacement sees it
+	}
 	g.settleCounterPlacerLocked(ev)
 	cardID, name, delta, placer := ev.CounterTarget, ev.CounterName, ev.CounterDelta, ev.CounterPlacer
 	ev.mustSettleNow = true

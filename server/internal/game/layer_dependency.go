@@ -586,6 +586,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		slices.Equal(a.RemovedOwnAbilities, b.RemovedOwnAbilities) &&
 		a.Controller == b.Controller &&
 		a.Restrictions == b.Restrictions &&
+		a.CantHaveCounters == b.CantHaveCounters &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&
@@ -595,6 +596,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.CantBeAttacked == b.CantBeAttacked &&
 		a.CantBeSacrificed == b.CantBeSacrificed &&
 		a.CantTransform == b.CantTransform &&
+		a.AttackBlockPowerFloor == b.AttackBlockPowerFloor &&
 		sameStringSlice(a.Types, b.Types) &&
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
 		sameStringSlice(a.Supertypes, b.Supertypes) &&

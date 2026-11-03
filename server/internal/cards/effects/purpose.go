@@ -470,7 +470,10 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //     is the rest of the review;
 //   - a change until end of turn (#4302) that is neither benefit nor
 //     harm, on a clause that cannot target a permanent, or whose Pump
-//     points the other way (checkUntilEndOfTurn).
+//     points the other way (checkUntilEndOfTurn);
+//   - an exile from a graveyard (#4559) on a clause that cannot target
+//     a graveyard card, beside a reanimation, or an ExileGrows that is
+//     not "permanent" or "creature" or has no Exiles beside it.
 func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSpec, known bool) {
 	if p.Targets == nil {
 		return
@@ -515,6 +518,21 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		}
 		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
 			fail(fmt.Sprintf("reanimates slot %d, whose clause %q cannot target a card in a graveyard", e.Slot, clause.Label))
+		}
+		if e.Exiles && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
+			fail(fmt.Sprintf("exiles slot %d from a graveyard, whose clause %q cannot target a card in a graveyard (#4559)", e.Slot, clause.Label))
+		}
+		if e.Exiles && e.Reanimates {
+			fail(fmt.Sprintf("both exiles and reanimates slot %d (#4559)", e.Slot))
+		}
+		switch e.ExileGrows {
+		case "":
+		case game.ExileGrowsPermanent, game.ExileGrowsCreature:
+			if !e.Exiles {
+				fail(fmt.Sprintf("sets ExileGrows on slot %d without Exiles (#4559)", e.Slot))
+			}
+		default:
+			fail(fmt.Sprintf("sets ExileGrows %q on slot %d, which is neither %q nor %q (#4559)", e.ExileGrows, e.Slot, game.ExileGrowsPermanent, game.ExileGrowsCreature))
 		}
 		checkUntilEndOfTurn(e, clause, fail)
 		if r := e.Returns; !r.IsZero() {
@@ -654,6 +672,18 @@ func DamagePerTappedToTarget(slot, per int) game.TargetPurpose {
 // the pick by the permanent it becomes, whoever owns the graveyard.
 func Reanimates(slot int) game.TargetPurpose {
 	return game.TargetPurpose{Slot: slot, Reanimates: true}
+}
+
+// ExilesFromGraveyard is the target entry for an effect that exiles the
+// graveyard card picked for clause `slot` (#4559). `grows` is the card
+// type whose exile puts a +1/+1 counter on the source
+// (game.ExileGrowsPermanent or game.ExileGrowsCreature), or "" when it
+// puts none: Lion Sash is
+// ForTargets(ExilesFromGraveyard(0, game.ExileGrowsPermanent)). The bot
+// prices the pick by what the exile denies an opponent or costs the bot,
+// plus the counter, rather than as a card it could use.
+func ExilesFromGraveyard(slot int, grows string) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Exiles: true, ExileGrows: grows}
 }
 
 // ModeWithPurpose is a mode bullet with its declared purpose: the
