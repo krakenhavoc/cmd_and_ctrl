@@ -42,6 +42,12 @@
   // on the way) or is tossed from their hand onto their graveyard pile, a
   // stagger apart, and five or more go as one sweep.
   //
+  // A card returned from a graveyard (#4446) is the mirror image: a copy
+  // rises out of its owner's graveyard pile in a dark-green glow and goes
+  // to where it went, its tile on the battlefield (which waits hidden until
+  // the copy lands, effectCueMotion.ts riseArrive, cancelled with the cue)
+  // or its owner's hand.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -123,7 +129,15 @@
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { attachSlide, commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
+  import {
+    attachSlide,
+    commandArrive,
+    cueMotion,
+    pileLandAt,
+    riseArrive,
+    tokenPop,
+    type PilePath,
+  } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -200,6 +214,14 @@
     // in order, and whether they go as one sweep.
     slides?: (string | null)[];
     sweep?: boolean;
+    // Cards returned from a graveyard (#4446): where each went, each one's
+    // own way from its graveyard pile, whether it turns face down on the
+    // way (into a hand this viewer cannot see), and the battlefield tile
+    // that waits hidden for it (null: none).
+    reanimateTo?: "battlefield" | "hand";
+    paths?: PilePath[];
+    flips?: boolean[];
+    tileIDs?: (string | null)[];
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -400,6 +422,9 @@
     // where the board shows them, and the log names them.
     mill: null,
     discard: null,
+    // And a card returned from a graveyard (#4446): it is where it went,
+    // where the board shows it, and the log names it.
+    reanimate: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -471,6 +496,10 @@
       placePile(cue, base, motion, b);
       return;
     }
+    if (cue.kind === "reanimate") {
+      placeReanimate(cue, base, motion, b);
+      return;
+    }
     const cardID = cue.cardID;
     if (!cardID) return;
     if (cue.kind === "token_create") {
@@ -496,11 +525,17 @@
     if (cue.kind === "pw_enter") {
       const tile = boardEl ? findCardAnchor(boardEl, cardID, { accept: hasSize }) : null;
       if (!tile) return;
-      void settled(tile).then(() => {
-        if (destroyed) return;
-        const now = boardSize();
-        if (now) place(cue, base, motion, now);
-      });
+      const arrive = () =>
+        void settled(tile).then(() => {
+          if (destroyed) return;
+          const now = boardSize();
+          if (now) place(cue, base, motion, now);
+        });
+      // One that rose out of a graveyard (#4446) follows its rise, whose
+      // cue mounts after this frame's cues are placed and holds the tile
+      // hidden until its copy lands: it waits for that too.
+      if (cue.follows) later(arrive, 0);
+      else arrive();
       return;
     }
     place(cue, base, motion, b, vortex);
@@ -925,6 +960,134 @@
       sweep,
     });
   }
+
+  // ---- A card returned from a graveyard (#4446) ----
+
+  // Every graveyard card this player saw, by instance ID, with whose
+  // graveyard it was in, as of this frame and the one before: a card that
+  // left for a hand is not in it any more, and an opponent's hand shows
+  // only backs, so its owner and its face are read from the frame before.
+  type InGrave = { owner: string; card: CardView };
+  let graveNow = new Map<string, InGrave>();
+  let graveBefore = new Map<string, InGrave>();
+
+  function graveyardCards(v: GameView): Map<string, InGrave> {
+    const out = new Map<string, InGrave>();
+    for (const s of v.seats ?? []) {
+      for (const c of s.graveyard?.cards ?? []) out.set(c.instance_id, { owner: s.id, card: c });
+    }
+    return out;
+  }
+
+  // A card in a hand this player sees (their own), and whose hand it is.
+  function handCard(id: string): { card: CardView; seat: string } | null {
+    for (const s of view.seats ?? []) {
+      const card = s.hand?.cards.find((c) => c.instance_id === id);
+      if (card) return { card, seat: s.id };
+    }
+    return null;
+  }
+
+  // A permanent's own tile on the battlefield, never a pile's thumbnail.
+  const fieldTile = (el: HTMLElement) => cmdLive(el) && el.closest("[data-pile]") === null;
+
+  // Each card rises out of its owner's graveyard pile (else their seat)
+  // and goes to where it went: its tile on the battlefield, at the tile's
+  // size (else its controller's seat), or its card in the viewer's own
+  // hand (else the owner's hand, else their seat), turning face down on
+  // the way into a hand this player cannot see. A card with neither end,
+  // or a still cue, draws nothing; the sound plays.
+  function placeReanimate(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const ids = cue.cardIDs ?? [];
+    const count = Math.max(1, cue.count ?? ids.length);
+    const sweep = count >= PILE_SWEEP_MIN;
+    const toHand = cue.reanimateTo === "hand";
+    const slides: (string | null)[] = [];
+    const flips: boolean[] = [];
+    const paths: PilePath[] = [];
+    const tileIDs: (string | null)[] = [];
+    let origin: CmdBox | null = null;
+    let card: { w: number; h: number } | null = null;
+    for (const id of ids.slice(0, pileShown(count))) {
+      const onField = toHand ? null : view.battlefield.cards.find((c) => c.instance_id === id);
+      const held = toHand ? handCard(id) : null;
+      const before = graveBefore.get(id);
+      const owner =
+        onField?.owner ?? before?.owner ?? held?.seat ?? view.seats?.[cue.seat ?? -1]?.id ?? "";
+      if (!owner) continue;
+      const pile = pileBox("graveyard", owner, b.rect);
+      // The pile's top card is card-sized; a seat is not.
+      card ??= pile && pile.h > pile.w * 1.2 ? { w: pile.w, h: pile.h } : PILE_CARD;
+      let to: CmdBox | null = null;
+      let scale = 1;
+      let tile: string | null = null;
+      if (onField) {
+        const el = findCardAnchor(boardEl, id, { accept: fieldTile });
+        if (el) {
+          // Mid-way through its entrance pop: the centre from the box, the
+          // size from the layout, which no transform changes.
+          const r = el.getBoundingClientRect();
+          to = {
+            x: r.left + r.width / 2 - b.rect.left,
+            y: r.top + r.height / 2 - b.rect.top,
+            w: el.offsetWidth || r.width,
+            h: el.offsetHeight || r.height,
+          };
+          scale = to.w / Math.max(1, card.w);
+          // An Aura returned attached keeps its own slide onto its host
+          // in sight (the attach cue); any other tile waits for its copy.
+          if (!onField.attached_to) tile = id;
+        }
+        to ??= seatBox(onField.controller || owner, b.rect);
+      } else if (toHand) {
+        to = inHand(id, owner, b.rect);
+        if (to && held) scale = to.w / Math.max(1, card.w);
+        to ??= seatBox(owner, b.rect);
+      }
+      let from: CmdBox | null = pile ?? seatBox(owner, b.rect);
+      if (!from && !to) continue;
+      if (!from && to) from = { ...to, y: to.y + 90 };
+      if (!from) continue;
+      if (!to) to = { ...from, y: from.y - 90 };
+      origin ??= from;
+      paths.push({
+        x: from.x - origin.x,
+        y: from.y - origin.y,
+        dx: to.x - from.x,
+        dy: to.y - from.y,
+        s: Math.min(3, Math.max(0.3, scale)),
+      });
+      // Its face: as the board shows it now, or, on its way into a hand
+      // this player cannot see, as the graveyard showed it, turning over.
+      const face = onField ?? held?.card ?? before?.card ?? null;
+      slides.push(face && !showsCardBack(face) ? cardImageURL(face, "small") : null);
+      flips.push(toHand && !held && face !== null);
+      tileIDs.push(tile);
+    }
+    if (!origin || !card || paths.length === 0) return;
+    add({
+      ...base,
+      cardID: ids[0] ?? "",
+      x: origin.x,
+      y: origin.y,
+      width: card.w,
+      height: card.h,
+      fly: { x: paths[0].dx, y: paths[0].dy },
+      count,
+      slides,
+      sweep,
+      reanimateTo: cue.reanimateTo,
+      paths,
+      flips,
+      tileIDs,
+    });
+  }
   // Where an Aura's glints twinkle, as shares of the host's box from its centre.
   const ATT_GLINTS = [
     [-0.44, -0.34],
@@ -949,6 +1112,8 @@
     seenNow = new Map();
     const shown = visibleCards(view);
     for (const c of shown) seenNow.set(c.instance_id, c);
+    graveBefore = graveNow;
+    graveNow = graveyardCards(view);
     signatures.notice(shown);
     // A signature's tint lasts until the turn ends (fx/tints.ts).
     syncTableTints(view.id, view.turn?.number ?? 0);
@@ -1307,6 +1472,21 @@
       return {
         destroy: () => {
           slide?.cancel();
+          cancelTree(node);
+        },
+      };
+    } else if (f.kind === "reanimate") {
+      // #4446: each returned card's own tile waits, hidden, for its copy
+      // to land; only these runs are cancelled with the cue.
+      const ids = f.tileIDs ?? [];
+      const held = ids.flatMap((id, i) => {
+        const tile = id && boardEl ? findCardAnchor(boardEl, id, { accept: fieldTile }) : null;
+        return tile ? [riseArrive(tile, f, pileLandAt(ids.length, i, f.sweep === true))] : [];
+      });
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          for (const h of held) h.cancel();
           cancelTree(node);
         },
       };
@@ -1746,6 +1926,63 @@
           style:width={`${f.width * 1.7}px`}
           style:height={`${f.height * 1.1}px`}
         ></div>
+      </div>
+    {:else if f.kind === "reanimate"}
+      <!-- #4446: each card rises out of its graveyard pile in a dark-green
+           glow and goes to where it went, a stagger apart; five or more
+           go as one sweep. -->
+      <div
+        class="fx m"
+        data-effect="reanimate"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-count={f.count}
+        data-effect-to={f.reanimateTo}
+        data-effect-sweep={f.sweep ? "" : undefined}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#each f.paths ?? [] as p, i (i)}
+          <div
+            class="rise-glow"
+            style:left={`${p.x}px`}
+            style:top={`${p.y}px`}
+            style:width={`${f.width * 1.9}px`}
+            style:height={`${f.height * 1.25}px`}
+          ></div>
+        {/each}
+        {#each f.paths ?? [] as p, i (i)}
+          {@const src = f.slides?.[i] ?? null}
+          <div class="copy pile-card" style:left={`${p.x}px`} style:top={`${p.y}px`}>
+            <div
+              class="rise-aura"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+            ></div>
+            {#if f.flips?.[i] && src}
+              <div class="flip" data-flip="down">
+                <div class="face" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+                  <img {src} alt="" decoding="async" draggable="false" />
+                </div>
+                <div
+                  class="face back"
+                  style:width={`${f.width}px`}
+                  style:height={`${f.height}px`}
+                ></div>
+              </div>
+            {:else}
+              <div
+                class="face"
+                class:back-only={!src}
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+              >
+                {#if src}<img {src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -2628,6 +2865,36 @@
   }
   .pile-streak[data-kind="discard"] {
     background: linear-gradient(to top, rgba(190, 192, 204, 0) 0%, rgba(206, 208, 220, 0.45) 100%);
+  }
+
+  /* A card returned from a graveyard (#4446): a dark-green glow, the
+     Toxic Deluge stain's green (FxTint.svelte) lit from within, about the
+     copy as it rises, and a bloom of it from the pile it leaves. */
+  .rise-aura {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 9px;
+    box-shadow:
+      0 0 0 2px rgba(120, 196, 104, 0.85),
+      0 0 18px 6px rgba(48, 132, 46, 0.8),
+      0 0 40px 14px rgba(22, 64, 20, 0.7);
+    opacity: 0;
+  }
+  .rise-glow {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(132, 206, 112, 0.6) 0%,
+      rgba(40, 112, 40, 0.42) 38%,
+      rgba(20, 58, 22, 0.22) 58%,
+      transparent 72%
+    );
+    filter: blur(3px);
+    opacity: 0;
   }
 
   /* A counterspell: the stack item cracks and its glass flies out. */

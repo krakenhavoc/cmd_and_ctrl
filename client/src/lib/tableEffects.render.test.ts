@@ -4,8 +4,8 @@
 // exit, a counterspell, a planeswalker, a created token (#4441), counters
 // put on a permanent (#4442), a commander cast from the command zone or
 // going home (#4443), an Equipment attached or an Aura enchanting a
-// permanent (#4444), cards milled or discarded into a graveyard (#4445)
-// and a board wipe each draw their cue
+// permanent (#4444), cards milled or discarded into a graveyard (#4445),
+// a card returned from a graveyard (#4446) and a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -43,6 +43,7 @@ import {
   EFFECT_STILL_HOLD_MS,
   TOKEN_STAGGER_MS,
   WIPE_FIRST_CARD_MS,
+  REANIMATE_HAND_VOLUME,
   busyScale,
   pileBaseMs,
   shatterPlan,
@@ -1495,6 +1496,308 @@ describe("cards are milled or discarded into a graveyard (#4445)", () => {
       expect(badges()).toHaveLength(0);
       expect(sounds("mill")).toHaveLength(1);
       expect(sounds("discard")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a card returns from a graveyard to the battlefield or a hand (#4446)", () => {
+  // Each seat's graveyard pile (a button with its top card's thumbnail)
+  // and the opponent's hand, where the board draws them.
+  const GY = { left: 1060, top: 560, width: 40, height: 56 };
+  const MY_GY = { left: 100, top: 700, width: 40, height: 56 };
+  const HAND = { left: 500, top: 20, width: 200, height: 60 };
+  const centre = (r: typeof GY) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  // makeBoard's tiles: the i-th at left 100 + i * 100, top 300.
+  const tileCentre = (i: number) => ({
+    x: 100 + i * 100 + TILE.width / 2,
+    y: 300 + TILE.height / 2,
+  });
+
+  function pile(board: HTMLElement, owner: string, r: typeof GY) {
+    const button = rectEl("data-pile", "graveyard", r);
+    button.setAttribute("data-pile-owner", owner);
+    button.appendChild(rectEl("class", "thumb", r));
+    board.appendChild(button);
+  }
+
+  function tableView(
+    log: LogEvent[],
+    graveyards: { me?: CardView[]; opp?: CardView[] },
+    battlefield: CardView[] = [],
+    hands: { me?: CardView[] } = {},
+  ): GameView {
+    const v = viewWith(log, battlefield);
+    for (const [i, id] of ["me", "opp"].entries()) {
+      const cards = graveyards[id as "me" | "opp"] ?? [];
+      v.seats[i].graveyard = { kind: "graveyard", owner: id, count: cards.length, cards };
+    }
+    if (hands.me)
+      v.seats[0].hand = { kind: "hand", owner: "me", count: hands.me.length, cards: hands.me };
+    return v;
+  }
+
+  // The board as it stands after the frame (`ids` the battlefield tiles),
+  // a first frame with `before` in the graveyards, then `log`.
+  function frame(
+    ids: string[],
+    before: { me?: CardView[]; opp?: CardView[] },
+    log: LogEvent[],
+    after: {
+      battlefield?: CardView[];
+      graveyards?: { me?: CardView[]; opp?: CardView[] };
+      hands?: { me?: CardView[] };
+    } = {},
+  ) {
+    const board = makeBoard(ids);
+    pile(board, "opp", GY);
+    pile(board, "me", MY_GY);
+    board.appendChild(rectEl("data-hand-owner", "opp", HAND));
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], before), boardEl: board } as never,
+    );
+    advance(50);
+    r.setProps({
+      view: tableView(log, after.graveyards ?? {}, after.battlefield ?? [], after.hands ?? {}),
+    } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const back = (id: string, to: string, extra: Partial<LogEvent> = {}): LogEvent =>
+    zone(id, to, { seat: 1, batch: 7, ...extra }, "graveyard");
+  const card = (id: string, owner = "opp", extra: Partial<CardView> = {}) =>
+    permanent(id, owner, extra);
+
+  it("a reanimated creature rises out of its graveyard pile to its tile, which waits for it, with one sound", () => {
+    const { board } = frame(["z"], { opp: [card("z")] }, [back("z", "battlefield")], {
+      battlefield: [card("z")],
+    });
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    const from = centre(GY);
+    const to = tileCentre(0);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    expect(cues[0].getAttribute("data-effect-to")).toBe("battlefield");
+    expect(cues[0].getAttribute("data-effect-count")).toBe("1");
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    expect(copy.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    expect(copy.querySelector(".rise-aura")).toBeTruthy();
+    expect(cues[0].querySelectorAll(".rise-glow")).toHaveLength(1);
+    // It goes from the pile to the tile, growing to the tile's size.
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+    expect(path.at(-1)?.scale).toBe(String(TILE.width / GY.width));
+    // Up out of the pile first.
+    expect(path[1].translate).toMatch(/^0px -\d+px$/);
+    // The tile is held hidden until the copy lands, then shown.
+    const tile = board.querySelector('[data-instance-id="z"]')!;
+    const held = runsOn(tile);
+    expect(held).toHaveLength(1);
+    expect((held[0][1] as Keyframe[])[0].opacity).toBe(0);
+    expect(held[0][2].fill).toBe("backwards");
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(pileBaseMs("reanimate", 1) + 1e-6);
+    expect(sounds("reanimate")).toEqual([["reanimate", { volume: 1, batch: "g1:7" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("reanimate")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("one effect's cards from two graveyards are one cue, each from its own pile, a stagger apart, one sound", () => {
+    // Living Death: the opponent's two creatures and the viewer's one.
+    // `seat` on each line is who returned it; the pile is its owner's.
+    const ids = ["o1", "o2", "m1"];
+    frame(
+      ids,
+      { opp: [card("o1"), card("o2")], me: [card("m1", "me")] },
+      [back("o1", "battlefield"), back("o2", "battlefield"), back("m1", "battlefield")],
+      { battlefield: [card("o1"), card("o2"), card("m1", "me")] },
+    );
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("3");
+    const copies = [...cues[0].querySelectorAll<HTMLElement>(".pile-card")];
+    expect(copies).toHaveLength(3);
+    // The first two rise from the opponent's pile, the third from the viewer's.
+    const o = centre(GY);
+    const m = centre(MY_GY);
+    expect(copies.map((c) => [c.style.left, c.style.top])).toEqual([
+      ["0px", "0px"],
+      ["0px", "0px"],
+      [`${m.x - o.x}px`, `${m.y - o.y}px`],
+    ]);
+    const starts = copies.map((c) => runsOn(c)[0][2].delay as number);
+    expect(starts[1]).toBeGreaterThan(starts[0]);
+    expect(starts[2]).toBeGreaterThan(starts[1]);
+    expect(sounds("reanimate")).toHaveLength(1);
+  });
+
+  it("a creature reanimated under another player's control rises from its owner's graveyard", () => {
+    // Reanimate on the opponent's creature: the viewer controls it now.
+    frame(["theirs"], { opp: [card("theirs")] }, [back("theirs", "battlefield", { seat: 0 })], {
+      battlefield: [card("theirs", "opp", { controller: "me" })],
+    });
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].style.left).toBe(`${centre(GY).x}px`);
+    expect(cues[0].style.top).toBe(`${centre(GY).y}px`);
+  });
+
+  it("five or more rise as one sweep of three", () => {
+    const ids = ["a", "b", "c", "d", "e"];
+    frame(
+      ids,
+      { opp: ids.map((id) => card(id)) },
+      ids.map((id) => back(id, "battlefield")),
+      { battlefield: ids.map((id) => card(id)) },
+    );
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].hasAttribute("data-effect-sweep")).toBe(true);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("5");
+    const copies = [...cues[0].querySelectorAll(".pile-card")];
+    expect(copies).toHaveLength(3);
+    expect(new Set(copies.map((c) => runsOn(c)[0][2].delay as number)).size).toBe(1);
+    expect(sounds("reanimate")).toHaveLength(1);
+  });
+
+  it("a card regrown into an opponent's hand rises with its face from the graveyard, turns over, and is quieter", () => {
+    frame([], { opp: [card("g", "opp", { type_line: "Sorcery" })] }, [back("g", "hand")]);
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-to")).toBe("hand");
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    const flip = copy.querySelector<HTMLElement>('.flip[data-flip="down"]')!;
+    expect(flip.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    expect(flip.querySelector(".face.back")).toBeTruthy();
+    expect(runsOn(flip)).toHaveLength(1);
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    const from = centre(GY);
+    const to = centre(HAND);
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+    expect(sounds("reanimate")).toEqual([
+      ["reanimate", { volume: REANIMATE_HAND_VOLUME, batch: "g1:7" }],
+    ]);
+  });
+
+  it("a card regrown into the viewer's own hand lands on its card there, face up", () => {
+    const board = makeBoard([]);
+    pile(board, "me", MY_GY);
+    const hand = rectEl("data-hand-owner", "me", HAND);
+    const inHand = { left: 520, top: 600, width: 60, height: 84 };
+    hand.appendChild(rectEl("data-instance-id", "mine", inHand));
+    board.appendChild(hand);
+    const mine = card("mine", "me", { type_line: "Sorcery" });
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], { me: [mine] }), boardEl: board } as never,
+    );
+    advance(50);
+    r.setProps({
+      view: tableView([back("mine", "hand", { seat: 0 })], {}, [], { me: [mine] }),
+    } as never);
+    flushSync();
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].style.left).toBe(`${centre(MY_GY).x}px`);
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    expect(copy.querySelector(".flip")).toBeNull();
+    expect(copy.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    const from = centre(MY_GY);
+    const to = centre(inHand);
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+  });
+
+  it("a reanimated planeswalker rises with the sound, and its arrival follows silently", async () => {
+    const pw = card("z", "opp", { type_line: "Legendary Planeswalker — Liliana" });
+    frame(["z"], { opp: [pw] }, [back("z", "battlefield")], { battlefield: [pw] });
+    expect(effects("reanimate")).toHaveLength(1);
+    // Its arrival waits for the rise to mount, then for its tile to settle.
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+    expect(effects("pw_enter")).toHaveLength(1);
+    expect(sounds("reanimate")).toHaveLength(1);
+    expect(sounds("pw_enter")).toHaveLength(0);
+  });
+
+  it("a token copy of a card in a graveyard is a token, not a reanimation", () => {
+    const token: LogEvent = {
+      seq: ++seq,
+      kind: "token",
+      turn: 3,
+      seat: 1,
+      card_id: "copy",
+      batch: 7,
+      text: "",
+    };
+    frame(["copy"], { opp: [card("orig")] }, [token], {
+      battlefield: [card("copy", "opp", { is_token: true })],
+      graveyards: { opp: [card("orig")] },
+    });
+    expect(effects("reanimate")).toHaveLength(0);
+    expect(sounds("reanimate")).toHaveLength(0);
+    expect(effects("token_create")).toHaveLength(1);
+  });
+
+  it("a commander going home from its graveyard is commander_return only", () => {
+    const cmdr = card("cmdr", "opp", { is_commander: true, type_line: "Legendary Creature" });
+    const board = makeBoard([]);
+    pile(board, "opp", GY);
+    board.appendChild(
+      rectEl("data-instance-id", "cmdr", { left: 900, top: 650, width: 50, height: 70 }),
+    );
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], { opp: [cmdr] }), boardEl: board } as never,
+    );
+    advance(50);
+    const v = tableView([back("cmdr", "command")], {});
+    v.seats[1].command = { kind: "command", owner: "opp", count: 1, cards: [cmdr] };
+    r.setProps({ view: v } as never);
+    flushSync();
+    expect(effects("commander_return")).toHaveLength(1);
+    expect(effects("reanimate")).toHaveLength(0);
+    expect(sounds("reanimate")).toHaveLength(0);
+  });
+
+  it("Short plays within its cap, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    const ids = ["a", "b", "c", "d"];
+    frame(
+      ids,
+      { opp: ids.map((id) => card(id)) },
+      ids.map((id) => back(id, "battlefield")),
+      {
+        battlefield: ids.map((id) => card(id)),
+      },
+    );
+    expect(effects("reanimate")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame(["z"], { opp: [card("z")] }, [back("z", "battlefield")], { battlefield: [card("z")] });
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("reanimate")).toHaveLength(1);
       cleanup();
       document.body.innerHTML = "";
     }
