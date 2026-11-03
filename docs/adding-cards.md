@@ -3568,6 +3568,15 @@ same PR, and assert `dispatchAll` over the enumerated moves.
 Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
 
+**"Can't attack or block unless its power is N or greater"** (Technodrome,
+#4678) is not a conditional `RestrictSelf`: a layer-6 static runs before
+layer 7, so it would read the power before anthems and counters. Write
+`Static: []game.StaticAbility{CantAttackOrBlockUnlessPowerAtLeast(6)}`. It
+records the floor on `Characteristic.AttackBlockPowerFloor`, and the layer
+pass folds `CantAttack | CantBlock` in after every layer has run while the
+power (counters included) is below it (CR 613.11, `game/power_floor.go`).
+Every gate and the enumerator read the bits, so nothing else changes.
+
 **"Can't attack its owner"** ([ADR 0106 §2](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
 #1794) is not a bit either: it says WHOM the creature may not attack,
 so it is data on `Characteristic.AttackTargetRestrictions`, written by

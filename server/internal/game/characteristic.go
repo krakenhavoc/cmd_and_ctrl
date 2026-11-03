@@ -323,6 +323,15 @@ type Characteristic struct {
 	// daybound / nightbound turn-over (cant_transform.go).
 	CantTransform bool `json:",omitempty"`
 
+	// AttackBlockPowerFloor, when above zero, is "this creature can't
+	// attack or block unless its power is N or greater" (Technodrome,
+	// #4678, CR 508.1c, 509.1b). Written by a layer-6 self static, so it
+	// goes with the creature's abilities (CR 613.1f), and read by
+	// foldPowerFloorLocked once every layer has run (CR 613.11): the
+	// condition is the creature's FINISHED power, which no layer-6 effect
+	// can see. power_floor.go.
+	AttackBlockPowerFloor int `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all
