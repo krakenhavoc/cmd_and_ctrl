@@ -3428,7 +3428,9 @@ owner (`server/internal/game/protection.go`):
    Demons and from Dragons" is two tokens (CR 702.16m), and each is
    checked on its own. Never write a joined one.
 2. **The closed grammar is colours (`red`), card types (`artifacts`),
-   creature subtypes (`Demons`), `everything` and `the chosen player`.**
+   creature subtypes (`Demons`), `everything`, `the chosen player` and
+   `multicolored` (a source with two or more colours, CR 105.2b; Stonecoil
+   Serpent, #4834).**
    Anything else — "monocolored", "opponents" — parses as NOTHING, so
    the permanent gets no protection at all and the card keeps its ADR
    0037 unimplemented flag. That is the honest answer, not a bug: do not

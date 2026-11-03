@@ -65,11 +65,11 @@ func TestProtectionGrammarParsesTheClosedSet(t *testing.T) {
 // mint no token and leave the card flagged.
 func TestProtectionGrammarRefusesWhatItCannotEnforce(t *testing.T) {
 	for _, token := range []string{
-		"protection",                   // no quality at all
-		"protection from",              // ditto
-		"protection from monocolored",  // Sphinx of the Guildpact
-		"protection from multicolored", // Ghostly Prison-class wording
-		"protection from all colors",   // Progenitus's older wording
+		"protection",                  // no quality at all
+		"protection from",             // ditto
+		"protection from monocolored", // Sphinx of the Guildpact
+		"protection from multicolor",  // not the printed word
+		"protection from all colors",  // Progenitus's older wording
 		// "protection from the chosen player" is the ONE player
 		// quality the grammar knows (CR 702.16k, #980) and is in the
 		// accepted table above. These are the other player-shaped

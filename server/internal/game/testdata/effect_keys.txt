@@ -201,6 +201,7 @@ body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
 body portent/draw
 body power-pack/cast-exiled-free
+body prepare/stensian-sanguinist-becomes-prepared
 body prevention/a-counter-on-this
 body prevention/back-at-the-creature-or-its-controller
 body prevention/black-gain-life
@@ -598,6 +599,7 @@ choose choose-cards/sorin-the-mirthless-take
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
+choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -1727,6 +1729,7 @@ tail push-pull/haste-then-sacrifice
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
+tail put-from-library/songbirds-blessing-hand-or-bottom
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
