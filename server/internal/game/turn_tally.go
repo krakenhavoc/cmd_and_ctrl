@@ -54,6 +54,11 @@ type PlayerTurnTally struct {
 	// CreaturesDied counts creatures this player controlled that went
 	// from the battlefield to a graveyard (CR 700.4).
 	CreaturesDied int `json:"creaturesDied,omitempty"`
+	// ModifiedCreaturesDied counts the creatures among CreaturesDied that
+	// were modified as they last existed on the battlefield (CR 700.9):
+	// Intermediate Chirography's "if a modified creature died under your
+	// control this turn" (#4834). See modified_died.go.
+	ModifiedCreaturesDied int `json:"modifiedCreaturesDied,omitempty"`
 	// TokensCreated counts tokens created under this player's control.
 	TokensCreated int `json:"tokensCreated,omitempty"`
 	// PermanentsSacrificed counts permanents this player sacrificed.
@@ -2012,6 +2017,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = c.Owner
 		}
 		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesDied++ })
+		if g.departedWasModifiedLocked(ev.CardID) {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.ModifiedCreaturesDied++ })
+		}
 		g.recordDiedSubtypesLocked(ev, controller)
 	case EventResolve:
 		if ev.Source == uuid.Nil {

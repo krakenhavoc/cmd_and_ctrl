@@ -1601,6 +1601,7 @@ tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
 tail hoarding-broodlord/cast-permission
+tail hofri-ghostforge/copy
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
