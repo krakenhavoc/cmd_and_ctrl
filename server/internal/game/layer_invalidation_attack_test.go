@@ -160,6 +160,10 @@ func TestLayerVersionIgnoresCombatRemovalForAStaticThatDoesNotDeclareIt(t *testi
 	g.WithWriteLock(func() {
 		c := findBattlefieldCard(g, id)
 		c.AttackingTarget = opp.ID
+		// An attacker is tapped already, so the regeneration's tap is
+		// no tap (#4597) and its EventTapCard, which bumps on its own
+		// for the tapped-creature statics, stays out of this guard.
+		c.Tapped = true
 	})
 	regenerate(t, g, id)
 

@@ -545,3 +545,72 @@ func TestRegenerateForEffectRefusesACardThatIsNotThere(t *testing.T) {
 		t.Errorf("err = %v, want ErrCardNotFound", err)
 	}
 }
+
+// --- the tap is a tap -------------------------------------------------
+
+// #4597: CR 701.19a says the regenerated permanent's controller taps
+// it. It becomes tapped, so a "whenever this becomes tapped" trigger
+// sees it and the became-tapped tally counts it. A permanent that was
+// already tapped stays tapped and does not become tapped again.
+func TestRegenerationTapIsABecomesTapped(t *testing.T) {
+	const oracle = "regen-becomes-tapped-4597"
+	prev := CatalogTriggers
+	CatalogTriggers = func(key string) []TriggeredAbility {
+		if key != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches: []EventKind{EventTapCard},
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return newTriggeredItemForTest(source, "became tapped", func(*Game, *StackItem) error { return nil })
+			},
+		}}
+	}
+	t.Cleanup(func() { CatalogTriggers = prev })
+
+	for _, tc := range []struct {
+		name      string
+		tapped    bool
+		wantTaps  int
+		wantTally int
+	}{
+		{"untapped", false, 1, 1},
+		{"already tapped", true, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			me := g.Seats[0]
+			id := pushTypedTestCard(g, Card{
+				Name: "Watcher", TypeLine: "Creature — Bear", OracleID: oracle,
+				Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, Tapped: tc.tapped,
+			})
+			queued := func() int {
+				n := 0
+				g.ReadSnapshot(func() { n = len(g.PendingTriggers) })
+				return n
+			}
+			before := queued()
+
+			regenerate(t, g, id)
+			destroy(t, g, id)
+
+			if c := findBattlefieldCard(g, id); c == nil || !c.Tapped {
+				t.Fatal("the regenerated creature should be on the battlefield, tapped")
+			}
+			if n := countEventsForTest(g, EventTapCard, id); n != tc.wantTaps {
+				t.Errorf("EventTapCard fired %d times, want %d", n, tc.wantTaps)
+			}
+			var tally int
+			g.ReadSnapshot(func() { tally = g.TimesBecameTappedThisTurn(id) })
+			if tally != tc.wantTally {
+				t.Errorf("TimesBecameTappedThisTurn = %d, want %d", tally, tc.wantTally)
+			}
+			if got := queued() - before; got != tc.wantTaps {
+				t.Errorf("becomes-tapped triggers queued %d, want %d", got, tc.wantTaps)
+			}
+		})
+	}
+}
