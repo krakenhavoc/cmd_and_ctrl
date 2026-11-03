@@ -5,7 +5,8 @@
 // created (#4441), counters put on a permanent (#4442), a commander cast
 // from the command zone or put back into it (#4443), an Equipment
 // attached or an Aura enchanting a permanent (#4444), cards milled or
-// discarded into a graveyard (#4445) and a board wipe
+// discarded into a graveyard (#4445), cards returned from a graveyard to
+// the battlefield or a hand (#4446) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -125,7 +126,11 @@ export type EffectKind =
   // Cards put into a graveyard without dying (#4445): milled from a
   // library (CR 701.17a) or discarded from a hand (CR 701.9a).
   | "mill"
-  | "discard";
+  | "discard"
+  // A card returned from a graveyard to the battlefield (Reanimate,
+  // unearth, CR 702.84a, undying, a land put back) or to a hand
+  // (Regrowth) (#4446).
+  | "reanimate";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -137,8 +142,9 @@ export type EffectKind =
  * a counter's pulse a little longer, so its tick can be read, a
  * commander's rise to the stack or drift home about 0.8 s, an
  * attachment's slide onto its host about 0.4 s (an Aura's shimmer a
- * beat longer, so it can fade), and one card's slide (mill) or toss
- * (discard) into a graveyard about half a second (pileBaseMs for more).
+ * beat longer, so it can fade), one card's slide (mill) or toss
+ * (discard) into a graveyard about half a second, and one card's rise out
+ * of a graveyard (reanimate) about 0.8 s (pileBaseMs for more).
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -160,6 +166,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   // is longer, pileBaseMs.
   mill: 520,
   discard: 420,
+  // One card's rise out of the graveyard (#4446), pileBaseMs for more.
+  reanimate: 800,
 };
 
 /**
@@ -190,7 +198,14 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   attach_aura: "attach_aura",
   mill: "mill",
   discard: "discard",
+  reanimate: "reanimate",
 };
+
+/**
+ * A card returned to a hand (Regrowth) plays the reanimate sound this
+ * much quieter than one returned to the battlefield (#4446).
+ */
+export const REANIMATE_HAND_VOLUME = 0.6;
 
 /**
  * What a counter cue is about (#4442): +1/+1 counters (green, a rising
@@ -288,6 +303,13 @@ export interface EffectCue {
   cardIDs?: string[];
   count?: number;
   seat?: number;
+  /**
+   * For a reanimate cue (#4446): where its cards went. Its `cardIDs` are
+   * the cards that rose out of a graveyard in one batch, in log order,
+   * `count` how many, and `seat` the first entry's seat (who returned
+   * them; not always whose graveyard it was).
+   */
+  reanimateTo?: "battlefield" | "hand";
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -400,6 +422,7 @@ export function planEffects(
   const commanders: LogEvent[] = [];
   const attaches: LogEvent[] = [];
   const piles: { kind: "mill" | "discard"; e: LogEvent }[] = [];
+  const rises: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -435,6 +458,11 @@ export function planEffects(
       piles.push({ kind: pk, e });
       continue;
     }
+    // #4446: out of a graveyard onto the battlefield or into a hand. An
+    // arrival on the battlefield is still one below too (a planeswalker's).
+    const to = reanimateTo(e);
+    if (to) rises.push(e);
+    if (to === "hand") continue;
 
     if (e.kind === "counter") {
       const item = e.stack_item_id ?? e.target ?? null;
@@ -453,7 +481,7 @@ export function planEffects(
 
     if (e.kind === "zone" && e.new_zone === "battlefield" && e.old_zone !== "battlefield") {
       if (e.card_id && ctx.isPlaneswalker(e.card_id)) {
-        cues.push({
+        const cue: EffectCue = {
           id: String(e.seq),
           seq: e.seq,
           kind: "pw_enter",
@@ -462,7 +490,11 @@ export function planEffects(
           batch: e.batch ?? null,
           weight: "full",
           delayMs: 0,
-        });
+        };
+        // A planeswalker returned from a graveyard (#4446) is one arrival:
+        // its rise plays the sound, and its arrival here only draws.
+        if (to) cue.follows = true;
+        cues.push(cue);
       }
       continue;
     }
@@ -531,8 +563,11 @@ export function planEffects(
   cues.push(...tokenCues(tokens, attached));
   cues.push(...counterCues(counters));
   cues.push(...commanderCues(commanders));
-  cues.push(...attachCues(attaches));
+  // An Aura returned from a graveyard attached (#4446) is one arrival
+  // too: its rise plays the sound, and its attach cue only draws.
+  cues.push(...attachCues(attaches, new Set(rises.map(arrivalKey))));
   cues.push(...pileCues(piles));
+  cues.push(...reanimateCues(rises));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -702,9 +737,14 @@ function arrivalKey(e: LogEvent): string {
  * kind in one batch is one moment (Armory Automaton's "attach any number
  * of target Equipment to it"): the first plays the sound and the rest
  * follow it. An Equipment and an Aura in one batch are two moments, each
- * with its own sound.
+ * with its own sound. An attachment that rose out of a graveyard in the
+ * same batch (in `risen`, by arrivalKey) leaves the sound to its
+ * reanimate cue (#4446), so the batch's first other attachment leads.
  */
-function attachCues(entries: readonly LogEvent[]): EffectCue[] {
+function attachCues(
+  entries: readonly LogEvent[],
+  risen: ReadonlySet<string> = new Set(),
+): EffectCue[] {
   const lead = new Set<string>();
   const out: EffectCue[] = [];
   for (const e of entries) {
@@ -722,7 +762,7 @@ function attachCues(entries: readonly LogEvent[]): EffectCue[] {
       hostID: e.target,
     };
     const k = `${kind}|${e.batch ?? `q${e.seq}`}`;
-    if (lead.has(k)) cue.follows = true;
+    if (risen.has(arrivalKey(e)) || lead.has(k)) cue.follows = true;
     else lead.add(k);
     out.push(cue);
   }
@@ -760,17 +800,27 @@ export const PILE_STAGGER = 0.3;
 /** The share of a slide at which its card reaches the graveyard. */
 export const PILE_LAND = 0.82;
 
-/** How many cards a mill or discard draws: one by one, or a sweep of three. */
+/**
+ * How many cards a mill, a discard or a reanimate draws: one by one, or a
+ * sweep of three.
+ */
 export function pileShown(count: number): number {
   return count >= PILE_SWEEP_MIN ? 3 : Math.max(1, Math.min(PILE_SHOWN_MAX, count));
 }
 
+/** The cues that move a run of cards to or from a graveyard pile (#4445, #4446). */
+export type PileKind = "mill" | "discard" | "reanimate";
+
+export function isPileKind(k: EffectKind): k is PileKind {
+  return k === "mill" || k === "discard" || k === "reanimate";
+}
+
 /**
- * pileBaseMs is a mill or discard cue's length at speed 1, before the
- * cap: one card's slide, plus a stagger for each card after it. A sweep
- * moves as one, a little slower than a single card.
+ * pileBaseMs is a mill, discard or reanimate cue's length at speed 1,
+ * before the cap: one card's slide, plus a stagger for each card after
+ * it. A sweep moves as one, a little slower than a single card.
  */
-export function pileBaseMs(kind: "mill" | "discard", count: number): number {
+export function pileBaseMs(kind: PileKind, count: number): number {
   const one = EFFECT_BASE_MS[kind];
   if (count >= PILE_SWEEP_MIN) return one * 1.25;
   return one * (1 + PILE_STAGGER * (pileShown(count) - 1));
@@ -822,6 +872,75 @@ function pileCues(entries: readonly { kind: "mill" | "discard"; e: LogEvent }[])
   return out;
 }
 
+/**
+ * reanimateTo is where a card that left a graveyard went, for the
+ * reanimate cue (#4446), or null. Only a `zone` entry from a graveyard
+ * to the battlefield (Reanimate, Living Death, unearth, CR 702.84a,
+ * undying, CR 702.93a, a land put back, or one played from a graveyard)
+ * or to a hand (Regrowth, Eternal Witness; always its owner's, CR 400.3)
+ * is one. A token copy of a card in a graveyard is a `token` entry, not
+ * a move (the card stays where it is), and a token that left the
+ * battlefield never comes back (CR 111.8), so no token is a reanimation.
+ * A commander its owner puts into the command zone from there is
+ * commander_return; a spell cast from a graveyard is a `cast` entry.
+ */
+export function reanimateTo(e: LogEvent): "battlefield" | "hand" | null {
+  if (e.kind !== "zone" || e.old_zone !== "graveyard" || !e.card_id) return null;
+  if (e.new_zone === "battlefield") return "battlefield";
+  if (e.new_zone === "hand") return "hand";
+  return null;
+}
+
+/**
+ * reanimateCues gives one batch's cards that rose out of a graveyard to
+ * one destination (the battlefield, or a hand) one cue, in log order:
+ * several cards, from one graveyard or more, rise a stagger apart, five
+ * or more as one sweep. One batch is one moment (Living Death, "return
+ * up to two"): the first cue plays the sound and a batch's other cue
+ * follows it.
+ */
+function reanimateCues(entries: readonly LogEvent[]): EffectCue[] {
+  const byKey = new Map<string, EffectCue>();
+  const out: EffectCue[] = [];
+  const lead = new Set<string>();
+  for (const e of entries) {
+    const to = reanimateTo(e);
+    const id = e.card_id;
+    if (!to || !id) continue;
+    const batch = e.batch ?? null;
+    const at = batch === null ? `q${e.seq}` : String(batch);
+    const k = `${at}|${to}`;
+    const cue = byKey.get(k);
+    if (cue) {
+      if (!cue.cardIDs?.includes(id)) {
+        cue.cardIDs = [...(cue.cardIDs ?? []), id];
+        cue.count = (cue.count ?? 0) + 1;
+      }
+      continue;
+    }
+    const c: EffectCue = {
+      // A second cue of its entry, beside a planeswalker's arrival.
+      id: `${e.seq}:reanimate`,
+      seq: e.seq,
+      kind: "reanimate",
+      cardID: id,
+      stackItemID: null,
+      batch,
+      weight: "full",
+      delayMs: 0,
+      cardIDs: [id],
+      count: 1,
+      seat: e.seat,
+      reanimateTo: to,
+    };
+    if (lead.has(at)) c.follows = true;
+    else lead.add(at);
+    byKey.set(k, c);
+    out.push(c);
+  }
+  return out;
+}
+
 function toneOf(g: readonly Exit[], ctx: PlanContext): WipeTone {
   const n = { dark: 0, cold: 0, cool: 0 };
   for (const x of g) {
@@ -863,7 +982,9 @@ export function soundBatch(gameID: string, batch: number | null): string | undef
  * quieter). A cue that follows another of its batch has none of its own;
  * a counter cue's is its tone's.
  */
-export function cueSound(cue: Pick<EffectCue, "kind" | "weight" | "follows" | "counterTone">): {
+export function cueSound(
+  cue: Pick<EffectCue, "kind" | "weight" | "follows" | "counterTone" | "reanimateTo">,
+): {
   name: SoundName;
   volume: number;
 } | null {
@@ -871,7 +992,12 @@ export function cueSound(cue: Pick<EffectCue, "kind" | "weight" | "follows" | "c
   const name =
     cue.kind === "counters" ? COUNTER_SOUND[cue.counterTone ?? "other"] : EFFECT_SOUND[cue.kind];
   if (!name) return null;
-  return { name, volume: cue.weight === "light" ? WIPE_CARD_VOLUME : 1 };
+  const volume = cue.weight === "light" ? WIPE_CARD_VOLUME : 1;
+  // A card returned to a hand is the quieter variant (#4446).
+  if (cue.kind === "reanimate" && cue.reanimateTo === "hand") {
+    return { name, volume: volume * REANIMATE_HAND_VOLUME };
+  }
+  return { name, volume };
 }
 
 // ---- Shapes ----
@@ -1290,11 +1416,10 @@ export function cueTiming(
 ): { delayMs: number; ms: number } {
   if (motion === "still") return { delayMs: 0, ms: EFFECT_STILL_HOLD_MS };
   const s = speedFactor(speed);
-  // A mill or discard's length is its run of cards' (#4445).
-  const base =
-    cue.kind === "mill" || cue.kind === "discard"
-      ? pileBaseMs(cue.kind, cue.count ?? 1)
-      : EFFECT_BASE_MS[cue.kind];
+  // A mill, discard or reanimate's length is its run of cards' (#4445, #4446).
+  const base = isPileKind(cue.kind)
+    ? pileBaseMs(cue.kind, cue.count ?? 1)
+    : EFFECT_BASE_MS[cue.kind];
   if (cue.weight === "light") {
     const k = wipeScale(motion);
     return {
@@ -1345,8 +1470,10 @@ export function busyScale(n: number): number {
  * cue that follows another of its batch: tokens created together count
  * once, and so do the counters one proliferate puts on, two commanders
  * sent home together, the Equipment one effect attaches, a token
- * created attached, whose token cue follows its attach cue, and the
- * players one effect makes mill or discard.
+ * created attached, whose token cue follows its attach cue, the
+ * players one effect makes mill or discard, and the cards one effect
+ * returns from graveyards (and a returned planeswalker's or Aura's
+ * arrival or attach cue, which follows its rise).
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

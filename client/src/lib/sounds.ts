@@ -96,6 +96,9 @@ export type SoundName =
   // cards discarded into one (a soft card toss).
   | "mill"
   | "discard"
+  // #4446: a card returned from a graveyard to the battlefield or a hand
+  // (a reversed whoosh with a low rumble; quieter for a hand).
+  | "reanimate"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -163,6 +166,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   attach_aura: "effects",
   mill: "effects",
   discard: "effects",
+  reanimate: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -237,6 +241,10 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // (client/public/sounds/README.md, "Files not made yet").
   mill: [],
   discard: [],
+  // #4446: files not made yet, and no fallback, so a card's rise out of a
+  // graveyard is silent until reanimate-1.mp3 (and an optional -2) are
+  // listed here (client/public/sounds/README.md, "Files not made yet").
+  reanimate: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

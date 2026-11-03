@@ -18,6 +18,7 @@ import {
   EFFECT_SHORT_CAP_MS,
   EFFECT_SOUND,
   EFFECT_STILL_HOLD_MS,
+  PILE_LAND,
   PILE_SHOWN_MAX,
   PILE_STAGGER,
   PILE_SWEEP_MIN,
@@ -48,6 +49,8 @@ import {
   pileKind,
   pileShown,
   planEffects,
+  reanimateTo,
+  REANIMATE_HAND_VOLUME,
   sacrificeBeats,
   shatterPlan,
   soundBatch,
@@ -61,7 +64,7 @@ import {
   type PlanContext,
 } from "./tableEffects";
 import { SOUND_CATEGORY, SOUND_MANIFEST } from "./sounds";
-import { pileWindows } from "./effectCueMotion";
+import { pileLandAt, pileWindows } from "./effectCueMotion";
 import type { LogEvent } from "./protocol";
 
 const ctx = (over: Partial<PlanContext> = {}): PlanContext => ({
@@ -788,6 +791,185 @@ describe("cards are milled or discarded into a graveyard (#4445)", () => {
         ms: EFFECT_STILL_HOLD_MS,
       });
     }
+  });
+});
+
+describe("a card returns from a graveyard to the battlefield or a hand (#4446)", () => {
+  // The server logs each as a `zone` entry from "graveyard": to
+  // "battlefield" (Reanimate, unearth, a land put back; `seat` the new
+  // controller) or to "hand" (Regrowth). log_reanimate_test.go pins it.
+  const back = (id: string, to: string, extra: Partial<LogEvent> = {}): LogEvent =>
+    zone(id, to, { seat: 0, ...extra }, "graveyard");
+  const token = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "token",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    text: "",
+    ...extra,
+  });
+
+  it("a card out of a graveyard onto the battlefield or into a hand is a reanimate, with its sound", () => {
+    expect(reanimateTo(back("r", "battlefield"))).toBe("battlefield");
+    expect(reanimateTo(back("g", "hand"))).toBe("hand");
+    const p = plan([back("r", "battlefield", { batch: 3 })]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.cardIDs, q.count, q.reanimateTo])).toEqual([
+      ["reanimate", "r", ["r"], 1, "battlefield"],
+    ]);
+    expect(cueSound(p.cues[0])).toEqual({ name: "reanimate", volume: 1 });
+    expect(EFFECT_SOUND.reanimate).toBe("reanimate");
+    // To a hand: the quieter variant.
+    const h = plan([back("g", "hand", { batch: 4 })]);
+    expect(h.cues.map((q) => [q.kind, q.reanimateTo])).toEqual([["reanimate", "hand"]]);
+    expect(cueSound(h.cues[0])).toEqual({ name: "reanimate", volume: REANIMATE_HAND_VOLUME });
+    expect(REANIMATE_HAND_VOLUME).toBeLessThan(1);
+  });
+
+  it("anywhere else is none: a graveyard to exile or a library, a hand or a library to the battlefield", () => {
+    for (const e of [
+      back("x", "exile"),
+      back("l", "library"),
+      zone("h", "battlefield", { seat: 0 }, "hand"),
+      zone("s", "battlefield", { seat: 0 }, "stack"),
+      zone("t", "hand", { seat: 0 }, "library"),
+    ]) {
+      expect(reanimateTo(e)).toBeNull();
+      expect(kinds([e]).filter((k) => k === "reanimate")).toEqual([]);
+    }
+    // A spell cast from a graveyard (flashback, escape) is a cast.
+    const cast: LogEvent = {
+      seq: ++seq,
+      kind: "cast",
+      turn: 3,
+      seat: 0,
+      card_id: "f",
+      old_zone: "graveyard",
+      text: "",
+    };
+    expect(kinds([cast])).toEqual([]);
+  });
+
+  it("a token copy of a card in a graveyard is a token, not a reanimation", () => {
+    // Embalm, Feldon of the Third Path: the card stays where it is (or is
+    // exiled as the cost), and the copy is created, which the log tells
+    // as a `token` entry (CR 111.1); a token never comes back (CR 111.8).
+    const p = plan([
+      zone("cat", "exile", { seat: 0, batch: 5 }, "graveyard"),
+      token("copy", { batch: 5 }),
+    ]);
+    expect(p.cues.map((q) => q.kind)).toEqual(["token_create"]);
+  });
+
+  it("one effect's cards are one cue, a stagger apart, with one sound; two batches are two", () => {
+    // Splendid Reclamation, Living Death: several cards, several graveyards.
+    const p = plan([
+      back("l1", "battlefield", { batch: 6 }),
+      back("l2", "battlefield", { batch: 6 }),
+      back("o1", "battlefield", { batch: 6, seat: 1 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardIDs, q.count])).toEqual([
+      ["reanimate", ["l1", "l2", "o1"], 3],
+    ]);
+    expect(headlines(p)).toBe(1);
+    // Unearth twice: two moments.
+    const q = plan([
+      back("a", "battlefield", { batch: 7 }),
+      back("b", "battlefield", { batch: 8 }),
+    ]);
+    expect(q.cues.map((c) => cueSound(c)?.name)).toEqual(["reanimate", "reanimate"]);
+    // One to the battlefield and one to a hand in one batch: one moment.
+    const r = plan([back("a", "battlefield", { batch: 9 }), back("b", "hand", { batch: 9 })]);
+    expect(r.cues.map((c) => [c.reanimateTo, cueSound(c)?.name ?? null])).toEqual([
+      ["battlefield", "reanimate"],
+      ["hand", null],
+    ]);
+    expect(headlines(r)).toBe(1);
+  });
+
+  it("a card returned under another player's control is the same cue", () => {
+    // Reanimate on an opponent's creature: `seat` is the new controller;
+    // the layer reads whose graveyard it rose from off the card's owner.
+    const p = plan([back("theirs", "battlefield", { seat: 0, batch: 3 })]);
+    expect(p.cues.map((q) => [q.kind, q.seat])).toEqual([["reanimate", 0]]);
+  });
+
+  it("a reanimated planeswalker's arrival and an Aura returned attached follow the rise", () => {
+    const pw = ctx({ isPlaneswalker: (id) => id === "jace" });
+    const p = plan([back("jace", "battlefield", { batch: 4 })], pw);
+    expect(p.cues.map((q) => [q.kind, cueSound(q)?.name ?? null])).toEqual([
+      ["pw_enter", null],
+      ["reanimate", "reanimate"],
+    ]);
+    expect(headlines(p)).toBe(1);
+    const aura = (id: string, batch: number): LogEvent => ({
+      seq: ++seq,
+      kind: "attach",
+      turn: 3,
+      seat: 0,
+      card_id: id,
+      target: "bear",
+      label: "Aura",
+      batch,
+      text: "",
+    });
+    const q = plan([back("rancor", "battlefield", { batch: 5 }), aura("rancor", 5)]);
+    expect(q.cues.map((c) => [c.kind, cueSound(c)?.name ?? null])).toEqual([
+      ["reanimate", "reanimate"],
+      ["attach_aura", null],
+    ]);
+    // Another Aura in that batch, not reanimated, still plays its own.
+    const r = plan([
+      back("rancor", "battlefield", { batch: 6 }),
+      aura("rancor", 6),
+      aura("other", 6),
+    ]);
+    expect(r.cues.map((c) => [c.kind, c.cardID, cueSound(c)?.name ?? null])).toEqual([
+      ["reanimate", "rancor", "reanimate"],
+      ["attach_aura", "rancor", null],
+      ["attach_aura", "other", "attach_aura"],
+    ]);
+  });
+
+  it("a commander going home from its graveyard is commander_return, not this cue", () => {
+    const c = ctx({ isCommander: (id) => id === "cmdr" });
+    expect(kinds([back("cmdr", "command", { batch: 3 })], c)).toEqual(["commander_return"]);
+    // Left there and later reanimated, or regrown (its owner may choose
+    // not to send it home, CR 903.9a, 903.9b), it is this cue.
+    expect(kinds([back("cmdr", "battlefield", { batch: 4 })], c)).toEqual(["reanimate"]);
+    expect(kinds([back("cmdr", "hand", { batch: 5 })], c)).toEqual(["reanimate"]);
+  });
+
+  it("rises up to four cards one after another and five or more as one sweep, about 0.8 s for one", () => {
+    expect(EFFECT_BASE_MS.reanimate).toBe(800);
+    expect(pileBaseMs("reanimate", 1)).toBe(800);
+    expect(pileBaseMs("reanimate", 3)).toBeCloseTo(800 * (1 + 2 * PILE_STAGGER), 6);
+    expect(pileBaseMs("reanimate", 12)).toBeCloseTo(800 * 1.25, 6);
+    for (const n of [1, 2, 4, 5, 12]) {
+      const full = cueTiming(
+        { kind: "reanimate", weight: "full", delayMs: 0, count: n },
+        "full",
+        1,
+      );
+      expect(full.ms).toBeCloseTo(pileBaseMs("reanimate", n), 6);
+      // Short caps the longer runs, as for every cue.
+      const short = cueTiming(
+        { kind: "reanimate", weight: "full", delayMs: 0, count: n },
+        "short",
+        1,
+      );
+      expect(short.ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS);
+    }
+    expect(
+      cueTiming({ kind: "reanimate", weight: "full", delayMs: 0, count: 2 }, "still", 1),
+    ).toEqual({ delayMs: 0, ms: EFFECT_STILL_HOLD_MS });
+    // Each card's tile takes over from its copy as that copy lands.
+    expect(pileLandAt(1, 0)).toBeCloseTo(PILE_LAND, 9);
+    const w = pileWindows(3);
+    for (let i = 0; i < 3; i++) {
+      expect(pileLandAt(3, i)).toBeCloseTo(w[i].a + (w[i].b - w[i].a) * PILE_LAND, 9);
+    }
+    expect(pileLandAt(3, 2, true)).toBeCloseTo(PILE_LAND, 9);
   });
 });
 
