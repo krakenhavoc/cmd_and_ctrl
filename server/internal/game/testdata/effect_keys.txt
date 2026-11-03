@@ -1743,9 +1743,11 @@ tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
+tail renegade-bull/copy-exiled
 tail replicating-ring/check
 tail rex-cyber-hound/after-exile
 tail rhino-terrible-trampler/counters-and-trample
+tail rionya-fire-dancer/exile-the-copies
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
 tail rohirrim-chargers/attach-then-rest
@@ -1753,6 +1755,7 @@ tail role-tokens/attach-to-host
 tail rooms-b-helpers/after-mill
 tail rootborn-defenses/grant-indestructible
 tail rottenmouth-viper/punish
+tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn

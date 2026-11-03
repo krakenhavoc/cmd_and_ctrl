@@ -7322,6 +7322,16 @@ spent types (on a stored permission, or in the turn tally for one a
 permanent grants, per granting object), and a land can only spend
 "land", beside the turn's land drop.
 
+**"Once during each of your turns, play a land or cast a permanent spell" (#4834).**
+Serra Paragon's one shared use is `PerType: []string{game.PermissionTypePermanent}`:
+a single pseudo-type that any play or cast spends and that asks the caster
+nothing. Pair it with `Filter: game.PermissionFilter{PermanentOnly: true}` (a
+land card or any permanent card, never an instant or sorcery) and
+`MaxSpellManaValue`. "It gains …" is `GainsAbilities`, which a spell cast through
+the permission carries to the permanent and a land played through it does too
+(`ReplacementEvent.landGains`, applied as the entry finishes, so a shockland
+waiting on its life payment still gains it).
+
 **"If you do, …" after a cast permission (#2173).** Set
 `CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
 func(g, f) error {...})` returns, declared as a package-level `var` in the
