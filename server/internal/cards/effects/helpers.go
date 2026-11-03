@@ -1693,3 +1693,11 @@ func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) err
 	}
 	return err
 }
+
+// bounceTheTargetToHand is bounceTheTarget as a trigger or ability's Effect:
+// "return target creature to its owner's hand" (or "up to one") for the first
+// target still legal as it resolves (Chulane, Teller of Tales; Spider-Man
+// 2099, Miguel O'Hara).
+func bounceTheTargetToHand(g *game.Game, item *game.StackItem) error {
+	return bounceTheTarget(item, NewContext(g, item))
+}
