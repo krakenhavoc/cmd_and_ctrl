@@ -159,7 +159,7 @@ func (g *Game) settleBatchEndTriggersLocked() {
 			if t.AtBatchEnd.Total != BatchTotalNone {
 				// batch_total.go: the settled event carries the total.
 				total := g.batchTotalLocked(&src, lki, t, s.Event)
-				if total <= 0 {
+				if total <= 0 || total < t.AtBatchEnd.AtLeast {
 					continue
 				}
 				ev.Amount = total
@@ -184,6 +184,11 @@ type BatchEndCondition struct {
 	// it is dispatched once per group with the settled event's Amount
 	// rewritten to the total. See batch_total.go.
 	Total BatchTotal
+
+	// AtLeast, when positive, dispatches the ability only if the settled
+	// Total reaches it: "deals 4 or more damage", "attack with two or
+	// more Spiders". Read with Total only.
+	AtLeast int
 }
 
 func (c *BatchEndCondition) holds(source *Card, g *Game) bool {
