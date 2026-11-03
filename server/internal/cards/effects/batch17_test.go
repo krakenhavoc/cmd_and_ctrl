@@ -401,8 +401,8 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	}
 	answerSacrifice(t, g, opp.ID, theirs)
 	// #2863: the card is chosen now, from the graveyard as it is after
-	// the sacrifices — the Bear just sacrificed is on offer, the
-	// opponent's is not.
+	// the sacrifices. "Another" excludes the Bear you just sacrificed
+	// (ruling 2023-06-16), and the opponent's Bear is not yours.
 	pick := returnOffer()
 	if pick == nil {
 		t.Fatal("the controller chooses the permanent card on resolution")
@@ -410,8 +410,8 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	if pick.ChooseMin != 0 || pick.ChooseMax != 1 {
 		t.Errorf("you MAY return ONE: bounds %d..%d", pick.ChooseMin, pick.ChooseMax)
 	}
-	if !hasID(pick.ChooseCards, rock) || !hasID(pick.ChooseCards, mine) || hasID(pick.ChooseCards, theirs) {
-		t.Errorf("offer %v: want your Sol Ring and your sacrificed Bear, never their Bear", pick.ChooseCards)
+	if !hasID(pick.ChooseCards, rock) || hasID(pick.ChooseCards, mine) || hasID(pick.ChooseCards, theirs) {
+		t.Errorf("offer %v: want your Sol Ring, never the Bear you sacrificed or theirs", pick.ChooseCards)
 	}
 	answerChooseCards(t, g, me.ID, rock)
 	passPriorityAroundTable(t, g)
