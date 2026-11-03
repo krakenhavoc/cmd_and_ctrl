@@ -130,6 +130,7 @@ var reviewedNotAWipe = map[string]string{
 	"Kaya's Guile":                             "each opponent sacrifices one creature: an edict, not a wipe",
 	"Last Laugh":                               "a ping engine that fires only when a permanent dies",
 	"Living Death":                             "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
+	"Living End":                               "Living Death with suspend: a symmetric mass reanimation",
 	"Mandate of Peace":                         "ends combat and exiles the stack",
 	"Obeka, Brute Chronologist":                "ends the turn",
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",

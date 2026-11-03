@@ -75,34 +75,37 @@ func init() {
 		OracleID:     "9e6a3df4-67a3-452e-a6ef-f04dbadb21ef",
 		Name:         "Living Death",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			// BOTH sides are snapshotted before anything moves, and
-			// the graveyard side before the exile in particular: the
-			// creatures sacrificed below land in graveyards, and a set
-			// re-gathered afterwards would reanimate them too.
-			var dead []uuid.UUID
-			for _, p := range ctx.Game.Seats {
-				if p == nil || p.Graveyard == nil {
-					continue
-				}
-				for _, c := range p.Graveyard.Cards {
-					if c.IsCreature() {
-						dead = append(dead, c.InstanceID)
-					}
-				}
-			}
-			doomed := ctx.CreatureIDs()
-			// The context is rebuilt inside the continuation from the
-			// live *Game, the contract every continuation in the engine
-			// follows: an undo restores this game's fields in place, so
-			// a captured *Game would be the wrong one.
-			// #4253 slice 9: each step's rest is a registered tail; the
-			// creatures to sacrifice ride the first one's carry.
-			t := ctx.ItemTail(livingDeathSacrifice)
-			t.Carry = doomed
-			return ctx.Game.ExileCardsKeyedForEffect(dead, t)
-		},
+		OnResolve:    livingDeathResolve,
 	})
+}
+
+// livingDeathResolve is the whole resolution, shared with Living End.
+func livingDeathResolve(item *game.StackItem, ctx *Context) error {
+	// BOTH sides are snapshotted before anything moves, and
+	// the graveyard side before the exile in particular: the
+	// creatures sacrificed below land in graveyards, and a set
+	// re-gathered afterwards would reanimate them too.
+	var dead []uuid.UUID
+	for _, p := range ctx.Game.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for _, c := range p.Graveyard.Cards {
+			if c.IsCreature() {
+				dead = append(dead, c.InstanceID)
+			}
+		}
+	}
+	doomed := ctx.CreatureIDs()
+	// The context is rebuilt inside the continuation from the
+	// live *Game, the contract every continuation in the engine
+	// follows: an undo restores this game's fields in place, so
+	// a captured *Game would be the wrong one.
+	// #4253 slice 9: each step's rest is a registered tail; the
+	// creatures to sacrifice ride the first one's carry.
+	t := ctx.ItemTail(livingDeathSacrifice)
+	t.Carry = doomed
+	return ctx.Game.ExileCardsKeyedForEffect(dead, t)
 }
 
 // livingDeathSacrifice and livingDeathReturn are the rest of Living Death
