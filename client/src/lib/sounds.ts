@@ -490,6 +490,21 @@ export function onDuck(fn: ((factor: number) => void) | null): void {
   fn?.(duckFactor());
 }
 
+// Callers that play their own files on a bus (fx/voices.ts) and so lower
+// them themselves (#4410).
+const duckWatchers = new Set<(factor: number) => void>();
+
+// watchDuck adds a listener for the duck factor. It hears the current
+// factor at once and every change after; the function it returns removes
+// it.
+export function watchDuck(fn: (factor: number) => void): () => void {
+  duckWatchers.add(fn);
+  fn(duckFactor());
+  return () => {
+    duckWatchers.delete(fn);
+  };
+}
+
 function duckFactor(): number {
   return duckCount > 0 ? DUCK_FACTOR : 1;
 }
@@ -502,6 +517,7 @@ function applyDuck(): void {
   const f = duckFactor();
   for (const p of playing) setVolume(p, f);
   duckListener?.(f);
+  for (const w of duckWatchers) w(f);
 }
 
 // duckFor ducks the other buses until `audio` ends, errors, or DUCK_MAX_MS

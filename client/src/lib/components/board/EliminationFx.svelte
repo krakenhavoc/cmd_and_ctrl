@@ -20,7 +20,7 @@
   // nothing at all, no wedges and no sparks, and the stone fades in.
   //
   // z 57, with the other effect cues: above the action dock (55), below the
-  // hints (58). aria-hidden, and it takes no pointer events.
+  // tutorial's coach (58). aria-hidden, and it takes no pointer events.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
@@ -238,7 +238,7 @@
     inset: 0;
     pointer-events: none;
     /* The table's z-index ladder (DESIGN.md §4): with the other effect
-       cues, above the action dock (55), below the hints (58). */
+       cues, above the action dock (55), below the coach (58). */
     z-index: 57;
     overflow: hidden;
   }
