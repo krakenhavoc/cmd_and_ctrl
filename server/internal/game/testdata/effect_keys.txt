@@ -1271,6 +1271,8 @@ run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/slaughter-the-strong-keep
+run prompt-run/smallpox-sacrifice-creatures
+run prompt-run/smallpox-sacrifice-lands
 run prompt-run/sorin-imperious-bloodlord-sacrifice
 run prompt-run/springbloom-druid-search
 run prompt-run/summon-valefor-sonic-wings
