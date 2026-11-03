@@ -1969,6 +1969,13 @@ func (h *Hub) Spectators(gameID uuid.UUID) []LiveSpectator {
 // is terminal, and the removed-notice shows. The lobby calls it after the
 // host, the creator or an admin removes a spectator (#3113); the session
 // itself is refused from then on (auth.WithSeatCheck).
+//
+// The victims leave h.clients before it returns, not when their read
+// pumps notice the close: the lobby answers the removal with
+// Spectators straight after, and that list must not still hold the
+// session it just removed (#4254). The close frame goes first, so the
+// write pump's own empty close (on c.send closing) is never the frame
+// the client reads. The read pump's later unregister is a no-op.
 func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
 	if gameID == uuid.Nil || spectatorID == uuid.Nil {
 		return 0
@@ -1988,6 +1995,7 @@ func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
 			time.Now().Add(writeWait),
 		)
+		h.unregister(c)
 		_ = c.conn.Close()
 	}
 	return len(victims)
