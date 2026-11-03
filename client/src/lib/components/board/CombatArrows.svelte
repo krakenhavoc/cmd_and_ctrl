@@ -38,6 +38,12 @@
   // lunges), so it lives in lib/combatCues.svelte.ts, owned by Board.
   // This overlay subscribes to it and ignores ordinary combat's
   // unlabelled beats, which are the strike layer's alone.
+  //
+  // #4327: an attacker the viewer has staged (#3266) but not yet sent is
+  // drawn too, dashed in the attack colour, the way #3898 draws a blocker
+  // still being collected for a group, so each staged creature shows
+  // where it will go before the declaration. Staging is the viewer's
+  // own, so only the viewer sees these.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
@@ -82,9 +88,18 @@
     // target arrows from its tiles, and two sets of arrows from one
     // stack item would read as two spells.
     stackTargets?: boolean;
+    // #4327: the viewer's staged attackers and their targets.
+    staged?: readonly { attacker: string; target: string }[];
   }
 
-  const { view, boardEl, cues: givenCues, stackTargets = true }: Props = $props();
+  const NO_STAGED: readonly { attacker: string; target: string }[] = [];
+  const {
+    view,
+    boardEl,
+    cues: givenCues,
+    stackTargets = true,
+    staged = NO_STAGED,
+  }: Props = $props();
   // Fixed for the life of the overlay: the clock is never swapped.
   const cues = untrack(() => givenCues);
 
@@ -94,6 +109,8 @@
     // #3898: a creature in the group being collected for a menace
     // attacker, not sent yet: dashed until the group is complete.
     | { kind: "block-pending"; id: string; fromCardID: string; toCardID: string }
+    // #4327: a staged attacker, not declared yet: dashed until it is.
+    | { kind: "attack-pending"; id: string; fromCardID: string; toTargetID: string }
     | { kind: "stack-target-player"; id: string; fromStackID: string; toSeatID: string }
     | { kind: "stack-target-card"; id: string; fromStackID: string; toCardID: string };
 
@@ -135,6 +152,16 @@
         });
       }
     }
+    for (const s of staged) {
+      const c = byID.get(s.attacker);
+      if (!c || c.attacking_target) continue;
+      out.push({
+        kind: "attack-pending",
+        id: `stg-${s.attacker}`,
+        fromCardID: s.attacker,
+        toTargetID: s.target,
+      });
+    }
     // S14: stack-item target arrows. Each StackItem carries its
     // announce-time targets[]; draw one arrow per player / card slot
     // so the board shows who each spell is aimed at. Self / none
@@ -164,6 +191,7 @@
 
   type ArrowKind =
     | "attack"
+    | "attack-pending"
     | "block"
     | "block-pending"
     | "stack-target-player"
@@ -222,7 +250,12 @@
       // (stack-target-*). Route through the matching data attribute
       // in each case.
       let from: { x: number; y: number } | null = null;
-      if (p.kind === "attack" || p.kind === "block" || p.kind === "block-pending") {
+      if (
+        p.kind === "attack" ||
+        p.kind === "attack-pending" ||
+        p.kind === "block" ||
+        p.kind === "block-pending"
+      ) {
         from = cardIn(boardRect, p.fromCardID);
       } else {
         from = rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.fromStackID)}"]`);
@@ -231,6 +264,9 @@
       let to: { x: number; y: number } | null = null;
       if (p.kind === "attack" || p.kind === "stack-target-player") {
         to = rectIn(boardRect, seatSelector(p.toSeatID));
+      } else if (p.kind === "attack-pending") {
+        // A player, or a planeswalker or battle on the battlefield.
+        to = rectIn(boardRect, seatSelector(p.toTargetID)) ?? cardIn(boardRect, p.toTargetID);
       } else {
         // Card targets can live in two places: the battlefield (via
         // data-instance-id on Card.svelte) or the stack (via
@@ -511,6 +547,7 @@
   function markerFor(kind: ArrowKind): string {
     switch (kind) {
       case "attack":
+      case "attack-pending":
         return "url(#arrowhead-attack)";
       case "block":
       case "block-pending":
@@ -519,6 +556,11 @@
       case "stack-target-card":
         return "url(#arrowhead-target)";
     }
+  }
+
+  // A line for something not sent yet: dashed, and not drawn on.
+  function pending(kind: ArrowKind): boolean {
+    return kind === "block-pending" || kind === "attack-pending";
   }
 
   function drawOn(node: SVGPathElement) {
@@ -575,7 +617,7 @@
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd07a" />
       </marker>
     </defs>
-    {#each arrows.filter((a) => a.kind !== "block-pending") as a (a.id)}
+    {#each arrows.filter((a) => !pending(a.kind)) as a (a.id)}
       <path
         d={`M ${a.x1} ${a.y1} Q ${a.cx} ${a.cy} ${a.x2} ${a.y2}`}
         class={a.kind}
@@ -583,8 +625,8 @@
         use:drawOn
       />
     {/each}
-    <!-- #3898: not drawn on: the dash is the point. -->
-    {#each arrows.filter((a) => a.kind === "block-pending") as a (a.id)}
+    <!-- #3898, #4327: not drawn on: the dash is the point. -->
+    {#each arrows.filter((a) => pending(a.kind)) as a (a.id)}
       <path
         d={`M ${a.x1} ${a.y1} Q ${a.cx} ${a.cy} ${a.x2} ${a.y2}`}
         class={a.kind}
@@ -645,6 +687,11 @@
   }
   path.block {
     stroke: var(--block);
+  }
+  path.attack-pending {
+    stroke: var(--attack);
+    stroke-dasharray: 5 5;
+    opacity: 0.85;
   }
   path.block-pending {
     stroke: var(--block);
