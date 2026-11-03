@@ -38,14 +38,7 @@ func init() {
 		Name:         "Smallpox",
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				for _, id := range tablePlayers(ctx) {
-					if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), id, -1); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			Instruction(socB22EachPlayerLosesOneLife),
 			Instruction(func(ctx *Context) error {
 				caster := ctx.Controller()
 				return ctx.Game.EachPlayerDiscardsThenKeyedForEffect(uuid.Nil,
