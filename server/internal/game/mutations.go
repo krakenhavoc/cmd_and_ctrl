@@ -2108,7 +2108,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// exile it instead" — the narrower clause, carried for the same
 		// reason.
 		ExileInsteadOfGraveyard: alt != nil && alt.ExileInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
-		CastFromZone:            src.Kind,
+		// The same clause with the owner's library bottom as the
+		// destination (Quintorius, Loremaster).
+		BottomInsteadOfGraveyard: alt != nil && alt.BottomInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
+		CastFromZone:             src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
 		// XValue is: by resolution the tokens are gone from the pool
@@ -4738,6 +4741,11 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// resolves the clause is one of the exits below instead, so it
 		// competes with buyback and rebound under CR 616.1.
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	} else if !resolved && bottomsInsteadOfGraveyard(item) {
+		// Quintorius, Loremaster's clause, with the owner's library
+		// bottom as the destination; as it resolves it is one of the
+		// exits below instead.
+		r.Dst, r.DstOwner, r.Actor, r.ToBottom = ZoneLibrary, c.Owner, c.Owner, true
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two
 		// or more is CR 616.1's choice, asked of the spell's

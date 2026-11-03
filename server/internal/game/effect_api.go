@@ -1716,6 +1716,12 @@ func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback Zo
 	if destKind == ZoneGraveyard && exilesInsteadOfGraveyard(item) {
 		destKind, destOwner = ZoneExile, uuid.Nil
 	}
+	// The same clause with the owner's library bottom as the destination
+	// (Quintorius, Loremaster).
+	bottomInstead := destKind == ZoneGraveyard && bottomsInsteadOfGraveyard(item)
+	if bottomInstead {
+		destKind, destOwner = ZoneLibrary, uuid.Nil
+	}
 	r := zoneRoute{
 		CardID:    spellID,
 		Dst:       destKind,
@@ -1724,6 +1730,9 @@ func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback Zo
 	}
 	if destKind == ZoneLibrary {
 		r.ToBottom, r.Depth = at.ToBottom, at.Depth
+	}
+	if bottomInstead {
+		r.ToBottom, r.Depth = true, 0
 	}
 	return r, nil
 }

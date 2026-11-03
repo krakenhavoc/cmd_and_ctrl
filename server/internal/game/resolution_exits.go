@@ -63,11 +63,12 @@ type resolutionExit struct {
 // The exits' kinds, written on a waiting prompt (resolutionExitThen's
 // Words): on-disk identities, never renamed, never reused.
 const (
-	resolutionExitExileInstead = "exile-instead"
-	resolutionExitRebound      = "rebound"
-	resolutionExitBuyback      = "buyback"
-	resolutionExitWithCounter  = "exile-with-counter"
-	resolutionExitAdventure    = "adventure"
+	resolutionExitExileInstead  = "exile-instead"
+	resolutionExitBottomInstead = "bottom-instead"
+	resolutionExitRebound       = "rebound"
+	resolutionExitBuyback       = "buyback"
+	resolutionExitWithCounter   = "exile-with-counter"
+	resolutionExitAdventure     = "adventure"
 )
 
 // apply rewrites the route the way this exit replaces it, and returns
@@ -79,6 +80,8 @@ func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	switch e.kind {
 	case resolutionExitExileInstead:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, e.owner
+	case resolutionExitBottomInstead:
+		r.Dst, r.DstOwner, r.Actor, r.ToBottom = ZoneLibrary, e.owner, e.owner, true
 	case resolutionExitRebound:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		return KeyedTail{Ref: reboundExiledTail, Player: controller, Carry: []uuid.UUID{cardID}}
@@ -156,6 +159,11 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 		// #3863: the granted cast's replacement. Offered first: of the
 		// exits, it is the one that gives the player nothing back.
 		out = append(out, exit("Exile it instead of putting it into your graveyard", resolutionExitExileInstead))
+	}
+	if bottomsInsteadOfGraveyard(item) {
+		// Quintorius, Loremaster's granted cast: the same replacement with
+		// the owner's library bottom as the destination.
+		out = append(out, exit("Put it on the bottom of its owner's library instead of into the graveyard", resolutionExitBottomInstead))
 	}
 	if spellRebounds(c, item) {
 		// CR 702.88a: exile it and, at the beginning of its
@@ -287,4 +295,13 @@ func routeResolutionExitLocked(g *Game, carry []uuid.UUID, words []string, index
 // copy, which ceases to exist instead (CR 707.10a).
 func exilesInsteadOfGraveyard(item *StackItem) bool {
 	return item != nil && !item.IsCopy && item.ExileInsteadOfGraveyard
+}
+
+// bottomsInsteadOfGraveyard reports whether the spell carries a granted
+// cast's "if that spell would be put into a graveyard, put it on the
+// bottom of its owner's library instead" (StackItem.BottomInsteadOfGraveyard,
+// Quintorius, Loremaster). Never for a copy, which ceases to exist
+// instead (CR 707.10a).
+func bottomsInsteadOfGraveyard(item *StackItem) bool {
+	return item != nil && !item.IsCopy && item.BottomInsteadOfGraveyard
 }

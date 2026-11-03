@@ -561,6 +561,7 @@ choose choose-cards/put-from-hand-onto-battlefield
 choose choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4
 choose choose-cards/put-from-library-ojer-kaslem-creature-and-or-land
 choose choose-cards/put-from-library-onto-battlefield
+choose choose-cards/quintorius-history-chaser-draw-two-mill-one
 choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
@@ -872,6 +873,7 @@ drawthen discard:
 drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
 drawthen discard:Depth Defiler — discard a card
+drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
@@ -1382,6 +1384,7 @@ tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
 tail attacking-tokens/mobilize-sacrifice-the-warriors
+tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
@@ -1722,6 +1725,7 @@ tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
 tail quintorius-kand/mana-and-cast-from-exiled
+tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
 tail rapid-rescue/after-mill
 tail read-the-runes/sacrificed

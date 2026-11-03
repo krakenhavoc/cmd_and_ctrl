@@ -1667,10 +1667,14 @@ type stackItemSnapshot struct {
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
 	// spell reach the graveyard.
-	ExileInsteadOfGraveyard bool   `json:"exileInsteadOfGraveyard,omitempty"`
-	Seq                     uint64 `json:"seq"`
-	Ordered                 bool   `json:"ordered"`
-	Commutes                bool   `json:"commutes,omitempty"` // #1511
+	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
+	// BottomInsteadOfGraveyard is Quintorius, Loremaster's "put it on the
+	// bottom of its owner's library instead". Carried for the reason
+	// ExileInsteadOfGraveyard is.
+	BottomInsteadOfGraveyard bool   `json:"bottomInsteadOfGraveyard,omitempty"`
+	Seq                      uint64 `json:"seq"`
+	Ordered                  bool   `json:"ordered"`
+	Commutes                 bool   `json:"commutes,omitempty"` // #1511
 
 	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
 	// (#1539): a queued trigger whose targets are chosen and whose
@@ -3132,15 +3136,16 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
-		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
-		Commutes:                s.Commutes,
-		Paid:                    clonePaidCost(s.Paid),
-		HasEffect:               s.Effect != nil,
-		HasTargetSpec:           s.targetSpec != nil,
-		HasModeSpec:             s.modeSpec != nil,
-		OracleID:                oracleID,
-		Body:                    s.Body,
-		Params:                  effectParamsOrNil(s.Params),
+		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
+		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		Commutes:                 s.Commutes,
+		Paid:                     clonePaidCost(s.Paid),
+		HasEffect:                s.Effect != nil,
+		HasTargetSpec:            s.targetSpec != nil,
+		HasModeSpec:              s.modeSpec != nil,
+		OracleID:                 oracleID,
+		Body:                     s.Body,
+		Params:                   effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -4291,11 +4296,12 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
-		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
-		Commutes:                s.Commutes,
-		Paid:                    clonePaidCost(s.Paid),
-		Body:                    s.Body,
-		Params:                  effectParamsValue(s.Params),
+		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
+		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		Commutes:                 s.Commutes,
+		Paid:                     clonePaidCost(s.Paid),
+		Body:                     s.Body,
+		Params:                   effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
