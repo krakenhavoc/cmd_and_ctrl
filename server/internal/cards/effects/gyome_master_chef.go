@@ -46,6 +46,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
 			Cost:    Plus(ManaCost("{1}"), game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))}),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
