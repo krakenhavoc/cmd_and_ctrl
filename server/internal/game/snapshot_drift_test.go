@@ -1089,6 +1089,7 @@ var pendingChoiceFields = plan(
 	// tail, so the open question is a restore point.
 	"OptionalItem", carried, "",
 	"OptionalTradeFor", carried, "",
+	"OptionalSubject", carried, "",
 	// #2731: the row's "yes would not help" warning, computed as the
 	// question was asked. Carried with the question it qualifies.
 	"NoGain", carried, "",

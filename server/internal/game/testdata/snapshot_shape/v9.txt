@@ -12136,6 +12136,7 @@ frozenEntries[].event.stackItem.optional.answerKey	string
 frozenEntries[].event.stackItem.optional.answerPrompt	string
 frozenEntries[].event.stackItem.optional.chooser	custom(uuid.UUID)
 frozenEntries[].event.stackItem.optional.question	string
+frozenEntries[].event.stackItem.optional.subject	custom(uuid.UUID)
 frozenEntries[].event.stackItem.optional.tradeFor	custom(uuid.UUID)
 frozenEntries[].event.stackItem.oracleId	string
 frozenEntries[].event.stackItem.ordered	bool
@@ -18565,6 +18566,7 @@ lastKnownStack[].item.optional.answerKey	string
 lastKnownStack[].item.optional.answerPrompt	string
 lastKnownStack[].item.optional.chooser	custom(uuid.UUID)
 lastKnownStack[].item.optional.question	string
+lastKnownStack[].item.optional.subject	custom(uuid.UUID)
 lastKnownStack[].item.optional.tradeFor	custom(uuid.UUID)
 lastKnownStack[].item.oracleId	string
 lastKnownStack[].item.ordered	bool
@@ -19033,6 +19035,7 @@ pausedModeWalk.item.optional.answerKey	string
 pausedModeWalk.item.optional.answerPrompt	string
 pausedModeWalk.item.optional.chooser	custom(uuid.UUID)
 pausedModeWalk.item.optional.question	string
+pausedModeWalk.item.optional.subject	custom(uuid.UUID)
 pausedModeWalk.item.optional.tradeFor	custom(uuid.UUID)
 pausedModeWalk.item.oracleId	string
 pausedModeWalk.item.ordered	bool
@@ -19351,6 +19354,7 @@ pausedResolutionTail.item.optional.answerKey	string
 pausedResolutionTail.item.optional.answerPrompt	string
 pausedResolutionTail.item.optional.chooser	custom(uuid.UUID)
 pausedResolutionTail.item.optional.question	string
+pausedResolutionTail.item.optional.subject	custom(uuid.UUID)
 pausedResolutionTail.item.optional.tradeFor	custom(uuid.UUID)
 pausedResolutionTail.item.oracleId	string
 pausedResolutionTail.item.ordered	bool
@@ -19663,6 +19667,7 @@ pausedStepWalk.item.optional.answerKey	string
 pausedStepWalk.item.optional.answerPrompt	string
 pausedStepWalk.item.optional.chooser	custom(uuid.UUID)
 pausedStepWalk.item.optional.question	string
+pausedStepWalk.item.optional.subject	custom(uuid.UUID)
 pausedStepWalk.item.optional.tradeFor	custom(uuid.UUID)
 pausedStepWalk.item.oracleId	string
 pausedStepWalk.item.ordered	bool
@@ -22111,6 +22116,7 @@ pendingChoices[].copyWalk.item.optional.answerKey	string
 pendingChoices[].copyWalk.item.optional.answerPrompt	string
 pendingChoices[].copyWalk.item.optional.chooser	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.optional.question	string
+pendingChoices[].copyWalk.item.optional.subject	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.optional.tradeFor	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.oracleId	string
 pendingChoices[].copyWalk.item.ordered	bool
@@ -26312,6 +26318,7 @@ pendingChoices[].optionObjects[]	object
 pendingChoices[].optionObjects[].epoch	number:int
 pendingChoices[].optionObjects[].id	custom(uuid.UUID)
 pendingChoices[].optionalItem	custom(uuid.UUID)
+pendingChoices[].optionalSubject	custom(uuid.UUID)
 pendingChoices[].optionalTradeFor	custom(uuid.UUID)
 pendingChoices[].ordered	object
 pendingChoices[].ordered.asked	object
@@ -37234,6 +37241,7 @@ pendingChoices[].replacementResume.event.stackItem.optional.answerKey	string
 pendingChoices[].replacementResume.event.stackItem.optional.answerPrompt	string
 pendingChoices[].replacementResume.event.stackItem.optional.chooser	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.optional.question	string
+pendingChoices[].replacementResume.event.stackItem.optional.subject	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.optional.tradeFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.oracleId	string
 pendingChoices[].replacementResume.event.stackItem.ordered	bool
@@ -45498,6 +45506,7 @@ pendingTriggers[].optional.answerKey	string
 pendingTriggers[].optional.answerPrompt	string
 pendingTriggers[].optional.chooser	custom(uuid.UUID)
 pendingTriggers[].optional.question	string
+pendingTriggers[].optional.subject	custom(uuid.UUID)
 pendingTriggers[].optional.tradeFor	custom(uuid.UUID)
 pendingTriggers[].oracleId	string
 pendingTriggers[].ordered	bool
@@ -46806,6 +46815,7 @@ resolving.item.optional.answerKey	string
 resolving.item.optional.answerPrompt	string
 resolving.item.optional.chooser	custom(uuid.UUID)
 resolving.item.optional.question	string
+resolving.item.optional.subject	custom(uuid.UUID)
 resolving.item.optional.tradeFor	custom(uuid.UUID)
 resolving.item.oracleId	string
 resolving.item.ordered	bool
@@ -51724,6 +51734,7 @@ stackMeta[].optional.answerKey	string
 stackMeta[].optional.answerPrompt	string
 stackMeta[].optional.chooser	custom(uuid.UUID)
 stackMeta[].optional.question	string
+stackMeta[].optional.subject	custom(uuid.UUID)
 stackMeta[].optional.tradeFor	custom(uuid.UUID)
 stackMeta[].oracleId	string
 stackMeta[].ordered	bool

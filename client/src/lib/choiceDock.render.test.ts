@@ -422,6 +422,35 @@ describe("the yes/no family, inline in the dock", () => {
   });
 });
 
+describe("a trigger_prompt about one card, #4877", () => {
+  const hoof = {
+    instance_id: "hoof",
+    name: "Craterhoof Behemoth",
+    owner: "opp",
+    controller: "opp",
+    type_line: "Creature — Beast",
+    zone: "graveyard",
+  };
+  const reason = "Lazav, Dimir Mastermind — become a copy of that card?";
+
+  it("shows the card the prompt is about", async () => {
+    const c = await mountGame(
+      withChoice({ kind: "trigger_prompt", reason, subject: hoof as never }),
+    );
+    const dlg = expectInDock(c, reason);
+    const shown = dlg.querySelector(".dock-subject");
+    expect(shown, "the subject card in the prompt").not.toBeNull();
+    expect(shown!.querySelector("figcaption")?.textContent).toContain("Craterhoof Behemoth");
+    expect(shown!.querySelector("img, .card, [aria-label]"), "the card preview").not.toBeNull();
+  });
+
+  it("draws the plain yes/no when the prompt names no card", async () => {
+    const c = await mountGame(withChoice({ kind: "trigger_prompt", reason }));
+    const dlg = expectInDock(c, reason);
+    expect(dlg.querySelector(".dock-subject")).toBeNull();
+  });
+});
+
 describe("commander_return and a commander's replacement, ADR 0115 PR 5", () => {
   const commander = (zoneName: "graveyard" | "battlefield", owner = ME) => ({
     instance_id: "cmdr",

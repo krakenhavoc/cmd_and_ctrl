@@ -1889,6 +1889,11 @@ export interface PendingChoiceView {
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
   trade_for?: string;
+  // #4877: on a "trigger_prompt" whose question is about one card (Lazav,
+  // Dimir Mastermind's "become a copy of that card"), that card. Only
+  // ever a card face up in a public zone; absent on every other prompt,
+  // and on one whose card the table can't see.
+  subject?: CardView;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it

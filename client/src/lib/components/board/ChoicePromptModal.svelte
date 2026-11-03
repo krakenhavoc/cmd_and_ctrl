@@ -1008,6 +1008,10 @@
   // ResolveTriggerPrompt vs ResolveOptionalReplacement by inspecting
   // the choice's kind.
   const isTriggerPrompt = $derived(active?.kind === "trigger_prompt");
+  // #4877: the one card a trigger_prompt is about (the server sends it
+  // only while it is face up in a public zone), so several prompts from
+  // the same source can be told apart.
+  const triggerSubject = $derived(isTriggerPrompt && active?.subject?.name ? active.subject : null);
 
   // S19 sub-PR 6 pay-unless branch — CR 118.12 "unless that player
   // pays {N}" (Rhystic Study, Smothering Tithe, Esper Sentinel).
@@ -1651,7 +1655,9 @@
                     ? payAmountBody
                     : commanderCard
                       ? commanderBody
-                      : undefined,
+                      : triggerSubject
+                        ? subjectBody
+                        : undefined,
             rejection: rememberRefusal ?? rejection?.message ?? null,
             remember: {
               on: remember,
@@ -2311,6 +2317,15 @@
     <div class="dock-commander">
       <Card card={commanderCard} size="normal" />
     </div>
+  {/if}
+{/snippet}
+{#snippet subjectBody()}
+  {#if triggerSubject}
+    <!-- #4877: the card this "you may" is about. -->
+    <figure class="dock-subject">
+      <Card card={triggerSubject} size="normal" />
+      <figcaption>{triggerSubject.name}</figcaption>
+    </figure>
   {/if}
 {/snippet}
 {#snippet loopBody()}
@@ -3394,6 +3409,20 @@
     justify-content: center;
     padding: 4px 0;
     --card-w: 120px;
+  }
+  .dock-subject {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 4px 0;
+    --card-w: 120px;
+  }
+  .dock-subject figcaption {
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+    text-align: center;
   }
   .dock-mana :global(.mana-picker) {
     gap: 5px;
