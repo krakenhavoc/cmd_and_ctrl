@@ -30,6 +30,7 @@ tests-e2e/
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
     ├── land-menu-2960.spec.ts # #2960: a land's ability menu is visible and clickable at 1280x720 and 1998x716; seven lands each keep a clickable tile
+    ├── land-strip-reach-4866.spec.ts # #4866: on a crowded board with fifteen lands, every land on every seat's strip (an across-table seat's included) can be scrolled into view, at 2, 3 and 4 seats and 1280x720, 1366x768 and 1920x1080
 ├── library-top-4127.spec.ts # #4127: a playable library top (Bolas's Citadel) is offered on a card-sized peek raised off the pile, its cast button 26px tall and not under the dev dock, at three viewports; a click starts the cast
     ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts

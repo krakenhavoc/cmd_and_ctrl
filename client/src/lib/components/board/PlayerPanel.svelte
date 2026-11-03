@@ -1964,8 +1964,22 @@
     .panel.opponent.flipped .grid-middle {
       direction: rtl;
     }
-    .panel.opponent.flipped .grid-middle > :global(.row),
-    .panel.opponent.flipped .back-part > :global(.row) {
+    /* #4866: and so is each row's scroll box, for the same reason. A row's
+       card list is turned 180° (below), so what does not fit it, which
+       runs off the list's right end, is drawn past the row's LEFT edge,
+       and a left-to-right scroll box cannot reach that: a full land strip
+       lost its far lands for good. In rtl the row scrolls from its right
+       end, where the list starts once turned, and its scroll range runs
+       left, over every card. What is in the row reads left to right.
+       Not the walker and battle rows (`spread`): #4087 has them shrink and
+       wrap so that they never scroll, and type-groups-4087.spec.ts holds
+       them to it; one that still overflows is a fitting bug, not a
+       scrolling one. */
+    .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row[data-zone]) {
+      direction: rtl;
+    }
+    .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row[data-zone].spread),
+    .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row[data-zone] > *) {
       direction: ltr;
     }
     .panel.opponent.flipped .grid-bottom {
