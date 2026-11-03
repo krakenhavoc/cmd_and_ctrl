@@ -11,10 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Wolf Strike's pump-then-bite: two target clauses read positionally
 // (slot 0 pumps and deals, slot 1 takes), the second "up to one" and
-// Distinct so it cannot be the first. The layers are recomputed after
-// the pump so the bite reads the pumped power, and oneSidedBite is the
-// shared one-sided damage body. Slot 1 is empty when no victim was
-// chosen, and then only the pump happens.
+// Distinct so it cannot be the first. The bite reads the pumped power,
+// since a read during the resolution sees the pump before it (#4909),
+// and oneSidedBite is the shared one-sided damage body. Slot 1 is empty
+// when no victim was chosen, and then only the pump happens.
 //
 // No simplification.
 func init() {
@@ -37,8 +37,6 @@ func init() {
 				return BoostUntilEOT{Target: t.ID, Power: ctx.X(), Label: "Bionic Blow — +X/+0"}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
-				// The bite reads the biter's power as it now stands.
-				ctx.Game.RecomputeLayersIfStaleLocked()
 				return oneSidedBite(ctx.Item, ctx)
 			}),
 		),

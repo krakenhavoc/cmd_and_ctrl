@@ -1229,8 +1229,39 @@ type Game struct {
 	// written to a restore point as GameSnapshot.ParkedDraws.
 	parkedDraws map[uuid.UUID]*parkedDraw
 
-	mu sync.RWMutex
+	// layerPassing is true while a layer pass is running (the real
+	// recompute or a dry-run look-ahead), so a reader the pass reaches
+	// does not start a second pass inside it (#4909, freshForEffectLocked).
+	// Defer-cleared, so it is false between actions.
+	layerPassing bool
+
+	mu gameMutex
 }
+
+// gameMutex is the game's RWMutex, recording whether its WRITE lock is
+// held (#4909). A caller that holds g.mu in either mode can ask
+// writeHeld: readers and the writer exclude each other, so true means
+// the caller is the writer. That is what lets an effect-API reader bring
+// stale layers current (a recompute is a write) without ever doing so
+// under a read lock.
+type gameMutex struct {
+	sync.RWMutex
+	writer atomic.Bool
+}
+
+func (m *gameMutex) Lock() {
+	m.RWMutex.Lock()
+	m.writer.Store(true)
+}
+
+func (m *gameMutex) Unlock() {
+	m.writer.Store(false)
+	m.RWMutex.Unlock()
+}
+
+// writeHeld reports whether the write lock is held. Meaningful only to a
+// caller that holds g.mu in some mode.
+func (m *gameMutex) writeHeld() bool { return m.writer.Load() }
 
 // NewGame constructs a game in the lobby state with a fresh ID and
 // empty shared zones.
