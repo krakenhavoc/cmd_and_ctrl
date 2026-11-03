@@ -639,6 +639,8 @@ choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/transpose-after-discard
+choose choose-cards/turtles-forever-outside
+choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-prophet-take
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
@@ -1038,6 +1040,8 @@ option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/trigger-opponent-chooser
+option option-pick/turtles-forever-opponent
+option option-pick/turtles-forever-zones
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
 option option-pick/villainous-damocles-base
@@ -2036,6 +2040,7 @@ tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
 tail turtle-van/double
+tail turtles-forever/library-found
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
 tail ultra-magnus-tactician/convert-at-end-of-combat

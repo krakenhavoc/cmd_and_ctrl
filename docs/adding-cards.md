@@ -12182,6 +12182,23 @@ library unrevealed (the second door out of the container, beside
 `BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
 nothing was chosen or there was nothing to choose from (CR 701.24d).
 
+**Searching your library and/or outside the game** (Turtles Forever, #4681) is
+not a flag on `SearchLibrarySpec`: the database pool (ADR 0198) answers with
+card names, which no library search prompt can hold beside instance IDs. It is
+three keyed prompts in a row, in `effects/turtles_forever.go`: a `PickOption`
+for the zones (both, the library only, outside the game only; asked first, so
+the library is searched, and announced, only when chosen, as #4519 does for
+"and/or graveyard"), then the library search, then an outside pick for the
+room the library left. The library's finds wait on top of the library (`ToTop`,
+Gifts Ungiven's shape) and ride the outside pick as its `Carry`; their names
+ride as its `MatchArg`, so the registered filter leaves them out on both
+branches and after a restore. A "different names" rule over the outside picks
+themselves is the pick's set rule (`RegisterOutsidePickRule`). Both halves may
+come up short: a library search for a stated quality (CR 701.23b), and a search
+outside the game, where the player "may choose" (CR 701.23j). The cards found
+are then revealed together, `RevealForEffect` for the library's and
+`RevealOutsideForEffect` for the rest, and settled from where each card is now.
+
 **Learn** (CR 701.48a, #3525) is `Learn{}` in `effects/learn.go`, the last
 instruction of every printing:
 
