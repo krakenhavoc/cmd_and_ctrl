@@ -61,6 +61,7 @@ var xMattersAllowlist = map[string]string{
 	"ugin_the_spirit_dragon.go Ugin, the Spirit Dragon":           "a planeswalker with no X cost of its own: his −X at X=0 still exiles every coloured permanent with mana value 0, tokens included",
 	"domesticated_hydra.go Domesticated Hydra":                    "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                              "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
+	"fractalize.go Fractalize":                                    "the creature becomes a 1/1 Fractal at X=0: base power and toughness are X plus 1, so the effect still lands and is a real move",
 	"grand_crescendo.go Grand Crescendo":                          "\"Creatures you control gain indestructible until end of turn\" never reads X: at X=0 the spell still protects the team, a real trick",
 	"fated_firepower.go Fated Firepower":                          "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
 	"invasion_of_new_phyrexia.go Invasion of New Phyrexia":        "a battle: the Siege survives at X=0 with its defense counters and its transformed cast, only the Knights count X",
