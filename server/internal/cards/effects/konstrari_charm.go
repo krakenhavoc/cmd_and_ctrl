@@ -24,13 +24,7 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Konstrari Charm deals 6 damage to target creature with flying.",
 				TargetCreature("target creature with flying", HasKeyword("flying")),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 6}.Apply(ctx)
-				}),
+				socB20DamageToTheModeTarget(6)),
 			// The trample waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
 			ModeSteps("Put two +1/+1 counters on target creature. It gains trample until end of turn.",
 				TargetCreature("target creature"),
