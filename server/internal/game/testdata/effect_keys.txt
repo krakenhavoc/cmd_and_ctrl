@@ -1078,6 +1078,7 @@ payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
 payunless pay-unless/contract-hero-pump
 payunless pay-unless/counter-guarded
+payunless pay-unless/cradle-of-vitality-counters
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/digsite-conservator-discover
@@ -1088,6 +1089,7 @@ payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
+payunless pay-unless/emiel-the-blessed-counters
 payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
 payunless pay-unless/energy-plus-one-counter-on-this
