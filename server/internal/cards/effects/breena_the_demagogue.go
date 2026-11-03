@@ -17,15 +17,17 @@ import (
 //
 // The politics commander: attack the opponent who is ahead and
 // Breena pays you a card while her controller grows a creature.
-// "Attacks one of your opponents" is read off EventAttack's target —
-// through the defending player, so an attack at that opponent's
-// planeswalker or battle counts (S27) — and the attacker may be
-// anyone, Breena's controller included. The ability triggers ONCE
-// PER OPPONENT ATTACKED per combat, not once per creature: the
-// engine emits EventAttack per creature, so the guard is the
-// engine's own once-per-batch key with its PLAYER dimension
-// (OncePerBatchPerPlayer, CR 603.2c / #784, reading the attack
-// through the defending player). One declaration is one batch, so
+// "A player attacks one of your opponents" is CR 508.3e: creatures
+// declared attacking that opponent ITSELF (attackedPlayer). An attack
+// at that opponent's planeswalker or battle is not one, so it does not
+// trigger her (#4839). The attacker may be anyone, Breena's controller
+// included. The ability triggers ONCE PER OPPONENT ATTACKED per
+// combat, not once per creature: the engine emits EventAttack per
+// creature, so the guard is the engine's own once-per-batch key with
+// its PLAYER dimension (OncePerBatchPerPlayer, CR 603.2c / #784). A
+// creature aimed at a planeswalker does not spend that slot, because
+// the guard is asked only once the trigger condition holds. One
+// declaration is one batch, so
 // the later creatures aimed at the same opponent are declined while
 // a split attack on two opponents still triggers twice. The stack
 // label carries the attacked player's name, which is what tells two
@@ -60,7 +62,7 @@ func init() {
 			Key:          b17BreenaKey,
 			Watches:      []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				opp := b17DefendingPlayer(g, ev)
+				opp := attackedPlayer(g, ev)
 				// The once-per-combat half is the engine's batch guard,
 				// keyed per attacked opponent.
 				return opp != uuid.Nil && b17OpponentHasMoreLifeThanAnother(g, source.Controller, opp)
@@ -70,7 +72,7 @@ func init() {
 			// The effect re-derives that opponent from item.Trigger at
 			// resolution rather than closing over it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				opp := b17DefendingPlayer(g, ev)
+				opp := attackedPlayer(g, ev)
 				return game.NewTriggeredItem(source, b17BreenaLabel(g, opp))
 			},
 			Effect: breenaEffect,
@@ -84,7 +86,7 @@ func init() {
 // intervening if.
 func breenaEffect(g *game.Game, item *game.StackItem) error {
 	ev := item.Trigger.Event
-	opp := b17DefendingPlayer(g, ev)
+	opp := attackedPlayer(g, ev)
 	if !b17OpponentHasMoreLifeThanAnother(g, item.Controller, opp) {
 		return nil
 	}
