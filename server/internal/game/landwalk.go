@@ -133,3 +133,12 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 	}
 	return "", nil
 }
+
+// IsLandwalkToken reports whether token is a landwalk keyword the
+// engine enforces ("swampwalk", "nonbasic landwalk"). The one public
+// reader of landwalkTokens, for a card that shares or copies "each
+// landwalk ability" a creature has (Concerted Effort).
+func IsLandwalkToken(token string) bool {
+	_, ok := landwalkRequirement(token)
+	return ok
+}

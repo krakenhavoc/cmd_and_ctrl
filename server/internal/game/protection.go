@@ -67,6 +67,17 @@ const protectionAndFrom = " and from "
 // one it can enforce rather than by matching anything player-shaped.
 const protectionChosenPlayer = "the chosen player"
 
+// protectionNamedPlayer prefixes the seat id in the one token that
+// names a player outright: "protection from player <uuid>".
+const protectionNamedPlayer = "player "
+
+// ProtectionFromPlayer is the token for protection from one named
+// seat, the form a granted copy of "protection from the chosen player"
+// takes (see parseQuality).
+func ProtectionFromPlayer(id uuid.UUID) string {
+	return protectionPrefix + protectionNamedPlayer + id.String()
+}
+
 // ProtectionFromChosenPlayer is the token for CR 702.16k's printed
 // ability, "protection from the chosen player" (True-Name Nemesis).
 //
@@ -287,6 +298,17 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	// reader resolves it and the parser records only the kind.
 	if lower == protectionChosenPlayer {
 		return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed}, true
+	}
+	// The same quality with the seat already named, for an effect that
+	// hands a creature protection from a player the GRANTING permanent
+	// chose (Concerted Effort sharing True-Name Nemesis's protection):
+	// the grantee made no choice of its own, so the token carries the
+	// seat. Tested by controller exactly like the chosen-player form.
+	if rest, ok := strings.CutPrefix(lower, protectionNamedPlayer); ok {
+		if id, err := uuid.Parse(rest); err == nil && id != uuid.Nil {
+			return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed, Player: id}, true
+		}
+		return ProtectionQuality{}, false
 	}
 	// CR 702.16i over CR 702.16k: a SET of players, each an opponent
 	// of whoever has the ability. Tested by controller like the one
@@ -581,7 +603,9 @@ func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
 	}
 	switch q.Kind {
 	case ProtectionQualityPlayer:
-		q.Player = c.ChosenPlayer
+		if q.Player == uuid.Nil {
+			q.Player = c.ChosenPlayer
+		}
 	case ProtectionQualityOpponents:
 		q.Holder = c.Effective().Controller
 		if q.Holder == uuid.Nil {
