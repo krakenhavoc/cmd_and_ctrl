@@ -4,6 +4,9 @@ import "github.com/google/uuid"
 
 // TargetRelation binds a clause to the single pick of an earlier clause
 // in the same mode occurrence. It is catalog data, re-derived on restore.
+// Each pick of the dependent clause is judged against that one anchor on
+// its own; only a kind that ManyPicks admits may pick more than one
+// object (#4862).
 type TargetRelation struct {
 	Slot int
 	Kind TargetRelationKind
@@ -25,7 +28,28 @@ const (
 	// permanents that share a card type"): both are on the battlefield and
 	// have at least one card type in common after the layers (CR 205.2a).
 	TargetSharesCardType TargetRelationKind = "shares_card_type"
+	// TargetInTargetPlayersGraveyard is "from their graveyard", where
+	// they are the earlier target PLAYER (Quandrix Command's "target
+	// player shuffles up to three target cards from their graveyard into
+	// their library", #4862). The anchor must be a player pick, and the
+	// card must be in that player's graveyard. It is the one kind whose
+	// dependent clause may pick several cards, each judged on its own: a
+	// card that has left the graveyard is dropped while the rest stay
+	// legal (CR 608.2b). An anchor that has become an illegal target still
+	// names the graveyard, so its cards stay legal; the card's body then
+	// does nothing with them, because an illegal player performs no action
+	// (the Memory's Journey ruling).
+	TargetInTargetPlayersGraveyard TargetRelationKind = "players_graveyard"
 )
+
+// ManyPicks reports whether a dependent clause of this kind may pick
+// more than one object. Such a kind must judge every pick against the
+// anchor alone, never against the clause's other picks, because the
+// copy and retarget walks refill its picks one at a time
+// (relatedTargetsCanFinishLocked).
+func (k TargetRelationKind) ManyPicks() bool {
+	return k == TargetInTargetPlayersGraveyard
+}
 
 // TargetRelationMatchesForEffect judges the relationship using the current
 // objects, at announcement and again at resolution (CR 601.2c, 608.2b).
@@ -65,6 +89,8 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 	case TargetControlledBySameController:
 		controller, ok := g.relationAnchorControllerLocked(anchor)
 		return ok && z.Kind == ZoneBattlefield && c.Controller == controller
+	case TargetInTargetPlayersGraveyard:
+		return anchor.Kind == TargetPlayer && anchor.ID != uuid.Nil && z.Kind == ZoneGraveyard && z.Owner == anchor.ID
 	case TargetSharesCardType:
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&

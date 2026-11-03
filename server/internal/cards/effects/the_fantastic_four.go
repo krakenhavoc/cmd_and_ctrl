@@ -66,13 +66,7 @@ func theFantasticFourTrigger() game.TriggeredAbility {
 				return damageToEachOpponent(ctx.Game, item, 3)
 			}),
 		ModeDoing("Put two +1/+1 counters on target creature.", TargetCreature("target creature"),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-			}),
+			PlusOneCountersOnTheModesTarget(2)),
 		ModeDoing("Draw a card.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)

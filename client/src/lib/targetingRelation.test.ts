@@ -45,4 +45,30 @@ describe("target clauses related to earlier picks", () => {
     state.picked = [{ kind: "card", id: "artifact-a" }];
     expect(advance(state)).toBeNull();
   });
+
+  // #4862: Quandrix Command's "target player shuffles up to three target
+  // cards from their graveyard": the anchor is a player, and the
+  // dependent clause takes up to three of that player's cards.
+  it("offers up to three cards from the chosen player's graveyard", () => {
+    const steps = stepsFor(
+      "player",
+      undefined,
+      [
+        { min: 1, max: 1, players: ["p0", "p1"] },
+        {
+          min: 0,
+          max: 3,
+          cards: ["p0-a", "p1-a", "p1-b", "p1-c", "p1-d"],
+          relation: { slot: 0, pairs: { p0: ["p0-a"], p1: ["p1-a", "p1-b", "p1-c", "p1-d"] } },
+        },
+      ],
+      0,
+    );
+    const state = openWalk(card, steps, {});
+    state.picked = [{ kind: "player", id: "p1" }];
+    const next = advance(state)!;
+    expect([...next.legal!.cards]).toEqual(["p1-a", "p1-b", "p1-c", "p1-d"]);
+    expect(next.min).toBe(0);
+    expect(next.max).toBe(3);
+  });
 });
