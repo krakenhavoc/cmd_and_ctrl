@@ -115,6 +115,7 @@ func keyedFrameSample() *ReplacementEvent {
 			},
 		},
 		landPlay: true, landPlayer: id("lander"),
+		landGains:          permissionCastGains{keywords: []string{"haste"}, abilities: []string{"grant-key"}, label: "Serra Paragon"},
 		entryControllerSet: true, entryControllerPrior: id("prior"),
 		zoneRoute: &zoneRoute{
 			CardID: id("card"), Dst: ZoneHand, DstOwner: id("owner"), Actor: id("actor"), ToBottom: true, Depth: 2,

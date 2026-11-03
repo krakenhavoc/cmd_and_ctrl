@@ -2017,6 +2017,14 @@ type CastTally struct {
 	// bumped, which is before EventCast. The mana cost, not a cost paid
 	// instead of it. Additive within the snapshot version.
 	XSpells int `json:"xSpells,omitempty"`
+	// InstantSorceryMaxManaValue is the greatest mana value among the
+	// instant and sorcery spells the player cast this turn (CR 202.3),
+	// read as each spell became cast like MaxManaValue (an X spell counts
+	// the X it was cast with, CR 202.3e): Rootha, Mastering the Moment's
+	// "the greatest mana value among instant and sorcery spells you've
+	// cast this turn". Zero when none was cast, which the creation of the
+	// token guards separately. Additive within the snapshot version.
+	InstantSorceryMaxManaValue int `json:"instantSorceryMaxManaValue,omitempty"`
 	// ManaSpent is the total mana the player spent to cast spells this
 	// turn (#3172), counted as each spell became cast off its payment
 	// record, so a cost reduction, X and every additional cost's mana all

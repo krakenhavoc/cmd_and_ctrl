@@ -832,6 +832,14 @@ type ReplacementEvent struct {
 	// the field existed.
 	landPlayer uuid.UUID
 
+	// landGains is the permission's "if you play a land this way, it
+	// gains ..." rider (Serra Paragon), carried across a pause so a
+	// shockland that waits on its life payment still gains it. Applied
+	// by executeEntryToBattlefieldLocked once the land has landed. The
+	// keywords and abilities only: a land has nothing to enter tapped
+	// that the replacement pipeline did not already say.
+	landGains permissionCastGains
+
 	// entryControllerSet and entryControllerPrior are an
 	// entry-controller effect's bookkeeping (ADR 0102 decision 2): the
 	// first time one re-stamps the entering card's controller, what the

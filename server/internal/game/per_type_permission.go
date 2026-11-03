@@ -62,6 +62,14 @@ const (
 	PermissionTypeLand         = "land"
 	PermissionTypePlaneswalker = "planeswalker"
 	PermissionTypeSorcery      = "sorcery"
+
+	// PermissionTypePermanent is a budget of ONE use however it is spent:
+	// a land played or a permanent spell cast of any type. Serra Paragon's
+	// "Once during each of your turns, you may play a land from your
+	// graveyard or cast a permanent spell ..." is the permission
+	// PerType: []string{PermissionTypePermanent}. Unlike the real card
+	// types it asks no question, since every play or cast has it.
+	PermissionTypePermanent = "permanent"
 )
 
 // PermanentPermissionTypes are CR 110.4's six permanent types, in CR
@@ -115,6 +123,8 @@ func (p *CastPermission) PermissionTypeChoices(c Card) []string {
 			continue
 		}
 		switch {
+		case t == PermissionTypePermanent:
+			out = append(out, t)
 		case land:
 			if t == PermissionTypeLand {
 				out = append(out, t)

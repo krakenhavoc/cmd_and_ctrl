@@ -378,6 +378,13 @@ type PermissionFilter struct {
 	// effective subtypes (any case): Herald of Amity's "an Aura spell"
 	// (#4834). Empty constrains nothing. Additive.
 	Subtype string `json:"subtype,omitempty"`
+
+	// PermanentOnly is "a land or a permanent spell" (Serra Paragon's
+	// "play a land ... or cast a permanent spell", #4834): a land card
+	// qualifies, and so does a card that is a permanent card, whatever
+	// its type; an instant or a sorcery does not. NonLandPermanentOnly
+	// is the same without the lands. Additive.
+	PermanentOnly bool `json:"permanentOnly,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -390,6 +397,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.NonLandPermanentOnly && (c.IsLand() || !c.IsPermanent()) {
+		return false
+	}
+	if f.PermanentOnly && !c.IsLand() && !c.IsPermanent() {
 		return false
 	}
 	if f.CreatureOnly && !c.IsCreature() {

@@ -1814,6 +1814,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// ADR 0102: whose land drop this spends, kept apart from
 			// Actor, which an entry-controller effect may rewrite.
 			landPlayer: playerID,
+			// A permission's "it gains ..." rider (Serra Paragon) for a
+			// land played through it; zero for anything else.
+			landGains: castGains,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -2374,6 +2377,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
+					tally.InstantSorceryMaxManaValue = mv
+				}
 			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {

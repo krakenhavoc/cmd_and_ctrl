@@ -234,6 +234,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
 
+	// Scriv, the Obligator's Contract: a white Aura token (#4834).
+	printedContractToken,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,
