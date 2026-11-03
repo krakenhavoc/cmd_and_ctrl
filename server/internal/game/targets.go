@@ -108,6 +108,15 @@ type TargetSource struct {
 	// changes which words a clause names and nothing else: a cost walk
 	// that carries it still excludes nothing and compares nothing.
 	text *TextWords
+
+	// casting says Object is a card being CAST (SourceCast), not a spell
+	// already on the stack or a permanent: CR 601.2a moves the card to
+	// the stack before CR 601.2c's targets are announced, so the card is
+	// never a legal target of its own clauses in the zone it is leaving
+	// (#4869; Memory's Journey's flashback ruling). Read only by
+	// excludesSource, which every announce check and legal-target list
+	// shares.
+	casting bool
 }
 
 // WithTrigger is this source judging a clause for the triggered ability
@@ -231,6 +240,16 @@ func (g *Game) costCandidatesLocked(playerID, sourceID uuid.UUID, spec *TargetSp
 // SourceObject is the ordinary case: a live spell or ability source.
 func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj}
+}
+
+// SourceCast is SourceObject for a card about to be cast from a zone
+// (hand, graveyard, exile, library, ...): the card is the spell's own
+// source (CR 702.16b), and it is not a candidate for its own targets,
+// because CR 601.2a has moved it to the stack by the time CR 601.2c
+// announces them (#4869). The cast gate, the view's cast stamps and the
+// bot's enumerator all build their source here, so they agree.
+func SourceCast(controller uuid.UUID, obj *Card) TargetSource {
+	return TargetSource{Controller: controller, Object: obj, casting: true}
 }
 
 // SourceSnapshot is the value-copy case (spell_copy.go, an LKI read).
@@ -1328,8 +1347,13 @@ func hiddenExileCard(zone ZoneKind, c *Card, chooser uuid.UUID) bool {
 // with no live source object — a cost payment, or a source that has
 // left (whose returned card is a new object, CR 400.7) — excludes
 // nothing here; a sacrifice cost drops the source at its own sites.
+//
+// A card being cast (SourceCast) is excluded from every clause, "another"
+// or not: CR 601.2a puts it on the stack before CR 601.2c announces its
+// targets, so a flashback spell's "target card in a graveyard" cannot
+// name the card itself (#4869).
 func (s *TargetSpec) excludesSource(src TargetSource, id uuid.UUID) bool {
-	return s != nil && s.ExcludeSource && src.Object != nil && src.Object.InstanceID == id
+	return s != nil && (s.ExcludeSource || src.casting) && src.Object != nil && src.Object.InstanceID == id
 }
 
 // abilityItemsBySeqLocked is every ACTIVATED or TRIGGERED item on the
