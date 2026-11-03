@@ -595,6 +595,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.CantBeAttacked == b.CantBeAttacked &&
 		a.CantBeSacrificed == b.CantBeSacrificed &&
 		a.CantTransform == b.CantTransform &&
+		a.AttackBlockPowerFloor == b.AttackBlockPowerFloor &&
 		sameStringSlice(a.Types, b.Types) &&
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
 		sameStringSlice(a.Supertypes, b.Supertypes) &&

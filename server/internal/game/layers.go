@@ -1238,6 +1238,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	g.foldDecayedLocked()
 	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
 	g.foldSuspectedCantBlockLocked()
+	// #4678: "can't attack or block unless its power is N or greater",
+	// read off the finished power (CR 613.11).
+	g.foldPowerFloorLocked()
 }
 
 // recordBasePowerLocked stamps every permanent's power as it stands
