@@ -550,6 +550,22 @@ type TargetSpec struct {
 	// naming no Actor. Build it with effects.ControlledByThatEventActor.
 	ControlledByEventActor bool
 
+	// ManaValueAtMostEventAmount is "with mana value X or less, where X is
+	// the amount of damage" the triggering event dealt (Venerable Warsinger:
+	// "return target creature card with mana value X or less from your
+	// graveyard to the battlefield, where X is the amount of damage this
+	// creature dealt to that player"). The bound is the triggering event's
+	// Amount, fixed when the trigger fires, so it is known when the target
+	// is chosen (CR 603.3d) and when it is re-checked on resolution (CR
+	// 608.2b).
+	//
+	// DATA, not a closure, for ControlledByThatPlayer's reasons: CardOK is
+	// handed the caster and the candidate, never the event. Judged in
+	// sourceAdmits; a walk with no fired trigger (a spell, an activation)
+	// admits NOTHING, never everything. Build it with
+	// effects.ManaValueAtMostTheEventAmount.
+	ManaValueAtMostEventAmount bool
+
 	// OpponentSlot is "for each opponent, … target … that player
 	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
 	// #4128): the clause belongs to the n-th seat (1-based) after the
@@ -1824,6 +1840,20 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 	return who != uuid.Nil && c.Controller == who
 }
 
+// eventAmountAdmits is ManaValueAtMostEventAmount's gate: true without the
+// flag, and with it only a candidate whose mana value is at most the
+// triggering event's Amount. No fired trigger admits nothing.
+func (s *TargetSpec) eventAmountAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.ManaValueAtMostEventAmount {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(c)
+	return ok && mv <= src.Trigger.Event.Amount
+}
+
 // chooserAdmits is ControlledByChooser's gate (#2055): true without the
 // flag; with it, a candidate controlled by the opponent bound as the
 // clause's chooser, or -- before one is bound -- by any player other
@@ -1861,7 +1891,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
