@@ -22,6 +22,7 @@ func init() {
 			Cost:    SacrificeThis(),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect:  firstTargetGainsUntilEndOfTurn(0, label, "indestructible"),
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
 		}},
 	})
 }
