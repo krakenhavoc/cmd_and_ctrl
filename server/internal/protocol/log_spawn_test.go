@@ -146,3 +146,24 @@ func TestHiddenZoneSpawnKeepsTheCount(t *testing.T) {
 		t.Errorf("text = %q, want it to say 3 cards", got)
 	}
 }
+
+// #4763: a spawned permanent enters through a zone move from no zone.
+// The spawn line already says it arrived, so that move writes no line
+// of its own (it would read "moved from  to the battlefield").
+func TestASpawnedPermanentsZoneMoveIsNotLogged(t *testing.T) {
+	g := buildActiveGame(t)
+	host := g.Seats[0]
+	ids, err := g.SpawnCards(host.ID, host.ID, game.ZoneBattlefield, game.Card{
+		Name: "Grizzly Bears", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
+	}, 1)
+	if err != nil || len(ids) != 1 {
+		t.Fatalf("SpawnCards: %v (%d spawned)", err, len(ids))
+	}
+	v := ViewOfGame(g)
+	findLog(t, v.Log, LogSpawn)
+	for _, e := range v.Log {
+		if e.Kind == LogZone && e.CardID == ids[0].String() {
+			t.Errorf("the spawn wrote a zone line too: %q", e.Text)
+		}
+	}
+}
