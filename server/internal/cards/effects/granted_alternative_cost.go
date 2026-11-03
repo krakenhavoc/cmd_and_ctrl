@@ -312,15 +312,7 @@ func PayLifeForASpellFromHandOnceEachOfYourTurns() game.GrantedAlternativeCost {
 // its owner reveals it as the first card they drew this turn. A land is
 // never offered one (a land is not a spell, CR 305.1).
 func MiracleZeroForNonlandCardsInYourHand() game.GrantedAlternativeCost {
-	return game.GrantedAlternativeCost{
-		Offer: game.AlternativeCost{
-			Key:           GrantedAltCostMiracle,
-			Label:         "Miracle {0}",
-			ManaCost:      "{0}",
-			RequiresGrant: true,
-		},
-		Zones: []game.ZoneKind{game.ZoneHand},
-	}
+	return grantedMiracleInYourHand("{0}", game.PermissionFilter{}, "")
 }
 
 // checkGrantedAlternativeCosts refuses a declaration the engine would

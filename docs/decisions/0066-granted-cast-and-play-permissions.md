@@ -4872,3 +4872,51 @@ the Menagerie and an instant-and-sorcery library permission with Bonecrusher Gia
 both castable), `legal/permission_per_face_test.go` (both faces in the move list in either order, every move accepted) and
 `protocol/permission_per_face_view_test.go` (both faces stamped castable in either order). Back-out: making
 `CastPermissionForFaceLocked` answer `CastPermissionForClaimLocked` fails all four.
+
+## Amendment — 2026-11-03 (#4685): a granted miracle at any price, over a filter, priced by its trigger
+
+#4455 gave the cards in a hand miracle from a permanent (Molecule Man, "Nonland cards in your hand have miracle {0}"). Lorehold,
+the Historian ("Each instant and sorcery card in your hand has miracle {2}") is the same keyword at another price, over a card
+filter, and it settles three questions the first card left open.
+
+**The static.** `effects.grantedMiracleInYourHand(cost, spells, text)` is the one declaration: a `GrantedAlternativeCost` under
+`granted-miracle` with `RequiresGrant`, `Zones` limited to the hand and a `PermissionFilter` over the cards it reaches
+(`InstantOrSorceryOnly` for Lorehold; none for Molecule Man, whose constructor now calls it). `SpellsText` words the ability
+row. The shape is not miracle's alone: a keyword with a cost given to the cards in one zone that match a filter is a
+`GrantedAlternativeCost` with `Zones` and `Spells`, which is what #4680's granted sneak for creature cards in a graveyard declares.
+
+**1. The trigger is its own permanent's.** `GrantedMiracleTrigger(cost)` fires only when the granting permanent's OWN static
+reaches the drawn card (`firstGrantedMiracleSourceLocked`). Before, it asked whether any granted miracle reached the card, so a
+Lorehold beside a Molecule Man revealed a creature card that only Molecule Man's "nonland" reaches.
+
+**2. The price rides the trigger (CR 113.7a: once triggered, an ability exists on the stack independently of its source).** The
+trigger's item carries its price (`EffectParams.Cost`), and its resolution puts it on the hand permission
+(`CastPermission.Cost`). `CastPermission.AlternativeCostFor` synthesises the miracle offer from that price, and
+`CastOffersForLocked` lists it for a hand card whatever hand permission it was handed, so the view and the bot see it even when
+the printed miracle's permission is the first one found. `ForClaim` keeps the price to the miracle claim: a hard cast of the
+same card pays its printed cost. So **Lorehold leaving after the card is revealed, before the trigger resolves, does not take the
+{2} cast away**, and neither does leaving between the resolution and the cast (the pass-closed window is the stand-in for a cast
+during the resolution, CR 608.2g, when the permanent could not have left). Lorehold gone *before* the card is drawn means no
+static, no trigger and no offer. This changes Molecule Man: `TestMoleculeManLeavingEndsTheGrant` asserted the opposite and is now
+`TestMoleculeManLeavingAfterTheRevealKeepsTheCast`. A permission stored before this amendment has no `Cost`, and is priced off
+the battlefield as before.
+
+**3. Two granters.** Two permanents granting the same miracle at the same price (Lorehold and a nonlegendary copy of it) give
+the card two identical instances of the keyword (CR 113.2c). The engine makes one reveal, from the first such permanent in
+battlefield order: a second reveal could only open the same {2} cast on the same object, and the offer list already dedupes by
+key. Two at different prices (Molecule Man's {0} and Lorehold's {2}) each fire, each at its own price, and as with a card that
+prints miracle beside a granted one, the trigger the holder orders last is the window they keep (passing priority to resolve the
+second closes the first's). A card that prints miracle keeps its printed offer under `miracle` beside the granted one.
+
+**Rules text.** The pinned Comprehensive Rules (20260925) could not be downloaded in the session that wrote this, and Scryfall's
+rulings for Lorehold, the Historian could not be fetched; the numbers above are ones this repository already cites. Recheck item
+2 against the card's rulings when they can be read.
+
+**Snapshot.** Nothing new is stored: `CastPermission.Cost` and `EffectParams.Cost` are existing fields, and the item's key
+(`miracle/granted-offer`) is unchanged.
+
+**Tests.** `cards/effects/lorehold_the_historian_test.go`: an instant (and a sorcery, in the draw step) drawn first is revealed
+and cast for exactly {2}, with the printed {R}{R}{R} not repriced; a creature card, the second card drawn, no Lorehold, an
+opponent's Lorehold and a declined reveal are refused; Lorehold destroyed after the reveal still leaves the {2} cast; two
+Loreholds make one reveal; beside Molecule Man a creature is revealed once and an instant twice; a draw on an opponent's turn;
+the bot's move list and the view; the loot in each opponent's upkeep, declined, and not in its controller's own.

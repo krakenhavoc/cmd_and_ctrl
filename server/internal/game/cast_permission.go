@@ -1331,12 +1331,23 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p == nil || p.AltCostKey == "" || card.IsLand() {
 		return nil
 	}
-	// A granted miracle's permission is only the RIGHT to claim the
-	// price Molecule Man's static derives (RequiresGrant); it names no
-	// price of its own, and the full mana cost this would synthesize
-	// under the key is not it.
+	// A granted miracle's permission (#4685) carries the price its trigger
+	// was made with, so the cast is offered at that price whether or not
+	// the permanent that granted the keyword is still there (CR 113.7a).
+	// One stored before the price rode the permission names none: it is
+	// only the RIGHT to claim the price the static derives (RequiresGrant),
+	// and the full mana cost this would synthesize under the key is not it.
 	if p.AltCostKey == AltCostKeyGrantedMiracle {
-		return nil
+		if p.Cost == "" {
+			return nil
+		}
+		return &AlternativeCost{
+			Key:            p.AltCostKey,
+			Label:          "Miracle " + p.Cost,
+			ManaCost:       p.Cost,
+			FromZone:       p.Zone,
+			FromPermission: true,
+		}
 	}
 	out := AlternativeCost{
 		Key:            p.AltCostKey,

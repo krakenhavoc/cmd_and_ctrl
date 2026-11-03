@@ -201,9 +201,10 @@ func TestMoleculeManTheSecondCardDrawnIsNotOffered(t *testing.T) {
 	}
 }
 
-// Molecule Man leaving ends the ability: a granted-but-uncast miracle can
-// no longer be claimed once it is gone.
-func TestMoleculeManLeavingEndsTheGrant(t *testing.T) {
+// The price rides the trigger (CR 113.7a, #4685): once the card is
+// revealed, Molecule Man leaving does not take the {0} cast away. Before
+// #4685 the price was read off the battlefield and this cast was refused.
+func TestMoleculeManLeavingAfterTheRevealKeepsTheCast(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[1]
 	mm := moleculeManOnTable(g, me.ID)
@@ -218,8 +219,8 @@ func TestMoleculeManLeavingEndsTheGrant(t *testing.T) {
 			t.Errorf("destroying Molecule Man: %v", err)
 		}
 	})
-	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedMiracle}); err == nil {
-		t.Error("the {0} miracle cast was accepted after Molecule Man left")
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedMiracle}); err != nil {
+		t.Errorf("the revealed card's {0} miracle cast after Molecule Man left: %v", err)
 	}
 }
 

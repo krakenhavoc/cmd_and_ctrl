@@ -15,7 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // granted keyword's own, a row of this permanent that fires for the first
 // card its controller drew this turn when it is a nonland card in their
 // hand. Both are derived from the battlefield on every query, so the
-// ability stops when Molecule Man leaves or loses its abilities. A card that
+// ability stops when Molecule Man leaves or loses its abilities; a card
+// already revealed keeps its {0} cast, whose price rides the trigger (CR
+// 113.7a, #4685). A card that
 // prints a miracle of its own has both: a second instance of the keyword
 // (CR 113.2c) with its own reveal, and the caster picks the cheaper.
 //
