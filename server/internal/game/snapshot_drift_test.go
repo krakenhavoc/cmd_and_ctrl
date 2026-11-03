@@ -932,6 +932,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
+	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard

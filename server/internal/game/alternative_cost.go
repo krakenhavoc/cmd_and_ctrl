@@ -352,6 +352,12 @@ type AlternativeCost struct {
 	// its owner's graveyard is replaced. Stamped onto the stack item.
 	ExileInsteadOfGraveyard bool
 
+	// BottomInsteadOfGraveyard is the same clause with the owner's
+	// library bottom as the destination (CastPermission.
+	// BottomInsteadOfGraveyard, Quintorius, Loremaster). Stamped onto the
+	// stack item.
+	BottomInsteadOfGraveyard bool
+
 	// WarpExile is warp's "exile this permanent at the beginning of
 	// the next end step, then you may cast it from exile on a later
 	// turn" (CR 702.185a).

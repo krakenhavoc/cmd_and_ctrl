@@ -684,6 +684,14 @@ type CastPermission struct {
 	// StackItem.ExileInsteadOfGraveyard.
 	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
 
+	// BottomInsteadOfGraveyard is the same clause with a different
+	// destination: "If that spell would be put into a graveyard, put it
+	// on the bottom of its owner's library instead" (Quintorius,
+	// Loremaster). Carried onto the stack item as
+	// StackItem.BottomInsteadOfGraveyard. Exclusive with
+	// ExileInsteadOfGraveyard on one permission.
+	BottomInsteadOfGraveyard bool `json:"bottomInsteadOfGraveyard,omitempty"`
+
 	// ExileInsteadOnlyInstantOrSorcery narrows ExileInsteadOfGraveyard
 	// to the spells that are instants or sorceries: "If an instant or
 	// sorcery spell cast this way would be put into your graveyard,
@@ -1390,6 +1398,7 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	out.ExileOnLeavingStack = p.ExileOnResolution
 	out.ExileInsteadOfGraveyard = p.ExileInsteadOfGraveyard &&
 		(!p.ExileInsteadOnlyInstantOrSorcery || card.IsInstant() || card.IsSorcery())
+	out.BottomInsteadOfGraveyard = p.BottomInsteadOfGraveyard && !out.ExileInsteadOfGraveyard
 	if out.Label == "" {
 		out.Label = p.AltCostKey
 	}

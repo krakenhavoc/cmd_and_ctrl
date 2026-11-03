@@ -7243,6 +7243,16 @@ OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
 // cast spends it), with ExileInsteadOnlyInstantOrSorcery narrowing the
 // exile to the spells the clause names (#4505).
 bilboCastFromGraveyard(g, item)                         // Bilbo, Thief in the Night
+// "You may cast that card this turn without paying its mana cost. If that
+// spell would be put into a graveyard, put it on the bottom of its owner's
+// library instead": a per-card ScopeCards permission at {0} under the
+// granted-cost key, at the card's own timing, with
+// CastPermission.BottomInsteadOfGraveyard (Quintorius, Loremaster, S79
+// SOC batch 11). It is ExileInsteadOfGraveyard with the owner's library
+// bottom as the destination, on the same three paths (resolving, countered,
+// fizzled) and as a CR 616.1 exit beside buyback and rebound; a permission
+// sets one of the two.
+```
 ```
 
 Five rules worth knowing before you write one. **The key is shared with

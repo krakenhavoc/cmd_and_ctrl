@@ -1893,6 +1893,7 @@ followUpParks[].then.permission.altCostKey	string
 followUpParks[].then.permission.anyColor	bool
 followUpParks[].then.permission.anyNumber	bool
 followUpParks[].then.permission.anyType	bool
+followUpParks[].then.permission.bottomInsteadOfGraveyard	bool
 followUpParks[].then.permission.budgetGroup	custom(uuid.UUID)
 followUpParks[].then.permission.cards	array
 followUpParks[].then.permission.cards[]	object
@@ -2492,6 +2493,7 @@ frozenEntries[].event.counterTail.then.permission.altCostKey	string
 frozenEntries[].event.counterTail.then.permission.anyColor	bool
 frozenEntries[].event.counterTail.then.permission.anyNumber	bool
 frozenEntries[].event.counterTail.then.permission.anyType	bool
+frozenEntries[].event.counterTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.counterTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission.cards	array
 frozenEntries[].event.counterTail.then.permission.cards[]	object
@@ -3070,6 +3072,7 @@ frozenEntries[].event.damageTail.each.each.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.each.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.each.permission.anyNumber	bool
 frozenEntries[].event.damageTail.each.each.permission.anyType	bool
+frozenEntries[].event.damageTail.each.each.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.each.each.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission.cards	array
 frozenEntries[].event.damageTail.each.each.permission.cards[]	object
@@ -3639,6 +3642,7 @@ frozenEntries[].event.damageTail.each.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.then.permission.anyNumber	bool
 frozenEntries[].event.damageTail.each.then.permission.anyType	bool
+frozenEntries[].event.damageTail.each.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.each.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission.cards	array
 frozenEntries[].event.damageTail.each.then.permission.cards[]	object
@@ -4376,6 +4380,7 @@ frozenEntries[].event.damageTail.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.then.permission.anyNumber	bool
 frozenEntries[].event.damageTail.then.permission.anyType	bool
+frozenEntries[].event.damageTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission.cards	array
 frozenEntries[].event.damageTail.then.permission.cards[]	object
@@ -5060,6 +5065,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.altCostKey	st
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyType	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cards	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cards[]	object
@@ -5701,6 +5707,7 @@ frozenEntries[].event.entryTail.batch.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.batch.then.permission.anyType	bool
+frozenEntries[].event.entryTail.batch.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.batch.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission.cards	array
 frozenEntries[].event.entryTail.batch.then.permission.cards[]	object
@@ -6270,6 +6277,7 @@ frozenEntries[].event.entryTail.keyed.permission.altCostKey	string
 frozenEntries[].event.entryTail.keyed.permission.anyColor	bool
 frozenEntries[].event.entryTail.keyed.permission.anyNumber	bool
 frozenEntries[].event.entryTail.keyed.permission.anyType	bool
+frozenEntries[].event.entryTail.keyed.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.keyed.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission.cards	array
 frozenEntries[].event.entryTail.keyed.permission.cards[]	object
@@ -6871,6 +6879,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.altCostKey	strin
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColor	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyNumber	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyType	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cards	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cards[]	object
@@ -7460,6 +7469,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.tokens.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.tokens.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.tokens.then.permission.anyType	bool
+frozenEntries[].event.entryTail.tokens.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission.cards	array
 frozenEntries[].event.entryTail.tokens.then.permission.cards[]	object
@@ -8437,6 +8447,7 @@ frozenEntries[].event.keywordActionTail.then.permission.altCostKey	string
 frozenEntries[].event.keywordActionTail.then.permission.anyColor	bool
 frozenEntries[].event.keywordActionTail.then.permission.anyNumber	bool
 frozenEntries[].event.keywordActionTail.then.permission.anyType	bool
+frozenEntries[].event.keywordActionTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.keywordActionTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission.cards	array
 frozenEntries[].event.keywordActionTail.then.permission.cards[]	object
@@ -9023,6 +9034,7 @@ frozenEntries[].event.lifeTail.each.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.each.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.each.then.permission.anyNumber	bool
 frozenEntries[].event.lifeTail.each.then.permission.anyType	bool
+frozenEntries[].event.lifeTail.each.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.lifeTail.each.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission.cards	array
 frozenEntries[].event.lifeTail.each.then.permission.cards[]	object
@@ -9595,6 +9607,7 @@ frozenEntries[].event.lifeTail.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.then.permission.anyNumber	bool
 frozenEntries[].event.lifeTail.then.permission.anyType	bool
+frozenEntries[].event.lifeTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.lifeTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.cards	array
 frozenEntries[].event.lifeTail.then.permission.cards[]	object
@@ -10938,6 +10951,7 @@ frozenEntries[].event.millTail.run.then.permission.altCostKey	string
 frozenEntries[].event.millTail.run.then.permission.anyColor	bool
 frozenEntries[].event.millTail.run.then.permission.anyNumber	bool
 frozenEntries[].event.millTail.run.then.permission.anyType	bool
+frozenEntries[].event.millTail.run.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.millTail.run.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission.cards	array
 frozenEntries[].event.millTail.run.then.permission.cards[]	object
@@ -11505,6 +11519,7 @@ frozenEntries[].event.millTail.then.permission.altCostKey	string
 frozenEntries[].event.millTail.then.permission.anyColor	bool
 frozenEntries[].event.millTail.then.permission.anyNumber	bool
 frozenEntries[].event.millTail.then.permission.anyType	bool
+frozenEntries[].event.millTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.millTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.cards	array
 frozenEntries[].event.millTail.then.permission.cards[]	object
@@ -12048,6 +12063,7 @@ frozenEntries[].event.stackItem.altCost	string
 frozenEntries[].event.stackItem.altCostExiles	bool
 frozenEntries[].event.stackItem.baseController	custom(uuid.UUID)
 frozenEntries[].event.stackItem.body	string
+frozenEntries[].event.stackItem.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.cantBeCountered	array
 frozenEntries[].event.stackItem.cantBeCountered[]	object
 frozenEntries[].event.stackItem.cantBeCountered[].label	string
@@ -12979,6 +12995,7 @@ frozenEntries[].event.tokenTail.then.permission.altCostKey	string
 frozenEntries[].event.tokenTail.then.permission.anyColor	bool
 frozenEntries[].event.tokenTail.then.permission.anyNumber	bool
 frozenEntries[].event.tokenTail.then.permission.anyType	bool
+frozenEntries[].event.tokenTail.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.tokenTail.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission.cards	array
 frozenEntries[].event.tokenTail.then.permission.cards[]	object
@@ -14326,6 +14343,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyType	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cards	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cards[]	object
@@ -14927,6 +14945,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyType	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cards	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cards[]	object
@@ -15494,6 +15513,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyType	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cards	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cards[]	object
@@ -16081,6 +16101,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyType	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cards	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cards[]	object
@@ -16733,6 +16754,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyType	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.bottomInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.budgetGroup	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cards	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cards[]	object
@@ -18456,6 +18478,7 @@ lastKnownStack[].item.altCost	string
 lastKnownStack[].item.altCostExiles	bool
 lastKnownStack[].item.baseController	custom(uuid.UUID)
 lastKnownStack[].item.body	string
+lastKnownStack[].item.bottomInsteadOfGraveyard	bool
 lastKnownStack[].item.cantBeCountered	array
 lastKnownStack[].item.cantBeCountered[]	object
 lastKnownStack[].item.cantBeCountered[].label	string
@@ -18922,6 +18945,7 @@ pausedModeWalk.item.altCost	string
 pausedModeWalk.item.altCostExiles	bool
 pausedModeWalk.item.baseController	custom(uuid.UUID)
 pausedModeWalk.item.body	string
+pausedModeWalk.item.bottomInsteadOfGraveyard	bool
 pausedModeWalk.item.cantBeCountered	array
 pausedModeWalk.item.cantBeCountered[]	object
 pausedModeWalk.item.cantBeCountered[].label	string
@@ -19238,6 +19262,7 @@ pausedResolutionTail.item.altCost	string
 pausedResolutionTail.item.altCostExiles	bool
 pausedResolutionTail.item.baseController	custom(uuid.UUID)
 pausedResolutionTail.item.body	string
+pausedResolutionTail.item.bottomInsteadOfGraveyard	bool
 pausedResolutionTail.item.cantBeCountered	array
 pausedResolutionTail.item.cantBeCountered[]	object
 pausedResolutionTail.item.cantBeCountered[].label	string
@@ -19548,6 +19573,7 @@ pausedStepWalk.item.altCost	string
 pausedStepWalk.item.altCostExiles	bool
 pausedStepWalk.item.baseController	custom(uuid.UUID)
 pausedStepWalk.item.body	string
+pausedStepWalk.item.bottomInsteadOfGraveyard	bool
 pausedStepWalk.item.cantBeCountered	array
 pausedStepWalk.item.cantBeCountered[]	object
 pausedStepWalk.item.cantBeCountered[].label	string
@@ -21217,6 +21243,7 @@ pendingChoices[].attackSplit.tail.permission.altCostKey	string
 pendingChoices[].attackSplit.tail.permission.anyColor	bool
 pendingChoices[].attackSplit.tail.permission.anyNumber	bool
 pendingChoices[].attackSplit.tail.permission.anyType	bool
+pendingChoices[].attackSplit.tail.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].attackSplit.tail.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.cards	array
 pendingChoices[].attackSplit.tail.permission.cards[]	object
@@ -21989,6 +22016,7 @@ pendingChoices[].copyWalk.item.altCost	string
 pendingChoices[].copyWalk.item.altCostExiles	bool
 pendingChoices[].copyWalk.item.baseController	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.body	string
+pendingChoices[].copyWalk.item.bottomInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.cantBeCountered	array
 pendingChoices[].copyWalk.item.cantBeCountered[]	object
 pendingChoices[].copyWalk.item.cantBeCountered[].label	string
@@ -23144,6 +23172,7 @@ pendingChoices[].diceRoll.then.permission.altCostKey	string
 pendingChoices[].diceRoll.then.permission.anyColor	bool
 pendingChoices[].diceRoll.then.permission.anyNumber	bool
 pendingChoices[].diceRoll.then.permission.anyType	bool
+pendingChoices[].diceRoll.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].diceRoll.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.cards	array
 pendingChoices[].diceRoll.then.permission.cards[]	object
@@ -24084,6 +24113,7 @@ pendingChoices[].divideShield.walk.each.permission.altCostKey	string
 pendingChoices[].divideShield.walk.each.permission.anyColor	bool
 pendingChoices[].divideShield.walk.each.permission.anyNumber	bool
 pendingChoices[].divideShield.walk.each.permission.anyType	bool
+pendingChoices[].divideShield.walk.each.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].divideShield.walk.each.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission.cards	array
 pendingChoices[].divideShield.walk.each.permission.cards[]	object
@@ -24653,6 +24683,7 @@ pendingChoices[].divideShield.walk.then.permission.altCostKey	string
 pendingChoices[].divideShield.walk.then.permission.anyColor	bool
 pendingChoices[].divideShield.walk.then.permission.anyNumber	bool
 pendingChoices[].divideShield.walk.then.permission.anyType	bool
+pendingChoices[].divideShield.walk.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].divideShield.walk.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission.cards	array
 pendingChoices[].divideShield.walk.then.permission.cards[]	object
@@ -25228,6 +25259,7 @@ pendingChoices[].libraryOrder.then.permission.altCostKey	string
 pendingChoices[].libraryOrder.then.permission.anyColor	bool
 pendingChoices[].libraryOrder.then.permission.anyNumber	bool
 pendingChoices[].libraryOrder.then.permission.anyType	bool
+pendingChoices[].libraryOrder.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].libraryOrder.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.cards	array
 pendingChoices[].libraryOrder.then.permission.cards[]	object
@@ -25853,6 +25885,7 @@ pendingChoices[].nameThen.permission.altCostKey	string
 pendingChoices[].nameThen.permission.anyColor	bool
 pendingChoices[].nameThen.permission.anyNumber	bool
 pendingChoices[].nameThen.permission.anyType	bool
+pendingChoices[].nameThen.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].nameThen.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.cards	array
 pendingChoices[].nameThen.permission.cards[]	object
@@ -26875,6 +26908,7 @@ pendingChoices[].pickTail.permission.altCostKey	string
 pendingChoices[].pickTail.permission.anyColor	bool
 pendingChoices[].pickTail.permission.anyNumber	bool
 pendingChoices[].pickTail.permission.anyType	bool
+pendingChoices[].pickTail.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].pickTail.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.cards	array
 pendingChoices[].pickTail.permission.cards[]	object
@@ -27488,6 +27522,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.altCostKey	
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.cards[]	object
@@ -28066,6 +28101,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.altCost
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyType	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cards	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cards[]	object
@@ -28635,6 +28671,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.altCost
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cards	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cards[]	object
@@ -29372,6 +29409,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.altCostKey	s
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.cards[]	object
@@ -30056,6 +30094,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cards	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cards[]	object
@@ -30697,6 +30736,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.altCost
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cards	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cards[]	object
@@ -31266,6 +31306,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.altCostKey	s
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyType	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cards	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cards[]	object
@@ -31867,6 +31908,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyType	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cards	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cards[]	object
@@ -32456,6 +32498,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.altCos
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cards	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cards[]	object
@@ -33433,6 +33476,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.altCo
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cards[]	object
@@ -34019,6 +34063,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.altCostKe
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cards	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cards[]	object
@@ -34591,6 +34636,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.altCostKey	str
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cards[]	object
@@ -35934,6 +35980,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.altCostKey
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cards	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cards[]	object
@@ -36501,6 +36548,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.altCostKey	str
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.millTail.then.permission.cards[]	object
@@ -37044,6 +37092,7 @@ pendingChoices[].replacementResume.event.stackItem.altCost	string
 pendingChoices[].replacementResume.event.stackItem.altCostExiles	bool
 pendingChoices[].replacementResume.event.stackItem.baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.body	string
+pendingChoices[].replacementResume.event.stackItem.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.cantBeCountered	array
 pendingChoices[].replacementResume.event.stackItem.cantBeCountered[]	object
 pendingChoices[].replacementResume.event.stackItem.cantBeCountered[].label	string
@@ -37975,6 +38024,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.altCostKey	st
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cards	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cards[]	object
@@ -39322,6 +39372,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cards	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cards[]	object
@@ -39923,6 +39974,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cards	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cards[]	object
@@ -40490,6 +40542,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.alt
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cards	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cards[]	object
@@ -41077,6 +41130,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.a
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cards	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cards[]	object
@@ -41729,6 +41783,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyType	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cards	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cards[]	object
@@ -42712,6 +42767,7 @@ pendingChoices[].scryThen.permission.altCostKey	string
 pendingChoices[].scryThen.permission.anyColor	bool
 pendingChoices[].scryThen.permission.anyNumber	bool
 pendingChoices[].scryThen.permission.anyType	bool
+pendingChoices[].scryThen.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].scryThen.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.cards	array
 pendingChoices[].scryThen.permission.cards[]	object
@@ -43326,6 +43382,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.altCostKey	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColor	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyNumber	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyType	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.budgetGroup	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission.cards	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.cards[]	object
@@ -45280,6 +45337,7 @@ pendingTriggers[].altCost	string
 pendingTriggers[].altCostExiles	bool
 pendingTriggers[].baseController	custom(uuid.UUID)
 pendingTriggers[].body	string
+pendingTriggers[].bottomInsteadOfGraveyard	bool
 pendingTriggers[].cantBeCountered	array
 pendingTriggers[].cantBeCountered[]	object
 pendingTriggers[].cantBeCountered[].label	string
@@ -46585,6 +46643,7 @@ resolving.item.altCost	string
 resolving.item.altCostExiles	bool
 resolving.item.baseController	custom(uuid.UUID)
 resolving.item.body	string
+resolving.item.bottomInsteadOfGraveyard	bool
 resolving.item.cantBeCountered	array
 resolving.item.cantBeCountered[]	object
 resolving.item.cantBeCountered[].label	string
@@ -47538,6 +47597,7 @@ seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
 seats[].castPermissions[].anyNumber	bool
 seats[].castPermissions[].anyType	bool
+seats[].castPermissions[].bottomInsteadOfGraveyard	bool
 seats[].castPermissions[].budgetGroup	custom(uuid.UUID)
 seats[].castPermissions[].cards	array
 seats[].castPermissions[].cards[]	object
@@ -51493,6 +51553,7 @@ stackMeta[].altCost	string
 stackMeta[].altCostExiles	bool
 stackMeta[].baseController	custom(uuid.UUID)
 stackMeta[].body	string
+stackMeta[].bottomInsteadOfGraveyard	bool
 stackMeta[].cantBeCountered	array
 stackMeta[].cantBeCountered[]	object
 stackMeta[].cantBeCountered[].label	string

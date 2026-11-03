@@ -568,6 +568,17 @@ type StackItem struct {
 	// on a copy.
 	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
 
+	// BottomInsteadOfGraveyard is "If that spell would be put into a
+	// graveyard, put it on the bottom of its owner's library instead"
+	// (Quintorius, Loremaster) as a fact about this stack object: the
+	// sibling of ExileInsteadOfGraveyard with the library's bottom as the
+	// destination. It replaces only a move to the owner's graveyard, on
+	// every path that would make one (resolving, being countered, or
+	// fizzling); a spell returned to a hand or put into a library goes
+	// there. Stamped at the cast from the permission that granted it
+	// (CR 400.7g). Never set on a copy. Added in the S79 SOC run.
+	BottomInsteadOfGraveyard bool `json:"bottomInsteadOfGraveyard,omitempty"`
+
 	// Uncopyable is "This ability can't be copied" as a fact about
 	// this stack object (#1574, ADR 0043 Decision 20). Set at
 	// activation from ActivatedAbilityShape.Uncopyable; a triggered
