@@ -100,13 +100,7 @@ func TestBroadcastBuildsOneFramePerViewer(t *testing.T) {
 func BenchmarkBroadcastWithSpectators(b *testing.B) {
 	g := buildTestGame(b, "bench")
 	h := NewHub(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	var clients []*Client
-	for _, p := range g.Seats {
-		clients = append(clients, broadcastClient(h, g.ID, p.ID, false))
-	}
-	for range 8 {
-		clients = append(clients, broadcastClient(h, g.ID, uuid.Nil, false))
-	}
+	clients := watchedTable(h, g)
 	view := protocol.ViewOfGame(g)
 	b.ReportAllocs()
 	b.ResetTimer()
