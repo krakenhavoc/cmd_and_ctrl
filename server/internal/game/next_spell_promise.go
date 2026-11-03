@@ -302,7 +302,7 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPr
 				CounterShieldMark{Source: s.Source, SourceName: s.Label, Label: np.Text})
 		}
 		if np.Counters > 0 && np.CounterKind != "" {
-			item.PromisedCounters = append(copyPromisedCounters(item.PromisedCounters),
+			addPromisedCounterLocked(item,
 				PromisedCounter{Kind: np.CounterKind, Count: np.Counters, Source: s.Source, SourceName: s.Label})
 		}
 		if np.FollowUp != "" {
