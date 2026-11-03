@@ -372,6 +372,11 @@ type PermissionFilter struct {
 	// ExiledWith is ExiledWithSource's derived payload: the source
 	// object the card must be linked to. Zero on every catalog entry.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
+
+	// Subtype is a subtype a qualifying card must have, read from its
+	// effective subtypes (any case): Herald of Amity's "an Aura spell"
+	// (#4834). Empty constrains nothing. Additive.
+	Subtype string `json:"subtype,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -414,6 +419,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
+		return false
+	}
+	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
 		return false
 	}
 	if f.ColorsAny != "" && !cardHasAnyColor(c, f.ColorsAny) {

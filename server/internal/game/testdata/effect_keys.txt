@@ -664,6 +664,7 @@ choose manifest-dread/pick
 choose resolution-cast/abstract-performance-rest-to-hand
 choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
+choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/looked-at-rest-to-bottom
 choose sticker/choose-object
@@ -1571,6 +1572,7 @@ tail fractal-harness/attach
 tail fractal-harness/fractal-created
 tail fractured-identity/after-exile
 tail from-the-catacombs/exile-instead
+tail furygale-flocking/attack-that-opponent-and-haste
 tail gandalf-shadows-foe/return-lands-tapped
 tail gemstone-mine/sacrifice-if-empty
 tail ghostly-flicker/return-under-your-control
@@ -1594,6 +1596,7 @@ tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
+tail herald-of-amity/after-exile
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
