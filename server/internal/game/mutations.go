@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/bits"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -2377,6 +2378,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
+			}
+			// Lattice Library's "first spell with {X} in its mana cost".
+			if strings.Contains(manaCostForValue(*sc), "{X}") {
+				tally.XSpells++
 			}
 			// #2743: the running mana value, with the X this spell was
 			// cast with. SourceCharacteristics already priced it that
