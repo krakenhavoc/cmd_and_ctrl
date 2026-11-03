@@ -290,6 +290,7 @@ var tokenTable = map[string]game.Card{
 	"8/8 blue Leviathan with hexproof":                                 {Name: "Leviathan", TypeLine: "Token Creature — Leviathan", Power: 8, Toughness: 8, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"6/5 blue Leviathan with hexproof":                                 {Name: "Leviathan", TypeLine: "Token Creature — Leviathan", Power: 6, Toughness: 5, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"8/8 blue Scion of the Deep":                                       {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
+	"8/8 red Lizard":                                                   {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 8, Toughness: 8, Colors: []string{"R"}},
 	"9/9 blue Kraken":                                                  {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
 	"4/4 black Legendary God Horror named The Atropal with deathtouch": {Name: "The Atropal", TypeLine: "Token Legendary Creature — God Horror", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"20/20 black Marit Lage":                                           {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
