@@ -42,7 +42,7 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Copy target spell. You may choose new targets for the copy.",
 				TargetSpell("target spell"),
-				seeDoubleCopySpell),
+				copyModeTargetSpellWithNewTargets),
 			ModeDoing("Create a token that's a copy of target creature.",
 				TargetCreature("target creature"),
 				seeDoubleTokenCopy),
@@ -61,20 +61,6 @@ var AnOpponentHasEightCardsInGraveyard = game.ModeCondition("an-opponent-has-eig
 		}
 		return false
 	})
-
-// seeDoubleCopySpell is the first bullet: copy the targeted spell, with
-// the CR 707.10c "you may choose new targets" prompt.
-func seeDoubleCopySpell(item *game.StackItem, ctx *Context, occurrence int) error {
-	refs := ctx.ModeTargets(occurrence)
-	if len(refs) == 0 {
-		return nil
-	}
-	return CopySpell{
-		StackID:          refs[0].ID,
-		Controller:       ctx.Controller(),
-		ChooseNewTargets: true,
-	}.Apply(ctx)
-}
 
 // seeDoubleTokenCopy is the second bullet: a token copy of the targeted
 // creature under the spell's controller.

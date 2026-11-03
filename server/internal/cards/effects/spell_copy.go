@@ -134,3 +134,20 @@ func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpe
 	preds := append([]CardPredicate{Or(Instant(), Sorcery())}, extra...)
 	return TargetSpell(label, preds...)
 }
+
+// copyModeTargetSpellWithNewTargets is a modal bullet's "Copy target
+// spell. You may choose new targets for the copy." (See Double,
+// Choreographed Sparks): copy the bullet's targeted spell under the
+// spell's controller, with the CR 707.10c re-target prompt. The bullet's
+// own target clause decides which spells qualify.
+func copyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
+	refs := ctx.ModeTargets(occurrence)
+	if len(refs) == 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:          refs[0].ID,
+		Controller:       ctx.Controller(),
+		ChooseNewTargets: true,
+	}.Apply(ctx)
+}

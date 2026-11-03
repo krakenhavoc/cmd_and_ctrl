@@ -42,7 +42,7 @@ func init() {
 		Modes: ChooseN("Choose one or both", 1, 2,
 			ModeDoing("Copy target instant or sorcery spell you control. You may choose new targets for the copy.",
 				instantOrSorcerySpell("target instant or sorcery spell you control", YouControl()),
-				choreographedSparksCopyInstant),
+				copyModeTargetSpellWithNewTargets),
 			ModeDoing("Copy target creature spell you control. The copy gains haste and \"At the beginning of the end step, sacrifice this token.\"",
 				TargetSpell("target creature spell you control", Creature(), YouControl()),
 				choreographedSparksCopyCreature),
@@ -57,20 +57,6 @@ func init() {
 			},
 		}},
 	})
-}
-
-// choreographedSparksCopyInstant is the first bullet: copy the targeted
-// instant or sorcery spell, with the CR 707.10c re-target prompt.
-func choreographedSparksCopyInstant(_ *game.StackItem, ctx *Context, occurrence int) error {
-	refs := ctx.ModeTargets(occurrence)
-	if len(refs) == 0 {
-		return nil
-	}
-	return CopySpell{
-		StackID:          refs[0].ID,
-		Controller:       ctx.Controller(),
-		ChooseNewTargets: true,
-	}.Apply(ctx)
 }
 
 // choreographedSparksCopyCreature is the second bullet: copy the targeted
