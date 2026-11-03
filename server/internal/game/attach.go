@@ -190,10 +190,15 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		Source: c.InstanceID,
 		CardID: c.InstanceID,
 		Target: host.ID,
+		// #4444: what it is, for the log's line and the client's cue, and
+		// whether it moved at all (CR 701.3b: onto the host it is already
+		// on, the effect does nothing).
+		Label:           attachmentKindOf(c),
+		AlreadyAttached: !moved,
 	})
 	// #2709: the attachment's "As this Equipment becomes attached to a
 	// creature, …" clause (Dinosaur Headdress). Not for a re-attach to
-	// the host it is already on: CR 701.3c, that attach does nothing,
+	// the host it is already on: CR 701.3b, that attach does nothing,
 	// so nothing became attached.
 	//
 	// Not for an off-battlefield host either (ADR 0154 decision 2): "As
@@ -202,6 +207,23 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.runAsAttachedLocked(attachmentID)
 	}
 	return nil
+}
+
+// attachmentKindOf names what an attaching permanent is, on
+// EventAttach's Label (#4444): "Aura" (CR 303.4), "Equipment" (CR 301.5)
+// or "Fortification" (CR 301.6), from its effective subtypes, and empty
+// for anything else. An Aura is named first: a bestowed Aura or a Licid
+// is an Aura however else it is typed.
+func attachmentKindOf(c *Card) string {
+	switch {
+	case c.IsAura():
+		return "Aura"
+	case c.HasSubtype("Equipment"):
+		return "Equipment"
+	case c.HasSubtype("Fortification"):
+		return "Fortification"
+	}
+	return ""
 }
 
 // attachmentLegalOnLocked asks CR 704.5m/n's question of the attachment

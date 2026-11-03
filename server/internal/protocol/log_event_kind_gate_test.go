@@ -149,9 +149,13 @@ var silentEventKinds = map[string]string{
 	"EventMonarchChanged":  "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
 
 	// --- visible board state -------------------------------------------
-	"EventTapCard":         silentBoardStateIsVisible,
-	"EventUntapCard":       silentBoardStateIsVisible,
-	"EventAttach":          silentBoardStateIsVisible,
+	"EventTapCard":   silentBoardStateIsVisible,
+	"EventUntapCard": silentBoardStateIsVisible,
+	// EventAttach left this list with #4444: an equip or an Aura
+	// landing is a play the table announces ("equip to the Bear"), and
+	// the client's attach cue reads its LogAttach line (ADR 0209 §3).
+	// Breaking the link stays silent: the board shows it, and an Aura
+	// that falls off is its graveyard LogZone line.
 	"EventUnattach":        silentBoardStateIsVisible,
 	"EventCopyApplied":     silentBoardStateIsVisible,
 	"EventCaseSolved":      silentBoardStateIsVisible,

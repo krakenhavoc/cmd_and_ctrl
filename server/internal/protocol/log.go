@@ -158,6 +158,18 @@ const (
 	LogNoBlocks LogKind = "no_blocks"
 	// LogToken — a token was created.
 	LogToken LogKind = "token"
+	// LogAttach — an Aura, Equipment or Fortification became attached to
+	// a permanent or a player (CR 701.3a): an equip, an Aura resolving
+	// onto its target or entering attached, a token created attached, an
+	// effect moving one. CardID is the attachment, Target the host card
+	// (TargetSeat a host player, a Curse), Seat the attachment's
+	// controller, and Label what it is: "Aura", "Equipment" or
+	// "Fortification" (empty for any other permanent). An attach onto the
+	// host it is already on does nothing (CR 701.3b) and has no line; a
+	// link breaking (unattach, the CR 704.5m/n state-based action) has
+	// none either, the board shows it. #4444: the client's attach cue
+	// reads it (ADR 0209 §3).
+	LogAttach LogKind = "attach"
 	// LogSacrifice — a permanent was sacrificed. Distinct from the
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
@@ -833,7 +845,8 @@ type LogEvent struct {
 	// Label is the PRINTED NAME of the thing an entry is about, when
 	// the kind needs one that is not a card: the special action as
 	// the card prints it ("Foretell {2}") on a LogSpecialAction
-	// entry, the counter kind ("+1/+1") on a LogCounters one.
+	// entry, the counter kind ("+1/+1") on a LogCounters one, what the
+	// attachment is ("Aura", "Equipment") on a LogAttach one (#4444).
 	//
 	// Redacted with the card's name, exactly as Choice is and for the
 	// same reason (#781, #1021). "Foretell {2}" prices a card the
@@ -1669,6 +1682,18 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventTokenCreated:
 		base.Kind = LogToken
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
+	case game.EventAttach:
+		// #4444. A re-attach to the same host did nothing (CR 701.3b).
+		if ev.AlreadyAttached {
+			return LogEvent{}, false
+		}
+		base.Kind = LogAttach
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		// A card host rides Target, a player host (a Curse) TargetSeat.
+		base.setTarget(ev.Target, seatOf)
 		return base, true
 
 	case game.EventPlayerEliminated:
@@ -2986,6 +3011,18 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s declares no blockers", actor)
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
+	case LogAttach:
+		// #4444: the verb the rules give each (CR 301.5a, 303.4b,
+		// 301.6). `target` is the host card, or the seat for a Curse.
+		switch e.Label {
+		case "Equipment":
+			return fmt.Sprintf("%s equips %s", card, target)
+		case "Aura":
+			return fmt.Sprintf("%s enchants %s", card, target)
+		case "Fortification":
+			return fmt.Sprintf("%s fortifies %s", card, target)
+		}
+		return fmt.Sprintf("%s is attached to %s", card, target)
 	case LogEliminated:
 		return renderEliminatedText(*e, actor, cardName)
 	case LogGameOver:
