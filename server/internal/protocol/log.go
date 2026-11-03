@@ -133,6 +133,14 @@ const (
 	// Consecutive mills by one player in one turn collapse into one
 	// entry, so "mill three" reads as one line naming all three.
 	LogMill LogKind = "mill"
+	// LogDiscard — a player discarded a card (CR 701.9a), one line per
+	// card: an effect's discard, the cleanup step's hand-size discard
+	// (CR 514.1) or a cost. `card_id` is the card, `seat` the player,
+	// `new_zone` where it went (the graveyard, or exile for madness,
+	// CR 702.35a), `cause` why ("effect", "cleanup", "cost") and
+	// `source` the card behind it. #4445: a discard had no line at all
+	// since #650 split it off the zone move, whose line it had been.
+	LogDiscard LogKind = "discard"
 	// LogSearch — a player searched a library (CR 701.23), or shuffled
 	// one (Label "shuffle"). Never names a card: what a search takes is
 	// not public until it is revealed, and a search that reveals was
@@ -725,6 +733,15 @@ type LogEvent struct {
 	// that deliberately carry no card reference (draws; any zone
 	// change with two hidden endpoints).
 	CardID string `json:"card_id,omitempty"`
+	// CardIDs is, on a LogMill entry, the milled cards the text names,
+	// in the order they were milled (#4445, ADR 0209 §3): the first
+	// logRevealNamesMax of them, so it is never longer than the list of
+	// names, and Amount is still the count. A milled card is in a
+	// graveyard, where its instance ID is on every viewer's ZoneView
+	// already, so the list is not redacted. It is what lets the client's
+	// mill cue slide the cards themselves into the graveyard. Empty on
+	// every other kind.
+	CardIDs []string `json:"card_ids,omitempty"`
 	// StackItemID is the stack item a LogResolve, LogFizzle or LogCounter
 	// entry is about, for a spell and an ability alike (ADR 0119 §3).
 	// For a spell it equals its card's ID; an ability's item has an ID of
@@ -741,7 +758,9 @@ type LogEvent struct {
 	// or Toxic Deluge shares one Batch and one Source, and "three or more
 	// permanents left in one Batch from one Source" is a board wipe.
 	// Empty when nothing resolving is behind the exit (combat damage, a
-	// cost, a sandbox move). Redacted for a viewer who may not identify
+	// cost, a sandbox move). On a LogDiscard entry it is the card whose
+	// effect or cost made the player discard, empty for the cleanup
+	// step's discard (#4445). Redacted for a viewer who may not identify
 	// the card, exactly as CardID is: the Batch still groups.
 	Source string `json:"source,omitempty"`
 	// Amount is the signed or counting payload: life delta, damage
@@ -771,8 +790,11 @@ type LogEvent struct {
 	// "other". A sacrifice is its own LogSacrifice line, whose kind says
 	// so, and the zone move after it is not repeated. The cause is the
 	// instruction, not the destination: read OldZone and NewZone for
-	// where the card went. Empty on every other kind, and on an
-	// elimination recorded before the engine named its cause.
+	// where the card went. On a LogDiscard entry it is why the card
+	// was discarded (game.DiscardCause, #4445): "effect", "cleanup"
+	// (the CR 514.1 hand-size discard) or "cost". Empty on every other
+	// kind, and on an elimination recorded before the engine named its
+	// cause.
 	Cause string `json:"cause,omitempty"`
 	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
 	// action — the "2" in "scry 2" — where Amount is how many cards
@@ -1339,6 +1361,9 @@ func (f *logFold) feed(events []game.Event) int {
 			if len(prev.revealIDs) < logRevealNamesMax {
 				prev.revealIDs = append(prev.revealIDs, e.revealIDs...)
 			}
+			if len(prev.CardIDs) < logRevealNamesMax {
+				prev.CardIDs = append(prev.CardIDs, e.CardIDs...)
+			}
 			continue
 		}
 		// A search that fetched a card, or revealed one on its way to
@@ -1356,10 +1381,15 @@ func (f *logFold) feed(events []game.Event) int {
 		// in place — EventCycle is emitted immediately after the cost
 		// is paid, so the zone line is the last one pushed — and keep
 		// the zone line's seq, the convention a collapsed run follows
-		// everywhere else in this function.
-		if prev := ring.last(); prev != nil && e.Kind == LogCycle && prev.Kind == LogZone &&
+		// everywhere else in this function. #4445: the line is the
+		// cost's LogDiscard now, and the cycling keeps where the card
+		// went, so the client's discard cue reads a cycling as the
+		// discard it is.
+		if prev := ring.last(); prev != nil && e.Kind == LogCycle &&
+			(prev.Kind == LogZone || prev.Kind == LogDiscard) &&
 			prev.CardID == e.CardID && game.ZoneKind(prev.NewZone) == game.ZoneGraveyard {
 			e.Seq = prev.Seq
+			e.OldZone, e.NewZone = prev.OldZone, prev.NewZone
 			*prev = e
 			continue
 		}
@@ -1395,6 +1425,9 @@ func (f *logFold) entries() []LogEvent {
 		}
 		if e.revealIDs != nil {
 			e.revealIDs = append([]string(nil), e.revealIDs...)
+		}
+		if e.CardIDs != nil {
+			e.CardIDs = append([]string(nil), e.CardIDs...)
 		}
 	}
 	return out
@@ -1733,7 +1766,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = 1
 		if ev.CardID != uuid.Nil {
 			base.revealIDs = []string{ev.CardID.String()}
+			base.CardIDs = []string{ev.CardID.String()}
 		}
+		return base, true
+
+	case game.EventDiscardCard:
+		// #4445: CR 701.9a, one line per card. The discard is the move
+		// out of the hand; NewZone is where the card really went (madness
+		// exiles it, CR 702.35a). A discarded commander goes to the
+		// graveyard like any card, and its owner's CR 903.9a choice is a
+		// zone line of its own after this one.
+		base.Kind = LogDiscard
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.OldZone = string(ev.OldZone)
+		base.NewZone = string(ev.NewZone)
+		base.Cause = string(cmp.Or(ev.DiscardCause, game.DiscardCauseEffect))
+		base.Source = uuidStringOrEmpty(ev.Source)
 		return base, true
 
 	case game.EventSearchLibrary:
@@ -2990,6 +3038,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s drew %d cards", actor, e.Amount)
 	case LogMill:
 		return renderMillText(*e, actor)
+	case LogDiscard:
+		return renderDiscardText(*e, actor, card)
 	case LogSearch:
 		return renderSearchText(*e, actor)
 	case LogLife:
@@ -3715,7 +3765,26 @@ func renderMillText(e LogEvent, actor string) string {
 	return fmt.Sprintf("%s milled %s", actor, list)
 }
 
-// renderSearchText words a LogSearch: "P1 searched their library",
+// renderDiscardText words a LogDiscard (#4445): "P1 discarded Swamp",
+// "… to hand size" for the cleanup step's discard (CR 514.1), and where
+// the card went when it was not the graveyard ("… into exile" for
+// madness).
+func renderDiscardText(e LogEvent, actor, card string) string {
+	suffix := ""
+	switch game.ZoneKind(e.NewZone) {
+	case game.ZoneGraveyard, "":
+	case game.ZoneLibrary:
+		suffix = " onto their library"
+	default:
+		suffix = " into " + prettyZone(e.NewZone)
+	}
+	if e.Cause == string(game.DiscardCauseCleanup) {
+		suffix += " to hand size"
+	}
+	return fmt.Sprintf("%s discarded %s%s", actor, card, suffix)
+}
+
+// renderSearchText words a LogSearch:"P1 searched their library",
 // "P1 searched P2's library and shuffled it" (a search that shuffled),
 // or "P1 shuffled their library" for a plain shuffle (Label "shuffle").
 // It never names a card.

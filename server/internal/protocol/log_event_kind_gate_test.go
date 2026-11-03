@@ -77,13 +77,16 @@ var silentEventKinds = map[string]string{
 	"EventRollToVisit":      "the LogRoll line of the d6 it rolled is the same fact, written one event earlier",
 	"EventVisitAttraction":  "the visit ability's own LogTrigger line names the Attraction; the event is what that trigger watches",
 	"EventLTB":              silentAlreadyToldAsAZoneMove,
-	"EventDiscardCard":      silentAlreadyToldAsAZoneMove,
-	"EventBecomesTarget":    "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
-	"EventTriggerPlaced":    "the trigger was already a LogTrigger line when it was queued, and the stack view shows it placed; the kind exists for abilities that trigger on a triggered ability going on the stack (Aboleth Spawn, #4092)",
-	"EventAbilityCopied":    "a copy of an ability is a stack item the table is looking at, and whatever made it (a Strionic Resonator, a Rings of Brighthearth) is a log line of its own; the kind exists for abilities that trigger on one going on the stack (Grip of Chaos, #4050)",
-	"EventSpellCopied":      "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
-	"EventBecomesBlocked":   "the LogBlock entry for the blocker is the same fact from the other side",
-	"EventVotesFinished":    "every ballot is already a LogVote line as it is cast (ADR 0146), or a secret vote's LogVotesRevealed line just before it (ADR 0180), and a \"whenever players finish voting\" ability is a LogTrigger line when it is queued; the event exists for those triggers' ballots",
+	// EventDiscardCard left this list with #4445: since #650 a discard
+	// emits it INSTEAD of a zone move, so the zone line this row said
+	// told it was never written, and a discard had no line. It is a
+	// LogDiscard line now, which the client's discard cue reads.
+	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
+	"EventTriggerPlaced":  "the trigger was already a LogTrigger line when it was queued, and the stack view shows it placed; the kind exists for abilities that trigger on a triggered ability going on the stack (Aboleth Spawn, #4092)",
+	"EventAbilityCopied":  "a copy of an ability is a stack item the table is looking at, and whatever made it (a Strionic Resonator, a Rings of Brighthearth) is a log line of its own; the kind exists for abilities that trigger on one going on the stack (Grip of Chaos, #4050)",
+	"EventSpellCopied":    "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
+	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
+	"EventVotesFinished":  "every ballot is already a LogVote line as it is cast (ADR 0146), or a secret vote's LogVotesRevealed line just before it (ADR 0180), and a \"whenever players finish voting\" ability is a LogTrigger line when it is queued; the event exists for those triggers' ballots",
 	// EventTrigger left this list with ADR 0119 §5: a trigger is a
 	// LogTrigger line when it is queued, and EventActivateAbility (#1184)
 	// a LogActivate line, or LogActivateAcross when a player reaches

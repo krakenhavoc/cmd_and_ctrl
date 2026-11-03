@@ -36,6 +36,12 @@
   // and this layer adds the clasp's spark (Equipment) or a soft ring of
   // light (Aura) over the host.
   //
+  // Cards milled or discarded into a graveyard (#4445) have left a library
+  // or a hand the board draws as a pile or a fan, so what moves is a copy
+  // again: each card slides from the owner's library pile (turning face up
+  // on the way) or is tossed from their hand onto their graveyard pile, a
+  // stagger apart, and five or more go as one sweep.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -109,6 +115,8 @@
     voidMotes,
     windCuts,
     wipeTiming,
+    pileShown,
+    PILE_SWEEP_MIN,
     type CounterTone,
     type EffectCue,
     type EffectKind,
@@ -188,6 +196,10 @@
     // tile starts, in the tile's own px; the cue is centred on the host,
     // and `seam` is where the two meet, from that centre.
     seam?: { x: number; y: number };
+    // Cards milled or discarded (#4445): each copy's art (null: its back),
+    // in order, and whether they go as one sweep.
+    slides?: (string | null)[];
+    sweep?: boolean;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -384,6 +396,10 @@
     // And an attachment (#4444): the board draws it under its host.
     attach_equip: null,
     attach_aura: null,
+    // And a mill or a discard (#4445): the cards are in the graveyard,
+    // where the board shows them, and the log names them.
+    mill: null,
+    discard: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -448,6 +464,11 @@
       const box = cue.stackItemID ? stackBoxes.get(cue.stackItemID) : undefined;
       if (!box) return;
       add({ ...base, x: box.x, y: box.y, width: box.w, height: box.h });
+      return;
+    }
+    // A mill names its cards only when the server says which (#4445).
+    if (cue.kind === "mill" || cue.kind === "discard") {
+      placePile(cue, base, motion, b);
       return;
     }
     const cardID = cue.cardID;
@@ -817,6 +838,93 @@
     });
   }
   const ATT_SPARKS = [0, 1, 2, 3, 4, 5];
+
+  // ---- Cards milled or discarded into a graveyard (#4445) ----
+
+  // A card copy's size when no pile on the board gives one.
+  const PILE_CARD = { w: 46, h: 64 };
+
+  // Whose graveyard a card is in now, as a seat ID.
+  function graveyardOwner(id: string): string | null {
+    for (const s of view.seats ?? []) {
+      if (s.graveyard?.cards.some((c) => c.instance_id === id)) return s.id;
+    }
+    return null;
+  }
+
+  function graveyardCard(id: string): CardView | null {
+    for (const s of view.seats ?? []) {
+      const c = s.graveyard?.cards.find((g) => g.instance_id === id);
+      if (c) return c;
+    }
+    return null;
+  }
+
+  // A pile's top card, where a copy lands or leaves from, else the pile.
+  function pileBox(zone: "graveyard" | "library", owner: string, b: DOMRect): CmdBox | null {
+    const sel = pileSelector(zone, owner);
+    return liveBox(`${sel} .thumb`, b) ?? liveBox(sel, b);
+  }
+
+  // A discarded card's own tile in its owner's hand, while the hand lets
+  // it go (the viewer's own hand; an opponent's shows only backs), never
+  // the graveyard pile's thumbnail of it; else the hand.
+  function inHand(id: string | undefined, owner: string, b: DOMRect): CmdBox | null {
+    if (!boardEl) return null;
+    const hand = `[data-hand-owner="${owner.replace(/["\\]/g, "\\$&")}"]`;
+    const el = id
+      ? findCardAnchor(boardEl, id, {
+          accept: (e) =>
+            cmdLive(e) && e.closest(hand) !== null && e.closest("[data-pile]") === null,
+        })
+      : null;
+    return el ? cmdBox(el, b) : liveBox(hand, b);
+  }
+
+  // The cards slide from the owner's library pile (a mill) or hand (a
+  // discard) to their graveyard pile, at the size of the graveyard's top
+  // card. With no graveyard pile on the board they go to the owner's
+  // seat, and with no start they drop onto it from just above; with
+  // neither end, or a still cue, nothing is drawn and the sound plays.
+  function placePile(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const ids = cue.cardIDs ?? [];
+    const owner =
+      (ids.length > 0 ? graveyardOwner(ids[0]) : null) ?? view.seats?.[cue.seat ?? -1]?.id ?? "";
+    if (!owner) return;
+    const to = pileBox("graveyard", owner, b.rect) ?? seatBox(owner, b.rect);
+    if (!to) return;
+    const from = (cue.kind === "mill"
+      ? pileBox("library", owner, b.rect)
+      : inHand(ids[0], owner, b.rect)) ?? { ...to, y: to.y - 90 };
+    const count = Math.max(1, cue.count ?? ids.length);
+    const sweep = count >= PILE_SWEEP_MIN;
+    const shown = pileShown(count);
+    // The pile's top card is card-sized; a seat is not.
+    const card = to.h > to.w * 1.2 ? { w: to.w, h: to.h } : PILE_CARD;
+    const slides: (string | null)[] = [];
+    for (let i = 0; i < shown; i++) {
+      const c = ids[i] ? graveyardCard(ids[i]) : null;
+      slides.push(c && !showsCardBack(c) ? cardImageURL(c, "small") : null);
+    }
+    add({
+      ...base,
+      cardID: ids[0] ?? "",
+      x: from.x,
+      y: from.y,
+      width: card.w,
+      height: card.h,
+      fly: { x: to.x - from.x, y: to.y - from.y },
+      count,
+      slides,
+      sweep,
+    });
+  }
   // Where an Aura's glints twinkle, as shares of the host's box from its centre.
   const ATT_GLINTS = [
     [-0.44, -0.34],
@@ -1579,6 +1687,65 @@
           <i class="att-glint" style:left={`${gx * f.width}px`} style:top={`${gy * f.height}px`}
           ></i>
         {/each}
+      </div>
+    {:else if f.kind === "mill" || f.kind === "discard"}
+      <!-- #4445: the cards slide from the library (turning face up) or are
+           tossed from the hand onto the graveyard pile, a stagger apart;
+           five or more go as one sweep, with a streak behind them. -->
+      {@const path = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect={f.kind}
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-count={f.count}
+        data-effect-sweep={f.sweep ? "" : undefined}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#if f.sweep}
+          <div
+            class="pile-streak"
+            data-kind={f.kind}
+            style:width={`${Math.max(12, f.width * 0.5)}px`}
+            style:height={`${path.len}px`}
+            style:rotate={`${path.turn}deg`}
+          ></div>
+        {/if}
+        {#each f.slides ?? [] as src, i (i)}
+          <div class="copy pile-card">
+            {#if f.kind === "mill" && src}
+              <div class="flip">
+                <div class="face" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+                  <img {src} alt="" decoding="async" draggable="false" />
+                </div>
+                <div
+                  class="face back"
+                  style:width={`${f.width}px`}
+                  style:height={`${f.height}px`}
+                ></div>
+              </div>
+            {:else}
+              <div
+                class="face"
+                class:back-only={!src}
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+              >
+                {#if src}<img {src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+        <div
+          class="pile-dust"
+          data-kind={f.kind}
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${f.width * 1.7}px`}
+          style:height={`${f.height * 1.1}px`}
+        ></div>
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -2415,6 +2582,52 @@
     clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
     filter: drop-shadow(0 0 4px rgba(200, 160, 255, 0.95));
     opacity: 0;
+  }
+
+  /* Cards milled or discarded (#4445): plain card copies, a card back
+     where the art is not known, a soft puff of dust where they land on
+     the graveyard pile (parchment for a mill, ash for a discard), and a
+     sweep's faint streak. */
+  .face.back-only {
+    background:
+      url("/card-back-small.jpg") center / cover no-repeat,
+      radial-gradient(ellipse at 50% 50%, #5a3a22 0%, #2b1a10 60%, #160d08 100%);
+  }
+  .pile-dust {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(238, 226, 200, 0.55) 0%,
+      rgba(214, 198, 166, 0.28) 40%,
+      transparent 70%
+    );
+    filter: blur(2px);
+    opacity: 0;
+  }
+  .pile-dust[data-kind="discard"] {
+    background: radial-gradient(
+      ellipse,
+      rgba(214, 214, 222, 0.5) 0%,
+      rgba(160, 162, 176, 0.24) 40%,
+      transparent 70%
+    );
+  }
+  .pile-streak {
+    position: absolute;
+    left: 0;
+    top: 0;
+    /* Its foot on the start, pointing at the graveyard (the inline rotate). */
+    translate: -50% -100%;
+    transform-origin: 50% 100%;
+    border-radius: 999px;
+    background: linear-gradient(to top, rgba(230, 216, 186, 0) 0%, rgba(236, 226, 204, 0.5) 100%);
+    filter: blur(3px);
+    opacity: 0;
+  }
+  .pile-streak[data-kind="discard"] {
+    background: linear-gradient(to top, rgba(190, 192, 204, 0) 0%, rgba(206, 208, 220, 0.45) 100%);
   }
 
   /* A counterspell: the stack item cracks and its glass flies out. */

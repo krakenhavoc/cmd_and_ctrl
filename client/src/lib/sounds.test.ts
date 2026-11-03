@@ -210,6 +210,8 @@ describe("sounds", () => {
       "commander_return", // #4443, silent
       "attach_equip", // #4444, silent
       "attach_aura", // #4444, silent
+      "mill", // #4445, silent
+      "discard", // #4445, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -281,6 +283,24 @@ describe("sounds", () => {
         expect(played()).toHaveLength(0);
       }
       for (const name of ["attach_equip", "attach_aura"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for mill and discard until their files land, and each itself once a take is listed (#4445)", async () => {
+      const m = await load();
+      for (const name of ["mill", "discard"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["mill", "discard"] as const) {
         tick();
         m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
         m.play(name);

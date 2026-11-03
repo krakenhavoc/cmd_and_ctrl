@@ -18,6 +18,9 @@ import {
   EFFECT_SHORT_CAP_MS,
   EFFECT_SOUND,
   EFFECT_STILL_HOLD_MS,
+  PILE_SHOWN_MAX,
+  PILE_STAGGER,
+  PILE_SWEEP_MIN,
   WIPE_CARD_MS,
   WIPE_CARD_VOLUME,
   WIPE_MIN,
@@ -41,6 +44,9 @@ import {
   exitKind,
   headlines,
   isEffectsMode,
+  pileBaseMs,
+  pileKind,
+  pileShown,
   planEffects,
   sacrificeBeats,
   shatterPlan,
@@ -55,6 +61,7 @@ import {
   type PlanContext,
 } from "./tableEffects";
 import { SOUND_CATEGORY, SOUND_MANIFEST } from "./sounds";
+import { pileWindows } from "./effectCueMotion";
 import type { LogEvent } from "./protocol";
 
 const ctx = (over: Partial<PlanContext> = {}): PlanContext => ({
@@ -169,7 +176,8 @@ describe("cue selection", () => {
   });
 
   it("an entry that is not a battlefield exit is none", () => {
-    expect(kinds([zone("a", "graveyard", {}, "hand")])).toEqual([]);
+    // Into a graveyard from a hand is a discard's cue now (#4445).
+    expect(kinds([zone("a", "exile", {}, "hand")])).toEqual([]);
     expect(kinds([zone("a", "stack", {}, "hand")])).toEqual([]);
   });
 
@@ -618,6 +626,164 @@ describe("an Equipment is attached, or an Aura enchants a permanent (#4444)", ()
         });
       }
       expect(cueTiming({ kind, weight: "full", delayMs: 0 }, "still", 1)).toEqual({
+        delayMs: 0,
+        ms: EFFECT_STILL_HOLD_MS,
+      });
+    }
+  });
+});
+
+describe("cards are milled or discarded into a graveyard (#4445)", () => {
+  // A mill is one `mill` entry per player (`amount` the count, `card_ids`
+  // the cards the text names); a discard is one `discard` entry per card.
+  const mill = (seat: number, ids: string[], extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "mill",
+    turn: 3,
+    seat,
+    amount: ids.length,
+    card_ids: ids,
+    text: "",
+    ...extra,
+  });
+  const discard = (seat: number, id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "discard",
+    turn: 3,
+    seat,
+    card_id: id,
+    old_zone: "hand",
+    new_zone: "graveyard",
+    cause: "effect",
+    text: "",
+    ...extra,
+  });
+
+  it("a mill is one cue with its cards and its count, and plays the mill sound", () => {
+    const p = plan([mill(1, ["x", "y", "z"], { batch: 4 })]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.cardIDs, q.count, q.seat, q.batch])).toEqual([
+      ["mill", "x", ["x", "y", "z"], 3, 1, 4],
+    ]);
+    expect(cueSound(p.cues[0])).toEqual({ name: "mill", volume: 1 });
+    expect(EFFECT_SOUND.mill).toBe("mill");
+    expect(EFFECT_SOUND.discard).toBe("discard");
+    // A big mill names its first five; its count is all of them.
+    const big = plan([mill(0, ["a", "b", "c", "d", "e"], { amount: 9, batch: 5 })]);
+    expect(big.cues[0].count).toBe(9);
+    // A server that predates card_ids still says how many.
+    const old = plan([mill(0, [], { amount: 2, card_ids: undefined, batch: 6 })]);
+    expect(old.cues.map((q) => [q.kind, q.cardID, q.count])).toEqual([["mill", null, 2]]);
+  });
+
+  it("a hand's discards in one batch are one cue, and one sound however many hands", () => {
+    // A Windfall: each player discards their hand.
+    const p = plan([
+      discard(0, "a1", { batch: 8 }),
+      discard(0, "a2", { batch: 8 }),
+      discard(1, "b1", { batch: 8 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.seat, q.cardIDs, q.count])).toEqual([
+      ["discard", 0, ["a1", "a2"], 2],
+      ["discard", 1, ["b1"], 1],
+    ]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["discard", null]);
+    expect(headlines(p)).toBe(1);
+    // Two batches are two moments.
+    const q = plan([discard(0, "a", { batch: 9 }), discard(0, "b", { batch: 10 })]);
+    expect(q.cues.map((c) => cueSound(c)?.name)).toEqual(["discard", "discard"]);
+    // A mill and a discard in one batch (a looting that mills) are two sounds.
+    const r = plan([mill(0, ["x"], { batch: 11 }), discard(0, "a", { batch: 11 })]);
+    expect(r.cues.map((c) => cueSound(c)?.name)).toEqual(["mill", "discard"]);
+  });
+
+  it("the cleanup step's discard and a cost's are discards; a cycling is one too", () => {
+    expect(kinds([discard(0, "a", { cause: "cleanup", batch: 3 })])).toEqual(["discard"]);
+    expect(kinds([discard(0, "a", { cause: "cost", batch: 3 })])).toEqual(["discard"]);
+    const cycle: LogEvent = {
+      seq: ++seq,
+      kind: "cycle",
+      turn: 3,
+      seat: 0,
+      card_id: "monitor",
+      old_zone: "hand",
+      new_zone: "graveyard",
+      text: "",
+    };
+    expect(plan([cycle]).cues.map((q) => [q.kind, q.cardIDs])).toEqual([["discard", ["monitor"]]]);
+  });
+
+  it("a card put into a graveyard from a library or a hand is the same cue; from the battlefield it is a death", () => {
+    // Surveil's graveyard half, an explore's nonland, a sandbox move.
+    expect(pileKind(zone("s", "graveyard", { seat: 0 }, "library"))).toBe("mill");
+    expect(pileKind(zone("h", "graveyard", { seat: 0 }, "hand"))).toBe("discard");
+    expect(pileKind(zone("d", "graveyard"))).toBeNull();
+    expect(kinds([zone("d", "graveyard", { cause: "destroy" })])).toEqual(["destroy"]);
+    // Two cards surveilled into one graveyard are one cue.
+    const p = plan([
+      zone("s1", "graveyard", { seat: 0, batch: 2 }, "library"),
+      zone("s2", "graveyard", { seat: 0, batch: 2 }, "library"),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardIDs, q.count])).toEqual([["mill", ["s1", "s2"], 2]]);
+  });
+
+  it("only into a graveyard: a madness card discarded into exile, or a library to exile, is no cue", () => {
+    expect(kinds([discard(0, "m", { new_zone: "exile" })])).toEqual([]);
+    expect(kinds([zone("x", "exile", { seat: 0 }, "library")])).toEqual([]);
+    expect(kinds([mill(0, [], { amount: 0 })])).toEqual([]);
+  });
+
+  it("a milled or discarded commander that goes home is both cues: into the graveyard, then home", () => {
+    // CR 903.9a: it is put into its graveyard first, and its owner's
+    // choice is a zone entry after that, in the same batch or a later one.
+    const c = ctx({ isCommander: (id) => id === "cmdr" });
+    const p = plan(
+      [
+        mill(0, ["cmdr"], { batch: 3 }),
+        zone("cmdr", "command", { seat: 0, batch: 3 }, "graveyard"),
+        discard(1, "cmdr2", { batch: 4 }),
+      ],
+      c,
+    );
+    expect(p.cues.map((q) => [q.kind, cueSound(q)?.name ?? null])).toEqual([
+      ["mill", "mill"],
+      ["commander_return", "commander_return"],
+      ["discard", "discard"],
+    ]);
+  });
+
+  it("each card's slide is as long as the others, the next a stagger in, and the last lands as the cue ends", () => {
+    expect(pileWindows(1)).toEqual([{ a: 0, b: 1 }]);
+    const w = pileWindows(4);
+    const len = w[0].b - w[0].a;
+    for (const [i, x] of w.entries()) {
+      expect(x.b - x.a).toBeCloseTo(len, 9);
+      expect(x.a).toBeCloseTo(i * PILE_STAGGER * len, 9);
+    }
+    expect(w[3].b).toBeCloseTo(1, 9);
+    // A sweep's cards go together.
+    expect(pileWindows(3, true)).toEqual([
+      { a: 0, b: 1 },
+      { a: 0, b: 1 },
+      { a: 0, b: 1 },
+    ]);
+  });
+
+  it("slides up to four cards one after another, and five or more as one sweep", () => {
+    expect([1, 2, 4, 5, 9].map(pileShown)).toEqual([1, 2, PILE_SHOWN_MAX, 3, 3]);
+    expect(PILE_SWEEP_MIN).toBe(5);
+    expect(pileBaseMs("mill", 1)).toBe(EFFECT_BASE_MS.mill);
+    expect(pileBaseMs("discard", 1)).toBe(EFFECT_BASE_MS.discard);
+    expect(pileBaseMs("mill", 4)).toBeCloseTo(EFFECT_BASE_MS.mill * (1 + 3 * PILE_STAGGER), 6);
+    expect(pileBaseMs("mill", 7)).toBeCloseTo(EFFECT_BASE_MS.mill * 1.25, 6);
+    // Every length fits the Short cap, so Full and Short play the same.
+    for (const kind of ["mill", "discard"] as const) {
+      for (const n of [1, 2, 3, 4, 5, 40]) {
+        const full = cueTiming({ kind, weight: "full", delayMs: 0, count: n }, "full", 1);
+        expect(full.ms).toBeCloseTo(pileBaseMs(kind, n), 6);
+        expect(full.ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS);
+        expect(cueTiming({ kind, weight: "full", delayMs: 0, count: n }, "short", 1)).toEqual(full);
+      }
+      expect(cueTiming({ kind, weight: "full", delayMs: 0, count: 3 }, "still", 1)).toEqual({
         delayMs: 0,
         ms: EFFECT_STILL_HOLD_MS,
       });
