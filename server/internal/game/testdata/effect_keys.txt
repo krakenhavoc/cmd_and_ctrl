@@ -46,6 +46,7 @@ body ascend/exile-listed-unless-citys-blessing
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
+body basri-ket/soldiers-tapped-and-attacking
 body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
@@ -694,6 +695,7 @@ condition attach/this-aura-left
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
+condition attack/nontoken-creatures-attack
 condition attack/that-creature-attacks-the-monarch
 condition attack/that-creature-unblocked
 condition attack/you-attack
