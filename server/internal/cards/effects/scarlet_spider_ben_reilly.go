@@ -33,7 +33,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		AlternativeCosts: []game.AlternativeCost{{
-			Key:          scarletSpiderWebSlinging,
+			Key:          AltCostKeyWebSlinging,
 			Label:        "Web-slinging {R}{G}",
 			ManaCost:     "{R}{G}",
 			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), b751Tapped()),
@@ -48,7 +48,7 @@ func init() {
 					return false
 				}
 				key, _ := g.EntryAltCostForEffect(ev)
-				return scarletSpiderCastUsingWebSlinging(key)
+				return PaidWebSlinging(key)
 			},
 			Replace: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) error {
 				_, refs := g.EntryAltCostForEffect(ev)
@@ -60,16 +60,4 @@ func init() {
 			Label: "Scarlet Spider, Ben Reilly: Sensational Save",
 		}},
 	})
-}
-
-// scarletSpiderWebSlinging is web-slinging's offer key, the one every
-// printed web-slinging card uses. An on-disk identity.
-const scarletSpiderWebSlinging = "web_slinging"
-
-// scarletSpiderCastUsingWebSlinging is "was cast using web-slinging": the
-// card's own offer, or web-slinging a permanent grants it ("granted-web-
-// slinging", Peter Parker // Amazing Spider-Man's key, which grants it to
-// legendary spells such as this one).
-func scarletSpiderCastUsingWebSlinging(key string) bool {
-	return key == scarletSpiderWebSlinging || key == "granted-web-slinging"
 }
