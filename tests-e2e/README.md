@@ -12,6 +12,7 @@ tests-e2e/
 ├── package.json
 ├── tsconfig.json
 └── tests/
+    ├── arrival-ring-4711.spec.ts # #4711: a "new" ring on an opponent's arrival frames what is on screen of its card, follows it when the back row moves with no frame or resize, and its tag meets no group label, at 1366x768, 1280x720 and 1920x1080
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
     ├── away-seat-3337.spec.ts # ADR 0177: a closed page shows offline, the host is offered a way on after the away time (1 minute here): keep waiting, a bot, the player taking it back; and conceding for them
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
