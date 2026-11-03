@@ -165,6 +165,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	switch kind {
 	case choiceOutsideCollection:
 		return st.valueTakenFromCollection(p.cfg, ch, cp.CardNames)
+	case choiceModePick:
+		// #4674: what the chosen bullets do (mode_pick.go).
+		return p.modePickValue(st, ch, cp.Modes)
 	case choicePayAmount:
 		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:

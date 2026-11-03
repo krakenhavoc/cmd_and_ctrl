@@ -936,6 +936,15 @@ type PendingChoiceView struct {
 	ModeUsedOptions []string `json:"mode_used_options,omitempty"`
 	ModeUsedIndexes []int    `json:"mode_used_indexes,omitempty"`
 	ModeNotChosen   string   `json:"mode_not_chosen,omitempty"`
+	// ModeBullets is, parallel to ModeOptions, what each offered bullet
+	// does (#4674): its declared purpose and, for a targeted bullet, its
+	// legal targets as the trigger would be judged right now, with the
+	// clause's `harmful` flag. The shape a modal card's `modes.options`
+	// entries have. A bot prices a bullet from it before choosing; the
+	// browser does not read it. The chooser's alone, as a card's
+	// `legal_targets` are the asking seat's (#1172). Absent when the
+	// prompt's ability could not be found.
+	ModeBullets []ModeOptionView `json:"mode_bullets,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -8480,13 +8489,41 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i), Purpose: viewOfPurpose(o.Purpose), Pawprints: o.Pawprints}
-		if o.Targets != nil {
-			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
-			ov.Clauses = viewOfClauses(g, src, o.Targets)
-		}
+		ov := viewOfModeOption(g, src, o)
+		ov.Used = slices.Contains(used, i)
 		out.Options = append(out.Options, ov)
+	}
+	return out
+}
+
+// viewOfModeOption projects one bullet: its label, cost, purpose and,
+// when it targets, its legal set from `src`'s point of view. Caller must
+// hold g.mu.
+func viewOfModeOption(g *game.Game, src game.TargetSource, o game.ModeOption) ModeOptionView {
+	ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Purpose: viewOfPurpose(o.Purpose), Pawprints: o.Pawprints}
+	if o.Targets != nil {
+		ov.TargetMode = o.Targets.Mode
+		ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+		ov.Clauses = viewOfClauses(g, src, o.Targets)
+	}
+	return ov
+}
+
+// viewOfModePickBullets is a mode_pick's `mode_bullets` (#4674): each
+// offered bullet, in the prompt's order (`options` is its
+// ModeOptionIndex), judged from the trigger's own source. Nil when an
+// index is out of the spec's range, so a bullet is never mispaired with
+// its label. Caller must hold g.mu.
+func viewOfModePickBullets(g *game.Game, src game.TargetSource, ms *game.ModeSpec, options []int) []ModeOptionView {
+	if len(options) == 0 {
+		return nil
+	}
+	out := make([]ModeOptionView, 0, len(options))
+	for _, i := range options {
+		if i < 0 || i >= len(ms.Options) {
+			return nil
+		}
+		out = append(out, viewOfModeOption(g, src, ms.Options[i]))
 	}
 	return out
 }
@@ -10083,6 +10120,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ModeUsedOptions = append([]string(nil), c.ModeUsedLabel...)
 			v.ModeUsedIndexes = append([]int(nil), c.ModeUsedIndex...)
 			v.ModeNotChosen = modeMemoryWire(c.ModeNotChosen)
+			if src, ms, ok := g.ModePickSpecLocked(c); ok {
+				v.ModeBullets = viewOfModePickBullets(g, src, ms, c.ModeOptionIndex)
+			}
 		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
@@ -11336,6 +11376,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// #3817: so is the trigger's card identity, which names the
 			// card behind a prompt only its chooser answers.
 			out[i].SharedTargetKey = ""
+			// #4674: and a mode_pick's bullets, whose legal targets are
+			// the chooser's answer (#1172).
+			out[i].ModeBullets = nil
 		}
 		// ADR 0198: a collection pick is the chooser's. Nothing in it is
 		// hidden information (it is the card database), but what a player

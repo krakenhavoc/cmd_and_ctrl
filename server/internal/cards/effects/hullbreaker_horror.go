@@ -63,7 +63,7 @@ func hullbreakerHorrorTrigger() game.TriggeredAbility {
 			TargetSpell("target spell you don't control", OpponentControls()),
 			hullbreakerHorrorBounceSpell),
 		ModeDoing("Return target nonland permanent to its owner's hand.",
-			TargetPermanent("target nonland permanent", Nonland()),
+			Harmful(TargetPermanent("target nonland permanent", Nonland())),
 			BounceTheModesTarget),
 	)
 	return t

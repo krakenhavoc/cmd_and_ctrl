@@ -34,7 +34,7 @@ func init() {
 	crew := WhenThisEnters("The Ruinous Wrecking Crew — choose up to X",
 		func(*game.Game, *game.StackItem) error { return nil })
 	crew.Modes = ChooseUpToX(
-		discardThenDrawBullet("Discard a card, then draw a card."),
+		ModeWithPurpose(discardThenDrawBullet("Discard a card, then draw a card."), game.Purpose{Draws: 1, Discards: 1}),
 		ModeDoing("Target opponent loses 2 life.", TargetPlayer("target opponent", Opponent()),
 			func(_ *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
@@ -43,7 +43,7 @@ func init() {
 				}
 				return GainLife{Player: t.ID, Amount: -2}.Apply(ctx)
 			}),
-		ModeDoing("Destroy target token.", TargetPermanent("target token", IsTokenPredicate()),
+		ModeDoing("Destroy target token.", Harmful(TargetPermanent("target token", IsTokenPredicate())),
 			DestroyTheModesTarget),
 		ModeDoing("Each player sacrifices a creature of their choice.", nil,
 			func(_ *game.StackItem, ctx *Context, _ int) error {
