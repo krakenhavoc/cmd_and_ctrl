@@ -51296,6 +51296,7 @@ spellsCastThisTurn{}	object
 spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
+spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string

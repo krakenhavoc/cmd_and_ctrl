@@ -4898,7 +4898,13 @@ does not carry ("you sacrificed a *Food* this turn") ranges over
 old upkeep-bounded scans missed the untap step, which is where #1009
 finally bit. A counter the tally
 should carry and does not is a field on `PlayerTurnTally` plus one case
-in `turnTallyListener`, not a new scan.
+in `turnTallyListener`, not a new scan. Questions about the spells a
+player cast this turn read `g.CastTallyFor(player)` instead, written
+in `CastSpell` as each spell becomes cast (CR 601.2i) and read off the
+spell on the stack: `SpellColorsCast()` is "colors among spells you've
+cast this turn" (First Family) and `CardTypesCast()` is "card type
+among spells you've cast this turn" (April O'Neil, Hacktivist, #4677;
+kindred counts, a copy and a land played do not).
 
 **Never anchor a "this turn" question on `EventBeginUpkeep`.** The turn
 begins at `onTurnBeganLocked`, which resets the tally *before* the untap
