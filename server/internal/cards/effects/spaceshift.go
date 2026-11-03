@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Spaceshift — {1}{U} Instant (Marvel Super Heroes Commander, #4455):
 //
 //	"Exile target artifact or creature, then return that card to the
@@ -19,11 +17,6 @@ func init() {
 		Name:         "Spaceshift",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target artifact or creature", Or(Artifact(), Creature())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
-				return nil
-			}
-			return Flicker{Target: item.Targets[0].ID, PlusOneCounters: 1}.Apply(ctx)
-		},
+		OnResolve:    socB22FlickerFirstTargetWithACounter,
 	})
 }

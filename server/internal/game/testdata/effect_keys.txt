@@ -961,6 +961,7 @@ option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
 option option-pick/development-opponent-round-3
+option option-pick/dinas-guidance-placed
 option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
 option option-pick/emergent-ultimatum-opponent
@@ -1492,6 +1493,8 @@ tail dice/maddening-hex-burn-and-move
 tail dice/reckless-endeavor-rolled
 tail dice/roll-to-visit
 tail dimir-doppelganger/after-exile
+tail dinas-guidance/after-hand
+tail dinas-guidance/found
 tail distant-memories/offer
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
