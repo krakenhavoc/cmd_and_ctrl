@@ -67,21 +67,7 @@ func hollowmurkSultaiApplies(ev game.Event, source *game.Card, _ game.Characteri
 // (no kind named) still has to walk the log back to the same
 // (target, kind) pair to tell a placement from a removal.
 func hollowmurkCounterWasPlaced(ev game.Event, g *game.Game) bool {
-	before := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if (prev.Kind == game.EventETB || prev.Kind == game.EventTokenCreated) && prev.CardID == ev.Target {
-			break
-		}
-		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
-			before = prev.Amount
-			break
-		}
-	}
-	return ev.Amount > before
+	return ev.Amount > g.CounterCountBeforeForEffect(ev)
 }
 
 // hollowmurkAbzanBody is the Abzan body.
