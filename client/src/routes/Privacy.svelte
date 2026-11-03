@@ -152,11 +152,11 @@
     },
     {
       what: "Bug reports, ideas and questions",
-      details: `What you type, your name and role, the table id and turn, and, for a bug or a question, the browser’s recent log. Up to ${F.bugImages} screenshots you attach, which can include a picture of the table if you tick the box for it. Your hand, face-down cards you can look at, library tops and any open prompt are covered in it. A bug report or a question also keeps the table’s public game log, and a bug report a copy of its replay, both readable by server admins only.`,
+      details: `What you type, your name and role, the table id and turn, and, for a bug or a question, the browser’s recent log. An idea carries a copy of your settings instead (display, sound, animation, accessibility, shortcut and gameplay preferences), unless you untick it; the copy leaves out the hints you have dismissed and the card and prompt text beside your automatic answers, so it names no one. Up to ${F.bugImages} screenshots you attach, which can include a picture of the table if you tick the box for it. Your hand, face-down cards you can look at, library tops and any open prompt are covered in it. A bug report or a question also keeps the table’s public game log, and a bug report a copy of its replay, both readable by server admins only.`,
       why: "So the problem can be understood and fixed.",
       howLong: `The screenshots and the saved copies are removed after ${F.bugArtifactDays} days, or sooner, oldest first, if the store passes ${F.bugArtifactMiB} MiB. They are not tied to your account. The GitHub issue stays (see below).`,
       source:
-        "lobby/bugreport.go bugKinds; bugstore/store.go DefaultRetention, DefaultMaxStoreBytes",
+        "lobby/bugreport.go bugKinds, scrubBugSettings; bugstore/store.go DefaultRetention, DefaultMaxStoreBytes",
     },
     {
       what: "Server logs and counts",
@@ -192,7 +192,7 @@
     },
     {
       who: "GitHub",
-      what: `Bug reports, ideas, questions and deck requests are filed as issues in this project’s public repository. They carry your display name, what you wrote, and the browser log. A screenshot is hosted by this server and shown through GitHub’s image proxy, so GitHub’s servers fetch it; the link stops working after ${F.bugArtifactDays} days. Anyone can read a public issue.`,
+      what: `Bug reports, ideas, questions and deck requests are filed as issues in this project’s public repository. They carry your display name, what you wrote, the browser log, and for an idea the copy of your settings. A screenshot is hosted by this server and shown through GitHub’s image proxy, so GitHub’s servers fetch it; the link stops working after ${F.bugArtifactDays} days. Anyone can read a public issue.`,
     },
     {
       who: "The model provider, when model bots are on",

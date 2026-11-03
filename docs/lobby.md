@@ -5195,7 +5195,7 @@ burst of 3, then ~1 report / 30 s per client IP.
 }
 ```
 
-`kind`, `description`, `context`, and `log` (and every field inside
+`kind`, `description`, `context`, `log` and `settings` (and every field inside
 them) are optional. `title` is capped at 200 characters,
 `description` at 5000. Context strings are clipped server-side and
 never trusted; the server adds the reporter identity, server time,
@@ -5204,11 +5204,11 @@ and `User-Agent` itself.
 **Report kinds.** `kind` is what the reporter is telling us. It picks
 the GitHub label and which artifacts the report collects:
 
-| `kind` | label | client log | pinned replay | pinned game log |
-|---|---|---|---|---|
-| `bug` (default) | `bug` | yes | yes | yes |
-| `idea` | `enhancement` | no | no | no |
-| `question` | `question` | yes | no | yes |
+| `kind` | label | client log | pinned replay | pinned game log | settings copy |
+|---|---|---|---|---|---|
+| `bug` (default) | `bug` | yes | yes | yes | no |
+| `idea` | `enhancement` | no | no | no | yes |
+| `question` | `question` | yes | no | yes | no |
 
 Screenshots are attached for every kind. The client names a **kind**,
 never a label: the mapping lives in the server so a session with a
@@ -5216,8 +5216,21 @@ report button can't attach (or create) arbitrary labels on the
 tracker. An omitted or empty `kind` means `bug` — that is what every
 client built before the field existed sends, and refusing those would
 break the button mid-game. Any other value is a 400 listing the
-accepted kinds. A `log` sent with a kind that doesn't take one is
-dropped, not refused.
+accepted kinds. A `log` or `settings` sent with a kind that doesn't
+take one is dropped, not refused.
+
+`settings` is the client's settings object (`client/src/lib/settings.ts`,
+#4103). It is inlined in a collapsed block of the issue, which is public,
+so the server keeps preferences only. It keeps the groups `__version`,
+`audio`, `animations`, `display`, `gameplay`, `shortcuts`,
+`accessibility` and `help`, and drops anything else. It drops
+`help.seen`, and drops `card` and `prompt` from each
+`gameplay.autoAnswers` rule. It redacts every key and string, replaces
+backticks, and clips each string to 256 bytes. A copy that is not a JSON
+object, or is over 32 KiB or more than four levels deep (the account
+copy's rule), is left out. So is one whose rendered form is over 24 KiB.
+In either case the footer says `Settings: not attached (…)`. A bad copy
+never costs the report.
 
 The title prefix is `[in-app] ` for every kind. The kind lives in the
 label (and in a `Kind:` row in the issue body), not in the title, so

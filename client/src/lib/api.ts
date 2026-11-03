@@ -15,6 +15,7 @@ import {
   type BugLogEntry,
   type BugReportContext,
   type BugReportKind,
+  type ReportSettings,
 } from "./bugReport";
 import { splicePaymentsWire } from "./targeting";
 import { redactSecrets } from "./redact";
@@ -1478,6 +1479,9 @@ export interface BugReportDraft {
   description: string;
   context?: BugReportContext;
   log?: BugLogEntry[];
+  // settings is an idea's copy of the reporter's settings (#4103),
+  // already scrubbed by settingsForReport. The server scrubs it again.
+  settings?: ReportSettings;
   images?: File[];
 }
 
@@ -1507,6 +1511,7 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
       draft.log && draft.log.length > 0
         ? draft.log.map((e) => ({ ...e, text: redactSecrets(e.text) }))
         : undefined,
+    settings: draft.settings,
   };
   let body: BodyInit;
   if (draft.images && draft.images.length > 0) {
