@@ -2776,6 +2776,14 @@ type PlayerView struct {
 	// Drives the S15 ManaPoolPips UI. Added in S15 sub-PR 2.
 	ManaPool []ManaPoolRun `json:"mana_pool,omitempty"`
 
+	// ManaAbilities are the mana abilities this PLAYER has, bound to no
+	// card (#4885): Channel's "until end of turn, any time you could
+	// activate a mana ability, you may pay 1 life. If you do, add {C}."
+	// The owner activates one with activate_mana_ability carrying
+	// `player_ability` set to its `source`. Public, like the spell that
+	// granted it. Absent for every seat that has none.
+	ManaAbilities []PlayerManaAbilityView `json:"mana_abilities,omitempty"`
+
 	// Emblems are the emblems this player has (CR 114), in creation
 	// order. Absent for every seat that has none, which is nearly
 	// every seat in nearly every game.
@@ -10685,6 +10693,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
+		ManaAbilities:       viewOfPlayerManaAbilities(g, p.ID),
 		Emblems:             emblems,
 		Companion:           companion,
 		Sideboard:           sideboard,

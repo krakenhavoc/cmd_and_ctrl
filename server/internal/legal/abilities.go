@@ -2291,6 +2291,8 @@ func (e *enumerator) manaMoves() {
 			e.manaMovesForSource(src, zone.kind, restricted)
 		}
 	}
+	// #4885: the mana abilities the seat has as a PLAYER (Channel).
+	e.playerManaMoves()
 }
 
 // manaMovesForSource enumerates one card's mana abilities, from the

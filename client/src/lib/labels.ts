@@ -841,6 +841,18 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number",
   }),
+  playerManaAbility: dynamicLabel({
+    stem: " life, add ",
+    match: "contains",
+    shape: "<source>: pay <N> life, add <mana>",
+    make: (source: string, life: number, produced: string) =>
+      `${source}: pay ${life} life, add ${produced}`,
+    example: ["Channel", 1, "{C}"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}PlayerManaAbilities.svelte`],
+    doc: "a mana ability the viewer has as a player, bound to no card (#4885, Channel): beside the mana pool on your own panel until end of turn; each press pays the life and adds the mana, greyed when the life can't be paid (CR 119.4)",
+  }),
   payLifeForMana: label({
     name: "Pay life for {B}…",
     kind: "text",

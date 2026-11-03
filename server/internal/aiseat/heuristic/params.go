@@ -184,6 +184,12 @@ type mulliganParams struct {
 	HandSize int `json:"hand_size"`
 }
 
+// playerManaParams is the one field that tells a player mana ability's
+// activate_mana_ability move (#4885) from a card's.
+type playerManaParams struct {
+	PlayerAbility string `json:"player_ability"`
+}
+
 type discardSelectionParams struct {
 	CardIDs []string `json:"card_ids"`
 }

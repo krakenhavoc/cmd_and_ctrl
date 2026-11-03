@@ -308,6 +308,16 @@ type PlayerStatic struct {
 	// derived rules (Pramikon, Sky Rampart).
 	AttackDirection AttackDirection `json:"attackDirection,omitempty"`
 
+	// ManaAbility is a granted player mana ability for a duration:
+	// Channel's "until end of turn, any time you could activate a mana
+	// ability, you may pay 1 life. If you do, add {C}." #4885,
+	// player_mana_ability.go. The FOURTEENTH payload, told apart by
+	// being non-nil; it carries no Keyword. Its READERS are
+	// PlayerManaAbilitiesLocked (the view and the enumerator) and
+	// ActivatePlayerManaAbility. Written once, never mutated, so the
+	// shallow copy clonePlayerStatics makes shares it safely.
+	ManaAbility *PlayerManaAbility `json:"manaAbility,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

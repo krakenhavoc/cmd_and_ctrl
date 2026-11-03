@@ -2602,6 +2602,19 @@ export interface IgnorableEffectView {
   sacrifice_ids: string[];
 }
 
+// PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
+// (#4885): Channel's "until end of turn, any time you could activate a
+// mana ability, you may pay 1 life. If you do, add {C}." The owner sends
+// `activate_mana_ability { player_ability: source }` (no card_id).
+// `usable` is false while the life can't be paid (CR 119.4).
+export interface PlayerManaAbilityView {
+  source: string;
+  label: string;
+  life_cost: number;
+  produced: string;
+  usable: boolean;
+}
+
 export interface PlayerView {
   id: string;
   name: string;
@@ -2782,6 +2795,9 @@ export interface PlayerView {
   // (CR 106.4), so this is absent / empty in the common case
   // outside an active cast sequence.
   mana_pool?: ManaPoolRun[];
+  // #4885: the mana abilities this seat has as a player (Channel), each
+  // one button beside its mana pool. Absent for a seat with none.
+  mana_abilities?: PlayerManaAbilityView[];
   // #623 (CR 114): the emblems this seat has, in creation order.
   // Absent for a seat with none, which is nearly every seat.
   //

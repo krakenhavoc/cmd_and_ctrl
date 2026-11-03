@@ -608,6 +608,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// nothing and empties at the next step boundary (CR 106.4).
 		// Priced negative so it is only ever reached when literally
 		// nothing else is on offer.
+		if pm := decode[playerManaParams](m.Params); pm.PlayerAbility != "" {
+			// #4885: a player mana ability (Channel's "pay 1 life: add
+			// {C}") spends life to float mana the bot's auto-tapped
+			// casts cannot use. No rule here makes that worth it, so
+			// it is priced below a free float and never taken.
+			return p.cfg.ManaFloat - 1, "pay life to float mana"
+		}
 		return p.cfg.ManaFloat, "float mana"
 
 	case legal.KindAttack, legal.KindBlock:

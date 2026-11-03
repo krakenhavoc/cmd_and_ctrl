@@ -90,6 +90,7 @@
   import CommandStrip from "./CommandStrip.svelte";
   import CompanionSlot from "./CompanionSlot.svelte";
   import IgnoreEffects from "./IgnoreEffects.svelte";
+  import PlayerManaAbilities from "./PlayerManaAbilities.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import Tombstone from "./Tombstone.svelte";
@@ -1338,6 +1339,10 @@
            Renders nothing unless an effect bears on you. -->
       {#if !spectator}
         <IgnoreEffects seatID={seat.id} effects={seat.ignorable_effects} {view} {sendAction} />
+        <!-- #4885: the mana abilities you have as a player (Channel's
+             "pay 1 life: add {C}" until end of turn). Renders nothing
+             unless you have one. -->
+        <PlayerManaAbilities seatID={seat.id} abilities={seat.mana_abilities} {sendAction} />
       {/if}
     {/if}
     {#if !isSelf}

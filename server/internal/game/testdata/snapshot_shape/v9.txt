@@ -51146,6 +51146,9 @@ seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeFloorOne	bool
 seats[].statics[].lifeTotalLocked	bool
+seats[].statics[].manaAbility	object
+seats[].statics[].manaAbility.lifeCost	number:int
+seats[].statics[].manaAbility.produced	string
 seats[].statics[].nextSpell	object
 seats[].statics[].nextSpell.active	bool
 seats[].statics[].nextSpell.affinityFor	string

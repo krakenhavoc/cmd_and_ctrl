@@ -209,9 +209,11 @@ func loopSourceName(g *game.Game, a Action) string {
 		CardID       string `json:"card_id"`
 		InstanceID   string `json:"instance_id"`
 		SourceCardID string `json:"source_card_id"`
+		// #4885: a player mana ability is named by its granting object.
+		PlayerAbility string `json:"player_ability"`
 	}
 	_ = json.Unmarshal(a.Params, &p)
-	for _, s := range []string{p.CardID, p.InstanceID, p.SourceCardID} {
+	for _, s := range []string{p.CardID, p.InstanceID, p.SourceCardID, p.PlayerAbility} {
 		if id, err := uuid.Parse(s); err == nil {
 			if name := g.LoopPublicName(id); name != "" {
 				return name
