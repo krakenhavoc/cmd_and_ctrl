@@ -97,6 +97,12 @@ var knownUnmatchedTokens = map[string]string{
 	// only printed Robot Hero token card (tmsc) is 2/1, so no printing
 	// matches a 1/1; the template follows the card's oracle text (#4455).
 	"1/1 colorless Robot Hero artifact with flying": "the only printed Robot Hero token card is 2/1; Shuri, Vibranium Technologist's oracle text says 1/1",
+
+	// Blessed Sanctuary (Jumpstart) creates "a 2/2 white Unicorn creature
+	// token". The dump has no Unicorn token card of that size and colour,
+	// so no printing matches; the template follows the card's oracle text
+	// (#4893).
+	"2/2 white Unicorn": "no 2/2 white Unicorn token card was ever printed; Blessed Sanctuary's oracle text says 2/2 white",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
