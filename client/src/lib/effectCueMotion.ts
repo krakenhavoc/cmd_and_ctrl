@@ -13,7 +13,7 @@
 
 import { EASE, run, type Run } from "./motion";
 import { SHATTER_BREAK, SHATTER_BREAK_LIGHT, sacrificeBeats } from "./tableEffects";
-import type { EffectKind, WipeTone } from "./tableEffects";
+import type { CounterTone, EffectKind, WipeTone } from "./tableEffects";
 
 export interface CueMotion {
   kind: EffectKind | "wipe" | "signature";
@@ -33,6 +33,8 @@ export interface CueMotion {
   fromDestroy?: boolean;
   board: { w: number; h: number };
   tone: WipeTone;
+  /** A counter cue's counters (#4442): which way its tick moves. */
+  counterTone?: CounterTone;
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -92,6 +94,9 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "token_create":
       tokenGlow(node, f);
+      return;
+    case "counters":
+      counterPulse(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -794,6 +799,46 @@ function tokenGlow(node: HTMLElement, f: CueMotion): void {
       { offset: 0, scale: "0.7", opacity: 0 },
       { offset: 0.4, scale: "1", opacity: 0.85 },
       { offset: 1, scale: "1.2", opacity: 0 },
+    ],
+    span(f, 0, 1, EASE.power2Out),
+  );
+}
+
+// ---- Counters are put on a permanent (#4442): a pulse and a tick ----
+
+/** How far a counter cue's tick travels, px. */
+export const COUNTER_TICK_PX = 14;
+
+/**
+ * counterPulse rings the permanent's power/toughness badge (or its
+ * counter's pip) once, brightening and fading, while a small tick above
+ * it rises for +1/+1 counters and falls for -1/-1 ones. Other counters
+ * have the ring alone.
+ */
+function counterPulse(node: HTMLElement, f: CueMotion): void {
+  const ring = node.querySelector<HTMLElement>(".cpulse");
+  if (ring) {
+    run(
+      ring,
+      [
+        { offset: 0, scale: "0.85", opacity: 0 },
+        { offset: 0.3, scale: "1.12", opacity: 1 },
+        { offset: 1, scale: "1.3", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
+  const tick = node.querySelector<HTMLElement>(".ctick");
+  if (!tick) return;
+  const up = f.counterTone !== "minus";
+  const from = up ? COUNTER_TICK_PX / 2 : -COUNTER_TICK_PX / 2;
+  const to = up ? -COUNTER_TICK_PX / 2 : COUNTER_TICK_PX / 2;
+  run(
+    tick,
+    [
+      { offset: 0, translate: `0px ${from}px`, opacity: 0 },
+      { offset: 0.25, opacity: 1 },
+      { offset: 1, translate: `0px ${to}px`, opacity: 0 },
     ],
     span(f, 0, 1, EASE.power2Out),
   );

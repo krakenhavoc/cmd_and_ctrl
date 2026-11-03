@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 //
 // ADR 0209 §1 and §3 (#4396, #4416), the rendered half: a battlefield
-// exit, a counterspell, a planeswalker, a created token (#4441) and a board wipe each draw their cue
+// exit, a counterspell, a planeswalker, a created token (#4441), counters
+// put on a permanent (#4442) and a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -569,6 +570,144 @@ describe("a token is created (#4441)", () => {
     expect(effects()).toHaveLength(0);
     expect(run).not.toHaveBeenCalled();
     expect(tokenSounds()).toHaveLength(1);
+  });
+});
+
+describe("counters are put on a permanent (#4442)", () => {
+  const countersEntry = (
+    id: string,
+    label: string,
+    delta: number,
+    batch: number | undefined = 7,
+  ): LogEvent => ({
+    seq: ++seq,
+    kind: "counters",
+    turn: 3,
+    seat: -1,
+    card_id: id,
+    label,
+    amount: Math.max(0, delta),
+    delta,
+    batch,
+    text: "",
+  });
+  const counterSounds = () =>
+    vi.mocked(playSound).mock.calls.filter(([n]) => n === "counter_add" || n === "counter_remove");
+  // The run started on the element of the cue for `card` matching `sel`.
+  const runOn = (card: string, sel: string) => {
+    const el = layer().querySelector(`[data-effect-card="${card}"] ${sel}`);
+    return vi.mocked(run).mock.calls.find((c) => c[0] === el);
+  };
+
+  // "a" shows its power/toughness, "b" a charge counter's pip; "c" has
+  // neither (a token group's member).
+  function put(log: LogEvent[]) {
+    const board = makeBoard(["a", "b", "c"]);
+    const tile = (id: string) => board.querySelector<HTMLElement>(`[data-instance-id="${id}"]`)!;
+    const pt = rectEl("class", "badge pt", { left: 150, top: 390, width: 26, height: 16 });
+    tile("a").appendChild(pt);
+    tile("b").appendChild(
+      rectEl("data-counter", "charge", { left: 255, top: 305, width: 30, height: 14 }),
+    );
+    const cards = ["a", "b", "c"].map((id) => permanent(id, "opp"));
+    const r = render(TableEffects as never, { view: viewWith([], cards), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: viewWith(log, cards) } as never);
+    flushSync();
+    return { r, board };
+  }
+
+  it("rings each card's power/toughness, green or purple with its tick, and plays one sound for the batch", () => {
+    put([countersEntry("a", "+1/+1", 2), countersEntry("c", "-1/-1", 1)]);
+    const cues = effects("counters");
+    expect(cues.map((c) => [c.dataset.effectCard, c.dataset.effectTone])).toEqual([
+      ["a", "plus"],
+      ["c", "minus"],
+    ]);
+    // Over a's badge (150 + 13, 390 + 8).
+    expect(cues[0].style.left).toBe("163px");
+    expect(cues[0].style.top).toBe("398px");
+    // c has no badge: its tile's bottom-right corner (100 + 2 * 100 + 80 - 36 - 4 + 18, 300 + 112 - 22 + 9).
+    expect(cues[1].style.left).toBe("358px");
+    expect(cues[1].style.top).toBe("399px");
+    for (const c of cues) {
+      expect(c.querySelector(".cpulse")).toBeTruthy();
+      expect(c.querySelector(".ctick")).toBeTruthy();
+    }
+    // The tick rises for +1/+1 and falls for -1/-1.
+    const tickA = runOn("a", ".ctick")!;
+    const tickC = runOn("c", ".ctick")!;
+    const ys = (call: NonNullable<typeof tickA>) =>
+      (call[1] as Record<string, unknown>[])
+        .map((k) => k.translate)
+        .filter(Boolean)
+        .map((t) => Number(String(t).split(" ")[1].replace("px", "")));
+    expect(ys(tickA)[0]).toBeGreaterThan(ys(tickA).at(-1)!);
+    expect(ys(tickC)[0]).toBeLessThan(ys(tickC).at(-1)!);
+    expect(runOn("a", ".cpulse")![2].duration).toBeCloseTo(EFFECT_BASE_MS.counters, 6);
+    // One sound for the batch, the first of its cues to have one.
+    expect(counterSounds()).toEqual([["counter_add", { volume: 1, batch: "g1:7" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(counterSounds()).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a -1/-1 batch plays counter_remove, and two batches are two sounds", () => {
+    put([countersEntry("a", "-1/-1", 1, 7), countersEntry("c", "+1/+1", 1, 8)]);
+    expect(counterSounds().map((c) => [c[0], c[1]?.batch])).toEqual([
+      ["counter_remove", "g1:7"],
+      ["counter_add", "g1:8"],
+    ]);
+  });
+
+  it("another kind rings its own pip, with no tick and no sound", () => {
+    put([countersEntry("b", "charge", 1)]);
+    const [cue] = effects("counters");
+    expect(cue.dataset.effectTone).toBe("other");
+    expect(cue.style.left).toBe("270px");
+    expect(cue.style.top).toBe("312px");
+    expect(cue.querySelector(".ctick")).toBeNull();
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("a counter taken off is no cue", () => {
+    put([countersEntry("a", "+1/+1", -1), countersEntry("a", "-1/-1", -1)]);
+    expect(effects()).toHaveLength(0);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("Short plays the same pulse inside its cap", () => {
+    updateSettings("animations", "effects", "short");
+    put([countersEntry("a", "+1/+1", 1)]);
+    expect(effects("counters")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+  });
+
+  it("still (reduced motion, Off): nothing is drawn, and the sound still plays once", () => {
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      still();
+      put([countersEntry("a", "+1/+1", 1), countersEntry("c", "+1/+1", 1)]);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(counterSounds()).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+    }
+  });
+
+  it("a skip clears the pulse", () => {
+    put([countersEntry("a", "+1/+1", 1)]);
+    expect(effects("counters")).toHaveLength(1);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    flushSync();
+    expect(effects()).toHaveLength(0);
   });
 });
 

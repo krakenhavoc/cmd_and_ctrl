@@ -12,6 +12,7 @@ import {
   BUSY_MIN,
   BUSY_WINDOW_MS,
   BusyClock,
+  COUNTER_SOUND,
   EFFECT_BASE_MS,
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
@@ -29,6 +30,7 @@ import {
   TOKEN_STAGGER_MS,
   busyScale,
   counterBurst,
+  counterTone,
   cueMs,
   cueSound,
   cueTiming,
@@ -287,6 +289,110 @@ describe("a token is created (#4441)", () => {
       zone("t1", "graveyard", { cause: "sba", batch: 4 }),
     ]);
     expect(k).toEqual(["token_create", "dies"]);
+  });
+});
+
+describe("counters are put on a permanent (#4442)", () => {
+  // The engine logs each kind's new total on a card as a `counters`
+  // entry; `delta` is the signed change, which tells a placement from a
+  // removal.
+  const counters = (
+    id: string,
+    label: string,
+    delta: number | undefined,
+    extra: Partial<LogEvent> = {},
+  ): LogEvent => ({
+    seq: ++seq,
+    kind: "counters",
+    turn: 3,
+    seat: -1,
+    card_id: id,
+    label,
+    amount: Math.max(0, delta ?? 1),
+    delta,
+    text: "",
+    ...extra,
+  });
+
+  it("+1/+1 counters are a counter_add cue on the card, -1/-1 a counter_remove one", () => {
+    const p = plan([
+      counters("a", "+1/+1", 2, { batch: 4 }),
+      counters("b", "-1/-1", 1, { batch: 5 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.counterTone, q.batch])).toEqual([
+      ["counters", "a", "plus", 4],
+      ["counters", "b", "minus", 5],
+    ]);
+    expect(p.cues.map((q) => cueSound(q))).toEqual([
+      { name: "counter_add", volume: 1 },
+      { name: "counter_remove", volume: 1 },
+    ]);
+    expect(COUNTER_SOUND).toEqual({ plus: "counter_add", minus: "counter_remove", other: null });
+    for (const name of [COUNTER_SOUND.plus!, COUNTER_SOUND.minus!]) {
+      expect(SOUND_CATEGORY[name]).toBe("effects");
+    }
+    expect(EFFECT_BASE_MS.counters).toBe(450);
+    expect(headlines(p)).toBe(2);
+  });
+
+  it("another kind is a pulse with no sound", () => {
+    const p = plan([counters("a", "charge", 1, { batch: 4 })]);
+    expect(p.cues.map((q) => [q.kind, q.counterTone, q.counterLabel])).toEqual([
+      ["counters", "other", "charge"],
+    ]);
+    expect(cueSound(p.cues[0])).toBeNull();
+    expect(counterTone("oil")).toBe("other");
+  });
+
+  it("a batch is one sound: a proliferate over many permanents plays once", () => {
+    const p = plan([
+      counters("a", "charge", 1, { batch: 9 }),
+      counters("b", "+1/+1", 1, { batch: 9 }),
+      counters("c", "+1/+1", 1, { batch: 9 }),
+      counters("d", "-1/-1", 1, { batch: 9 }),
+    ]);
+    expect(p.cues.map((q) => q.cardID)).toEqual(["a", "b", "c", "d"]);
+    // The first cue with a sound leads; every other one follows it.
+    expect(p.cues.map((q) => q.follows === true)).toEqual([true, false, true, true]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual([null, "counter_add", null, null]);
+    // The pulses play together, and the batch is one moment.
+    expect(p.cues.map((q) => q.delayMs)).toEqual([0, 0, 0, 0]);
+    expect(headlines(p)).toBe(1);
+  });
+
+  it("two batches are two sounds", () => {
+    const p = plan([
+      counters("a", "+1/+1", 1, { batch: 4 }),
+      counters("a", "+1/+1", 1, { batch: 5 }),
+    ]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["counter_add", "counter_add"]);
+  });
+
+  it("one card's entries of one kind in one batch are one pulse", () => {
+    const p = plan([
+      counters("a", "+1/+1", 1, { batch: 4 }),
+      counters("a", "+1/+1", 1, { batch: 4 }),
+    ]);
+    expect(p.cues).toHaveLength(1);
+  });
+
+  it("a removal, the CR 704.5q cancel, a redacted entry and one with no delta are not cues", () => {
+    const k = kinds([
+      counters("a", "+1/+1", -1, { batch: 4 }),
+      counters("a", "-1/-1", -1, { batch: 4 }),
+      // A card this viewer may not identify: no kind, no count, no change.
+      counters("b", "", undefined, { label: undefined, amount: undefined, batch: 5 }),
+      // A server that predates `delta`.
+      counters("c", "+1/+1", undefined, { batch: 6 }),
+    ]);
+    expect(k).toEqual([]);
+  });
+
+  it("fits the Short cap, and still is no motion", () => {
+    const [cue] = plan([counters("a", "+1/+1", 1, { batch: 4 })]).cues;
+    expect(cueTiming(cue, "short", 1).ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS);
+    expect(cueTiming(cue, "full", 2)).toEqual({ delayMs: 0, ms: 900 });
+    expect(cueTiming(cue, "still", 1)).toEqual({ delayMs: 0, ms: EFFECT_STILL_HOLD_MS });
   });
 });
 

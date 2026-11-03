@@ -737,6 +737,17 @@ type LogEvent struct {
 	// player conceded and 0 when they lost — kept beside Cause for
 	// clients that predate it.
 	Amount int `json:"amount,omitempty"`
+	// Delta is, on a LogCounters entry, the SIGNED change the entry
+	// records (#4442, ADR 0209 §3): +2 for two counters put on, -1 for
+	// one taken off. The engine's event carries only the total after
+	// (Amount), so the fold reads the total before off the previous
+	// counter event for the same card and kind, back to the card's
+	// last zone change (CR 400.7: a new object has no counters), the
+	// walk game.counterPlacedDeltaLocked makes for the triggers. It is
+	// what lets the client's counter cue tell a placement from a
+	// removal. Zero on every other kind, and redacted with Amount, for
+	// the same reason.
+	Delta int `json:"delta,omitempty"`
 	// Cause is why a LogEliminated player left ("life", "empty_draw",
 	// "poison", "commander_damage", "effect", "concede" — the engine's
 	// game.LossCause) or how a LogGameOver game ended
@@ -1110,6 +1121,16 @@ type logFold struct {
 	// EventLoopReplayed: every event between is folded out, and the
 	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
 	replaying bool
+	// counts is the count of each counter kind on each card as of the
+	// last EventCounterPlaced the fold saw for it (#4442), so a
+	// LogCounters entry can carry its Delta. A card's row goes when it
+	// moves anywhere but onto the battlefield (CR 400.7: the object it
+	// becomes has no counters). Not when it arrives: a permanent's
+	// "enters with" counters land before its own zone move and EventETB
+	// are emitted (entry_counters.go), so forgetting there would forget
+	// them. Kept through a loop replay, whose events write no line but
+	// still move the counts.
+	counts map[uuid.UUID]map[string]int
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1120,7 +1141,35 @@ func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
 		ring:     newLogRing(PublicLogMax),
 		revealAt: make(map[uint64]int),
 		randomAt: make(map[uint64]int),
+		counts:   make(map[uuid.UUID]map[string]int),
 	}
+}
+
+// countDelta records a counter event's total and returns the signed
+// change from the total before it (#4442). A move off to any zone but
+// the battlefield forgets the card's counts (see logFold.counts) and
+// returns zero, as every other event does.
+func (f *logFold) countDelta(ev game.Event) int {
+	switch ev.Kind {
+	case game.EventCounterPlaced:
+		if ev.Target == uuid.Nil {
+			return 0
+		}
+		m := f.counts[ev.Target]
+		if m == nil {
+			m = make(map[string]int)
+			f.counts[ev.Target] = m
+		}
+		before := m[ev.Label]
+		after := max(ev.Amount, 0)
+		m[ev.Label] = after
+		return after - before
+	case game.EventZoneMove:
+		if ev.NewZone != game.ZoneBattlefield && ev.CardID != uuid.Nil {
+			delete(f.counts, ev.CardID)
+		}
+	}
+	return 0
 }
 
 // extends reports whether g's event log is the log f folded, possibly
@@ -1157,6 +1206,10 @@ func (f *logFold) feed(events []game.Event) int {
 	ring := f.ring
 	start := f.cursor
 	for i := start; i < len(events); i++ {
+		// #4442: every counter event moves the counts, a replayed one
+		// and an unnarrated kind included, so the next line's Delta is
+		// measured from the count the card really had.
+		delta := f.countDelta(events[i])
 		// ADR 0193 §7: a loop replay's own events still fire (triggers
 		// and tallies see every iteration), but the log tells the replay
 		// as one line.
@@ -1176,6 +1229,7 @@ func (f *logFold) feed(events []game.Event) int {
 			f.cycled = ""
 			f.revealedSearch = false
 			f.replaying = false
+			clear(f.counts)
 		default:
 			if f.replaying {
 				continue
@@ -1194,6 +1248,9 @@ func (f *logFold) feed(events []game.Event) int {
 		e.Turn = f.turn
 		if e.Kind == LogStep {
 			e.Step = f.step
+		}
+		if e.Kind == LogCounters {
+			e.Delta = delta
 		}
 		switch e.Kind {
 		case LogCycle:
@@ -2734,8 +2791,10 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 					// And the number with it: redactCardForViewer
 					// strips CardView.counters from a non-knower, so a
 					// count under a line that says "a card" would hand
-					// back exactly what the card filter took away.
+					// back exactly what the card filter took away. The
+					// change (#4442) goes too: it is half the count.
 					e.Amount = 0
+					e.Delta = 0
 				}
 			}
 			e.Text = renderLogText(e, cardName, targetName)
