@@ -5144,6 +5144,17 @@ spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
 
+**Mana for spells with mana value N or greater (#4694):** "Spend this
+mana only to cast spells with mana value 4 or greater" is
+`Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
+Rimebound; `ManaRestrictManaValueAtMost(n)` is "N or less"). It matches
+`ManaSpendContext.ManaValue`, the spell's mana value as it is on the
+stack: the face being cast (a transformed spell reads its front face, CR
+712.8c), and {X} at the value announced (CR 202.3e), so an X spell with X
+large enough may spend it. Activations, unlocks and payments that name
+no spell refuse it. Floating mana keeps its restriction on the wire
+(`ManaPoolRun.restrictions`), which is what the bot plans from.
+
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
 less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`

@@ -2160,7 +2160,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// never disagree about what the spell is. A trigger queued here is
 	// placed by the runStateChecksLocked at the bottom of the cast,
 	// above the spell.
-	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind), card)
+	// #4694: with the spell's mana value at its announced X (CR 202.3e).
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and

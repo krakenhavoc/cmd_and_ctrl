@@ -20168,6 +20168,8 @@ pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
+pendingChoices[].assist.spend.ManaValue	number:int
+pendingChoices[].assist.spend.ManaValueKnown	bool
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
 pendingChoices[].assist.spend.PowerUp	bool

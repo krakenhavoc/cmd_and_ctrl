@@ -2000,6 +2000,15 @@ func (e *enumerator) affordableXExcluding(
 			best, ok = x, true
 			continue
 		}
+		// #4694: mana spendable only on a spell with mana value N or
+		// greater pays for this spell from some larger X on, so the cost
+		// is not monotonic in X across that threshold. Jump to it and
+		// scan on; with no such mana floating there is nothing to jump to.
+		if next, found := spend.NextManaValueX(e.p.ManaPool, x+1); found && next <= e.opts.MaxX &&
+			e.canPayExcluding(cost, next, spend, excluded) {
+			best, ok, x = next, true, next
+			continue
+		}
 		break
 	}
 	e.noteMaxX(best, func(x int) bool { return e.canPayExcluding(cost, x, spend, excluded) })
@@ -2032,6 +2041,12 @@ func (e *enumerator) canPayExcluding(
 	// would accept. #2575: with the exclusions, which a "no more than one
 	// mana of each color" clause chooses its colours around, as the
 	// engine's cast auto-tap does.
+	//
+	// #4694: and with the spell's mana value recounted for this X (CR
+	// 202.3e), so mana spendable only on a spell with mana value N or
+	// greater pays for an X spell whose X is large enough. A no-op for
+	// anything but a cast.
+	spend = spend.WithX(x)
 	cost = e.g.CostAsPaidByExcludingForEffect(e.seat, spend, cost, x, excluded)
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true

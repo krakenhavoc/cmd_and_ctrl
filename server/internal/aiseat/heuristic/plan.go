@@ -684,7 +684,7 @@ func (st *state) manaSourcesTotal() int {
 func (st *state) planCastCost(m legal.Move, card *protocol.CardView, cp castParams) (manaCost, bool) {
 	if m.Cost != nil && m.Cost.Mana != "" {
 		c := parseManaCost(m.Cost.Mana, 0)
-		c.admits = st.castAdmits(card, cp.FromZone)
+		c.admits = st.castAdmits(card, cp.FromZone, cp.Face, cp.XValue)
 		return c, true
 	}
 	if cp.AlternativeCost != "" || card.ManaCost == "" {
@@ -694,7 +694,7 @@ func (st *state) planCastCost(m legal.Move, card *protocol.CardView, cp castPara
 	if cp.FromZone == "command" && st.seat != nil {
 		c.generic += 2 * st.seat.CommanderCasts[card.InstanceID]
 	}
-	c.admits = st.castAdmits(card, cp.FromZone)
+	c.admits = st.castAdmits(card, cp.FromZone, cp.Face, cp.XValue)
 	return c, true
 }
 
@@ -754,17 +754,20 @@ func (st *state) restrictionClasses() *manaClasses {
 }
 
 // castAdmits is a cast's manaCost.admits: whether class k's restriction
-// list admits casting card from fromZone, asked of the engine's matcher
-// (protocol.ManaRestrictionsAdmitCast, the one auto-pay plans by) once
-// per class.
-func (st *state) castAdmits(card *protocol.CardView, fromZone string) func(k int) bool {
+// list admits casting face `face` of card from fromZone with X announced
+// as x, asked of the engine's matcher
+// (protocol.ManaRestrictionsAdmitCastAs, the one auto-pay plans by) once
+// per class. The face and the X are what a restriction on the spell's
+// mana value reads (#4694, CR 202.3e): mana for a spell with mana value
+// 4 or greater does not pay for a three-drop.
+func (st *state) castAdmits(card *protocol.CardView, fromZone string, face, x int) func(k int) bool {
 	memo := map[int]bool{}
 	return func(k int) bool {
 		if v, ok := memo[k]; ok {
 			return v
 		}
 		r := st.restrictClasses
-		v := r != nil && k >= 1 && k <= len(r.lists) && protocol.ManaRestrictionsAdmitCast(r.lists[k-1], card, fromZone)
+		v := r != nil && k >= 1 && k <= len(r.lists) && protocol.ManaRestrictionsAdmitCastAs(r.lists[k-1], card, fromZone, face, x)
 		memo[k] = v
 		return v
 	}
@@ -828,10 +831,27 @@ func (st *state) manaAvailable(mm manaModel) []manaUnit {
 	var units []manaUnit
 	if st.seat != nil {
 		for _, run := range st.seat.ManaPool {
-			if m := colorMask(run.Color); m != 0 {
-				for range run.Count {
-					units = append(units, m)
+			m := colorMask(run.Color)
+			if m == 0 {
+				continue
+			}
+			if len(run.Restrictions) > 0 {
+				// #4694: floating mana with a spend restriction (Ashling,
+				// Rimebound's "only to cast spells with mana value 4 or
+				// greater") is a restricted unit, as a restricted row's
+				// mana is: counted only with mm.classes, and then only for
+				// a cast its restriction admits. Without it, left out.
+				k := 0
+				if mm.classes != nil {
+					k = mm.classes.classOf(run.Restrictions)
 				}
+				if k == 0 {
+					continue
+				}
+				m = m<<manaRestrictedShift | manaUnit(k)<<manaClassShift
+			}
+			for range run.Count {
+				units = append(units, m)
 			}
 		}
 	}
