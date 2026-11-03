@@ -392,11 +392,10 @@ func TestSpmB12LethalProtectionDestroysAndReturns(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	victim := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	back := pushGraveyardPermanent(me, "Fallen", "Creature — Elf", "{1}{G}")
-	hand := me.Hand.Size()
 	if err := spmB12CastLethal(t, g, victim, back, true); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	hand = me.Hand.Size() // the spell left the hand
+	hand := me.Hand.Size() // after the spell left the hand
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(victim) {
 		t.Error("the target creature survived")
