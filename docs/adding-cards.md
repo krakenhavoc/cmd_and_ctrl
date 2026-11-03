@@ -3988,6 +3988,14 @@ names no player, and on a spell or an activated ability, it admits
 nothing. Use it on a mode's clause too: a bullet with no legal target is
 not on offer.
 
+**"Mana value X or less, where X is the amount of damage" the trigger's
+event dealt** (Venerable Warsinger's "return target creature card with mana
+value X or less from your graveyard to the battlefield") is
+`ManaValueAtMostTheEventAmount(TargetCardInGraveyard(...))`. The bound is the
+triggering event's `Amount`, data on the clause, so the picker, the announce
+check and the resolution re-check agree. On a spell or an activation it
+admits nothing.
+
 **"Change a target … to this creature"** (Spellskite, Mizzium Meddler)
 needs nothing from a card file past `changeATargetToThisCreature`; when
 the same creature fills two instances of "target", the controller is

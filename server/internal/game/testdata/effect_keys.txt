@@ -655,6 +655,7 @@ choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/winter-soldier-icy-assassin-attach
+choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yuffie-materia-hunter-attach

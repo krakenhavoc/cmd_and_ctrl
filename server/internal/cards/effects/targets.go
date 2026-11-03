@@ -670,6 +670,17 @@ func ControlledByThatEventActor(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ManaValueAtMostTheEventAmount narrows a TRIGGERED ability's clause to cards
+// whose mana value is at most the triggering event's Amount: "target creature
+// card with mana value X or less …, where X is the amount of damage this
+// creature dealt to that player" (Venerable Warsinger). Data on the clause
+// (game.TargetSpec.ManaValueAtMostEventAmount), judged in the one shared walk;
+// on a spell, an activation or a walk with no fired trigger it admits nothing.
+func ManaValueAtMostTheEventAmount(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ManaValueAtMostEventAmount = true
+	return spec
+}
+
 // OfAnOpponentsChoice is "target … of an opponent's choice" (#2055, ADR
 // 0019's 2026-10-16 amendment): as the spell or ability is put on the
 // stack, its controller chooses an opponent and THAT opponent chooses
