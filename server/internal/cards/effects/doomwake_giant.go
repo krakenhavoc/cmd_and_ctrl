@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "ba069664-9f92-47c7-b556-9e5143a22579",
 		Name:         "Doomwake Giant",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b30SelfOrAnotherEnchantmentYouControlEntered(ev, source, g)
