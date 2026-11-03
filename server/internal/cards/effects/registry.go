@@ -1766,11 +1766,13 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 			if r.Slot < 0 || r.Slot >= i || spec.Clause(r.Slot).Min != 1 || spec.Clause(r.Slot).Max != 1 {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate to one required earlier target", name, i))
 			}
-			if spec.Clause(i).Max != 1 || spec.Clause(i).Min > 1 {
+			if !r.Kind.ManyPicks() && (spec.Clause(i).Max != 1 || spec.Clause(i).Min > 1) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
 			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType:
+			case game.TargetInTargetPlayersGraveyard:
+				checkPlayersGraveyardRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
 			default:
 				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
 			}

@@ -338,7 +338,8 @@ func (f *copyFrame) stepRefs() []int {
 // copyStepCandidatesLocked is what the current step offers: every
 // legal target of its clause that the CR 115.7 gate accepts in one of
 // the step's slots, then the step's original targets, which may always
-// stay (CR 707.10c). `fresh` reports whether anything but the
+// stay (CR 707.10c), unless the step depends on an anchor the walk has
+// changed (#4862). `fresh` reports whether anything but the
 // originals is on offer.
 //
 // Caller must hold g.mu.
@@ -349,29 +350,43 @@ func (g *Game) copyStepCandidatesLocked(f *copyFrame, pos []int) (lt LegalTarget
 	for _, p := range pos {
 		isOrig[f.orig[p].ID] = true
 	}
+	// #4862: the step's other picks stay open too, so a candidate of a
+	// many-pick dependent clause fits when the rest of the clause can
+	// follow it to the new anchor.
+	open := make(map[int]bool)
+	for i := range f.next {
+		for _, later := range f.steps[f.step:] {
+			if f.next[i].Mode == later.Mode && f.next[i].Slot == later.Slot {
+				open[i] = true
+			}
+		}
+	}
 	fits := func(ref TargetRef) bool {
 		ref.Mode, ref.Slot = st.Mode, st.Slot
 		trial := append([]TargetRef(nil), f.next...)
 		for _, p := range pos {
 			trial[p] = ref
-			if g.copyTargetsCanFinishLocked(src, f.steps, f.orig, trial, f.step+1) {
+			if g.relatedTargetsCanFinishLocked(src, f.steps, f.orig, trial, f.step, func(i int) bool { return i != p && open[i] }) {
 				return true
 			}
 			trial[p] = f.next[p]
 		}
 		return false
 	}
+	// An original may stay without a check, except a dependent one: see
+	// below.
+	stays := func(id uuid.UUID) bool { return isOrig[id] && st.Clause.Relation == nil }
 	offered := g.legalTargetsLocked(src, &st.Clause)
 	seen := make(map[uuid.UUID]bool)
 	for _, id := range offered.Players {
-		if isOrig[id] || fits(TargetRef{Kind: TargetPlayer, ID: id}) {
+		if stays(id) || fits(TargetRef{Kind: TargetPlayer, ID: id}) {
 			lt.Players = append(lt.Players, id)
 			seen[id] = true
 			fresh = fresh || !isOrig[id]
 		}
 	}
 	for _, id := range offered.Cards {
-		if isOrig[id] || fits(TargetRef{Kind: TargetCard, ID: id}) {
+		if stays(id) || fits(TargetRef{Kind: TargetCard, ID: id}) {
 			lt.Cards = append(lt.Cards, id)
 			seen[id] = true
 			fresh = fresh || !isOrig[id]
@@ -380,6 +395,13 @@ func (g *Game) copyStepCandidatesLocked(f *copyFrame, pos []int) (lt LegalTarget
 	for _, p := range pos {
 		o := f.orig[p]
 		if seen[o.ID] {
+			continue
+		}
+		// #4862: a dependent pick may stay only while its anchor still
+		// admits it; once the anchor has changed, the CR 115.7 gate
+		// refuses an unchanged pick it made illegal, so offering it
+		// would offer an answer that is refused.
+		if st.Clause.Relation != nil && !fits(o) {
 			continue
 		}
 		seen[o.ID] = true

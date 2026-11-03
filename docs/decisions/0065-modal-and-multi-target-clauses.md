@@ -2012,3 +2012,84 @@ one taken, none when every one hurts, up to X summed, the back-out) and
 `aiseat/mode_pick_bot_test.go` (the real cards, wire, enumerator and policy:
 Ertai destroys an opponent's creature and spares its own, the Crew at X = 2
 takes the rummage and the drain, and the opponent's view carries no bullets).
+
+## Amendment 2026-11-03 (b): up to N target cards from a target player's graveyard (#4862)
+
+Sprint S79, tracker #4834. Quandrix Command's fourth bullet, "target player
+shuffles up to three target cards from their graveyard into their library",
+is two clauses where the second depends on the first, as in the 2026-10-11
+amendment, but its dependent clause picks up to three cards and its anchor
+is a player. The 2026-10-11 rules allowed one dependent pick and only
+permanent anchors for the graveyard relationship.
+
+### Decision: one new relationship, and the only one that takes several picks
+
+`game.TargetInTargetPlayersGraveyard` (`players_graveyard`, card-facing
+builder `effects.FromTargetPlayersGraveyard`) admits a card in the graveyard
+of the player the anchor clause picked. `TargetRelationKind.ManyPicks`
+reports it as the one kind whose dependent clause may pick more than one
+object; every other kind keeps "at most one pick". `effects.Register`
+refuses it unless the anchor is a player-only clause (`target player`, not
+`any target`), the dependent clause looks only in graveyards, and the
+dependent clause has no rule about its set of picks (difference, sameness,
+total, division). The anchor is still a required single pick.
+
+Each pick is judged against the anchor on its own, at announcement (CR
+601.2c) and again on resolution (CR 608.2b). A card that has left the
+graveyard is illegal and the others stay legal. An anchor that has become an
+illegal target (a player who gained hexproof) still names the graveyard, so
+its cards stay legal targets; the card body does nothing with them, because
+an illegal player performs no action. That is the printed ruling on Memory's
+Journey: "If the player is an illegal target by the time Memory's Journey
+resolves, the spell will have no effect, even if the cards are still legal
+targets." The difference shows only when every other target is illegal too:
+the spell then resolves and does nothing, rather than not resolving.
+
+### Decision: copies and retargets refill the picks, rather than search them
+
+A copy or a "choose new targets" effect that changes the player must change
+every card to the new player's graveyard (CR 115.7d; the engine already
+refused an unchanged dependent its new anchor makes illegal). The walks ask
+whether the rest of the set can still be completed
+(`relatedTargetsCanFinishLocked`, which replaces the body of
+`copyTargetsCanFinishLocked`). With one open pick it tries each candidate,
+as before. With several it refills them: a pick the anchor still admits
+stays, and each other open pick takes the next candidate the clause does
+not already hold. That is exact because each pick is judged against the
+anchor alone and Register keeps set rules off the clause, so any distinct
+candidates fit as well as any others, and it costs one check rather than a
+search over every set of three cards.
+
+Two call sites change with it. The related retarget asks one pick at a
+time, so it now leaves the rest of the pick's own clause open
+(`targetsAfterCanFinishLocked`) instead of only the later clauses. The copy
+picker asks one clause at a time; a candidate now fits when the clause's
+other picks can follow it (`copyStepCandidatesLocked`), and an original
+target of a dependent clause is offered only while the walk's anchor still
+admits it. Before this a copy that changed Quandrix Command's player offered
+the old player's cards and then refused them, or, with no fresh candidate
+on offer, created the copy with targets it would refuse.
+
+### Wire, client and bots
+
+Nothing new. `relation.pairs` already maps each player to the cards in
+their graveyard, the client's picker already narrows by a player anchor
+(Ravager of the Fells) and takes a clause's `min` and `max`, and the
+enumerator already builds a dependent clause's sets from the legal set for
+each prefix. Nothing is persisted: the relation is catalog data.
+
+Cards: Quandrix Command (Full). `effects.TargetPlayerShufflesTheirCards` is
+the shared body for the family (Gaea's Blessing, Loaming Shaman, Stream of
+Consciousness, Krosan Reclamation, Dwell on the Past, Witness the Future,
+Rite of Renewal, Memory's Journey). Memory's Journey and Krosan Reclamation
+also need #4869: cast with flashback, a spell can today name itself as a
+target in its own graveyard, which CR 601.2a forbids.
+
+Tests: `game/target_relation_many_test.go` (announcement with 0 to 3 picks,
+another graveyard, a fourth pick, the resolution re-check, the copy refill,
+the related retarget), `effects/quandrix_command_test.go` (each bullet, the
+fourth with 0, 1 and 3 picks, the refusals, cards that left, the player's
+legality, the picker's pairs, a copy moved to another player, and every
+answer the enumerator offers for the copy accepted),
+`effects/target_relation_players_graveyard_test.go` (Register's gate) and
+`client/src/lib/targetingRelation.test.ts`.

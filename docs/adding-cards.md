@@ -319,12 +319,18 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Distinct` for "another"), or `SharesACardTypeWithTarget(spec,
    earlierSlot)` for "two target nonland permanents that share a card type"
    (Burglar's Plot, #4454; both on the battlefield with a card type in
-   common after the layers). The anchor must be a required single pick,
-   and the dependent clause may pick at most one object. Announcement,
+   common after the layers), or `FromTargetPlayersGraveyard(spec,
+   earlierSlot)` for "target player shuffles up to three target cards from
+   their graveyard" (Quandrix Command, #4862; the anchor is a `TargetPlayer`
+   clause and the cards a `TargetCardInGraveyard` clause with its count).
+   The anchor must be a required single pick, and the dependent clause may
+   pick at most one object, except under `FromTargetPlayersGraveyard`,
+   whose picks are each judged on their own and which takes no set rule.
+   `TargetPlayerShufflesTheirCards` is that family's shared body. Announcement,
    resolution and all pickers share the gate; no custom resolution-only
    target check is needed. The same-controller relation reads an anchor
    that has left the battlefield by its last-known controller (CR 608.2h).
-   A relationship none of the three covers is a new `TargetRelationKind`.
+   A relationship none of these covers is a new `TargetRelationKind`.
 
    **Modal cards ("Choose one —", S20 sub-PR 4)** declare
    `Spec.Modes` instead of `Spec.Targets`, with the target clause on
