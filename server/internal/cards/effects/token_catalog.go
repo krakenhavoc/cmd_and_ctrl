@@ -313,6 +313,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
 	printedVibraniumToken,
+
+	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
+	printedPestAttackToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
