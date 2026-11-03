@@ -29,35 +29,7 @@ func init() {
 		Name:         "Witherbloom Command",
 		Completeness: CompletenessFull,
 		Modes: ChooseN("Choose two", 2, 2,
-			ModeSteps("Target player mills three cards, then you return a land card from your graveyard to your hand.",
-				TargetPlayer("target player"),
-				Instruction(func(ctx *Context) error {
-					t, ok := ModeTarget(ctx, ctx.Occurrence())
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return MillCards{Player: t.ID, N: 3}.Apply(ctx)
-				}),
-				Instruction(func(ctx *Context) error {
-					controller := ctx.Controller()
-					candidates := graveyardCardIDs(ctx, controller, game.Card.IsLand)
-					if len(candidates) == 0 {
-						return nil
-					}
-					ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-						Chooser:    controller,
-						FromPlayer: controller,
-						Source:     ctx.Source(),
-						Question:   "Witherbloom Command — return a land card from your graveyard to your hand",
-						Cards:      candidates,
-						Min:        1,
-						Max:        1,
-						ThenKey:    witherbloomCommandReturnLand,
-						LiveZone:   game.ZoneGraveyard,
-						Asked:      game.NewAskedItem(ctx.Item),
-					})
-					return nil
-				})),
+			witherbloomCommandMillMode(),
 			ModeDoing("Destroy target noncreature, nonland permanent with mana value 2 or less.",
 				TargetPermanent("target noncreature, nonland permanent with mana value 2 or less",
 					Noncreature(), Nonland(), ManaValueLE(2)),
@@ -83,6 +55,42 @@ func init() {
 				socB15ModeYouGainLife(2)),
 		),
 	})
+}
+
+// witherbloomCommandMillMode is the first bullet, in its own function so the
+// exit-payout guard reads its mill apart from the other bullets' targets: the
+// land return is not gated on what the mill moved, it is "a land card from
+// your graveyard" after the mill, whatever the mill did.
+func witherbloomCommandMillMode() game.ModeOption {
+	return ModeSteps("Target player mills three cards, then you return a land card from your graveyard to your hand.",
+		TargetPlayer("target player"),
+		Instruction(func(ctx *Context) error {
+			t, ok := ModeTarget(ctx, ctx.Occurrence())
+			if !ok || t.Kind != game.TargetPlayer {
+				return nil
+			}
+			return MillCards{Player: t.ID, N: 3}.Apply(ctx)
+		}),
+		Instruction(func(ctx *Context) error {
+			controller := ctx.Controller()
+			candidates := graveyardCardIDs(ctx, controller, game.Card.IsLand)
+			if len(candidates) == 0 {
+				return nil
+			}
+			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+				Chooser:    controller,
+				FromPlayer: controller,
+				Source:     ctx.Source(),
+				Question:   "Witherbloom Command — return a land card from your graveyard to your hand",
+				Cards:      candidates,
+				Min:        1,
+				Max:        1,
+				ThenKey:    witherbloomCommandReturnLand,
+				LiveZone:   game.ZoneGraveyard,
+				Asked:      game.NewAskedItem(ctx.Item),
+			})
+			return nil
+		}))
 }
 
 // witherbloomCommandReturnLand is the land card chosen returning to its
