@@ -4720,6 +4720,10 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // #4692 (CR 101.2): this permanent can't have counters put on it
+  // (Blossombind). The server refuses every placement; the card shows a
+  // chip. Public; battlefield only.
+  cant_have_counters?: boolean;
   // ADR 0187 §4 (CR 510.1a): this creature assigns no combat damage this
   // turn (Carrion Rats, Carrion Wurm). Public; battlefield only.
   assigns_no_combat_damage?: boolean;

@@ -357,7 +357,9 @@ func (g *Game) BlightOptionsForEffect(playerID uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != playerID || !c.IsCreature() {
+		// #4692: one that can't have counters put on it can't be
+		// blighted (CR 701.68b).
+		if c.Controller != playerID || !c.IsCreature() || g.cantHaveCountersLocked(c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -414,6 +416,9 @@ func (g *Game) validateBlightCreatureLocked(playerID, id uuid.UUID) error {
 	}
 	if !c.IsCreature() {
 		return ErrNotACreature
+	}
+	if g.cantHaveCountersLocked(c) {
+		return ErrIllegalTarget // #4692, CR 701.68b
 	}
 	return nil
 }

@@ -48,6 +48,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
+  - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4322,6 +4323,23 @@ Captain America". The activator picks one Equipment attached to the source, whoe
 battlefield unattached. With nothing attached the ability can't be activated. A divided amount that reads the pick is
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
+
+### "Can't have counters put on it" (#4692, CR 101.2)
+
+Blossombind's "Enchanted creature … can't have counters put on it" is
+`Static: []game.StaticAbility{AttachedCantHaveCounters()}`, which sets
+`Characteristic.CantHaveCounters` on the host. It is a prohibition, not a
+replacement: the engine refuses the placement before the CR 614 window
+opens, so Doubling Season, Hardened Scales and Vizier of Remedies never
+see it and no ordering prompt is asked. One predicate,
+`cantHaveCountersLocked` (`game/cant_have_counters.go`), is read by every
+placement door (effects, entering with counters, Sagas, wither and infect
+damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
+(a counter cost can't be paid, CR 118.3), by the blight options (CR
+701.68b) and by the proliferate candidates. A refused placement is told
+zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
+counters is unaffected. A +N loyalty cost can't be paid either. The view
+ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
 ### Adding a block-rule card (S37+, #750)
 
