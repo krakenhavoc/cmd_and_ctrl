@@ -240,7 +240,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// protection against. Never the seat: a red player's colourless
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
-	defer func() { e.rowOrigin, e.rowPowerUp, e.rowEquip = game.AbilityOrigin{}, false, false }()
+	defer func() {
+		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowCostHasX = game.AbilityOrigin{}, false, false, false
+	}()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
 	// with the mirrored row's origin for every gate below.
@@ -268,6 +270,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		e.rowOrigin = origins.At(idx)
 		e.rowPowerUp = ab.PowerUp
 		e.rowEquip = ab.Equip
+		e.rowCostHasX = ab.Cost.XSlots() > 0
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and

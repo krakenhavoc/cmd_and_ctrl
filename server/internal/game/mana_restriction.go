@@ -164,6 +164,14 @@ const (
 	// any colour" widens a coloured symbol: the widened symbol is still
 	// a coloured one, so this mana may pay it (CR 609.4b).
 	ManaRestrictNoGeneric = "not:generic"
+	// ManaRestrictXCost permits the token only on a cost that contains
+	// {X} (#4834, CR 107.3, CR 106.6): Elementalist's Palette's "Spend
+	// this mana only on costs that contain {X}". The whole cost, not
+	// only its X part: a spell whose mana cost has {X}, or an activated
+	// ability whose cost does (ManaSpendContext.CostHasX). A payment
+	// that does not say whether its cost has {X} refuses it — weaker
+	// than printed, never stronger.
+	ManaRestrictXCost = "cost:has-x"
 )
 
 // noGeneric reports whether a token may not pay generic mana — it
@@ -339,6 +347,14 @@ type ManaSpendContext struct {
 	// mirrored row and carries the bit.
 	Equip bool
 
+	// CostHasX is set when the cost being paid contains {X}: what
+	// ManaRestrictXCost reads (#4834). ManaSpendForCast sets it from the
+	// spell's mana cost (ManaSpendForCastParams from the alternative
+	// cost the cast claims, when it claims one), and the activation sites
+	// from the {X} symbols of the row's mana (AbilityCost.XSlots), beside PowerUp. False for
+	// every other payment.
+	CostHasX bool
+
 	// Controller is the controller of the object whose ability is being
 	// paid for (ManaSpendForAbility), and Payer the player paying, which
 	// the any-colour reader fills in before it asks a Covers. Together
@@ -397,8 +413,12 @@ func ManaSpendForCastFrom(c Card, from ZoneKind) ManaSpendContext {
 func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 	from, _ := castZoneFromWire(params.FromZone)
 	ctx := ManaSpendForCastFrom(c, from)
-	if alt := AlternativeCostByKey(castOfferKey(c), params.AlternativeCost); alt != nil && alt.SpendOnlySources != 0 {
-		ctx.SourceOnly = alt.SpendOnlySources
+	if alt := AlternativeCostByKey(castOfferKey(c), params.AlternativeCost); alt != nil {
+		if alt.SpendOnlySources != 0 {
+			ctx.SourceOnly = alt.SpendOnlySources
+		}
+		// #4834: the cost paid is the alternative one.
+		ctx.CostHasX = strings.Contains(alt.ManaCost, "{X}")
 	}
 	return ctx
 }
@@ -416,6 +436,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
+		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		wish:             newSpendWish(c),
 	}
 }
@@ -491,6 +512,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.PowerUp
 	case ManaRestrictEquip:
 		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
+	case ManaRestrictXCost:
+		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:

@@ -1015,6 +1015,9 @@ type enumerator struct {
 	// rowEquip is whether that row is an equip ability, for the spend
 	// context's ManaRestrictEquip (#4600).
 	rowEquip bool
+	// rowCostHasX is whether that row's cost contains {X}, for the
+	// spend context's ManaRestrictXCost (#4834).
+	rowCostHasX bool
 	// window is the answer window the seat is in (answer_window.go,
 	// #4734), read on first use by answerWindow: the moves of one
 	// enumeration share it.
@@ -1027,6 +1030,7 @@ func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 	spend.PowerUp = e.rowPowerUp
 	spend.Equip = e.rowEquip
+	spend.CostHasX = e.rowCostHasX
 	return spend
 }
 
