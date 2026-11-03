@@ -2941,9 +2941,31 @@ A "choose up to" prompt (`ModeMin` 0) offers the empty answer first,
 and the empty answer removes the ability (CR 700.2b). "Choose up to X"
 (#4617, The Ruinous Wrecking Crew) carries the X paid for the spell as
 the prompt's `ModeMax`, so the bot is offered no selection of more than
-X bullets, and at X = 0 it is not asked at all. The heuristic does not
-value bullets yet, so it takes the first selection offered, which on an
-"up to" prompt is none.
+X bullets, and at X = 0 it is not asked at all.
+
+The heuristic prices each answer by what its bullets do (#4674,
+`PriceModePicks`, `mode_pick.go`). The prompt carries every offered
+bullet as `mode_bullets`, the shape of a modal card's `modes.options`
+(its declared purpose, and for a targeted bullet its legal targets as
+the trigger is judged now, with the clause's `harmful` flag), to the
+chooser alone. A bullet is worth its purpose at `purposeValue`, the
+price a cast's mode gets, plus the best legal pick for each of its
+target clauses priced as the `pick_target` that follows prices it. A
+clause declared harmful prices an own permanent at what losing it costs.
+Any other clause says nothing about which way it cuts, so it is priced
+by `targetsValue` only when it cannot pick anything of the bot's own
+("target opponent", "target spell you don't control") and at nothing
+when it can: Charming Prince's "choose one" still takes its first
+bullet rather than blink a creature for the target's sake. An answer is the sum of its bullets, and the empty answer is
+worth nothing, so on an "up to" prompt the bot takes every bullet that
+helps and none when each one hurts: Ertai Resurrected destroys an
+opponent's creature and leaves its own alone, and The Ruinous Wrecking
+Crew cast for X = 2 takes the rummage and the drain. A bullet with no
+purpose and no target is worth nothing and is left out (the Crew's
+symmetric edict), and what a bullet gives an opponent besides its target
+(Ertai's "its controller draws a card") is not declared, so not priced.
+A prompt that does not carry its bullets keeps the old answer, the
+first. `heuristic-nomodepicks` is the arena back-out.
 
 ## Enumerating an optional additional cost (#664)
 

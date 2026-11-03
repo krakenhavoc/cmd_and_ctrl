@@ -175,6 +175,9 @@ type choiceParams struct {
 	// SearchZones answers an and/or search's zone question (#4519): the
 	// zones searched, asked before any candidate is shown.
 	SearchZones []string `json:"search_zones"`
+	// Modes answers a mode_pick (#764): the chosen ModeSpec indexes, in
+	// the order chosen; empty is "choose none" on an "up to" prompt.
+	Modes []int `json:"modes"`
 }
 
 type mulliganParams struct {

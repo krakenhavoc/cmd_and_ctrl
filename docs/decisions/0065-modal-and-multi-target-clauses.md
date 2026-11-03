@@ -1963,3 +1963,52 @@ announce order) and `client/src/lib/modePickerPawprints.render.test.ts`.
 Proof cards: Hela's Arcanum, Season of Loss, Season of the Burrow (Full).
 Season of Gathering, Season of the Bold and Season of Weaving need nothing
 more from this seam.
+
+## Amendment 2026-11-03: a mode_pick carries its bullets, and the heuristic prices them (#4674)
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first (a bot
+gap found on #4617, the 2026-10-30 amendment's "Bots" note).
+
+The heuristic answered every `mode_pick` with the enumerator's first
+selection, and on a "choose up to" prompt that is none (CR 700.2b): Ertai
+Resurrected, Hullbreaker Horror, Ravager Wurm and The Ruinous Wrecking Crew
+never chose a mode for a bot. Nothing on the prompt said what a bullet does,
+and the bot reads no oracle text ([ADR 0033 §3](0033-ai-bot-seat.md)).
+
+### Decision: the prompt carries each offered bullet, as a modal card does
+
+- **Wire.** `mode_bullets`, parallel to `mode_options`: one `ModeOptionView`
+  per offered bullet, the shape `modes.options` has on a modal card (label,
+  declared purpose, and for a targeted bullet `legal_targets` / `clauses`
+  with the clause's `harmful` flag). The targets are judged from the
+  trigger's own source as the prompt was judged
+  (`Game.ModePickSpecLocked`, the mode_pick's continuation), so the set is
+  what the following `pick_target` will offer. The chooser's alone, as a
+  card's `legal_targets` are the asking seat's (#1172). Derived when the
+  view is built: nothing is persisted, and a prompt restored with no
+  continuation carries none. The browser does not read it.
+- **Heuristic.** `PriceModePicks` (`aiseat/heuristic/mode_pick.go`): an
+  answer is the sum of its bullets, each its purpose at `purposeValue` plus
+  the best legal pick per target clause, priced as `pick_target` prices it:
+  a harmful clause prices an own permanent at its loss, and a clause with no
+  declared direction is priced only when it cannot pick the bot's own (and
+  at nothing when it can, so Charming Prince's and Charming Scoundrel's
+  "choose one" keep their first bullet in the curated decks). The empty answer is worth nothing, so an "up to" takes every bullet that
+  helps and none when each hurts. `heuristic-nomodepicks` is the back-out.
+- **Catalog.** The four cards declare what the bot needs: the Crew's rummage
+  `Purpose{Draws: 1, Discards: 1}`, and `Harmful` on the clauses that destroy,
+  bounce or fight a permanent (Ertai's destroy, the Crew's token, Hullbreaker's
+  permanent bounce, both of Ravager Wurm's). No engine rule reads either.
+
+Out of scope, stated: what a bullet gives a player other than its target
+(Ertai's "its controller draws a card") and whether a fight's own creature
+survives are not declared, so not priced; a bullet with no purpose and no
+target (the Crew's symmetric edict) is worth nothing. The enumerator's
+`MaxExpansionPerSource` budget still cuts the later single-bullet selections
+of a four-bullet "up to X" at X >= 3; that is ADR 0033 §1's budget, unchanged.
+
+Tests: `aiseat/heuristic/mode_pick_test.go` (each card's bullets: the useful
+one taken, none when every one hurts, up to X summed, the back-out) and
+`aiseat/mode_pick_bot_test.go` (the real cards, wire, enumerator and policy:
+Ertai destroys an opponent's creature and spares its own, the Crew at X = 2
+takes the rummage and the drain, and the opponent's view carries no bullets).

@@ -9,6 +9,30 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Modal trigger bullets (#4674, S79)
+
+`heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every
+`mode_pick` answer scores 0 again, so an "up to" prompt is answered with none.
+The fixed policy prices each answer by its bullets' purposes and best legal
+targets (`mode_bullets`, [bot.md](bot.md#enumerating-a-modal-announcement-764)).
+The cards it changes (Ertai Resurrected, Hullbreaker Horror, Ravager Wurm, The
+Ruinous Wrecking Crew) are in no curated deck, so the evidence is the
+position tests (`heuristic/mode_pick_test.go`) and the real-engine
+regression (`aiseat/mode_pick_bot_test.go`: Ertai destroys an opponent's
+creature with the price on and chooses none with it off, spares its own,
+and the Crew at X = 2 takes the rummage and the drain).
+
+The arena is the check that nothing else moved. The 2026-11-03 UTC run used
+develop `e1b6012f` plus #4674, the four pool2 decks, seeds 2000–2023,
+rotation and lockstep, all four seats `heuristic` and then all four
+`heuristic-nomodepicks` (24 games each). All 48 ended with a winner and none
+stalled. The two runs were identical game for game (same winner and length
+in all 24), and each recorded the same two `mode_pick` windows, Charming
+Prince's "choose one", answered with its first bullet: its blink clause can
+pick the bot's own creature and declares no direction, so it is not priced.
+The labelled position suite and the gated heuristic games passed. Reports
+are local under `data/arena-4674/` (gitignored).
+
 ## Entry-counter creature bodies (#4322, S75)
 
 The heuristic prices a creature's prospective body using reliable fixed

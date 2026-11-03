@@ -444,6 +444,13 @@ type Config struct {
 	// zero value) scores every answer 0 and the enumerator's order
 	// decides.
 	PriceOwnPermanentPicks bool
+	// PriceModePicks scores a mode_pick answer (a modal trigger's "choose
+	// one" or "choose up to N") by what its bullets do for the bot (#4674,
+	// mode_pick.go): each bullet's declared purpose and its best legal
+	// target, so an "up to" prompt takes the bullets that help and none
+	// when every bullet hurts. Off (the zero value) scores every answer 0
+	// and the enumerator's first, on an "up to" prompt none, is taken.
+	PriceModePicks bool
 	// PriceExtraLandDrops prices a declared extra land drop (#2678,
 	// puts.go): one more land this turn while the bot holds a land it
 	// could not otherwise play, at ManaSource plus the ramp premium,
@@ -904,6 +911,7 @@ func DefaultConfig() Config {
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
+		PriceModePicks:         true,
 		PriceExtraLandDrops:    true,
 		PriceEntryCounters:     true,
 		ExtraLandDropRecurring: 0.50,
@@ -1122,6 +1130,8 @@ func BaselineConfig() Config {
 	// land drops.
 	c.PricePutsFromHand = false
 	c.PriceOwnPermanentPicks = false
+	// #4674: mode_pick answers.
+	c.PriceModePicks = false
 	c.PriceExtraLandDrops = false
 	c.PriceEntryCounters = false
 	c.ExtraLandDropRecurring = 0
