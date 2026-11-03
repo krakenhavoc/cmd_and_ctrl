@@ -1422,6 +1422,7 @@ tail blessed-reincarnation/after-exile
 tail blitzwing/convert-if-none-lost
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
+tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
 tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore

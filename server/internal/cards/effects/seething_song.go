@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Seething Song — Instant for {2}{R}:
 //
 //	"Add {R}{R}{R}{R}{R}."
@@ -31,8 +29,6 @@ func init() {
 		OracleID:     "64bf8929-f5f2-4d50-8667-13b1d007bcfc",
 		Name:         "Seething Song",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddMana{Player: item.Controller, Produced: "{R}{R}{R}{R}{R}"}.Apply(ctx)
-		},
+		OnResolve:    seethingSongResolve,
 	})
 }
