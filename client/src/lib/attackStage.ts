@@ -81,6 +81,44 @@ export function unstageMany(
 }
 
 /**
+ * groupPickerSeed is what the attackers picker opens with checked when a
+ * token group's "Attack Bob with N" opens it (an exert question or a
+ * Phyrexian tax, #4423): the creatures already staged at Bob, then the
+ * group's members. Nothing else the picker lists starts checked, so it
+ * never adds a creature the player did not ask to send (#4430).
+ */
+export function groupPickerSeed(
+  stage: readonly StagedAttack[],
+  defender: string,
+  groupIDs: readonly string[],
+): string[] {
+  const out = stage.filter((s) => s.target === defender).map((s) => s.attacker);
+  for (const id of groupIDs) if (!out.includes(id)) out.push(id);
+  return out;
+}
+
+/**
+ * keptBesidePick is the part of the staged set that goes out beside the
+ * picker's choice at `defender` when the picker was opened by a token
+ * group (#4423). `shown` is every creature the picker lists and `chosen`
+ * the ones checked in it. A staged creature aimed at the defender is the
+ * picker's own row, so unchecking it takes it out; one aimed at another
+ * seat stays as it is unless the player checked it here, which re-aims it.
+ */
+export function keptBesidePick(
+  stage: readonly StagedAttack[],
+  defender: string,
+  shown: ReadonlySet<string>,
+  chosen: readonly string[],
+): StagedAttack[] {
+  return stage
+    .filter(
+      (s) => !chosen.includes(s.attacker) && !(s.target === defender && shown.has(s.attacker)),
+    )
+    .map((s) => ({ ...s }));
+}
+
+/**
  * soleTarget is where a first click stages a creature without asking:
  * its one legal attack target, or null when it has several (or none)
  * and the player must point it at one.
