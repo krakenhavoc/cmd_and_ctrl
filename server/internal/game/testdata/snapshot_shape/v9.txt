@@ -51919,6 +51919,7 @@ turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
 turnTally.players{}.lifeLow	number:int
 turnTally.players{}.lifeLowSet	bool
+turnTally.players{}.modifiedCreaturesDied	number:int
 turnTally.players{}.nontokenCreaturesEntered	number:int
 turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int
