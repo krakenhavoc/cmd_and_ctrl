@@ -6238,7 +6238,14 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// about the CARD IN THIS ZONE — its price list, its
 					// modes, the clause refusing the cast — which every
 					// player may read off a card in a public zone.
-					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, grant)
+					// #4696: the face the pile shows is stamped under
+					// the permission that opens THAT face, which is the
+					// one a cast of it would use.
+					faceGrant := grant
+					if grant != nil && live != nil {
+						faceGrant = g.CastPermissionForFaceLocked(caster, *live, zone.kind, "", c.ActiveFace)
+					}
+					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, faceGrant)
 					s.applyPublicTo(c, zone.kind)
 					c.stampsFor(caster, s)
 					stampCastableFaces(g, caster, c, zone.kind, grant, true)
@@ -6982,7 +6989,8 @@ func castFaceOf(c *CardView, i int) castFace {
 // holder's stamps, where nothing about the answer is public because
 // the seat it was computed for is not the seat the pile belongs to.
 //
-// The face list is game.CastableFacesUnder, which is the same answer
+// The face list is game.CastableFaceGrantsLocked (CastableFacesUnder,
+// plus a face a second permission opens, #4696), which is the same answer
 // the bot enumerator walks (legal/cast.go): both halves of a modal
 // DFC and of an adventure card, the front alone of a transform card,
 // and exactly the faces a grant names when one does. A view that
@@ -6998,7 +7006,14 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 	if !ok {
 		return
 	}
-	for _, i := range game.CastableFacesUnder(live, grant, caster) {
+	// #4696: each face under the permission that opens it, which is the
+	// one CastSpell finds for a cast of that face and the one the bot
+	// enumerator walks it under (game.CastableFaceGrantsLocked): Vizier
+	// of the Menagerie's creature spells beside an "instant and sorcery
+	// spells" permission stamp both halves of Bonecrusher Giant, each
+	// priced by its own permission.
+	for _, fg := range g.CastableFaceGrantsLocked(caster, live, kind, grant) {
+		i := fg.Face
 		if i < 0 || i >= len(c.Faces) {
 			continue
 		}
@@ -7007,7 +7022,7 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 		if !game.FaceCastableFromZone(live, i, kind) {
 			continue
 		}
-		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
+		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, fg.Permission)
 		if public {
 			s.applyPublicToFace(&c.Faces[i], kind)
 		}

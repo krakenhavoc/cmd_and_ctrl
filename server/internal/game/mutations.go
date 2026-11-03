@@ -786,7 +786,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// nil for hand and the command zone, and nil for a card whose own
 	// text already opens the zone — Gravecrawler and a printed
 	// flashback need no permission and must not be repriced by one.
-	grant := g.CastPermissionForClaimLocked(playerID, card, src.Kind, params.AlternativeCost)
+	//
+	// #4696: and the permission is the one that opens the face asked
+	// for, when two open different faces of the card (CR 601.3): Vizier
+	// of the Menagerie casts Bonecrusher Giant and an "instant and
+	// sorcery spells" permission casts Stomp. A face no permission opens
+	// gets the first one, as before, so a grant naming one face still
+	// settles it below.
+	grant := g.CastPermissionForFaceLocked(playerID, card, src.Kind, params.AlternativeCost, params.Face)
 	// CR 702.143c, #658. Asked here, of the card as it sits in its
 	// source zone, because the answer stops being readable the moment
 	// the card moves: CR 406.3a turns a foretold card face up as it is
@@ -3745,7 +3752,9 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// #4509: `card` is the face being cast, so a permission whose filter
 	// does not admit it prices nothing, as CastSpell casts nothing
 	// through it (ForSpell).
-	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost).ForSpell(card)
+	//
+	// #4696: the permission that opens that face, as CastSpell finds it.
+	grant := g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face).ForSpell(card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err

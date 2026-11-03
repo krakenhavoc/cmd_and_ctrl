@@ -270,7 +270,9 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	// No turn is passed: the permission's window was checked by
 	// CastPermissionForLocked, which is #945's one liveness test.
 	srcKind, _ := castZoneFromWire(params.FromZone)
-	grant := g.CastPermissionForClaimLocked(playerID, card, srcKind, params.AlternativeCost)
+	// #4696: the permission that opens the face asked for, as CastSpell
+	// finds it.
+	grant := g.CastPermissionForFaceLocked(playerID, card, srcKind, params.AlternativeCost, params.Face)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		return CastPrice{}, ErrInvalidFace

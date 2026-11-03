@@ -4827,3 +4827,41 @@ since #1173, so a modal DFC whose land back face is the face Oracle of Mul Daya 
 **Tests.** `game/permission_spell_face_test.go`, `cards/effects/permission_spell_face_4509_test.go`,
 `protocol/permission_spell_face_view_test.go`, `client/src/lib/libraryTop.test.ts`. Back-out: making `judgesSpell` answer false
 fails the spell-phrased ones; dropping `CardInZone` from `filterOpens` fails the card-phrased ones.
+
+## Amendment — 2026-11-02 (#4696): two permissions that open different faces of one card
+
+The first "still open" item of the #4509 amendment. Vizier of the Menagerie ("creature spells from the top of your library")
+and an "instant and sorcery spells from the top of your library" permission are both live, and Bonecrusher Giant is on top.
+A cast is legal when any rule or effect allows it (CR 601.3), and each face is judged as the spell it would be (CR 712.11c,
+715.3a), so the Giant is castable through the first and Stomp through the second. The lookup answered with the first permission
+that covered the card, and only that permission's faces were offered (`CastableFacesUnder`) and accepted at announce (`ForSpell`).
+A permission that names faces (`Faces`) had the same limit beside one that opens the card's other face.
+
+**The engine.** The permission is looked up per face.
+
+- `CastPermissionForFaceLocked(player, card, zone, claim, face)` walks `CastPermissionForClaimLocked`'s order and answers the
+  first permission that opens that face (`CastPermission.opensFace`: it names the face when it names faces, and `ForSpell`
+  admits the face materialised). When none does, the answer is `CastPermissionForClaimLocked`'s, unchanged, so a grant naming
+  one face still settles a cast that names none (`faceForCastLocked`), and a permission that does not admit the face is narrowed
+  to nothing by `ForSpell` where it always was. A single-faced card never takes the new walk.
+- CastSpell asks it with the face announced, and so does every reader that prices the cast: `priceCastLocked`,
+  `printedCostLocked`, `grantReductionLocked` (`CostLess`), `tapCostForCastParamsLocked`, `claimedAltCostLocked` and
+  `SpellXCeilingForCast`. All of them were handed the face in `CastSpellParams.Face`, so all of them judge a cast under the
+  permission the cast uses.
+- `CastableFaceGrantsLocked(player, card, zone, first)` pairs each face a cast may choose with that permission: the first
+  permission's faces as `CastableFacesUnder` gives them, then each castable face it does not open under the permission
+  `CastPermissionForFaceLocked` finds. The bot enumerator (`legal/cast.go`) walks it, offering, pricing and land-playing each face
+  under its own permission, and so does the view's per-face stamps (`protocol.stampCastableFaces`); the face a pile shows is
+  stamped under its own permission too.
+- Unchanged: a hand permission (miracle) and a card in the command zone, which no second permission opens; the zone and window
+  questions, which the walk asks as before; the order of the walk (stored before standing, a claim's permission first).
+
+**Snapshot.** Nothing stored changes.
+
+**Tests.** `game/permission_per_face_test.go` (both orders of a creature-spells and an instant-and-sorcery permission over one
+adventurer card: both faces offered, each priced by its own permission's `CostLess`, each castable through its own; a grant naming
+the creature face beside the other; one permission alone unchanged), `cards/effects/permission_per_face_4696_test.go` (Vizier of
+the Menagerie and an instant-and-sorcery library permission with Bonecrusher Giant on top: both faces in the bot's move list and
+both castable), `legal/permission_per_face_test.go` (both faces in the move list in either order, every move accepted) and
+`protocol/permission_per_face_view_test.go` (both faces stamped castable in either order). Back-out: making
+`CastPermissionForFaceLocked` answer `CastPermissionForClaimLocked` fails all four.
