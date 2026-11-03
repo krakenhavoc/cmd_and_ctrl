@@ -26529,6 +26529,8 @@ pendingChoices[].parked.activate.opponent[].refs[].splice	number:int
 pendingChoices[].parked.activate.opponent[].slot	number:int
 pendingChoices[].parked.activate.params	object
 pendingChoices[].parked.activate.params.AutoTap	bool
+pendingChoices[].parked.activate.params.BlightIDs	array
+pendingChoices[].parked.activate.params.BlightIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.activate.params.CostBranch	number:int
 pendingChoices[].parked.activate.params.CounterCounts	array
 pendingChoices[].parked.activate.params.CounterCounts[]	number:int

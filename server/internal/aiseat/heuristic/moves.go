@@ -187,6 +187,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		return 0, true
 	}
 	v -= poisonCostValue(st, c.Poison)
+	// #4684: "Blight N" (Gristle Glutton), priced by what the counters
+	// cost the creature the move names, as a resolving blight's pick is
+	// (blightCounterCost): a 1/1 token dies of them, a wall shrugs off a
+	// point. The enumerator offers one move per creature, so the policy
+	// takes the cheapest.
+	if b := c.Blight; b != nil {
+		v -= st.blightCounterCost(st.bf[b.CardID.String()], b.N)
+	}
 	return v, false
 }
 

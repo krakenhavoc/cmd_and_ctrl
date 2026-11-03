@@ -716,6 +716,12 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d unattaches %d Equipment — only \"Unattach an Equipment\" (1) is supported",
 				spec.Name, i, n))
 		}
+		// #4684: "Blight N" puts at least one counter; a negative N is a
+		// card-file mistake (zero is "no component").
+		if ab.Cost.Blight < 0 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d blights %d — blight N is at least 1 (CR 701.68a)",
+				spec.Name, i, ab.Cost.Blight))
+		}
 		// #2028: the source pays one component (CR 118.3), so a cost
 		// cannot both return it and sacrifice or exile it. No printed
 		// card does; the activation would refuse every attempt.

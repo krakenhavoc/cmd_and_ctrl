@@ -141,6 +141,7 @@ var nonManaActivateKeys = []string{
 	"sacrifice_ids", "counter_source_ids", "counter_counts", "counter_kind",
 	"counter_kinds", "discard_ids", "exile_ids", "top_ids", "return_ids",
 	"exile_permanent_ids", "reveal_ids", "phyrexian_life", "unattach_ids",
+	"blight_ids",
 }
 
 // leftoverEligible reports whether m gets LeftoverThreshold in the

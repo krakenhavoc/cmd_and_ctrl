@@ -1782,6 +1782,10 @@ func dispatch(g *game.Game, a Action) error {
 			// First Avenger). A divided amount may read it, so it rides
 			// with the distribution.
 			UnattachIDs []string `json:"unattach_ids,omitempty"`
+			// #4684 — blight_ids names the creature a "Blight N" cost
+			// puts its -1/-1 counters on (Gristle Glutton). The name a
+			// cast's blight pick rides.
+			BlightIDs []string `json:"blight_ids,omitempty"`
 			// #2598 — reveal_ids names the cards revealed to pay a
 			// "Reveal X black cards from your hand" cost (Martyr of
 			// Bones). The name a cast's reveal pick rides; the count
@@ -1904,6 +1908,14 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				unattachIDs = append(unattachIDs, id)
 			}
+			var blightIDs []uuid.UUID
+			for _, raw := range p.BlightIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability blight_ids: %w", err)
+				}
+				blightIDs = append(blightIDs, id)
+			}
 			revealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
 			for _, raw := range p.RevealIDs {
 				id, err := uuid.Parse(raw)
@@ -1947,6 +1959,7 @@ func dispatch(g *game.Game, a Action) error {
 				ReturnIDs:         returnIDs,
 				ExilePermanentIDs: exilePermanentIDs,
 				UnattachIDs:       unattachIDs,
+				BlightIDs:         blightIDs,
 				RevealIDs:         revealIDs,
 				WaterbendIDs:      waterbendIDs,
 				CostBranch:        p.CostBranch,

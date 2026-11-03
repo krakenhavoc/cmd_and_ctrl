@@ -1157,17 +1157,26 @@ func (st *state) blightPickValue(ids []string, lookup func(string) *protocol.Car
 	}
 	cost := 0.0
 	for _, id := range ids {
-		c := lookup(id)
-		if c == nil {
-			continue
-		}
-		v := st.permanentValue(c)
-		if c.Toughness > 1 {
-			v = min(v, st.w.Power*float64(min(max(c.Power, 0), 1))+st.w.Toughness)
-		}
-		cost += v
+		cost += st.blightCounterCost(lookup(id), 1)
 	}
 	return blightPayoff - cost
+}
+
+// blightCounterCost is what n -1/-1 counters cost the creature c: all it
+// is worth when its toughness is n or less (it dies, CR 704.5f), else n
+// points of toughness and up to n of its power, never more than it is
+// worth. blightPickValue reads it for one counter (the wire does not carry
+// a resolving blight's N); a "Blight N" cost (#4684) reads it with the N
+// legal.MoveCost.Blight carries.
+func (st *state) blightCounterCost(c *protocol.CardView, n int) float64 {
+	if c == nil || n <= 0 {
+		return 0
+	}
+	v := st.permanentValue(c)
+	if c.Toughness > n {
+		v = min(v, st.w.Power*float64(min(max(c.Power, 0), n))+st.w.Toughness*float64(n))
+	}
+	return v
 }
 
 // --- "choose a color" (#780) -----------------------------------------

@@ -50,6 +50,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
+  - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4401,7 +4402,29 @@ counters that landed. "When you do" is a `WhenYouDo` reflexive trigger
 applied from `fn` when `d.Did()` (Warren Torchmaster). Never declare the
 choice as the trigger's `Targets`. A blight paid as a COST is
 `OptionalBlight` / `BlightCost` / `BlightXCost` on a spell (#1703), which
-`game.blightLocked` pays.
+`game.blightLocked` pays, and `BlightN` on an activated ability (next
+subsection).
+
+### Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)
+
+"Blight N" inside an activation cost is `BlightN(n)`, composed with `Plus`:
+
+```go
+Cost: Plus(TapCost(), BlightN(1)),                         // Gristle Glutton
+Cost: Plus(ManaCost("{1}{W}"), BlightN(1), SacrificeThis()), // Spiral into Solitude
+```
+
+The activator names the creature as they activate (`blight_ids`): any
+creature they control that can have counters put on it, the source
+included. It is not `AddCounterToThis`, which is "put a counter on this
+creature" (Devoted Druid). The counters are a cost's, not an effect's, so
+Doubling Season doesn't double them and Vizier of Remedies applies (CR
+614.16). With no creature to blight the ability can't be activated (CR
+701.68b). The source's zone doesn't matter: Evershrike's Gift's
+graveyard ability (`Zones: []game.ZoneKind{game.ZoneGraveyard}`) blights a
+creature on the battlefield. The card file declares nothing else; the
+view, the client's picker, the enumerator and the bot's price come with
+the component.
 
 ### Adding a block-rule card (S37+, #750)
 

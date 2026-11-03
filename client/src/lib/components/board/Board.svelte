@@ -126,7 +126,12 @@
   import { provideCombatCues } from "../../combatCues.svelte";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
-  import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
+  import {
+    blightCostLabel,
+    findCard,
+    locateCard,
+    type MenuActivate,
+  } from "../../contextMenu.logic";
   import DockRequest from "./DockRequest.svelte";
   import { castAnywayConfirmRequest } from "../../targetingDock";
   import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
@@ -2022,6 +2027,8 @@
       // #4799: the Equipment unattached to pay (Captain America), which
       // the division above was sized from.
       if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
+      // #4684: the creature blighted to pay (Gristle Glutton).
+      if (abilityBlightIDs.length > 0) params.blight_ids = abilityBlightIDs;
       // #1297: the exile-N-cards picks, made at announce with the
       // discard picks. Their own field — an exiled card is not
       // discarded — and omitted when the cost has no such component.
@@ -2053,6 +2060,7 @@
       abilityReturnIDs = [];
       abilityExilePermanentIDs = [];
       abilityUnattachIDs = [];
+      abilityBlightIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
@@ -2160,6 +2168,21 @@
     const p = abilityUnattachPrompt;
     if (!p) return [];
     return orderSacrificeOptions(view.battlefield.cards, p.ability.unattach_options?.cards);
+  });
+
+  // #4684: "Blight N" as a cost (Gristle Glutton), asked after the
+  // unattach pick through the same picker with the verb "Blight". The
+  // answer rides activate_ability as blight_ids.
+  let abilityBlightPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityBlightIDs: string[] = [];
+
+  const abilityBlightOptions = $derived.by(() => {
+    const p = abilityBlightPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.blight_options?.cards);
   });
 
   // #1600: the same component on a MANA ability (Food Chain).
@@ -2727,7 +2750,7 @@
     } else {
       abilityUnattachIDs = [];
     }
-    askAbilityTapCost(card, ability);
+    askAbilityBlightCost(card, ability);
   }
 
   function confirmAbilityUnattachCost(ids: string[]): void {
@@ -2735,6 +2758,27 @@
     abilityUnattachPrompt = null;
     if (!p) return;
     abilityUnattachIDs = ids;
+    askAbilityBlightCost(p.card, p.ability);
+  }
+
+  // #4684: the blight pick ("{T}, Blight 1:", Gristle Glutton), after
+  // the unattach pick: which creature you control takes the -1/-1
+  // counters. Skipped when you control exactly one that could.
+  function askAbilityBlightCost(card: CardView, ability: ActivatedAbilityView): void {
+    const options = ability.blight ? (ability.blight_options?.cards ?? []) : [];
+    if (options.length > 1) {
+      abilityBlightPrompt = { card, ability };
+      return;
+    }
+    abilityBlightIDs = options;
+    askAbilityTapCost(card, ability);
+  }
+
+  function confirmAbilityBlightCost(ids: string[]): void {
+    const p = abilityBlightPrompt;
+    abilityBlightPrompt = null;
+    if (!p) return;
+    abilityBlightIDs = ids;
     askAbilityTapCost(p.card, p.ability);
   }
 
@@ -3296,6 +3340,8 @@
     }
     // #4799: the Equipment unattached to pay, likewise.
     if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
+    // #4684: the creature blighted to pay, likewise.
+    if (abilityBlightIDs.length > 0) params.blight_ids = abilityBlightIDs;
     // ADR 0109 §7: the card put on top of the library, likewise.
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     // #2598: the cards revealed to pay "Reveal X black cards".
@@ -3311,6 +3357,7 @@
     abilityReturnIDs = [];
     abilityExilePermanentIDs = [];
     abilityUnattachIDs = [];
+    abilityBlightIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
@@ -4678,6 +4725,23 @@
     onConfirm={confirmAbilityUnattachCost}
     onCancel={() => {
       abilityUnattachPrompt = null;
+      abilityUnattachIDs = [];
+      abilityExilePermanentIDs = [];
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #4684: "Blight N" as a cost (Gristle Glutton). The sacrifice
+       picker with the verb "Blight"; the answer rides blight_ids. -->
+  <SacrificeCostModal
+    source={abilityBlightPrompt?.card ?? null}
+    label={blightCostLabel(abilityBlightPrompt?.ability.blight)}
+    options={abilityBlightOptions}
+    count={1}
+    verb="Blight"
+    onConfirm={confirmAbilityBlightCost}
+    onCancel={() => {
+      abilityBlightPrompt = null;
+      abilityBlightIDs = [];
       abilityUnattachIDs = [];
       abilityExilePermanentIDs = [];
       abilityReturnIDs = [];

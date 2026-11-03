@@ -354,6 +354,18 @@ var (
 		})
 )
 
+// discardACardIfYouDoDraw is the mandatory "Discard a card. If you do,
+// draw a card." as a whole effect (Shadow of the Goblin's trigger, Gristle
+// Glutton's ability): the discard is chosen as it resolves, and with an
+// empty hand nothing is discarded and nothing drawn.
+func discardACardIfYouDoDraw(g *game.Game, item *game.StackItem) error {
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      1,
+	}, drawOneIfDiscarded.then, nil)
+}
+
 func b39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw) func(*Context) error {
 	return func(ctx *Context) error {
 		if exact != (draw.then.Key() == drawThreeIfDiscardedTwo.then.Key()) {

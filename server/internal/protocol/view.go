@@ -5076,6 +5076,17 @@ type ActivatedAbilityView struct {
 	// the pick carries `divide.by_unattach`.
 	UnattachLabel   string            `json:"unattach_label,omitempty"`
 	UnattachOptions *LegalTargetsView `json:"unattach_options,omitempty"`
+	// Blight / BlightOptions describe a "Blight N" cost component
+	// (#4684, CR 701.68a) — Gristle Glutton's "{T}, Blight 1:". Blight
+	// is N, the -1/-1 counters the cost puts on; BlightOptions is the
+	// creatures the activator controls that could take them right now
+	// (game.BlightOptionsForEffect), min and max 1, in the shape a cast's
+	// blight ships. The chosen creature goes back as `blight_ids`. Absent
+	// when the cost has no blight; present with no cards means it can't
+	// be paid (CR 701.68b). Not a target list: a hexproof creature you
+	// control is on it.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -13294,6 +13305,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if n := a.Cost.UnattachEquipment; n > 0 {
 			v.UnattachLabel = unattachCostLabel(c)
 			v.UnattachOptions = unattachCostOptions(g, c.InstanceID, n)
+		}
+		// #4684: the blight component, from the walk the engine
+		// validates against. The activator is the viewer of this row.
+		if n := a.Cost.Blight; n > 0 {
+			v.Blight = n
+			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,
