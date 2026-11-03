@@ -64,7 +64,7 @@ var oneSentenceTriggerShapes = func() map[string]*regexp.Regexp {
 		"gain life equal to subject": regexp.MustCompile(cond + `you gain life equal to (its|that creature's) (toughness|power)$`),
 		"draw":                       regexp.MustCompile(cond + `draw ` + num + ` cards?$`),
 		"mill, scry or surveil":      regexp.MustCompile(cond + `(mill|scry|surveil) ` + num + `( cards?)?$`),
-		"create tokens":              regexp.MustCompile(cond + `create ` + num + ` [^"]*?tokens?$`),
+		"create tokens":              regexp.MustCompile(cond + `create ` + num + ` [^".]*?tokens?$`),
 		"drain":                      regexp.MustCompile(cond + `each opponent loses ` + num + ` life( and you gain ` + num + ` life)?$`),
 		"damage each opponent":       regexp.MustCompile(cond + `~ deals ` + num + ` damage to each opponent$`),
 		"energy":                     regexp.MustCompile(cond + `you get (\{e\})+$`),
@@ -279,6 +279,8 @@ func TestOneSentenceTriggerShapes(t *testing.T) {
 		{"Whenever you cast a noncreature spell, Guttersnipe deals 2 damage to each opponent.", "damage each opponent"},
 		{"Whenever you cast a spell, you may draw a card.", ""},
 		{"Whenever this creature attacks, draw a card, then discard a card.", ""},
+		// Two sentences that happen to end on "token" are not one (Brudiclad, Telchor Engineer).
+		{"At the beginning of combat on your turn, create a 2/1 blue Phyrexian Myr artifact creature token. Then you may choose a token you control. If you do, each other token you control becomes a copy of that token.", ""},
 	} {
 		names := []string{"Marwyn, the Nurturer", "Marwyn", "Guttersnipe"}
 		if got := oneSentenceShape(oracletext.Normalize(c.line, names)); got != c.shape {

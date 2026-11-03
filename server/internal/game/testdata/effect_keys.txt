@@ -50,6 +50,7 @@ body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
 body bolg-of-the-north/damage
+body brass-infiniscope/draw-and-gain-half-x
 body breeches/blast
 body breeches/copy-that-spell
 body bullseye-death-dealer/damage
@@ -684,6 +685,7 @@ condition block/an-opponents-creature-blocks
 condition cast/you-next-cast
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
+condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
 condition combat/each-attacker-not-blocked
@@ -1177,6 +1179,7 @@ run prompt-run/berserkers-frenzy-block
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
+run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
 run prompt-run/consuming-vapors-gain
@@ -1380,6 +1383,7 @@ tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore
 tail brass-tunnel-grinder/transform
 tail breach-the-multiverse/phyrexians
+tail brudiclad/choose-a-token
 tail budding-insurgent/draw-if-legendary-enchantment
 tail budoka-gardener/flip-with-ten-lands
 tail cait-sith-fortune-teller/impulse-exile
@@ -1617,6 +1621,7 @@ tail many-partings/create-food
 tail mari-the-killing-quill/after-exile
 tail mass/bane-of-progress-counters
 tail mass/blood-money-treasures
+tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
 tail mass/flood-of-tears-put

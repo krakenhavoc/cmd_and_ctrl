@@ -16,7 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // can attack safely and it is a Rampant Growth every turn.
 //
 // THE FIRST "WHENEVER EQUIPPED CREATURE ATTACKS" IN THE CATALOG. The
-// condition is attachedCreatureAttacked, and EventAttack's shape does
+// condition is attachedCreatureAttacked (equippedCreatureAttacksSearchBasicLand,
+// shared with Bitterthorn, Nissa's Animus), and EventAttack's shape does
 // the work: it carries the attacking creature in CardID and fires
 // once per creature on its FIRST declaration, so one Sword on one
 // creature is exactly one trigger per combat. No batching guard is
@@ -37,20 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(1, 1)},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attachedCreatureAttacked(ev, source)
-			}, "Sword of the Animist — search for a basic land", func(g *game.Game, item *game.StackItem) error {
-				return SearchLibrary{
-					Player:        item.Controller,
-					Predicate:     IsBasicLand,
-					Dest:          game.ZoneBattlefield,
-					Limit:         1,
-					TappedOnEntry: true,
-					Optional:      true,
-					Shuffle:       true,
-					Reason:        "Sword of the Animist — search for a basic land card",
-				}.Apply(NewContext(g, item))
-			}),
+			equippedCreatureAttacksSearchBasicLand("Sword of the Animist"),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),
