@@ -209,6 +209,12 @@ func (f *logFuzzer) emit() {
 		case 14:
 			g.EmitEvent(game.Event{Kind: game.EventAttack, Actor: f.player(), CardID: f.card(), Target: f.player()})
 		default:
+			if f.rng.IntN(2) == 0 {
+				// #4442: a counter total, whose entry's delta is the
+				// fold's own state (logFold.counts).
+				g.EmitEvent(game.Event{Kind: game.EventCounterPlaced, Target: f.card(), Label: game.CounterPlusOne, Amount: f.rng.IntN(4)})
+				return
+			}
 			// Silent kinds still advance the cursor and clear the
 			// sacrifice marker.
 			g.EmitEvent(game.Event{Kind: game.EventTapCard, Actor: f.player(), CardID: f.card()})

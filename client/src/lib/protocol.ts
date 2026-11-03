@@ -1382,6 +1382,11 @@ export interface LogEvent {
   target?: string;
   // Signed / counting payload: life delta, damage dealt, cards drawn.
   amount?: number;
+  // #4442: on a `counters` entry, the signed change (+2 for two put on,
+  // -1 for one taken off), where `amount` is the count after it. Redacted
+  // with `amount`. Absent (0) on every other kind, and on an entry from a
+  // server that predates the field.
+  delta?: number;
   // #1036: the SIZE of a `scry` / `surveil` entry's keyword action —
   // the "2" in "scry 2" — where `amount` is how many cards the table
   // then watched move. Absent on every other kind, and absent on a

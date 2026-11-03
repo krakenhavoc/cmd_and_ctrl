@@ -2,9 +2,10 @@
 //
 // A permanent that is destroyed, exiled, sacrificed or bounced, a spell
 // that is countered, a planeswalker that arrives or goes, a token that is
-// created (#4441) and a board wipe each get one cue over the table, so a
-// player sees what happened before they read the log. TableEffects.svelte
-// measures, draws and plays; every rule is here, pure and unit-tested:
+// created (#4441), counters put on a permanent (#4442) and a board wipe
+// each get one cue over the table, so a player sees what happened before
+// they read the log. TableEffects.svelte measures, draws and plays; every
+// rule is here, pure and unit-tested:
 //
 //   - which log entries are new (the combat beats' watermark, reused:
 //     the first frame primes, a rewind forgets, a re-prime cancels);
@@ -22,6 +23,7 @@
 
 import type { LogEvent } from "./protocol";
 import { seeded } from "./combatStrikes";
+import { COUNTER_MINUS_ONE, COUNTER_PLUS_ONE } from "./counterTypes";
 import type { SoundName } from "./sounds";
 
 // ---- The setting and the gates ----
@@ -106,7 +108,9 @@ export type EffectKind =
   | "pw_enter"
   | "pw_leave"
   // S80 (#4441 on): the common moments.
-  | "token_create";
+  | "token_create"
+  // Counters put on a permanent (#4442). Not `counter`, the counterspell.
+  | "counters";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -114,7 +118,8 @@ export type EffectKind =
  * again, because it is now an altar, a knife and then the destroy; a
  * counterspell holds its cracks while the stack linger shows the spell;
  * a planeswalker that dies now also withdraws from the plane. The S80
- * cues are their issues' own lengths: a token's pop-in is about 0.4 s.
+ * cues are their issues' own lengths: a token's pop-in is about 0.4 s,
+ * a counter's pulse a little longer, so its tick can be read.
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -127,6 +132,7 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   pw_enter: 1200,
   pw_leave: 1500,
   token_create: 400,
+  counters: 450,
 };
 
 /**
@@ -149,7 +155,28 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   pw_enter: "pw_enter",
   pw_leave: "pw_leave",
   token_create: "token_create",
+  // Which of two sounds a counter cue plays is its tone's (COUNTER_SOUND).
+  counters: null,
 };
+
+/**
+ * What a counter cue is about (#4442): +1/+1 counters (green, a rising
+ * tick), -1/-1 counters (purple, a falling one) or any other kind
+ * (charge, oil, stun, a keyword counter: a neutral pulse and no sound).
+ */
+export type CounterTone = "plus" | "minus" | "other";
+
+export const COUNTER_SOUND: Record<CounterTone, SoundName | null> = {
+  plus: "counter_add",
+  minus: "counter_remove",
+  other: null,
+};
+
+export function counterTone(label: string): CounterTone {
+  if (label === COUNTER_PLUS_ONE) return "plus";
+  if (label === COUNTER_MINUS_ONE) return "minus";
+  return "other";
+}
 
 /**
  * Tokens created together (#4441): one sound for the batch, and the
@@ -209,6 +236,9 @@ export interface EffectCue {
    * own and does not count again toward a busy table.
    */
   follows?: boolean;
+  /** For a `counters` cue: which counters were put on, and their kind as the log names it. */
+  counterTone?: CounterTone;
+  counterLabel?: string;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -310,6 +340,7 @@ export function planEffects(
   const order: Exit[] = [];
   const cues: EffectCue[] = [];
   const tokens: LogEvent[] = [];
+  const counters: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -321,6 +352,10 @@ export function planEffects(
     // `token` entry, never a `zone` one as well (#762).
     if (e.kind === "token") {
       tokens.push(e);
+      continue;
+    }
+    if (e.kind === "counters") {
+      counters.push(e);
       continue;
     }
 
@@ -413,6 +448,7 @@ export function planEffects(
     cues.push(cue);
   }
   cues.push(...tokenCues(tokens));
+  cues.push(...counterCues(counters));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -447,6 +483,58 @@ function tokenCues(tokens: readonly LogEvent[]): EffectCue[] {
       };
       if (i > 0) cue.follows = true;
       out.push(cue);
+    });
+  }
+  return out;
+}
+
+/**
+ * counterCues gives each permanent that had counters put on it a pulse
+ * (#4442). Only a placement is a cue: the entry's `delta` is above zero
+ * (a removal, the CR 704.5q cancel included, is not). An entry with no
+ * `delta` (a server that predates it) or no `label` (a card this viewer
+ * may not identify) says too little and is skipped. Counters put on in
+ * one batch are one moment, so a proliferate or a "put a +1/+1 counter
+ * on each creature you control" plays one sound: the first +1/+1 or
+ * -1/-1 cue of the batch plays it, and every other cue of the batch
+ * follows. The pulses all play at once. One card's entries of one kind
+ * in one batch are one pulse.
+ */
+function counterCues(entries: readonly LogEvent[]): EffectCue[] {
+  const groups = new Map<string, EffectCue[]>();
+  const seen = new Set<string>();
+  for (const e of entries) {
+    if (!e.card_id || !e.label || (e.delta ?? 0) <= 0) continue;
+    const tone = counterTone(e.label);
+    const k = e.batch === undefined || e.batch === null ? `q${e.seq}` : String(e.batch);
+    const one = `${k}|${e.card_id}|${e.label}`;
+    if (seen.has(one)) continue;
+    seen.add(one);
+    const cue: EffectCue = {
+      id: String(e.seq),
+      seq: e.seq,
+      kind: "counters",
+      cardID: e.card_id,
+      stackItemID: null,
+      batch: e.batch ?? null,
+      weight: "full",
+      delayMs: 0,
+      counterTone: tone,
+      counterLabel: e.label,
+    };
+    const g = groups.get(k);
+    if (g) g.push(cue);
+    else groups.set(k, [cue]);
+  }
+  const out: EffectCue[] = [];
+  for (const [, g] of groups) {
+    const lead = Math.max(
+      0,
+      g.findIndex((c) => COUNTER_SOUND[c.counterTone ?? "other"] !== null),
+    );
+    g.forEach((c, i) => {
+      if (i !== lead) c.follows = true;
+      out.push(c);
     });
   }
   return out;
@@ -490,14 +578,16 @@ export function soundBatch(gameID: string, batch: number | null): string | undef
 
 /**
  * The sound a cue plays, and its volume hint (a wipe's per-card sounds are
- * quieter). A cue that follows another of its batch has none of its own.
+ * quieter). A cue that follows another of its batch has none of its own;
+ * a counter cue's is its tone's.
  */
-export function cueSound(cue: Pick<EffectCue, "kind" | "weight" | "follows">): {
+export function cueSound(cue: Pick<EffectCue, "kind" | "weight" | "follows" | "counterTone">): {
   name: SoundName;
   volume: number;
 } | null {
   if (cue.follows) return null;
-  const name = EFFECT_SOUND[cue.kind];
+  const name =
+    cue.kind === "counters" ? COUNTER_SOUND[cue.counterTone ?? "other"] : EFFECT_SOUND[cue.kind];
   if (!name) return null;
   return { name, volume: cue.weight === "light" ? WIPE_CARD_VOLUME : 1 };
 }
@@ -965,7 +1055,8 @@ export function busyScale(n: number): number {
  * headlines is how many cues a plan adds to a busy table: each cue of
  * its own, each board wipe and each signature. A wipe's per-card cues
  * are not counted: the wipe already fits them inside its cap. Nor is a
- * cue that follows another of its batch: tokens created together count once.
+ * cue that follows another of its batch: tokens created together count
+ * once, and so do the counters one proliferate puts on.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

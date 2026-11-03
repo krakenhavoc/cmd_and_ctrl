@@ -19,6 +19,9 @@
   // A created token (#4441) is the exception: it is on the board, so its
   // pop-in moves its own tile (effectCueMotion.ts tokenPop, presentation
   // only, cancelled with the cue) and this layer adds the glow over it.
+  // Counters put on a permanent (#4442) are on the board too: their pulse
+  // and tick are drawn over its power/toughness badge, and the tile is
+  // left alone.
   //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
@@ -103,6 +106,7 @@
     wipeTiming,
     type DeckedFling,
     type DeckedWisp,
+    type CounterTone,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
@@ -168,6 +172,9 @@
     // and an exile drawn into a board wipe's vortex (its spiral path).
     fromDestroy?: boolean;
     pull?: { x: number; y: number }[] | null;
+    // Counters put on a permanent (#4442): which kind, so which colour
+    // and which way the tick goes.
+    counterTone?: CounterTone;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -369,6 +376,8 @@
     // The token itself is the news: it is on the board, and the log says
     // who made it. Still, it draws nothing, and its sound plays.
     token_create: null,
+    // So are the counters: the badge already shows the new numbers.
+    counters: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -440,6 +449,10 @@
     if (!cardID) return;
     if (cue.kind === "token_create") {
       placeToken(cardID, base, motion, b);
+      return;
+    }
+    if (cue.kind === "counters") {
+      placeCounters(cue, base, motion, b);
       return;
     }
     // A planeswalker that just entered is still in its entrance pop (the
@@ -523,6 +536,45 @@
       width: el.offsetWidth || (tapped ? r.height : r.width),
       height: el.offsetHeight || (tapped ? r.width : r.height),
       rot: tapped ? 90 : 0,
+    });
+  }
+
+  // Counters put on a permanent (#4442): the pulse rings what shows the
+  // count. +1/+1 and -1/-1 counters ring the power/toughness badge;
+  // another kind rings its own pip (CounterPips). A tile with neither
+  // (a token group's member, a vehicle not yet a creature) rings its own
+  // corner. The badges stay upright on a tapped tile, so no turn. A
+  // permanent already gone, or a still cue, draws nothing.
+  function placeCounters(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const cardID = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(cardID)) return;
+    const tile = findCardAnchor(boardEl, cardID, { accept: hasSize });
+    if (!tile) return;
+    const tone = cue.counterTone ?? "other";
+    const label = cue.counterLabel ?? "";
+    const pip = [...tile.querySelectorAll<HTMLElement>("[data-counter]")].find(
+      (el) => el.dataset.counter === label && hasSize(el),
+    );
+    const pt = tile.querySelector<HTMLElement>(".badge.pt");
+    const el = (tone === "other" ? pip : pt && hasSize(pt) ? pt : pip) ?? null;
+    const r = (el ?? tile).getBoundingClientRect();
+    // A tile's corner: a box the size of a P/T badge, inside its bottom right.
+    const w = Math.min(36, r.width);
+    const box = el
+      ? r
+      : { left: r.left + r.width - w - 4, top: r.top + r.height - 22, width: w, height: 18 };
+    add({
+      ...base,
+      x: box.left + box.width / 2 - b.rect.left,
+      y: box.top + box.height / 2 - b.rect.top,
+      width: box.width,
+      height: box.height,
+      counterTone: tone,
     });
   }
 
@@ -1222,6 +1274,28 @@
           style:height={`${f.height * 1.4}px`}
           style:--fx-rot={`${f.rot}deg`}
         ></div>
+      </div>
+    {:else if f.kind === "counters"}
+      <!-- #4442: a ring over the power/toughness badge, and a tick that
+           rises (+1/+1) or falls (-1/-1) above it. -->
+      <div
+        class="fx m"
+        data-effect="counters"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-tone={f.counterTone}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cpulse"
+          style:width={`${f.width + 10}px`}
+          style:height={`${f.height + 8}px`}
+        ></div>
+        {#if f.counterTone !== "other"}
+          <div class="ctick" style:top={`${-(f.height / 2 + 9)}px`}></div>
+        {/if}
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -1985,6 +2059,47 @@
     );
     mix-blend-mode: screen;
     opacity: 0;
+  }
+
+  /* Counters put on a permanent (#4442): a ring over its power/toughness,
+     green for +1/+1, purple for -1/-1, a soft gold for any other kind,
+     and a small tick above it. */
+  .fx[data-effect="counters"] {
+    --fx-c: #8ef0a8;
+    --fx-c-glow: rgba(74, 222, 128, 0.7);
+  }
+  .fx[data-effect="counters"][data-effect-tone="minus"] {
+    --fx-c: #d2a4ff;
+    --fx-c-glow: rgba(168, 85, 247, 0.75);
+  }
+  .fx[data-effect="counters"][data-effect-tone="other"] {
+    --fx-c: #f3e2b0;
+    --fx-c-glow: rgba(234, 200, 120, 0.6);
+  }
+  .cpulse {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 999px;
+    border: 2px solid var(--fx-c);
+    box-shadow:
+      0 0 14px 3px var(--fx-c-glow),
+      inset 0 0 8px var(--fx-c-glow);
+    opacity: 0;
+  }
+  .ctick {
+    position: absolute;
+    left: 0;
+    width: 12px;
+    height: 8px;
+    translate: -50% 0;
+    background: var(--fx-c);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    opacity: 0;
+  }
+  .fx[data-effect-tone="minus"] .ctick {
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
   }
 
   /* A counterspell: the stack item cracks and its glass flies out. */

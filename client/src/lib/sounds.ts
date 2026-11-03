@@ -80,6 +80,10 @@ export type SoundName =
   // S80 cues for common moments (#4441 on), in the effects category. Each
   // ships silent, with no takes and no fallback, until its file lands.
   | "token_create"
+  // #4442: +1/+1 counters put on a permanent (a rising tick), -1/-1
+  // counters put on one (a falling tick).
+  | "counter_add"
+  | "counter_remove"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -139,6 +143,8 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   pw_enter: "effects",
   pw_leave: "effects",
   token_create: "effects",
+  counter_add: "effects",
+  counter_remove: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -189,6 +195,12 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // silent until token_create-1.mp3 (and an optional -2) is listed here
   // (client/public/sounds/README.md, "Files not made yet").
   token_create: [],
+  // #4442: files not made yet, and no fallback, so a counter's pulse is
+  // silent until counter_add-1.mp3 and counter_remove-1.mp3 (and an
+  // optional -2 of each) are listed here (client/public/sounds/README.md,
+  // "Files not made yet").
+  counter_add: [],
+  counter_remove: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],
