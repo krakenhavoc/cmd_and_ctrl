@@ -32,6 +32,11 @@
   // one with a set rule (Foil's "an Island card and another card",
   // `pay_options.each_of`) holds its confirm until the picks fill every
   // part one-to-one, through the sacrifice picker's own matching.
+  //
+  // #4689: a behold offer (`behold`, Kindle the Inner Flame's "Behold three
+  // Elementals") is worded "Behold": its options are cards in your hand and
+  // permanents you control, the hand cards are revealed and nothing is
+  // spent.
   import type { AlternativeCostView, CardView } from "../../protocol";
   import { altCostPayCount } from "../../targeting";
   import { canFillEachOf, fillsEachOf } from "../../sacrificeCost";
@@ -53,6 +58,8 @@
   const { card, offer, options, onConfirm, onCancel }: Props = $props();
 
   const need = $derived(altCostPayCount(offer ?? undefined));
+  const verb = $derived(offer?.behold ? "Behold" : offer?.discards ? "Discard" : "Pay");
+  const purpose = $derived(offer?.behold ? " to behold" : offer?.discards ? " to discard" : "");
   const eachOf = $derived(offer?.pay_options?.each_of);
 
   let chosen = $state<string[]>([]);
@@ -96,13 +103,14 @@
     src="alternative cost · CR 118.9"
     width={560}
     sheetKey={`altpay:${card.instance_id}:${offer.key}`}
-    primary={confirmAction(offer.discards ? "Discard" : "Pay", confirm, { disabled: !ready })}
+    primary={confirmAction(verb, confirm, { disabled: !ready })}
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      {offer.label ?? offer.key}. Choose {offer.pay_label ?? "a card"}{offer.discards
-        ? " to discard"
-        : ""}.
+      {offer.label ?? offer.key}. Choose {offer.pay_label ?? "a card"}{purpose}.
+      {#if offer.behold}
+        Cards from your hand are revealed; nothing leaves its zone.
+      {/if}
       {#if need > 1}
         <span class="tally">{chosen.length} of {need}</span>
       {/if}

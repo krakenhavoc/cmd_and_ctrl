@@ -104,6 +104,21 @@ func altCostTaps(c *protocol.CardView, key string) bool {
 	return false
 }
 
+// altCostBeholds reports whether the alternative cost keyed `key` on c
+// beholds its `alt_cost_ids` (#4689): they are shown or chosen, never
+// spent, so the move pays nothing for them.
+func altCostBeholds(c *protocol.CardView, key string) bool {
+	if c == nil || key == "" {
+		return false
+	}
+	for i := range c.AlternativeCosts {
+		if ac := &c.AlternativeCosts[i]; ac.Key == key {
+			return ac.Behold
+		}
+	}
+	return false
+}
+
 // couldAttack reports whether c could be declared as an attacker this
 // turn as far as the card itself says: untapped, no summoning sickness
 // (the view's flag already allows for haste), some power to swing

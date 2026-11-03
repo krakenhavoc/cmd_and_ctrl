@@ -573,6 +573,52 @@ describe("an alternative-cost discard with a set rule", () => {
   });
 });
 
+// #4689: Kindle the Inner Flame's "Behold three Elementals" is worded
+// "Behold", says nothing leaves its zone, and confirms only on exactly
+// three picks, from the hand and the battlefield together.
+describe("an alternative-cost behold picker", () => {
+  it("is worded Behold and waits for three", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: AltCostPaymentModal as never,
+        props: {
+          card: card("kindle", "Kindle the Inner Flame"),
+          offer: {
+            key: "flashback",
+            label: "Flashback—{1}{R}, Behold three Elementals",
+            mana_cost: "{1}{R}",
+            pay_label: "three Elementals",
+            behold: true,
+            pay_options: { cards: ["hand-el", "smoke", "ember"], min: 3, max: 3 },
+          },
+          options: [
+            card("hand-el", "Flame Elemental"),
+            card("smoke", "Smoke Elemental"),
+            card("ember", "Ember Elemental"),
+          ],
+          onConfirm: (ids: string[]) => calls.confirmed.push([ids]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    const text = sheetPanel()!.textContent ?? "";
+    expect(text).toContain("Choose three Elementals to behold.");
+    expect(text).toContain("nothing leaves its zone");
+    expect(barPrimary()!.textContent).toContain("Behold");
+    const opts = [...sheetPanel()!.querySelectorAll<HTMLElement>(".prompt-options .prompt-opt")];
+    click(opts[0]!);
+    click(opts[1]!);
+    expect(barPrimary()!.disabled).toBe(true);
+    click(opts[2]!);
+    expect(barPrimary()!.disabled).toBe(false);
+    click(barPrimary()!);
+    expect(calls.confirmed).toEqual([[["hand-el", "smoke", "ember"]]]);
+  });
+});
+
 // ADR 0135 §1: the tap picker paying a SPELL's alternative cost names the
 // spell, not "this ability", and is shown even when the board offers
 // exactly the one creature the cost needs.

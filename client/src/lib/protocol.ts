@@ -3301,6 +3301,12 @@ export interface AlternativeCostView {
   // picker words its prompt "Discard". A discard with a set rule (Foil's
   // "an Island card and another card") carries `pay_options.each_of`.
   discards?: boolean;
+  // #4689: the `pay_options` are BEHELD (CR 701.4a) — Kindle the Inner
+  // Flame's "Behold three Elementals": matching cards in your hand and
+  // matching permanents you control, min == max == the count. A hand card
+  // is revealed, nothing moves or taps. The picker words its prompt
+  // "Behold".
+  behold?: boolean;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you

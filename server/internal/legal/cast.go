@@ -1034,6 +1034,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// #3931: harmonize's tap is priced per creature as emerge's
 			// sacrifice is (CR 702.180a), and tapping none is legal.
 			altCostSets = e.harmonizePayments(card, offer, pool, cost, fromZone, spend, xFloor)
+		} else if offer.Beholds() {
+			// #4689: "behold three Elementals" spends nothing, so there is no
+			// cheapest fuel to sort by. The permanents go first (choosing one
+			// shows the table nothing it has not seen), then the hand cards,
+			// as the additional cost's behold pays (revealPayment).
+			altCostSets = e.combos(beholdOrder(g, e.seat, pool), want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
 		} else if offer.PaymentDefinesX() {
 			// #3175: "a white card with mana value X" — the card is the X
 			// announcement, so each payment carries its own X.

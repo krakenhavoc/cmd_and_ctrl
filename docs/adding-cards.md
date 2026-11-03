@@ -7173,6 +7173,30 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
+2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
+Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
+true}`) with `BeholdCount`, built with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                       // Kindle the Inner Flame
+AlternativeCosts: []game.AlternativeCost{FlashbackBehold("{1}{R}", 3, "Elemental", "Elementals")},
+```
+
+It keeps flashback's graveyard binding and `ExileOnLeavingStack`. The
+caster names N distinct objects in `alt_cost_ids`, each a permanent of
+that creature type they control or a card of it in their hand (a
+changeling counts), through the reveal walk the additional cost's
+behold already reads (`RevealCostOptionsForEffect`). The hand cards are
+revealed with the spell on the stack; nothing moves or taps. With fewer
+than N candidates the offer is not stamped and the cast is refused. The
+view ships `pay_options` (min == max == N) and `behold: true`, so the
+client's pay picker reads "Behold", and the bot charges nothing for the
+picks. `Register` counts the behold as the offer's one card component
+and refuses a malformed one (a plain reveal, no type, a colour, no
+count). An additional cost of "behold a … and exile it" (#4687) is not
+this shape: that card is spent.
+
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
 does and declares the offer with one constructor:

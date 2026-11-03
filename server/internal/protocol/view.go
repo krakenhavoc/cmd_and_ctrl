@@ -1954,6 +1954,16 @@ type AlternativeCostView struct {
 	// the rest of the printed offer.
 	Discards bool `json:"discards,omitempty"`
 
+	// Behold marks an offer whose `pay_options` are BEHELD (#4689, CR
+	// 701.4a): Kindle the Inner Flame's "Behold three Elementals". The
+	// options are the matching cards in the caster's hand and the matching
+	// permanents they control, min and max both the count; the picks ride
+	// `alt_cost_ids`, a hand card is revealed and nothing moves or taps. The
+	// client words its prompt "Behold", and a policy charges nothing for
+	// them. Absent for every other offer. Public with the rest of the
+	// printed offer.
+	Behold bool `json:"behold,omitempty"`
+
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
 	// creature you control", Battle Screech's three white creatures,
@@ -8222,6 +8232,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByManaValue = true
 				v.SacrificePrices = emergePricesView(g, caster, *live, zone, ac.Key, v.SacrificeOptions)
 			}
+		} else if rc := ac.Behold; rc != nil {
+			// #4689: "behold three Elementals" — the engine's one reveal
+			// walk (matching hand cards, then matching permanents the
+			// caster controls), min and max both the count, the picks on
+			// alt_cost_ids. `behold` tells the picker and a policy that
+			// nothing is spent.
+			n := ac.CardPaymentCount()
+			castID, _ := uuid.Parse(self)
+			v.PayOptions = &LegalTargetsView{Min: n, Max: n, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, rc))}
+			v.Behold = true
 		} else if tc := ac.TapOthers; !tc.Empty() {
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.

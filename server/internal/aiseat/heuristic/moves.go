@@ -772,8 +772,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// ADR 0135 §1: an offer that TAPS its permanents (Orim's Cure's
 	// creature, Battle Screech's three) spends none of them, so each is
 	// charged what tapping it costs (tapCreatureCost), not its value.
+	//
+	// #4689: an offer that BEHOLDS its cards (Kindle the Inner Flame's three
+	// Elementals) spends none of them and taps none, so they cost nothing.
 	taps := altCostTaps(card, cp.AlternativeCost)
+	beholds := altCostBeholds(card, cp.AlternativeCost)
 	for _, id := range cp.AltCostIDs {
+		if beholds {
+			break
+		}
 		if taps {
 			v -= p.tapFuelValue(st, id)
 			continue
