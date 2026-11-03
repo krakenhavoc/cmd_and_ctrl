@@ -62,9 +62,9 @@ var surgeToVictoryExiled = CardTail("surge-to-victory/exiled", func(ctx *Context
 		return nil
 	}
 	if err := (BoostUntilEOT{
-		Match:  And(Creature(), YouControl()),
-		Power:  exiled.ManaValue(),
-		Label:  "Surge to Victory — +X/+0, where X is the exiled card's mana value",
+		Match: And(Creature(), YouControl()),
+		Power: exiled.ManaValue(),
+		Label: "Surge to Victory — +X/+0, where X is the exiled card's mana value",
 	}).Apply(ctx); err != nil {
 		return err
 	}

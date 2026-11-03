@@ -38,7 +38,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time you've cast your commander from the command zone this game. You may choose new targets for the copies.",
-			Cost:  Plus(ManaCost("{2}{U}"), SacrificeThis()),
+			// Its cost sacrifices a creature at will, so it answers removal.
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{2}{U}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return WhenYouNextCast(
 					"Thunderclap Drake — copy that spell for each time you've cast your commander from the command zone",
