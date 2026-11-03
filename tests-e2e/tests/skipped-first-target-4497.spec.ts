@@ -19,10 +19,12 @@ import {
 // announcement (CR 601.2c), and then the one target answers the player
 // clause, so the cast must file it there: slot 1.
 //
-// Through the UI, at two seats: the caster casts the Adventure half, says
-// Done to the creature clause with nothing picked, picks the opponent for
-// the player clause, and the spell goes on the stack with the opponent
-// filed under slot 1. It resolves, and the opponent gains 2 life.
+// Through the UI, at two seats: the caster casts the Adventure half with
+// no creature on the table, so the creature clause has nothing to pick
+// and the walk opens on the player clause (#4767). The caster picks the
+// opponent, and the spell goes on the stack with the opponent filed under
+// slot 1. It resolves, and the opponent gains 2 life. Done on an empty
+// clause that does have picks is covered by skippedFirstTarget.render.test.
 //
 // Tips are off from the start, as in target-player-reach-4435: a first-use
 // hint card can open over an avatar once targeting starts.
@@ -144,16 +146,14 @@ test("#4497: Meager Meal is cast with its 'up to one' creature skipped", async (
     await half.click();
     await page.getByRole("button", { name: `Cast ${MEAL}` }).click();
 
-    // The creature clause, left empty: Done with nothing picked.
+    // No creature on the table: the creature clause is skipped (#4767)
+    // and the walk opens on the player clause.
     const prompt = page.getByRole("dialog", { name: L.selectTarget(MEAL) });
     await expect(prompt).toBeVisible({ timeout: 10_000 });
-    await expect(prompt).toContainText("up to one target creature");
-    const done = prompt.getByRole("button", { name: "Done", exact: true });
-    await expect(done).toBeEnabled();
-    await done.click();
+    await expect(prompt).toContainText("target player");
+    await expect(prompt).not.toContainText("up to one target creature");
 
     // The player clause: the opponent, picked on the board.
-    await expect(prompt).toContainText("target player");
     const avatar = page
       .locator(
         `.identity.cast-targetable .avatar-wrap[data-seat-id="${opponent.playerID}"]`,
