@@ -157,6 +157,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Cat Beast":                                              {Name: "Cat Beast", TypeLine: "Token Creature — Cat Beast", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Unicorn":                                                {Name: "Unicorn", TypeLine: "Token Creature — Unicorn", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"2/2 white Griffin with flying":                                    {Name: "Griffin", TypeLine: "Token Creature — Griffin", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Cat with lifelink":                                      {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"1/1 white Halfling":                                               {Name: "Halfling", TypeLine: "Token Creature — Halfling", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Human Soldier":                                          {Name: "Human Soldier", TypeLine: "Token Creature — Human Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
