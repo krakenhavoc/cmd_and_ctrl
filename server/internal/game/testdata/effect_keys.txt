@@ -44,6 +44,7 @@ body ant-man-colony-commander/counter
 body arcane-denial/draws
 body ascend/exile-listed-unless-citys-blessing
 body attach/sacrifice-the-returned-creature
+body augusta-order-returned/counters
 body auron-venerated-guardian/exile
 body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
@@ -657,6 +658,7 @@ choose engine/outside-pick-plain
 choose grasping-tentacles/take-pick
 choose hama/exile-pick
 choose manifest-dread/pick
+choose resolution-cast/abstract-performance-rest-to-hand
 choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/kefka-life-loss
@@ -713,6 +715,7 @@ condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
 confirm confirm/academic-dispute-reach
+confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
 confirm confirm/arc-of-fortune-embark
@@ -911,6 +914,8 @@ option cipher/encode
 option dice/ignore-roll
 option dice/order-replacements
 option meld/order
+option option-pick/abstract-performance-opponent
+option option-pick/abstract-performance-pile
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
@@ -1175,6 +1180,7 @@ run prompt-run/annihilator-sacrifice
 run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/ascent-of-the-worthy-redirect
+run prompt-run/augusta-order-returned-exile
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -1341,9 +1347,14 @@ steps then-steps/truth-or-consequences-votes
 steps then-steps/twilight-prophet-drain
 steps then-steps/will-of-the-sultai-bullet
 steps then-steps/zealot-il-vec-yes
+tail abstract-performance/after-face-down
+tail abstract-performance/after-face-up
+tail abstract-performance/offer-cast
+tail advanced-reconstruction/exile-random
 tail aether-rift/offer-return-of-discarded-creature
 tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
+tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
 tail aminatous-augury/after-mill
 tail anchor-to-reality/scry-if-cheaper
@@ -1364,6 +1375,7 @@ tail attacking-tokens/mobilize-sacrifice-the-warriors
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
+tail augusta-order-returned/after-exile
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
