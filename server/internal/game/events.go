@@ -1970,6 +1970,17 @@ type Event struct {
 	// nothing it acts on.
 	Loyalty bool `json:"loyalty,omitempty"`
 
+	// XCost marks an EventActivateAbility whose ability has an {X} mana
+	// symbol in its activation cost (CR 107.3a): "whenever you ... activate
+	// an ability, if that ability's activation cost contains {X}, copy that
+	// ability" (Unbound Flourishing). Only the mana component counts; an
+	// ability whose cost merely says X without the symbol (a "-X" loyalty
+	// cost, "remove X counters") does not. A bit on the event for Exhaust's
+	// reason: the announcement is the one moment the ability's cost is
+	// plainly knowable. False on every other event. Additive within
+	// schema v9.
+	XCost bool `json:"x_cost,omitempty"`
+
 	// Converted marks an EventTransform whose turn-over was a CONVERT
 	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
 	// transform. A convert follows the rules for transforming, so every

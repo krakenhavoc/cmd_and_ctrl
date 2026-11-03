@@ -2578,6 +2578,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// loyalty ability is one with a loyalty symbol in its cost
 		// (CR 606.2), granted or printed.
 		Loyalty: ab.Cost.Loyalty != nil,
+		// CR 107.3a: an {X} mana symbol in the activation cost.
+		XCost: ab.Cost.XSlots() > 0,
 		// #3855: what the activator declared about a waived payment
 		// is public, as a cast's is.
 		Unpaid:        paper.Free,

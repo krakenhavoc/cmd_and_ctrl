@@ -5152,6 +5152,23 @@ spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
 
+**Mana for spells with {X} in their mana costs (#4834):** "Spend this mana
+only to cast spells with {X} in their mana costs" is
+`game.ManaRestrictSpellXCost` (Troyan, Gutsy Explorer), usually inside a
+`ManaRestrictAnyOf` with another clause. Unlike `ManaRestrictXCost` it
+asks about the spell's own printed mana cost (`ManaSpendContext.ManaCostHasX`),
+not the cost being paid, so an alternative cost without {X} still
+qualifies and an activated ability never does.
+
+**Doubling X, and "if that ability's activation cost contains {X}"
+(#4834):** `Game.DoubleSpellXForEffect(spellID)` doubles the X announced
+for a spell still on the stack (`StackItem.XValue`, which the mana value on
+the stack, "enters with X counters" and an enter trigger's X all read);
+Unbound Flourishing's first ability. `Event.XCost` is stamped on every
+`EventActivateAbility` whose cost has an {X} mana symbol, for its second
+ability's intervening "if" (a spell's side is the printed mana cost,
+`socB9HasXInManaCost`).
+
 **Mana for spells with mana value N or greater (#4694):** "Spend this
 mana only to cast spells with mana value 4 or greater" is
 `Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,

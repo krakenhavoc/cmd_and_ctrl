@@ -41,19 +41,5 @@ var kindredChargeTypeChosen = creatureTypeChosen("then/kindred-charge-type-chose
 })
 
 func kindredChargeCopies(ctx *Context, controller uuid.UUID, originals []uuid.UUID) error {
-	cursor := b25LastEventSeq(ctx.Game)
-	for _, id := range originals {
-		if err := (CreateTokenCopy{Controller: controller, Copy: id, N: 1, Except: TokenCopyGainsHaste}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	tokens := b27TokensCreatedByAfter(ctx.Game, controller, cursor)
-	if len(tokens) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: "Kindred Charge — exile the tokens",
-		Cards: tokens,
-		Body:  exileListedCardsBody,
-	}.Apply(ctx)
+	return socB14HastyCopiesExiledAtEnd(ctx, controller, originals, "Kindred Charge — exile the tokens")
 }
