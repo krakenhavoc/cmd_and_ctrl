@@ -42,11 +42,6 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if p, ok := firstLegalPlayerTarget(ctx); ok {
-				return DrawCards{Player: p, N: ctx.X()}.Apply(ctx)
-			}
-			return nil
-		},
+		OnResolve:    targetPlayerDrawsX(),
 	})
 }
