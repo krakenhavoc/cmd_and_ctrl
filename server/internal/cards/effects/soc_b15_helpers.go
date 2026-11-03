@@ -22,16 +22,18 @@ func socB15IsPrime(n int) bool {
 	return true
 }
 
-// socB15LandsYouControl counts the lands `player` controls, through the
-// layers (an animated or type-changed permanent counts as it is now).
-func socB15LandsYouControl(g *game.Game, player uuid.UUID) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.IsLand() {
-			n++
+// socB15ModeYouGainLife is the "and you gain N life" step of a mode that
+// first made its target player lose life (Collective Brutality, Witherbloom
+// Command): a step of its own, so the gain waits for a prompt the life loss
+// may ask (CR 608.2c).
+func socB15ModeYouGainLife(n int) Applier {
+	return Instruction(func(ctx *Context) error {
+		t, ok := ModeTarget(ctx, ctx.Occurrence())
+		if !ok || t.Kind != game.TargetPlayer {
+			return nil
 		}
-	}
-	return n
+		return GainLife{Player: ctx.Controller(), Amount: n}.Apply(ctx)
+	})
 }
 
 // socB15LandEnteredAndPrimeLands is Zimone, All-Questioning's intervening
@@ -39,7 +41,7 @@ func socB15LandsYouControl(g *game.Game, player uuid.UUID) int {
 // turn tally, bumped at the entry itself, so a land that has since left still
 // counts) and `player` controls a prime number of lands now.
 func socB15LandEnteredAndPrimeLands(g *game.Game, player uuid.UUID) bool {
-	return g.TurnTallyFor(player).LandsEntered > 0 && socB15IsPrime(socB15LandsYouControl(g, player))
+	return g.TurnTallyFor(player).LandsEntered > 0 && socB15IsPrime(b03LandsControlled(g, player))
 }
 
 // socB15PrimoKey files the event cursor and the land count before the token is
@@ -55,7 +57,7 @@ const socB15PrimoKey = "zimone-all-questioning/before-primo"
 func socB15PrimoWithLandCounters() Effect {
 	return Do(
 		Instruction(func(ctx *Context) error {
-			ctx.RecordStep(socB15PrimoKey, nil, int(b25LastEventSeq(ctx.Game)), socB15LandsYouControl(ctx.Game, ctx.Controller()))
+			ctx.RecordStep(socB15PrimoKey, nil, int(b25LastEventSeq(ctx.Game)), b03LandsControlled(ctx.Game, ctx.Controller()))
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal named Primo, the Indivisible")), 1, game.TokenEntryOptions{})
 			return err
 		}),

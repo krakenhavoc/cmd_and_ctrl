@@ -80,13 +80,7 @@ func init() {
 					}
 					return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -2)
 				}),
-				Instruction(func(ctx *Context) error {
-					t, ok := ModeTarget(ctx, ctx.Occurrence())
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return GainLife{Player: ctx.Controller(), Amount: 2}.Apply(ctx)
-				})),
+				socB15ModeYouGainLife(2)),
 		),
 	})
 }
