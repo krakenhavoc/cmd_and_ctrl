@@ -1103,7 +1103,15 @@ export type LogKind =
   | "reveal"
   // A player milled cards from their library (CR 701.17a). The milled cards
   // are named in `text`; no card_id, and `amount` is the card count.
+  // `card_ids` (#4445) is the cards the text names, in milled order.
   | "mill"
+  // #4445: a player discarded a card (CR 701.9a), one entry per card.
+  // `card_id` is the card, `seat` the player, `old_zone` "hand",
+  // `new_zone` where it went (the graveyard, or exile for madness),
+  // `cause` why ("effect", "cleanup" for the hand-size discard, "cost")
+  // and `source` the card behind it. A cycling's discard is its `cycle`
+  // entry instead, which carries the same `old_zone` and `new_zone`.
+  | "discard"
   // A player searched a library, or shuffled one. `label` "shuffle" is a plain
   // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
   // `target_seat` is set when the library was another player's.
@@ -1379,6 +1387,9 @@ export interface LogEvent {
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // #4445: on a `mill` entry, the milled cards the text names (at most
+  // five, in milled order; `amount` is still the count).
+  card_ids?: string[];
   // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
   // entry is about, for spells and abilities alike. For a spell it
   // equals its card's ID; an ability's item has an ID no other field
@@ -1447,6 +1458,7 @@ export interface LogEvent {
   // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
   // It is the instruction, not the destination: a destruction replaced by
   // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
+  // On a `discard` entry (#4445) it is `effect`, `cleanup` or `cost`.
   cause?: string;
   // #4395, ADR 0209 §3: the run of events the rules treat as one
   // occurrence (CR 603.2c). Two entries with equal `batch` happened at

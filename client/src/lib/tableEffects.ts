@@ -4,7 +4,8 @@
 // that is countered, a planeswalker that arrives or goes, a token that is
 // created (#4441), counters put on a permanent (#4442), a commander cast
 // from the command zone or put back into it (#4443), an Equipment
-// attached or an Aura enchanting a permanent (#4444) and a board wipe
+// attached or an Aura enchanting a permanent (#4444), cards milled or
+// discarded into a graveyard (#4445) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -120,7 +121,11 @@ export type EffectKind =
   // An Equipment (or a Fortification) attached to a permanent, or an
   // Aura enchanting one (CR 701.3a, 301.5, 303.4) (#4444).
   | "attach_equip"
-  | "attach_aura";
+  | "attach_aura"
+  // Cards put into a graveyard without dying (#4445): milled from a
+  // library (CR 701.17a) or discarded from a hand (CR 701.9a).
+  | "mill"
+  | "discard";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -130,9 +135,10 @@ export type EffectKind =
  * a planeswalker that dies now also withdraws from the plane. The S80
  * cues are their issues' own lengths: a token's pop-in is about 0.4 s,
  * a counter's pulse a little longer, so its tick can be read, a
- * commander's rise to the stack or drift home about 0.8 s, and an
+ * commander's rise to the stack or drift home about 0.8 s, an
  * attachment's slide onto its host about 0.4 s (an Aura's shimmer a
- * beat longer, so it can fade).
+ * beat longer, so it can fade), and one card's slide (mill) or toss
+ * (discard) into a graveyard about half a second (pileBaseMs for more).
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -150,6 +156,10 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   commander_return: 800,
   attach_equip: 400,
   attach_aura: 450,
+  // One card's slide or toss into the graveyard (#4445); a run of them
+  // is longer, pileBaseMs.
+  mill: 520,
+  discard: 420,
 };
 
 /**
@@ -178,6 +188,8 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   commander_return: "commander_return",
   attach_equip: "attach_equip",
   attach_aura: "attach_aura",
+  mill: "mill",
+  discard: "discard",
 };
 
 /**
@@ -267,6 +279,15 @@ export interface EffectCue {
   commanderFrom?: string;
   /** For an attach cue: the permanent the attachment is now on (#4444). */
   hostID?: string;
+  /**
+   * For a mill or discard cue (#4445): the cards it slides, in order (as
+   * many as the log names), how many went (a mill's `amount`; a big one
+   * names only the first few), and the seat whose library or hand they
+   * left, as the log's seat index.
+   */
+  cardIDs?: string[];
+  count?: number;
+  seat?: number;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -378,6 +399,7 @@ export function planEffects(
   const counters: LogEvent[] = [];
   const commanders: LogEvent[] = [];
   const attaches: LogEvent[] = [];
+  const piles: { kind: "mill" | "discard"; e: LogEvent }[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -404,6 +426,13 @@ export function planEffects(
     // command zone instead) is this cue, never a bounce.
     if (isCommanderCast(e) || isCommanderReturn(e, ctx)) {
       commanders.push(e);
+      continue;
+    }
+    // #4445: into a graveyard from a library or a hand, never from the
+    // battlefield, so never a death.
+    const pk = pileKind(e);
+    if (pk) {
+      piles.push({ kind: pk, e });
       continue;
     }
 
@@ -503,6 +532,7 @@ export function planEffects(
   cues.push(...counterCues(counters));
   cues.push(...commanderCues(commanders));
   cues.push(...attachCues(attaches));
+  cues.push(...pileCues(piles));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -695,6 +725,99 @@ function attachCues(entries: readonly LogEvent[]): EffectCue[] {
     if (lead.has(k)) cue.follows = true;
     else lead.add(k);
     out.push(cue);
+  }
+  return out;
+}
+
+/**
+ * pileKind is the cue an entry about cards going into a graveyard without
+ * dying gets (#4445), or null. A `mill` entry (CR 701.17a) and a `zone`
+ * entry from a library (surveil's graveyard half, CR 701.25a, an explore's
+ * nonland, a sandbox move) are a mill; a `discard` entry (CR 701.9a), a
+ * `cycle` entry (its discard, CR 702.29a, which the log tells in its
+ * place) and a `zone` entry from a hand are a discard. Only into a
+ * graveyard: a madness card discarded into exile (CR 702.35a) is no cue.
+ */
+export function pileKind(e: LogEvent): "mill" | "discard" | null {
+  if (e.kind === "mill") return (e.amount ?? 0) > 0 ? "mill" : null;
+  if (e.new_zone !== "graveyard") return null;
+  if (e.kind === "discard" || e.kind === "cycle") return e.card_id ? "discard" : null;
+  if (e.kind !== "zone" || !e.card_id) return null;
+  if (e.old_zone === "library") return "mill";
+  if (e.old_zone === "hand") return "discard";
+  return null;
+}
+
+/**
+ * A mill or discard of this many cards or more is one sweep, not one
+ * card after another (#4445): a handful moving into the graveyard as one.
+ */
+export const PILE_SWEEP_MIN = 5;
+/** The most cards a mill or discard slides one after another. */
+export const PILE_SHOWN_MAX = 4;
+/** How far into one card's slide the next one sets off, as a share of it. */
+export const PILE_STAGGER = 0.3;
+/** The share of a slide at which its card reaches the graveyard. */
+export const PILE_LAND = 0.82;
+
+/** How many cards a mill or discard draws: one by one, or a sweep of three. */
+export function pileShown(count: number): number {
+  return count >= PILE_SWEEP_MIN ? 3 : Math.max(1, Math.min(PILE_SHOWN_MAX, count));
+}
+
+/**
+ * pileBaseMs is a mill or discard cue's length at speed 1, before the
+ * cap: one card's slide, plus a stagger for each card after it. A sweep
+ * moves as one, a little slower than a single card.
+ */
+export function pileBaseMs(kind: "mill" | "discard", count: number): number {
+  const one = EFFECT_BASE_MS[kind];
+  if (count >= PILE_SWEEP_MIN) return one * 1.25;
+  return one * (1 + PILE_STAGGER * (pileShown(count) - 1));
+}
+
+/**
+ * pileCues gives each player whose cards went into their graveyard in one
+ * batch one cue (#4445): a mill's line already counts its cards, and a
+ * discard is one line per card, so one batch's discards from one hand are
+ * gathered into one cue, in log order. One kind in one batch is one
+ * moment ("each player mills three", a Windfall): the first cue plays
+ * the sound and the rest follow it.
+ */
+function pileCues(entries: readonly { kind: "mill" | "discard"; e: LogEvent }[]): EffectCue[] {
+  const byKey = new Map<string, EffectCue>();
+  const out: EffectCue[] = [];
+  const lead = new Set<string>();
+  for (const { kind, e } of entries) {
+    const batch = e.batch ?? null;
+    const at = batch === null ? `q${e.seq}` : String(batch);
+    const k = `${kind}|${at}|${e.seat}`;
+    const ids = e.kind === "mill" ? (e.card_ids ?? []) : e.card_id ? [e.card_id] : [];
+    const n = e.kind === "mill" ? (e.amount ?? 0) : 1;
+    const cue = byKey.get(k);
+    if (cue) {
+      cue.cardIDs = [...(cue.cardIDs ?? []), ...ids.filter((id) => !cue.cardIDs?.includes(id))];
+      cue.count = (cue.count ?? 0) + n;
+      continue;
+    }
+    const c: EffectCue = {
+      id: String(e.seq),
+      seq: e.seq,
+      kind,
+      cardID: ids[0] ?? null,
+      stackItemID: null,
+      batch,
+      weight: "full",
+      delayMs: 0,
+      cardIDs: [...ids],
+      count: n,
+      seat: e.seat,
+    };
+    const one = `${kind}|${at}`;
+    if (lead.has(one)) c.follows = true;
+    else lead.add(one);
+    byKey.set(k, c);
+    out.push(c);
   }
   return out;
 }
@@ -1161,20 +1284,25 @@ function wipeScale(motion: EffectMotion): number {
  * badge's hold.
  */
 export function cueTiming(
-  cue: Pick<EffectCue, "kind" | "weight" | "delayMs">,
+  cue: Pick<EffectCue, "kind" | "weight" | "delayMs" | "count">,
   motion: EffectMotion,
   speed: number,
 ): { delayMs: number; ms: number } {
   if (motion === "still") return { delayMs: 0, ms: EFFECT_STILL_HOLD_MS };
   const s = speedFactor(speed);
+  // A mill or discard's length is its run of cards' (#4445).
+  const base =
+    cue.kind === "mill" || cue.kind === "discard"
+      ? pileBaseMs(cue.kind, cue.count ?? 1)
+      : EFFECT_BASE_MS[cue.kind];
   if (cue.weight === "light") {
     const k = wipeScale(motion);
     return {
       delayMs: cue.delayMs * k * s,
-      ms: Math.max(1, Math.min(EFFECT_BASE_MS[cue.kind], WIPE_CARD_MS) * k * s),
+      ms: Math.max(1, Math.min(base, WIPE_CARD_MS) * k * s),
     };
   }
-  return { delayMs: cue.delayMs * s, ms: cueMs(EFFECT_BASE_MS[cue.kind], motion, speed) };
+  return { delayMs: cue.delayMs * s, ms: cueMs(base, motion, speed) };
 }
 
 /**
@@ -1216,8 +1344,9 @@ export function busyScale(n: number): number {
  * are not counted: the wipe already fits them inside its cap. Nor is a
  * cue that follows another of its batch: tokens created together count
  * once, and so do the counters one proliferate puts on, two commanders
- * sent home together, the Equipment one effect attaches, and a token
- * created attached, whose token cue follows its attach cue.
+ * sent home together, the Equipment one effect attaches, a token
+ * created attached, whose token cue follows its attach cue, and the
+ * players one effect makes mill or discard.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

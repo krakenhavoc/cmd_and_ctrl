@@ -12,7 +12,13 @@
 // Nothing here touches game state, and nothing waits on it.
 
 import { EASE, run, type Run } from "./motion";
-import { SHATTER_BREAK, SHATTER_BREAK_LIGHT, sacrificeBeats } from "./tableEffects";
+import {
+  PILE_LAND,
+  PILE_STAGGER,
+  SHATTER_BREAK,
+  SHATTER_BREAK_LIGHT,
+  sacrificeBeats,
+} from "./tableEffects";
 import type { CounterTone, EffectKind, WipeTone } from "./tableEffects";
 
 export interface CueMotion {
@@ -48,6 +54,11 @@ export interface CueMotion {
    * meets the host, from the cue's centre (the host's), in board px.
    */
   seam?: { x: number; y: number };
+  /**
+   * Cards milled or discarded (#4445): `fly` is the graveyard pile, from
+   * where the cards start; `sweep` moves them as one handful.
+   */
+  sweep?: boolean;
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -122,6 +133,10 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "attach_aura":
       attachShimmer(node, f);
+      return;
+    case "mill":
+    case "discard":
+      pileSlide(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -1195,6 +1210,136 @@ function attachShimmer(node: HTMLElement, f: CueMotion): void {
       span(f, a, Math.min(1, a + 0.45), EASE.power1Out),
     );
   });
+}
+
+// ---- Cards milled or discarded into a graveyard (#4445) ----
+
+/**
+ * pileWindows is when each of `n` cards slides, as shares of the cue: each
+ * slide is the same length, and the next sets off PILE_STAGGER into the
+ * one before, so the last lands as the cue ends. A sweep's cards all go
+ * at once.
+ */
+export function pileWindows(n: number, sweep = false): { a: number; b: number }[] {
+  const k = Math.max(1, n);
+  if (sweep) return Array.from({ length: k }, () => ({ a: 0, b: 1 }));
+  const len = 1 / (1 + PILE_STAGGER * (k - 1));
+  return Array.from({ length: k }, (_, i) => {
+    const a = i * PILE_STAGGER * len;
+    return { a, b: a + len };
+  });
+}
+
+/**
+ * pileSlide moves cards into their owner's graveyard pile. A mill slides
+ * each card off the library on a low arc, turning it face up on the way;
+ * a discard tosses it from the hand on a higher arc with a little spin.
+ * Each lands a touch past the pile and settles back, and fades as it
+ * lands, since the pile's own top card is already the last of them. A
+ * puff of dust rises from the pile as the last card lands. A sweep (five
+ * cards or more) moves a fanned handful as one, which closes up on the
+ * way, with a faint streak behind it.
+ */
+function pileSlide(node: HTMLElement, f: CueMotion): void {
+  const cards = all<HTMLElement>(node, ".pile-card");
+  const toss = f.kind === "discard";
+  const sweep = f.sweep === true;
+  const wins = pileWindows(cards.length, sweep);
+  const len = Math.hypot(f.fly.x, f.fly.y) || 1;
+  // A hop even between two piles side by side, so the slide reads.
+  const lift = toss ? Math.min(70, 24 + len * 0.18) : Math.min(40, 18 + len * 0.08);
+  // Past the pile, along the way in, then back.
+  const ox = (f.fly.x / len) * 3;
+  const oy = (f.fly.y / len) * 3;
+  const end = `${f.fly.x}px ${f.fly.y}px`;
+  const mid = (sx: number, sy: number) =>
+    `${f.fly.x / 2 + sx * 0.5}px ${f.fly.y / 2 - lift + sy * 0.5}px`;
+  cards.forEach((card, i) => {
+    const w = wins[i];
+    // A sweep's handful is fanned at the start and closes on the way.
+    const fan = sweep ? i - (cards.length - 1) / 2 : 0;
+    const sx = fan * 7;
+    const sy = -Math.abs(fan) * 3;
+    const spin = toss ? (i % 2 === 0 ? 10 : -8) : 2;
+    const tilt = sweep ? fan * 7 : toss ? -8 : -3;
+    run(
+      card,
+      [
+        {
+          offset: 0,
+          translate: `${sx}px ${sy}px`,
+          rotate: `${tilt}deg`,
+          scale: "1",
+          easing: EASE.power1Out,
+        },
+        {
+          offset: 0.48,
+          translate: mid(sx, sy),
+          rotate: `${spin}deg`,
+          scale: toss ? "1.06" : "1.02",
+          easing: EASE.power2In,
+        },
+        {
+          offset: PILE_LAND,
+          translate: `${f.fly.x + ox}px ${f.fly.y + oy}px`,
+          rotate: "0deg",
+          scale: "1",
+          easing: EASE.sineInOut,
+        },
+        { offset: 1, translate: end, rotate: "0deg", scale: "1" },
+      ],
+      span(f, w.a, w.b),
+    );
+    run(
+      card,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.06, opacity: 1 },
+        { offset: PILE_LAND + 0.04, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, w.a, w.b),
+    );
+    // A milled card leaves the library face down and lands face up.
+    const flip = card.querySelector<HTMLElement>(".flip");
+    if (flip) {
+      run(
+        flip,
+        [
+          { transform: "perspective(600px) rotateX(180deg)" },
+          { transform: "perspective(600px) rotateX(360deg)" },
+        ],
+        span(f, w.a + (w.b - w.a) * 0.12, w.a + (w.b - w.a) * 0.62, EASE.power2InOut),
+      );
+    }
+  });
+  const streak = node.querySelector<HTMLElement>(".pile-streak");
+  if (streak) {
+    run(
+      streak,
+      [
+        { offset: 0, scale: "1 0", opacity: 0 },
+        { offset: 0.25, opacity: 0.6 },
+        { offset: 0.75, scale: "1 1", opacity: 0.4 },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.05, 0.95, EASE.sineInOut),
+    );
+  }
+  const dust = node.querySelector<HTMLElement>(".pile-dust");
+  if (dust) {
+    const last = wins[wins.length - 1] ?? { a: 0, b: 1 };
+    const at = last.a + (last.b - last.a) * PILE_LAND;
+    run(
+      dust,
+      [
+        { offset: 0, scale: "0.5", opacity: 0 },
+        { offset: 0.3, scale: "1", opacity: 0.85 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, at - 0.04, 1, EASE.power2Out),
+    );
+  }
 }
 
 // ---- Board wipes ----
