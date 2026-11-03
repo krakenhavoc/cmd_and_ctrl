@@ -21,6 +21,9 @@
 // before it is sent; it is an ordinary attachment, with the same remove
 // button, size caps and storage as one they upload.
 //
+// Inside an `<svg>` the library copies no computed style, so the arrows'
+// class-set paint is written inline for the picture (#4728).
+//
 // The library is imported on demand, so it stays out of the bundle
 // that loads with the table.
 
@@ -144,6 +147,55 @@ export function hiddenFromBoardShot(node: Node): boolean {
   return host !== null && host !== node;
 }
 
+/**
+ * The SVG paint properties copied onto each drawing inside an `<svg>`
+ * before the picture is taken (#4728).
+ */
+export const BOARD_SHOT_SVG_PROPS = [
+  "display",
+  "visibility",
+  "opacity",
+  "fill",
+  "fill-opacity",
+  "fill-rule",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "filter",
+] as const;
+
+/**
+ * #4728: html-to-image copies each element's computed style onto its clone,
+ * except inside an `<svg>`: it clones the svg whole, with its attributes
+ * only, and the clone is drawn without the page's stylesheets. A combat or
+ * targeting arrow styled by class (`fill: none`, a 3px `--attack` stroke)
+ * then comes out with the SVG defaults, a solid black fill and no stroke.
+ * So before the picture each element inside an svg gets its computed paint
+ * written onto its inline style, and the clone carries it. Returns the
+ * function that puts every style attribute back as it was.
+ */
+export function inlineSvgPaint(root: HTMLElement): () => void {
+  const undo: Array<() => void> = [];
+  for (const el of Array.from(root.querySelectorAll<SVGElement>("svg *"))) {
+    const view = el.ownerDocument.defaultView ?? window;
+    const computed = view.getComputedStyle(el);
+    const before = el.getAttribute("style");
+    for (const prop of BOARD_SHOT_SVG_PROPS) {
+      const value = computed.getPropertyValue(prop);
+      if (value) el.style.setProperty(prop, value);
+    }
+    undo.push(() => {
+      if (before === null) el.removeAttribute("style");
+      else el.setAttribute("style", before);
+    });
+  }
+  return () => undo.forEach((f) => f());
+}
+
 /** The filter html-to-image is given: out are the form and what is covered. */
 export function boardShotFilter(node: Node): boolean {
   return !skipsBoardShot(node) && !hiddenFromBoardShot(node);
@@ -177,6 +229,7 @@ export function boardShotName(type: string, at: Date = new Date()): string {
 export async function captureBoardShot(root: HTMLElement): Promise<File> {
   let canvas: HTMLCanvasElement;
   const unmask = maskPrivate(root);
+  const unpaint = inlineSvgPaint(root);
   try {
     const { toCanvas } = await import("html-to-image");
     const width = root.offsetWidth || root.getBoundingClientRect().width;
@@ -196,6 +249,7 @@ export async function captureBoardShot(root: HTMLElement): Promise<File> {
       `couldn't take a picture of the board (${e instanceof Error ? e.message : "unknown error"})`,
     );
   } finally {
+    unpaint();
     unmask();
   }
   const blob = await encodeUnderCap(
