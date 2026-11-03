@@ -182,6 +182,9 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	"Fated Clash": "the grant answers its own sweep",
 	// The granted ability redirects damage onto the creature.
 	"Martyrdom": "the grant hurts the creature it helps",
+	// "+3/-3 and loses all creature types": the power is a benefit, the
+	// toughness and the type loss a harm (#4691).
+	"Nameless Inversion": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's
