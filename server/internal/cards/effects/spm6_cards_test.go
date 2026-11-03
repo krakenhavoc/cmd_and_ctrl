@@ -634,3 +634,31 @@ func TestSpm6SchoolDazeFightCrimeNeedsASpellTarget(t *testing.T) {
 		t.Fatal("a creature on the battlefield is not a legal target for Fight Crime")
 	}
 }
+
+// Green Goblin's Goblin Formula gives Quicksand mayhem at its mana cost,
+// {2} less for a spell cast from the graveyard: {B}{B}. That is still
+// "this spell's mayhem cost was paid", so only opponents' creatures
+// shrink.
+func TestSpm6QuicksandWithGrantedMayhemOnlyShrinksOpponents(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	mine, theirs, ox := spm6QuicksandBoard(g)
+	toMainForCost(t, g)
+	pushBattlefieldCardWithTimestamp(g, spmB18NormanCard(me.ID, 1))
+	id := mayhemHandCard(g, me, "Sandman's Quicksand", "Sorcery", "{1}{B}{B}", spm6QuicksandOracle)
+	mayhemDiscard(t, g, me, id)
+	floatForTest(g, me, "BB")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: game.AltCostKeyGrantedMayhem}); err != nil {
+		t.Fatalf("granted mayhem cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(theirs) {
+		t.Error("their 2/2 should have died")
+	}
+	if !g.Battlefield.Contains(mine) || effectivePower(t, g, mine) != 2 {
+		t.Error("my 2/2 must be untouched")
+	}
+	if effectivePower(t, g, ox) != 3 {
+		t.Error("my 3/3 must be untouched")
+	}
+}

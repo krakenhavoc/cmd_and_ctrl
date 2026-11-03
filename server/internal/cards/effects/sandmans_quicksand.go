@@ -26,7 +26,7 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			match := Creature()
 			label := "Sandman's Quicksand — all creatures get -2/-2"
-			if ctx.PaidAltCost(AltCostKeyMayhem) {
+			if ctx.Item != nil && PaidMayhem(ctx.Item.AltCost) {
 				match = And(Creature(), OpponentControls())
 				label = "Sandman's Quicksand — creatures your opponents control get -2/-2"
 			}
