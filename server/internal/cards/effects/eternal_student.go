@@ -24,6 +24,8 @@ func init() {
 			Label: "{1}{B}, Exile this card from your graveyard: Create two 1/1 white and black Inkling creature tokens with flying.",
 			Cost:  Plus(ManaCost("{1}{B}"), ExileThis()),
 			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			// Two tokens: value, not an answer to anything on the stack.
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: Do(CreateToken{
 				Template: TokenCard("1/1 white and black Inkling with flying"), N: 2,
 			}),
