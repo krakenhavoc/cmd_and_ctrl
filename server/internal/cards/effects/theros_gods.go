@@ -45,10 +45,16 @@ func godUnlessDevotion(color string) game.StaticAbility {
 // permanents `controller` controls that are any of `colors`. A hybrid
 // symbol of both ({B/R}) is one symbol, not one per colour, which is
 // the difference from adding devotionTo(B) and devotionTo(R).
+//
+// A face-down permanent counts nothing. CR 708.2a gives it no mana cost,
+// but Card.ManaCost still holds the cost of the card it hides, so
+// reading that would count the hidden card's symbols (#4761): the
+// wrong devotion, and a way for the table to learn the colours of the
+// card from what a Gray Merchant drains or whether a God is a creature.
 func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller {
+		if c.Controller != controller || c.FaceDownIsPermanent() {
 			continue
 		}
 		cost, err := game.ParseCost(c.ManaCost)

@@ -84,26 +84,12 @@ func init() {
 // devotionTo counts CR 700.5 devotion: the number of `color` mana
 // symbols among the mana costs of permanents `controller` controls.
 // Hybrid symbols count toward every colour they offer, which is why
-// this tests Options membership rather than equality. An unparseable
-// or empty mana cost contributes nothing.
+// devotionToColors tests Options membership rather than equality. An
+// unparseable or empty mana cost contributes nothing, and so does a
+// face-down permanent, which has no mana cost (CR 708.2a).
+//
+// One colour is devotionToColors with one colour: the two share one
+// walk so they cannot disagree about which permanents count (#4761).
 func devotionTo(g *game.Game, controller uuid.UUID, color string) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller {
-			continue
-		}
-		cost, err := game.ParseCost(c.ManaCost)
-		if err != nil {
-			continue
-		}
-		for _, req := range cost.Required {
-			for _, opt := range req.Options {
-				if opt == color {
-					n++
-					break
-				}
-			}
-		}
-	}
-	return n
+	return devotionToColors(g, controller, color)
 }
