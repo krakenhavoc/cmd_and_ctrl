@@ -41,19 +41,6 @@ func b02CreatureCardEnteredGraveyardNotFromBattlefield(ev game.Event, g *game.Ga
 	return ok && c.IsCreature()
 }
 
-// b02CreatureCardLeftYourGraveyard is Syr Konrad's last clause: "a
-// creature card leaves your graveyard". "Your graveyard" is the one
-// you own, so the card's Owner is the test, not its controller. The
-// card is looked up post-move, wherever it went — exile, hand, the
-// battlefield, a library — because the type line travels with it.
-func b02CreatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventZoneMove || ev.OldZone != game.ZoneGraveyard {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Owner == source.Controller
-}
-
 // b02CountLandsControlledBy counts the lands a player controls —
 // Avenger of Zendikar's "for each land you control".
 func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {

@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // delve does not trigger it, because it is a spell on the stack while
 // those cards leave (ADR 0100 §1). A card cast from the graveyard
 // (flashback, escape) leaves it too, and its cast is the event
-// (b16CardLeftYourGraveyard). "Your graveyard" is the graveyard you own.
+// (cardLeftYourGraveyard). "Your graveyard" is the graveyard you own.
 //
 // A CR 707.10 copy of the spell pays nothing, so the token it becomes
 // enters with no counters from this clause (PaidCost.Delved is not
@@ -57,38 +57,13 @@ func init() {
 // murktideInstantOrSorceryLeftYourGraveyard is "whenever an instant or
 // sorcery card leaves your graveyard".
 func murktideInstantOrSorceryLeftYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !b16CardLeftYourGraveyard(ev, source, g) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
+	c, ok := cardThatLeftYourGraveyard(ev, source, g)
 	return ok && wasInstantOrSorceryCardInAGraveyard(c)
 }
 
-// wasInstantOrSorceryCardInAGraveyard asks the type question of a card
-// that has just LEFT a graveyard, as the card it was there (CR 603.10a:
-// a leaves-the-graveyard trigger looks back in time).
-//
-// The card is looked up where it went, and for a single-faced card
-// that is the same answer. A multi-faced one can have changed: a
-// modal double-faced card cast from a graveyard as its back face, or
-// an adventurer card cast as its Adventure, is on the stack as the
-// half that was cast. In a graveyard it had only its front face's
-// characteristics (CR 712.8a, 715.4), or, for a split card, both
-// halves' together (CR 709.4), so those are what is asked here — never
-// the half it left as, which would count an adventurer creature card
-// as an instant.
+// wasInstantOrSorceryCardInAGraveyard is the type question asked of the
+// card as it was in the graveyard (wasCardInAGraveyard): an adventurer
+// creature card cast as its Adventure is not an instant card.
 func wasInstantOrSorceryCardInAGraveyard(c game.Card) bool {
-	if !c.IsMultiFace() {
-		return b08IsInstantOrSorceryCard(c)
-	}
-	faces := c.Faces[:1]
-	if game.IsSplitCard(c) {
-		faces = c.Faces
-	}
-	for _, f := range faces {
-		if b08IsInstantOrSorceryCard(game.Card{TypeLine: f.TypeLine}) {
-			return true
-		}
-	}
-	return false
+	return wasCardInAGraveyard(c, b08IsInstantOrSorceryCard)
 }

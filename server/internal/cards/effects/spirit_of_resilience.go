@@ -14,7 +14,7 @@ import (
 //	 artifact or creature card from among those cards until end of turn."
 //
 // One trigger per batch of cards leaving the graveyard together (CR 603.2c,
-// OncePerBatch over Quintorius's socB11CardLeftYourGraveyard); the
+// OncePerBatch over whenCardsLeaveYourGraveyard, a cast from it too); the
 // 2026-03-20 ruling says several cards leaving at once trigger it once. The
 // counter goes on first, and only while the Spirit is still on the
 // battlefield. The "then you may" is a pick of up to one of the artifact or
@@ -35,7 +35,7 @@ func init() {
 		Name:         "Spirit of Resilience",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventZoneMove, socB11CardLeftYourGraveyard,
+			OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
 				"Spirit of Resilience — put a +1/+1 counter on this creature, then you may have it become a copy of an artifact or creature card that left your graveyard until end of turn",
 				spiritOfResilienceResolve)),
 		},

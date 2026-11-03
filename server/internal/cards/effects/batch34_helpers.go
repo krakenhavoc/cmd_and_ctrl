@@ -16,7 +16,7 @@ import (
 // b33LandYouControlEntered, "this creature attacks" is
 // attackDeclared and "a creature you control attacks" is
 // attackDeclaredByYou, "a card left your graveyard" is
-// b16CardLeftYourGraveyard with the per-label "one or more" dedup
+// cardLeftYourGraveyard with the per-label "one or more" dedup
 // OncePerBatch, "you sacrificed a Food" is
 // b31YouSacrificedAFood, "this died" is cardDied and "a creature
 // died" is diedCreature, the historic test is b09IsHistoric, the

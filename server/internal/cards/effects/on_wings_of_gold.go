@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controls that is a Zombie, a token, or both (a Zombie token counts
 // once) — +1/+1 in layer 7c and flying in layer 6; the Zombie it
 // makes is both and lifts itself. The trigger is Tormod, the
-// Desecrator's condition (b16CardLeftYourGraveyard — a move out of
+// Desecrator's condition (cardLeftYourGraveyard — a move out of
 // the controller's own graveyard, or a flashback cast from it) with
 // the per-label "one or more" dedup, so a Bojuka Bog on the
 // graveyard makes one Zombie and a single regrowth makes one.
@@ -31,7 +31,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b16CardLeftYourGraveyard(ev, source, g)
+				return cardLeftYourGraveyard(ev, source, g)
 			}, b34OnWingsOfGoldLabel, Do(CreateToken{Template: b34WhiteZombieToken(), N: 1}))),
 		},
 	})

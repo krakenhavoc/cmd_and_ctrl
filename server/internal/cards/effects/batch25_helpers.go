@@ -15,7 +15,7 @@ import (
 // enters" is b06SelfETB, "this creature died" is cardDied, "another
 // creature died" is diedCreature, "a creature you control dealt
 // combat damage to a player" is combatDamageToPlayerBy, "a card left
-// your graveyard" is b16CardLeftYourGraveyard, the per-label "one or
+// your graveyard" is cardLeftYourGraveyard, the per-label "one or
 // more" dedup is OncePerBatch, the loot is lootOne,
 // the fight is b10Fight, the +1/+1 doubling is
 // b23DoublePlusOneCountersOn, the nonbasic predicate is b03Nonbasic,

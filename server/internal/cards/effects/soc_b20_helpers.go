@@ -47,28 +47,6 @@ func socB20DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int
 	return max(b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor)-lethal, 0), nil
 }
 
-// socB20CardLeftYourGraveyard is "one or more cards leave your graveyard"
-// for one event: a card its controller owns moved out of a graveyard into
-// any other zone, or was cast out of one (a cast takes the card from the
-// graveyard to the stack and logs EventCast, not a zone move). Ark of
-// Hunger's reader; socB11CardLeftYourGraveyard sees the moves only.
-func socB20CardLeftYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || ev.OldZone != game.ZoneGraveyard {
-		return false
-	}
-	switch ev.Kind {
-	case game.EventZoneMove:
-		if ev.NewZone == game.ZoneGraveyard {
-			return false
-		}
-	case game.EventCast:
-	default:
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Owner == source.Controller
-}
-
 // socB20SmallCreatureYouControlDied is "a creature you control with power
 // or toughness 1 or less dies" (Arnyn, Deathbloom Botanist): a creature
 // went to the graveyard from the battlefield under your control, and its

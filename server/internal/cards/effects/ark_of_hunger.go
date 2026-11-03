@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The trigger is a batch trigger over cards of the controller's that leave
 // a graveyard, by a zone move or by being cast from it
-// (socB20CardLeftYourGraveyard): cards that leave as one event trigger it
+// (whenCardsLeaveYourGraveyard): cards that leave as one event trigger it
 // once. Its body is Arbaaz Mir's "damage to each opponent, you gain life".
 //
 // The mill is a MillToZone whose keyed tail hands the milled card a play
@@ -23,7 +23,7 @@ func init() {
 		Name:         "Ark of Hunger",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, socB20CardLeftYourGraveyard,
+			OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
 				"Ark of Hunger — 1 damage to each opponent and you gain 1 life",
 				b34DamageEachOpponentAndGainLife(1, 1))),
 		},

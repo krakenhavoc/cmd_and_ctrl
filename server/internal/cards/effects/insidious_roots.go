@@ -29,9 +29,9 @@ func init() {
 		Grants:       []AbilityGrant{AnyColorManaGrant(insidiousRootsGrant)},
 		Static:       []game.StaticAbility{Labelled(GrantAbilities(creatureTokensYouControl, insidiousRootsGrant), "Creature tokens you control have \"{T}: Add one mana of any color.\"")},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventZoneMove,
+			OncePerBatch(OnAny(leftGraveyardEvents,
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b02CreatureCardLeftYourGraveyard(ev, source, g)
+					return creatureCardLeftYourGraveyard(ev, source, g)
 				},
 				"Insidious Roots — create a 0/1 Plant, then a +1/+1 counter on each Plant",
 				insidiousRootsGrow)),

@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Partner (You can have two commanders if both have partner.)"
 //
 // The graveyard-recursion partner. The trigger is Teval's Judgment's
-// condition (b16CardLeftYourGraveyard — a move out of the
+// condition (cardLeftYourGraveyard — a move out of the
 // controller's own graveyard, or a flashback cast from it) with the
 // per-label "one or more" dedup, so an escape that exiles five cards
 // makes one Zombie and a single regrowth makes one; the token is
@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b16CardLeftYourGraveyard(ev, source, g)
+				return cardLeftYourGraveyard(ev, source, g)
 			}, b34TormodLabel, Do(CreateTokenAdvanced{Spec: Token(BlackZombieToken()).EntersTapped(), N: 1}))),
 		},
 	})

@@ -40,7 +40,7 @@ func init() {
 				}),
 			AtLevel(2, OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast},
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b16CardLeftYourGraveyard(ev, source, g)
+					return cardLeftYourGraveyard(ev, source, g)
 				}, "Advanced Reconstruction — 2 damage to each opponent (cards left your graveyard)",
 				Do(DamageEachOpponent{N: 2})))),
 		},
