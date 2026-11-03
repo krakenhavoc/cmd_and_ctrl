@@ -58,6 +58,9 @@ export type SoundName =
   | "loss"
   // #4449: a player leaves the game (the rock-shatter and the tombstone).
   | "player_eliminated"
+  // #4879: a player decked (drew from an empty library, CR 704.5b): the
+  // library's ghost. Plays instead of player_eliminated, and falls back to it.
+  | "player_decked"
   // ADR 0209 §2 interface cues. If its files fail to load, your_turn falls
   // back (SOUND_FALLBACK) and the others stay silent.
   | "your_turn"
@@ -115,6 +118,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   combat_resolve: "combat",
   heal: "effects",
   player_eliminated: "effects",
+  player_decked: "effects",
   turn_change: "interface",
   win: "interface",
   loss: "interface",
@@ -154,6 +158,8 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   face_hit_heavy: ["/sounds/face_hit_heavy-1.mp3"],
   // #4449: exactly one take.
   player_eliminated: ["/sounds/player_eliminated-1.mp3"],
+  // #4879: two synthesised takes.
+  player_decked: ["/sounds/player_decked-1.mp3", "/sounds/player_decked-2.mp3"],
   heal: ["/sounds/heal-1.mp3", "/sounds/heal-2.mp3"],
   attack: ["/sounds/attack-1.mp3", "/sounds/attack-2.mp3"],
   block: ["/sounds/block-1.mp3", "/sounds/block-2.mp3"],
@@ -207,6 +213,7 @@ export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   sig_nicol_bolas: "pw_enter",
   sig_dragons_approach: "board_wipe",
   extort: "damage",
+  player_decked: "player_eliminated",
 };
 
 // Sounds preloadAll leaves alone: a signature's files are fetched the

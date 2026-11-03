@@ -155,6 +155,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}Tombstone.svelte`],
     doc: "#4449: the epitaph on the tombstone that stays on an eliminated player's panel",
   }),
+  tombstoneDecked: label({
+    name: "Decked",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}Tombstone.svelte`],
+    doc: "#4879: the epitaph on the stone of a player who lost by drawing from an empty library (CR 704.5b), in place of the R. I. P.",
+  }),
   tombstoneOf: dynamicLabel({
     stem: " is out of the game",
     match: "suffix",

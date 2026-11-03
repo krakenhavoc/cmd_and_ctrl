@@ -50584,6 +50584,7 @@ seats[].lifeHistory[].Delta	number:int
 seats[].lifeHistory[].NewTotal	number:int
 seats[].lifeHistory[].Seq	number:uint64
 seats[].losesAtNextSba	bool
+seats[].lossCause	string
 seats[].manaPool	array
 seats[].manaPool[]	object
 seats[].manaPool[].Color	string

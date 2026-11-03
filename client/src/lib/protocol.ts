@@ -2624,6 +2624,11 @@ export interface PlayerView {
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
   eliminated?: boolean;
+  // Why the player left (#4879), once eliminated: the log line's
+  // `cause` vocabulary ("life", "empty_draw", "poison",
+  // "commander_damage", "effect", "concede"). Absent while they play,
+  // and on a seat restored from a snapshot that predates it.
+  loss_cause?: string;
   // True once the player has committed to their opening hand during
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
