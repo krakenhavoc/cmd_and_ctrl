@@ -126,6 +126,7 @@ body flicker/return-exiled-with-additional-counters
 body flip/the-source
 body foray-of-orcs/damage
 body fortune-loyal-steed/end-of-combat
+body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body gaze-of-pain/damage-equal-to-its-power
@@ -1565,6 +1566,9 @@ tail flicker/schedule-return-at-end-step
 tail foray-of-orcs/reflexive-damage
 tail forgotten-creation/draw-per-discarded
 tail fortune-loyal-steed/return-exiled-together
+tail forum-filibuster/inkling-created
+tail fractal-harness/attach
+tail fractal-harness/fractal-created
 tail fractured-identity/after-exile
 tail from-the-catacombs/exile-instead
 tail gandalf-shadows-foe/return-lands-tapped
@@ -1598,6 +1602,7 @@ tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/deluge-of-the-dead-zombie
+tail if-it-was/feral-appetite-pest
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/scavenging-ooze-grow

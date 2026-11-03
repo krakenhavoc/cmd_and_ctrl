@@ -52,7 +52,9 @@ import "github.com/google/uuid"
 // Plain data: it rides a paused entry's event and its batch's options
 // to disk.
 type EntersAs struct {
-	// Types are the card types the permanent has (at least one).
+	// Types are the card types the permanent has, in place of its own
+	// (CR 205.1a). Empty only for an overwrite that adds types instead
+	// (AddTypes).
 	Types []string `json:"types"`
 	// Subtypes are the subtypes it has, each one of Types' (CR 205.3d):
 	// Supper for Spiders' "Food". Empty keeps the subtypes CR 205.1a
@@ -63,14 +65,50 @@ type EntersAs struct {
 	Grants []string `json:"grants,omitempty"`
 	// Label names the record for logs and tests.
 	Label string `json:"label,omitempty"`
+
+	// AddTypes are card types the permanent has IN ADDITION to its own
+	// (CR 205.1b, layer 4): Excava, the Risen Past's "It's a 1/1 Spirit
+	// creature with flying in addition to its other types" (#4834). An
+	// overwrite either sets its types (Types) or adds them, never both.
+	AddTypes []string `json:"addTypes,omitempty"`
+	// AddSubtypes are subtypes it has in addition to its own (layer 4),
+	// beside AddTypes: Excava's "Spirit".
+	AddSubtypes []string `json:"addSubtypes,omitempty"`
+	// Keywords are keyword abilities the effect gives it (layer 6):
+	// Excava's "with flying". Canonical lowercase tokens.
+	Keywords []string `json:"keywords,omitempty"`
+	// BasePT, when set, is the base power and toughness the effect gives
+	// it (layer 7b, CR 613.4b): Excava's "1/1". Nil keeps the card's own.
+	BasePT *EntersAsPT `json:"basePT,omitempty"`
+}
+
+// EntersAsPT is an entry overwrite's base power and toughness.
+type EntersAsPT struct {
+	Power     int `json:"power"`
+	Toughness int `json:"toughness"`
 }
 
 // mods is the overwrite as the ScopedEffect mods it registers, in one
 // record so they share one timestamp and are one effect (CR 613.7).
 func (e *EntersAs) mods() []Mod {
-	mods := []Mod{SetTypesMod(e.Types, e.Subtypes)}
+	var mods []Mod
+	if len(e.Types) > 0 {
+		mods = append(mods, SetTypesMod(e.Types, e.Subtypes))
+	}
+	if len(e.AddTypes) > 0 {
+		mods = append(mods, AddTypesMod(e.AddTypes...))
+	}
+	if len(e.AddSubtypes) > 0 {
+		mods = append(mods, AddSubtypesMod(e.AddSubtypes...))
+	}
+	if len(e.Keywords) > 0 {
+		mods = append(mods, AddKeywordsMod(e.Keywords...))
+	}
 	if len(e.Grants) > 0 {
 		mods = append(mods, GrantAbilitiesMod(e.Grants...))
+	}
+	if e.BasePT != nil {
+		mods = append(mods, SetBasePowerMod(e.BasePT.Power), SetBaseToughnessMod(e.BasePT.Toughness))
 	}
 	return mods
 }
@@ -81,8 +119,14 @@ func (e *EntersAs) Problem() string {
 	if e == nil {
 		return ""
 	}
-	if len(e.Types) == 0 {
+	if len(e.Types) == 0 && len(e.AddTypes) == 0 {
 		return "an entry overwrite names no card type"
+	}
+	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0) {
+		return "an entry overwrite both sets and adds types"
+	}
+	if len(e.Types) == 0 && len(e.Subtypes) > 0 {
+		return "an entry overwrite that adds types names its subtypes in AddSubtypes"
 	}
 	for _, m := range e.mods() {
 		if p := becomeNamedModProblem(m); p != "" {
@@ -99,7 +143,13 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 	if e == nil {
 		return nil
 	}
-	return &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label}
+	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
+		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords)}
+	if e.BasePT != nil {
+		pt := *e.BasePT
+		out.BasePT = &pt
+	}
+	return out
 }
 
 // entryOverwriteRecord is the overwrite as the record it registers for

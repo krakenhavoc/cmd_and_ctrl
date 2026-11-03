@@ -2907,6 +2907,16 @@ move and `EventETB`, pinned to that object by its epoch:
   reanimation is a new object without it (CR 400.7), and a copy copies
   the printed card (CR 707.2).
 
+"In addition to its other types" is the same overwrite with the add
+fields instead of `Types` (#4834): Excava, the Risen Past's "It's a 1/1
+Spirit creature with flying in addition to its other types" is
+`EntersAs{AddTypes: []string{"Creature"}, AddSubtypes:
+ctx.TextSubtypes("Spirit"), Keywords: []string{"flying"}, BasePT:
+&game.EntersAsPT{Power: 1, Toughness: 1}}` (layer 4 add, layer 6
+keyword, layer 7b base power and toughness, one record). `Problem`
+refuses an overwrite that both sets and adds types. See
+`excava_the_risen_past.go`.
+
 A "dies, if it was a creature, return it" trigger (Tom, Bert, and
 William) reads `lki.Types` in `AppliesTo`. The returned artifact was
 not a creature when it died, so it does not loop. See
