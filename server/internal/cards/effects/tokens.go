@@ -218,6 +218,71 @@ func printedClueToken() tokenTemplate {
 	}
 }
 
+// ShardToken — CR 111.10e: "A Shard token is a colorless Shard
+// enchantment token with “{2}, Sacrifice this token: Scry 1, then draw
+// a card.”" Like a Clue, no tap in the cost.
+//
+// The draw is the scry's ThenTail: the scry only queues a prompt, so a
+// draw written after it would take the card the player is still
+// deciding about (see Preordain).
+func ShardToken() game.Card { return tokenFromCatalog(printedShardToken) }
+
+// printedShardToken is the Shard as PRINTED — the abilities included.
+// It is the catalog's entry for this token (token_catalog.go).
+func printedShardToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "shard",
+		Card: game.Card{
+			Name:     "Shard",
+			TypeLine: "Token Enchantment — Shard",
+		},
+		Text: "{2}, Sacrifice this token: Scry 1, then draw a card.",
+		Activated: []game.ActivatedAbilityShape{{
+			Label: "{2}, Sacrifice this enchantment: Scry 1, then draw a card",
+			Cost: game.AbilityCost{
+				SacrificeSelf: true,
+				Mana:          "{2}",
+			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				c := item.Controller
+				return Scry{Player: c, N: 1, ThenTail: game.KeyedTail{Ref: thenDrawACard, Player: c}}.Apply(NewContext(g, item))
+			},
+		}},
+	}
+}
+
+// JunkToken — CR 111.10t: "A Junk token is a colorless Junk artifact
+// token with “{T}, Sacrifice this token: Exile the top card of your
+// library. You may play that card this turn. Activate only as a
+// sorcery.”"
+func JunkToken() game.Card { return tokenFromCatalog(printedJunkToken) }
+
+// printedJunkToken is the Junk as PRINTED — the abilities included. It
+// is the catalog's entry for this token (token_catalog.go).
+func printedJunkToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "junk",
+		Card: game.Card{
+			Name:     "Junk",
+			TypeLine: "Token Artifact — Junk",
+		},
+		Text: "{T}, Sacrifice this token: Exile the top card of your library. You may play that card this turn. Activate only as a sorcery.",
+		Activated: []game.ActivatedAbilityShape{{
+			Label: "{T}, Sacrifice this artifact: Exile the top card of your library. You may play that card this turn",
+			Cost: game.AbilityCost{
+				Tap:           true,
+				SacrificeSelf: true,
+			},
+			SorcerySpeed: true,
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				_, err := b12ImpulseExileForTurn(g, item, 1)
+				return err
+			},
+		}},
+	}
+}
+
 // BloodToken — "{1}, {T}, Discard a card, Sacrifice this artifact:
 // Draw a card."
 //
