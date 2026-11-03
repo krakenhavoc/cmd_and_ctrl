@@ -7957,7 +7957,12 @@ CreateTokenCopy{Controller: item.Controller, Copy: cardID, N: 1,
 ```
 
 `Copy` may be in **any** zone (graveyard for Hashaton, exile for
-eternalize, battlefield for a Clone-style copy). The copied card's
+eternalize, battlefield for a Clone-style copy). A permanent is copied
+by its copiable values (CR 707.2: a Clone copying a dragon is the
+dragon, a face-down permanent a nameless 2/2), and a permanent that has
+left the battlefield and not moved since by its last-known ones (CR
+608.2h, #4794); a card that has moved on is copied as the card it now
+is (`game.TokenCopySourceForEffect`). The copied card's
 oracle ID rides onto the token, so its triggered / static / mana /
 activated abilities all come along for free — every one of those hooks
 does a catalog lookup rather than reading a field. Since #762 the token
