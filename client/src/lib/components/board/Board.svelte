@@ -5198,9 +5198,13 @@
        left of their panel (CommandStrip, 42% of a card tall). */
     left: 196px;
     /* ADR 0204 §4: and short of the middle of the board, where an
-       opponent across the table now sits (their avatar and its hand
-       count, 62px left of centre). */
-    width: min(512px, calc(50% - 270px));
+       opponent across the table now sits. #4537: short of their name
+       line, not just their avatar and its hand count (62px left of
+       centre): the seated identity is up to 240px wide and centred
+       (PlayerIdentity, .identity.seated), so its left edge can be 120px
+       left of centre, and the strip ends 8px before that. At 196px +
+       74px it covered the first letters of "Practice Bot". */
+    width: min(512px, calc(50% - 324px));
     max-height: calc(100% - 20px);
     display: flex;
     flex-direction: column;
