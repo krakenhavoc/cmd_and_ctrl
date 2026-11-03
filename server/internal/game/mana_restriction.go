@@ -173,6 +173,15 @@ const (
 	// that does not say whether its cost has {X} refuses it — weaker
 	// than printed, never stronger.
 	ManaRestrictXCost = "cost:has-x"
+	// ManaRestrictSpellXCost permits the token only on a SPELL that has
+	// {X} in its printed mana cost (CR 107.3, CR 106.6): Troyan, Gutsy
+	// Explorer's "spells with {X} in their mana costs". Unlike
+	// ManaRestrictXCost it asks about the card being cast, not the cost
+	// being paid, so a spell with {X} in its mana cost cast for an
+	// alternative cost without one still qualifies, and an activated
+	// ability never does (ManaSpendContext.ManaCostHasX). A payment
+	// that does not say what it casts refuses it.
+	ManaRestrictSpellXCost = "spell:has-x"
 )
 
 // ManaRestrictManaValueAtLeast builds "spend this mana only to cast
@@ -384,6 +393,13 @@ type ManaSpendContext struct {
 	// every other payment.
 	CostHasX bool
 
+	// ManaCostHasX is set when the spell being cast has {X} in its
+	// printed mana cost, whatever cost is being paid for it: what
+	// ManaRestrictSpellXCost reads (Troyan, Gutsy Explorer). Set by
+	// ManaSpendForCast beside CostHasX and, unlike it, not rewritten by an
+	// alternative cost. False for every payment that is not a cast.
+	ManaCostHasX bool
+
 	// ManaValue is the mana value of the spell being cast as it is on
 	// the stack, and ManaValueKnown whether the engine could read its
 	// cost: what ManaRestrictManaValueAtLeast reads (#4694, CR 202.3).
@@ -567,6 +583,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
+		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
 }
@@ -644,6 +661,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
+	case ManaRestrictSpellXCost:
+		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:
