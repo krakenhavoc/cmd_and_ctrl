@@ -41,8 +41,8 @@ func init() {
 				TargetPermanent("target land you control", Land(), YouControl())),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "Mine Vibranium — {3}: Move all +1/+1 counters from target land you control onto target creature. If one or more +1/+1 counters are moved this way, you gain that much life and draw a card.",
-			Cost:    ManaCost("{3}"),
+			Label: "Mine Vibranium — {3}: Move all +1/+1 counters from target land you control onto target creature. If one or more +1/+1 counters are moved this way, you gain that much life and draw a card.",
+			Cost:  ManaCost("{3}"),
 			Targets: Clauses(
 				TargetPermanent("target land you control", Land(), YouControl()),
 				TargetCreature("target creature"),

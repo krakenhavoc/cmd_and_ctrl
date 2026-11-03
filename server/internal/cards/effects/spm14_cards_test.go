@@ -116,8 +116,8 @@ func TestSpm14RiseFromTheNetherMakesATokenPerNoncreatureNonlandCard(t *testing.T
 	push("Old Wall", "Enchantment")
 	push("Gadget", "Artifact")
 	push("Gizmo Bear", "Artifact Creature — Construct") // a creature card: no
-	push("Forest", "Basic Land — Forest")                 // a land card: no
-	push("Cave", "Land Artifact")                         // a land card: no
+	push("Forest", "Basic Land — Forest")               // a land card: no
+	push("Cave", "Land Artifact")                       // a land card: no
 	spell := spm14Hand(me, "Rise from the Nether", "Sorcery — Arcane", spm14RiseNetherOracle, "{6}{R}")
 	floatMana(t, g, me, "{R}{C}{C}{C}{C}{C}{C}")
 	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{Strict: true}); err != nil {
