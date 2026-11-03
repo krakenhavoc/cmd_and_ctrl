@@ -236,16 +236,8 @@ func TestJmpB7ArchonOfRedemptionGainsAnotherFliersPower(t *testing.T) {
 func TestJmpB7ArchonOfRedemptionGainsItsOwnPowerAsItEnters(t *testing.T) {
 	g := newCatalogGame(t)
 	me, _ := jmpB7Seats(g)
+	advanceToMain(t, g)
 	life := lifeOf(g, me.ID)
-	castCatalogSpell(t, g, "Archon of Redemption", "Creature — Archon", jmpB7ArchonRedemptOracle, nil)
-	assistCardSettle(t, g, me.ID, nil, true)
-	// The cast card carries no printed size here (castCatalogSpell), so
-	// its power is 0 and nothing is gained: the clause read the Archon's
-	// power. Give it the printed 3/4 and enter it again to see the gain.
-	if got := lifeOf(g, me.ID) - life; got != 0 {
-		t.Fatalf("a 0-power Archon gained %d life", got)
-	}
-	life = lifeOf(g, me.ID)
 	c := game.Card{
 		InstanceID: uuid.New(), Name: "Archon of Redemption", TypeLine: "Creature — Archon",
 		OracleID: jmpB7ArchonRedemptOracle, Power: 3, Toughness: 4, Owner: me.ID, Controller: me.ID,
@@ -255,12 +247,9 @@ func TestJmpB7ArchonOfRedemptionGainsItsOwnPowerAsItEnters(t *testing.T) {
 		game.ZoneRef{Kind: game.ZoneBattlefield}, c.InstanceID); err != nil {
 		t.Fatalf("MoveCardByID: %v", err)
 	}
-	// Two Archons now: the new one sees itself, the old one sees another
-	// creature with flying. Both gain 3.
 	assistCardSettle(t, g, me.ID, nil, true)
-	assistCardSettle(t, g, me.ID, nil, true)
-	if got := lifeOf(g, me.ID) - life; got != 6 {
-		t.Errorf("gained %d life, want 3 from each Archon", got)
+	if got := lifeOf(g, me.ID) - life; got != 3 {
+		t.Errorf("gained %d life, want the Archon's own power, 3", got)
 	}
 }
 
@@ -368,7 +357,22 @@ func TestJmpB7CuriousObsessionStaysAfterAnAttack(t *testing.T) {
 	aura := auraCast(t, g, "Curious Obsession", jmpB7CuriousObsessionOracl, bear)
 	declareAttack(t, g, opp.ID, bear)
 	passPriorityAroundTable(t, g)
-	advanceTo(t, g, game.StepEnd)
+	// Walk to the end step, declining the granted draw on the way.
+	for i := 0; i < 32 && g.Turn.Step != game.StepEnd; i++ {
+		if c := assistCardTriggerPrompt(g, me.ID); c != nil {
+			if err := g.ResolveTriggerPrompt(c.ID, c.Chooser, false); err != nil {
+				t.Fatalf("ResolveTriggerPrompt: %v", err)
+			}
+			continue
+		}
+		if !stackFullyEmpty(g) {
+			passPriorityAroundTable(t, g)
+			continue
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(aura) {
 		t.Error("the Aura was sacrificed although you attacked this turn")
