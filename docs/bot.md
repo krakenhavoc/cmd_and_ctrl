@@ -577,6 +577,45 @@ for a while" discount took 40% off exactly the expensive creature that
 reanimation exists for. `PriceReanimation` turns it off (it needs
 `PriceTargetPurposes`).
 
+**A graveyard exile is priced by what it takes away** (#4559,
+`PriceGraveyardExile`, `mana_sink.go`). A row that declares `exiles` on a
+graveyard target entry (Lion Sash, Scavenging Ooze, Deluge of the Dead,
+Feral Appetite) removes the pick, so `cardTargetValue`'s reading of a
+graveyard pick as recursion is backwards for it: it priced exiling the
+bot's own Baneslayer Angel at +8.09 as though the Sash returned it, and
+every opposing card at the same flat `OwnPermanentTarget`. Now a card of
+the bot's own costs `fuelValue`, what a cost that exiled it would charge;
+an opponent's denies them `FuelIdle` (`FuelFloor` for a land), scaled by
+`LeaderBoost`, since the bot cannot see what they can recast; and a pick
+of the type `exile_grows` names (`permanent` for the Sash, `creature` for
+the Ooze) adds a +1/+1 counter on the source at `Power + Toughness`. The
+Sash then exiles an opponent's creature or land first and an instant for
+next to nothing. The Ooze's life and the tokens Deluge and Feral Appetite
+make are left unpriced, so their prices are floors. It needs
+`PriceTargetPurposes`.
+
+**A repeatable mana sink is spent last** (#4559, `SinkManaLast`,
+`mana_sink.go`). A sink is an activation of the bot's own permanent whose
+only cost is mana: no `{T}`, nothing sacrificed, discarded or exiled, no
+life, counters, loyalty, energy or crew; equip and reconfigure are not
+sinks. Nothing stops it being activated again, so each activation spends
+mana a spell would use, and priced one window at a time it outbid any
+cheap cast it scored above, then did so again with the next {W}. In
+`decideGeneral` a sink is now taken only when no other move clears its
+bar, and the turn plan is weighed against the best move that is not a
+sink. Its own price and bar are unchanged: with nothing else to do it is
+still taken in the main phase, and an instant-speed sink still clears
+`LeftoverThreshold` in the end step before the bot's turn, with the mana
+it kept up. The reason reads `…, mana sink last`. In the bot's own upkeep
+and draw step, stack empty, a sink waits for the main phase as an instant
+cast does under `WaitForMain`: a land tapped there stays tapped through
+both main phases, and an exile priced above `InstantThreshold` (the Sash
+at an opposing creature card is +1.60) would otherwise spend the turn's
+mana before its spells were on offer. A sink that grows an attacker
+before combat is not preferred to a cast for that, and one priced above
+`InstantThreshold` in a combat step can still spend mana a postcombat
+cast wanted.
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this
@@ -2559,7 +2598,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder` or `heuristic-nogrants`. `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants` or `heuristic-nomanasink`. `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |

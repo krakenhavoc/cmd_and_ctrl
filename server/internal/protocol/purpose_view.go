@@ -240,6 +240,12 @@ type TargetPurposeView struct {
 	// Reanimates: the spell puts the picked graveyard card onto the
 	// battlefield under its caster's control (#3161).
 	Reanimates bool `json:"reanimates,omitempty"`
+	// Exiles: the effect exiles the picked graveyard card (#4559).
+	Exiles bool `json:"exiles,omitempty"`
+	// ExileGrows: the card type ("permanent" or "creature") an exiled
+	// pick must have for the effect to put a +1/+1 counter on its
+	// source (#4559). Absent when the exile grows nothing.
+	ExileGrows string `json:"exile_grows,omitempty"`
 	// UntilEndOfTurn is "benefit" or "harm": which way a change that ends
 	// with the turn cuts for the picked permanent's controller (#4302).
 	// Absent when the entry declares none.
@@ -436,6 +442,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
 				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, DamagePerTapped: t.DamagePerTapped, Reanimates: t.Reanimates,
+				Exiles: t.Exiles, ExileGrows: t.ExileGrows,
 				UntilEndOfTurn: string(t.UntilEndOfTurn),
 			}
 			if pm := t.Pump; pm != nil {
