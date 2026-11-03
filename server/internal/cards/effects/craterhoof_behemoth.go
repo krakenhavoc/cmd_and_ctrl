@@ -60,32 +60,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Craterhoof Behemoth — trample and +X/+X", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				x := 0
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.IsCreature() && c.Controller == item.Controller {
-						x++
-					}
-				}
-				if x == 0 {
-					return nil
-				}
-				yours := And(Creature(), YouControl())
-				if err := (BoostUntilEOT{
-					Match:     yours,
-					Power:     x,
-					Toughness: x,
-					Label:     "Craterhoof Behemoth — +X/+X",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				return GrantKeywordUntilEOT{
-					Match:    yours,
-					Keywords: []string{"trample"},
-					Label:    "Craterhoof Behemoth — trample",
-				}.Apply(ctx)
-			}),
+			WhenThisEnters("Craterhoof Behemoth — trample and +X/+X", socB9TeamKeywordAndPump("Craterhoof Behemoth", "trample")),
 		},
 	})
 }
