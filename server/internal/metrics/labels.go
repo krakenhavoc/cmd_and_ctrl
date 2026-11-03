@@ -84,6 +84,9 @@ var familyLabelSets = map[string]map[string]labelSet{
 		"direction": oneOf(frameDirectionLabels...),
 		"type":      oneOf(frameTypeLabels...),
 	},
+	"cmdctrl_ws_sent_bytes_total": {
+		"type": oneOf(frameTypeLabels...),
+	},
 	"cmdctrl_actions_total": {
 		"type":   actionTypeSet(),
 		"result": oneOf(actionResultLabels...),

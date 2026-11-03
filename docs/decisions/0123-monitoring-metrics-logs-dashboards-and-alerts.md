@@ -117,6 +117,7 @@ This is how the privacy rules in ADR 0017 §9 and AGENTS.md §5 carry over to me
 | `cmdctrl_capacity_refusals_total` | counter | `reason` = `table_load\|bot_seat\|ws_connections\|join_connections\|create_account\|create_ip` *(ADR 0148)* |
 | `cmdctrl_boot_restore_deferred_games` | gauge | — *(ADR 0148: tables the boot left on disk because the load cap was full)* |
 | `cmdctrl_ws_frames_total` | counter | `direction` = `in\|out`, `type` (protocol frame types) |
+| `cmdctrl_ws_sent_bytes_total` | counter | `type` (as `cmdctrl_ws_frames_total`) *([ADR 0205](0205-view-frame-deltas-and-library-cards-in-the-dump.md) delivery step 1, #4200: the bytes of each frame counted `out`, as marshalled, before any transport compression)* |
 | `cmdctrl_ws_broadcast_seconds` | histogram | — |
 | Go runtime and process | `collectors.NewGoCollector`, `NewProcessCollector` | — |
 

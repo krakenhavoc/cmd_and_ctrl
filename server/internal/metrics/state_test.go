@@ -322,6 +322,40 @@ func TestEventHelpersKeepTheirSetsClosed(t *testing.T) {
 	}
 }
 
+// WSSentBytes (ADR 0205, #4200) adds the frame's length under its kind,
+// folds a kind outside the protocol's set into other like WSFrame, and
+// leaves every other kind's series alone.
+func TestWSSentBytesAddsTheFrameLengthUnderItsKind(t *testing.T) {
+	cases := []struct {
+		kind, want string
+		n          int
+	}{
+		{"snapshot", "snapshot", 70672},
+		{"pong", "pong", 31},
+		{"<script>", FrameOther, 5},
+		{"chat", "chat", 0},
+	}
+	for _, c := range cases {
+		before := map[string]float64{}
+		for _, k := range frameTypeLabels {
+			before[k] = testutil.ToFloat64(wsSentBytes.WithLabelValues(k))
+		}
+		WSSentBytes(c.kind, c.n)
+		for _, k := range frameTypeLabels {
+			want := 0.0
+			if k == c.want {
+				want = float64(c.n)
+			}
+			if got := testutil.ToFloat64(wsSentBytes.WithLabelValues(k)) - before[k]; got != want {
+				t.Errorf("WSSentBytes(%q, %d): type=%q moved by %v, want %v", c.kind, c.n, k, got, want)
+			}
+		}
+	}
+	if err := CheckClosedLabels(Registry); err != nil {
+		t.Fatalf("label rule broken:\n%v", err)
+	}
+}
+
 func histogramCount(t *testing.T) uint64 {
 	t.Helper()
 	return uint64(gathered(t, Registry)["cmdctrl_game_duration_seconds{}"])
@@ -369,7 +403,7 @@ func TestStateFamiliesKeepLabelsClosed(t *testing.T) {
 		"cmdctrl_games_created_total", "cmdctrl_games_started_total", "cmdctrl_games_ended_total",
 		"cmdctrl_game_duration_seconds", "cmdctrl_users_created_total", "cmdctrl_ws_connects_total",
 		"cmdctrl_ws_disconnects_total", "cmdctrl_ws_upgrade_rejections_total", "cmdctrl_ws_frames_total",
-		"cmdctrl_ws_broadcast_seconds",
+		"cmdctrl_ws_sent_bytes_total", "cmdctrl_ws_broadcast_seconds",
 	} {
 		if !names[want] {
 			t.Errorf("registry has no %s", want)
@@ -384,6 +418,7 @@ func TestStateFamiliesKeepLabelsClosed(t *testing.T) {
 		{"cmdctrl_games_ended_total", "outcome", "in", `outcome="in" is outside its set`},
 		{"cmdctrl_ws_frames_total", "direction", "win", `direction="win" is outside its set`},
 		{"cmdctrl_ws_frames_total", "type", "cast_spell", `type="cast_spell" is outside its set`},
+		{"cmdctrl_ws_sent_bytes_total", "type", "cast_spell", `type="cast_spell" is outside its set`},
 		{"cmdctrl_t_other", "outcome", "win", `label "outcome" is not in the label table`},
 	} {
 		r := prometheus.NewRegistry()

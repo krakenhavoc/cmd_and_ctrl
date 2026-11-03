@@ -403,7 +403,7 @@ func TestPracticeTablesAreNotCounted(t *testing.T) {
 
 // The WebSocket counters: an upgrade with no session is refused as
 // unauthorized; a seat's connect, frames and disconnect each count
-// once.
+// once, and each frame out adds its length to the bytes sent.
 func TestWSCountersMoveByOne(t *testing.T) {
 	srv, l, hub, _ := metricsStack(t)
 	meta, _ := l.Create("Sockets")
@@ -418,6 +418,9 @@ func TestWSCountersMoveByOne(t *testing.T) {
 		"cmdctrl_ws_frames_total{direction=out,type=pong}",
 		"cmdctrl_ws_frames_total{direction=in,type=other}",
 		"cmdctrl_ws_frames_total{direction=out,type=error}",
+		"cmdctrl_ws_sent_bytes_total{type=snapshot}",
+		"cmdctrl_ws_sent_bytes_total{type=pong}",
+		"cmdctrl_ws_sent_bytes_total{type=error}",
 	}
 	base := map[string]float64{}
 	for _, n := range names {
@@ -441,20 +444,37 @@ func TestWSCountersMoveByOne(t *testing.T) {
 	if got := moved(names[3]); got != 1 {
 		t.Errorf("outbound snapshots moved by %v, want 1", got)
 	}
+	// The initial snapshot's bytes (dialAdmitted read and dropped it):
+	// a whole view is far more than a frame header.
+	if got := moved(names[8]); got < 100 {
+		t.Errorf("outbound snapshot bytes moved by %v, want the initial snapshot's length", got)
+	}
 
 	// A ping is one frame in and one out; a frame of no known kind is
-	// one "other" in and one error out.
-	for _, f := range []string{`{"v":0,"kind":"ping","id":"1"}`, `{"v":0,"kind":"teleport","id":"2"}`} {
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(f)); err != nil {
+	// one "other" in and one error out. Each reply's bytes are exactly
+	// the message the client read.
+	replied := map[string]int{}
+	for _, f := range []struct{ frame, reply string }{
+		{`{"v":0,"kind":"ping","id":"1"}`, names[9]},
+		{`{"v":0,"kind":"teleport","id":"2"}`, names[10]},
+	} {
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(f.frame)); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := conn.ReadMessage(); err != nil {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
 			t.Fatal(err)
 		}
+		replied[f.reply] = len(msg)
 	}
-	for _, n := range names[4:] {
+	for _, n := range names[4:8] {
 		if got := moved(n); got != 1 {
 			t.Errorf("%s moved by %v, want 1", n, got)
+		}
+	}
+	for n, want := range replied {
+		if got := moved(n); got != float64(want) {
+			t.Errorf("%s moved by %v, want %d (the reply's length)", n, got, want)
 		}
 	}
 

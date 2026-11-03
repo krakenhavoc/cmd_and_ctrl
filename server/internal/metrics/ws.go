@@ -120,6 +120,17 @@ var (
 		Help: "WebSocket frames, by direction (in: read from a client; out: queued to one) and protocol frame type.",
 	}, []string{"direction", "type"})
 
+	// wsSentBytes is ADR 0205's bytes-out series (delivery step 1,
+	// #4200): the length of every frame counted out by wsFrames, as the
+	// hub marshalled it. It is counted at the queue, so a frame shared
+	// by many connections counts once for each. There is no transport
+	// compression today, so this is what goes on the wire; it counts the
+	// uncompressed size, and a compressed one is ADR 0205 step 2's to add.
+	wsSentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "cmdctrl_ws_sent_bytes_total",
+		Help: "Bytes of WebSocket frames queued to a client, by protocol frame type: the frame as marshalled, before any transport compression.",
+	}, []string{"type"})
+
 	wsBroadcast = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "cmdctrl_ws_broadcast_seconds",
 		Help: "Time to filter, marshal and queue one state snapshot to every connection on a game.",
@@ -141,6 +152,9 @@ func init() {
 		for _, t := range frameTypeLabels {
 			wsFrames.WithLabelValues(d, t)
 		}
+	}
+	for _, t := range frameTypeLabels {
+		wsSentBytes.WithLabelValues(t)
 	}
 }
 
@@ -168,6 +182,16 @@ func WSFrame(direction, kind string) {
 		kind = FrameOther
 	}
 	wsFrames.WithLabelValues(direction, kind).Inc()
+}
+
+// WSSentBytes counts n bytes of one frame of protocol kind kind queued
+// to a client: the frame WSFrame(FrameOut, kind) counts. A kind outside
+// the protocol's set counts as FrameOther.
+func WSSentBytes(kind string, n int) {
+	if !slices.Contains(frameTypeLabels, kind) {
+		kind = FrameOther
+	}
+	wsSentBytes.WithLabelValues(kind).Add(float64(n))
 }
 
 // WSBroadcast observes one snapshot broadcast's duration.
