@@ -516,6 +516,16 @@ type PendingChoiceView struct {
 	// may" it controls. Absent on every other prompt.
 	TradeFor string `json:"trade_for,omitempty"`
 
+	// Subject populates a "trigger_prompt" whose question is about one
+	// card (game.TriggerOptionalPrompt.ShowSubject, #4877): the creature
+	// card Lazav, Dimir Mastermind would become a copy of, so the dialog
+	// can show it and several prompts at once can be told apart. It is
+	// set only while that card is face up in a public zone (a
+	// graveyard, exile, the battlefield or the command zone), so it
+	// shows nothing any seat could not already see. Absent on every
+	// other prompt, and on one whose card is hidden.
+	Subject *CardView `json:"subject,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -9614,6 +9624,37 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 	}
 }
 
+// publicSubjectView is the view of a prompt's subject card (#4877) when
+// every seat may see it: face up in a public zone. A card in a library
+// or a hand, a face-down card, or one no zone holds gives nil, and the
+// prompt reads as it did before it named a subject. Caller must hold
+// g's read lock.
+func publicSubjectView(g *game.Game, id uuid.UUID) *CardView {
+	if id == uuid.Nil {
+		return nil
+	}
+	z := g.FindCardZoneForEffect(id)
+	if z == nil {
+		return nil
+	}
+	switch z.Kind {
+	case game.ZoneGraveyard, game.ZoneExile, game.ZoneBattlefield, game.ZoneCommand:
+	default:
+		return nil
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID != id {
+			continue
+		}
+		if z.Cards[i].FaceDown {
+			return nil
+		}
+		v := viewOfCardPtr(&z.Cards[i])
+		return &v
+	}
+	return nil
+}
+
 // viewOfPendingChoices materialises the PendingChoices queue,
 // inlining the candidate cards from the live game state so the
 // per-viewer filter can redact them uniformly. Caller must hold
@@ -9728,6 +9769,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+			v.Subject = publicSubjectView(g, c.Subject())
 			// #3817: one target for every copy of the card's trigger.
 			v.SharedTargetKey = c.SharedTargetKey()
 		}

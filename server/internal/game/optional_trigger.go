@@ -73,6 +73,11 @@ type OptionalTrigger struct {
 	// (TriggerOptionalPrompt.Trade, ADR 0104: Perplexing Chimera's
 	// spell), or nil.
 	TradeFor uuid.UUID `json:"tradeFor,omitempty"`
+	// Subject is the object the question is about, the built item's
+	// Params.Object, or the triggering event's card when Build named
+	// none (TriggerOptionalPrompt.ShowSubject, #4877: the card Lazav
+	// would copy), or nil.
+	Subject uuid.UUID `json:"subject,omitempty"`
 }
 
 // cloneOptionalTrigger copies o for Clone and the snapshot.
@@ -106,6 +111,12 @@ func (g *Game) stampOptionalTriggerLocked(item *StackItem, t TriggeredAbility, e
 	}
 	if p.Trade {
 		o.TradeFor = ev.CardID
+	}
+	if p.ShowSubject {
+		o.Subject = item.Params.Object.ID
+		if o.Subject == uuid.Nil {
+			o.Subject = ev.CardID
+		}
 	}
 	item.Optional = o
 }
@@ -191,6 +202,7 @@ func (g *Game) askOptionalTriggerLocked(item *StackItem) {
 		AutoAnswerPrompt: o.AnswerPrompt,
 		OptionalItem:     item.ID,
 		OptionalTradeFor: o.TradeFor,
+		OptionalSubject:  o.Subject,
 	})
 }
 

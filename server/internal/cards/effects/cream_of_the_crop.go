@@ -36,7 +36,8 @@ func init() {
 				return ok && c.IsCreature()
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
-				Question: "Cream of the Crop — look at the top X cards of your library, where X is that creature's power?",
+				Question:    "Cream of the Crop — look at the top X cards of your library, where X is that creature's power?",
+				ShowSubject: true,
 			},
 			Effect: creamOfTheCropLook,
 		}},

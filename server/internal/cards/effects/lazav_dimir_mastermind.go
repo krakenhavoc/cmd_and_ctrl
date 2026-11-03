@@ -45,7 +45,7 @@ var lazavDimirMastermindTrigger = game.TriggeredAbility{
 		c, ok := g.LookupCardForEffect(ev.CardID)
 		return ok && c.IsCreature()
 	},
-	OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Lazav, Dimir Mastermind — become a copy of that card?"},
+	OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Lazav, Dimir Mastermind — become a copy of that card?", ShowSubject: true},
 	Key:            "Lazav, Dimir Mastermind — becomes a copy of that card",
 	Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, "Lazav, Dimir Mastermind — becomes a copy of that card")

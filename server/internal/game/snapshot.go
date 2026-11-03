@@ -1986,6 +1986,9 @@ type pendingChoiceSnapshot struct {
 	// resolution tail, so the prompt is a restore point.
 	OptionalItem     uuid.UUID `json:"optionalItem,omitempty"`
 	OptionalTradeFor uuid.UUID `json:"optionalTradeFor,omitempty"`
+	// OptionalSubject is PendingChoice's (#4877): the object the
+	// question is about. Additive within the version.
+	OptionalSubject uuid.UUID `json:"optionalSubject,omitempty"`
 	// NoGain is PendingChoice's (ADR 0197 §10, #2731): the row's "yes
 	// would not help" warning, computed as the question was asked.
 	NoGain      bool        `json:"noGain,omitempty"`
@@ -3407,6 +3410,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
+		OptionalSubject:       c.OptionalSubject,
 		NoGain:                c.NoGain,
 		ChooseCards:           copyUUIDs(c.ChooseCards),
 		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),
@@ -4497,6 +4501,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
+		OptionalSubject:       c.OptionalSubject,
 		NoGain:                c.NoGain,
 		ChooseCards:           copyUUIDs(c.ChooseCards),
 		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),

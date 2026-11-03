@@ -601,6 +601,17 @@ type TriggerOptionalPrompt struct {
 	// it controls, which is the heuristic's default for a "you may".
 	Trade bool
 
+	// ShowSubject declares that the prompt is about the one object the
+	// built item names in Params.Object, or else the triggering event's
+	// card — Lazav, Dimir Mastermind's "become a copy of that card"
+	// (#4877), Cream of the Crop's entered creature — so the question can show
+	// that card. Several such triggers at once each name their own, so
+	// the chooser can tell the prompts apart. It is stamped on the item
+	// as OptionalTrigger.Subject and rides the prompt to the wire as
+	// `subject`, only while the card is face up in a public zone.
+	// Nothing in the engine reads it.
+	ShowSubject bool
+
 	// BeforeStack marks a "may" that is not CR 603.5's: a choice the
 	// rules make as the event happens, before the ability goes on the
 	// stack. Miracle's "you may reveal this card as you draw it" (CR
