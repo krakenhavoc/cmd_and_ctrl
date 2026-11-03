@@ -81,6 +81,10 @@ export type SoundName =
   // counters put on one (a falling tick).
   | "counter_add"
   | "counter_remove"
+  // #4443: a commander cast from the command zone (a horn or choir
+  // swell), and one that returns to it (a soft whoosh home).
+  | "commander_cast"
+  | "commander_return"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -141,6 +145,8 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   token_create: "effects",
   counter_add: "effects",
   counter_remove: "effects",
+  commander_cast: "effects",
+  commander_return: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -195,6 +201,12 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // "Files not made yet").
   counter_add: [],
   counter_remove: [],
+  // #4443: files not made yet, and no fallback, so a commander's rise to
+  // the stack and its drift home are silent until commander_cast-1.mp3
+  // and commander_return-1.mp3 (and an optional -2 of each) are listed
+  // here (client/public/sounds/README.md, "Files not made yet").
+  commander_cast: [],
+  commander_return: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

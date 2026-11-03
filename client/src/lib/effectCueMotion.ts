@@ -35,6 +35,13 @@ export interface CueMotion {
   tone: WipeTone;
   /** A counter cue's counters (#4442): which way its tick moves. */
   counterTone?: CounterTone;
+  /**
+   * A commander going home (#4443): the copy's tap turn at the start,
+   * which it straightens out of, and its scale on arrival (the command
+   * zone's card is smaller than a permanent).
+   */
+  rot?: number;
+  commandScale?: number;
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -97,6 +104,12 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "counters":
       counterPulse(node, f);
+      return;
+    case "commander_cast":
+      commanderRise(node, f);
+      return;
+    case "commander_return":
+      commanderDrift(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -841,6 +854,194 @@ function counterPulse(node: HTMLElement, f: CueMotion): void {
       { offset: 1, translate: `0px ${to}px`, opacity: 0 },
     ],
     span(f, 0, 1, EASE.power2Out),
+  );
+}
+
+// ---- A commander is cast from the command zone, or goes home (#4443) ----
+
+/** The share of a commander cast at which its light reaches the stack, and the crown blooms. */
+export const COMMANDER_ARRIVE = 0.45;
+/** The share of a commander's drift home at which it lands on its command-zone card. */
+export const COMMANDER_LAND = 0.9;
+
+/**
+ * commanderRise is a commander cast (CR 903.8): a golden bloom where it
+ * sat in the command zone, a beam of light that rises from there to the
+ * spell on the stack with motes riding it, and a crown of light that
+ * blooms on the spell as the beam arrives. CastFlight still flies the
+ * card itself; this is the light around it.
+ */
+function commanderRise(node: HTMLElement, f: CueMotion): void {
+  const bloom = node.querySelector<HTMLElement>(".cmd-bloom");
+  if (bloom) {
+    run(
+      bloom,
+      [
+        { offset: 0, scale: "0.5", opacity: 0 },
+        { offset: 0.25, scale: "1", opacity: 0.9 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, 0, 0.6, EASE.power2Out),
+    );
+  }
+  const beam = node.querySelector<HTMLElement>(".cmd-beam");
+  if (beam) {
+    run(
+      beam,
+      [
+        { offset: 0, scale: "1 0", opacity: 0, easing: EASE.power1Out },
+        // Full length as the cue reaches COMMANDER_ARRIVE (the beam starts at 0.05).
+        {
+          offset: (COMMANDER_ARRIVE - 0.05) / 0.95,
+          scale: "1 1",
+          opacity: 0.95,
+          easing: EASE.power1In,
+        },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.05, 1),
+    );
+  }
+  // The motes ride up the beam, each a little off it, a beat apart.
+  const len = Math.hypot(f.fly.x, f.fly.y) || 1;
+  const px = -f.fly.y / len;
+  const py = f.fly.x / len;
+  const motes = all<HTMLElement>(node, ".cmd-mote");
+  motes.forEach((m, i) => {
+    const reach = 0.55 + (0.45 * ((i * 3) % motes.length)) / Math.max(1, motes.length);
+    const side = (i % 2 === 0 ? -1 : 1) * (5 + ((i * 7) % 9));
+    const x = f.fly.x * reach + px * side;
+    const y = f.fly.y * reach + py * side;
+    const a = 0.05 + i * 0.05;
+    run(
+      m,
+      [
+        { offset: 0, translate: "0px 0px", scale: "0.6", opacity: 0 },
+        { offset: 0.2, opacity: 1 },
+        { offset: 1, translate: `${x}px ${y}px`, scale: "1", opacity: 0 },
+      ],
+      span(f, a, a + 0.55, EASE.power2Out),
+    );
+  });
+  const crown = node.querySelector<HTMLElement>(".cmd-crown");
+  if (crown) {
+    run(
+      crown,
+      [
+        { offset: 0, scale: "0.7", opacity: 0 },
+        { offset: 0.35, scale: "1.05", opacity: 1 },
+        { offset: 1, scale: "1.3", opacity: 0 },
+      ],
+      span(f, COMMANDER_ARRIVE, 1, EASE.power2Out),
+    );
+  }
+}
+
+/**
+ * The path of a commander drifting home: a small lift, then a gentle arc
+ * to its card in the command zone, straightening out of a tap and
+ * shrinking to that card's size on the way.
+ */
+function driftPath(f: CueMotion): Keyframe[] {
+  const s = f.commandScale ?? 1;
+  const r = -(f.rot ?? 0);
+  const arc = Math.min(60, 20 + Math.hypot(f.fly.x, f.fly.y) * 0.12);
+  const end = `${f.fly.x}px ${f.fly.y}px`;
+  return [
+    { offset: 0, translate: "0px 0px", scale: "1", rotate: "0deg", easing: EASE.power1Out },
+    { offset: 0.14, translate: "0px -8px", scale: "1.05", rotate: "0deg", easing: EASE.sineInOut },
+    {
+      offset: 0.55,
+      translate: `${f.fly.x / 2}px ${f.fly.y / 2 - arc}px`,
+      scale: String((1.05 + s) / 2),
+      rotate: `${r / 2}deg`,
+      easing: EASE.sineInOut,
+    },
+    { offset: COMMANDER_LAND, translate: end, scale: String(s), rotate: `${r}deg` },
+    { offset: 1, translate: end, scale: String(s), rotate: `${r}deg` },
+  ];
+}
+
+/**
+ * commanderDrift is a commander going home (CR 903.9a, 903.9b): its copy
+ * drifts back to its card in the command zone with a soft golden trail,
+ * two after-images and a faint streak behind it, and a soft halo blooms
+ * on the card as it lands.
+ */
+function commanderDrift(node: HTMLElement, f: CueMotion): void {
+  const path = driftPath(f);
+  const copy = node.querySelector<HTMLElement>(".cmd-copy");
+  if (copy) {
+    run(copy, path, span(f, 0, 1));
+    run(
+      copy,
+      [
+        { offset: 0, opacity: 1 },
+        { offset: COMMANDER_LAND - 0.04, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  all<HTMLElement>(node, ".cmd-ghost").forEach((g, i) => {
+    const lag = (i + 1) * 0.09;
+    const peak = i === 0 ? 0.4 : 0.22;
+    run(g, path, span(f, lag, 1));
+    run(
+      g,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.18, opacity: peak },
+        { offset: 0.8, opacity: peak },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, lag, 1),
+    );
+  });
+  const streak = node.querySelector<HTMLElement>(".cmd-streak");
+  if (streak) {
+    run(
+      streak,
+      [
+        { offset: 0, scale: "1 0", opacity: 0 },
+        { offset: 0.2, opacity: 0.55 },
+        { offset: 0.8, scale: "1 1", opacity: 0.4 },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.1, 1, EASE.sineInOut),
+    );
+  }
+  const home = node.querySelector<HTMLElement>(".cmd-home");
+  if (home) {
+    run(
+      home,
+      [
+        { offset: 0, scale: "0.8", opacity: 0 },
+        { offset: 0.4, scale: "1.08", opacity: 0.9 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, COMMANDER_LAND - 0.1, 1, EASE.power2Out),
+    );
+  }
+}
+
+/**
+ * commandArrive holds the commander's own card in the command zone
+ * hidden until its copy lands there, then shows it: so the copy is the
+ * one card on screen on its way home. `fill: "backwards"` hides it from
+ * the frame on, and once the run is over the card is its own style again.
+ * The caller cancels the returned run when the cue is removed or skipped,
+ * which shows the card at once.
+ */
+export function commandArrive(card: HTMLElement, f: CueMotion): Run {
+  return run(
+    card,
+    [
+      { offset: 0, opacity: 0 },
+      { offset: COMMANDER_LAND, opacity: 0 },
+      { offset: 1, opacity: 1 },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
   );
 }
 

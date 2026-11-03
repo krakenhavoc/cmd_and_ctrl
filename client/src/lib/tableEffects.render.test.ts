@@ -2,7 +2,8 @@
 //
 // ADR 0209 §1 and §3 (#4396, #4416), the rendered half: a battlefield
 // exit, a counterspell, a planeswalker, a created token (#4441), counters
-// put on a permanent (#4442) and a board wipe each draw their cue
+// put on a permanent (#4442), a commander cast from the command zone or
+// going home (#4443) and a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -776,6 +777,241 @@ describe("counters are put on a permanent (#4442)", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     flushSync();
     expect(effects()).toHaveLength(0);
+  });
+});
+
+describe("a commander is cast from the command zone, or goes home (#4443)", () => {
+  const cmdr = permanent("cmdr", "opp", {
+    is_commander: true,
+    type_line: "Legendary Creature — Elf Druid",
+  });
+  // The opponent's command zone card, the spell on the stack and their
+  // graveyard pile, each where the board draws it.
+  const CMD = { left: 900, top: 650, width: 50, height: 70 };
+  const STACK = { left: 40, top: 200, width: 150, height: 210 };
+  const PILE = { left: 1000, top: 700, width: 40, height: 56 };
+  const centre = (r: typeof CMD) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+
+  function tableView(
+    log: LogEvent[],
+    at: {
+      battlefield?: CardView[];
+      command?: CardView[];
+      graveyard?: CardView[];
+      stack?: CardView[];
+    },
+  ): GameView {
+    const v = viewWith(log, at.battlefield ?? []);
+    const opp = v.seats[1];
+    const z = (kind: string, cards: CardView[]) =>
+      ({ kind, owner: "opp", count: cards.length, cards }) as GameView["stack"];
+    opp.command = z("command", at.command ?? []);
+    opp.graveyard = z("graveyard", at.graveyard ?? []);
+    v.stack = z("stack", at.stack ?? []);
+    return v;
+  }
+  const commandCard = () => rectEl("data-instance-id", "cmdr", CMD);
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const cast = (batch: number): LogEvent => ({
+    seq: ++seq,
+    kind: "cast",
+    turn: 3,
+    seat: 1,
+    card_id: "cmdr",
+    old_zone: "command",
+    batch,
+    text: "",
+  });
+
+  // The commander sits in its command zone; then it is cast.
+  function castIt() {
+    const board = makeBoard([]);
+    const inCommand = commandCard();
+    board.appendChild(inCommand);
+    board.appendChild(rectEl("data-stack-item-id", "cmdr", STACK));
+    const r = render(
+      TableEffects as never,
+      {
+        view: tableView([], { command: [cmdr] }),
+        boardEl: board,
+      } as never,
+    );
+    advance(50);
+    inCommand.remove();
+    r.setProps({ view: tableView([cast(4)], { stack: [cmdr] }) } as never);
+    flushSync();
+    return board;
+  }
+
+  // The commander is somewhere else (`before`); then it goes home.
+  function goHome(entry: LogEvent, before: { battlefield?: CardView[]; graveyard?: CardView[] }) {
+    const board = makeBoard((before.battlefield ?? []).map((c) => c.instance_id));
+    const pile = rectEl("data-pile", "graveyard", PILE);
+    pile.setAttribute("data-pile-owner", "opp");
+    board.appendChild(pile);
+    const r = render(
+      TableEffects as never,
+      {
+        view: tableView([], before),
+        boardEl: board,
+      } as never,
+    );
+    advance(50);
+    for (const c of before.battlefield ?? []) {
+      board.querySelector(`[data-instance-id="${c.instance_id}"]`)?.remove();
+    }
+    const home = commandCard();
+    board.appendChild(home);
+    r.setProps({ view: tableView([entry], { command: [cmdr] }) } as never);
+    flushSync();
+    return { board, home };
+  }
+
+  it("a cast rises in gold from where it sat to its spell on the stack, with one sound", () => {
+    castIt();
+    const cues = effects("commander_cast");
+    expect(cues).toHaveLength(1);
+    const from = centre(CMD);
+    const to = centre(STACK);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    const crown = cues[0].querySelector<HTMLElement>(".cmd-crown")!;
+    expect(crown.style.left).toBe(`${to.x - from.x}px`);
+    expect(crown.style.top).toBe(`${to.y - from.y}px`);
+    for (const part of [".cmd-bloom", ".cmd-beam", ".cmd-crown"]) {
+      const el = cues[0].querySelector(part)!;
+      expect(runsOn(el)).toHaveLength(1);
+    }
+    expect(cues[0].querySelectorAll(".cmd-mote").length).toBeGreaterThan(0);
+    // The light runs the cue's length, and nothing waits on it.
+    for (const ms of runEnds())
+      expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.commander_cast + 1e-6);
+    expect(sounds("commander_cast")).toEqual([["commander_cast", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("commander_cast")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a return from the graveyard (CR 903.9a) drifts from the pile to its card, which waits hidden", () => {
+    const { home } = goHome(zone("cmdr", "command", { batch: 8 }, "graveyard"), {
+      graveyard: [cmdr],
+    });
+    const cues = effects("commander_return");
+    expect(cues).toHaveLength(1);
+    const from = centre(PILE);
+    const to = centre(CMD);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    expect(cues[0].getAttribute("data-effect-lands")).toBe("card");
+    const homeRing = cues[0].querySelector<HTMLElement>(".cmd-home")!;
+    expect(homeRing.style.left).toBe(`${to.x - from.x}px`);
+    expect(homeRing.style.top).toBe(`${to.y - from.y}px`);
+    // The copy and its two after-images show the card, at its size.
+    expect(cues[0].querySelectorAll(".cmd-ghost")).toHaveLength(2);
+    const face = cues[0].querySelector<HTMLElement>(".cmd-copy .face")!;
+    expect(face.querySelector("img")).toBeTruthy();
+    expect(face.style.width).toBe(`${CMD.width}px`);
+    // The card in the command zone is hidden until the copy lands.
+    const held = runsOn(home);
+    expect(held).toHaveLength(1);
+    expect((held[0][1][0] as Record<string, unknown>).opacity).toBe(0);
+    expect(held[0][2].fill).toBe("backwards");
+    expect(held[0][2].duration).toBeCloseTo(EFFECT_BASE_MS.commander_return, 6);
+    expect(sounds("commander_return")).toEqual([
+      ["commander_return", { volume: 1, batch: "g1:8" }],
+    ]);
+  });
+
+  it("a bounce its owner sent home instead (CR 903.9b) is the return from its tile, not a bounce", () => {
+    goHome(zone("cmdr", "command", { cause: "bounce", batch: 9 }), {
+      battlefield: [cmdr],
+    });
+    expect(effects("bounce")).toHaveLength(0);
+    expect(sounds("bounce")).toHaveLength(0);
+    const cues = effects("commander_return");
+    expect(cues).toHaveLength(1);
+    // makeBoard's first tile: 100 + 40, 300 + 56.
+    expect(cues[0].style.left).toBe("140px");
+    expect(cues[0].style.top).toBe("356px");
+    expect(cues[0].querySelector<HTMLElement>(".cmd-copy .face")!.style.width).toBe(
+      `${TILE.width}px`,
+    );
+    expect(sounds("commander_return")).toHaveLength(1);
+  });
+
+  it("a card put into the command zone that is not a commander gets no cue", () => {
+    const attraction = permanent("cmdr", "opp", { type_line: "Artifact — Attraction" });
+    const board = makeBoard([]);
+    const r = render(
+      TableEffects as never,
+      {
+        view: tableView([], { battlefield: [attraction] }),
+        boardEl: board,
+      } as never,
+    );
+    advance(50);
+    const v = tableView([zone("cmdr", "command", { batch: 3 })], {});
+    v.seats[1].command = {
+      kind: "command",
+      owner: "opp",
+      count: 1,
+      cards: [attraction],
+    } as GameView["stack"];
+    r.setProps({ view: v } as never);
+    flushSync();
+    expect(effects("commander_return")).toHaveLength(0);
+    expect(sounds("commander_return")).toHaveLength(0);
+  });
+
+  it("a skip shows the waiting card at once", () => {
+    const cancelled: Element[] = [];
+    vi.mocked(run).mockImplementation((el) => ({
+      cancel: () => cancelled.push(el),
+      done: Promise.resolve(true),
+    }));
+    try {
+      const { home } = goHome(zone("cmdr", "command", { batch: 8 }, "graveyard"), {
+        graveyard: [cmdr],
+      });
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      flushSync();
+      expect(effects()).toHaveLength(0);
+      expect(cancelled).toContain(home);
+    } finally {
+      vi.mocked(run).mockImplementation(() => ({ cancel() {}, done: Promise.resolve(true) }));
+    }
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays each sound once", () => {
+    updateSettings("animations", "effects", "short");
+    castIt();
+    expect(effects("commander_cast")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      castIt();
+      cleanup();
+      document.body.innerHTML = "";
+      goHome(zone("cmdr", "command", { batch: 8 }, "graveyard"), { graveyard: [cmdr] });
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("commander_cast")).toHaveLength(1);
+      expect(sounds("commander_return")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
   });
 });
 

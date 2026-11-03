@@ -206,6 +206,8 @@ describe("sounds", () => {
       "token_create", // #4441, silent
       "counter_add", // #4442, silent
       "counter_remove", // #4442, silent
+      "commander_cast", // #4443, silent
+      "commander_return", // #4443, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -241,6 +243,24 @@ describe("sounds", () => {
         expect(played()).toHaveLength(0);
       }
       for (const name of ["counter_add", "counter_remove"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for commander_cast and commander_return until their files land, and each itself once a take is listed (#4443)", async () => {
+      const m = await load();
+      for (const name of ["commander_cast", "commander_return"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["commander_cast", "commander_return"] as const) {
         tick();
         m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
         m.play(name);

@@ -2,7 +2,8 @@
 //
 // A permanent that is destroyed, exiled, sacrificed or bounced, a spell
 // that is countered, a planeswalker that arrives or goes, a token that is
-// created (#4441), counters put on a permanent (#4442) and a board wipe
+// created (#4441), counters put on a permanent (#4442), a commander cast
+// from the command zone or put back into it (#4443) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -110,7 +111,11 @@ export type EffectKind =
   // S80 (#4441 on): the common moments.
   | "token_create"
   // Counters put on a permanent (#4442). Not `counter`, the counterspell.
-  | "counters";
+  | "counters"
+  // A commander cast from the command zone (CR 903.8), or put back into
+  // it (CR 903.9a, 903.9b) (#4443).
+  | "commander_cast"
+  | "commander_return";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -119,7 +124,8 @@ export type EffectKind =
  * counterspell holds its cracks while the stack linger shows the spell;
  * a planeswalker that dies now also withdraws from the plane. The S80
  * cues are their issues' own lengths: a token's pop-in is about 0.4 s,
- * a counter's pulse a little longer, so its tick can be read.
+ * a counter's pulse a little longer, so its tick can be read, and a
+ * commander's rise to the stack or drift home about 0.8 s.
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -133,6 +139,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   pw_leave: 1500,
   token_create: 400,
   counters: 450,
+  commander_cast: 800,
+  commander_return: 800,
 };
 
 /**
@@ -157,6 +165,8 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   token_create: "token_create",
   // Which of two sounds a counter cue plays is its tone's (COUNTER_SOUND).
   counters: null,
+  commander_cast: "commander_cast",
+  commander_return: "commander_return",
 };
 
 /**
@@ -240,6 +250,11 @@ export interface EffectCue {
   counterTone?: CounterTone;
   counterLabel?: string;
   /**
+   * For a `commander_return` cue: the zone the commander left (the log's
+   * `old_zone`), which is where its drift home starts (#4443).
+   */
+  commanderFrom?: string;
+  /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
    */
@@ -270,6 +285,13 @@ export interface PlanContext {
    * damage step is not drawn twice.
    */
   combatMotion: boolean;
+  /**
+   * Whether this card is a commander in a command zone now (#4443). A
+   * card put into the command zone that is not one (an Attraction going
+   * to its junkyard, CR 717.6a) gets no commander_return cue. Absent:
+   * no card is, so no commander_return cue at all.
+   */
+  isCommander?(cardID: string): boolean;
 }
 
 const DAMAGE_STEPS = new Set(["first_strike_damage", "combat_damage"]);
@@ -341,6 +363,7 @@ export function planEffects(
   const cues: EffectCue[] = [];
   const tokens: LogEvent[] = [];
   const counters: LogEvent[] = [];
+  const commanders: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -356,6 +379,13 @@ export function planEffects(
     }
     if (e.kind === "counters") {
       counters.push(e);
+      continue;
+    }
+    // #4443: before the exits, so a commander that goes home from the
+    // battlefield (CR 903.9b: a bounce or a tuck its owner sent to the
+    // command zone instead) is this cue, never a bounce.
+    if (isCommanderCast(e) || isCommanderReturn(e, ctx)) {
+      commanders.push(e);
       continue;
     }
 
@@ -449,6 +479,7 @@ export function planEffects(
   }
   cues.push(...tokenCues(tokens));
   cues.push(...counterCues(counters));
+  cues.push(...commanderCues(commanders));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -538,6 +569,55 @@ function counterCues(entries: readonly LogEvent[]): EffectCue[] {
     });
   }
   return out;
+}
+
+/**
+ * isCommanderCast: a spell cast from the command zone (#4443). The `cast`
+ * entry names a non-hand origin in `old_zone`, and only a commander is
+ * cast from there (CR 903.8).
+ */
+export function isCommanderCast(e: LogEvent): boolean {
+  return e.kind === "cast" && e.old_zone === "command" && !!e.card_id;
+}
+
+/**
+ * isCommanderReturn: a commander put into the command zone (#4443), from
+ * anywhere: its graveyard or exile by the state-based action (CR
+ * 903.9a), or instead of its hand or library by the replacement (CR
+ * 903.9b), whose `zone` entry already names the command zone.
+ */
+export function isCommanderReturn(e: LogEvent, ctx: PlanContext): boolean {
+  if (e.kind !== "zone" || e.new_zone !== "command" || e.old_zone === "command") return false;
+  return !!e.card_id && ctx.isCommander?.(e.card_id) === true;
+}
+
+/**
+ * commanderCues gives each commander cast from the command zone its rise
+ * to the stack, and each that went home its drift back (#4443). One kind
+ * in one batch is one moment (two partners sent home by one bounce): the
+ * first plays the sound and the rest follow it.
+ */
+function commanderCues(entries: readonly LogEvent[]): EffectCue[] {
+  const lead = new Set<string>();
+  return entries.map((e) => {
+    const kind: EffectKind = e.kind === "cast" ? "commander_cast" : "commander_return";
+    const cue: EffectCue = {
+      id: String(e.seq),
+      seq: e.seq,
+      kind,
+      cardID: e.card_id ?? null,
+      // A spell's stack item ID is its card's.
+      stackItemID: kind === "commander_cast" ? (e.card_id ?? null) : null,
+      batch: e.batch ?? null,
+      weight: "full",
+      delayMs: 0,
+    };
+    if (kind === "commander_return") cue.commanderFrom = e.old_zone ?? "";
+    const k = `${kind}|${e.batch ?? `q${e.seq}`}`;
+    if (lead.has(k)) cue.follows = true;
+    else lead.add(k);
+    return cue;
+  });
 }
 
 function toneOf(g: readonly Exit[], ctx: PlanContext): WipeTone {
@@ -1056,7 +1136,8 @@ export function busyScale(n: number): number {
  * its own, each board wipe and each signature. A wipe's per-card cues
  * are not counted: the wipe already fits them inside its cap. Nor is a
  * cue that follows another of its batch: tokens created together count
- * once, and so do the counters one proliferate puts on.
+ * once, and so do the counters one proliferate puts on, and two
+ * commanders sent home together.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (
