@@ -419,7 +419,13 @@ per clause, from the board:
    are the server's own legal set for the card, ability, mode or prompt
    as the seat's view states it. A move whose clause the view does not
    state gets the targets seen across this window's moves instead, and
-   the listing says that list may be capped.
+   the listing says that list may be capped. Identical permanents share
+   a line, as they do on the move list (#4766): `Treasure [<id>]
+   (battlefield, …) [and 295 more like it, each an identical permanent:
+   ids <id>, …]`. Every id on that line is a candidate `act` takes.
+   Permanents are identical by the same rule as the move list's fold
+   (name, state and counters, controller and owner, token or card), and
+   a face-down permanent never folds.
 2. `act(window, move: N, targets: [{slot: 0, ids: ["<id>", …]}])`. Move
    N chooses the card and its costs; the picks replace its targets.
    `slot` is the clause (default 0); `mode` is the occurrence for a
