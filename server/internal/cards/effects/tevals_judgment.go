@@ -15,7 +15,7 @@ const b16TevalsJudgmentLabel = "Teval's Judgment — cards left your graveyard"
 //	 • Create a 2/2 black Zombie Druid creature token."
 //
 // The graveyard-recursion payoff. The condition is
-// b16CardLeftYourGraveyard — a move out of a graveyard for a card
+// cardLeftYourGraveyard — a move out of a graveyard for a card
 // the controller owns, whether an EventZoneMove or a flashback's
 // EventCast — and "one or more" is the per-label dedup
 // (OncePerBatch): a Bojuka Bog on your graveyard emits
@@ -46,7 +46,7 @@ func init() {
 
 func tevalsJudgmentTrigger() game.TriggeredAbility {
 	t := OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return b16CardLeftYourGraveyard(ev, source, g)
+		return cardLeftYourGraveyard(ev, source, g)
 	}, b16TevalsJudgmentLabel, func(g *game.Game, item *game.StackItem) error { return nil }))
 	t.Modes = ChooseOneNotChosenThisTurn(
 		ModeDoing("Draw a card.", nil,

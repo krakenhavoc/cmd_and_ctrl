@@ -168,27 +168,6 @@ func b16EnteredFromStack(g *game.Game, cardID uuid.UUID) bool {
 	return false
 }
 
-// b16CardLeftYourGraveyard is "whenever one or more cards leave your
-// graveyard" (Teval's Judgment), one event at a time: a move out of
-// a graveyard for a card the source's controller OWNS — "your
-// graveyard" is the one you own. Two event kinds carry one: an
-// EventZoneMove (exile, a regrowth, a reanimation, a graveyard
-// sweep) and an EventCast whose OldZone is the graveyard (a
-// flashback — the cast path emits the cast with the zone-move
-// fields rather than a second event). The card is read post-move,
-// wherever it went. The "one or more" batching is the caller's
-// dedup.
-func b16CardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventZoneMove && ev.Kind != game.EventCast {
-		return false
-	}
-	if ev.OldZone != game.ZoneGraveyard || ev.CardID == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Owner == source.Controller
-}
-
 // b16SelfOrAnotherCreatureYouControlDied is Vengeful Bloodwitch's
 // condition: the source itself died, or a creature its controller
 // controlled did. The source's own death arrives with the card

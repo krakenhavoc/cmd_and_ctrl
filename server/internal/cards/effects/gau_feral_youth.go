@@ -60,14 +60,11 @@ func init() {
 }
 
 // cardLeftYourGraveyardThisTurn is "a card left your graveyard this
-// turn": any zone change this turn out of a graveyard, of a card the
-// player owns.
+// turn": any move this turn out of a graveyard, a cast from one
+// included (cardThatLeftAGraveyard), of a card the player owns.
 func cardLeftYourGraveyardThisTurn(g *game.Game, player uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventZoneMove || ev.OldZone != game.ZoneGraveyard {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.Owner == player {
+		if c, ok := cardThatLeftAGraveyard(ev, g); ok && c.Owner == player {
 			return true
 		}
 	}

@@ -8,26 +8,15 @@ import (
 // batch 11 (#4834): the two Quintorius cards that make a Spirit when cards
 // leave a graveyard, and the Spirit-lord half they share.
 
-// socB11CardLeftYourGraveyard is "one or more cards leave your graveyard"
-// for one zone-move event: any card its controller owns, out of a
-// graveyard and into any other zone. Desecrated Tomb's creature-only
-// check (b02CreatureCardLeftYourGraveyard) without the type.
-func socB11CardLeftYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || ev.Kind != game.EventZoneMove || ev.OldZone != game.ZoneGraveyard || ev.NewZone == game.ZoneGraveyard {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Owner == source.Controller
-}
-
 // socB11SpiritWhenCardsLeaveYourGraveyard is the ability both
 // Quintorius, Field Historian and Quintorius, History Chaser print:
 // "Whenever one or more cards leave your graveyard, create a 3/2 red and
-// white Spirit creature token." A batch trigger (OncePerBatch): cards that
-// leave as one event make one Spirit, cards that leave as separate events
-// make one each (the 2021-04-16 ruling).
+// white Spirit creature token." A batch trigger (OncePerBatch over
+// whenCardsLeaveYourGraveyard, so a card cast from it counts too): cards
+// that leave as one event make one Spirit, cards that leave as separate
+// events make one each (the 2021-04-16 ruling).
 func socB11SpiritWhenCardsLeaveYourGraveyard(name string) game.TriggeredAbility {
-	return OncePerBatch(On(game.EventZoneMove, socB11CardLeftYourGraveyard,
+	return OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
 		name+" — create a 3/2 red and white Spirit creature token",
 		Do(CreateToken{Template: TokenCard("3/2 red and white Spirit"), N: 1})))
 }

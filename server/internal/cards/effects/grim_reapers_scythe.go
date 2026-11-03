@@ -26,8 +26,8 @@ func init() {
 		Name:         "Grim Reaper's Scythe",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b02CreatureCardLeftYourGraveyard(ev, source, g)
+			OncePerBatch(OnAny(leftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return creatureCardLeftYourGraveyard(ev, source, g)
 			}, "Grim Reaper's Scythe — create a 2/2 black Zombie",
 				Do(CreateToken{Template: BlackZombieToken(), N: 1}))),
 		},

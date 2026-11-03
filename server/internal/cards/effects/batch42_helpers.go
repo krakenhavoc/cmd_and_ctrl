@@ -22,7 +22,7 @@ import (
 // damageToEachOpponent, "each opponent discards a card" is
 // eachOpponentDiscardsOne, "draw then discard" is lootOne, "the life
 // you've lost this turn" is b18LifeLostThisTurn, and "a creature card
-// left your graveyard" is b02CreatureCardLeftYourGraveyard.
+// left your graveyard" is creatureCardLeftYourGraveyard.
 
 // --- cost predicates -----------------------------------------------
 

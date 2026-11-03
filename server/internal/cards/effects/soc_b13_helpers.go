@@ -29,7 +29,7 @@ func socB13EnchantmentYouControlWasPutIntoAGraveyard(ev game.Event, source *game
 }
 
 // socB13ArtifactOrCreatureCardsThatLeftYourGraveyard lists, for the
-// triggering zone-move event of "whenever one or more cards leave your
+// triggering event (a zone move or a cast from the graveyard) of "whenever one or more cards leave your
 // graveyard" (Spirit of Resilience), the cards of that same event batch that
 // left `you`'s graveyard and are an artifact or creature card as printed:
 // "from among those cards". A card that can no longer be found (it left the
@@ -38,13 +38,10 @@ func socB13EnchantmentYouControlWasPutIntoAGraveyard(ev game.Event, source *game
 func socB13ArtifactOrCreatureCardsThatLeftYourGraveyard(g *game.Game, you uuid.UUID, trigger game.Event) []uuid.UUID {
 	var out []uuid.UUID
 	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventZoneMove || ev.OldZone != game.ZoneGraveyard || ev.NewZone == game.ZoneGraveyard || ev.CardID == uuid.Nil {
-			continue
-		}
 		if ev.Batch != trigger.Batch || (trigger.Batch == 0 && ev.Seq != trigger.Seq) {
 			continue
 		}
-		c, ok := g.LookupCardForEffect(ev.CardID)
+		c, ok := cardThatLeftAGraveyard(ev, g)
 		if !ok || c.Owner != you || slices.Contains(out, ev.CardID) {
 			continue
 		}

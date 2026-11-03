@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // mills.
 //
 // The second trigger is Teval's Judgment's condition
-// (b16CardLeftYourGraveyard — a move out of the controller's own
+// (cardLeftYourGraveyard — a move out of the controller's own
 // graveyard, or a flashback cast from it) with the per-label "one or
 // more" dedup, so the land the attack trigger returns fires it once
 // and a Bojuka Bog on the graveyard fires it once. The token is the
@@ -43,7 +43,7 @@ func init() {
 				return attackDeclared(ev, source)
 			}, b25TevalAttackLabel, b25MillThreeThenMayReturnLandTapped),
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b16CardLeftYourGraveyard(ev, source, g)
+				return cardLeftYourGraveyard(ev, source, g)
 			}, b25TevalLeftGraveyardLabel, Do(CreateToken{Template: TokenCard("2/2 black Zombie Druid"), N: 1}))),
 		},
 	})
