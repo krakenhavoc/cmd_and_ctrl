@@ -28,6 +28,7 @@ import {
   SHATTER_BREAK,
   TOKEN_SPREAD_MS,
   TOKEN_STAGGER_MS,
+  attachKind,
   busyScale,
   counterBurst,
   counterTone,
@@ -488,6 +489,132 @@ describe("a commander is cast from the command zone, or goes home (#4443)", () =
         expect(cueTiming({ kind, weight: "full", delayMs: 0 }, mode, 1)).toEqual({
           delayMs: 0,
           ms: 800,
+        });
+      }
+      expect(cueTiming({ kind, weight: "full", delayMs: 0 }, "still", 1)).toEqual({
+        delayMs: 0,
+        ms: EFFECT_STILL_HOLD_MS,
+      });
+    }
+  });
+});
+
+describe("an Equipment is attached, or an Aura enchants a permanent (#4444)", () => {
+  // The engine logs every attach as an `attach` entry: `card_id` the
+  // attachment, `target` the host card (`target_seat` a host player) and
+  // `label` what the attachment is.
+  const attach = (id: string, host: string | null, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "attach",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    ...(host ? { target: host } : {}),
+    label: "Equipment",
+    text: "",
+    ...extra,
+  });
+  const token = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "token",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    text: "",
+    ...extra,
+  });
+
+  it("an Equipment is attach_equip and an Aura attach_aura, on the attachment, naming its host", () => {
+    const p = plan([
+      attach("sword", "bear", { batch: 4 }),
+      attach("pacifism", "ogre", { label: "Aura", batch: 5 }),
+      attach("fort", "land", { label: "Fortification", batch: 6 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.hostID, q.batch])).toEqual([
+      ["attach_equip", "sword", "bear", 4],
+      ["attach_aura", "pacifism", "ogre", 5],
+      ["attach_equip", "fort", "land", 6],
+    ]);
+    expect(cueSound(p.cues[0])).toEqual({ name: "attach_equip", volume: 1 });
+    expect(cueSound(p.cues[1])).toEqual({ name: "attach_aura", volume: 1 });
+    expect(EFFECT_SOUND.attach_equip).toBe("attach_equip");
+    expect(EFFECT_SOUND.attach_aura).toBe("attach_aura");
+    expect(EFFECT_BASE_MS.attach_equip).toBe(400);
+    expect(EFFECT_BASE_MS.attach_aura).toBe(450);
+  });
+
+  it("a Curse enchanting a player, a redacted label and a permanent that is none of the three are no cue", () => {
+    expect(
+      kinds([attach("curse", null, { label: "Aura", target_seat: 1 } as Partial<LogEvent>)]),
+    ).toEqual([]);
+    expect(kinds([attach("a", "bear", { label: undefined })])).toEqual([]);
+    expect(kinds([attach("a", "bear", { label: "Creature" })])).toEqual([]);
+    expect(attachKind(attach("a", "bear"))).toBe("attach_equip");
+    expect(attachKind(zone("a", "graveyard"))).toBeNull();
+  });
+
+  it("one kind in one batch is one moment; an Equipment and an Aura are two", () => {
+    const p = plan([
+      attach("s1", "bear", { batch: 9 }),
+      attach("s2", "bear", { batch: 9 }),
+      attach("aura", "bear", { label: "Aura", batch: 9 }),
+    ]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual([
+      "attach_equip",
+      null,
+      "attach_aura",
+    ]);
+    expect(headlines(p)).toBe(2);
+    // Two batches are two moments.
+    const q = plan([attach("s1", "bear", { batch: 10 }), attach("s1", "ogre", { batch: 11 })]);
+    expect(q.cues.map((c) => cueSound(c)?.name)).toEqual(["attach_equip", "attach_equip"]);
+  });
+
+  it("a token created attached is one arrival: its attach cue plays the sound, its token cue only pops it in", () => {
+    // A Role, or a token copy of an Aura spell: `token` and `attach` share
+    // the batch. A plain token made beside it keeps the token sound.
+    const p = plan([
+      token("role", { batch: 12 }),
+      attach("role", "bear", { label: "Aura", batch: 12 }),
+      token("germ", { batch: 12 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, cueSound(q)?.name ?? null])).toEqual([
+      ["token_create", "role", null],
+      ["attach_aura", "role", "attach_aura"],
+      ["token_create", "germ", "token_create"],
+    ]);
+    // Its token pop keeps the batch's stagger.
+    expect(p.cues.filter((q) => q.kind === "token_create").map((q) => q.delayMs)).toEqual([
+      0,
+      TOKEN_STAGGER_MS,
+    ]);
+    expect(headlines(p)).toBe(2);
+    // A batch of only Roles: one sound, the attach's.
+    const r = plan([
+      token("r1", { batch: 13 }),
+      attach("r1", "a", { label: "Aura", batch: 13 }),
+      token("r2", { batch: 13 }),
+      attach("r2", "b", { label: "Aura", batch: 13 }),
+    ]);
+    expect(r.cues.map((c) => cueSound(c)?.name ?? null)).toEqual([null, "attach_aura", null, null]);
+    expect(headlines(r)).toBe(1);
+  });
+
+  it("a living weapon's Germ pops in with its sound, and the Equipment slides onto it with its own", () => {
+    // The Germ is the host, not the attachment: two arrivals, two sounds.
+    const p = plan([token("germ", { batch: 14 }), attach("sword", "germ", { batch: 14 })]);
+    expect(p.cues.map((q) => [q.kind, cueSound(q)?.name ?? null])).toEqual([
+      ["token_create", "token_create"],
+      ["attach_equip", "attach_equip"],
+    ]);
+  });
+
+  it("plays at once, the same in Full and Short, and still is the hold", () => {
+    for (const kind of ["attach_equip", "attach_aura"] as EffectKind[]) {
+      for (const mode of ["full", "short"] as EffectMotion[]) {
+        expect(cueTiming({ kind, weight: "full", delayMs: 0 }, mode, 1)).toEqual({
+          delayMs: 0,
+          ms: EFFECT_BASE_MS[kind],
         });
       }
       expect(cueTiming({ kind, weight: "full", delayMs: 0 }, "still", 1)).toEqual({

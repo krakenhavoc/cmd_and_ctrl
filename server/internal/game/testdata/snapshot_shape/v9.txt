@@ -951,6 +951,7 @@ eventSeq	number:uint64
 events	array
 events[]	object
 events[].actor	custom(uuid.UUID)
+events[].already_attached	bool
 events[].amount	number:int
 events[].answer_key	string
 events[].attacking_target	custom(uuid.UUID)
@@ -1711,6 +1712,7 @@ followUpParks[].then.asked.targets[].splice	number:int
 followUpParks[].then.asked.trigger	object
 followUpParks[].then.asked.trigger.Event	object
 followUpParks[].then.asked.trigger.Event.actor	custom(uuid.UUID)
+followUpParks[].then.asked.trigger.Event.already_attached	bool
 followUpParks[].then.asked.trigger.Event.amount	number:int
 followUpParks[].then.asked.trigger.Event.answer_key	string
 followUpParks[].then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -2313,6 +2315,7 @@ frozenEntries[].event.counterTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.counterTail.then.asked.trigger	object
 frozenEntries[].event.counterTail.then.asked.trigger.Event	object
 frozenEntries[].event.counterTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -2894,6 +2897,7 @@ frozenEntries[].event.damageTail.each.each.asked.targets[].splice	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger	object
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event	object
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.answer_key	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -3466,6 +3470,7 @@ frozenEntries[].event.damageTail.each.then.asked.targets[].splice	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger	object
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event	object
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -4206,6 +4211,7 @@ frozenEntries[].event.damageTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.damageTail.then.asked.trigger	object
 frozenEntries[].event.damageTail.then.asked.trigger.Event	object
 frozenEntries[].event.damageTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -4893,6 +4899,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.targets[].splice	n
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -5537,6 +5544,7 @@ frozenEntries[].event.entryTail.batch.then.asked.targets[].splice	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger	object
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event	object
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -6109,6 +6117,7 @@ frozenEntries[].event.entryTail.keyed.asked.targets[].splice	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger	object
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event	object
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.answer_key	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -6713,6 +6722,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.targets[].splice	numb
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger	object
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event	object
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.answer_key	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -7305,6 +7315,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.targets[].splice	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger	object
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event	object
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -8285,6 +8296,7 @@ frozenEntries[].event.keywordActionTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger	object
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event	object
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -8879,6 +8891,7 @@ frozenEntries[].event.lifeTail.each.then.asked.targets[].splice	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger	object
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event	object
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -9454,6 +9467,7 @@ frozenEntries[].event.lifeTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger	object
 frozenEntries[].event.lifeTail.then.asked.trigger.Event	object
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -10800,6 +10814,7 @@ frozenEntries[].event.millTail.run.then.asked.targets[].splice	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger	object
 frozenEntries[].event.millTail.run.then.asked.trigger.Event	object
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -11370,6 +11385,7 @@ frozenEntries[].event.millTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.millTail.then.asked.trigger	object
 frozenEntries[].event.millTail.then.asked.trigger.Event	object
 frozenEntries[].event.millTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -12285,6 +12301,7 @@ frozenEntries[].event.stackItem.targets[].splice	number:int
 frozenEntries[].event.stackItem.trigger	object
 frozenEntries[].event.stackItem.trigger.Event	object
 frozenEntries[].event.stackItem.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.stackItem.trigger.Event.already_attached	bool
 frozenEntries[].event.stackItem.trigger.Event.amount	number:int
 frozenEntries[].event.stackItem.trigger.Event.answer_key	string
 frozenEntries[].event.stackItem.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -12850,6 +12867,7 @@ frozenEntries[].event.tokenTail.then.asked.targets[].splice	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger	object
 frozenEntries[].event.tokenTail.then.asked.trigger.Event	object
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -14200,6 +14218,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.targets[].splice	numbe
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -14804,6 +14823,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.targets[].splice
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.answer_key	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -15374,6 +15394,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.targets[].splice	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger	object
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event	object
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -15964,6 +15985,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.targets[].splice	number:i
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger	object
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event	object
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -16619,6 +16641,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.targets[].splice	number:
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.answer_key	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -18715,6 +18738,7 @@ lastKnownStack[].item.targets[].splice	number:int
 lastKnownStack[].item.trigger	object
 lastKnownStack[].item.trigger.Event	object
 lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.already_attached	bool
 lastKnownStack[].item.trigger.Event.amount	number:int
 lastKnownStack[].item.trigger.Event.answer_key	string
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -19184,6 +19208,7 @@ pausedModeWalk.item.targets[].splice	number:int
 pausedModeWalk.item.trigger	object
 pausedModeWalk.item.trigger.Event	object
 pausedModeWalk.item.trigger.Event.actor	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.already_attached	bool
 pausedModeWalk.item.trigger.Event.amount	number:int
 pausedModeWalk.item.trigger.Event.answer_key	string
 pausedModeWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -19503,6 +19528,7 @@ pausedResolutionTail.item.targets[].splice	number:int
 pausedResolutionTail.item.trigger	object
 pausedResolutionTail.item.trigger.Event	object
 pausedResolutionTail.item.trigger.Event.actor	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Event.already_attached	bool
 pausedResolutionTail.item.trigger.Event.amount	number:int
 pausedResolutionTail.item.trigger.Event.answer_key	string
 pausedResolutionTail.item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -19816,6 +19842,7 @@ pausedStepWalk.item.targets[].splice	number:int
 pausedStepWalk.item.trigger	object
 pausedStepWalk.item.trigger.Event	object
 pausedStepWalk.item.trigger.Event.actor	custom(uuid.UUID)
+pausedStepWalk.item.trigger.Event.already_attached	bool
 pausedStepWalk.item.trigger.Event.amount	number:int
 pausedStepWalk.item.trigger.Event.answer_key	string
 pausedStepWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -19998,6 +20025,7 @@ pendingChoices[].asked.targets[].splice	number:int
 pendingChoices[].asked.trigger	object
 pendingChoices[].asked.trigger.Event	object
 pendingChoices[].asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].asked.trigger.Event.already_attached	bool
 pendingChoices[].asked.trigger.Event.amount	number:int
 pendingChoices[].asked.trigger.Event.answer_key	string
 pendingChoices[].asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -21121,6 +21149,7 @@ pendingChoices[].attackSplit.tail.asked.targets[].splice	number:int
 pendingChoices[].attackSplit.tail.asked.trigger	object
 pendingChoices[].attackSplit.tail.asked.trigger.Event	object
 pendingChoices[].attackSplit.tail.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.trigger.Event.already_attached	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.amount	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.answer_key	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -22265,6 +22294,7 @@ pendingChoices[].copyWalk.item.targets[].splice	number:int
 pendingChoices[].copyWalk.item.trigger	object
 pendingChoices[].copyWalk.item.trigger.Event	object
 pendingChoices[].copyWalk.item.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.trigger.Event.already_attached	bool
 pendingChoices[].copyWalk.item.trigger.Event.amount	number:int
 pendingChoices[].copyWalk.item.trigger.Event.answer_key	string
 pendingChoices[].copyWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -23054,6 +23084,7 @@ pendingChoices[].diceRoll.then.asked.targets[].splice	number:int
 pendingChoices[].diceRoll.then.asked.trigger	object
 pendingChoices[].diceRoll.then.asked.trigger.Event	object
 pendingChoices[].diceRoll.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.amount	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.answer_key	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -23997,6 +24028,7 @@ pendingChoices[].divideShield.walk.each.asked.targets[].splice	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger	object
 pendingChoices[].divideShield.walk.each.asked.trigger.Event	object
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.already_attached	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.amount	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.answer_key	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -24569,6 +24601,7 @@ pendingChoices[].divideShield.walk.then.asked.targets[].splice	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger	object
 pendingChoices[].divideShield.walk.then.asked.trigger.Event	object
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.amount	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.answer_key	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -25147,6 +25180,7 @@ pendingChoices[].libraryOrder.then.asked.targets[].splice	number:int
 pendingChoices[].libraryOrder.then.asked.trigger	object
 pendingChoices[].libraryOrder.then.asked.trigger.Event	object
 pendingChoices[].libraryOrder.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.amount	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.answer_key	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -25775,6 +25809,7 @@ pendingChoices[].nameThen.asked.targets[].splice	number:int
 pendingChoices[].nameThen.asked.trigger	object
 pendingChoices[].nameThen.asked.trigger.Event	object
 pendingChoices[].nameThen.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.trigger.Event.already_attached	bool
 pendingChoices[].nameThen.asked.trigger.Event.amount	number:int
 pendingChoices[].nameThen.asked.trigger.Event.answer_key	string
 pendingChoices[].nameThen.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -26354,6 +26389,7 @@ pendingChoices[].ordered.asked.targets[].splice	number:int
 pendingChoices[].ordered.asked.trigger	object
 pendingChoices[].ordered.asked.trigger.Event	object
 pendingChoices[].ordered.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].ordered.asked.trigger.Event.already_attached	bool
 pendingChoices[].ordered.asked.trigger.Event.amount	number:int
 pendingChoices[].ordered.asked.trigger.Event.answer_key	string
 pendingChoices[].ordered.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -26802,6 +26838,7 @@ pendingChoices[].pickTail.asked.targets[].splice	number:int
 pendingChoices[].pickTail.asked.trigger	object
 pendingChoices[].pickTail.asked.trigger.Event	object
 pendingChoices[].pickTail.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].pickTail.asked.trigger.Event.amount	number:int
 pendingChoices[].pickTail.asked.trigger.Event.answer_key	string
 pendingChoices[].pickTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -27418,6 +27455,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.targets[].splice
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -27999,6 +28037,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.targets[].sp
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger	object
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -28571,6 +28610,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.targets[].sp
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger	object
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -29311,6 +29351,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.targets[].splice	
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -29998,6 +30039,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -30642,6 +30684,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.targets[].sp
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -31214,6 +31257,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.targets[].splice	
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -31818,6 +31862,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.ta
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -32410,6 +32455,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.targets[].s
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -33390,6 +33436,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.targets[].
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -33984,6 +34031,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.targets[].spli
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -34559,6 +34607,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.targets[].splice	nu
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -35905,6 +35954,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.targets[].splic
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -36475,6 +36525,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.targets[].splice	nu
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -37390,6 +37441,7 @@ pendingChoices[].replacementResume.event.stackItem.targets[].splice	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger	object
 pendingChoices[].replacementResume.event.stackItem.trigger.Event	object
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -37955,6 +38007,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.targets[].splice	n
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -39305,6 +39358,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tar
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -39909,6 +39963,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -40479,6 +40534,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.targets[
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -41069,6 +41125,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.target
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -41724,6 +41781,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.targe
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.answer_key	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -42710,6 +42768,7 @@ pendingChoices[].scryThen.asked.targets[].splice	number:int
 pendingChoices[].scryThen.asked.trigger	object
 pendingChoices[].scryThen.asked.trigger.Event	object
 pendingChoices[].scryThen.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.trigger.Event.already_attached	bool
 pendingChoices[].scryThen.asked.trigger.Event.amount	number:int
 pendingChoices[].scryThen.asked.trigger.Event.answer_key	string
 pendingChoices[].scryThen.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -43327,6 +43386,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.targets[].splice	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger	object
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event	object
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.answer_key	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -44657,6 +44717,7 @@ pendingChoices[].targetWalk.frame.source.variableToughness	bool
 pendingChoices[].targetWalk.frame.trigger	object
 pendingChoices[].targetWalk.frame.trigger.Event	object
 pendingChoices[].targetWalk.frame.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.trigger.Event.already_attached	bool
 pendingChoices[].targetWalk.frame.trigger.Event.amount	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.answer_key	string
 pendingChoices[].targetWalk.frame.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -45334,6 +45395,7 @@ pendingChoices[].triggerFrame.source.variableToughness	bool
 pendingChoices[].triggerFrame.trigger	object
 pendingChoices[].triggerFrame.trigger.Event	object
 pendingChoices[].triggerFrame.trigger.Event.actor	custom(uuid.UUID)
+pendingChoices[].triggerFrame.trigger.Event.already_attached	bool
 pendingChoices[].triggerFrame.trigger.Event.amount	number:int
 pendingChoices[].triggerFrame.trigger.Event.answer_key	string
 pendingChoices[].triggerFrame.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -45655,6 +45717,7 @@ pendingTriggers[].targets[].splice	number:int
 pendingTriggers[].trigger	object
 pendingTriggers[].trigger.Event	object
 pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.already_attached	bool
 pendingTriggers[].trigger.Event.amount	number:int
 pendingTriggers[].trigger.Event.answer_key	string
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
@@ -46242,6 +46305,7 @@ promptRuns[].asked.targets[].splice	number:int
 promptRuns[].asked.trigger	object
 promptRuns[].asked.trigger.Event	object
 promptRuns[].asked.trigger.Event.actor	custom(uuid.UUID)
+promptRuns[].asked.trigger.Event.already_attached	bool
 promptRuns[].asked.trigger.Event.amount	number:int
 promptRuns[].asked.trigger.Event.answer_key	string
 promptRuns[].asked.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -46964,6 +47028,7 @@ resolving.item.targets[].splice	number:int
 resolving.item.trigger	object
 resolving.item.trigger.Event	object
 resolving.item.trigger.Event.actor	custom(uuid.UUID)
+resolving.item.trigger.Event.already_attached	bool
 resolving.item.trigger.Event.amount	number:int
 resolving.item.trigger.Event.answer_key	string
 resolving.item.trigger.Event.attacking_target	custom(uuid.UUID)
@@ -51883,6 +51948,7 @@ stackMeta[].targets[].splice	number:int
 stackMeta[].trigger	object
 stackMeta[].trigger.Event	object
 stackMeta[].trigger.Event.actor	custom(uuid.UUID)
+stackMeta[].trigger.Event.already_attached	bool
 stackMeta[].trigger.Event.amount	number:int
 stackMeta[].trigger.Event.answer_key	string
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)

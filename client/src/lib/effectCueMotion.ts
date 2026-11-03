@@ -42,6 +42,12 @@ export interface CueMotion {
    */
   rot?: number;
   commandScale?: number;
+  /**
+   * An attachment sliding onto its host (#4444): `fly` is where its tile
+   * starts, from where it rests, in the tile's own px; `seam` is where it
+   * meets the host, from the cue's centre (the host's), in board px.
+   */
+  seam?: { x: number; y: number };
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -110,6 +116,12 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "commander_return":
       commanderDrift(node, f);
+      return;
+    case "attach_equip":
+      attachClasp(node, f);
+      return;
+    case "attach_aura":
+      attachShimmer(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -1043,6 +1055,146 @@ export function commandArrive(card: HTMLElement, f: CueMotion): Run {
     ],
     { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
   );
+}
+
+// ---- An Equipment is attached, or an Aura enchants a permanent (#4444) ----
+
+/** The share of an attach cue at which the attachment reaches its host, and clasps. */
+export const ATTACH_LAND = 0.6;
+/** The most an attachment slides past its rest before it settles back, px. */
+export const ATTACH_OVERSHOOT_PX = 4;
+
+/**
+ * attachSlide moves the attachment's own tile onto its host: from where it
+ * was (its last box on the battlefield, or just above and to the side of
+ * its rest when it is new there), sliding in with a slight tilt that
+ * straightens, a touch past its rest at ATTACH_LAND, then a small settle.
+ * The board already draws it tucked under the host, so the host stays on
+ * top the whole way. Like tokenPop it moves a live tile, presentation
+ * only: `fill: "backwards"` holds it at the start from the frame on, and
+ * once the slide is over the tile is its own style again. Only translate
+ * and rotate move, so a token's pop (scale, opacity) on the same tile
+ * plays with it. The caller cancels the run when the cue is removed or
+ * skipped, which puts the tile at rest at once.
+ */
+export function attachSlide(tile: HTMLElement, f: CueMotion): Run {
+  const len = Math.hypot(f.fly.x, f.fly.y) || 1;
+  const over = Math.min(ATTACH_OVERSHOOT_PX, len * 0.06);
+  const ox = (-f.fly.x / len) * over;
+  const oy = (-f.fly.y / len) * over;
+  // An Equipment swings in with more tilt, and drops a little harder.
+  const metal = f.kind === "attach_equip";
+  const tilt = (f.fly.x <= 0 ? -1 : 1) * (metal ? 5 : 3);
+  const drop = metal ? 1.5 : 0.5;
+  return run(
+    tile,
+    [
+      {
+        offset: 0,
+        translate: `${f.fly.x}px ${f.fly.y}px`,
+        rotate: `${tilt}deg`,
+        easing: EASE.power2Out,
+      },
+      {
+        offset: ATTACH_LAND,
+        translate: `${ox}px ${oy}px`,
+        rotate: `${-tilt * 0.2}deg`,
+        easing: EASE.sineInOut,
+      },
+      {
+        offset: 0.8,
+        translate: `${-ox * 0.35}px ${-oy * 0.35 + drop}px`,
+        rotate: "0deg",
+        easing: EASE.sineInOut,
+      },
+      { offset: 1, translate: "0px 0px", rotate: "0deg" },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+/**
+ * attachClasp is an Equipment's clang as it reaches its host: a hard
+ * white-silver flash where the two meet, a fan of sparks thrown out from
+ * there, and a quick glint along the host's edge.
+ */
+function attachClasp(node: HTMLElement, f: CueMotion): void {
+  const flash = node.querySelector<HTMLElement>(".att-flash");
+  if (flash) {
+    run(
+      flash,
+      [
+        { offset: 0, scale: "0.3", opacity: 0 },
+        { offset: 0.25, scale: "1.1", opacity: 1 },
+        { offset: 1, scale: "1.4", opacity: 0 },
+      ],
+      span(f, ATTACH_LAND - 0.04, 1, EASE.power2Out),
+    );
+  }
+  const sparks = all<HTMLElement>(node, ".att-spark");
+  sparks.forEach((s, i) => {
+    // Out from the seam, away from the host: a fan to the left.
+    const a = ((180 + (i - (sparks.length - 1) / 2) * 28) * Math.PI) / 180;
+    const d = 20 + ((i * 7) % 11);
+    run(
+      s,
+      [
+        { offset: 0, translate: "0px 0px", rotate: `${(a * 180) / Math.PI}deg`, opacity: 0 },
+        { offset: 0.15, opacity: 1 },
+        {
+          offset: 1,
+          translate: `${Math.cos(a) * d}px ${Math.sin(a) * d}px`,
+          rotate: `${(a * 180) / Math.PI}deg`,
+          opacity: 0,
+        },
+      ],
+      span(f, ATTACH_LAND - 0.02, 1, EASE.power2Out),
+    );
+  });
+  const rim = node.querySelector<HTMLElement>(".att-rim");
+  if (rim) {
+    run(
+      rim,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.3, opacity: 0.8 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, ATTACH_LAND, 1, EASE.power1Out),
+    );
+  }
+}
+
+/**
+ * attachShimmer is an Aura settling on its host: a soft light rings the
+ * host as the Aura slides in, and a few glints twinkle around its edge
+ * as it lands, then all of it fades.
+ */
+function attachShimmer(node: HTMLElement, f: CueMotion): void {
+  const halo = node.querySelector<HTMLElement>(".att-halo");
+  if (halo) {
+    run(
+      halo,
+      [
+        { offset: 0, scale: "0.97", opacity: 0 },
+        { offset: 0.45, scale: "1.02", opacity: 0.85 },
+        { offset: 1, scale: "1.06", opacity: 0 },
+      ],
+      span(f, 0.2, 1, EASE.sineInOut),
+    );
+  }
+  all<HTMLElement>(node, ".att-glint").forEach((g, i) => {
+    const a = ATTACH_LAND - 0.25 + i * 0.06;
+    run(
+      g,
+      [
+        { offset: 0, translate: "0px 0px", scale: "0", opacity: 0 },
+        { offset: 0.4, scale: "1", opacity: 1 },
+        { offset: 1, translate: "0px -6px", scale: "0.2", opacity: 0 },
+      ],
+      span(f, a, Math.min(1, a + 0.45), EASE.power1Out),
+    );
+  });
 }
 
 // ---- Board wipes ----

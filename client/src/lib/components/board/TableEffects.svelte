@@ -30,6 +30,12 @@
   // the copy lands (effectCueMotion.ts commandArrive, cancelled with the
   // cue).
   //
+  // An Equipment attached or an Aura enchanting a permanent (#4444) is on
+  // the board too, tucked under its host: its own tile slides there from
+  // where it was (effectCueMotion.ts attachSlide, cancelled with the cue),
+  // and this layer adds the clasp's spark (Equipment) or a soft ring of
+  // light (Aura) over the host.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -127,7 +133,7 @@
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
+  import { attachSlide, commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -196,6 +202,10 @@
     dest?: { w: number; h: number };
     commandScale?: number;
     landsOnCard?: boolean;
+    // An attachment sliding onto its host (#4444): `fly` is where its
+    // tile starts, in the tile's own px; the cue is centred on the host,
+    // and `seam` is where the two meet, from that centre.
+    seam?: { x: number; y: number };
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -409,6 +419,9 @@
     // back in its command zone, where the board shows it.
     commander_cast: null,
     commander_return: null,
+    // And an attachment (#4444): the board draws it under its host.
+    attach_equip: null,
+    attach_aura: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -488,6 +501,10 @@
     }
     if (cue.kind === "commander_cast" || cue.kind === "commander_return") {
       placeCommander(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "attach_equip" || cue.kind === "attach_aura") {
+      placeAttach(cue, base, motion, b);
       return;
     }
     // A planeswalker that just entered is still in its entrance pop (the
@@ -788,6 +805,66 @@
     };
   }
   const CMD_MOTES = [0, 1, 2, 3, 4, 5, 6];
+
+  // ---- An Equipment is attached, or an Aura enchants a permanent (#4444) ----
+
+  // How far a new attachment slides in from, as shares of its own size:
+  // from above its rest and out to the side it peeks from.
+  const ATTACH_IN = { x: -0.3, y: -0.45 };
+
+  // The attachment's own tile slides onto its host from its last box on
+  // the battlefield (an Equipment moving from where it stood, or from
+  // another creature), or, when it is new there (an Aura that resolved or
+  // entered attached, a token created attached), from just above and to
+  // the side of its rest. The cue is centred on the host, where its spark
+  // or ring of light is drawn; a host the board draws no tile for (a
+  // token group's member) lends the attachment's own box. An attachment
+  // already gone, or a still cue, draws nothing, and the sound plays.
+  function placeAttach(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const id = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(id)) return;
+    const el = findCardAnchor(boardEl, id, { accept: cmdLive });
+    if (!el) return;
+    const now = tileOf(el, b.rect, b.size);
+    const w = el.offsetWidth || now.width;
+    const h = el.offsetHeight || now.height;
+    // Board px to the tile's own px (a row may draw its cards scaled).
+    const k = el.offsetWidth > 0 ? now.width / el.offsetWidth : 1;
+    const before = usableTile(tiles.get(id), b.size);
+    const moved =
+      before !== null && Math.hypot(before.box.x - now.box.x, before.box.y - now.box.y) > 4;
+    const fly = moved
+      ? { x: (before.box.x - now.box.x) / k, y: (before.box.y - now.box.y) / k }
+      : { x: ATTACH_IN.x * w, y: ATTACH_IN.y * h };
+    const hostEl = cue.hostID ? findCardAnchor(boardEl, cue.hostID, { accept: cmdLive }) : null;
+    const r = (hostEl ?? el).getBoundingClientRect();
+    add({
+      ...base,
+      x: r.left + r.width / 2 - b.rect.left,
+      y: r.top + r.height / 2 - b.rect.top,
+      width: r.width,
+      height: r.height,
+      fly,
+      // The host's left edge, a little below its middle: where the
+      // attachment, drawn out to its left and a little lower, meets it.
+      seam: hostEl ? { x: -r.width / 2 + 2, y: r.height * 0.08 } : { x: 0, y: 0 },
+    });
+  }
+  const ATT_SPARKS = [0, 1, 2, 3, 4, 5];
+  // Where an Aura's glints twinkle, as shares of the host's box from its centre.
+  const ATT_GLINTS = [
+    [-0.44, -0.34],
+    [0.36, -0.46],
+    [0.47, 0.12],
+    [-0.47, 0.24],
+    [0.12, 0.49],
+    [-0.1, -0.5],
+  ];
 
   function frame(log: GameView["log"]): void {
     const prime = reprimeNext;
@@ -1275,6 +1352,18 @@
           cancelTree(node);
         },
       };
+    } else if (f.kind === "attach_equip" || f.kind === "attach_aura") {
+      // #4444: the attachment's own tile slides onto its host; only this
+      // run is cancelled with the cue (a token's pop on it is its own).
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: cmdLive }) : null;
+      const slide = tile ? attachSlide(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          slide?.cancel();
+          cancelTree(node);
+        },
+      };
     } else {
       cueMotion(node, f);
     }
@@ -1610,6 +1699,48 @@
           style:width={`${(f.dest?.w ?? f.width) + 12}px`}
           style:height={`${(f.dest?.h ?? f.height) + 12}px`}
         ></div>
+      </div>
+    {:else if f.kind === "attach_equip"}
+      <!-- #4444: the Equipment's tile slides under its host (attachSlide);
+           a flash and sparks where the two meet, and a glint on the host. -->
+      <div
+        class="fx m"
+        data-effect="attach_equip"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="att-rim" style:width={`${f.width}px`} style:height={`${f.height}px`}></div>
+        <div class="att-seam" style:left={`${f.seam?.x ?? 0}px`} style:top={`${f.seam?.y ?? 0}px`}>
+          <div class="att-flash"></div>
+          {#each ATT_SPARKS as i (i)}
+            <i class="att-spark"></i>
+          {/each}
+        </div>
+      </div>
+    {:else if f.kind === "attach_aura"}
+      <!-- #4444: the Aura's tile slides under its host (attachSlide); a
+           soft ring of light around the host, and glints at its edge. -->
+      <div
+        class="fx m"
+        data-effect="attach_aura"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="att-halo"
+          style:width={`${f.width + 10}px`}
+          style:height={`${f.height + 10}px`}
+        ></div>
+        {#each ATT_GLINTS as [gx, gy], i (i)}
+          <i class="att-glint" style:left={`${gx * f.width}px`} style:top={`${gy * f.height}px`}
+          ></i>
+        {/each}
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -2502,6 +2633,79 @@
   .cmd-ghost .face {
     box-shadow: 0 0 14px 3px rgba(255, 206, 92, 0.5);
     filter: sepia(0.4) brightness(1.15);
+  }
+
+  /* An attachment (#4444). Its own tile does the sliding; this is the
+     light over its host. An Equipment clasps cold and bright: a white-
+     silver flash where it meets the host, a fan of sparks and a glint
+     along the host's edge. An Aura is soft: a pale violet ring of light
+     around the host and a few glints twinkling at its edge. Both are
+     screened, so the art shows through on a dark board. */
+  .att-rim,
+  .att-halo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    opacity: 0;
+  }
+  .att-rim {
+    border-radius: 8px;
+    border: 1.5px solid rgba(236, 244, 255, 0.9);
+    box-shadow:
+      0 0 10px 2px rgba(200, 220, 255, 0.55),
+      inset 0 0 8px rgba(200, 220, 255, 0.4);
+  }
+  .att-seam {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  .att-flash {
+    position: absolute;
+    left: -18px;
+    top: -18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      #ffffff 0%,
+      rgba(226, 236, 255, 0.85) 30%,
+      rgba(150, 180, 230, 0) 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .att-spark {
+    position: absolute;
+    left: -7px;
+    top: -1.5px;
+    width: 14px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), #fffbe8);
+    box-shadow: 0 0 6px 1px rgba(255, 236, 170, 0.8);
+    opacity: 0;
+  }
+  .att-halo {
+    border-radius: 12px;
+    border: 2px solid rgba(232, 214, 255, 0.85);
+    box-shadow:
+      0 0 22px 7px rgba(186, 150, 255, 0.55),
+      inset 0 0 16px rgba(206, 180, 255, 0.5);
+    mix-blend-mode: screen;
+  }
+  .att-glint {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    /* Centred by margin: the motion animates translate. */
+    margin: -6px 0 0 -6px;
+    background: #fbf4ff;
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+    filter: drop-shadow(0 0 4px rgba(200, 160, 255, 0.95));
+    opacity: 0;
   }
 
   /* A counterspell: the stack item cracks and its glass flies out. */

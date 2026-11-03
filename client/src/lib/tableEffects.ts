@@ -3,7 +3,8 @@
 // A permanent that is destroyed, exiled, sacrificed or bounced, a spell
 // that is countered, a planeswalker that arrives or goes, a token that is
 // created (#4441), counters put on a permanent (#4442), a commander cast
-// from the command zone or put back into it (#4443) and a board wipe
+// from the command zone or put back into it (#4443), an Equipment
+// attached or an Aura enchanting a permanent (#4444) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -115,7 +116,11 @@ export type EffectKind =
   // A commander cast from the command zone (CR 903.8), or put back into
   // it (CR 903.9a, 903.9b) (#4443).
   | "commander_cast"
-  | "commander_return";
+  | "commander_return"
+  // An Equipment (or a Fortification) attached to a permanent, or an
+  // Aura enchanting one (CR 701.3a, 301.5, 303.4) (#4444).
+  | "attach_equip"
+  | "attach_aura";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -124,8 +129,10 @@ export type EffectKind =
  * counterspell holds its cracks while the stack linger shows the spell;
  * a planeswalker that dies now also withdraws from the plane. The S80
  * cues are their issues' own lengths: a token's pop-in is about 0.4 s,
- * a counter's pulse a little longer, so its tick can be read, and a
- * commander's rise to the stack or drift home about 0.8 s.
+ * a counter's pulse a little longer, so its tick can be read, a
+ * commander's rise to the stack or drift home about 0.8 s, and an
+ * attachment's slide onto its host about 0.4 s (an Aura's shimmer a
+ * beat longer, so it can fade).
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -141,6 +148,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   counters: 450,
   commander_cast: 800,
   commander_return: 800,
+  attach_equip: 400,
+  attach_aura: 450,
 };
 
 /**
@@ -167,6 +176,8 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   counters: null,
   commander_cast: "commander_cast",
   commander_return: "commander_return",
+  attach_equip: "attach_equip",
+  attach_aura: "attach_aura",
 };
 
 /**
@@ -254,6 +265,8 @@ export interface EffectCue {
    * `old_zone`), which is where its drift home starts (#4443).
    */
   commanderFrom?: string;
+  /** For an attach cue: the permanent the attachment is now on (#4444). */
+  hostID?: string;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -364,6 +377,7 @@ export function planEffects(
   const tokens: LogEvent[] = [];
   const counters: LogEvent[] = [];
   const commanders: LogEvent[] = [];
+  const attaches: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -379,6 +393,10 @@ export function planEffects(
     }
     if (e.kind === "counters") {
       counters.push(e);
+      continue;
+    }
+    if (e.kind === "attach") {
+      if (attachKind(e)) attaches.push(e);
       continue;
     }
     // #4443: before the exits, so a commander that goes home from the
@@ -477,9 +495,14 @@ export function planEffects(
     if (kind === "exile" && x.zone?.cause === "destroy") cue.fromDestroy = true;
     cues.push(cue);
   }
-  cues.push(...tokenCues(tokens));
+  // A token created attached (a Role, a token copy of an Aura spell) is
+  // one arrival with two cues: its attach cue plays the sound, and its
+  // token cue only pops it in (#4444).
+  const attached = new Set(attaches.map(arrivalKey));
+  cues.push(...tokenCues(tokens, attached));
   cues.push(...counterCues(counters));
   cues.push(...commanderCues(commanders));
+  cues.push(...attachCues(attaches));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -488,9 +511,11 @@ export function planEffects(
  * tokenCues gives each created token its pop-in (#4441). Tokens created
  * in one batch are one moment: the first plays the sound and the rest
  * follow it, a stagger apart, in log order. A token with no batch is a
- * moment of its own.
+ * moment of its own. A token that entered attached (in `attached`, by
+ * arrivalKey) leaves the sound to its attach cue (#4444), so the batch's
+ * first other token leads, and a batch of only those plays none here.
  */
-function tokenCues(tokens: readonly LogEvent[]): EffectCue[] {
+function tokenCues(tokens: readonly LogEvent[], attached: ReadonlySet<string>): EffectCue[] {
   const groups = new Map<string, LogEvent[]>();
   for (const e of tokens) {
     const k = e.batch === undefined || e.batch === null ? `q${e.seq}` : String(e.batch);
@@ -501,6 +526,7 @@ function tokenCues(tokens: readonly LogEvent[]): EffectCue[] {
   const out: EffectCue[] = [];
   for (const [, g] of groups) {
     const stagger = Math.min(TOKEN_STAGGER_MS, TOKEN_SPREAD_MS / Math.max(1, g.length - 1));
+    const lead = g.findIndex((e) => !attached.has(arrivalKey(e)));
     g.forEach((e, i) => {
       const cue: EffectCue = {
         id: String(e.seq),
@@ -512,7 +538,7 @@ function tokenCues(tokens: readonly LogEvent[]): EffectCue[] {
         weight: "full",
         delayMs: i * stagger,
       };
-      if (i > 0) cue.follows = true;
+      if (i !== lead) cue.follows = true;
       out.push(cue);
     });
   }
@@ -618,6 +644,59 @@ function commanderCues(entries: readonly LogEvent[]): EffectCue[] {
     else lead.add(k);
     return cue;
   });
+}
+
+/**
+ * attachKind is the cue an `attach` entry gets (#4444): an Equipment or a
+ * Fortification (the same metal clasp) is attach_equip, an Aura
+ * attach_aura, read off the entry's `label`, which names what the
+ * attachment is as it attaches. Only a permanent host is a cue: a Curse
+ * enchanting a player has no tile to land on. An entry with no label (a
+ * viewer who may not identify the attachment, or a permanent that is
+ * none of the three) is no cue.
+ */
+export function attachKind(e: LogEvent): EffectKind | null {
+  if (e.kind !== "attach" || !e.card_id || !e.target) return null;
+  if (e.label === "Aura") return "attach_aura";
+  if (e.label === "Equipment" || e.label === "Fortification") return "attach_equip";
+  return null;
+}
+
+/** One card's arrival in one batch: its batch (or its own seq) and its ID. */
+function arrivalKey(e: LogEvent): string {
+  return `${e.batch ?? `q${e.seq}`}|${e.card_id ?? ""}`;
+}
+
+/**
+ * attachCues gives each attachment its slide onto its host (#4444). One
+ * kind in one batch is one moment (Armory Automaton's "attach any number
+ * of target Equipment to it"): the first plays the sound and the rest
+ * follow it. An Equipment and an Aura in one batch are two moments, each
+ * with its own sound.
+ */
+function attachCues(entries: readonly LogEvent[]): EffectCue[] {
+  const lead = new Set<string>();
+  const out: EffectCue[] = [];
+  for (const e of entries) {
+    const kind = attachKind(e);
+    if (!kind) continue;
+    const cue: EffectCue = {
+      id: String(e.seq),
+      seq: e.seq,
+      kind,
+      cardID: e.card_id ?? null,
+      stackItemID: null,
+      batch: e.batch ?? null,
+      weight: "full",
+      delayMs: 0,
+      hostID: e.target,
+    };
+    const k = `${kind}|${e.batch ?? `q${e.seq}`}`;
+    if (lead.has(k)) cue.follows = true;
+    else lead.add(k);
+    out.push(cue);
+  }
+  return out;
 }
 
 function toneOf(g: readonly Exit[], ctx: PlanContext): WipeTone {
@@ -1136,8 +1215,9 @@ export function busyScale(n: number): number {
  * its own, each board wipe and each signature. A wipe's per-card cues
  * are not counted: the wipe already fits them inside its cap. Nor is a
  * cue that follows another of its batch: tokens created together count
- * once, and so do the counters one proliferate puts on, and two
- * commanders sent home together.
+ * once, and so do the counters one proliferate puts on, two commanders
+ * sent home together, the Equipment one effect attaches, and a token
+ * created attached, whose token cue follows its attach cue.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (
