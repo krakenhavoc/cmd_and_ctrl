@@ -32,7 +32,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice this creature: Draw a card.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Cost:    Plus(ManaCost("{1}{B}"), SacrificeThis()),
 			Effect:  Do(DrawCards{N: 1}),
 		}},
