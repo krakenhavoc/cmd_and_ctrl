@@ -13522,11 +13522,12 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 		// colours still decide whether a protected creature is a legal
 		// target of the spell it would become.
 		if oc, found := g.LookupOutsideCardForEffect(id); found {
-			return game.SourceObject(caster, &oc)
+			return game.SourceCast(caster, &oc)
 		}
 		return game.SourceChooser(caster)
 	}
-	return game.SourceObject(caster, c)
+	// #4869, CR 601.2a: the card being cast is not its own target.
+	return game.SourceCast(caster, c)
 }
 
 // sacrificeCostOptions is the set of permanents that can pay an

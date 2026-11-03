@@ -1310,7 +1310,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// and type — not its caster's (#662).
 	// CR 202.3e: the X announced with the cast counts in the spell's mana
 	// value, which "protection from mana value N or less" reads (#2181).
-	castSrc := SourceObject(playerID, &card)
+	// #4869, CR 601.2a: and it is cast, so it is not its own target.
+	castSrc := SourceCast(playerID, &card)
 	castSrc.X = params.XValue
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and

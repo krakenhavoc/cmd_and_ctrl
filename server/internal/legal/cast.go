@@ -730,7 +730,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// enumerator that passed only the seat would offer the bot a
 	// pro-red creature for its red spell and the server would refuse
 	// the move — the #347 / #544 failure mode.
-	castSrc := game.SourceObject(e.seat, &card)
+	// #4869, CR 601.2a: SourceCast, so the card is never offered as a
+	// target of its own clauses in the zone it is being cast from.
+	castSrc := game.SourceCast(e.seat, &card)
 
 	// Timing is NOT re-asked here. It was a copy of the engine's
 	// three lines until #1195 — `!card.IsInstant() &&
