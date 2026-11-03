@@ -38,6 +38,17 @@
   // tint (Toxic Deluge, #4416) marks the creatures its batch left standing
   // until the turn number changes (fx/tints.ts; FxTint.svelte draws it).
   //
+  // Decked out (#4879): a player who loses by drawing from an empty library
+  // (cause empty_draw, CR 704.5b) gets the library's ghost, a signature-
+  // length cue: their library slot pulses red, cold wisps rise from it, a
+  // translucent blue skull rises out of the pile and swells to fill their
+  // mat (clipped to it, never over another seat), sways and dissolves
+  // upward, and as it fills the mat their hand's cards are flung outward,
+  // spinning, and vanish (their faces for the player, backs for everyone
+  // else). It counts on the busy clock and a skip clears it. Still and
+  // reduced motion draw none of it: the grey seat and its "Decked" stone
+  // are Tombstone.svelte's, and the sound is EliminationFx.svelte's.
+  //
   // z 57 on DESIGN.md §4's ladder: above the action dock (55), below the
   // hints (58). aria-hidden: the log and the board carry the news.
 
@@ -52,6 +63,7 @@
   import { isCreature, isPlaneswalker } from "../../cardTypes";
   import { crumble } from "../../animations";
   import { cancelAnimations, settled } from "../../motion";
+  import { deckedMotion, type Box } from "../../deckedOutMotion";
   import { play } from "../../sounds";
   import { emptyBeatTracker, track } from "../../combatBeats";
   import {
@@ -68,6 +80,10 @@
     counterBurst,
     cueSound,
     cueTiming,
+    deckedFlings,
+    deckedSeats,
+    deckedTiming,
+    deckedWisps,
     effectLate,
     effectMotion,
     effectsScheduled,
@@ -81,6 +97,8 @@
     voidMotes,
     windCuts,
     wipeTiming,
+    type DeckedFling,
+    type DeckedWisp,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
@@ -156,6 +174,26 @@
   }
 
   let fx = $state<Fx[]>([]);
+
+  // A decked-out cue (#4879). Boxes are in board px.
+  interface Decked {
+    key: string;
+    seat: string;
+    ms: number;
+    // The player's mat (their seat panel), the library pile within it (in
+    // the mat's own px) and their hand area.
+    mat: Box;
+    lib: Box;
+    hand: Box;
+    skull: number;
+    diag: number;
+    wisps: DeckedWisp[];
+    cards: { src: string; w: number; h: number; f: DeckedFling }[];
+  }
+  let decks = $state<Decked[]>([]);
+  // Each seat's hand as of the frame before: the frame that decks a player
+  // has already taken their cards out of the game (CR 800.4a).
+  const lastHands = new Map<string, { count: number; cards: CardView[] }>();
   let serial = 0;
   let destroyed = false;
 
@@ -345,6 +383,7 @@
     for (const t of timers) clearTimeout(t);
     timers.clear();
     fx = [];
+    decks = [];
     busy.reset();
   }
 
@@ -502,12 +541,25 @@
     }
     const sp = withSignatures(generic, found, (s) => signatures.ready(s) !== null, motion);
     const plan = sp.plan;
-    if (plan.cues.length === 0 && plan.wipes.length === 0 && sp.sigs.length === 0) return;
+    // #4879: the players this frame says were decked out. Their sound is
+    // EliminationFx's; the ghost is drawn here, only with motion.
+    const decked = deckedSeats(r.fresh)
+      .map((i) => view.seats[i])
+      .filter((seat) => seat !== undefined);
+    if (
+      plan.cues.length === 0 &&
+      plan.wipes.length === 0 &&
+      sp.sigs.length === 0 &&
+      decked.length === 0
+    )
+      return;
 
     const at = Date.now();
     // animations.speed, compressed on a busy table: many cues close
-    // together each play shorter (tableEffects.ts busyScale).
-    const speed = s.animations.speed * busy.frame(headlines(plan, sp.sigs.length), at);
+    // together each play shorter (tableEffects.ts busyScale). A decked-out
+    // cue counts as a signature does.
+    const speed =
+      s.animations.speed * busy.frame(headlines(plan, sp.sigs.length + decked.length), at);
     const gameID = view.id;
     // Sounds always play (a hidden tab included); motion only when the
     // page is showing and the board can be measured.
@@ -582,6 +634,101 @@
 
     // Drawn last, so a scene is over the cards it takes.
     if (b) for (const sig of sp.sigs) drawSignature(sig, motion, speed, b);
+    if (b) for (const seat of decked) drawDecked(seat, motion, speed, b);
+  }
+
+  // ---- Decked out (#4879) ----
+
+  function boxIn(el: Element, origin: { left: number; top: number }): Box {
+    const r = el.getBoundingClientRect();
+    return { x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height };
+  }
+
+  function byOwner(selector: string, attr: string, seatID: string): HTMLElement | null {
+    if (!boardEl) return null;
+    for (const el of boardEl.querySelectorAll<HTMLElement>(selector)) {
+      if (el.getAttribute(attr) === seatID && hasSize(el)) return el;
+    }
+    return null;
+  }
+
+  function drawDecked(
+    seat: GameView["seats"][number],
+    motion: EffectMotion,
+    speed: number,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const t = deckedTiming(motion, speed);
+    if (!t || !boardEl) return;
+    // The mat is the seat's panel; a collapsed seat has none, and keeps
+    // its stone alone.
+    const pile = byOwner('[data-pile="library"]', "data-pile-owner", seat.id);
+    const panel =
+      pile?.closest<HTMLElement>(".seat-panel") ??
+      findSeatAnchor(boardEl, seat.id, { accept: hasSize })?.closest<HTMLElement>(".seat-panel") ??
+      null;
+    if (!panel || !hasSize(panel)) return;
+    const mat = boxIn(panel, b.rect);
+    const matRect = panel.getBoundingClientRect();
+    // No pile drawn: the ghost rises from the mat's lower middle.
+    const lib = pile ? boxIn(pile, matRect) : { x: mat.w / 2 - 24, y: mat.h * 0.7, w: 48, h: 66 };
+    const handEl = byOwner("[data-hand-owner]", "data-hand-owner", seat.id);
+    const hand = handEl
+      ? boxIn(handEl, b.rect)
+      : { x: mat.x + mat.w * 0.25, y: mat.y + mat.h * 0.8, w: mat.w * 0.5, h: mat.h * 0.2 };
+
+    // Faces where this player can see them (their own hand), backs
+    // otherwise, from the frame before the cards left.
+    const now = seat.hand;
+    const before = lastHands.get(seat.id);
+    const shown = (now?.cards?.length ?? 0) > 0 ? now.cards : (before?.cards ?? []);
+    const count = Math.max(now?.count ?? 0, before?.count ?? 0, shown.length);
+    const flings = deckedFlings(seat.id, count);
+    const ch = Math.max(36, Math.min(120, hand.h * 0.85));
+    const cw = Math.round(ch * (63 / 88));
+    const cards = flings.map((f, i) => {
+      const c = shown[i];
+      const src = c && !showsCardBack(c) ? cardImageURL(c, "small") : "/card-back-small.jpg";
+      return { src: src ?? "/card-back-small.jpg", w: cw, h: Math.round(ch), f };
+    });
+
+    const key = `decked-${++serial}`;
+    decks = [
+      ...decks,
+      {
+        key,
+        seat: seat.id,
+        ms: t.ms,
+        mat,
+        lib,
+        hand,
+        skull: Math.min(mat.w, mat.h / 1.2) * 0.96,
+        diag: Math.hypot(b.size.w, b.size.h),
+        wisps: deckedWisps(seat.id),
+        cards,
+      },
+    ];
+    later(() => {
+      decks = decks.filter((d) => d.key !== key);
+    }, t.ms + 80);
+  }
+
+  function deckedOf(node: HTMLElement, d: Decked) {
+    const runs = deckedMotion(node, {
+      ms: d.ms,
+      lib: d.lib,
+      mat: { w: d.mat.w, h: d.mat.h },
+      skull: d.skull,
+      diag: d.diag,
+      wisps: d.wisps,
+      flings: d.cards.map((c) => c.f),
+    });
+    return {
+      destroy: () => {
+        for (const r of runs) r.cancel();
+        cancelTree(node);
+      },
+    };
   }
 
   // ---- Signatures ----
@@ -716,6 +863,21 @@
     });
   });
 
+  // Remember each seat's hand as of the latest frame, after frame() has
+  // read the one before (#4879: a decked player's hand is flung from it).
+  $effect(() => {
+    const seats = view.seats;
+    untrack(() => {
+      for (const seat of seats ?? []) {
+        if (seat.eliminated) continue;
+        lastHands.set(seat.id, {
+          count: seat.hand?.count ?? 0,
+          cards: [...(seat.hand?.cards ?? [])],
+        });
+      }
+    });
+  });
+
   // Measure on every frame (after layout) and whenever the board or the
   // expanded board changes size, as the strike layer does.
   $effect(() => {
@@ -740,7 +902,7 @@
   // passive, so the click still reaches what it was aimed at, and Escape
   // still closes whatever else listens for it.
   $effect(() => {
-    if (fx.length === 0 || typeof window === "undefined") return;
+    if ((fx.length === 0 && decks.length === 0) || typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") clearAll();
     };
@@ -1222,6 +1384,135 @@
         {/if}
       </div>
     {/if}
+  {/each}
+  <!-- #4879: decked out, the library's ghost. The mat box clips the pulse,
+       the wisps and the skull to the player's own seat; the flung cards
+       are outside it, so they can leave the board. -->
+  {#each decks as d (d.key)}
+    <div class="decked m" data-decked-out={d.seat} use:deckedOf={d}>
+      <div
+        class="dk-mat"
+        style:left="{d.mat.x}px"
+        style:top="{d.mat.y}px"
+        style:width="{d.mat.w}px"
+        style:height="{d.mat.h}px"
+      >
+        <span
+          class="dk-pulse"
+          style:left="{d.lib.x}px"
+          style:top="{d.lib.y}px"
+          style:width="{d.lib.w}px"
+          style:height="{d.lib.h}px"
+        ></span>
+        {#each d.wisps as w, i (i)}
+          <span
+            class="dk-wisp"
+            style:left="{d.lib.x + d.lib.w * w.x}px"
+            style:top="{d.lib.y + d.lib.h * 0.35}px"
+            style:width="{d.lib.w * w.size}px"
+            style:height="{d.lib.w * w.size * 2.2}px"
+          ></span>
+        {/each}
+        <div
+          class="dk-skull"
+          style:left="{d.mat.w / 2 - d.skull / 2}px"
+          style:top="{d.mat.h / 2 - d.skull * 0.6}px"
+          style:width="{d.skull}px"
+          style:height="{d.skull * 1.2}px"
+        >
+          <svg viewBox="0 0 100 120" width="100%" height="100%">
+            <defs>
+              <radialGradient id="{d.key}-bone" cx="50%" cy="45%" r="60%">
+                <stop offset="0%" stop-color="#f2f8ff" stop-opacity="0.95" />
+                <stop offset="45%" stop-color="#b9d4f7" stop-opacity="0.8" />
+                <stop offset="80%" stop-color="#3f74c6" stop-opacity="0.7" />
+                <stop offset="100%" stop-color="#173d8a" stop-opacity="0.85" />
+              </radialGradient>
+              <filter id="{d.key}-glow" x="-200%" y="-200%" width="500%" height="500%">
+                <feGaussianBlur stdDeviation="1.6" />
+              </filter>
+            </defs>
+            <!-- The cranium and cheeks, then the jaw. -->
+            <path
+              d="M50 4C24 4 8 22 8 48c0 16 6 26 14 32l2 14c0 5 4 8 9 8h34c5 0 9-3 9-8l2-14c8-6 14-16 14-32C92 22 76 4 50 4z"
+              fill="url(#{d.key}-bone)"
+              stroke="#1b3f86"
+              stroke-opacity="0.6"
+              stroke-width="1.5"
+            />
+            <path
+              d="M30 100v12c0 4 4 6 8 6h24c4 0 8-2 8-6v-12z"
+              fill="url(#{d.key}-bone)"
+              stroke="#1b3f86"
+              stroke-opacity="0.6"
+              stroke-width="1.5"
+            />
+            <!-- The eye sockets, and their small glowing pupils. -->
+            <ellipse cx="33" cy="52" rx="12" ry="13" fill="#061433" fill-opacity="0.9" />
+            <ellipse cx="67" cy="52" rx="12" ry="13" fill="#061433" fill-opacity="0.9" />
+            <circle
+              cx="34"
+              cy="54"
+              r="5.5"
+              fill="#6fd3ff"
+              opacity="0.45"
+              filter="url(#{d.key}-glow)"
+            />
+            <circle
+              cx="66"
+              cy="54"
+              r="5.5"
+              fill="#6fd3ff"
+              opacity="0.45"
+              filter="url(#{d.key}-glow)"
+            />
+            <circle cx="34" cy="54" r="2.4" fill="#d8f7ff" />
+            <circle cx="66" cy="54" r="2.4" fill="#d8f7ff" />
+            <!-- The nasal cavity. -->
+            <path d="M50 66l-6 14c2 3 5 2 6 0 1 2 4 3 6 0z" fill="#061433" fill-opacity="0.9" />
+            <!-- The teeth, upper and lower. -->
+            {#each [0, 1, 2, 3, 4, 5] as t (t)}
+              <rect
+                x={33.5 + t * 5.6}
+                y="94"
+                width="4.6"
+                height="9"
+                rx="1.2"
+                fill="#e8f2ff"
+                fill-opacity="0.85"
+                stroke="#2a5297"
+                stroke-opacity="0.5"
+                stroke-width="0.6"
+              />
+              <rect
+                x={33.5 + t * 5.6}
+                y="104"
+                width="4.6"
+                height="8"
+                rx="1.2"
+                fill="#e8f2ff"
+                fill-opacity="0.8"
+                stroke="#2a5297"
+                stroke-opacity="0.5"
+                stroke-width="0.6"
+              />
+            {/each}
+          </svg>
+        </div>
+      </div>
+      {#each d.cards as c, i (i)}
+        <img
+          class="dk-card"
+          src={c.src}
+          alt=""
+          draggable="false"
+          style:left="{d.hand.x + d.hand.w * (0.15 + 0.7 * c.f.x)}px"
+          style:top="{d.hand.y + d.hand.h / 2}px"
+          style:width="{c.w}px"
+          style:height="{c.h}px"
+        />
+      {/each}
+    </div>
   {/each}
 </div>
 
@@ -1895,6 +2186,57 @@
   .badge[data-effect="bounce"],
   .badge[data-effect="pw_enter"] {
     background: color-mix(in srgb, var(--block) 60%, #0a1220);
+  }
+
+  /* #4879: decked out. Every part is placed by the script and moved by
+     deckedOutMotion.ts; at rest (before its beat) each is hidden or still. */
+  .decked {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .dk-mat {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .dk-pulse {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 70, 70, 0.9);
+    border-radius: 6px;
+    background: rgba(255, 40, 40, 0.18);
+    opacity: 0;
+  }
+  .dk-wisp {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at 50% 60%,
+      rgba(200, 232, 255, 0.9) 0%,
+      rgba(96, 160, 255, 0.55) 45%,
+      rgba(40, 90, 200, 0) 75%
+    );
+    filter: blur(3px);
+    opacity: 0;
+  }
+  .dk-skull {
+    position: absolute;
+    opacity: 0;
+    transform-origin: 50% 50%;
+    filter: drop-shadow(0 0 18px rgba(80, 150, 255, 0.55));
+    will-change: transform, opacity, filter;
+  }
+  .dk-skull svg {
+    display: block;
+    overflow: visible;
+  }
+  .dk-card {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 5px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+    object-fit: cover;
   }
 
   /* The OS's reduced-motion signal (DESIGN.md §4, the third way): every

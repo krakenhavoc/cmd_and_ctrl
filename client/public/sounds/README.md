@@ -77,14 +77,19 @@ Combat damage that lands on a player plays one of three sounds in the
 exactly 1, **medium** for 2 to 3 and **heavy** for 4 or more. Each is one
 take, and each falls back to `damage` if its file fails to load
 (`SOUND_FALLBACK`). A player leaving the game plays `player_eliminated`, one
-take, in the `effects` category, with no fallback.
+take, in the `effects` category, with no fallback. A player who loses by
+drawing from an empty library (CR 704.5b, cause `empty_draw`) plays
+`player_decked` instead (#4879), two takes in the `effects` category, falling
+back to `player_eliminated`.
 
-| Entry               | Files                     | When it plays                                                                               | Falls back to | Source                                           |
-| ------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------ |
-| `face_hit_light`    | `face_hit_light-1.mp3`    | 1 combat damage hits a player: a deflection, a dink                                         | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `face_hit_medium`   | `face_hit_medium-1.mp3`   | 2 or 3 combat damage hits a player: a blunt punch, no gore                                  | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `face_hit_heavy`    | `face_hit_heavy-1.mp3`    | 4 or more combat damage hits a player: a bone and blood crush (the skull crush)             | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `player_eliminated` | `player_eliminated-1.mp3` | A player leaves the game, once for each: their avatar shatters like rock, a tombstone stays | none          | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| Entry               | Files                     | When it plays                                                                                                                          | Falls back to       | Source                                           |
+| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| `face_hit_light`    | `face_hit_light-1.mp3`    | 1 combat damage hits a player: a deflection, a dink                                                                                    | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_medium`   | `face_hit_medium-1.mp3`   | 2 or 3 combat damage hits a player: a blunt punch, no gore                                                                             | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_heavy`    | `face_hit_heavy-1.mp3`    | 4 or more combat damage hits a player: a bone and blood crush (the skull crush)                                                        | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `player_eliminated` | `player_eliminated-1.mp3` | A player leaves the game, once for each: their avatar shatters like rock, a tombstone stays                                            | none                | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `player_decked`     | `player_decked-1.mp3`     | A player is decked (drew from an empty library): a falling, wavering moan, then a flutter of cards at about 0.7 s; the library's ghost | `player_eliminated` | Synthesised                                      |
+| `player_decked`     | `player_decked-2.mp3`     | The second take of the same                                                                                                            | `player_eliminated` | Synthesised                                      |
 
 A face hit plays at the strike's contact, once per player a combat damage
 beat hits, and the tier is picked by all the combat damage that player takes
@@ -170,13 +175,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                 |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                    |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                             |
-| `effects`   | `heal`, `player_eliminated`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                       |
+| Category    | Sounds                                                                                                                                                                                                                                                                            |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                                  |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                                     |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                                              |
+| `effects`   | `heal`, `player_eliminated`, `player_decked`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                                        |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

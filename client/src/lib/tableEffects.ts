@@ -922,3 +922,172 @@ export class BusyClock {
     this.starts = [];
   }
 }
+
+// ---- The decked-out cue (#4879) ----
+//
+// A player who loses by drawing from an empty library (CR 704.5b) gets a
+// signature-length cue of their own, "the library dies", in place of the
+// avatar's rock-shatter (EliminationFx.svelte, #4449): their library slot
+// pulses red, cold blue wisps rise from it, and a translucent blue skull
+// rises out of the pile, swells and drifts until it fills that player's
+// mat, sways once and dissolves upward. As it fills the mat the cards in
+// their hand are flung outward, spinning, and vanish. The seat then drains
+// to a cold grey-blue and its stone reads "Decked" (Tombstone.svelte, from
+// the seat's own `loss_cause`, so a reload still shows it).
+//
+// The wire's word for the cause is the engine's game.LossCause
+// "empty_draw", on the `eliminated` log line's `cause` and on the seat's
+// `loss_cause` (docs/protocol.md). Every other cause keeps the shatter.
+
+/** The loss cause the decked-out cue is for: a draw from an empty library (CR 704.5b). */
+export const DECKED_CAUSE = "empty_draw";
+
+/** Which cue a player's departure plays, by its cause. */
+export type EliminationCueKind = "decked_out" | "eliminated";
+
+/** The decked-out cue for a draw from an empty library; the shatter for every other cause. */
+export function eliminationCue(cause: string | null | undefined): EliminationCueKind {
+  return cause === DECKED_CAUSE ? "decked_out" : "eliminated";
+}
+
+/** The sound a departure plays: player_decked replaces player_eliminated for a decked player. */
+export function eliminationSound(cause: string | null | undefined): SoundName {
+  return eliminationCue(cause) === "decked_out" ? "player_decked" : "player_eliminated";
+}
+
+/** Whether a seat that has left was decked, from its own `loss_cause`. */
+export function seatDecked(seat: { eliminated?: boolean; loss_cause?: string }): boolean {
+  return seat.eliminated === true && eliminationCue(seat.loss_cause) === "decked_out";
+}
+
+/**
+ * The seats the log entries say were decked out, each once, in log order:
+ * an `eliminated` entry whose cause is a draw from an empty library.
+ */
+export function deckedSeats(entries: readonly LogEvent[]): number[] {
+  const seats: number[] = [];
+  for (const e of entries) {
+    if (e.kind !== "eliminated" || eliminationCue(e.cause) !== "decked_out") continue;
+    if (typeof e.seat !== "number" || e.seat < 0) continue;
+    if (!seats.includes(e.seat)) seats.push(e.seat);
+  }
+  return seats;
+}
+
+/** The cue's length at speed 1, at Full (the owner's spec: about 2.2 s). */
+export const DECKED_BASE_MS = 2200;
+/**
+ * A signature's cap (fx/signatures.ts SIGNATURE_CAP_MS, ADR 0209 §4's
+ * amendment). Repeated here, not imported, because signatures.ts imports
+ * this file; a test holds the two equal.
+ */
+export const DECKED_CAP_MS = 3500;
+
+/**
+ * The beats of the cue, as shares of its length. The pulse and the wisps
+ * open it; the skull rises out of the pile and fills the mat at `fill`,
+ * which is when the hand is flung; it sways until `sway`, then dissolves
+ * upward to the end. The stone settles at `badge`.
+ */
+export const DECKED_BEATS = {
+  pulse: [0, 0.2],
+  wisps: [0.02, 0.7],
+  rise: [0.08, 0.5],
+  fill: 0.5,
+  sway: 0.74,
+  fling: [0.5, 0.92],
+  badge: 0.8,
+} as const;
+
+/** Most hand cards flung; a bigger hand flings its first few (the rest are under them). */
+export const DECKED_FLING_CAP = 10;
+/** How many wisps rise from the library. */
+export const DECKED_WISPS = 9;
+
+/**
+ * deckedTiming is the cue's length in real ms, or null when it is still
+ * (Still mode, reduced motion: the grey seat and its badge only). Full is
+ * DECKED_BASE_MS, capped at the signature cap; Short halves it, within
+ * Short's cap. Then animations.speed, and a busy table's compression
+ * (busyScale), multiplied into `speed` by the caller as every cue's is.
+ */
+export function deckedTiming(motion: EffectMotion, speed: number): { ms: number } | null {
+  if (motion === "still") return null;
+  const base = Math.min(DECKED_BASE_MS, DECKED_CAP_MS);
+  const ms = motion === "short" ? Math.min(base / 2, EFFECT_SHORT_CAP_MS) : base;
+  return { ms: Math.max(1, ms * speedFactor(speed)) };
+}
+
+/**
+ * When a decked seat's stone settles, in ms after the frame: at the
+ * cue's `badge` beat, or at once when the cue is still.
+ */
+export function deckedBadgeDelay(motion: EffectMotion, speed: number): number {
+  const t = deckedTiming(motion, speed);
+  return t ? Math.round(t.ms * DECKED_BEATS.badge) : 0;
+}
+
+/** One wisp: where it starts across the pile (0..1), how far it drifts and rises (in pile heights), its size and when it starts (a share of the wisp beat). */
+export interface DeckedWisp {
+  x: number;
+  sway: number;
+  rise: number;
+  size: number;
+  at: number;
+}
+
+/** The wisps, seeded by the seat, so the same player's library dies the same way. */
+export function deckedWisps(seed: string, n = DECKED_WISPS): DeckedWisp[] {
+  const rand = seeded(`wisp:${seed}`);
+  const out: DeckedWisp[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push({
+      x: round3(0.15 + rand() * 0.7),
+      sway: round3((rand() - 0.5) * 0.9),
+      rise: round3(1.4 + rand() * 1.6),
+      size: round3(0.22 + rand() * 0.22),
+      at: round3((i / n) * 0.55),
+    });
+  }
+  return out;
+}
+
+/**
+ * One flung hand card: where it starts across the hand (0..1), the way it
+ * flies (a unit direction; it also falls), how far in board diagonals,
+ * and how much it spins, in degrees.
+ */
+export interface DeckedFling {
+  x: number;
+  dx: number;
+  dy: number;
+  reach: number;
+  spin: number;
+}
+
+/**
+ * The hand's cards, flung outward in every direction (#4879): `n` of them,
+ * capped at DECKED_FLING_CAP, seeded by the seat. Each goes far enough to
+ * leave the board, spinning, and falls a little as it goes.
+ */
+export function deckedFlings(seed: string, n: number): DeckedFling[] {
+  const count = Math.max(0, Math.min(DECKED_FLING_CAP, Math.floor(n)));
+  const rand = seeded(`fling:${seed}`);
+  const out: DeckedFling[] = [];
+  for (let i = 0; i < count; i++) {
+    // Spread round the circle, jittered, so no two go the same way.
+    const angle = ((i + rand() * 0.8) / Math.max(1, count)) * Math.PI * 2;
+    out.push({
+      x: count === 1 ? 0.5 : round3(i / (count - 1)),
+      dx: round3(Math.cos(angle)),
+      dy: round3(Math.sin(angle)),
+      reach: round3(0.75 + rand() * 0.45),
+      spin: Math.round((rand() < 0.5 ? -1 : 1) * (360 + rand() * 540)),
+    });
+  }
+  return out;
+}
+
+function round3(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}

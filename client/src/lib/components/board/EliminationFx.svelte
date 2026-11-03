@@ -12,6 +12,10 @@
   // to three players leaving in a four-player game, and for two leaving in
   // one frame (the second is heard a beat after the first).
   //
+  // A player decked out (a draw from an empty library, CR 704.5b, #4879)
+  // plays player_decked here instead, and no shatter: TableEffects.svelte
+  // draws the library's ghost for them (tableEffects.ts eliminationCue).
+  //
   // Presentation over the board's own state, never waited on (ADR 0209 §1).
   // The frame's log entries are tracked as TableEffects tracks them, so a
   // reconnect, a replay jump or an undo cues nothing already on the wire.
@@ -31,7 +35,14 @@
   import { impactShake } from "../../animations";
   import { play } from "../../sounds";
   import { emptyBeatTracker, track } from "../../combatBeats";
-  import { effectMotion, effectsScheduled, type EffectMotion } from "../../tableEffects";
+  import {
+    deckedSeats,
+    effectMotion,
+    effectsScheduled,
+    eliminationSound,
+    DECKED_CAUSE,
+    type EffectMotion,
+  } from "../../tableEffects";
   import {
     BURST_MS,
     ELIMINATION_STAGGER_MS,
@@ -112,11 +123,13 @@
   }
 
   // One player's departure: the sound, then (when motion is on) the burst.
-  function cue(seatIndex: number, motion: EffectMotion, speed: number): void {
+  function cue(seatIndex: number, motion: EffectMotion, speed: number, decked: boolean): void {
     const seat = view.seats[seatIndex];
     if (!seat) return;
     // Once for this player, however often the frame is seen again.
-    play("player_eliminated", { batch: `${view.id}:out:${seat.id}` });
+    play(eliminationSound(decked ? DECKED_CAUSE : null), { batch: `${view.id}:out:${seat.id}` });
+    // The library's ghost is TableEffects.svelte's; there is no shatter.
+    if (decked) return;
     const visibility = typeof document === "undefined" ? undefined : document.visibilityState;
     if (motion === "still" || !effectsScheduled(visibility)) return;
     const at = avatarBox(seat.id);
@@ -151,6 +164,7 @@
     if (r.primed) clearAll();
     const gone = eliminatedSeats(r.fresh);
     if (gone.length === 0) return;
+    const decked = new Set(deckedSeats(r.fresh));
 
     const s = get(settings);
     const motion = effectMotion({
@@ -163,8 +177,9 @@
     // Two players leaving in one frame are heard apart: play() drops a
     // repeat of one name inside its rate limit.
     gone.forEach((seatIndex, i) => {
-      if (i === 0) cue(seatIndex, motion, speed);
-      else later(() => cue(seatIndex, motion, speed), i * ELIMINATION_STAGGER_MS);
+      const d = decked.has(seatIndex);
+      if (i === 0) cue(seatIndex, motion, speed, d);
+      else later(() => cue(seatIndex, motion, speed, d), i * ELIMINATION_STAGGER_MS);
     });
   }
 
