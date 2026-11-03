@@ -2,15 +2,25 @@ package protocol
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // ManaPoolRun is one run of PlayerView.ManaPool (#3041): Count mana
 // of one colour, adjacent in the pool.
+//
+// Restrictions is the spend restrictions that mana carries
+// (game.ManaRestrict* tags, the same vocabulary as
+// ManaAbilityView.Restrictions): mana an effect added "spend this mana
+// only to cast spells with mana value 4 or greater" (#4694) floats in the
+// pool with them. Omitted for ordinary mana. A run never mixes mana with
+// different restrictions, so a reader that plans a payment (the bot's
+// mana model) can tell what may pay for what.
 type ManaPoolRun struct {
-	Color string `json:"color"`
-	Count int    `json:"count"`
+	Color        string   `json:"color"`
+	Count        int      `json:"count"`
+	Restrictions []string `json:"restrictions,omitempty"`
 }
 
 // UnmarshalJSON also reads the pre-#3041 wire form, one bare symbol
@@ -54,17 +64,21 @@ func ManaPoolOf(colors ...string) []ManaPoolRun {
 }
 
 // manaPoolRunsOf projects an engine pool onto the wire: its runs in
-// order, with adjacent runs of the same colour folded together, since
-// the wire tells mana apart by colour alone. Nil for an empty pool.
-// It costs O(runs), not O(mana).
+// order, with adjacent runs of the same colour and the same spend
+// restrictions folded together, since the wire tells mana apart by those
+// alone. Nil for an empty pool. It costs O(runs), not O(mana).
 func manaPoolRunsOf(pool game.ManaPool) []ManaPoolRun {
 	var out []ManaPoolRun
 	for _, t := range pool {
-		if n := len(out); n > 0 && out[n-1].Color == t.Color {
+		if n := len(out); n > 0 && out[n-1].Color == t.Color && slices.Equal(out[n-1].Restrictions, t.Restrictions) {
 			out[n-1].Count += t.N()
 			continue
 		}
-		out = append(out, ManaPoolRun{Color: t.Color, Count: t.N()})
+		run := ManaPoolRun{Color: t.Color, Count: t.N()}
+		if len(t.Restrictions) > 0 {
+			run.Restrictions = slices.Clone(t.Restrictions)
+		}
+		out = append(out, run)
 	}
 	return out
 }

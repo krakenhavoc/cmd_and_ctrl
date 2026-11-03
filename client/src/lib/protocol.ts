@@ -2575,10 +2575,13 @@ export interface VoteView {
   ballots: Record<string, number>;
 }
 
-// ManaPoolRun is one run of PlayerView.mana_pool (#3041).
+// ManaPoolRun is one run of PlayerView.mana_pool (#3041). restrictions
+// (#4694) is the spend restrictions the run's mana carries, absent for
+// ordinary mana; two runs of one colour may differ only in it.
 export interface ManaPoolRun {
   color: string;
   count: number;
+  restrictions?: string[];
 }
 
 // IgnorableEffectView is one CR 116.2d special action a seat may take

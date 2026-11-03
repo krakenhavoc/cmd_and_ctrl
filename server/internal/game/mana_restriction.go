@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -172,6 +173,34 @@ const (
 	// that does not say whether its cost has {X} refuses it — weaker
 	// than printed, never stronger.
 	ManaRestrictXCost = "cost:has-x"
+)
+
+// ManaRestrictManaValueAtLeast builds "spend this mana only to cast
+// spells with mana value N or greater" (#4694, CR 106.6, CR 202.3):
+// Ashling, Rimebound's ManaRestrictManaValueAtLeast(4). It is a clause
+// about a SPELL, judged on the spell being cast with the mana value it
+// has on the stack: the face being cast (CR 709.3b, CR 712.8c, a
+// transformed spell's front-face cost), both halves of a fused split
+// spell (CR 202.3d), and {X} at the value announced for it (CR 202.3e).
+// It refuses an activation, an unlock, a face-up turn, a payment with no
+// stated purpose, and a cast whose cost the engine cannot read (weaker
+// than printed, never stronger). ManaSpendContext.ManaValue is what it
+// reads.
+func ManaRestrictManaValueAtLeast(n int) string {
+	return manaValueKey + ":" + manaValueAtLeast + strconv.Itoa(n)
+}
+
+// ManaRestrictManaValueAtMost is the other comparison, "spells with mana
+// value N or less", under the same rules as
+// ManaRestrictManaValueAtLeast.
+func ManaRestrictManaValueAtMost(n int) string {
+	return manaValueKey + ":" + manaValueAtMost + strconv.Itoa(n)
+}
+
+const (
+	manaValueKey     = "mv"
+	manaValueAtLeast = ">="
+	manaValueAtMost  = "<="
 )
 
 // noGeneric reports whether a token may not pay generic mana — it
@@ -355,6 +384,24 @@ type ManaSpendContext struct {
 	// every other payment.
 	CostHasX bool
 
+	// ManaValue is the mana value of the spell being cast as it is on
+	// the stack, and ManaValueKnown whether the engine could read its
+	// cost: what ManaRestrictManaValueAtLeast reads (#4694, CR 202.3).
+	// ManaSpendForCast sets both from the face being cast with {X} at 0
+	// (manaCostForValue: a transformed spell's front face, a face-down
+	// spell's 0), and ManaSpendForCastParams counts {X} at the announced
+	// value (CR 202.3e). WithX recounts it for a caller that tries
+	// several X values. Zero and false for every other payment.
+	ManaValue      int
+	ManaValueKnown bool
+
+	// manaValueBase and manaValueXSlots are ManaValue's parts, the value
+	// with {X} at 0 and the number of {X} in the mana cost, kept so WithX
+	// can recount it. Unexported, so a stored context (AssistPrompt.Spend)
+	// keeps only ManaValue, which is settled by then.
+	manaValueBase   int
+	manaValueXSlots int
+
 	// Controller is the controller of the object whose ability is being
 	// paid for (ManaSpendForAbility), and Payer the player paying, which
 	// the any-colour reader fills in before it asks a Covers. Together
@@ -420,6 +467,89 @@ func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 		// #4834: the cost paid is the alternative one.
 		ctx.CostHasX = strings.Contains(alt.ManaCost, "{X}")
 	}
+	// #4694: the spell's mana value on the stack counts the X announced
+	// for it (CR 202.3e). Only an {X} in its MANA cost counts, so an
+	// alternative cost's X changes nothing here.
+	return ctx.WithX(params.XValue)
+}
+
+// WithX is the context with the spell's mana value recounted for {X}
+// announced as x (CR 202.3e), for a caller that weighs several values of
+// X against one context (the legal-move enumerator's affordable-X
+// search). A no-op for any payment that is not a cast, and for a cast
+// whose cost could not be read.
+func (ctx ManaSpendContext) WithX(x int) ManaSpendContext {
+	if ctx.Purpose != SpendPurposeCast || !ctx.ManaValueKnown || x < 0 {
+		return ctx
+	}
+	ctx.ManaValue = ctx.manaValueBase + ctx.manaValueXSlots*x
+	return ctx
+}
+
+// NextManaValueX is the least X at or above `from` at which this cast's
+// mana value first reaches the "N or greater" threshold of a
+// ManaRestrictManaValueAtLeast tag on some mana in `pool` (#4694), and
+// false when there is none: the cast is not an X spell, its mana value
+// is not known, or no floating mana carries such a tag.
+//
+// For an X search that stops at the first X it cannot pay because cost
+// grows with X: mana for a spell with mana value 4 or greater makes that
+// untrue, since {X}{R} at X = 0 can't spend it and at X = 3 can. The
+// search jumps to the X this names and goes on from there. A hint, not a
+// verdict: the X it names is still asked of the payer.
+func (ctx ManaSpendContext) NextManaValueX(pool ManaPool, from int) (int, bool) {
+	if ctx.Purpose != SpendPurposeCast || !ctx.ManaValueKnown || ctx.manaValueXSlots <= 0 {
+		return 0, false
+	}
+	best, ok := 0, false
+	for _, tok := range pool {
+		for _, r := range tok.Restrictions {
+			if !strings.Contains(r, manaValueKey+":") {
+				continue
+			}
+			for _, piece := range strings.FieldsFunc(r, func(c rune) bool { return c == '|' || c == '&' }) {
+				piece = strings.TrimPrefix(strings.TrimPrefix(piece, anyOfPrefix), manaValueKey+":")
+				n, found := strings.CutPrefix(piece, manaValueAtLeast)
+				if !found {
+					continue
+				}
+				v, err := strconv.Atoi(n)
+				if err != nil {
+					continue
+				}
+				// The least X with base + slots*X >= v.
+				need := v - ctx.manaValueBase
+				x := 0
+				if need > 0 {
+					x = (need + ctx.manaValueXSlots - 1) / ctx.manaValueXSlots
+				}
+				if x >= from && (!ok || x < best) {
+					best, ok = x, true
+				}
+			}
+		}
+	}
+	return best, ok
+}
+
+// withCastManaValue stamps the mana value of `c` as a spell with {X} at
+// 0 (CR 202.3e), read through manaCostForValue as every mana-value read
+// is.
+func (ctx ManaSpendContext) withCastManaValue(c Card) ManaSpendContext {
+	return ctx.withManaValueOf(manaCostForValue(c))
+}
+
+// withManaValueOf stamps the mana value of a spell whose mana cost is
+// manaCost, {X} at 0; an unreadable cost leaves it unknown.
+func (ctx ManaSpendContext) withManaValueOf(manaCost string) ManaSpendContext {
+	cost, err := ParseCost(manaCost)
+	if err != nil {
+		return ctx
+	}
+	ctx.ManaValueKnown = true
+	ctx.manaValueBase = cost.ManaValue()
+	ctx.manaValueXSlots = cost.XSlots
+	ctx.ManaValue = ctx.manaValueBase
 	return ctx
 }
 
@@ -438,7 +568,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		wish:             newSpendWish(c),
-	}
+	}.withCastManaValue(c)
 }
 
 // allowsToken reports whether `tok` may be spent in this context: the
@@ -601,6 +731,27 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 		// #1547: "a red instant or sorcery spell". The object's
 		// colours, uppercase WUBRG; a colourless object has none.
 		return containsFold(ctx.Colors, value)
+	case manaValueKey:
+		return ctx.matchesManaValue(value)
+	}
+	return false
+}
+
+// matchesManaValue decides one ManaRestrictManaValueAtLeast /
+// ManaRestrictManaValueAtMost comparison (#4694). A clause about a spell:
+// only a cast whose mana value is known can satisfy it, and a value that
+// does not parse matches nothing.
+func (ctx ManaSpendContext) matchesManaValue(value string) bool {
+	if ctx.Purpose != SpendPurposeCast || !ctx.ManaValueKnown {
+		return false
+	}
+	if n, ok := strings.CutPrefix(value, manaValueAtLeast); ok {
+		v, err := strconv.Atoi(n)
+		return err == nil && ctx.ManaValue >= v
+	}
+	if n, ok := strings.CutPrefix(value, manaValueAtMost); ok {
+		v, err := strconv.Atoi(n)
+		return err == nil && ctx.ManaValue <= v
 	}
 	return false
 }
@@ -724,7 +875,13 @@ func (g *Game) ManaAbilityRestrictionsLocked(controller, source uuid.UUID, a Man
 // §3, #3976). allCreatureTypes is the object's changeling answer
 // (HasAllCreatureTypes). An estimate, not a legality answer: the cast
 // itself is decided by the enumerator, under the cast's own context.
-func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []string, allCreatureTypes bool, fromZone string) bool {
+//
+// manaCost is the cost the spell's mana value is computed from (the face
+// cast, a transformed spell's front face) and x the X announced for it
+// (CR 202.3e), for ManaRestrictManaValueAtLeast (#4694); a cost that
+// does not parse leaves the mana value unknown, which that restriction
+// refuses.
+func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []string, allCreatureTypes bool, fromZone, manaCost string, x int) bool {
 	if len(restrictions) == 0 {
 		return true
 	}
@@ -747,5 +904,5 @@ func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []s
 		AllCreatureTypes: allCreatureTypes,
 		CastFrom:         from,
 	}
-	return ctx.allows(restrictions)
+	return ctx.withManaValueOf(manaCost).WithX(x).allows(restrictions)
 }

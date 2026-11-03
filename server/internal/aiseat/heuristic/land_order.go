@@ -86,7 +86,7 @@ func (p *Policy) landUnlocksSpell(st *state, land *protocol.CardView) (unlocks b
 			continue
 		}
 		cost := parseManaCost(card.ManaCost, 0)
-		cost.admits = st.castAdmits(card, "hand")
+		cost.admits = st.castAdmits(card, "hand", card.ActiveFace, 0)
 		if _, ok := payMana(append([]manaUnit(nil), before...), cost, nil); ok {
 			continue
 		}
