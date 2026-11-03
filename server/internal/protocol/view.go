@@ -3939,6 +3939,12 @@ type CardView struct {
 	// the thing #429 spent a PR deleting.
 	Restrictions []string `json:"restrictions,omitempty"`
 
+	// CantHaveCounters is true for a permanent that can't have counters
+	// put on it (Blossombind's enchanted creature, #4692, CR 101.2). The
+	// engine refuses every placement, counter cost and proliferate choice
+	// on it; the client shows the chip. Public; battlefield only.
+	CantHaveCounters bool `json:"cant_have_counters,omitempty"`
+
 	// AttackTargetRestrictions are this creature's CR 508.1c
 	// restrictions on WHOM it may attack (ADR 0106 §2, #1794), with
 	// the player each names already resolved: Xantcha's "can't attack
@@ -12349,6 +12355,8 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
+		// #4692: only a battlefield static writes it.
+		CantHaveCounters: eff.CantHaveCounters,
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
 		AttackTargetRestrictions: viewOfAttackTargetRestrictions(c, eff),
 		// #781. Straight off the card, with no zone gate and no

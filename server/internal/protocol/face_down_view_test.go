@@ -54,6 +54,10 @@ var redactedCardKeys = map[string]bool{
 	// ADR 0187 §4: "assigns no combat damage this turn", a bit like the
 	// regeneration mark above.
 	"assigns_no_combat_damage": true,
+	// #4692: "can't have counters put on it" is a bit another permanent
+	// (Blossombind) puts there in front of the table, and says nothing
+	// about which card it is.
+	"cant_have_counters": true,
 	// ADR 0109 §1: a resolved effect's land-type change names the
 	// effect's source and its duration, facts about the object and not
 	// about which card it is (and a face-down permanent is no land).
@@ -355,6 +359,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Purpose:      &PurposeView{Draws: 2},
 		Abilities:    []string{"flying"},
 		Restrictions: []string{"cant_block"},
+		// #4692: public, see redactedCardKeys.
+		CantHaveCounters: true,
 		// ADR 0106 §2: redacted with Restrictions.
 		AttackTargetRestrictions: []AttackTargetRestrictionView{{Player: "p-owner", Planeswalkers: true, Source: "Xantcha, Sleeper Agent"}},
 		// ADR 0083. Public on a token the viewer can see, and a token

@@ -4970,6 +4970,9 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
 		return ErrInsufficientLoyalty
 	}
+	if delta > 0 && g.cantHaveCountersLocked(pw) {
+		return ErrCantPayCounterCost // #4692, CR 118.3
+	}
 	// payCostCounterLocked (counter_cost.go): a loyalty ability's
 	// counter change is a COST (CR 606.4), not an effect, so a
 	// replacement that names "an effect" (Doubling Season) still does
@@ -11334,6 +11337,11 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 		if z.Cards[i].InstanceID == cardID {
 			// #1824: a counter that can't be removed stays put.
 			if delta < 0 && g.counterRemovalLockedLocked(&z.Cards[i], name) {
+				return nil
+			}
+			// #4692: and one can't be put on a permanent that can't have
+			// counters put on it (cant_have_counters.go).
+			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCountersLocked(&z.Cards[i]) {
 				return nil
 			}
 			hadCounters := len(z.Cards[i].Counters) > 0

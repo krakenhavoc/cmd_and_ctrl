@@ -313,6 +313,13 @@ type Characteristic struct {
 	// leaves it where it is (CR 101.2).
 	CantBeSacrificed bool `json:",omitempty"`
 
+	// CantHaveCounters is "can't have counters put on it" (Blossombind's
+	// enchanted creature, #4692, CR 101.2). Written by an ordinary layer-6
+	// static of the restricting permanent, so this permanent losing its
+	// abilities does not lift it; every counter placement, cost and
+	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
+	CantHaveCounters bool `json:",omitempty"`
+
 	// CantTransform is "this permanent can't transform" (CR 101.2):
 	// Immerwolf's "Non-Human Werewolves you control can't transform"
 	// (ADR 0132 amendment 2026-10-16, #4071). Written by an ordinary
