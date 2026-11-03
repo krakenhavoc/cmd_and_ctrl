@@ -901,12 +901,21 @@ export function countersRemovedOf(
 // openWalk builds the state for the FIRST step of a walk. Extra
 // fields (choices, ability, modes, choiceID …) ride through
 // untouched.
+//
+// #4767: like `advance`, it skips a leading clause that may be left
+// empty and has nothing legal to pick (Meager Meal's "up to one target
+// creature" on a table with no creatures). When every step is like that
+// the walk still opens on the first, so there is a Done to press.
 export function openWalk(
   card: CardView,
   steps: TargetStep[],
   extra: Partial<TargetingState>,
 ): TargetingState {
-  const first = steps[0];
+  const at = Math.max(
+    0,
+    steps.findIndex((s) => !skippable(s)),
+  );
+  const first = steps[at];
   return {
     card,
     mode: first.mode,
@@ -916,7 +925,7 @@ export function openWalk(
     max: first.max,
     picked: [],
     steps,
-    step: 0,
+    step: at,
     done: [],
     different: first.different,
     same: first.same,
@@ -952,16 +961,7 @@ export function allPicks(t: TargetingState): TargetRef[] {
 export function advance(t: TargetingState): TargetingState | null {
   const done = allPicks(t);
   let next = t.step + 1;
-  while (next < t.steps.length) {
-    const s = t.steps[next];
-    const legal = pruneRelation(s, done);
-    const n = (legal?.players.size ?? 0) + (legal?.cards.size ?? 0);
-    if (n === 0 && s.min === 0) {
-      next++;
-      continue;
-    }
-    break;
-  }
+  while (next < t.steps.length && skippable(t.steps[next], done)) next++;
   if (next >= t.steps.length) return null;
   const s = t.steps[next];
   return {
@@ -981,6 +981,14 @@ export function advance(t: TargetingState): TargetingState | null {
     divideUpTo: s.divideUpTo,
     divideFromXUnresolved: s.divideFromXUnresolved,
   };
+}
+
+// skippable reports whether a step has nothing to ask: it may be left
+// empty and, after the picks so far, nothing is legal for it.
+function skippable(s: TargetStep, done: TargetRef[] = []): boolean {
+  const legal = pruneRelation(s, done);
+  const n = (legal?.players.size ?? 0) + (legal?.cards.size ?? 0);
+  return n === 0 && s.min === 0;
 }
 
 function pruneRelation(s: TargetStep, done: TargetRef[]): TargetStep["legal"] {

@@ -122,12 +122,14 @@ describe("the walk with the first clause left empty (#4497)", () => {
     expect(allPicks(last)).toEqual([{ kind: "player", id: BOB, mode: 0, slot: 1 }]);
   });
 
-  it("asks the empty clause even with no creature to choose, and still stamps slot 1", () => {
+  it("skips the empty clause with no creature to choose, and still stamps slot 1 (#4767)", () => {
     startMeal([]);
     const first = get(targeting)!;
-    expect(first.legal?.cards.size).toBe(0);
-    expect(canConfirm(first)).toBe(true);
-    const last = { ...advance(first)!, picked: [{ kind: "player" as const, id: ME }] };
+    expect(first.step).toBe(1);
+    expect(first.label).toBe("target player");
+    expect(first.done).toEqual([]);
+    const last = { ...first, picked: [{ kind: "player" as const, id: ME }] };
+    expect(advance(last)).toBeNull();
     expect(allPicks(last)).toEqual([{ kind: "player", id: ME, mode: 0, slot: 1 }]);
   });
 
@@ -244,6 +246,30 @@ describe("on the Board, Done on the empty clause then a player (#4497)", () => {
     expect(get(targeting)?.label).toBe("target player");
 
     t.prompt();
+    click(t.button("Target Bob")!);
+    expect(t.sent).toEqual([
+      {
+        type: "cast_spell",
+        params: {
+          instance_id: "gollum",
+          targets: [{ kind: "player", id: BOB, mode: 0, slot: 1 }],
+          face: 1,
+        },
+      },
+    ]);
+    expect(get(targeting)).toBeNull();
+  });
+});
+
+describe("on the Board with no creature on the table (#4767)", () => {
+  it("opens the walk on the player clause and casts with the player at slot 1", () => {
+    const t = mountTable();
+    startMeal([]);
+    flushSync();
+
+    t.prompt();
+    expect(get(targeting)?.label).toBe("target player");
+    expect(t.button("Target Bob")).toBeDefined();
     click(t.button("Target Bob")!);
     expect(t.sent).toEqual([
       {
