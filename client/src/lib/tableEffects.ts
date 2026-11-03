@@ -1,10 +1,10 @@
 // tableEffects — the generic effect cues (ADR 0209 §1 and §3, #4396).
 //
 // A permanent that is destroyed, exiled, sacrificed or bounced, a spell
-// that is countered, a planeswalker that arrives or goes, and a board
-// wipe each get one cue over the table, so a player sees what happened
-// before they read the log. TableEffects.svelte measures, draws and
-// plays; every rule is here, pure and unit-tested:
+// that is countered, a planeswalker that arrives or goes, a token that is
+// created (#4441) and a board wipe each get one cue over the table, so a
+// player sees what happened before they read the log. TableEffects.svelte
+// measures, draws and plays; every rule is here, pure and unit-tested:
 //
 //   - which log entries are new (the combat beats' watermark, reused:
 //     the first frame primes, a rewind forgets, a re-prime cancels);
@@ -104,14 +104,17 @@ export type EffectKind =
   | "bounce"
   | "counter"
   | "pw_enter"
-  | "pw_leave";
+  | "pw_leave"
+  // S80 (#4441 on): the common moments.
+  | "token_create";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
  * the first build's (#4416: "so you can see it"). A sacrifice is longer
  * again, because it is now an altar, a knife and then the destroy; a
  * counterspell holds its cracks while the stack linger shows the spell;
- * a planeswalker that dies now also withdraws from the plane.
+ * a planeswalker that dies now also withdraws from the plane. The S80
+ * cues are their issues' own lengths: a token's pop-in is about 0.4 s.
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -123,6 +126,7 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   counter: 1600,
   pw_enter: 1200,
   pw_leave: 1500,
+  token_create: 400,
 };
 
 /**
@@ -144,7 +148,16 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   counter: "counter",
   pw_enter: "pw_enter",
   pw_leave: "pw_leave",
+  token_create: "token_create",
 };
+
+/**
+ * Tokens created together (#4441): one sound for the batch, and the
+ * pop-ins a stagger apart, spread over TOKEN_SPREAD_MS at most, so the
+ * whole batch fits even the Short cap (EFFECT_SHORT_CAP_MS) before speed.
+ */
+export const TOKEN_STAGGER_MS = 90;
+export const TOKEN_SPREAD_MS = 600;
 
 /**
  * A sacrifice's second sound, as its knife lands (#4416). Silent until
@@ -188,8 +201,14 @@ export interface EffectCue {
   batch: number | null;
   /** "light" inside a board wipe: shorter, no flourish, a quieter sound. */
   weight: "full" | "light";
-  /** Start offset at speed 1 (a wipe staggers its per-card cues). */
+  /** Start offset at speed 1 (a wipe staggers its per-card cues, a token batch its pop-ins). */
   delayMs: number;
+  /**
+   * A later cue of a batch an earlier cue already announces (the second
+   * and later tokens created together, #4441): it plays no sound of its
+   * own and does not count again toward a busy table.
+   */
+  follows?: boolean;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -290,12 +309,20 @@ export function planEffects(
   const exits = new Map<string, Exit>();
   const order: Exit[] = [];
   const cues: EffectCue[] = [];
+  const tokens: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
       continue;
     }
     if (!freshSeqs.has(e.seq)) continue;
+
+    // A token arrives from no zone: the engine logs its creation as a
+    // `token` entry, never a `zone` one as well (#762).
+    if (e.kind === "token") {
+      tokens.push(e);
+      continue;
+    }
 
     if (e.kind === "counter") {
       const item = e.stack_item_id ?? e.target ?? null;
@@ -385,8 +412,44 @@ export function planEffects(
     if (kind === "exile" && x.zone?.cause === "destroy") cue.fromDestroy = true;
     cues.push(cue);
   }
+  cues.push(...tokenCues(tokens));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
+}
+
+/**
+ * tokenCues gives each created token its pop-in (#4441). Tokens created
+ * in one batch are one moment: the first plays the sound and the rest
+ * follow it, a stagger apart, in log order. A token with no batch is a
+ * moment of its own.
+ */
+function tokenCues(tokens: readonly LogEvent[]): EffectCue[] {
+  const groups = new Map<string, LogEvent[]>();
+  for (const e of tokens) {
+    const k = e.batch === undefined || e.batch === null ? `q${e.seq}` : String(e.batch);
+    const g = groups.get(k);
+    if (g) g.push(e);
+    else groups.set(k, [e]);
+  }
+  const out: EffectCue[] = [];
+  for (const [, g] of groups) {
+    const stagger = Math.min(TOKEN_STAGGER_MS, TOKEN_SPREAD_MS / Math.max(1, g.length - 1));
+    g.forEach((e, i) => {
+      const cue: EffectCue = {
+        id: String(e.seq),
+        seq: e.seq,
+        kind: "token_create",
+        cardID: e.card_id ?? null,
+        stackItemID: null,
+        batch: e.batch ?? null,
+        weight: "full",
+        delayMs: i * stagger,
+      };
+      if (i > 0) cue.follows = true;
+      out.push(cue);
+    });
+  }
+  return out;
 }
 
 function toneOf(g: readonly Exit[], ctx: PlanContext): WipeTone {
@@ -425,11 +488,15 @@ export function soundBatch(gameID: string, batch: number | null): string | undef
   return batch === null ? undefined : `${gameID}:${batch}`;
 }
 
-/** The sound a cue plays, and its volume hint (a wipe's per-card sounds are quieter). */
-export function cueSound(cue: Pick<EffectCue, "kind" | "weight">): {
+/**
+ * The sound a cue plays, and its volume hint (a wipe's per-card sounds are
+ * quieter). A cue that follows another of its batch has none of its own.
+ */
+export function cueSound(cue: Pick<EffectCue, "kind" | "weight" | "follows">): {
   name: SoundName;
   volume: number;
 } | null {
+  if (cue.follows) return null;
   const name = EFFECT_SOUND[cue.kind];
   if (!name) return null;
   return { name, volume: cue.weight === "light" ? WIPE_CARD_VOLUME : 1 };
@@ -840,7 +907,9 @@ function wipeScale(motion: EffectMotion): number {
  * how long it runs, both in real milliseconds, scaled by animations.speed.
  * A cue inside a wipe waits for the sweep and is lighter; the cap holds
  * for the whole wipe, so delay plus length never passes the cap (before
- * speed). A still cue starts at once and is the badge's hold.
+ * speed). A full cue keeps its own stagger (a token batch's pop-ins,
+ * which fit the Short cap whole). A still cue starts at once and is the
+ * badge's hold.
  */
 export function cueTiming(
   cue: Pick<EffectCue, "kind" | "weight" | "delayMs">,
@@ -856,7 +925,7 @@ export function cueTiming(
       ms: Math.max(1, Math.min(EFFECT_BASE_MS[cue.kind], WIPE_CARD_MS) * k * s),
     };
   }
-  return { delayMs: 0, ms: cueMs(EFFECT_BASE_MS[cue.kind], motion, speed) };
+  return { delayMs: cue.delayMs * s, ms: cueMs(EFFECT_BASE_MS[cue.kind], motion, speed) };
 }
 
 /**
@@ -895,10 +964,15 @@ export function busyScale(n: number): number {
 /**
  * headlines is how many cues a plan adds to a busy table: each cue of
  * its own, each board wipe and each signature. A wipe's per-card cues
- * are not counted: the wipe already fits them inside its cap.
+ * are not counted: the wipe already fits them inside its cap. Nor is a
+ * cue that follows another of its batch: tokens created together count once.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
-  return plan.cues.filter((c) => c.weight === "full").length + plan.wipes.length + signatures;
+  return (
+    plan.cues.filter((c) => c.weight === "full" && !c.follows).length +
+    plan.wipes.length +
+    signatures
+  );
 }
 
 /**

@@ -2,10 +2,10 @@
   // TableEffects — the generic effect cues (ADR 0209 §1 and §3, #4396).
   //
   // When a permanent is destroyed, exiled, sacrificed or bounced, a spell
-  // is countered, a planeswalker arrives or goes, or a board wipe clears
-  // three or more permanents at once, this layer draws one cue over the
-  // table and plays its sound, so a player sees what happened before they
-  // read the log. The board already shows the frame's end state: this is
+  // is countered, a planeswalker arrives or goes, a token is created, or a
+  // board wipe clears three or more permanents at once, this layer draws
+  // one cue over the table and plays its sound, so a player sees what
+  // happened before they read the log. The board already shows the frame's end state: this is
   // presentation over it, and nothing waits for it (ADR 0209 §1: no input,
   // priority pass or bot seat ever does).
   //
@@ -15,6 +15,10 @@
   // The copy is mounted the moment the frame arrives, so the card never
   // blinks out; a board wipe's per-card cues hold the copy still until
   // the sweep reaches them.
+  //
+  // A created token (#4441) is the exception: it is on the board, so its
+  // pop-in moves its own tile (effectCueMotion.ts tokenPop, presentation
+  // only, cancelled with the cue) and this layer adds the glow over it.
   //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
@@ -86,7 +90,7 @@
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { cueMotion } from "../../effectCueMotion";
+  import { cueMotion, tokenPop } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -324,6 +328,9 @@
     counter: null,
     pw_enter: L.effectBadgePwEnter,
     pw_leave: L.effectBadgePwLeave,
+    // The token itself is the news: it is on the board, and the log says
+    // who made it. Still, it draws nothing, and its sound plays.
+    token_create: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -392,6 +399,10 @@
     }
     const cardID = cue.cardID;
     if (!cardID) return;
+    if (cue.kind === "token_create") {
+      placeToken(cardID, base, motion, b);
+      return;
+    }
     // A planeswalker that just entered is still in its entrance pop (the
     // tile is scaled down and fading in), so its box is read once that
     // has settled, not when the frame arrives. A leaver is drawn at once
@@ -448,6 +459,32 @@
       f.pull = spiralPath({ x: where.box.x, y: where.box.y }, { x: b.size.w / 2, y: b.size.h / 2 });
     }
     add(f);
+  }
+
+  // A created token's glow, over its live tile (#4441), mounted at once so
+  // the pop starts with the frame. The tile is mid-way through its own
+  // entrance pop, which scales its box about its centre, so the centre is
+  // read from the box and the size from the layout, which no transform
+  // changes. A token already gone, or a still cue, draws nothing.
+  function placeToken(
+    cardID: string,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(cardID)) return;
+    const el = findCardAnchor(boardEl, cardID, { accept: hasSize });
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const tapped = el.dataset.tapped === "true";
+    add({
+      ...base,
+      x: r.left + r.width / 2 - b.rect.left,
+      y: r.top + r.height / 2 - b.rect.top,
+      width: el.offsetWidth || (tapped ? r.height : r.width),
+      height: el.offsetHeight || (tapped ? r.width : r.height),
+      rot: tapped ? 90 : 0,
+    });
   }
 
   function frame(log: GameView["log"]): void {
@@ -781,6 +818,18 @@
           delay: f.delay,
         });
       }
+    } else if (f.kind === "token_create") {
+      // The token's own tile pops in; only this run is cancelled with
+      // the cue, never another animation on the tile.
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: hasSize }) : null;
+      const pop = tile ? tokenPop(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          pop?.cancel();
+          cancelTree(node);
+        },
+      };
     } else {
       cueMotion(node, f);
     }
@@ -993,6 +1042,24 @@
             <path class="palm-crease" d={PALM_CREASE} />
           </svg>
         </div>
+      </div>
+    {:else if f.kind === "token_create"}
+      <!-- #4441: a soft glow over the new token as its tile pops in. -->
+      <div
+        class="fx m"
+        data-effect="token_create"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="tglow"
+          style:width={`${f.width * 1.6}px`}
+          style:height={`${f.height * 1.4}px`}
+          style:--fx-rot={`${f.rot}deg`}
+        ></div>
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -1607,6 +1674,25 @@
     border-radius: 12px;
     border: 2px solid color-mix(in srgb, var(--accent) 70%, #fff);
     box-shadow: 0 0 22px 4px color-mix(in srgb, var(--accent) 70%, transparent);
+    opacity: 0;
+  }
+
+  /* A token that is created (#4441): a soft, warm shimmer over the card,
+     screened so the art shows through it. */
+  .tglow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    rotate: var(--fx-rot, 0deg);
+    border-radius: 18px;
+    background: radial-gradient(
+      ellipse,
+      rgba(255, 250, 232, 0.75) 0%,
+      color-mix(in srgb, var(--accent) 35%, rgba(255, 236, 190, 0.45)) 38%,
+      transparent 70%
+    );
+    mix-blend-mode: screen;
     opacity: 0;
   }
 

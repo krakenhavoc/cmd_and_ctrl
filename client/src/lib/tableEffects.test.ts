@@ -25,6 +25,8 @@ import {
   WIPE_VORTEX_MS,
   SACRIFICE_KNIFE_SOUND,
   SHATTER_BREAK,
+  TOKEN_SPREAD_MS,
+  TOKEN_STAGGER_MS,
   busyScale,
   counterBurst,
   cueMs,
@@ -212,6 +214,82 @@ describe("cue selection", () => {
   });
 });
 
+describe("a token is created (#4441)", () => {
+  // The engine logs a created token as a `token` entry (it came from no
+  // zone, so there is no `zone` entry for it), with its batch.
+  const token = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "token",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    text: "",
+    ...extra,
+  });
+
+  it("is a token_create cue on the token, with its own sound", () => {
+    const p = plan([token("t1", { batch: 7 })]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.batch])).toEqual([["token_create", "t1", 7]]);
+    expect(p.wipes).toEqual([]);
+    expect(EFFECT_SOUND.token_create).toBe("token_create");
+    expect(cueSound(p.cues[0])).toEqual({ name: "token_create", volume: 1 });
+    expect(EFFECT_BASE_MS.token_create).toBe(400);
+  });
+
+  it("a batch of tokens is one sound, with the pop-ins a stagger apart", () => {
+    const p = plan([
+      token("t1", { batch: 7 }),
+      token("t2", { batch: 7 }),
+      token("t3", { batch: 7 }),
+    ]);
+    expect(p.cues.map((q) => q.delayMs)).toEqual([0, TOKEN_STAGGER_MS, 2 * TOKEN_STAGGER_MS]);
+    expect(p.cues.map((q) => q.follows === true)).toEqual([false, true, true]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["token_create", null, null]);
+    // Every pop-in is a full cue, not a wipe's lighter one.
+    for (const q of p.cues) expect(q.weight).toBe("full");
+    // And the batch is one moment on a busy table.
+    expect(headlines(p)).toBe(1);
+  });
+
+  it("two batches are two moments, each with its sound", () => {
+    const p = plan([token("t1", { batch: 7 }), token("t2", { batch: 8 })]);
+    expect(p.cues.map((q) => q.delayMs)).toEqual([0, 0]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["token_create", "token_create"]);
+    expect(headlines(p)).toBe(2);
+  });
+
+  it("a big batch spreads its pop-ins over TOKEN_SPREAD_MS at most", () => {
+    const p = plan(Array.from({ length: 20 }, (_, i) => token(`t${i}`, { batch: 9 })));
+    const delays = p.cues.map((q) => q.delayMs);
+    for (let i = 1; i < delays.length; i++) expect(delays[i]).toBeGreaterThan(delays[i - 1]);
+    expect(delays.at(-1)).toBeCloseTo(TOKEN_SPREAD_MS, 6);
+  });
+
+  it("keeps its stagger in its timing, and the whole batch fits the cap in every mode", () => {
+    const p = plan(Array.from({ length: 20 }, (_, i) => token(`t${i}`, { batch: 9 })));
+    const last = p.cues.at(-1)!;
+    for (const speed of [0.5, 1, 2]) {
+      for (const mode of ["full", "short"] as EffectMotion[]) {
+        const t = cueTiming(last, mode, speed);
+        expect(t.delayMs).toBeCloseTo(TOKEN_SPREAD_MS * speed, 6);
+        expect(t.ms).toBeCloseTo(EFFECT_BASE_MS.token_create * speed, 6);
+        const cap = (mode === "short" ? EFFECT_SHORT_CAP_MS : EFFECT_CAP_MS) * speed;
+        expect(t.delayMs + t.ms).toBeLessThanOrEqual(cap + 1e-6);
+      }
+    }
+    // Still: no motion, no wait.
+    expect(cueTiming(last, "still", 1)).toEqual({ delayMs: 0, ms: EFFECT_STILL_HOLD_MS });
+  });
+
+  it("is not an exit, and a token's later death is its own cue", () => {
+    const k = kinds([
+      token("t1", { batch: 3 }),
+      zone("t1", "graveyard", { cause: "sba", batch: 4 }),
+    ]);
+    expect(k).toEqual(["token_create", "dies"]);
+  });
+});
+
 describe("board wipes", () => {
   const wipe = (n: number, over: Partial<LogEvent> = {}, newZone = "graveyard") =>
     Array.from({ length: n }, (_, i) =>
@@ -285,13 +363,24 @@ describe("board wipes", () => {
 });
 
 describe("the sound", () => {
-  it("each cue's sound is an effects-category manifest entry with takes", () => {
+  it("each cue's sound is an effects-category manifest entry, with takes once its files land", () => {
     for (const k of Object.keys(EFFECT_SOUND) as EffectKind[]) {
       const name = EFFECT_SOUND[k];
       if (!name) continue;
       expect(SOUND_CATEGORY[name]).toBe("effects");
-      expect(SOUND_MANIFEST[name].length).toBeGreaterThan(0);
     }
+    // The ADR 0209 §3 cues have their files. A later cue may have none
+    // yet; sounds.test.ts holds each of those to its NOT_MADE_YET list.
+    const made: EffectKind[] = [
+      "destroy",
+      "exile",
+      "sacrifice",
+      "bounce",
+      "counter",
+      "pw_enter",
+      "pw_leave",
+    ];
+    for (const k of made) expect(SOUND_MANIFEST[EFFECT_SOUND[k]!].length).toBeGreaterThan(0);
     expect(SOUND_CATEGORY.board_wipe).toBe("effects");
     // A sacrifice's knife (#4416) is one too.
     expect(SOUND_CATEGORY[SACRIFICE_KNIFE_SOUND]).toBe("effects");
@@ -368,8 +457,9 @@ describe("length caps", () => {
   it("every cue is about 1.25 to 1.5 times the first build's length (#4416)", () => {
     // The first build's lengths. A sacrifice gained an altar and a knife
     // and a counterspell holds its cracks for the stack linger, so they
-    // may run longer; none may run shorter.
-    const first: Record<EffectKind, number> = {
+    // may run longer; none may run shorter. The S80 cues (#4441 on) were
+    // not in the first build: their issues give their lengths.
+    const first: Partial<Record<EffectKind, number>> = {
       destroy: 900,
       exile: 1100,
       dies: 420,
@@ -379,8 +469,8 @@ describe("length caps", () => {
       pw_enter: 900,
       pw_leave: 900,
     };
-    for (const k of allKinds) {
-      const r = EFFECT_BASE_MS[k] / first[k];
+    for (const k of Object.keys(first) as EffectKind[]) {
+      const r = EFFECT_BASE_MS[k] / first[k]!;
       expect(r).toBeGreaterThanOrEqual(1.25);
       if (k !== "sacrifice" && k !== "counter" && k !== "pw_leave") {
         expect(r).toBeLessThanOrEqual(1.5);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // ADR 0209 §1 and §3 (#4396, #4416), the rendered half: a battlefield
-// exit, a counterspell, a planeswalker and a board wipe each draw their cue
+// exit, a counterspell, a planeswalker, a created token (#4441) and a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -37,6 +37,7 @@ import {
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
   EFFECT_STILL_HOLD_MS,
+  TOKEN_STAGGER_MS,
   WIPE_FIRST_CARD_MS,
   busyScale,
   shatterPlan,
@@ -453,6 +454,121 @@ describe("the effects layer", () => {
     for (const c of cards) expect(c.querySelector(".void")).toBeNull();
     advance(EFFECT_CAP_MS + 200);
     expect(effects()).toHaveLength(0);
+  });
+});
+
+describe("a token is created (#4441)", () => {
+  const TOKENS = ["t1", "t2", "t3"];
+  const tokenEntry = (id: string, batch?: number): LogEvent => ({
+    seq: ++seq,
+    kind: "token",
+    turn: 3,
+    seat: 1,
+    card_id: id,
+    batch,
+    text: "",
+  });
+  const tile = (board: HTMLElement, id: string) =>
+    board.querySelector<HTMLElement>(`[data-instance-id="${id}"]`)!;
+  const tokenSounds = () => vi.mocked(playSound).mock.calls.filter(([n]) => n === "token_create");
+  // The pop-in run on a token's own tile, if one was started.
+  const popOf = (el: HTMLElement) => vi.mocked(run).mock.calls.find((c) => c[0] === el);
+
+  // A board where "a" stood before the frame and the tokens are new in it.
+  function create(log: LogEvent[], made = TOKENS) {
+    const board = makeBoard(["a", ...TOKENS]);
+    const a = permanent("a", "opp");
+    const r = render(TableEffects as never, { view: viewWith([], [a]), boardEl: board } as never);
+    advance(50);
+    const tokens = made.map((id) => permanent(id, "opp", { is_token: true }));
+    r.setProps({ view: viewWith(log, [a, ...tokens]) } as never);
+    flushSync();
+    return { r, board };
+  }
+
+  it("pops each token of a batch in, a stagger apart, with one sound for the batch", () => {
+    const { board } = create(TOKENS.map((id) => tokenEntry(id, 7)));
+    // A glow over each new token, at its tile's centre (t1: 200 + 40, 300 + 56).
+    const cues = effects("token_create");
+    expect(cues.map((c) => c.getAttribute("data-effect-card"))).toEqual(TOKENS);
+    expect(cues[0].style.left).toBe("240px");
+    expect(cues[0].style.top).toBe("356px");
+    for (const c of cues) expect(c.querySelector(".tglow")).toBeTruthy();
+    // Each token's own tile pops in from about 80%, hidden until its turn.
+    const pops = TOKENS.map((id) => popOf(tile(board, id)));
+    for (const p of pops) {
+      expect(p).toBeTruthy();
+      const first = p![1][0] as Record<string, unknown>;
+      expect(first.scale).toBe("0.8");
+      expect(first.opacity).toBe(0);
+      expect(p![2].fill).toBe("backwards");
+      expect(p![2].duration).toBeCloseTo(EFFECT_BASE_MS.token_create, 6);
+    }
+    expect(pops.map((p) => p![2].delay)).toEqual([0, TOKEN_STAGGER_MS, 2 * TOKEN_STAGGER_MS]);
+    // One sound for the batch, at once, however many tokens it made.
+    expect(tokenSounds()).toEqual([["token_create", { volume: 1, batch: "g1:7" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(tokenSounds()).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("two batches in one frame are two sounds", () => {
+    create([tokenEntry("t1", 7), tokenEntry("t2", 8)], ["t1", "t2"]);
+    expect(effects("token_create")).toHaveLength(2);
+    expect(tokenSounds().map((c) => c[1]?.batch)).toEqual(["g1:7", "g1:8"]);
+  });
+
+  it("Short plays the same small pop, and speed scales it and its stagger", () => {
+    updateSettings("animations", "effects", "short");
+    updateSettings("animations", "speed", 2);
+    const { board } = create(TOKENS.map((id) => tokenEntry(id, 7)));
+    const last = popOf(tile(board, "t3"))!;
+    expect(last[2].delay).toBeCloseTo(2 * TOKEN_STAGGER_MS * 2, 6);
+    expect(last[2].duration).toBeCloseTo(EFFECT_BASE_MS.token_create * 2, 6);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS * 2 + 1e-6);
+  });
+
+  it("still (reduced motion, Off): no pop and no glow, and the sound still plays once", () => {
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      still();
+      create(TOKENS.map((id) => tokenEntry(id, 7)));
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(tokenSounds()).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+    }
+  });
+
+  it("a skip cancels the pop-ins, so every token is at rest", () => {
+    const cancelled: Element[] = [];
+    vi.mocked(run).mockImplementation((el) => ({
+      cancel: () => cancelled.push(el),
+      done: Promise.resolve(true),
+    }));
+    try {
+      const { board } = create(TOKENS.map((id) => tokenEntry(id, 7)));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      flushSync();
+      expect(effects()).toHaveLength(0);
+      for (const id of TOKENS) expect(cancelled).toContain(tile(board, id));
+    } finally {
+      vi.mocked(run).mockImplementation(() => ({ cancel() {}, done: Promise.resolve(true) }));
+    }
+  });
+
+  it("a token already gone draws nothing, and its sound still plays", () => {
+    create([tokenEntry("t1", 7)], []);
+    expect(effects()).toHaveLength(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(tokenSounds()).toHaveLength(1);
   });
 });
 

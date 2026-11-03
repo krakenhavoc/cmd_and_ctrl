@@ -74,6 +74,9 @@ export type SoundName =
   | "board_wipe"
   | "pw_enter"
   | "pw_leave"
+  // S80 cues for common moments (#4441 on), in the effects category. Each
+  // ships silent, with no takes and no fallback, until its file lands.
+  | "token_create"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -131,6 +134,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   board_wipe: "effects",
   pw_enter: "effects",
   pw_leave: "effects",
+  token_create: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -175,6 +179,10 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],
   pw_enter: ["/sounds/pw_enter-1.mp3", "/sounds/pw_enter-2.mp3"],
   pw_leave: ["/sounds/pw_leave-1.mp3"],
+  // #4441: file not made yet, and no fallback, so a token's pop-in is
+  // silent until token_create-1.mp3 (and an optional -2) is listed here
+  // (client/public/sounds/README.md, "Files not made yet").
+  token_create: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

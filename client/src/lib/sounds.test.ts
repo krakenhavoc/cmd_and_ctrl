@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SoundName } from "./sounds";
 
 // sounds.ts keeps module-level state (gains, the missing set, the burst
 // memory), so each test loads a fresh copy of it. The suite runs in Node:
@@ -194,6 +195,38 @@ describe("sounds", () => {
         .flat()
         .filter((u) => !exists(u));
       expect(absent).toEqual([]);
+    });
+
+    // The cues whose files are not made yet (client/public/sounds/README.md,
+    // "Files not made yet"): each lists no takes, so nothing is fetched, and
+    // plays its fallback, or nothing when it has none. The PR that adds a
+    // cue's files lists its takes in the manifest and removes it here.
+    const NOT_MADE_YET: readonly SoundName[] = [
+      "extort", // #4544, falls back to damage
+      "token_create", // #4441, silent
+    ];
+
+    it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
+      const m = await load();
+      const empty = (Object.keys(m.SOUND_MANIFEST) as SoundName[]).filter(
+        (n) => m.SOUND_MANIFEST[n].length === 0,
+      );
+      expect(empty.sort()).toEqual([...NOT_MADE_YET].sort());
+    });
+
+    it("plays nothing for token_create until its file lands, and itself once a take is listed (#4441)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.token_create).toBe("effects");
+      expect(m.SOUND_FALLBACK.token_create).toBeUndefined();
+      m.play("token_create");
+      await settle();
+      expect(played()).toHaveLength(0);
+
+      tick();
+      m.SOUND_MANIFEST.token_create = ["/sounds/token_create-1.mp3"];
+      m.play("token_create");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/token_create-1.mp3");
     });
 
     // #4543: three hit sounds by how much combat damage lands, each its
