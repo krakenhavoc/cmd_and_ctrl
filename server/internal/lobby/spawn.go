@@ -312,7 +312,7 @@ func resolveSpawnTemplate(c Config, body spawnRequest) (tmpl game.Card, name, sc
 // Only a token printing is swapped, so a card that merely shares a
 // name is left alone. A double-faced token printing is matched on its
 // front face, the face it enters with ("Incubator // Phyrexian"). A
-// printing with no template (Junk, Shard) is spawned as before, and the
+// printing with no template (a Role) is spawned as before, and the
 // table is told the engine does not run its text, which is true.
 func predefinedTokenFor(c Config, card cards.Card) (game.Card, bool) {
 	if c.Tokens == nil || !(game.Card{TypeLine: card.TypeLine}).IsToken() {
