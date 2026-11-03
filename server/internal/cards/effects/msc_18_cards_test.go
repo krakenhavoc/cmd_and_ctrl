@@ -508,6 +508,49 @@ func TestMsc18ArchnemesisIgnoresAnAttackOnAnotherPlayer(t *testing.T) {
 	}
 }
 
+// #4839, CR 508.3e: attacking the enchanted player's planeswalker is not
+// attacking the enchanted player.
+func TestMsc18ArchnemesisIgnoresAnAttackOnTheEnchantedPlayersPlaneswalker(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	msc18Library(me, 6)
+	aura := msc18CastArchnemesis(t, g, me, opp.ID)
+	walker := p1g2Planeswalker(g, opp.ID, 5)
+	a := b12Creature(g, me.ID, "Attacker", "Creature — Soldier", 2, 2)
+	life, oppLife, hand := me.Life, opp.Life, me.Hand.Size()
+
+	declareAttack(t, g, walker, a)
+	if n := b784Triggers(g, aura); n != 0 {
+		t.Fatalf("an attack on the enchanted player's planeswalker: %d Archnemesis triggers, want 0", n)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != oppLife || me.Life != life || me.Hand.Size() != hand {
+		t.Errorf("the drain ran: opp %d→%d, me %d→%d, hand %d→%d",
+			oppLife, opp.Life, life, me.Life, hand, me.Hand.Size())
+	}
+}
+
+// #4839, CR 508.3e: a player who attacks only your planeswalker has not
+// attacked you, so the Aura is not offered to them.
+func TestMsc18ArchnemesisDoesNotMoveWhenOnlyYourPlaneswalkerIsAttacked(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	aura := msc18CastArchnemesis(t, g, me, other.ID)
+	walker := p1g2Planeswalker(g, me.ID, 5)
+	for g.Turn.ActiveSeat != 1 {
+		advanceToNextSeatsTurn(t, g)
+	}
+	their := b12Creature(g, opp.ID, "Their Attacker", "Creature — Soldier", 2, 2)
+	declareAttack(t, g, walker, their)
+	if n := b784Triggers(g, aura); n != 0 {
+		t.Fatalf("an attack on your planeswalker: %d Archnemesis triggers, want 0", n)
+	}
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, aura); c.AttachedTo.ID != other.ID {
+		t.Errorf("attached to %+v, want it to stay on %s", c.AttachedTo, other.ID)
+	}
+}
+
 func TestMsc18ArchnemesisMovesToAPlayerWhoAttacksYou(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]

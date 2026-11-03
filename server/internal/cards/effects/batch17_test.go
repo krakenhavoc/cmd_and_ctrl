@@ -1088,6 +1088,38 @@ func TestB17BreenaTriggersOncePerOpponentAttacked(t *testing.T) {
 	}
 }
 
+// #4839, CR 508.3e: attacking an opponent's planeswalker is not attacking
+// that opponent. A creature at the planeswalker alone does not trigger
+// Breena; one at the planeswalker and one at the player is one trigger,
+// so the planeswalker attack did not spend the once-per-opponent slot.
+func TestB17BreenaIgnoresAnAttackOnAnOpponentsPlaneswalker(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, other, third := g.Seats[0], g.Seats[1], g.Seats[2], g.Seats[3]
+	breena := b12Push(g, me.ID, "Breena, the Demagogue", "Legendary Creature — Bird Warlock", b17BreenaOracle, 1, 3)
+	walker := p1g2Planeswalker(g, other.ID, 5)
+	a := b16Creature(g, opp.ID, "Raider A", "Creature — Human", 2, 2, "R")
+	b := b16Creature(g, opp.ID, "Raider B", "Creature — Human", 2, 2, "R")
+	// `other` is ahead of `third`, so an attack on `other` would pay.
+	other.Life, third.Life = 40, 30
+	advanceToMainOf(t, g, 1)
+	declareAttack(t, g, walker, a)
+	if n := b784Triggers(g, breena); n != 0 {
+		t.Fatalf("an attack on an opponent's planeswalker alone: %d Breena triggers, want 0", n)
+	}
+
+	advanceToMainOf(t, g, 1)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, at := range []struct{ id, def uuid.UUID }{{a, walker}, {b, other.ID}} {
+		if err := g.DeclareAttacker(at.id, at.def); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	lockInAttacks(t, g)
+	if n := b784Triggers(g, breena); n != 1 {
+		t.Fatalf("one creature at the planeswalker, one at its controller: %d Breena triggers, want 1", n)
+	}
+}
+
 // An additional combat triggers her again for the same opponent: the
 // once-per-combat guard is per combat, and there is no per-turn tally on
 // top of it. Aurelia, the Warleader supplies the extra combat.

@@ -589,6 +589,23 @@ func TestMscM11MBakuDoesNothingWhenTheDefenderIsNotTheMonarch(t *testing.T) {
 	}
 }
 
+// #4839, CR 508.3a: a creature attacking the monarch's planeswalker is not
+// attacking the monarch.
+func TestMscM11MBakuDoesNothingForAnAttackOnTheMonarchsPlaneswalker(t *testing.T) {
+	g, bear := mscM11MBakuAttackBoard(t)
+	opp := g.Seats[1]
+	walker := p1g2Planeswalker(g, opp.ID, 5)
+	mscM11SetMonarch(g, opp.ID)
+	declareAttack(t, g, walker, bear)
+	passPriorityAroundTable(t, g)
+	if got := hobA4Power(t, g, bear); got != 2 {
+		t.Errorf("a creature attacking the monarch's planeswalker has power %d, want 2", got)
+	}
+	if effectiveAbilitiesContain(t, g, bear, "trample") {
+		t.Error("trample was granted to a creature attacking a planeswalker")
+	}
+}
+
 func TestMscM11MBakuDoesNothingWhenAnOpponentAttacksYouWhileYouAreMonarch(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
