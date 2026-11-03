@@ -21,7 +21,8 @@ func init() {
 		OracleID:     "8c04663a-1023-49a5-a0b9-78f24a72fb1e",
 		Name:         "Nature's Way",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // a one-sided fight, as Bite Down (#4734)
+		Purpose: game.Purpose{Answers: game.AnswerRemove, // a one-sided fight, as Bite Down (#4734)
+			Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "vigilance", "trample"))},
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			TargetCreature("target creature you don't control", OpponentControls()),
