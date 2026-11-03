@@ -339,6 +339,8 @@ choose choose-cards/compulsive-research-discard
 choose choose-cards/compulsive-research-last-card
 choose choose-cards/connive-discarded
 choose choose-cards/connive-x-discarded
+choose choose-cards/conspiracy-theorist-draw
+choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
@@ -737,6 +739,7 @@ confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
 confirm confirm/corruption-of-towashi-draw
 confirm confirm/create-tokens
+confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/deadly-complication-unsuspect
 confirm confirm/delifs-cone-gain-life
@@ -940,6 +943,7 @@ option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/demonlord-of-ashmouth-choice
+option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
 option option-pick/development-opponent-round-3
@@ -1049,6 +1053,7 @@ payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/confiscation-coup-gain-control
+payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
 payunless pay-unless/contract-hero-pump
 payunless pay-unless/counter-guarded
@@ -1193,6 +1198,7 @@ run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
+run prompt-run/deadly-brew-return
 run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
 run prompt-run/disciple-of-freyalise-payout
@@ -1820,6 +1826,7 @@ tail then/coin-of-fate-return-others
 tail then/created-gain-keyword-until-eot
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
+tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-consultation-named
