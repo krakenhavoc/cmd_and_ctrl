@@ -23,6 +23,13 @@
   // and tick are drawn over its power/toughness badge, and the tile is
   // left alone.
   //
+  // A commander (#4443) cast from the command zone gets golden light from
+  // where it sat to the spell on the stack (CastFlight flies the card);
+  // one put back into the command zone drifts home as a copy with a soft
+  // trail, from wherever it was, while its card there waits hidden until
+  // the copy lands (effectCueMotion.ts commandArrive, cancelled with the
+  // cue).
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -63,7 +70,15 @@
   import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
   import { settings } from "../../settings";
-  import { cardAnchors, findCardAnchor, findSeatAnchor, hasSize } from "../../boardAnchor";
+  import {
+    cardAnchors,
+    findAnchor,
+    findCardAnchor,
+    findSeatAnchor,
+    hasSize,
+  } from "../../boardAnchor";
+  import { stackItemSelector } from "../../castFlight";
+  import { pileSelector } from "../../stackLinger";
   import { boardExpandLayout } from "../../boardExpand";
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
@@ -112,7 +127,7 @@
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { cueMotion, tokenPop } from "../../effectCueMotion";
+  import { commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -175,6 +190,12 @@
     // Counters put on a permanent (#4442): which kind, so which colour
     // and which way the tick goes.
     counterTone?: CounterTone;
+    // A commander cast or going home (#4443): the size of what it reaches
+    // (the stack item, its command-zone card), the copy's scale there,
+    // and whether it lands on the card itself (else on the owner's seat).
+    dest?: { w: number; h: number };
+    commandScale?: number;
+    landsOnCard?: boolean;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -313,6 +334,7 @@
         h: r.height,
       });
     }
+    measureCommand(b.rect);
     prune();
   }
 
@@ -383,6 +405,10 @@
     token_create: null,
     // So are the counters: the badge already shows the new numbers.
     counters: null,
+    // And a commander (#4443): the spell is on the stack, or the card is
+    // back in its command zone, where the board shows it.
+    commander_cast: null,
+    commander_return: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -458,6 +484,10 @@
     }
     if (cue.kind === "counters") {
       placeCounters(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "commander_cast" || cue.kind === "commander_return") {
+      placeCommander(cue, base, motion, b);
       return;
     }
     // A planeswalker that just entered is still in its entrance pop (the
@@ -583,6 +613,182 @@
     });
   }
 
+  // ---- A commander cast from the command zone, or going home (#4443) ----
+
+  type CmdBox = { x: number; y: number; w: number; h: number };
+
+  // Each commander's last box in its command zone, and whose command zone
+  // it was, so a cast's light starts where it sat once the card has left.
+  // Rebuilt on every measure. Not reactive.
+  const commandBoxes = new Map<string, CmdBox & { owner: string }>();
+
+  // The other motion layers' copies are never where a commander is.
+  const CMD_OVERLAYS =
+    "[data-table-effects], [data-cast-flight-layer], [data-stack-linger-layer], [data-field-motion-layer], [data-stack-arrival-layer]";
+  const cmdLive = (el: HTMLElement) => hasSize(el) && !el.closest(CMD_OVERLAYS);
+
+  function cmdBox(el: HTMLElement, b: DOMRect): CmdBox {
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left + r.width / 2 - b.left,
+      y: r.top + r.height / 2 - b.top,
+      w: r.width,
+      h: r.height,
+    };
+  }
+
+  function measureCommand(b: DOMRect): void {
+    commandBoxes.clear();
+    if (!boardEl) return;
+    for (const s of view.seats ?? []) {
+      for (const c of s.command?.cards ?? []) {
+        const el = findCardAnchor(boardEl, c.instance_id, { accept: cmdLive });
+        if (el) commandBoxes.set(c.instance_id, { ...cmdBox(el, b), owner: s.id });
+      }
+    }
+  }
+
+  // The commander's card in a command zone now, and that zone's seat.
+  function inCommand(id: string): { card: CardView; seat: string } | null {
+    for (const s of view.seats ?? []) {
+      const card = s.command?.cards.find((c) => c.instance_id === id);
+      if (card) return { card, seat: s.id };
+    }
+    return null;
+  }
+
+  function isCommanderNow(id: string): boolean {
+    return inCommand(id)?.card.is_commander === true;
+  }
+
+  function commanderOwner(id: string): string {
+    return (
+      inCommand(id)?.seat ??
+      commandBoxes.get(id)?.owner ??
+      lastViews.get(id)?.owner ??
+      view.stack?.cards.find((c) => c.instance_id === id)?.owner ??
+      ""
+    );
+  }
+
+  function liveBox(selector: string, b: DOMRect): CmdBox | null {
+    if (!boardEl) return null;
+    const el = findAnchor(boardEl, selector, { accept: cmdLive });
+    return el ? cmdBox(el, b) : null;
+  }
+
+  function seatBox(seat: string, b: DOMRect): CmdBox | null {
+    if (!boardEl || !seat) return null;
+    const el = findSeatAnchor(boardEl, seat, { accept: cmdLive });
+    return el ? cmdBox(el, b) : null;
+  }
+
+  // A cast rises from the commander's last command-zone box (else its
+  // owner's seat) to its spell on the stack (else straight up); a return
+  // drifts from where it was to its card in the command zone (else its
+  // owner's seat). One end missing is made up from the other; with
+  // neither, or a still cue, nothing is drawn and the sound plays.
+  function placeCommander(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const id = cue.cardID ?? "";
+    const owner = commanderOwner(id);
+    if (cue.kind === "commander_cast") {
+      let from: CmdBox | null = commandBoxes.get(id) ?? seatBox(owner, b.rect);
+      let to = liveBox(stackItemSelector(id), b.rect);
+      if (!from && !to) return;
+      if (!from && to) from = { x: to.x, y: to.y + to.h, w: to.w * 0.6, h: to.h * 0.6 };
+      if (!from) return;
+      if (!to) {
+        to = {
+          x: from.x,
+          y: from.y - Math.max(120, from.h * 1.5),
+          w: from.w * 1.4,
+          h: from.h * 1.4,
+        };
+      }
+      add({
+        ...base,
+        x: from.x,
+        y: from.y,
+        width: from.w,
+        height: from.h,
+        fly: { x: to.x - from.x, y: to.y - from.y },
+        dest: { w: to.w, h: to.h },
+      });
+      return;
+    }
+
+    // commander_return: where it lands first, so a pile's start can take
+    // the card's size.
+    const cardEl = findCardAnchor(boardEl, id, { accept: cmdLive });
+    const onCard = cardEl !== null && inCommand(id) !== null;
+    let to: CmdBox | null = onCard && cardEl ? cmdBox(cardEl, b.rect) : seatBox(owner, b.rect);
+    let start: { box: CmdBox; width: number; height: number; rot: number } | null = null;
+    const zone = cue.commanderFrom ?? "";
+    if (zone === "battlefield") {
+      const t = cardTile(id, b);
+      if (t) start = { box: t.box, width: t.width, height: t.height, rot: t.rot };
+    } else if (zone === "stack") {
+      const s = stackBoxes.get(id);
+      if (s) start = { box: s, width: s.w, height: s.h, rot: 0 };
+    } else {
+      const pile =
+        zone === "hand"
+          ? liveBox(`[data-hand-owner="${owner.replace(/["\\]/g, "\\$&")}"]`, b.rect)
+          : zone === "graveyard" || zone === "exile" || zone === "library"
+            ? liveBox(pileSelector(zone, owner), b.rect)
+            : null;
+      const p = pile ?? seatBox(owner, b.rect);
+      // A pile or a seat is no card's size: the copy starts at its card's.
+      const w = to && onCard ? to.w : 60;
+      const h = to && onCard ? to.h : 84;
+      if (p) start = { box: p, width: w, height: h, rot: 0 };
+    }
+    if (!start && !to) return;
+    if (!start && to) {
+      start = { box: { ...to, y: to.y - 90 }, width: to.w, height: to.h, rot: 0 };
+    }
+    if (!start) return;
+    if (!to) to = { ...start.box, y: start.box.y - 80, w: start.width, h: start.height };
+    const scale = onCard ? to.w / Math.max(1, start.width) : 0.4;
+    const card = inCommand(id)?.card;
+    add({
+      ...base,
+      x: start.box.x,
+      y: start.box.y,
+      width: start.width,
+      height: start.height,
+      rot: start.rot,
+      src: (card ? cardImageURL(card, "small") : null) ?? imageFor(id),
+      fly: { x: to.x - start.box.x, y: to.y - start.box.y },
+      dest: { w: to.w, h: to.h },
+      commandScale: Math.min(3, Math.max(0.2, scale)),
+      landsOnCard: onCard,
+    });
+  }
+
+  // The commander's own card in the command zone, which waits hidden for
+  // its copy to land (#4443).
+  function commandCardOf(f: Fx): HTMLElement | null {
+    if (!f.landsOnCard || !boardEl) return null;
+    return findCardAnchor(boardEl, f.cardID, { accept: cmdLive });
+  }
+
+  // A beam or a trail from a cue's start to its end: its length, and its
+  // turn from straight up, in degrees.
+  function reachOf(f: Fx): { len: number; turn: number } {
+    return {
+      len: Math.hypot(f.fly.x, f.fly.y),
+      turn: (Math.atan2(f.fly.x, -f.fly.y) * 180) / Math.PI,
+    };
+  }
+  const CMD_MOTES = [0, 1, 2, 3, 4, 5, 6];
+
   function frame(log: GameView["log"]): void {
     const prime = reprimeNext;
     reprimeNext = false;
@@ -620,7 +826,11 @@
       }),
       visibility,
     );
-    const generic = planEffects(r.fresh, log, { isPlaneswalker: isPW, combatMotion: strikes });
+    const generic = planEffects(r.fresh, log, {
+      isPlaneswalker: isPW,
+      combatMotion: strikes,
+      isCommander: isCommanderNow,
+    });
     // Signatures take the batches they name, once their scene has loaded.
     const found = planSignatures(r.fresh, { sceneOf: sceneOfCard });
     // The creatures a tinting scene left standing keep its stain this
@@ -1053,6 +1263,18 @@
           cancelTree(node);
         },
       };
+    } else if (f.kind === "commander_return") {
+      // #4443: its card in the command zone waits, hidden, for the copy;
+      // only this run is cancelled with the cue.
+      const card = commandCardOf(f);
+      const held = card ? commandArrive(card, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          held?.cancel();
+          cancelTree(node);
+        },
+      };
     } else {
       cueMotion(node, f);
     }
@@ -1305,6 +1527,89 @@
         {#if f.counterTone !== "other"}
           <div class="ctick" style:top={`${-(f.height / 2 + 9)}px`}></div>
         {/if}
+      </div>
+    {:else if f.kind === "commander_cast"}
+      <!-- #4443: golden light rising from the command zone to the stack. -->
+      {@const beam = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect="commander_cast"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cmd-bloom"
+          style:width={`${f.width * 1.8}px`}
+          style:height={`${f.height * 1.5}px`}
+        ></div>
+        <div
+          class="cmd-beam"
+          style:width={`${Math.max(16, f.width * 0.42)}px`}
+          style:height={`${beam.len}px`}
+          style:rotate={`${beam.turn}deg`}
+        ></div>
+        {#each CMD_MOTES as i (i)}
+          <i class="cmd-mote"></i>
+        {/each}
+        <div
+          class="cmd-crown"
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${(f.dest?.w ?? f.width) + 14}px`}
+          style:height={`${(f.dest?.h ?? f.height) + 14}px`}
+        ></div>
+      </div>
+    {:else if f.kind === "commander_return"}
+      <!-- #4443: the commander drifts home with a soft trail. -->
+      {@const trail = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect="commander_return"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-lands={f.landsOnCard ? "card" : "seat"}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cmd-streak"
+          style:width={`${Math.max(10, f.width * 0.22)}px`}
+          style:height={`${trail.len}px`}
+          style:rotate={`${trail.turn}deg`}
+        ></div>
+        {#each [0, 1] as g (g)}
+          <div class="copy cmd-ghost">
+            <div
+              class="face"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+              style:--fx-rot={`${f.rot}deg`}
+            >
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        {/each}
+        <div class="copy cmd-copy">
+          <div
+            class="face"
+            style:width={`${f.width}px`}
+            style:height={`${f.height}px`}
+            style:--fx-rot={`${f.rot}deg`}
+          >
+            {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+          </div>
+        </div>
+        <div
+          class="cmd-home"
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${(f.dest?.w ?? f.width) + 12}px`}
+          style:height={`${(f.dest?.h ?? f.height) + 12}px`}
+        ></div>
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -2109,6 +2414,94 @@
   }
   .fx[data-effect-tone="minus"] .ctick {
     clip-path: polygon(0 0, 100% 0, 50% 100%);
+  }
+
+  /* A commander (#4443). Cast: a golden bloom where it sat, a beam that
+     rises to the stack with motes riding it, and a crown of light on the
+     spell. Home: its copy drifts back with two after-images and a faint
+     streak, and a soft halo meets it on its card. Warm gold over the
+     table, so it reads on a dark board. */
+  .cmd-bloom {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(255, 246, 214, 0.9) 0%,
+      rgba(255, 206, 92, 0.55) 36%,
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .cmd-beam,
+  .cmd-streak {
+    position: absolute;
+    left: 0;
+    top: 0;
+    /* Its foot on the start, pointing at the end (the inline rotate). */
+    translate: -50% -100%;
+    transform-origin: 50% 100%;
+    border-radius: 999px;
+    opacity: 0;
+  }
+  .cmd-beam {
+    background: linear-gradient(
+      to top,
+      rgba(255, 184, 60, 0) 0%,
+      rgba(255, 196, 80, 0.8) 30%,
+      rgba(255, 232, 160, 0.95) 88%,
+      rgba(255, 244, 210, 0) 100%
+    );
+    box-shadow: 0 0 20px 6px rgba(255, 180, 48, 0.5);
+    filter: blur(1.5px);
+  }
+  .cmd-streak {
+    background: linear-gradient(to top, rgba(255, 196, 90, 0) 0%, rgba(255, 210, 120, 0.7) 100%);
+    box-shadow: 0 0 12px 3px rgba(255, 180, 48, 0.3);
+    filter: blur(3px);
+  }
+  .cmd-mote {
+    position: absolute;
+    left: -3.5px;
+    top: -3.5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ffe9a8;
+    box-shadow: 0 0 10px 3px rgba(255, 186, 60, 0.85);
+    opacity: 0;
+  }
+  .cmd-crown,
+  .cmd-home {
+    position: absolute;
+    translate: -50% -50%;
+    border: 3px solid #ffd36a;
+    box-shadow:
+      0 0 24px 8px rgba(255, 184, 48, 0.7),
+      inset 0 0 14px rgba(255, 184, 48, 0.6);
+    opacity: 0;
+  }
+  .cmd-crown {
+    border-radius: 12px;
+  }
+  .cmd-home {
+    border-radius: 10px;
+    border-width: 2px;
+  }
+  .cmd-copy .face {
+    box-shadow:
+      0 0 16px 4px rgba(255, 206, 92, 0.55),
+      0 10px 24px rgba(0, 0, 0, 0.5);
+  }
+  .cmd-ghost {
+    opacity: 0;
+  }
+  .cmd-ghost .face {
+    box-shadow: 0 0 14px 3px rgba(255, 206, 92, 0.5);
+    filter: sepia(0.4) brightness(1.15);
   }
 
   /* A counterspell: the stack item cracks and its glass flies out. */

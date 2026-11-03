@@ -396,6 +396,108 @@ describe("counters are put on a permanent (#4442)", () => {
   });
 });
 
+describe("a commander is cast from the command zone, or goes home (#4443)", () => {
+  // The engine logs a cast with its origin in `old_zone` when that is not
+  // a hand, and every move into the command zone as a `zone` entry: the
+  // state-based action's (CR 903.9a, from a graveyard or exile) and the
+  // replacement's (CR 903.9b, instead of a hand or a library).
+  const cast = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "cast",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    old_zone: "command",
+    text: "",
+    ...extra,
+  });
+  const commanders = (...ids: string[]) => ctx({ isCommander: (id) => ids.includes(id) });
+
+  it("a cast from the command zone is a commander_cast on its stack item, with its own sound", () => {
+    const p = plan([cast("cmdr", { batch: 4 })]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.stackItemID, q.batch])).toEqual([
+      ["commander_cast", "cmdr", "cmdr", 4],
+    ]);
+    expect(EFFECT_SOUND.commander_cast).toBe("commander_cast");
+    expect(cueSound(p.cues[0])).toEqual({ name: "commander_cast", volume: 1 });
+    expect(EFFECT_BASE_MS.commander_cast).toBe(800);
+  });
+
+  it("a cast from anywhere else is none", () => {
+    expect(kinds([cast("a", { old_zone: undefined })])).toEqual([]);
+    expect(kinds([cast("a", { old_zone: "graveyard" })])).toEqual([]);
+    expect(kinds([cast("a", { old_zone: "exile" })])).toEqual([]);
+  });
+
+  it("a commander put into the command zone from anywhere is a commander_return, from that zone", () => {
+    for (const from of ["graveyard", "exile", "battlefield", "hand", "library", "stack"]) {
+      const p = plan([zone("cmdr", "command", { batch: 5 }, from)], commanders("cmdr"));
+      expect(p.cues.map((q) => [q.kind, q.cardID, q.commanderFrom])).toEqual([
+        ["commander_return", "cmdr", from],
+      ]);
+      expect(cueSound(p.cues[0])).toEqual({ name: "commander_return", volume: 1 });
+    }
+    expect(EFFECT_BASE_MS.commander_return).toBe(800);
+  });
+
+  it("a bounce or a tuck its owner sent home instead (CR 903.9b) is the return, never a bounce", () => {
+    const p = plan([zone("cmdr", "command", { cause: "bounce", batch: 6 })], commanders("cmdr"));
+    expect(p.cues.map((q) => q.kind)).toEqual(["commander_return"]);
+  });
+
+  it("a card put into the command zone that is not a commander is no return", () => {
+    // An Attraction going to its junkyard (CR 717.6a), or no context at all.
+    expect(kinds([zone("attr", "command", {}, "battlefield")], commanders("cmdr"))).toEqual([]);
+    expect(kinds([zone("cmdr", "command", {}, "graveyard")])).toEqual([]);
+  });
+
+  it("a commander that dies, then goes home, is two cues: its death, then its return", () => {
+    const k = kinds(
+      [
+        zone("cmdr", "graveyard", { cause: "destroy", batch: 7 }),
+        zone("cmdr", "command", { batch: 8 }, "graveyard"),
+      ],
+      commanders("cmdr"),
+    );
+    expect(k).toEqual(["destroy", "commander_return"]);
+  });
+
+  it("two commanders of one batch are one moment: one sound, one headline", () => {
+    const p = plan(
+      [
+        zone("a", "command", { cause: "bounce", batch: 9 }),
+        zone("b", "command", { cause: "bounce", batch: 9 }),
+      ],
+      commanders("a", "b"),
+    );
+    expect(p.cues.map((q) => q.follows === true)).toEqual([false, true]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["commander_return", null]);
+    expect(headlines(p)).toBe(1);
+    // Different batches, or a cast and a return, are each their own.
+    const q = plan(
+      [cast("a", { batch: 10 }), zone("b", "command", { batch: 10 }, "graveyard")],
+      commanders("a", "b"),
+    );
+    expect(q.cues.map((c) => cueSound(c)?.name)).toEqual(["commander_cast", "commander_return"]);
+    expect(headlines(q)).toBe(2);
+  });
+
+  it("plays at once, the same in Full and Short, and still is the hold", () => {
+    for (const kind of ["commander_cast", "commander_return"] as EffectKind[]) {
+      for (const mode of ["full", "short"] as EffectMotion[]) {
+        expect(cueTiming({ kind, weight: "full", delayMs: 0 }, mode, 1)).toEqual({
+          delayMs: 0,
+          ms: 800,
+        });
+      }
+      expect(cueTiming({ kind, weight: "full", delayMs: 0 }, "still", 1)).toEqual({
+        delayMs: 0,
+        ms: EFFECT_STILL_HOLD_MS,
+      });
+    }
+  });
+});
+
 describe("board wipes", () => {
   const wipe = (n: number, over: Partial<LogEvent> = {}, newZone = "graveyard") =>
     Array.from({ length: n }, (_, i) =>
