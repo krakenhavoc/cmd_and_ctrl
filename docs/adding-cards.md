@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
+  - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4365,6 +4366,42 @@ damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
 zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
+
+### Blight as an effect (#4683, CR 701.68)
+
+"You may blight 2. If you do, …", "blight 1" and "each opponent blights
+1" are `Blight{N, Players, May, Then}` in
+[blight_effect.go](../server/internal/cards/effects/blight_effect.go),
+called from the ability's `Effect`:
+
+```go
+Blight{N: 2, May: true, Then: sourbreadAuntieTokens}.Apply(NewContext(g, item))
+Blight{N: 1, Players: ctx.Opponents()}.Apply(ctx) // High Perfect Morcant
+```
+
+Each blighting player is asked as the ability resolves, one `choose_cards`
+prompt each in APNAP order (ADR 0175's ordered collector), over
+`Game.BlightOptionsForEffect`: the creatures they control that can have
+counters put on them. It is not a target, so hexproof does not stop it.
+A player with no such creature is not asked and does not blight (CR
+701.68b), and a mandatory blight with one candidate asks nothing. The
+counters go on through `Game.BlightKeyedForEffect`, an effect's
+placement and not a cost's: Doubling Season doubles them (CR 614.16), the
+blighting player is the placer, and two counter replacements pause on
+the CR 616 ordering prompt.
+
+Everything printed after the blight is a `Blighted`, registered once from
+a package-level var with `RegisterBlighted("blight/<card>-<what>", fn)`
+(ledgered as a run and a tail). `fn(ctx, d)` runs once every counter has
+landed, and also when nobody could blight. `d.Did()` is "if you do" (a
+creature was chosen, even if a replacement removed its counters), its
+negation is "if you don't" (Gutsplitter Gang), `d.By(player)` and
+`d.Creatures` are CR 701.68c's "blighted creature", and `d.Placed` is the
+counters that landed. "When you do" is a `WhenYouDo` reflexive trigger
+applied from `fn` when `d.Did()` (Warren Torchmaster). Never declare the
+choice as the trigger's `Targets`. A blight paid as a COST is
+`OptionalBlight` / `BlightCost` / `BlightXCost` on a spell (#1703), which
+`game.blightLocked` pays.
 
 ### Adding a block-rule card (S37+, #750)
 
