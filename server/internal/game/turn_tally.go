@@ -151,6 +151,13 @@ type PlayerTurnTally struct {
 	// that has since left still counts. Arboria reads it, a turn later,
 	// through Player.LastTurnCastOrPut. Additive within schema v9.
 	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
+	// NontokenCreaturesEntered counts the nontoken creatures that
+	// entered the battlefield under this player's control this turn,
+	// judged as each entered (after the layers, EnteredSubtypes'
+	// reading), so one that has since left, stopped being a creature or
+	// changed controller still counts (Gyome, Master Chef's ruling,
+	// #4834). Additive.
+	NontokenCreaturesEntered int `json:"nontokenCreaturesEntered,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -1951,6 +1958,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.recordEnteredSubtypesLocked(controller, entered)
 		g.recordEnteredCardTypesLocked(controller, entered)
 		g.recordEnteredFlierLocked(controller, entered)
+		if controller != uuid.Nil && entered.IsCreature() && !entered.IsToken() {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NontokenCreaturesEntered++ })
+		}
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

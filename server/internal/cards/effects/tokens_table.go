@@ -229,6 +229,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Kithkin Soldier":                                        {Name: "Kithkin Soldier", TypeLine: "Token Creature — Kithkin Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 black and green Worm":                                         {Name: "Worm", TypeLine: "Token Creature — Worm", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"5/5 blue and red Elemental with flying":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"U", "R"}, Keywords: []string{"flying"}},
+	"3/3 blue and red Elemental with flying":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 3, Colors: []string{"U", "R"}, Keywords: []string{"flying"}},
 	"3/3 green Ape":                                                    {Name: "Ape", TypeLine: "Token Creature — Ape", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/2 colorless Shapeshifter with changeling":                       {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 3, Toughness: 2, Keywords: []string{"changeling"}},
