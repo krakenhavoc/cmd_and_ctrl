@@ -15,6 +15,7 @@ import (
 const (
 	socB28ConfidenceOracle = "c17f0e65-e5a3-4113-b782-0b192ab52046"
 	socB28KirolOracle      = "df1c0d06-2109-4297-9271-8a003fc892bc"
+	socB28LluwenOracle     = "cb125cd4-c7c2-415d-b802-bdcfc2454403"
 	socB28ScornmageOracle  = "29c23fd7-0ac4-46af-8ecd-92b726575252"
 	socB28CollectorOracle  = "84bb960c-c34e-4979-8c0f-893c85cee27d"
 	socB28HistoryOracle    = "a76adc88-e7db-43e2-8fbf-bae95c0838ef"
@@ -29,6 +30,8 @@ func TestSocB28EveryCardIsRegisteredFull(t *testing.T) {
 		socB28ConfidenceOracle:       "Killian's Confidence",
 		socB28KirolOracle:            "Kirol, History Buff",
 		socB28KirolOracle + "#1":     "Pack a Punch",
+		socB28LluwenOracle:           "Lluwen, Exchange Student",
+		socB28LluwenOracle + "#1":    "Pest Friend",
 		socB28ScornmageOracle:        "Lecturing Scornmage",
 		socB28CollectorOracle:        "Leech Collector",
 		socB28CollectorOracle + "#1": "Bloodletting",
@@ -764,5 +767,114 @@ func TestSocB28ArchaicIgnoresCreatureSpellsAndFreeSpells(t *testing.T) {
 	socB17CastSpellFor(t, g, "Creature — Bear", "{W}{R}", "WR")
 	if got := s58p6View(t, g, bear).CurrentPower(); got != 2 {
 		t.Errorf("a creature spell pumped the team to %d", got)
+	}
+}
+
+// --- Lluwen, Exchange Student // Pest Friend ---------------------------------
+
+func socB28CastLluwen(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+	t.Helper()
+	advanceTo(t, g, game.StepPrecombatMain)
+	c := sos1Prep(me.ID, socB28LluwenOracle, nil, "Lluwen, Exchange Student", "Legendary Creature — Elf Druid", "{2}{B}{G}", 3, 4,
+		"Pest Friend", "Sorcery", "{B/G}")
+	castFromHandAndResolve(t, g, me, c)
+	return c.InstanceID
+}
+
+func TestSocB28LluwenEntersPreparedAndPestFriendMakesAPestThatGainsLifeOnAttack(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	lluwen := socB28CastLluwen(t, g, me)
+	if !g.IsPreparedForEffect(lluwen) {
+		t.Fatal("Lluwen did not enter prepared")
+	}
+	fraBCastCopy(t, g, me, "Pest Friend")
+	if g.IsPreparedForEffect(lluwen) {
+		t.Error("Lluwen is still prepared after casting the copy")
+	}
+	pests := socB17Names(g, me.ID, "Pest")
+	if len(pests) != 1 {
+		t.Fatalf("%d Pests, want 1", len(pests))
+	}
+	pest := s58p6View(t, g, pests[0].InstanceID)
+	if !pest.IsToken() || pest.CurrentPower() != 1 || pest.CurrentToughness() != 1 || len(pest.EffectiveColors()) != 2 {
+		t.Fatalf("the Pest is token %v %d/%d colors %v, want a 1/1 black and green token", pest.IsToken(), pest.CurrentPower(), pest.CurrentToughness(), pest.EffectiveColors())
+	}
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == pests[0].InstanceID {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	life := me.Life
+	declareAttack(t, g, opp.ID, pests[0].InstanceID)
+	passPriorityAroundTable(t, g)
+	if me.Life != life+1 {
+		t.Errorf("life %d -> %d when the Pest attacked, want +1", life, me.Life)
+	}
+}
+
+func TestSocB28LluwenPestGainsNothingWhenItDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	lluwen := socB28CastLluwen(t, g, me)
+	fraBCastCopy(t, g, me, "Pest Friend")
+	_ = lluwen
+	pest := findBattlefieldByName(g, "Pest")
+	if pest == uuid.Nil {
+		t.Fatal("no Pest was created")
+	}
+	life := me.Life
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(pest) })
+	passPriorityAroundTable(t, g)
+	if me.Life != life {
+		t.Errorf("life %d -> %d when the Pest died: this Pest gains life when it attacks, not dies", life, me.Life)
+	}
+}
+
+func TestSocB28LluwenExilesACreatureCardFromYourGraveyardToBecomePreparedAtSorcerySpeed(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	lluwen := socB28CastLluwen(t, g, me)
+	// Spend the entering prepare so it must be earned back.
+	fraBCastCopy(t, g, me, "Pest Friend")
+	if g.IsPreparedForEffect(lluwen) {
+		t.Fatal("still prepared after casting the copy")
+	}
+	spell := socB28GraveyardCard(me, "Old Spell", "Sorcery", "{1}", 0, 0)
+	fodder := socB28GraveyardCard(me, "Fodder", "Creature — Bear", "{1}{G}", 2, 2)
+
+	// A noncreature card is not a legal cost.
+	if err := g.ActivateCatalogAbility(me.ID, lluwen, 0, game.ActivateAbilityParams{Strict: true, ExileIDs: []uuid.UUID{spell}}); err == nil {
+		t.Fatal("Lluwen accepted a sorcery card as the exile cost")
+	}
+	if g.IsPreparedForEffect(lluwen) {
+		t.Fatal("prepared by a refused activation")
+	}
+	b16Activate(t, g, me.ID, lluwen, 0, game.ActivateAbilityParams{ExileIDs: []uuid.UUID{fodder}})
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(fodder) || me.Graveyard.Contains(fodder) {
+		t.Error("the creature card was not exiled from the graveyard as the cost")
+	}
+	if !g.IsPreparedForEffect(lluwen) {
+		t.Fatal("Lluwen did not become prepared")
+	}
+	if !me.Graveyard.Contains(spell) {
+		t.Error("the sorcery card left the graveyard")
+	}
+}
+
+func TestSocB28LluwenCannotActivateOutsideYourMainPhaseWithAnEmptyStack(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	lluwen := socB28CastLluwen(t, g, me)
+	fodder := socB28GraveyardCard(me, "Fodder", "Creature — Bear", "{1}{G}", 2, 2)
+	advanceTo(t, g, game.StepBeginCombat)
+	if err := g.ActivateCatalogAbility(me.ID, lluwen, 0, game.ActivateAbilityParams{Strict: true, ExileIDs: []uuid.UUID{fodder}}); err == nil {
+		t.Error("Lluwen's ability was activated at beginning of combat")
+	}
+	if !me.Graveyard.Contains(fodder) {
+		t.Error("the creature card was exiled by a refused activation")
 	}
 }
