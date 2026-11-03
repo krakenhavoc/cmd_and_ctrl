@@ -17,7 +17,7 @@ import (
 //	 turn."
 //
 // The trigger is Garna's condition (another creature its controller
-// controlled as it died) with Wildwood Scourge's counter on the source.
+// controlled as it died) with the counter on the source (CounterOnThis).
 //
 // The last ability is a CR 614 entry replacement, Grumgully's shape: the
 // counters ride the entry event, so the creature is never on the
@@ -38,7 +38,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherCreatureYouControlDied(ev, source, g)
-			}, "Gorma, the Gullet — put a +1/+1 counter on Gorma", b35PutCounterOnSelf),
+			}, "Gorma, the Gullet — put a +1/+1 counter on Gorma", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventZoneMove},
