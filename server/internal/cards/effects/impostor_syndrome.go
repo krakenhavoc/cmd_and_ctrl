@@ -10,9 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // One trigger per creature that connects (CR 603.2c). The creature is
 // read as the damage is dealt: it must be a nontoken creature its
-// controller controlled, and the copy is taken from wherever the card sits
-// when the trigger resolves (a creature that died in response is copied
-// from its graveyard card). The exception edits the copy's type line, as
+// controller controlled, and the copy takes its copiable values when the
+// trigger resolves (CR 707.2), or its last-known ones if it died in response
+// (CR 608.2h): a Clone that was copying a dragon makes a dragon token
+// (#4794). The exception edits the copy's type line, as
 // Helm of the Host's does; the token then runs the ordinary entry pipeline,
 // so its enters triggers fire.
 //

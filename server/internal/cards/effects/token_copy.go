@@ -39,8 +39,13 @@ import (
 //     values (CR 707.2), and the cached characteristic in particular
 //     is a pointer — a wholesale struct copy would have the token and
 //     its original sharing one layer cache.
-//   - It does not read last-known information: the copy is taken from
-//     wherever the named card sits right now.
+//   - It does not read the card's printed fields blindly: the copy
+//     takes the COPIABLE values (CR 707.2) through
+//     game.TokenCopySourceForEffect — the permanent's own, as other copy
+//     effects changed them, while it is on the battlefield, and its
+//     last-known ones when it has left and not moved since (CR 608.2h).
+//     A card that has moved on (exiled from a graveyard by embalm or The
+//     Scarab God, discarded) is copied as the card it now is.
 
 // CreateTokenCopy creates N tokens that are copies of the card
 // `Copy`, which may be in ANY zone — Hashaton copies a card in the
@@ -124,12 +129,15 @@ func TokenCopyOfSingleTarget(item *game.StackItem, ctx *Context) error {
 }
 
 // TokenCopyTemplate builds a CreateToken template carrying the
-// copiable values (CR 707.2) of the card `cardID`, wherever it
-// currently sits. Reports ok=false when no such card exists.
+// copiable values (CR 707.2) of the card `cardID`: a permanent's
+// copiable values, its last-known ones if it has just left the
+// battlefield (CR 608.2h), and otherwise the card wherever it now sits
+// (game.TokenCopySourceForEffect). Reports ok=false when no such card
+// exists.
 //
 // The type line gains the "Token" supertype so IsToken and the
 // client's token affordances recognise it. Everything else is the
-// printed card: name, oracle ID, Scryfall ID (so the client renders
+// copied values: name, oracle ID, Scryfall ID (so the client renders
 // the original's art), type line, P/T, mana cost and colours.
 // VariableToughness travels with Toughness (#683): a token copy of a
 // `*` creature copies the importer's 0 stand-in, so it copies the bit
@@ -137,7 +145,7 @@ func TokenCopyOfSingleTarget(item *game.StackItem, ctx *Context) error {
 // skipping it after it loses its last counter, as it does the
 // original.
 func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
-	src, ok := g.LookupCardForEffect(cardID)
+	src, ok := g.TokenCopySourceForEffect(cardID)
 	if !ok {
 		return game.Card{}, false
 	}

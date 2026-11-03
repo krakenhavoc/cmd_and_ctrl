@@ -10,8 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {T}: Add {C} for each Halfling you control."
 //
 // The trigger is Miirym's token copy (CreateTokenCopy, removeLegendaryFromTypeLine)
-// made twice; the copy is read from wherever the card sits when the trigger
-// resolves, so it still works if they left in response. "If they're not a
+// made twice; the copy takes their copiable values as the trigger resolves,
+// or their last-known ones if they left in response (CR 608.2h). "If they're not a
 // token" is an intervening if (CR 603.4) on the permanent's own, unchanging
 // token status, so it is judged as the ability triggers, and a copy token never
 // triggers a copy of itself. Each token, being a Halfling, adds to the count of
