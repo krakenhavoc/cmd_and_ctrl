@@ -278,6 +278,8 @@ func TestOneSentenceTriggerShapes(t *testing.T) {
 		{"At the beginning of each upkeep, create a 1/1 green Elf Warrior creature token.", "create tokens"},
 		{"Whenever you cast a noncreature spell, Guttersnipe deals 2 damage to each opponent.", "damage each opponent"},
 		{"Whenever you cast a spell, you may draw a card.", ""},
+		// A second sentence is not part of the token's description (#4834).
+		{"Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that enchantment is an Aura, you may attach it to the token.", ""},
 		{"Whenever this creature attacks, draw a card, then discard a card.", ""},
 		// Two sentences that happen to end on "token" are not one (Brudiclad, Telchor Engineer).
 		{"At the beginning of combat on your turn, create a 2/1 blue Phyrexian Myr artifact creature token. Then you may choose a token you control. If you do, each other token you control becomes a copy of that token.", ""},
