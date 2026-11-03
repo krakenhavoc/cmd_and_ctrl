@@ -23,8 +23,16 @@ func init() {
 		Name:         "Exsanguinate",
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return b21DrainEachOpponentAndGainTheTotal(ctx.Game, item, ctx.X())
-		},
+		OnResolve:    exsanguinateResolve(),
 	})
+}
+
+// exsanguinateResolve is Exsanguinate's whole effect, shared with the
+// prepare spell of Stensian Sanguinist (#4834), which prints the same
+// text. A constructor, so a Spec that calls it still shows the XMatters guard
+// the announced X it reads.
+func exsanguinateResolve() func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		return b21DrainEachOpponentAndGainTheTotal(ctx.Game, item, ctx.X())
+	}
 }

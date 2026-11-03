@@ -7728,7 +7728,7 @@ type ProtectionView struct {
 	// "everything", "player", "mana_value_at_most" (Value is the
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
-	// "noncreature_permanents" (#4307).
+	// "noncreature_permanents" (#4307) or "multicolored" (#4834).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
