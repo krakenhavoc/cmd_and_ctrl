@@ -12552,6 +12552,20 @@ Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries t
 sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
 ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
 
+"Creature cards in your graveyard have sneak {3}{B}. You may cast creature spells from your graveyard using their sneak
+abilities." (Ninja Teen, #4680) is a standing permission, not a `GrantedAlternativeCost`:
+
+```go
+GatedCastPermissions: []game.CastPermissionGate{{
+    Permission: CreatureCardsInYourGraveyardHaveSneak("{3}{B}", "Ninja Teen"),
+    ActiveWhen: Level(3),
+}},
+```
+
+It opens the graveyard only to a sneak cast of a creature spell, under the granted `granted-sneak` offer or the card's
+own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
+[ADR 0025](decisions/0025-alternative-costs.md).
+
 ### Flash if X is N or less (#3225)
 
 "You may cast this spell as though it had flash if X is 3 or less" (Silver Scrutiny) is an offer at the printed cost that

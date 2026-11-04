@@ -397,6 +397,22 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		}
 	}
 	add(grant.AlternativeCostFor(card), grant)
+	// #4680: a granted-sneak permission lets a card that prints sneak be
+	// cast out of the zone with its own sneak as well as the granted one
+	// ("using their sneak abilities", CR 113.2c), so its own unbound
+	// offer is listed under that permission. Looked up by claim, like the
+	// miracle below, because the permission handed in may be another.
+	if zone != ZoneHand && zone != ZoneCommand {
+		if perm := g.CastPermissionForClaimLocked(playerID, card, zone, AltCostKeyGrantedSneak); perm != nil && perm.AltCostKey == AltCostKeyGrantedSneak {
+			for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
+				if ac.FromZone != "" || !ac.Sneak {
+					continue
+				}
+				offer := ac
+				add(&offer, perm)
+			}
+		}
+	}
 	// #1729: a second stored permission over the same card, priced
 	// under an offer of its own (Court of Locthwain's free cast beside
 	// its play permission). Judged under that permission, which is the
@@ -621,6 +637,12 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// made a Breach on the table strictly WORSE for its controller,
 	// which is the wrong direction twice over.
 	if grant != nil && !opensItself {
+		// #4680: "You may cast creature spells from your graveyard using
+		// their sneak abilities" opens the zone to a sneak claim of a
+		// creature spell and to nothing else.
+		if grant.AltCostKey == AltCostKeyGrantedSneak && !sneakOnlyClaimOK(card, alt) {
+			return ErrCastCostRequired
+		}
 		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
 			return ErrCastCostRequired
 		}
