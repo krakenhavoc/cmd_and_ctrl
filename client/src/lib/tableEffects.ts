@@ -8,7 +8,8 @@
 // discarded into a graveyard (#4445), cards returned from a graveyard to
 // the battlefield or a hand (#4446), a library searched (#4447), a
 // double-faced permanent transforming or the game becoming day or night
-// (#4448) and a board wipe
+// (#4448), a permanent sacrificed for its own ability (a fetch land, a
+// Treasure: #4427) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -140,7 +141,11 @@ export type EffectKind =
   // a convert, CR 701.28a, or two cards melded into one, CR 701.42a),
   // and the game becoming day or night (CR 731.1) (#4448).
   | "transform"
-  | "day_night";
+  | "day_night"
+  // A permanent sacrificed as a cost of its own ability (#4427): a fetch
+  // land cracked, a Treasure, Clue or Food token spent. Quick, with no
+  // altar, in place of the `sacrifice` cue.
+  | "crack";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -186,6 +191,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   // A card's flip to its other face, and the sky's wash (#4448).
   transform: 600,
   day_night: 1000,
+  // A self-sacrifice's snap (#4427): it plays several times a game.
+  crack: 600,
 };
 
 /**
@@ -220,7 +227,65 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   library_search: "library_search",
   transform: "transform",
   day_night: "day_night",
+  // Which sound a crack plays is its permanent's (CRACK_SOUND).
+  crack: null,
 };
+
+/**
+ * What a permanent sacrificed for its own ability was (#4427), for its
+ * crack's sound and dust: a land (a fetch land, Evolving Wilds), a
+ * Treasure, a Clue or a Food token, or anything else (Blood, Map,
+ * Powerstone, Lotus Petal, Mind Stone, a Seal).
+ */
+export type CrackKind = "land" | "treasure" | "clue" | "food" | "other";
+
+/**
+ * Each crack's sound. Any other self-sacrificing permanent plays the
+ * Treasure's, the issue's generic choice for it.
+ */
+export const CRACK_SOUND: Record<CrackKind, SoundName> = {
+  land: "fetch_crack",
+  treasure: "treasure_crack",
+  clue: "clue_crack",
+  food: "food_crack",
+  other: "treasure_crack",
+};
+
+/**
+ * A crack plays a little quieter than the other effect cues (#4427): it
+ * comes up several times a game, often on turn one.
+ */
+export const CRACK_VOLUME = 0.75;
+
+/**
+ * isSelfCost: a `sacrifice` entry paid as a cost of the sacrificed
+ * permanent's own ability (#4427, CR 602.2b, 605.3b): `cause` "cost" and
+ * `source` its own `card_id`. A cost the permanent paid for another's
+ * ability (a creature fed to Viscera Seer), a spell's additional cost
+ * and an effect's sacrifice are not.
+ */
+export function isSelfCost(e: LogEvent): boolean {
+  return e.kind === "sacrifice" && e.cause === "cost" && !!e.card_id && e.source === e.card_id;
+}
+
+/**
+ * crackKind is the crack a permanent sacrificed for its own ability gets,
+ * read off its type line as the client last saw it (#4427), or null when
+ * it keeps the sacrifice's altar and knife: a creature (Sakura-Tribe
+ * Elder, an Eldrazi Spawn), which is what the altar is for. A land is a
+ * land first, whatever else it is; a Treasure, Clue or Food is its own
+ * (CR 111.10a, 111.10b, 111.10f), and anything else, or a card the client
+ * never saw, is "other".
+ */
+export function crackKind(typeLine: string | undefined): CrackKind | null {
+  const t = typeLine ?? "";
+  if (/\bcreature\b/i.test(t)) return null;
+  if (/\bland\b/i.test(t)) return "land";
+  if (/\btreasure\b/i.test(t)) return "treasure";
+  if (/\bclue\b/i.test(t)) return "clue";
+  if (/\bfood\b/i.test(t)) return "food";
+  return "other";
+}
 
 /**
  * A card returned to a hand (Regrowth) plays the reanimate sound this
@@ -344,6 +409,14 @@ export interface EffectCue {
    */
   melded?: boolean;
   sky?: "day" | "night";
+  /** For a crack cue (#4427): what was sacrificed, for its sound and its dust. */
+  crackOf?: CrackKind;
+  /**
+   * The key the cue's sound is capped on in place of its batch. A
+   * crack's is its payment's (#4427): a player's separate activations in
+   * one priority window share an event batch, and each is a moment.
+   */
+  soundKey?: string;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -382,6 +455,12 @@ export interface PlanContext {
    * no card is, so no commander_return cue at all.
    */
   isCommander?(cardID: string): boolean;
+  /**
+   * The type line the client last saw for this card (#4427): a
+   * permanent sacrificed for its own ability has just left, so this is
+   * the view before it went. Absent or undefined: not known.
+   */
+  typeLineOf?(cardID: string): string | undefined;
 }
 
 const DAMAGE_STEPS = new Set(["first_strike_damage", "combat_damage"]);
@@ -392,6 +471,8 @@ interface Exit {
   /** The zone entry for this card in this batch, if there is one. */
   zone: LogEvent | null;
   sacrificed: boolean;
+  /** Sacrificed for its own ability, and not a creature: its crack (#4427). */
+  crack?: CrackKind | null;
 }
 
 /**
@@ -400,7 +481,7 @@ interface Exit {
  * instruction said, and a card that went to a hand is a bounce.
  */
 export function exitKind(
-  x: Pick<Exit, "zone" | "sacrificed" | "step">,
+  x: Pick<Exit, "zone" | "sacrificed" | "step" | "crack">,
   ctx: PlanContext,
 ): EffectKind | null {
   const z = x.zone;
@@ -408,7 +489,9 @@ export function exitKind(
   // new_zone exile: it must show the exile look, never a death.
   if (z?.new_zone === "exile") return "exile";
   if (z?.new_zone === "hand" || (z && z.cause === "bounce")) return "bounce";
-  if (x.sacrificed) return "sacrifice";
+  // #4427: one sacrifice is one cue. Sacrificed for its own ability, it
+  // cracks; otherwise it is laid on the altar.
+  if (x.sacrificed) return x.crack ? "crack" : "sacrifice";
   if (!z) return null;
   // Into a library, the command zone or anywhere unseen: no cue.
   if (z.new_zone !== "graveyard") return null;
@@ -557,8 +640,10 @@ export function planEffects(
       exits.set(key, x);
       order.push(x);
     }
-    if (e.kind === "sacrifice") x.sacrificed = true;
-    else x.zone = e;
+    if (e.kind === "sacrifice") {
+      x.sacrificed = true;
+      if (isSelfCost(e)) x.crack = crackKind(ctx.typeLineOf?.(e.card_id ?? ""));
+    } else x.zone = e;
   }
 
   // Board wipes: three or more exits in one batch from one source.
@@ -602,8 +687,10 @@ export function planEffects(
       delayMs: w ? WIPE_FIRST_CARD_MS + w.index * stagger : 0,
     };
     if (kind === "exile" && x.zone?.cause === "destroy") cue.fromDestroy = true;
+    if (kind === "crack") cue.crackOf = x.crack ?? "other";
     cues.push(cue);
   }
+  crackIsOneSound(cues);
   // A token created attached (a Role, a token copy of an Aura spell) is
   // one arrival with two cues: its attach cue plays the sound, and its
   // token cue only pops it in (#4444).
@@ -1147,6 +1234,32 @@ function turnCues(entries: readonly LogEvent[], ctx: PlanContext): EffectCue[] {
 }
 
 /**
+ * crackIsOneSound: the permanents one payment sacrifices for their own
+ * abilities (#4427) are one moment and one sound. Two Treasures the
+ * auto-tapper spends on one spell (CR 601.2g) arrive in one frame and
+ * one batch: the first crack plays its sound and the rest follow it.
+ * The sound is capped on the payment, the first crack's entry, not on
+ * the batch, because a player's separate activations in one priority
+ * window share an event batch, and a Treasure cracked a minute after
+ * another is a moment of its own.
+ */
+function crackIsOneSound(cues: EffectCue[]): void {
+  const lead = new Map<string, EffectCue>();
+  for (const c of cues) {
+    if (c.kind !== "crack") continue;
+    const at = c.batch === null ? `q${c.seq}` : String(c.batch);
+    const first = lead.get(at);
+    if (first) {
+      c.follows = true;
+      c.soundKey = first.soundKey;
+      continue;
+    }
+    c.soundKey = `${at}:crack:${c.seq}`;
+    lead.set(at, c);
+  }
+}
+
+/**
  * waitForFlips holds the pulse of counters put on a permanent that flips
  * in the same batch (#4448) until the flip turns edge-on (TRANSFORM_TURN),
  * so it rings the face the counters are on, not a card mid-turn. Its own
@@ -1214,8 +1327,17 @@ export function effectsScheduled(visibility: string | undefined): boolean {
   return visibility === undefined || visibility === "visible";
 }
 
-/** The key one logical sound is capped on: once per batch, per game. */
-export function soundBatch(gameID: string, batch: number | null): string | undefined {
+/**
+ * The key one logical sound is capped on: once per batch, per game. A cue
+ * with a `soundKey` of its own (a crack's payment, #4427) is capped on
+ * that instead.
+ */
+export function soundBatch(
+  gameID: string,
+  batch: number | null,
+  soundKey?: string,
+): string | undefined {
+  if (soundKey !== undefined) return `${gameID}:${soundKey}`;
   return batch === null ? undefined : `${gameID}:${batch}`;
 }
 
@@ -1225,12 +1347,16 @@ export function soundBatch(gameID: string, batch: number | null): string | undef
  * a counter cue's is its tone's.
  */
 export function cueSound(
-  cue: Pick<EffectCue, "kind" | "weight" | "follows" | "counterTone" | "reanimateTo">,
+  cue: Pick<EffectCue, "kind" | "weight" | "follows" | "counterTone" | "reanimateTo" | "crackOf">,
 ): {
   name: SoundName;
   volume: number;
 } | null {
   if (cue.follows) return null;
+  // A crack's is its permanent's, a little quieter (#4427).
+  if (cue.kind === "crack") {
+    return { name: CRACK_SOUND[cue.crackOf ?? "other"], volume: CRACK_VOLUME };
+  }
   const name =
     cue.kind === "counters" ? COUNTER_SOUND[cue.counterTone ?? "other"] : EFFECT_SOUND[cue.kind];
   if (!name) return null;
@@ -1619,6 +1745,80 @@ export function counterBurst(
   return { cracks, shards };
 }
 
+/** One half of a cracked permanent (#4427). */
+export interface CrackHalf {
+  /** Its outline: a clip-path polygon in percent of the card's box (unturned). */
+  clip: string;
+  /**
+   * Its centre from the card's, and where it falls to from there, in px
+   * on screen (turned with the card: a tapped land splits top and bottom),
+   * and its spin as it falls, in degrees.
+   */
+  ox: number;
+  oy: number;
+  dx: number;
+  dy: number;
+  rot: number;
+}
+
+export interface CrackPlan {
+  /** The crack, from one end of the card to the other (SVG path data, px, unturned). */
+  path: string;
+  halves: [CrackHalf, CrackHalf];
+}
+
+/** How far through a crack the line has run the card's length and it snaps. */
+export const CRACK_SNAP = 0.3;
+/** Points on the crack line, end to end. */
+export const CRACK_JOINTS = 7;
+
+/**
+ * crackPlan splits a permanent `w` x `h` (px, unturned) sacrificed for its
+ * own ability (#4427): a jagged line runs down its length, like the grain
+ * of a snapped branch, and the two halves either side of it fall away from
+ * each other and down the screen, turning outward. `rot` is the card's turn
+ * on screen (90 for a tapped land), so the halves part across the crack
+ * and fall down whichever way the card lies. Seeded by the card, so it
+ * always breaks the same way.
+ */
+export function crackPlan(seed: string, w: number, h: number, rot = 0): CrackPlan {
+  const rnd = seeded(`crack:${seed}`);
+  const W = Math.max(1, w);
+  const H = Math.max(1, h);
+  const line: Pt[] = [];
+  for (let k = 0; k < CRACK_JOINTS; k++) {
+    const t = k / (CRACK_JOINTS - 1);
+    // Wider in the middle than at the ends, alternating sides.
+    const swing = (k % 2 === 0 ? 1 : -1) * (0.04 + rnd() * 0.08) * Math.sin(Math.PI * t);
+    line.push({ x: W * clamp(0.5 + swing + (rnd() - 0.5) * 0.04, 0.3, 0.7), y: H * t });
+  }
+  const pct = (p: Pt) => `${round1((p.x / W) * 100)}% ${round1((p.y / H) * 100)}%`;
+  const left = [{ x: 0, y: 0 }, ...line, { x: 0, y: H }];
+  const right = [{ x: W, y: 0 }, { x: W, y: H }, ...[...line].reverse()];
+  const mid = line.reduce((t, p) => t + p.x, 0) / line.length;
+  const r = (rot * Math.PI) / 180;
+  const cos = Math.cos(r);
+  const sin = Math.sin(r);
+  // From the card's own frame to the screen's.
+  const turn = (x: number, y: number) => ({ x: x * cos - y * sin, y: x * sin + y * cos });
+  const half = (pts: Pt[], side: -1 | 1): CrackHalf => {
+    const cx = (side < 0 ? mid / 2 : (mid + W) / 2) - W / 2;
+    const o = turn(cx, 0);
+    const out = turn(side * W * (0.22 + rnd() * 0.1), 0);
+    const fall = H * (0.38 + rnd() * 0.14);
+    return {
+      clip: `polygon(${pts.map(pct).join(", ")})`,
+      ox: round1(o.x),
+      oy: round1(o.y),
+      dx: round1(out.x),
+      dy: round1(out.y + fall),
+      rot: round1(side * (14 + rnd() * 12)),
+    };
+  };
+  const path = `M${line.map((p) => `${round1(p.x)} ${round1(p.y)}`).join(" L")}`;
+  return { path, halves: [half(left, -1), half(right, 1)] };
+}
+
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
@@ -1717,7 +1917,8 @@ export function busyScale(n: number): number {
  * returns from graveyards (and a returned planeswalker's or Aura's
  * arrival or attach cue, which follows its rise), the libraries one
  * effect has players search, and the permanents one batch turns over
- * (and, when night falls, the werewolves that follow its wash).
+ * (and, when night falls, the werewolves that follow its wash), and the
+ * permanents one payment sacrifices for their own abilities (#4427).
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

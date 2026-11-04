@@ -216,6 +216,10 @@ describe("sounds", () => {
       "library_search", // #4447, silent
       "transform", // #4448, silent
       "day_night", // #4448, silent
+      "fetch_crack", // #4427, silent
+      "treasure_crack", // #4427, silent
+      "clue_crack", // #4427, silent
+      "food_crack", // #4427, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -353,6 +357,24 @@ describe("sounds", () => {
       m.play("transform");
       await settle();
       expect(played().at(-1)?.src).toBe("/sounds/transform-1.mp3");
+    });
+
+    it("plays nothing for a self-sacrifice's crack until its files land, and itself once a take is listed (#4427)", async () => {
+      const m = await load();
+      for (const name of ["fetch_crack", "treasure_crack", "clue_crack", "food_crack"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["fetch_crack", "treasure_crack", "clue_crack", "food_crack"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
     });
 
     it("plays nothing for day_night until its files land, and itself once a take is listed (#4448)", async () => {

@@ -13,6 +13,9 @@ import {
   BUSY_WINDOW_MS,
   BusyClock,
   COUNTER_SOUND,
+  CRACK_JOINTS,
+  CRACK_SOUND,
+  CRACK_VOLUME,
   DAY_NIGHT_FLIP_DELAY_MS,
   EFFECT_BASE_MS,
   EFFECT_CAP_MS,
@@ -38,6 +41,8 @@ import {
   busyScale,
   counterBurst,
   counterTone,
+  crackKind,
+  crackPlan,
   cueMs,
   cueSound,
   cueTiming,
@@ -48,6 +53,7 @@ import {
   exitKind,
   headlines,
   isEffectsMode,
+  isSelfCost,
   pileBaseMs,
   pileKind,
   pileShown,
@@ -1326,6 +1332,248 @@ describe("a double-faced card transforms, or day and night changes (#4448)", () 
       expect(SOUND_CATEGORY[name]).toBe("effects");
       expect(SOUND_MANIFEST[name]).toEqual([]);
     }
+  });
+});
+
+describe("a permanent is sacrificed for its own ability (#4427)", () => {
+  // The server writes a `sacrifice` entry with `cause` "cost" for a
+  // sacrifice paid as a cost, and `source` the permanent itself when the
+  // cost was its own ability's. log_self_sacrifice_test.go pins it.
+  const self = (id: string, extra: Partial<LogEvent> = {}): LogEvent =>
+    sacrifice(id, { cause: "cost", source: id, batch: 4, ...extra });
+  const lines: Record<string, string> = {
+    wilds: "Land",
+    vista: "Land",
+    t1: "Token Artifact — Treasure",
+    t2: "Token Artifact — Treasure",
+    t3: "Token Artifact — Treasure",
+    clue: "Token Artifact — Clue",
+    food: "Token Artifact — Food",
+    blood: "Token Artifact — Blood",
+    petal: "Artifact",
+    elder: "Creature — Snake Shaman",
+    spawn: "Token Creature — Eldrazi Spawn",
+  };
+  const seen = ctx({ typeLineOf: (id) => lines[id] });
+  const search = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "reveal",
+    turn: 3,
+    seat: 0,
+    old_zone: "library",
+    amount: 1,
+    library_seat: 0,
+    text: "",
+    ...extra,
+  });
+
+  it("tells a sacrifice paid for its own ability from every other", () => {
+    expect(isSelfCost(self("t1"))).toBe(true);
+    // A creature fed to Viscera Seer: a cost, of another permanent's ability.
+    expect(isSelfCost(sacrifice("bear", { cause: "cost" }))).toBe(false);
+    // An effect's sacrifice of the card itself (Ball Lightning's end step).
+    expect(isSelfCost(sacrifice("bolt", { source: "bolt" }))).toBe(false);
+    // An effect's, a sandbox's, and a zone line.
+    expect(isSelfCost(sacrifice("x", { source: "wipe" }))).toBe(false);
+    expect(isSelfCost(sacrifice("x"))).toBe(false);
+    expect(isSelfCost(zone("t1", "graveyard", { cause: "cost", source: "t1" }))).toBe(false);
+    // A viewer who may not identify the card has no source: the altar.
+    expect(isSelfCost(sacrifice("t1", { cause: "cost" }))).toBe(false);
+  });
+
+  it("reads what was spent off its type line; a creature keeps the altar", () => {
+    expect(crackKind("Land")).toBe("land");
+    expect(crackKind("Basic Land — Forest")).toBe("land");
+    expect(crackKind("Artifact Land")).toBe("land");
+    expect(crackKind("Token Artifact — Treasure")).toBe("treasure");
+    expect(crackKind("Token Artifact — Clue")).toBe("clue");
+    expect(crackKind("Token Artifact — Food")).toBe("food");
+    expect(crackKind("Token Artifact — Blood")).toBe("other");
+    expect(crackKind("Token Artifact — Map")).toBe("other");
+    expect(crackKind("Artifact")).toBe("other");
+    expect(crackKind("Enchantment")).toBe("other");
+    expect(crackKind(undefined)).toBe("other");
+    expect(crackKind("Creature — Snake Shaman")).toBeNull();
+    expect(crackKind("Token Creature — Eldrazi Spawn")).toBeNull();
+    expect(crackKind("Land Creature — Forest Dryad")).toBeNull();
+  });
+
+  it("a fetch land, a Treasure, a Clue and a Food crack, each with its own sound, and no altar", () => {
+    for (const [id, crack, sound] of [
+      ["wilds", "land", "fetch_crack"],
+      ["t1", "treasure", "treasure_crack"],
+      ["clue", "clue", "clue_crack"],
+      ["food", "food", "food_crack"],
+      ["blood", "other", "treasure_crack"],
+      ["petal", "other", "treasure_crack"],
+    ] as const) {
+      const p = plan([self(id, { batch: 20 + id.length })], seen);
+      expect(p.cues.map((q) => [q.kind, q.cardID, q.crackOf])).toEqual([["crack", id, crack]]);
+      expect(p.wipes).toEqual([]);
+      expect(cueSound(p.cues[0])).toEqual({ name: sound, volume: CRACK_VOLUME });
+      expect(CRACK_SOUND[crack]).toBe(sound);
+    }
+    expect(EFFECT_SOUND.crack).toBeNull();
+    // A little quieter than the other effect cues.
+    expect(CRACK_VOLUME).toBeLessThan(1);
+    expect(CRACK_VOLUME).toBeGreaterThan(0.5);
+    // About 0.6 s, the same in Short.
+    expect(EFFECT_BASE_MS.crack).toBe(600);
+    expect(cueTiming({ kind: "crack", weight: "full", delayMs: 0 }, "short", 1).ms).toBe(600);
+  });
+
+  it("one sacrifice is one cue: a crack never plays the altar and the knife too", () => {
+    const p = plan([self("wilds")], seen);
+    expect(p.cues.map((q) => q.kind)).toEqual(["crack"]);
+    expect(p.cues.some((q) => q.kind === "sacrifice")).toBe(false);
+    // The knife's sound is the sacrifice cue's alone (TableEffects plays
+    // it for a `sacrifice` cue), so a crack has neither.
+    expect(cueSound(p.cues[0])?.name).not.toBe("sacrifice");
+    expect(cueSound(p.cues[0])?.name).not.toBe(SACRIFICE_KNIFE_SOUND);
+    // A creature sacrificed for its own ability (Sakura-Tribe Elder, an
+    // Eldrazi Spawn) keeps the altar: that is what it is for.
+    expect(kinds([self("elder")], seen)).toEqual(["sacrifice"]);
+    expect(kinds([self("spawn")], seen)).toEqual(["sacrifice"]);
+    // So does a creature fed to another permanent's ability, and an
+    // effect's sacrifice.
+    expect(kinds([sacrifice("bear", { cause: "cost", batch: 4 })], seen)).toEqual(["sacrifice"]);
+    expect(kinds([sacrifice("t1", { batch: 4 })], seen)).toEqual(["sacrifice"]);
+    // The exit's zone line, when the card did not go to the graveyard (a
+    // Rest in Peace), is the same exit: one cue, read off new_zone first.
+    expect(
+      kinds(
+        [self("t2", { batch: 8 }), zone("t2", "exile", { cause: "sacrifice", batch: 8 })],
+        seen,
+      ),
+    ).toEqual(["exile"]);
+  });
+
+  it("several Treasures in one payment are one sound, and never a board wipe", () => {
+    // The auto-tapper spends three Treasures on one spell as it is cast
+    // (CR 601.2g): three lines, one batch, one frame, and the cast.
+    const cast: LogEvent = {
+      seq: 0,
+      kind: "cast",
+      turn: 3,
+      seat: 0,
+      card_id: "spell",
+      batch: 9,
+      text: "",
+    };
+    const entries = [self("t1", { batch: 9 }), self("t2", { batch: 9 }), self("t3", { batch: 9 })];
+    cast.seq = ++seq;
+    const p = plan([...entries, cast], seen);
+    expect(p.wipes).toEqual([]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.follows === true])).toEqual([
+      ["crack", "t1", false],
+      ["crack", "t2", true],
+      ["crack", "t3", true],
+    ]);
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual(["treasure_crack", null, null]);
+    // One payment counts once toward a busy table.
+    expect(headlines(p)).toBe(1);
+    // Its sound is capped on the payment, not on the batch: a Treasure
+    // cracked later in the same priority window, in another frame, is a
+    // moment of its own.
+    const later = plan([self("t1", { batch: 9 })], seen).cues[0];
+    const again = plan([self("t2", { batch: 9 })], seen).cues[0];
+    expect(p.cues[0].soundKey).toBe(p.cues[1].soundKey);
+    expect(later.soundKey).not.toBe(again.soundKey);
+    expect(soundBatch("g1", 9, later.soundKey)).not.toBe(soundBatch("g1", 9, again.soundKey));
+    expect(soundBatch("g1", 9, later.soundKey)).not.toBe(soundBatch("g1", 9));
+  });
+
+  it("a Treasure spent beside a creature sacrifice keeps each its own cue", () => {
+    const p = plan(
+      [self("t1", { batch: 3 }), sacrifice("bear", { cause: "cost", batch: 3 })],
+      seen,
+    );
+    expect(p.cues.map((q) => [q.kind, q.cardID])).toEqual([
+      ["crack", "t1"],
+      ["sacrifice", "bear"],
+    ]);
+    expect(p.cues.map((q) => cueSound(q)?.name)).toEqual(["treasure_crack", "sacrifice"]);
+    // A Treasure spent on a commander cast from the command zone: the
+    // payment and the cast are two moments, each with its own sound.
+    const paid = self("t1", { batch: 11 });
+    const cast: LogEvent = {
+      seq: ++seq,
+      kind: "cast",
+      turn: 3,
+      seat: 0,
+      card_id: "cmdr",
+      old_zone: "command",
+      batch: 11,
+      text: "",
+    };
+    const c = plan([paid, cast], seen);
+    expect(c.cues.map((q) => [q.kind, cueSound(q)?.name])).toEqual([
+      ["crack", "treasure_crack"],
+      ["commander_cast", "commander_cast"],
+    ]);
+  });
+
+  it("a fetch land's crack comes as it is activated, and the search when it resolves", () => {
+    // Frame one: the activation's batch, the sacrifice and the activate line.
+    const activate: LogEvent = {
+      seq: ++seq,
+      kind: "activate",
+      turn: 3,
+      seat: 0,
+      card_id: "wilds",
+      batch: 4,
+      text: "",
+    };
+    const one = plan([self("wilds", { batch: 4 }), activate], seen);
+    expect(one.cues.map((q) => q.kind)).toEqual(["crack"]);
+    // Frame two, a later batch: the "fetched" reveal and the land's arrival.
+    const two = plan(
+      [search({ batch: 5 }), zone("forest", "battlefield", { batch: 5 }, "library")],
+      seen,
+    );
+    expect(two.cues.map((q) => q.kind)).toEqual(["library_search"]);
+    expect(two.cues.some((q) => q.kind === "crack" || q.kind === "sacrifice")).toBe(false);
+    // Each its own sound.
+    expect(cueSound(one.cues[0])?.name).toBe("fetch_crack");
+    expect(cueSound(two.cues[0])?.name).toBe("library_search");
+  });
+
+  it("splits the card along one jagged line, the halves falling apart and down", () => {
+    const w = 80;
+    const h = 112;
+    const c = crackPlan("t1", w, h);
+    expect(crackPlan("t1", w, h)).toEqual(c);
+    expect(crackPlan("t2", w, h)).not.toEqual(c);
+    // The line runs the card's length, end to end.
+    const pts = c.path
+      .slice(1)
+      .split(" L")
+      .map((p) => p.split(" ").map(Number));
+    expect(pts).toHaveLength(CRACK_JOINTS);
+    expect(pts[0][1]).toBe(0);
+    expect(pts[pts.length - 1][1]).toBe(h);
+    for (const [x] of pts) {
+      expect(x).toBeGreaterThan(w * 0.25);
+      expect(x).toBeLessThan(w * 0.75);
+    }
+    const [left, right] = c.halves;
+    expect(left.clip.startsWith("polygon(")).toBe(true);
+    // Upright: they part sideways, both fall, and turn outward.
+    expect(left.dx).toBeLessThan(0);
+    expect(right.dx).toBeGreaterThan(0);
+    expect(left.dy).toBeGreaterThan(0);
+    expect(right.dy).toBeGreaterThan(0);
+    expect(left.rot).toBeLessThan(0);
+    expect(right.rot).toBeGreaterThan(0);
+    expect(left.ox).toBeLessThan(0);
+    expect(right.ox).toBeGreaterThan(0);
+    // A tapped land splits along its length, which lies across the
+    // screen: the halves part up and down, and still fall down.
+    const [up, down] = crackPlan("wilds", w, h, 90).halves;
+    expect(Math.abs(up.dx)).toBeLessThan(1);
+    expect(up.oy).toBeLessThan(0);
+    expect(down.oy).toBeGreaterThan(0);
+    expect(down.dy).toBeGreaterThan(up.dy);
   });
 });
 

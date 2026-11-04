@@ -105,6 +105,14 @@ export type SoundName =
   // sting), and the game becoming day or night (a bell).
   | "transform"
   | "day_night"
+  // #4427: a permanent sacrificed for its own ability, quick and a little
+  // quieter than the other effect cues: a fetch land cracked (a dry
+  // branch or wax-seal crack, then a short card slide), a Treasure (a
+  // coin clink), a Clue (a paper crumple), a Food (a crunch or bite).
+  | "fetch_crack"
+  | "treasure_crack"
+  | "clue_crack"
+  | "food_crack"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -176,6 +184,10 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   library_search: "effects",
   transform: "effects",
   day_night: "effects",
+  fetch_crack: "effects",
+  treasure_crack: "effects",
+  clue_crack: "effects",
+  food_crack: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -266,6 +278,17 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // yet"). Night turning werewolves over is one sound, the bell.
   transform: [],
   day_night: [],
+  // #4427: files not made yet, and no fallback (not the sacrifice's
+  // knife either: the crack replaces that cue because it is too heavy),
+  // so a self-sacrifice's crack is silent until fetch_crack-1.mp3,
+  // treasure_crack-1.mp3, clue_crack-1.mp3 and food_crack-1.mp3 (each
+  // with an optional -2) are listed here (client/public/sounds/README.md,
+  // "Files not made yet"). Any other self-sacrificing permanent plays
+  // treasure_crack.
+  fetch_crack: [],
+  treasure_crack: [],
+  clue_crack: [],
+  food_crack: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

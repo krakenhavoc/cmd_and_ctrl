@@ -773,7 +773,10 @@ type LogEvent struct {
 	// or Toxic Deluge shares one Batch and one Source, and "three or more
 	// permanents left in one Batch from one Source" is a board wipe.
 	// Empty when nothing resolving is behind the exit (combat damage, a
-	// cost, a sandbox move). On a LogDiscard entry it is the card whose
+	// cost, a sandbox move), except that a LogSacrifice paid as a cost of
+	// the sacrificed permanent's own ability (a fetch land, a Treasure's
+	// mana, a Clue; Cause "cost") names that permanent, its own CardID
+	// (#4427). On a LogDiscard entry it is the card whose
 	// effect or cost made the player discard, empty for the cleanup
 	// step's discard (#4445). Redacted for a viewer who may not identify
 	// the card, exactly as CardID is: the Batch still groups.
@@ -807,7 +810,11 @@ type LogEvent struct {
 	// instruction, not the destination: read OldZone and NewZone for
 	// where the card went. On a LogDiscard entry it is why the card
 	// was discarded (game.DiscardCause, #4445): "effect", "cleanup"
-	// (the CR 514.1 hand-size discard) or "cost". Empty on every other
+	// (the CR 514.1 hand-size discard) or "cost". On a LogSacrifice entry
+	// it is "cost" when the permanent was sacrificed to pay a cost
+	// (CR 118.1, 601.2h, 602.2b: an ability's, a mana ability's, a spell's
+	// or a pay-unless), and empty for an effect's or a sandbox
+	// sacrifice (#4427). Empty on every other
 	// kind, and on an elimination recorded before the engine named its
 	// cause.
 	Cause string `json:"cause,omitempty"`
@@ -1684,6 +1691,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// The card that asked for the sacrifice when the engine knew it,
 		// else the card behind the batch (#4395).
 		base.Source = uuidStringOrEmpty(cmp.Or(ev.Source, ev.LeaveSource))
+		// #4427: a sacrifice paid as a cost says so, and one paid for the
+		// sacrificed permanent's own ability (a fetch land, a Treasure's
+		// mana, a Clue) names the permanent itself as its source. A cost
+		// names no other source: it is paid as the ability is activated
+		// (CR 602.2b), not by anything resolving, so a creature sacrificed
+		// to Viscera Seer is no batch's resolution, and three of them must
+		// not read as a board wipe.
+		if ev.Cause == game.MoveCauseCost {
+			base.Cause = string(game.MoveCauseCost)
+			if ev.CauseSource != nil && ev.CauseSource.ID == ev.CardID {
+				base.Source = base.CardID
+			}
+		}
 		return base, true
 
 	case game.EventExert:
@@ -2645,8 +2665,13 @@ func (r *logNameResolver) resolve(e *LogEvent) {
 		e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(r.v)
 	}
 	// #4395: only the knower set of the source; it is never named in text.
+	// A permanent sacrificed for its own ability is its own source
+	// (#4427), and is known exactly as its card is, a token that has
+	// since ceased to exist included.
 	if c, ok := r.cards[e.Source]; ok {
 		e.sourceKnowers = c.knowers
+	} else if e.Source != "" && e.Source == e.CardID {
+		e.sourceKnowers = e.cardKnowers
 	}
 	// Revealed cards are looked up in every zone, hands and
 	// libraries included, without a knower check: see
