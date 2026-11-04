@@ -418,6 +418,7 @@ choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/jiang-yanggu-alone-rest
+choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
