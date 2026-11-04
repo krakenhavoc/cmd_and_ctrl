@@ -95,8 +95,15 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * migration 0023's tables they are keyed by game and seat, name no one,
  * and are kept with the game. The "Game statistics" row now says what
  * the replay adds.
+ *
+ * 30 (#4880, ADR 0217 slice 3) adds stats_prefs: whether advanced stats
+ * are on for a person, and whether they or an admin set it (plus empty
+ * columns for the later sharing slices). The new "Stats settings" row
+ * names it, and account deletion removes the row. It also adds
+ * stats_settings, the server's advanced-stats default, which names no
+ * one.
  */
-export const PRIVACY_SCHEMA_VERSION = 29;
+export const PRIVACY_SCHEMA_VERSION = 30;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

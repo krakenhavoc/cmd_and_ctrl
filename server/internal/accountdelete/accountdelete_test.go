@@ -172,6 +172,7 @@ func seed(t *testing.T) fixture {
 		exec(t, d, `INSERT INTO user_settings (user_id, version, revision, body, updated_at) VALUES (?, 1, 1, '{}', 1)`, u.String())
 		exec(t, d, `INSERT INTO table_setups (user_id, body, game_id, updated_at) VALUES (?, '{}', NULL, 1)`, u.String())
 		exec(t, d, `INSERT INTO notification_prefs (user_id, turn, table_ready, table_filled, dm_failed_at, updated_at) VALUES (?, 1, 1, 0, 5, 1)`, u.String())
+		exec(t, d, `INSERT INTO stats_prefs (user_id, advanced, advanced_set_by, share_pods, share_link_hash, share_link_at, updated_at) VALUES (?, 1, 'admin', 1, ?, 2, 3)`, u.String(), "hash-"+u.String())
 		exec(t, d, `INSERT INTO model_keys (user_id, provider, base_url, model, sealed_key, last4, games_per_day, calls_per_game,
 				day, day_games, created_at, updated_at, last_used_at, last_error, last_error_at)
 			VALUES (?, 'custom', 'https://llm.example.test/v1', 'm', ?, 'abcd', 5, 50, '2026-10-14', 1, 1, 1, 2, 'refused', 3)`,
@@ -182,6 +183,7 @@ func seed(t *testing.T) fixture {
 		"discord:"+userSubject, "discord:"+otherSubject)
 	exec(t, d, `INSERT INTO deck_requests (deck_key, issue_number, issue_url, created_at) VALUES ('moxfield:a', 7, 'https://example.test/7', 1)`)
 	exec(t, d, `INSERT INTO deck_request_cards (deck_key, card_key, card_name, issue_number) VALUES ('moxfield:a', 'oracle-1', 'Sol Ring', 7)`)
+	exec(t, d, `INSERT INTO stats_settings (id, advanced_default, updated_at) VALUES (1, 1, 1)`)
 
 	exec(t, d, `INSERT INTO games (id, name, created_by, state, created_at, ended_at, winner_seat, outcome, host_player_id, host_discord_id)
 		VALUES (?, 'Friday pod', ?, 'ended', 1, 2, 0, 'win', ?, ?)`, f.endedGame.String(), f.user.String(), f.endedPlayer.String(), userSubject)
@@ -248,6 +250,7 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 		"user_settings":      `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
 		"table_setups":       `SELECT COUNT(*) FROM table_setups WHERE user_id = ?`,
 		"notification_prefs": `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
+		"stats_prefs":        `SELECT COUNT(*) FROM stats_prefs WHERE user_id = ?`,
 		"model_keys":         `SELECT COUNT(*) FROM model_keys WHERE user_id = ?`,
 		"user_playmats":      `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
 		"identities":         `SELECT COUNT(*) FROM identities WHERE user_id = ?`,
@@ -332,6 +335,12 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	if n := count(t, f.d, `SELECT COUNT(*) FROM seats WHERE game_id = ? AND bot_key_user_id = ? AND bot_key_model = 'm'`, f.endedGame.String(), u); n != 1 {
 		t.Errorf("the own-key bot seat must still point at the tombstone, got %d", n)
 	}
+	if res.Counts.StatsPrefRows != 1 {
+		t.Errorf("StatsPrefRows = %d, want 1", res.Counts.StatsPrefRows)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM stats_settings`); n != 1 {
+		t.Errorf("stats_settings is the server's default, not a person's, and stays, got %d", n)
+	}
 	if res.Counts.ModelKeyRows != 1 {
 		t.Errorf("ModelKeyRows = %d, want 1", res.Counts.ModelKeyRows)
 	}
@@ -354,7 +363,7 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 		`SELECT COUNT(*) FROM decks WHERE owner_id = ?`, `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
 		`SELECT COUNT(*) FROM table_setups WHERE user_id = ?`, `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
 		`SELECT COUNT(*) FROM identities WHERE user_id = ?`, `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
-		`SELECT COUNT(*) FROM model_keys WHERE user_id = ?`,
+		`SELECT COUNT(*) FROM model_keys WHERE user_id = ?`, `SELECT COUNT(*) FROM stats_prefs WHERE user_id = ?`,
 	} {
 		if n := count(t, f.d, q, o); n != 1 {
 			t.Errorf("%s = %d for the other person, want 1", q, n)

@@ -890,6 +890,7 @@ func main() {
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
+		StatsPrefs:        newStatsPrefsStore(database),
 		Log:               log,
 		Bots:              bots,
 		BotBudget:         botBudget,
@@ -1669,6 +1670,16 @@ func newGameStatsStore(database *db.DB) gamestats.Store {
 		return nil
 	}
 	return gamestats.NewSQLStore(database)
+}
+
+// newStatsPrefsStore is the advanced-stats setting (ADR 0217 §2,
+// migration 0030), or nil with no database, which leaves everyone on
+// gamestats.AdvancedDefault.
+func newStatsPrefsStore(database *db.DB) gamestats.PrefsStore {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLPrefsStore(database)
 }
 
 func newTableSetupStore(database *db.DB) tablesetups.Store {
