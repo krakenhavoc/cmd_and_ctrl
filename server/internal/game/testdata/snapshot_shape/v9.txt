@@ -53337,6 +53337,7 @@ turnTally.players{}.modifiedCreaturesDied	number:int
 turnTally.players{}.nontokenCreaturesEntered	number:int
 turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int
+turnTally.players{}.permanentsReturnedToHand	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.powerUpActivations	number:int

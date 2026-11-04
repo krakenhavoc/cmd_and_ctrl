@@ -845,6 +845,7 @@ confirm confirm/painful-quandary-discard-or-lose-life
 confirm confirm/palantir-of-orthanc-draw-or-mill
 confirm confirm/partner-with-search
 confirm confirm/pay-life-draw
+confirm confirm/peace-in-our-time-draw
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
