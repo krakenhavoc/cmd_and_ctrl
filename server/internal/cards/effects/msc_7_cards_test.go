@@ -501,6 +501,44 @@ func TestMsc7EverettDoesNotDrawWhenTheAttackIsAtAnotherPlayer(t *testing.T) {
 	}
 }
 
+// #4864, CR 508.3e: two creatures attacking your planeswalker are not
+// an attack on you.
+func TestMsc7EverettDoesNotDrawWhenTheAttackIsAtYourPlaneswalker(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[1], g.Seats[0]
+	msc7Everett(g, me.ID)
+	walker := p1g2Planeswalker(g, me.ID, 5)
+	a := b12Creature(g, opp.ID, "Bear A", "Creature — Bear", 2, 2)
+	b := b12Creature(g, opp.ID, "Bear B", "Creature — Bear", 2, 2)
+	before := me.Hand.Size()
+	declareAttack(t, g, walker, a, b)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 0 {
+		t.Errorf("drew %d cards for an attack at your planeswalker, want 0", got)
+	}
+}
+
+// #4864, CR 508.3e: nor are two creatures attacking a battle you
+// protect, though you are its defending player.
+func TestMsc7EverettDoesNotDrawWhenTheAttackIsAtABattleYouProtect(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[1], g.Seats[0], g.Seats[2]
+	msc7Everett(g, me.ID)
+	battle := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Test Siege", TypeLine: "Battle — Siege",
+		Owner: third.ID, Controller: third.ID, ProtectorPlayerID: me.ID,
+		Counters: map[string]int{game.CounterDefense: 5},
+	})
+	a := b12Creature(g, opp.ID, "Bear A", "Creature — Bear", 2, 2)
+	b := b12Creature(g, opp.ID, "Bear B", "Creature — Bear", 2, 2)
+	before := me.Hand.Size()
+	declareAttack(t, g, battle, a, b)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 0 {
+		t.Errorf("drew %d cards for an attack at a battle you protect, want 0", got)
+	}
+}
+
 func msc7Commander(g *game.Game, owner uuid.UUID) uuid.UUID {
 	return pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(), Name: "My Commander", TypeLine: "Legendary Creature — Human",
