@@ -45,6 +45,86 @@ import "github.com/google/uuid"
 // becomes (CR 707.10f) enters tapped and attacking the same defender.
 // createSpellCopyLocked carries AltCost and PaidCost.ReturnedAttacking;
 // resolvePermanentSpellCopyLocked reads them through applySneakCopyEntry.
+//
+// A GRANTED sneak (#4680, Ninja Teen's "Creature cards in your graveyard
+// have sneak {3}{B}. You may cast creature spells from your graveyard
+// using their sneak abilities.") is Goblin Formula's shape: a standing
+// CastPermission over the graveyard whose AltCostKey is
+// AltCostKeyGrantedSneak and whose SneakCost is the price. The permission
+// is the door and the synthesised offer is the price, so the card can be
+// cast from there only with a sneak offer (validateCastPathLocked), its
+// own or the granted one, and never for its mana cost.
+
+// AltCostKeyGrantedSneak is the key of a granted sneak offer (#4680): the
+// AltCostKey of the permission that grants it and the claim a cast makes.
+// Its own key, not the printed "sneak", so a card that prints sneak keeps
+// its own offer beside the granted one and the caster picks (CR 113.2c).
+// An on-disk identity on StackItem.AltCost: never renamed, never reused.
+const AltCostKeyGrantedSneak = "granted-sneak"
+
+// SneakPayLabel is the card clause of a sneak cost as CR 702.190a words
+// it: what the picker asks the caster to return.
+const SneakPayLabel = "an unblocked creature you control"
+
+// SneakReturnSpec is the "returning an unblocked creature you control to
+// its owner's hand" half of a sneak cost (CR 702.190a): one creature the
+// caster controls that is an unblocked attacker (UnblockedAttackerForEffect,
+// ninjutsu's predicate). Shared by effects.Sneak and the granted offer, so
+// a printed and a granted sneak take the same payment by construction.
+// A cost, not a target (CR 601.2h): matched, so hexproof does not hide it.
+func SneakReturnSpec() *TargetSpec {
+	return &TargetSpec{
+		Label: SneakPayLabel,
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(g *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.Controller == caster && c.IsCreature() && g.UnblockedAttackerForEffect(c.InstanceID)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// grantedSneakOffer is the offer a granted-sneak permission synthesises
+// for `card` (CastPermission.AlternativeCostFor): its SneakCost, the
+// return, and the Sneak bit that brings the window and the entry. Nil
+// when the permission names no price, or the spell is not a creature
+// spell ("creature spells", judged on the face being cast).
+func grantedSneakOffer(p *CastPermission, card Card) *AlternativeCost {
+	if p.SneakCost == "" || !card.IsCreature() {
+		return nil
+	}
+	label := "Sneak " + p.SneakCost
+	if p.Label != "" {
+		label += " (" + p.Label + ")"
+	}
+	return &AlternativeCost{
+		Key:            AltCostKeyGrantedSneak,
+		Label:          label,
+		ManaCost:       p.SneakCost,
+		ReturnToHand:   SneakReturnSpec(),
+		PayLabel:       SneakPayLabel,
+		Sneak:          true,
+		FromZone:       p.Zone,
+		FromPermission: true,
+	}
+}
+
+// sneakOnlyClaimOK is validateCastPathLocked's rule for a cast that a
+// granted-sneak permission is the reason for (#4680): "You may cast
+// creature spells from your graveyard using their sneak abilities". The
+// spell must be a creature spell and the claim a sneak offer, the card's
+// own or the granted one. Its mana cost, and any other alternative cost
+// it prints, are not ways in.
+func sneakOnlyClaimOK(card Card, alt *AlternativeCost) bool {
+	return card.IsCreature() && alt != nil && alt.Sneak
+}
+
+// printedSneakClaim reports whether `claim` names a sneak offer `card`
+// prints, so the cast that claims it looks for a granted-sneak permission
+// to be cast under (castPermissionForClaimMatchingLocked).
+func printedSneakClaim(card Card, claim string) bool {
+	alt := AlternativeCostByKey(castOfferKey(card), claim)
+	return alt != nil && alt.Sneak
+}
 
 // sneakWindowOpenLocked reports whether it is `playerID`'s own declare
 // blockers step: the half of CR 702.190a's window that is not "any time
@@ -100,12 +180,16 @@ func (g *Game) applySneakEntryLocked(ev *ReplacementEvent, card Card, item *Stac
 }
 
 // sneakPaid reports whether `item` is a spell whose sneak cost was paid
-// (CR 702.190b): its AltCost names a sneak offer of `card`'s catalog row.
-// True for a copy of such a spell too, since a copy copies "additional or
+// (CR 702.190b): its AltCost names a sneak offer of `card`'s catalog row,
+// or is a granted sneak (#4680), whose key no catalog row prints. True for
+// a copy of such a spell too, since a copy copies "additional or
 // alternative costs" paid (CR 707.10). Nil-safe.
 func sneakPaid(card Card, item *StackItem) bool {
 	if item == nil || item.AltCost == "" {
 		return false
+	}
+	if item.AltCost == AltCostKeyGrantedSneak {
+		return true
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
 	return alt != nil && alt.Sneak

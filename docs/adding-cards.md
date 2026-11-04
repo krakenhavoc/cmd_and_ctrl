@@ -5588,8 +5588,8 @@ countered spell takes it along, and a cast from hand or through another
 permission gets none. Only a creature spell as cast is marked (every
 printed rider says "that creature"), so a noncreature spell, a
 noncreature face and a bestowed Aura spell cast this way get nothing. A
-finality counter works the same way (Leonardo, Sewer Samurai, which also
-needs a power-or-toughness filter the permission does not have yet).
+finality counter works the same way (Leonardo, Sewer Samurai, whose
+`game.CounterFinality` rider rides the power-or-toughness filter below).
 `PermissionFilter.CreatureTypesAny` holds two types and must not be
 widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
 Turtle spells" is two permissions with the same rider.
@@ -7435,6 +7435,19 @@ stamp (Bilbo, Thief in the Night), never with a type check on the card,
 which reads only its front face. A free cast's "a spell [with mana value
 N or less]" is a `freeCastSpell` clause (`freeInstantOrSorcery()`,
 `spellWithManaValueAtMost(n)`) that the permission carries.
+
+**"Creature spells with power or toughness N or less" (#4964, ADR 0066
+amendment 2026-11-04).** `Filter: game.PermissionFilter{CreatureOnly:
+true, PowerOrToughnessCapped: true, PowerOrToughnessAtMost: 1}` (Leonardo,
+Sewer Samurai). An OR over the two numbers, so a 2/1 and a 1/2 qualify and
+a 2/2 does not, and the flag carries the clause because 0 is a legal cap.
+A `*/*` card is judged by its own characteristic-defining ability where it
+sits (CR 604.3, CR 113.6a): the engine lends the card its reading
+(`Game.withPTAnywhereLocked`), so a card file writes nothing for it, and a
+`*` the engine cannot compute does not qualify — unknown is never "N or
+less". Nothing else in a card file reads power off a card in a graveyard:
+use `g.PowerAnywhereForEffect` / `ToughnessAnywhereForEffect` for an
+effect that needs the number itself.
 
 **"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
 permission over a set good for one spell: the first cast it is the
@@ -12538,6 +12551,20 @@ Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries t
 `ReturnToHand` narrowed by `UnblockedAttacker`, so the picker, the enumerator and the validator agree. An instant or
 sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
 ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
+
+"Creature cards in your graveyard have sneak {3}{B}. You may cast creature spells from your graveyard using their sneak
+abilities." (Ninja Teen, #4680) is a standing permission, not a `GrantedAlternativeCost`:
+
+```go
+GatedCastPermissions: []game.CastPermissionGate{{
+    Permission: CreatureCardsInYourGraveyardHaveSneak("{3}{B}", "Ninja Teen"),
+    ActiveWhen: Level(3),
+}},
+```
+
+It opens the graveyard only to a sneak cast of a creature spell, under the granted `granted-sneak` offer or the card's
+own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
+[ADR 0025](decisions/0025-alternative-costs.md).
 
 ### Flash if X is N or less (#3225)
 

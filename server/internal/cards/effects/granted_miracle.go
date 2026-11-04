@@ -10,8 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The shape is the general one a granted keyword with a cost needs — a
 // GrantedAlternativeCost limited by Zones to the zone the cards sit in and
-// by Spells to the cards it reaches — so #4680's granted sneak for
-// creature cards in a graveyard is the same declaration over another zone.
+// by Spells to the cards it reaches — for a zone the cards may already be
+// cast from. #4680's granted sneak for creature cards in a graveyard also
+// has to open the zone, so it is a standing permission instead
+// (CreatureCardsInYourGraveyardHaveSneak, ADR 0025 amendment 2026-11-04).
 
 // grantedMiracleInYourHand is "<cards> in your hand have miracle <cost>":
 // the granted miracle offer at `cost`, claimable only under the hand
