@@ -541,6 +541,8 @@ choose choose-cards/mind-extraction-discard-wubrg
 choose choose-cards/mind-extraction-discard-wug
 choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
+choose choose-cards/mind-roots-lands
+choose choose-cards/mind-roots-put-land
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mog-moogle-warrior-discarded
@@ -1264,6 +1266,7 @@ run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lotus-field-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
+run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/planar-engineering-search
@@ -1793,6 +1796,7 @@ tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
