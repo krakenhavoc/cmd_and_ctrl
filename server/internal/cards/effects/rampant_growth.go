@@ -17,17 +17,6 @@ func init() {
 		Name:         "Rampant Growth",
 		Purpose:      game.Purpose{Lands: 1},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return SearchLibrary{
-				Player:        ctx.Controller(),
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         1,
-				Reveal:        true,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        "Rampant Growth — a basic land",
-			}.Apply(ctx)
-		},
+		OnResolve:    rampantGrowthSearch(),
 	})
 }
