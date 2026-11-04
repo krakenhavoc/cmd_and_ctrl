@@ -859,6 +859,7 @@ confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
+confirm confirm/transcendent-archaic-draw
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/wandering-archaic-copy
@@ -1439,6 +1440,7 @@ tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
 tail beseech-the-mirror/cast-or-to-hand
+tail bind-to-life/after-mill
 tail blessed-reincarnation/after-exile
 tail blitzwing/convert-if-none-lost
 tail blue-mages-cane/copy-exiled
