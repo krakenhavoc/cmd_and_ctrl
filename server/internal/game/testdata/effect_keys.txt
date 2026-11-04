@@ -382,6 +382,7 @@ choose choose-cards/ego-drain-exile
 choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
+choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/exile-top-face-down-linked
@@ -1015,6 +1016,7 @@ option option-pick/put-attacking-from-graveyard
 option option-pick/put-attacking-from-graveyard-finality
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
+option option-pick/rejoinder-tap-or-untap
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
 option option-pick/resolution-exit
