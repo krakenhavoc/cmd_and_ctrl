@@ -140,17 +140,30 @@ jobs:
           ref: ${{ env.TESTED_REF }}
 
       # Cached on a hosted runner only (#1434): a hosted runner starts
-      # cold, so restoring the module cache (keyed on server/go.sum)
-      # saves the download and most of the compile. A self-hosted one
-      # is already warm, and actions/cache untarring over Go's
-      # read-only module cache fails on every run (see ci-cd.yml's
-      # `Set up Go` comment for the exact tar error this avoids).
-      - name: Set up Go
+      # cold, so restoring the module cache (keyed on server/go.mod and
+      # go.sum) saves the download and most of the compile. A
+      # self-hosted one is already warm, and actions/cache untarring
+      # over Go's read-only module cache fails on every run (see
+      # ci-cd.yml's `Set up Go` comment for the exact tar error this
+      # avoids).
+      - &setup-go
+        name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: |
+            server/go.mod
+            server/go.sum
+
+      # The key is ci-cd.yml's, and whichever job saves it first decides
+      # what every job restores, so every job fills it with all of
+      # go.mod's modules first. See that file's `Set up Go` (#4948).
+      - &go-mod-download
+        name: Download the server's modules
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: go mod download
 
       - name: Bot whole-game tests
         working-directory: server
@@ -222,12 +235,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # AISEAT_REPLAY_DIR puts the ws.Room replay JSONL somewhere the
       # upload step can reach. The test deletes a passing game's replay
@@ -288,12 +297,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -373,12 +378,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -454,12 +455,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -665,12 +662,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # Verbatim from ci-cd.yml (#942, #892). Self-hosted only: a
       # hosted runner is a fresh VM every run with no accumulated
@@ -796,12 +789,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # Verbatim from bot-soak-4p; see the reasoning there.
       - name: Free runner disk
@@ -1001,12 +990,8 @@ jobs:
 
       # Cached on a hosted runner only (#1434); see bot-games above for
       # why a self-hosted one stays cache: false.
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # No `cache:` input. It used to be off because ~/.npm persists on
       # a self-hosted runner and restoring over it fails the way Go's

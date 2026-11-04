@@ -144,6 +144,10 @@ jobs:
 
       # The cache only on pull requests: a release is built from a cold
       # cache, so nothing another run wrote can reach a published binary.
+      # Keyed on server/go.sum alone, unlike ci-cd.yml's go.mod and
+      # go.sum: these jobs build only mcpseat, so a separate key keeps
+      # them from saving the server jobs' entry with a subset of its
+      # modules (#4948).
       - &setup-go
         name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
