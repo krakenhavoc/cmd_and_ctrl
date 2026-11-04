@@ -1063,6 +1063,18 @@ const (
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
 
+	// EventFacedDilemma — a player chose one or more modes for a spell
+	// or ability (#4973, Star Trek's "you face a dilemma as you choose
+	// one or more modes for a spell or ability"; CR 700.2a, 700.2b).
+	// Actor = the player who chose, Source / CardID = the spell, or the
+	// source of the ability. Emitted where the choice is made: as a
+	// modal spell is cast (just before its EventCast), as a modal
+	// activated ability is put on the stack, and as a modal trigger's
+	// mode_pick is answered. A copy (CR 700.2g), a mode chosen at
+	// random, and a "choose up to" answered with no mode choose nothing
+	// and emit nothing.
+	EventFacedDilemma EventKind = "faced_dilemma"
+
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
 	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
 	// the permanent, Actor = its controller, Amount = the N of the
