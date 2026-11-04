@@ -2044,6 +2044,7 @@ tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
+tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail zara-renegade-recruiter/return-at-end-step
 tail zombie-apocalypse/destroy-humans

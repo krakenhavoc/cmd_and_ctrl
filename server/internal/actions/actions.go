@@ -2718,9 +2718,25 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #4885 — player_ability names a mana ability the PLAYER
+			// has, bound to no card (Channel's "pay 1 life: add {C}"),
+			// by the object that granted it
+			// (PlayerView.mana_abilities[].source). Sent instead of
+			// card_id; the two together are refused.
+			PlayerAbility string `json:"player_ability,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
+		}
+		if p.PlayerAbility != "" {
+			if p.CardID != "" {
+				return fmt.Errorf("activate_mana_ability: send card_id or player_ability, not both: %w", game.ErrInvalidParam)
+			}
+			source, err := uuid.Parse(p.PlayerAbility)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability player_ability: %w", err)
+			}
+			return g.ActivatePlayerManaAbility(a.Player, source)
 		}
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
