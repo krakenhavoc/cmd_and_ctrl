@@ -17,6 +17,7 @@ import {
   PILE_STAGGER,
   SHATTER_BREAK,
   SHATTER_BREAK_LIGHT,
+  TRANSFORM_TURN,
   sacrificeBeats,
 } from "./tableEffects";
 import type { CounterTone, EffectKind, WipeTone } from "./tableEffects";
@@ -66,6 +67,8 @@ export interface CueMotion {
    * scale where it lands (s). Absent: every card goes `fly`, at scale 1.
    */
   paths?: readonly PilePath[];
+  /** The game became day or night (#4448): which sky washes the table. */
+  sky?: "day" | "night";
 }
 
 export interface PilePath {
@@ -156,6 +159,12 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "library_search":
       libraryRiffle(node, f);
+      return;
+    case "transform":
+      cardFlip(node, f);
+      return;
+    case "day_night":
+      skyWash(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -1539,6 +1548,139 @@ export function riseArrive(tile: HTMLElement, f: CueMotion, at: number): Run {
     ],
     { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
   );
+}
+
+// ---- A double-faced card transforms, or day and night (#4448) ----
+
+/** How far a flipping card lifts toward the viewer at its edge-on moment. */
+export const FLIP_LIFT = 1.08;
+
+/**
+ * cardFlip turns a double-faced permanent over to its other face, on its
+ * own vertical axis (the copy is turned with a tapped card, so the axis
+ * is the card's): the face it was eases away, is edge-on at
+ * TRANSFORM_TURN lifted a touch toward the table, and the face it is now
+ * comes round, a few degrees past, and settles. A pale light rims the
+ * card as it turns edge-on, the moment it changes, and is gone as it
+ * settles. Both faces are copies drawn over the tile, which waits hidden
+ * under them (flipHold).
+ */
+function cardFlip(node: HTMLElement, f: CueMotion): void {
+  const card = node.querySelector<HTMLElement>(".turn-card");
+  if (card) {
+    const turn = TRANSFORM_TURN;
+    run(
+      card,
+      [
+        {
+          offset: 0,
+          transform: "perspective(900px) rotateY(0deg) scale(1)",
+          easing: EASE.power2In,
+        },
+        {
+          offset: turn,
+          transform: `perspective(900px) rotateY(90deg) scale(${FLIP_LIFT})`,
+          easing: EASE.power2Out,
+        },
+        {
+          offset: turn + (1 - turn) * 0.7,
+          transform: "perspective(900px) rotateY(188deg) scale(1.02)",
+          easing: EASE.sineInOut,
+        },
+        { offset: 1, transform: "perspective(900px) rotateY(180deg) scale(1)" },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  const rim = node.querySelector<HTMLElement>(".turn-rim");
+  if (rim) {
+    run(
+      rim,
+      [
+        { offset: 0, opacity: 0, scale: "0.96" },
+        { offset: TRANSFORM_TURN * 0.6, opacity: 0.35, scale: "1" },
+        { offset: TRANSFORM_TURN, opacity: 1, scale: "1.04" },
+        { offset: 0.85, opacity: 0.25, scale: "1.06" },
+        { offset: 1, opacity: 0, scale: "1.08" },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+}
+
+/**
+ * flipHold holds a flipping permanent's own tile hidden while its copy
+ * turns over (#4448), then shows it as the copy settles on the same face:
+ * the copy is the one card on screen. `fill: "backwards"` hides it from
+ * the frame on, through a flip's delay (the copy shows the face it was
+ * meanwhile), and once the run is over the tile is its own style again.
+ * The caller cancels the returned run when the cue is removed or skipped,
+ * which shows the tile at once.
+ */
+export function flipHold(tile: HTMLElement, f: CueMotion): Run {
+  return run(
+    tile,
+    [
+      { offset: 0, opacity: 0 },
+      { offset: 0.96, opacity: 0 },
+      { offset: 1, opacity: 1 },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+/**
+ * skyWash is the game becoming day or night: the table takes the sky's
+ * tint (a deep, cool blue for night, a warm gold for day) while a soft
+ * band of that light crosses it, the way dusk or dawn moves (night from
+ * the right, day from the left), and the moon or the sun rises a little
+ * at the top and fades. It is over in about a second, and the permanents
+ * it turns over flip inside it.
+ */
+function skyWash(node: HTMLElement, f: CueMotion): void {
+  const night = f.sky !== "day";
+  const tint = node.querySelector<HTMLElement>(".sky-tint");
+  if (tint) {
+    run(
+      tint,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.3, opacity: 1 },
+        { offset: 0.65, opacity: 0.85 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+  const band = node.querySelector<HTMLElement>(".sky-band");
+  if (band) {
+    const w = Math.max(160, f.board.w * 0.45);
+    const from = night ? f.board.w : -w;
+    const to = night ? -w : f.board.w;
+    run(
+      band,
+      [
+        { offset: 0, translate: `${from}px 0px`, opacity: 0 },
+        { offset: 0.15, translate: `${from + (to - from) * 0.15}px 0px`, opacity: 1 },
+        { offset: 0.85, translate: `${from + (to - from) * 0.85}px 0px`, opacity: 1 },
+        { offset: 1, translate: `${to}px 0px`, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power1Out),
+    );
+  }
+  const orb = node.querySelector<HTMLElement>(".sky-orb");
+  if (orb) {
+    run(
+      orb,
+      [
+        { offset: 0, translate: "0px 18px", opacity: 0 },
+        { offset: 0.35, translate: "0px 0px", opacity: 1 },
+        { offset: 0.7, translate: "0px -4px", opacity: 0.9 },
+        { offset: 1, translate: "0px -8px", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
 }
 
 // ---- Board wipes ----

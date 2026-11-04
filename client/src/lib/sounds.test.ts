@@ -214,6 +214,8 @@ describe("sounds", () => {
       "discard", // #4445, silent
       "reanimate", // #4446, silent
       "library_search", // #4447, silent
+      "transform", // #4448, silent
+      "day_night", // #4448, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -337,6 +339,34 @@ describe("sounds", () => {
       m.play("library_search");
       await settle();
       expect(played().at(-1)?.src).toBe("/sounds/library_search-1.mp3");
+    });
+
+    it("plays nothing for transform until its files land, and itself once a take is listed (#4448)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.transform).toBe("effects");
+      expect(m.SOUND_FALLBACK.transform).toBeUndefined();
+      m.play("transform");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.transform = ["/sounds/transform-1.mp3"];
+      m.play("transform");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/transform-1.mp3");
+    });
+
+    it("plays nothing for day_night until its files land, and itself once a take is listed (#4448)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.day_night).toBe("effects");
+      expect(m.SOUND_FALLBACK.day_night).toBeUndefined();
+      m.play("day_night");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.day_night = ["/sounds/day_night-1.mp3"];
+      m.play("day_night");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/day_night-1.mp3");
     });
 
     // #4543: three hit sounds by how much combat damage lands, each its
