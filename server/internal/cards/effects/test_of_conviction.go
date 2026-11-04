@@ -39,12 +39,7 @@ func init() {
 				}
 				return DrawCards{Player: item.Targets[0].ID, N: 1}.Apply(ctx)
 			}),
-			Instruction(func(ctx *Context) error {
-				if !ctx.HasMode(1) {
-					return nil
-				}
-				return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
-			}),
+			youDrawIfMode(1, 2),
 		),
 	})
 }

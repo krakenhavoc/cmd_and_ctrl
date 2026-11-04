@@ -69,3 +69,16 @@ func trekB4EquipmentOrSpacecraftEnteredUnderYou(g *game.Game, controller uuid.UU
 	return g.EnteredWithSubtypeThisTurn(controller, "Equipment") > 0 ||
 		g.EnteredWithSubtypeThisTurn(controller, "Spacecraft") > 0
 }
+
+// youDrawIfMode is a modal spell's "you draw N cards" step, guarded by
+// its mode: Abzan Charm's second mode, Test of Conviction's Begin
+// Negotiations. One step, so a later step waits for a prompt the draw
+// asks (CR 608.2c).
+func youDrawIfMode(mode, n int) Instruction {
+	return func(ctx *Context) error {
+		if !ctx.HasMode(mode) {
+			return nil
+		}
+		return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
+	}
+}
