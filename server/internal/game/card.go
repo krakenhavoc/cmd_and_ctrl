@@ -239,6 +239,17 @@ type Card struct {
 	// on a card in a zone — and so never persisted or cloned.
 	wordLens *TextWords
 
+	// ptAnywhere is this card's power and toughness where it sits, one
+	// reading per face, with its own characteristic-defining abilities
+	// applied (CR 604.3), lent to a value copy by withPTAnywhereLocked so
+	// a cast permission's "power or toughness N or less" clause
+	// (PermissionFilter.PowerOrToughnessCapped, #4964) can judge a `*/*`
+	// card in a graveyard without the game. Set only on a copy handed to
+	// a permission lookup — never on a card in a zone (MoveCard clears it
+	// all the same) — and so never persisted. Nil on every card without
+	// such an ability, which reads its printed numbers.
+	ptAnywhere []ptReading
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.

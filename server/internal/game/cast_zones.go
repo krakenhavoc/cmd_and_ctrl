@@ -541,7 +541,7 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// rule below reads the cast as having no permission, and its own
 	// price claimed anyway is refused — here, in the gate the view's
 	// offer list, the bot enumerator and CastSpell share.
-	if grant != nil && grant.ForSpell(card) == nil {
+	if grant != nil && g.permissionForSpellLocked(grant, card) == nil {
 		if alt != nil && alt.FromPermission {
 			return ErrCastZoneNotAllowed
 		}

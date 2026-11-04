@@ -391,6 +391,25 @@ type PermissionFilter struct {
 	// its type; an instant or a sorcery does not. NonLandPermanentOnly
 	// is the same without the lands. Additive.
 	PermanentOnly bool `json:"permanentOnly,omitempty"`
+
+	// PowerOrToughnessCapped and PowerOrToughnessAtMost are "creature
+	// spells with power or toughness N or less" (Leonardo, Sewer Samurai,
+	// #4964): a card qualifies when it is a creature and its power is N
+	// or less, or its toughness is (a 2/1 and a 1/2 both qualify under
+	// "1 or less", a 2/2 does not). The flag says the clause is there,
+	// because 0 is a legal N. Additive, and both write nothing when unset.
+	//
+	// The numbers are the card's where it is. A characteristic-defining
+	// ability functions in all zones (CR 604.3, 113.6a), so a `*/*` card
+	// in a graveyard has the power and toughness its own ability gives it
+	// there, which only the game can work out: the lookups that hold the
+	// game stamp it on the copy they judge (Game.withPTAnywhereLocked),
+	// and a card with such an ability that reaches Matches unstamped, or
+	// a `*` the engine cannot compute at all, does not qualify. Unknown
+	// is never "1 or less". A card that is not a creature has no power
+	// or toughness for this clause (CR 208.3).
+	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
+	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -463,6 +482,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
+		return false
+	}
+	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
 		return false
 	}
 	return true
@@ -1803,7 +1825,7 @@ func (g *Game) CastPermissionForFaceLocked(playerID uuid.UUID, card Card, zone Z
 	spell := card
 	spell.SetFace(face)
 	if perm := g.castPermissionForClaimMatchingLocked(playerID, card, zone, claim, func(perm *CastPermission) bool {
-		return perm.opensFace(spell, playerID)
+		return perm.opensFace(g.lendPTLocked(perm, spell), playerID)
 	}); perm != nil {
 		return perm
 	}
@@ -1829,7 +1851,7 @@ func (g *Game) CastPermissionForFaceLocked(playerID uuid.UUID, card Card, zone Z
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastableFaceGrantsLocked(playerID uuid.UUID, card Card, zone ZoneKind, first *CastPermission) []FaceGrant {
-	faces := CastableFacesUnder(card, first, playerID)
+	faces := CastableFacesUnder(g.lendPTLocked(first, card), first, playerID)
 	out := make([]FaceGrant, 0, len(faces))
 	for _, f := range faces {
 		out = append(out, FaceGrant{Face: f, Permission: first})
@@ -1850,7 +1872,7 @@ func (g *Game) CastableFaceGrantsLocked(playerID uuid.UUID, card Card, zone Zone
 			continue
 		}
 		perm := g.CastPermissionForFaceLocked(playerID, card, zone, "", f)
-		if perm == nil || !slices.Contains(CastableFacesUnder(card, perm, playerID), f) {
+		if perm == nil || !slices.Contains(CastableFacesUnder(g.lendPTLocked(perm, card), perm, playerID), f) {
 			continue
 		}
 		out = append(out, FaceGrant{Face: f, Permission: perm})
@@ -1936,7 +1958,7 @@ func acceptsPermission(accept func(*CastPermission) bool, perm *CastPermission) 
 // for a permission derived from the battlefield: covering the card, over
 // a pile it reaches, at a position it allows. Caller must hold g.mu.
 func (g *Game) standingPermissionOpensLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
-	return perm.CoversCard(card, zone) && g.permissionReachesPileLocked(holder, perm, card, zone) &&
+	return perm.CoversCard(g.lendPTLocked(perm, card), zone) && g.permissionReachesPileLocked(holder, perm, card, zone) &&
 		g.permissionPositionOKLocked(holder, perm, card)
 }
 
@@ -1948,7 +1970,7 @@ func (g *Game) standingPermissionOpensLocked(holder uuid.UUID, perm *CastPermiss
 //
 // Caller must hold g.mu.
 func (g *Game) storedPermissionOpensLocked(playerID uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
-	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(card, zone) &&
+	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(g.lendPTLocked(perm, card), zone) &&
 		g.permissionReachesPileLocked(playerID, perm, card, zone) &&
 		g.permissionPositionOKLocked(playerID, perm, card)
 }
@@ -2018,7 +2040,7 @@ func (g *Game) consumeLimitedGrantLocked(holder uuid.UUID, card Card, grant *Cas
 	spent := false
 	for _, perm := range p.CastPermissions {
 		if !spent && perm.CastsLeft > 0 && perm.Source == grant.Source && perm.Label == grant.Label &&
-			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(card, perm.Zone) {
+			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(g.lendPTLocked(&perm, card), perm.Zone) {
 			spent = true
 			perm.CastsLeft--
 			if perm.CastsLeft == 0 {
@@ -2114,7 +2136,7 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		return &out
 	}
 	for _, perm := range g.standingCastPermissionsLocked(p) {
-		if !perm.CoversCard(card, zone) {
+		if !perm.CoversCard(g.lendPTLocked(&perm, card), zone) {
 			continue
 		}
 		if !g.permissionReachesPileLocked(p.ID, &perm, card, zone) {
@@ -2773,7 +2795,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			// holder's grant over one opponent's graveyard would be
 			// stamped as the public `exile_play` on every card in every
 			// graveyard, the holder's own included.
-			if !perm.CoversCard(card, zone) || !g.permissionReachesPileLocked(p.ID, perm, card, zone) {
+			if !perm.CoversCard(g.lendPTLocked(perm, card), zone) || !g.permissionReachesPileLocked(p.ID, perm, card, zone) {
 				continue
 			}
 			if g.CastPermissionActiveForEffect(perm, p.ID) {
@@ -2821,7 +2843,7 @@ func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPe
 			continue
 		}
 		for _, perm := range g.standingCastPermissionsLocked(p) {
-			if perm.CoversCard(card, zone) && g.permissionReachesPileLocked(p.ID, &perm, card, zone) &&
+			if perm.CoversCard(g.lendPTLocked(&perm, card), zone) && g.permissionReachesPileLocked(p.ID, &perm, card, zone) &&
 				g.permissionPositionOKLocked(p.ID, &perm, card) {
 				out := perm
 				return &out
@@ -3024,7 +3046,7 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	// #4509: `card` is the face being cast; a permission that does not
 	// admit it takes nothing off (ForSpell).
 	// #4696: the permission that opens that face, as CastSpell finds it.
-	grant := g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face).ForSpell(card)
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
 	if grant == nil || grant.CostLess <= 0 {
 		return 0
 	}
