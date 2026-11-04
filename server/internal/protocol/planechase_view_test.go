@@ -95,3 +95,22 @@ func TestAPlainTableHasNoPlanechaseView(t *testing.T) {
 		t.Error("a plain table's view carries a planechase key")
 	}
 }
+
+// ADR 0216 §§4, 9: the planar die's count and cost ride the view, and
+// its roll and a planeswalk are log lines with no number.
+func TestThePlanarDieOnTheWireAndInTheLog(t *testing.T) {
+	g := planechaseViewGame(t, true)
+	v := ViewOfGameFor(g, g.Seats[0].ID.String())
+	if v.Planechase.DieRolls != 0 || v.Planechase.DieCost != "{0}" {
+		t.Errorf("die_rolls %d, die_cost %q; want 0 and {0}", v.Planechase.DieRolls, v.Planechase.DieCost)
+	}
+	roll := renderRandomLogText(LogEvent{Kind: LogRoll, PlanarFace: game.PlanarFacePlaneswalk}, "Alice", "")
+	if roll != "Alice rolled the planar die: the Planeswalker symbol" {
+		t.Errorf("roll line %q", roll)
+	}
+	ev := game.Event{Kind: game.EventRollDie, Actor: g.Seats[0].ID, PlanarFace: game.PlanarFaceChaos, Sides: 6}
+	raw, _ := json.Marshal(ev)
+	if strings.Contains(string(raw), `"amount"`) {
+		t.Errorf("a planar roll event carries a number: %s", raw)
+	}
+}

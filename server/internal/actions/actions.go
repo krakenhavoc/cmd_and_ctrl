@@ -2874,9 +2874,15 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		cardID, err := uuid.Parse(p.CardID)
-		if err != nil {
-			return fmt.Errorf("special_action card_id: %w", err)
+		// CR 901.9 (ADR 0216 §4): the planar die is taken on no card,
+		// so its card_id is absent; the engine refuses one that is sent.
+		var cardID uuid.UUID
+		var err error
+		if p.CardID != "" || game.SpecialActionKind(p.Kind) != game.SpecialActionPlanarDie {
+			cardID, err = uuid.Parse(p.CardID)
+			if err != nil {
+				return fmt.Errorf("special_action card_id: %w", err)
+			}
 		}
 		var sacrificeID uuid.UUID
 		if p.SacrificeID != "" {

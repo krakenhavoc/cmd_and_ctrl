@@ -60,6 +60,12 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	//    no-zone-move posture the sweep below deliberately takes.
 	g.revealFaceDownOwnedByLocked(playerID)
 
+	// CR 901.6 (ADR 0216 §8): a departing planar controller hands the
+	// designation on FIRST, which re-stamps every planar card's owner
+	// (CR 901.15b), so step 1 below finds none of them theirs and the
+	// communal planar deck is never swept.
+	g.handOnPlanarControllerLocked(playerID)
+
 	// 1. Everything they own leaves the game.
 	removed := g.removeObjectsOwnedByLocked(playerID)
 
@@ -121,6 +127,38 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	// HANDS; this is the rest of them.
 	g.pruneCardSetChoicesLocked()
 	g.pruneStaleZoneChangeChoicesLocked()
+}
+
+// handOnPlanarControllerLocked is CR 901.6's departure rule: "if the
+// current planar controller would leave the game, instead the next player
+// in turn order that wouldn't leave the game becomes the planar
+// controller, then the old planar controller leaves the game." Seats that
+// are leaving at the same time are already Eliminated, so they are
+// passed over. With nobody left the designation stays, and the game is
+// over anyway.
+//
+// Caller must hold g.mu (write).
+func (g *Game) handOnPlanarControllerLocked(leaving uuid.UUID) {
+	if g.Planechase == nil || g.Planechase.Controller != leaving {
+		return
+	}
+	from := -1
+	for i, p := range g.Seats {
+		if p != nil && p.ID == leaving {
+			from = i
+			break
+		}
+	}
+	n := len(g.Seats)
+	if from < 0 {
+		return
+	}
+	for k := 1; k < n; k++ {
+		if p := g.Seats[(from+k)%n]; p != nil && !p.Eliminated {
+			g.setPlanarControllerLocked(p.ID)
+			return
+		}
+	}
 }
 
 // removeObjectsOwnedByLocked drops every card owned by the departed

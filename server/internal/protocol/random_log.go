@@ -67,6 +67,13 @@ func renderRandomLogText(e LogEvent, actor, card string) string {
 	if e.CardID != "" {
 		source = " for " + card
 	}
+	if e.Kind == LogRoll && e.PlanarFace != "" {
+		face := e.PlanarFace
+		if face == game.PlanarFacePlaneswalk {
+			face = "the Planeswalker symbol"
+		}
+		return fmt.Sprintf("%s rolled the planar die%s: %s", actor, source, face)
+	}
 	if e.Kind == LogRoll {
 		results := make([]string, len(e.Results))
 		for i, n := range e.Results {

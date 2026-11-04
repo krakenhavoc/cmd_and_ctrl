@@ -425,6 +425,7 @@ func (g *Game) turnUpStartingPlaneLocked() {
 		}
 		// Face up in the command zone, which is public (CR 400.2).
 		c.AddKnowersAll(viewers)
+		c.EnteredBattlefieldAt = timeNowUnixNano()
 		up.PushTop(c)
 		return
 	}

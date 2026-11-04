@@ -687,6 +687,9 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// ADR 0203 / CR 309.4c: a dungeon card's room abilities function in
 	// the command zone, and trigger as the venture marker moves.
 	g.harvestFromDungeonsLocked(&pass)
+	// ADR 0216 §6 / CR 901.7: a face-up plane's triggered abilities
+	// function in the command zone.
+	g.harvestFromPlanesLocked(&pass)
 	// #925: abilities that declared another zone (CR 113.6) — a
 	// graveyard card's "when you cycle this card", suspend's exile
 	// countdown. Indexed at Register, so an event kind nothing

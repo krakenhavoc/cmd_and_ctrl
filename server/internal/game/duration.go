@@ -200,6 +200,18 @@ const (
 	// ability resolved during the creature's controller's own turn.
 	UntilEndOfItsControllersNextTurn
 
+	// UntilPlaneswalkAway is "until you planeswalk away from <this
+	// plane>" (CR 901.11, ADR 0216 §5): the effect lasts until the face-up
+	// planar card that made it leaves the face-up set. Source names that
+	// card. planeswalkAwayFromLocked sets Ended on every scoped effect
+	// whose duration names it, so the window ends on an EVENT (CR 611.2b),
+	// and durationExpiredLocked reads only the flag.
+	//
+	// The eleventh kind, appended after UntilEndOfItsControllersNextTurn
+	// so every persisted int keeps its meaning; a binary from before it
+	// refuses a file carrying it through Known.
+	UntilPlaneswalkAway
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -382,8 +394,14 @@ func (d Duration) Problem() string {
 	if d.Kind != UntilEndOfCombat && (d.CombatTurn != 0 || d.CombatPhase != 0) {
 		return fmt.Sprintf("a combat stamp on a %s duration", d.Kind)
 	}
-	if d.Kind != UntilSourceExilesAnother && d.Kind != UntilCardCast && (d.SourceEpoch != 0 || d.Ended) {
+	if d.Kind == UntilPlaneswalkAway && d.SourceEpoch != 0 {
+		return "an until-you-planeswalk-away duration carries an object epoch"
+	}
+	if d.Kind != UntilSourceExilesAnother && d.Kind != UntilCardCast && d.Kind != UntilPlaneswalkAway && (d.SourceEpoch != 0 || d.Ended) {
 		return fmt.Sprintf("a source-exile stamp on a %s duration", d.Kind)
+	}
+	if d.Kind == UntilPlaneswalkAway && d.Source == uuid.Nil {
+		return "an until-you-planeswalk-away duration names no plane"
 	}
 	if d.Kind == UntilSourceExilesAnother && d.Source == uuid.Nil {
 		return "an until-you-exile-another duration names no source"
@@ -956,6 +974,49 @@ func (g *Game) UntilCardCastDuration(card uuid.UUID) (Duration, bool) {
 	return Duration{Kind: UntilCardCast, Source: card, SourceEpoch: c.ObjectEpoch}, true
 }
 
+// UntilPlaneswalkAwayDuration is "until you planeswalk away from" the
+// face-up planar card `plane` (CR 901.11, ADR 0216 §5), or false when
+// the card is not face up: an effect whose end can never come is not
+// started as an unending one (CR 611.2b).
+//
+// Caller must hold g.mu.
+func (g *Game) UntilPlaneswalkAwayDuration(plane uuid.UUID) (Duration, bool) {
+	if g.PlanarFaceUp == nil || !g.PlanarFaceUp.Contains(plane) {
+		return Duration{}, false
+	}
+	return Duration{Kind: UntilPlaneswalkAway, Source: plane}, true
+}
+
+// endPlaneswalkAwayDurationsLocked ends every UntilPlaneswalkAway
+// duration made by `plane`, which has just left the face-up set (CR
+// 901.11), and sweeps them so the layer pass drops them at once.
+//
+// Caller must hold g.mu (write).
+func (g *Game) endPlaneswalkAwayDurationsLocked(plane uuid.UUID) {
+	matches := func(d Duration) bool {
+		return d.Kind == UntilPlaneswalkAway && !d.Ended && d.Source == plane
+	}
+	found := false
+	for _, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return
+	}
+	next := make([]ScopedEffect, len(g.ScopedEffects))
+	for i, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			e.Duration.Ended = true
+		}
+		next[i] = e
+	}
+	g.ScopedEffects = next
+	g.sweepScopedStaticsLocked(false)
+}
+
 // endCardCastDurationsLocked ends every UntilCardCast duration that
 // names `card` as the exile object it is now (#3520). Called by
 // CastSpell once a card cast from exile is on the stack, with the card
@@ -1094,6 +1155,9 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	case UntilCardCast:
 		// Over once CastSpell marked it (#3520). The card leaving
 		// exile uncast does NOT end it (ruling 2026-08-21).
+		return d.Ended
+	case UntilPlaneswalkAway:
+		// Over once planeswalkAwayFromLocked marked it (ADR 0216 §5).
 		return d.Ended
 	case UntilEndOfItsControllersNextTurn:
 		// The cleanup step of a turn after the one it was made in,
@@ -1320,6 +1384,8 @@ func (k DurationKind) String() string {
 		return "until the card is cast from exile"
 	case UntilEndOfItsControllersNextTurn:
 		return "until the end of its controller's next turn"
+	case UntilPlaneswalkAway:
+		return "until you planeswalk away"
 	}
 	return "unknown duration"
 }

@@ -152,7 +152,7 @@ func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplaceme
 	// An emblem's effect (#4192): the emblem is in its owner's command
 	// zone and nothing removes it, so it is found the same way.
 	found := false
-	g.forEachEmblemLocked(func(c *Card) bool {
+	g.forEachCommandSourceLocked(func(c *Card) bool {
 		if c.InstanceID == a.sourceRef.ID && c.ObjectEpoch == a.sourceRef.Epoch {
 			a.source, found = c, true
 			return false
@@ -174,7 +174,7 @@ func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplaceme
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) emblemWithSerialLocked(serial int) *Card {
 	var out *Card
-	g.forEachEmblemLocked(func(c *Card) bool {
+	g.forEachCommandSourceLocked(func(c *Card) bool {
 		if s, ok := g.replacementObjectSerialOfLocked(c); ok && s == serial {
 			out = c
 			return false
@@ -191,7 +191,7 @@ func (g *Game) emblemWithSerialLocked(serial int) *Card {
 // Caller must hold g.mu.
 func (g *Game) isEmblemRefLocked(ref ObjectRef) bool {
 	found := false
-	g.forEachEmblemLocked(func(c *Card) bool {
+	g.forEachCommandSourceLocked(func(c *Card) bool {
 		if c.InstanceID == ref.ID && c.ObjectEpoch == ref.Epoch {
 			found = true
 			return false
