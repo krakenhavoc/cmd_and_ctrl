@@ -85,16 +85,7 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 		Key:     label,
 		Effect:  cascadeEffect,
 		Watches: []game.EventKind{game.EventCast},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			if ev.Actor != source.Controller {
-				return false
-			}
-			spell, ok := g.LookupCardForEffect(ev.CardID)
-			if !ok {
-				return false
-			}
-			return when == nil || when(spell, source, g)
-		},
+		AppliesTo: socB32YouCastASpellThat(when),
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			mv := 0
 			if spell, ok := g.LookupCardForEffect(ev.CardID); ok {

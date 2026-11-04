@@ -50,6 +50,23 @@ func socB32PutCounterOnEachCreaturePlayerControls(ctx *Context, player uuid.UUID
 	return nil
 }
 
+// socB32YouCastASpellThat is the AppliesTo of a permanent that gives a keyword
+// to spells its controller casts (GrantsCascade, socB32GrantsStorm): the cast
+// event is the controller's own, and `when` (nil admits every spell) judges the
+// spell, looked up off the stack, against the granting permanent.
+func socB32YouCastASpellThat(when func(spell game.Card, source *game.Card, g *game.Game) bool) func(game.Event, *game.Card, game.Characteristic, *game.Game) bool {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		if ev.Actor != source.Controller {
+			return false
+		}
+		spell, ok := g.LookupCardForEffect(ev.CardID)
+		if !ok {
+			return false
+		}
+		return when == nil || when(spell, source, g)
+	}
+}
+
 // socB32GrantsStorm builds the trigger for a permanent that gives storm to
 // spells its controller casts (Prismari, the Inspiration: "Instant and
 // sorcery spells you cast have storm"), the storm sibling of GrantsCascade.
@@ -67,16 +84,7 @@ func socB32GrantsStorm(label string, when func(spell game.Card, source *game.Car
 		Keyword: KeywordStorm,
 		Key:     label,
 		Watches: []game.EventKind{game.EventCast},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			if ev.Actor != source.Controller {
-				return false
-			}
-			spell, ok := g.LookupCardForEffect(ev.CardID)
-			if !ok {
-				return false
-			}
-			return when == nil || when(spell, source, g)
-		},
+		AppliesTo: socB32YouCastASpellThat(when),
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label+" — storm")
 			item.Controller, item.Owner = ev.Actor, ev.Actor
