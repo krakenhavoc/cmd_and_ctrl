@@ -101,7 +101,12 @@ var flashCleanupCards = []flashCleanupCard{
 	{
 		name: "Ward of Lights", oracle: "edc05b33-2bfa-4692-bb3b-26b7cf111ce8", cost: "{W}{W}", color: "W", generic: 0, host: fcBear,
 		check: func(t *testing.T, g *game.Game, _, _ *game.Player, h uuid.UUID) {
-			fcKeyword(t, fcStats(t, g, h, 2, 2), game.ProtectionFromColor("R"))
+			// CR 702.16n (#4843): the instance spares this Aura, so it is
+			// not the bare token; ask the protection predicate instead.
+			c := fcStats(t, g, h, 2, 2)
+			if !game.ProtectedFrom(&c, &game.Characteristic{Colors: []string{"R"}}) {
+				t.Errorf("host is not protected from red")
+			}
 		},
 	},
 	{
