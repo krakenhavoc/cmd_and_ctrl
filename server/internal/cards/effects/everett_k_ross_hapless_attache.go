@@ -14,7 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // +1/+1 in layer 7c and lifelink in layer 6. The trigger is Trouble in
 // Pairs' attack shape: one trigger per declaration, however many
 // creatures attack, and only when an opponent attacks YOU, not another
-// player, with at least two.
+// player, with at least two. Only creatures attacking you yourself
+// count (CR 508.3e): one attacking your planeswalker or a battle you
+// protect does not (#4864).
 //
 // No simplification.
 func init() {
