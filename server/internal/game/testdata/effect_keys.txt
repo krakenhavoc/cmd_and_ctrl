@@ -163,6 +163,7 @@ body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
+body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
 body lockjaw/unblockable
@@ -189,6 +190,7 @@ body necropotence/deliver-exiled
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nine-lives/incarnation-counter
+body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
 body ondu-rising/attacker-gains-lifelink
 body overcharged-amalgam/counter
@@ -199,6 +201,7 @@ body overlook/obscura-storefront-fetch
 body overlook/riveteers-overlook-fetch
 body pact/pay-or-lose
 body paradigm/copy
+body paramecia-coloniex/tuck
 body passenger-ferry/unblockable
 body persist/return
 body phelia/return
@@ -561,6 +564,8 @@ choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
+choose choose-cards/north-wind-avatar-take
+choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
@@ -812,6 +817,7 @@ confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
 confirm confirm/lurking-predators-bottom
+confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
 confirm confirm/model-of-unity-scry
@@ -1003,6 +1009,7 @@ option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/land-mana-each
+option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
@@ -1988,6 +1995,8 @@ tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
+tail then/mondo-gecko-color-chosen
+tail then/northampton-farm-rest-to-hand
 tail then/one-ring-to-rule-them-all-mill
 tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
