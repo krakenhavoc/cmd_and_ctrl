@@ -204,10 +204,17 @@ func TestEveryPredefinedTokenPrintingSpawnsAsItsTemplate(t *testing.T) {
 			"Token Artifact — Map", "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery."),
 		tokenPrinting("c1d0baf8-db86-4a98-84fa-43aa32e0980f", "d7b177cf-59fd-44dc-9c56-1c4bcacb8468", "Lander",
 			"Token Artifact — Lander", "{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."),
+		tokenPrinting("6559c423-449c-4e8e-8384-3ce78183e317", "4c1e395a-94c0-4e83-a621-b3387bfebbdf", "Mutagen",
+			"Token Artifact — Mutagen", "{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery."),
 		tokenPrinting("7f9e9b3a-c515-449a-95da-ee3f5175b74f", "32edf0e6-a495-4de8-b85f-42a2d4ef71b1", "Vibranium",
 			"Token Artifact — Vibranium", "Indestructible\n{T}: Add {C}. This mana can't be spent to cast a nonartifact spell."),
 		tokenPrinting("eb4bf635-04d7-4994-9f70-4ff573a767e7", "ed1d8118-b182-413b-99ba-52844d35a35b", "Heartwood",
 			"Token Artifact — Heartwood", "{T}: Add {R} or {G}."),
+		// #4764
+		tokenPrinting("62c4a6f6-6425-4c0c-b35a-880fcab42aad", "7034bca4-8ba0-47a6-886e-ecbd829ddaec", "Junk",
+			"Token Artifact — Junk", "{T}, Sacrifice this artifact: Exile the top card of your library. You may play that card this turn. Activate only as a sorcery."),
+		tokenPrinting("df826c7d-5508-4e21-848c-91bc3e3f447a", "08734dc6-71d9-46c1-a116-187a92ce3867", "Shard",
+			"Token Enchantment — Shard", "{2}, Sacrifice this enchantment: Scry 1, then draw a card."),
 		incubator,
 	}
 	f := newSpawnFixtureWith(t, predefinedTokenIndex(t, printings...))
@@ -243,15 +250,27 @@ func TestEveryPredefinedTokenPrintingSpawnsAsItsTemplate(t *testing.T) {
 }
 
 // What is NOT swapped. A predefined token the catalog has no template
-// for (Junk, Shard) is spawned as its printing, and the table is told
-// the engine does not run its text, which is the truth. A record that is
-// not a token printing keeps its own identity even when it is named
-// "Treasure" (the dump's front_card placeholder of that name).
+// for (a Role, CR 111.10j–r: Wilds of Eldraine's two-Role token card,
+// matched on its front face) is spawned as its printing, and the table
+// is told the engine does not run its text, which is the truth. A record
+// that is not a token printing keeps its own identity even when it is
+// named "Treasure" (the dump's front_card placeholder of that name).
 func TestPrintingsWithNoTemplateStayPrintings(t *testing.T) {
-	junk := tokenPrinting("62c4a6f6-6425-4c0c-b35a-880fcab42aad", "7034bca4-8ba0-47a6-886e-ecbd829ddaec", "Junk",
-		"Token Artifact — Junk", "{T}, Sacrifice this artifact: Exile the top card of your library. You may play that card this turn. Activate only as a sorcery.")
-	shard := tokenPrinting("df826c7d-5508-4e21-848c-91bc3e3f447a", "08734dc6-71d9-46c1-a116-187a92ce3867", "Shard",
-		"Token Enchantment — Shard", "{2}, Sacrifice this enchantment: Scry 1, then draw a card.")
+	role := cards.Card{
+		ID:       uuid.MustParse("a9b7040e-cd24-42cc-b043-9af8c557da6a"),
+		OracleID: uuid.MustParse("0664dcc8-fa68-4802-936f-ecd2979ebf3c"),
+		Name:     "Wicked // Cursed",
+		Layout:   "flip",
+		SetType:  "token",
+		Lang:     "en",
+		TypeLine: "Token Enchantment — Aura Role // Token Enchantment — Aura Role",
+		CardFaces: []cards.CardFace{
+			{Name: "Wicked", TypeLine: "Token Enchantment — Aura Role",
+				OracleText: "Enchant creature\nEnchanted creature gets +1/+1.\nWhen this Aura is put into a graveyard from the battlefield, each opponent loses 1 life."},
+			{Name: "Cursed", TypeLine: "Token Enchantment — Aura Role",
+				OracleText: "Enchant creature\nEnchanted creature has base power and toughness 1/1."},
+		},
+	}
 	frontCard := cards.Card{
 		ID:         uuid.MustParse("5e138adb-32ba-4b63-8964-5447bc353161"),
 		OracleID:   uuid.MustParse("3365a79e-3e2d-4f4b-861c-a970ae23345b"),
@@ -262,10 +281,10 @@ func TestPrintingsWithNoTemplateStayPrintings(t *testing.T) {
 		TypeLine:   "Card",
 		OracleText: "(Theme color: {R})",
 	}
-	f := newSpawnFixtureWith(t, predefinedTokenIndex(t, junk, shard, frontCard))
+	f := newSpawnFixtureWith(t, predefinedTokenIndex(t, role, frontCard))
 	f.allowSpawn(true)
 
-	for _, p := range []cards.Card{junk, shard} {
+	for _, p := range []cards.Card{role} {
 		got, out := f.spawnOne(`"scryfall_id":"` + p.ID.String() + `"`)
 		if got.OracleID != p.OracleID.String() {
 			t.Errorf("%s: oracle id %q, want the printing's %q", p.Name, got.OracleID, p.OracleID)

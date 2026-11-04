@@ -1,14 +1,27 @@
 package legal
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // costBranchRow is one row the activation walk visits: the ability at
 // `row`, with — for an either/or cost (#4566) — the branch `branch`
 // folded into its cost. `branch` is nil for every other ability.
+//
+// `unattach` is the Equipment an "Unattach an Equipment from <this>"
+// cost names on this row (#4799, expandUnattachPicks), nil for every
+// other ability.
+//
+// `blight` is the creature a "Blight N" cost names on this row (#4684,
+// expandBlightPicks), nil for every other ability.
 type costBranchRow struct {
-	row    int
-	ab     game.ActivatedAbilityShape
-	branch *int
+	row      int
+	ab       game.ActivatedAbilityShape
+	branch   *int
+	unattach []uuid.UUID
+	blight   []uuid.UUID
 }
 
 // expandCostBranches lists the rows abilityMovesForSource walks: each

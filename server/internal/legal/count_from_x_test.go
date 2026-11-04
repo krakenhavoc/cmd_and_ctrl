@@ -234,51 +234,70 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 		// budget for this sweep alone — it costs nothing else here,
 		// the board is small and fixed, and it is what lets every
 		// mode-set past the first get a turn.
-		moves := legal.EnumerateForWithOptions(g, active.ID, legal.Options{MaxExpansionPerSource: 200})
-		tied := 0
-		for _, m := range castMovesFor(moves, id) {
-			x, refs, modes := castXTargetsPerStep(t, m)
-			// Ask the engine which clauses this announcement is
-			// actually answering, rather than re-deriving it here.
-			// Only some of a modal card's are X-counted: Heliod's
-			// Intervention destroys X artifacts under one mode and
-			// gives a player twice X life under the other, where X is
-			// free and the one target is a player.
-			steps := game.AnnouncedClauses(
-				game.TargetSpecFor(spec.OracleID), game.ModeSpecFor(spec.OracleID), modes)
-			// Per-step counting (#764): a "choose two" cycle whose
-			// every bullet targets (Kozilek's Command) announces one
-			// clause per CHOSEN bullet, so the move's whole target
-			// list is the wrong count for any one bullet — only the
-			// refs whose (Mode, Slot) match the X-counted step's own
-			// answer it, exactly as ModeTargets narrows to one
-			// occurrence at resolution.
-			for _, st := range steps {
-				if !st.Clause.CountFromX {
-					continue
-				}
-				n := 0
-				for _, r := range refs {
-					if r.Mode == st.Mode && r.Slot == st.Slot {
-						n++
+		probe := func() (int, []legal.Move) {
+			moves := legal.EnumerateForWithOptions(g, active.ID, legal.Options{MaxExpansionPerSource: 200})
+			tied := 0
+			for _, m := range castMovesFor(moves, id) {
+				x, refs, modes := castXTargetsPerStep(t, m)
+				// Ask the engine which clauses this announcement is
+				// actually answering, rather than re-deriving it here.
+				// Only some of a modal card's are X-counted: Heliod's
+				// Intervention destroys X artifacts under one mode and
+				// gives a player twice X life under the other, where X is
+				// free and the one target is a player.
+				steps := game.AnnouncedClauses(
+					game.TargetSpecFor(spec.OracleID), game.ModeSpecFor(spec.OracleID), modes)
+				// Per-step counting (#764): a "choose two" cycle whose
+				// every bullet targets (Kozilek's Command) announces one
+				// clause per CHOSEN bullet, so the move's whole target
+				// list is the wrong count for any one bullet — only the
+				// refs whose (Mode, Slot) match the X-counted step's own
+				// answer it, exactly as ModeTargets narrows to one
+				// occurrence at resolution.
+				for _, st := range steps {
+					if !st.Clause.CountFromX {
+						continue
+					}
+					n := 0
+					for _, r := range refs {
+						if r.Mode == st.Mode && r.Slot == st.Slot {
+							n++
+						}
+					}
+					tied++
+					if x != n {
+						t.Errorf("%s: %q announced X=%d for %d targets on its X-defined step",
+							spec.Name, m.Label, x, n)
+					}
+					if n == 0 {
+						t.Errorf("%s: %q targets nothing on its X-defined step — an X-defined clause "+
+							"at X=0 does nothing (#810)", spec.Name, m.Label)
 					}
 				}
-				tied++
-				if x != n {
-					t.Errorf("%s: %q announced X=%d for %d targets on its X-defined step",
-						spec.Name, m.Label, x, n)
-				}
-				if n == 0 {
-					t.Errorf("%s: %q targets nothing on its X-defined step — an X-defined clause "+
-						"at X=0 does nothing (#810)", spec.Name, m.Label)
-				}
 			}
+			return tied, moves
+		}
+		tied, moves := probe()
+		var seeded []uuid.UUID
+		if tied == 0 {
+			// A clause over instant and sorcery cards in YOUR graveyard
+			// (Divergent Equation) has nothing to pick on the shared
+			// board, whose graveyard holds only an opponent's creatures
+			// (Kozilek's Command needs exactly that count). Seed the
+			// caster's graveyard for this probe alone, then take it back.
+			for i := 0; i < 11; i++ {
+				seeded = append(seeded, graveyardCard(active, game.Card{
+					Name: "My Spent Instant", TypeLine: "Instant", ManaCost: "{R}",
+				}))
+			}
+			tied, moves = probe()
 		}
 		if tied == 0 {
 			t.Errorf("%s: no cast of its X-defined clause was offered on a board that can pay for one", spec.Name)
 		}
 		dispatchAll(t, g, active.ID, moves)
 		removeFromHand(active, id)
+		removeFromGraveyard(active, seeded)
 	}
 	if probed == 0 {
 		t.Fatal("no CountFromX clause in the catalog — the sweep is reading the wrong field")
@@ -301,6 +320,21 @@ func specCountsTargetsFromX(spec effects.Spec) bool {
 		}
 	}
 	return false
+}
+
+// removeFromGraveyard takes the seeded cards back out of a graveyard.
+func removeFromGraveyard(p *game.Player, ids []uuid.UUID) {
+	drop := map[uuid.UUID]bool{}
+	for _, id := range ids {
+		drop[id] = true
+	}
+	kept := p.Graveyard.Cards[:0]
+	for _, c := range p.Graveyard.Cards {
+		if !drop[c.InstanceID] {
+			kept = append(kept, c)
+		}
+	}
+	p.Graveyard.Cards = kept
 }
 
 func removeFromHand(p *game.Player, id uuid.UUID) {

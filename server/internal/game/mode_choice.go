@@ -143,6 +143,23 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	return true
 }
 
+// ModePickSpecLocked is, for an open mode_pick, the triggered ability's
+// ModeSpec and the source its bullets target from: the trigger's own,
+// judged for the event that fired it, as queueModePickLocked judged
+// which bullets are choosable. The wire projects each offered bullet's
+// purpose and legal targets from it (#4674), so a bot can price what a
+// bullet does before it is chosen. ok is false for any other prompt and
+// for one with no continuation.
+//
+// Caller must hold g.mu.
+func (g *Game) ModePickSpecLocked(c *PendingChoice) (TargetSource, *ModeSpec, bool) {
+	if c == nil || c.Kind != PendingChoiceModePick || c.modePickResume == nil || c.modePickResume.ability.Modes == nil {
+		return TargetSource{}, nil, false
+	}
+	f := c.modePickResume
+	return SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), f.ability.Modes, true
+}
+
 // pickModeAtRandomLocked is CR 700.2's "choose one at random" for a
 // triggered ability: one of the bullets on offer, drawn from the
 // "pick" stream keyed to the controller and the source (so an undo

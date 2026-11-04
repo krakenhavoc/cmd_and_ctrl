@@ -24,8 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     emits exactly one of those, so nothing is counted twice; a
 //     death's own ZoneMove is FROM the battlefield and excluded.
 //   - "a creature card leaves your graveyard" — EventZoneMove out of
-//     a graveyard, for a card its controller OWNS. Reanimation,
-//     Regrowth, a Bojuka Bog on your own pile: all count, per card.
+//     a graveyard, or an EventCast from one, for a card its controller
+//     OWNS (creatureCardLeftYourGraveyard). Reanimation, Regrowth, a
+//     Bojuka Bog on your own pile, a creature cast from it: all count,
+//     per card.
 //
 // The damage is dealt by the Knight, so it is noncombat damage from
 // a black source. The mill ability feeds all three clauses at once
@@ -39,7 +41,7 @@ func init() {
 		Name:         "Syr Konrad, the Grim",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(OnAny([]game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(OnAny([]game.EventKind{game.EventLTB, game.EventDiscardCard, game.EventMill, game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind == game.EventLTB {
 					if ev.CardID == source.InstanceID {
 						return false // "another"
@@ -48,7 +50,7 @@ func init() {
 					return died
 				}
 				return b02CreatureCardEnteredGraveyardNotFromBattlefield(ev, g) ||
-					b02CreatureCardLeftYourGraveyard(ev, source, g)
+					creatureCardLeftYourGraveyard(ev, source, g)
 			}, "Syr Konrad, the Grim — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})), game.Purpose{DeathPayoff: true}),
 		},
 		Activated: []ActivatedAbility{{

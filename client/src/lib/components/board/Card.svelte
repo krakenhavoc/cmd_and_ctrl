@@ -1213,6 +1213,13 @@
         >{deathMark.text}</span
       >
     {/if}
+    {#if card.cant_have_counters}
+      <span
+        class="badge no-counters"
+        title="Can't have counters put on it"
+        aria-label="can't have counters">NO COUNTERS</span
+      >
+    {/if}
     {#if noCombatDamage}
       <span
         class="badge no-combat-damage"
@@ -1383,6 +1390,13 @@
     {#if deathMark}
       <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
         >{deathMark.text}</span
+      >
+    {/if}
+    {#if card.cant_have_counters}
+      <span
+        class="badge no-counters"
+        title="Can't have counters put on it"
+        aria-label="can't have counters">NO COUNTERS</span
       >
     {/if}
     {#if noCombatDamage}
@@ -2246,6 +2260,24 @@
     color: #e6dfd3;
     background: rgba(40, 34, 30, 0.9);
     border-color: rgba(210, 196, 176, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
+  }
+  .badge.no-counters {
+    /* #4692. Top-centre, a row under the combat-damage and land-type
+       chips: a rule on the permanent (Blossombind's "can't have counters
+       put on it"), in the steel blue of a lock. */
+    top: calc(66px + var(--face-top, 0px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #d6e4f0;
+    background: rgba(24, 36, 52, 0.9);
+    border-color: rgba(150, 180, 210, 0.55);
     letter-spacing: 0.01em;
     font-size: 7px;
   }

@@ -13,6 +13,18 @@ import { readFileSync } from "node:fs";
 import { get } from "svelte/store";
 
 vi.mock("./sounds", () => ({ play: () => {} }));
+// #4477: fitRow skips itself in jsdom (no ResizeObserver, no layout), but
+// this file installs a fake ResizeObserver, which switched it back on.
+// Every row then measured itself on the first animation frame the fake
+// timers flush, through jsdom's getComputedStyle (~35ms a call against
+// the injected component CSS), over boxes that are all 0×0. That put the
+// hover tests at 2–3.5s in CI against vitest's 5s timeout, and under load
+// past it. Nothing here asserts a row's fit, so the row keeps its natural
+// spacing, as it does in every jsdom test without the fake observer.
+vi.mock("./rowFit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./rowFit")>()),
+  fitRow: () => ({ update() {}, destroy() {} }),
+}));
 
 import Board from "./components/board/Board.svelte";
 import { abilityPopover } from "./abilityPopover";

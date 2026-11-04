@@ -2198,15 +2198,39 @@ type ManaAbility struct {
 	// plans the source and the move list counts its mana (#4189). It acts
 	// on other players, so the planner reaches for it only after the
 	// sources that do not (tapSource.Table). Set one of Rider, PainToYou,
-	// GainLife, OpponentsGainLife or PingOpponents; Register refuses two.
+	// GainLife or OpponentsGainLife; Register refuses two.
 	OpponentsGainLife int
 
-	// PingOpponents is "this permanent deals N damage to each opponent"
-	// after the "Add …" clause, declared as data (Zhur-Taa Druid). Register
-	// builds the Rider with PingEachOpponentRider(n); the number reaches
-	// the auto-tapper as game.ManaAbilityShape.RiderOpponentDamage, and the
-	// source is tiered as OpponentsGainLife is (#4189).
-	PingOpponents int
+	// PingOpponentsTrigger is a TRIGGERED ability printed beside this mana
+	// ability: "this creature deals N damage to each opponent", fired by
+	// activating this row. Two printed shapes say it: Zhur-Taa Druid's
+	// "Whenever you tap this creature for mana, it deals 1 damage to each
+	// opponent" and Rubble Rouser's reflexive "When you do, this creature
+	// deals 1 damage to each opponent" (CR 603.12).
+	//
+	// It is NOT a rider, and that is the whole of #4928. CR 605.1b makes
+	// a triggered ability a mana ability only if "it could add mana to a
+	// player's mana pool when it resolves"; damage cannot, so this is an
+	// ordinary triggered ability. The mana still lands at once (CR 605.3b:
+	// the activated ability "resolves immediately after it is
+	// activated"), and the damage goes on the stack the next time a
+	// player would receive priority (CR 603.3), where it can be responded
+	// to and countered.
+	//
+	// Register grows a catalog Triggered row from it (manaActivationPing):
+	// it watches game.EventManaAbilityActivated for THIS row — the source,
+	// its label and its activator as "you" — so tapping the creature to
+	// attack, to crew, or by an opponent's Icy Manipulator triggers
+	// nothing, as printed. The row is stamped like any other (ADR 0041
+	// P9), so a table with the damage waiting on the stack restores.
+	//
+	// The number also reaches the auto-tapper as
+	// game.ManaAbilityShape.TriggerOpponentDamage, so the planner still
+	// taps the source and the move list counts its mana, in the last tier
+	// with the sources that act on the table (tapSource.Table, #4189).
+	// A card's own mana ability only: a granted bundle has no Triggered
+	// row to grow, and Register refuses the field there.
+	PingOpponentsTrigger int
 
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and

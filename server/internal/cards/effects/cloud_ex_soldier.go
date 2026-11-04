@@ -28,18 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Cloud, Ex-SOLDIER — attach up to one target Equipment you control to Cloud",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetCard {
-								continue
-							}
-							if err := g.AttachForEffect(t.ID, game.TargetRef{Kind: game.TargetCard, ID: item.SourceCardID}); err != nil {
-								return err
-							}
-						}
-						return nil
-					}),
+					AttachTargetsToSource),
 				TargetPermanent("up to one target Equipment you control", HasSubtype("Equipment"), YouControl()).WithCount(0, 1)),
 			WheneverThisAttacks("Cloud, Ex-SOLDIER — draw a card for each equipped attacking creature you control",
 				Do(

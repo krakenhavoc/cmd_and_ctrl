@@ -988,14 +988,7 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 			next[slot] = t
 		}
 		steps := g.itemAnnouncedClauses(item)
-		after := len(steps)
-		for j, step := range steps {
-			if step.Mode == next[slot].Mode && step.Slot == next[slot].Slot {
-				after = j + 1
-				break
-			}
-		}
-		if !g.copyTargetsCanFinishLocked(g.retargetSourceLocked(item), steps, item.Targets, next, after) {
+		if !g.targetsAfterCanFinishLocked(g.retargetSourceLocked(item), steps, item.Targets, next, slot) {
 			return ErrIllegalTarget
 		}
 		g.dequeueChoiceLocked(idx)

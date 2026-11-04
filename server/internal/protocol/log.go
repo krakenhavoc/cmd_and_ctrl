@@ -158,6 +158,18 @@ const (
 	LogNoBlocks LogKind = "no_blocks"
 	// LogToken — a token was created.
 	LogToken LogKind = "token"
+	// LogAttach — an Aura, Equipment or Fortification became attached to
+	// a permanent or a player (CR 701.3a): an equip, an Aura resolving
+	// onto its target or entering attached, a token created attached, an
+	// effect moving one. CardID is the attachment, Target the host card
+	// (TargetSeat a host player, a Curse), Seat the attachment's
+	// controller, and Label what it is: "Aura", "Equipment" or
+	// "Fortification" (empty for any other permanent). An attach onto the
+	// host it is already on does nothing (CR 701.3b) and has no line; a
+	// link breaking (unattach, the CR 704.5m/n state-based action) has
+	// none either, the board shows it. #4444: the client's attach cue
+	// reads it (ADR 0209 §3).
+	LogAttach LogKind = "attach"
 	// LogSacrifice — a permanent was sacrificed. Distinct from the
 	// LogZone entry it replaces, because "sacrificed" and "destroyed"
 	// are different facts to a player reading the table.
@@ -737,6 +749,17 @@ type LogEvent struct {
 	// player conceded and 0 when they lost — kept beside Cause for
 	// clients that predate it.
 	Amount int `json:"amount,omitempty"`
+	// Delta is, on a LogCounters entry, the SIGNED change the entry
+	// records (#4442, ADR 0209 §3): +2 for two counters put on, -1 for
+	// one taken off. The engine's event carries only the total after
+	// (Amount), so the fold reads the total before off the previous
+	// counter event for the same card and kind, back to the card's
+	// last zone change (CR 400.7: a new object has no counters), the
+	// walk game.counterPlacedDeltaLocked makes for the triggers. It is
+	// what lets the client's counter cue tell a placement from a
+	// removal. Zero on every other kind, and redacted with Amount, for
+	// the same reason.
+	Delta int `json:"delta,omitempty"`
 	// Cause is why a LogEliminated player left ("life", "empty_draw",
 	// "poison", "commander_damage", "effect", "concede" — the engine's
 	// game.LossCause) or how a LogGameOver game ended
@@ -822,7 +845,8 @@ type LogEvent struct {
 	// Label is the PRINTED NAME of the thing an entry is about, when
 	// the kind needs one that is not a card: the special action as
 	// the card prints it ("Foretell {2}") on a LogSpecialAction
-	// entry, the counter kind ("+1/+1") on a LogCounters one.
+	// entry, the counter kind ("+1/+1") on a LogCounters one, what the
+	// attachment is ("Aura", "Equipment") on a LogAttach one (#4444).
 	//
 	// Redacted with the card's name, exactly as Choice is and for the
 	// same reason (#781, #1021). "Foretell {2}" prices a card the
@@ -1110,6 +1134,16 @@ type logFold struct {
 	// EventLoopReplayed: every event between is folded out, and the
 	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
 	replaying bool
+	// counts is the count of each counter kind on each card as of the
+	// last EventCounterPlaced the fold saw for it (#4442), so a
+	// LogCounters entry can carry its Delta. A card's row goes when it
+	// moves anywhere but onto the battlefield (CR 400.7: the object it
+	// becomes has no counters). Not when it arrives: a permanent's
+	// "enters with" counters land before its own zone move and EventETB
+	// are emitted (entry_counters.go), so forgetting there would forget
+	// them. Kept through a loop replay, whose events write no line but
+	// still move the counts.
+	counts map[uuid.UUID]map[string]int
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1120,7 +1154,35 @@ func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
 		ring:     newLogRing(PublicLogMax),
 		revealAt: make(map[uint64]int),
 		randomAt: make(map[uint64]int),
+		counts:   make(map[uuid.UUID]map[string]int),
 	}
+}
+
+// countDelta records a counter event's total and returns the signed
+// change from the total before it (#4442). A move off to any zone but
+// the battlefield forgets the card's counts (see logFold.counts) and
+// returns zero, as every other event does.
+func (f *logFold) countDelta(ev game.Event) int {
+	switch ev.Kind {
+	case game.EventCounterPlaced:
+		if ev.Target == uuid.Nil {
+			return 0
+		}
+		m := f.counts[ev.Target]
+		if m == nil {
+			m = make(map[string]int)
+			f.counts[ev.Target] = m
+		}
+		before := m[ev.Label]
+		after := max(ev.Amount, 0)
+		m[ev.Label] = after
+		return after - before
+	case game.EventZoneMove:
+		if ev.NewZone != game.ZoneBattlefield && ev.CardID != uuid.Nil {
+			delete(f.counts, ev.CardID)
+		}
+	}
+	return 0
 }
 
 // extends reports whether g's event log is the log f folded, possibly
@@ -1157,6 +1219,10 @@ func (f *logFold) feed(events []game.Event) int {
 	ring := f.ring
 	start := f.cursor
 	for i := start; i < len(events); i++ {
+		// #4442: every counter event moves the counts, a replayed one
+		// and an unnarrated kind included, so the next line's Delta is
+		// measured from the count the card really had.
+		delta := f.countDelta(events[i])
 		// ADR 0193 §7: a loop replay's own events still fire (triggers
 		// and tallies see every iteration), but the log tells the replay
 		// as one line.
@@ -1176,6 +1242,7 @@ func (f *logFold) feed(events []game.Event) int {
 			f.cycled = ""
 			f.revealedSearch = false
 			f.replaying = false
+			clear(f.counts)
 		default:
 			if f.replaying {
 				continue
@@ -1194,6 +1261,9 @@ func (f *logFold) feed(events []game.Event) int {
 		e.Turn = f.turn
 		if e.Kind == LogStep {
 			e.Step = f.step
+		}
+		if e.Kind == LogCounters {
+			e.Delta = delta
 		}
 		switch e.Kind {
 		case LogCycle:
@@ -1515,6 +1585,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.NewZone == game.ZoneStack {
 			return LogEvent{}, false
 		}
+		// A permanent spawned onto the battlefield comes from no zone
+		// (#4763), and EventSpawned already announced it.
+		if ev.OldZone == "" && ev.NewZone == game.ZoneBattlefield {
+			return LogEvent{}, false
+		}
 		// A spell going to the graveyard off the stack is the tail of
 		// "resolved" / "was countered", not a separate fact.
 		if ev.OldZone == game.ZoneStack && ev.NewZone == game.ZoneGraveyard {
@@ -1607,6 +1682,18 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventTokenCreated:
 		base.Kind = LogToken
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
+	case game.EventAttach:
+		// #4444. A re-attach to the same host did nothing (CR 701.3b).
+		if ev.AlreadyAttached {
+			return LogEvent{}, false
+		}
+		base.Kind = LogAttach
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		// A card host rides Target, a player host (a Curse) TargetSeat.
+		base.setTarget(ev.Target, seatOf)
 		return base, true
 
 	case game.EventPlayerEliminated:
@@ -2729,8 +2816,10 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 					// And the number with it: redactCardForViewer
 					// strips CardView.counters from a non-knower, so a
 					// count under a line that says "a card" would hand
-					// back exactly what the card filter took away.
+					// back exactly what the card filter took away. The
+					// change (#4442) goes too: it is half the count.
 					e.Amount = 0
+					e.Delta = 0
 				}
 			}
 			e.Text = renderLogText(e, cardName, targetName)
@@ -2922,6 +3011,18 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s declares no blockers", actor)
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
+	case LogAttach:
+		// #4444: the verb the rules give each (CR 301.5a, 303.4b,
+		// 301.6). `target` is the host card, or the seat for a Curse.
+		switch e.Label {
+		case "Equipment":
+			return fmt.Sprintf("%s equips %s", card, target)
+		case "Aura":
+			return fmt.Sprintf("%s enchants %s", card, target)
+		case "Fortification":
+			return fmt.Sprintf("%s fortifies %s", card, target)
+		}
+		return fmt.Sprintf("%s is attached to %s", card, target)
 	case LogEliminated:
 		return renderEliminatedText(*e, actor, cardName)
 	case LogGameOver:

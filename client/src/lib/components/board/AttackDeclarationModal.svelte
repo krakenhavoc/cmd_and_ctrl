@@ -54,6 +54,12 @@
   // attackers' symbols are paid with 2 life each (CR 107.4f), sent as
   // `phyrexian_life`. Its ceiling follows the checked set and the life
   // total (CR 119.4).
+  //
+  // #4430: opened by a token group's "Attack Bob with N", the picker
+  // checks only the group's members and what is already staged at Bob
+  // (`seed`), and its confirm joins the staged set (`keptStage`). The
+  // creatures that ride along from it are part of the one declaration,
+  // so the Phyrexian stepper counts their symbols too.
 
   import type { CardView, GameView } from "../../protocol";
   import {
@@ -67,6 +73,7 @@
     toggleAttackSelection,
   } from "../../attackAll";
   import { attackLifeSymbols, clampAttackLife } from "../../attackLife";
+  import { keptBesidePick, type StagedAttack } from "../../attackStage";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
   import { cancelAction, confirmAction } from "../../dock";
@@ -93,6 +100,12 @@
     // #4198: the viewer's life total, for the CR 119.4 cap on paying a
     // Phyrexian attack tax with life.
     life?: number;
+    // #4430: the creatures the picker opens checked. Null (the default)
+    // checks every eligible creature, as "Attack with all" asks.
+    seed?: readonly string[] | null;
+    // #4430: the staged set the confirm joins, when a token group opened
+    // the picker; null when the confirm replaces it.
+    keptStage?: readonly StagedAttack[] | null;
     // ADR 0130 §7: `exertIDs` are the checked attackers whose Exert
     // toggle is on.
     // #4198: `phyrexianLife` is how many Phyrexian symbols of the tax
@@ -113,6 +126,8 @@
     limitReason = null,
     legalGate = NO_LEGAL_ACTIONS,
     life = 0,
+    seed = null,
+    keptStage = null,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -147,7 +162,10 @@
   $effect(() => {
     if (defenderSeatID !== lastDefenderSeatID) {
       lastDefenderSeatID = defenderSeatID;
-      selected = seedAttackSelection(eligible, cap);
+      selected = seedAttackSelection(
+        seed ? eligible.filter((c) => seed.includes(c.instance_id)) : eligible,
+        cap,
+      );
       lockedSources = [];
       exerted = [];
       lifeSymbols = 0;
@@ -173,11 +191,26 @@
     const eligibleIDs = new Set(eligible.map((c) => c.instance_id));
     return selected.filter((id) => eligibleIDs.has(id));
   });
-  // #4198: the symbols of the checked attackers' tax, and the count the
-  // player may pay with life (never more than the checked set prints or
-  // the life total buys).
+  // #4430: the staged creatures that go out with the checked ones.
+  const kept = $derived(
+    keptStage && defenderSeatID
+      ? keptBesidePick(
+          keptStage,
+          defenderSeatID,
+          new Set(eligible.map((c) => c.instance_id)),
+          liveSelected,
+        )
+      : [],
+  );
+  // #4198: the symbols of the declaration's tax, and the count the
+  // player may pay with life (never more than the declaration prints or
+  // the life total buys). #4430: the whole declaration, kept creatures
+  // included, since `phyrexian_life` is counted over all of it.
   const taxSymbols = $derived(
-    attackLifeSymbols(view, defenderSeatID ? liveSelected.map(() => defenderSeatID) : []).total,
+    attackLifeSymbols(view, [
+      ...(defenderSeatID ? liveSelected.map(() => defenderSeatID) : []),
+      ...kept.map((s) => s.target),
+    ]).total,
   );
   const liveLife = $derived(clampAttackLife(lifeSymbols, taxSymbols, life));
   const atCap = $derived(cap !== null && liveSelected.length >= cap);

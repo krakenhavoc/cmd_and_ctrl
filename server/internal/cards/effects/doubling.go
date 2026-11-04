@@ -73,3 +73,25 @@ func DoublePowerAndToughnessOfEachUntilEOT(ctx *Context, ids []uuid.UUID, label 
 	}
 	return nil
 }
+
+// DoublePowerOfEachUntilEOT is "double the power of each <creature> you
+// control until end of turn" (Double Trouble): every creature's X is read
+// before any of them is changed, then each gets +X/+0 (CR 701.10b).
+func DoublePowerOfEachUntilEOT(ctx *Context, ids []uuid.UUID, label string) error {
+	type bump struct {
+		id uuid.UUID
+		dp int
+	}
+	bumps := make([]bump, 0, len(ids))
+	for _, id := range ids {
+		if dp, _, ok := doubledBy(ctx.Game, id, false); ok {
+			bumps = append(bumps, bump{id: id, dp: dp})
+		}
+	}
+	for _, b := range bumps {
+		if err := (BoostUntilEOT{Target: b.id, Power: b.dp, Label: label}).Apply(ctx.asGroupMember()); err != nil {
+			return err
+		}
+	}
+	return nil
+}

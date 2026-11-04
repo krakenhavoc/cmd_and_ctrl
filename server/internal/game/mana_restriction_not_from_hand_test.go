@@ -39,6 +39,32 @@ func withCastFrom(ctx ManaSpendContext, z ZoneKind) ManaSpendContext {
 	return ctx
 }
 
+// #4460: "Spend this mana only to cast spells from exile" (Interdimensional
+// Web Watch). A positive tag: only a cast whose zone is exile.
+func TestCastFromExileRestriction(t *testing.T) {
+	pool := ManaPool{{Color: "C", Restrictions: []string{ManaRestrictCastFromExile}}}
+	cost, _ := ParseCost("{C}")
+	spell := creatureSpendContext()
+
+	for _, tc := range []struct {
+		name string
+		ctx  ManaSpendContext
+		want bool
+	}{
+		{"a cast from exile", withCastFrom(spell, ZoneExile), true},
+		{"a cast from hand", withCastFrom(spell, ZoneHand), false},
+		{"a cast from the graveyard", withCastFrom(spell, ZoneGraveyard), false},
+		{"a cast from the command zone", withCastFrom(spell, ZoneCommand), false},
+		{"a cast from an unknown zone", spell, false},
+		{"an activation", ManaSpendContext{Purpose: SpendPurposeActivate}, false},
+		{"an unknown purpose", ManaSpendContext{}, false},
+	} {
+		if got := pool.CanPayFor(cost, 0, tc.ctx); got != tc.want {
+			t.Errorf("%s: can pay = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestManaSpendForCastParamsReadsTheZone(t *testing.T) {
 	c := Card{Name: "Bear", TypeLine: "Creature — Bear"}
 	for wire, want := range map[string]ZoneKind{"": ZoneHand, "hand": ZoneHand, "command": ZoneCommand, "graveyard": ZoneGraveyard, "nowhere": ""} {

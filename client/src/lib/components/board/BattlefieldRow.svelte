@@ -18,6 +18,7 @@
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries, type RowEntry } from "../../tokenGroups";
+  import { attackPicked } from "../../attackSelect";
   import {
     blockBoard,
     blockHighlight,
@@ -293,7 +294,7 @@
       t && isPicked(t, id) ? "P" : "",
       isBoardPickable(pick, id) ? "b" : "",
       isBoardPicked(pick, id) ? "B" : "",
-      selectedCombatCardID === id ? "s" : "",
+      selectedCombatCardID === id || $attackPicked.has(id) ? "s" : "",
       stagedAttackers?.has(id) ? "a" : "",
       blockHighlight(blocks, id),
     ].join("|");
@@ -519,9 +520,9 @@
                   takenFrom={takenFrom[c.instance_id]}
                   ringBearerOf={ringBearers[c.instance_id]}
                   cantAttack={cantAttack[c.instance_id]}
-                  selected={memberIDs
-                    ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
-                    : selectedCombatCardID === c.instance_id}
+                  selected={(memberIDs ?? [c.instance_id]).some(
+                    (id) => id === selectedCombatCardID || $attackPicked.has(id),
+                  )}
                   attacking={!!c.attacking_target ||
                     (memberIDs ?? [c.instance_id]).some((id) => stagedAttackers?.has(id))}
                   blocking={!!c.blocking_target}

@@ -56,6 +56,9 @@ func init() {
 			Label:   "{2}{B}: Exile target card from a graveyard. If it was a creature card, create a 2/2 black Zombie creature token.",
 			Cost:    ManaCost("{2}{B}"),
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
+			// #4559: priced by what the exile takes away; the token it
+			// makes for a creature card is left unpriced.
+			Purpose: ForTargets(ExilesFromGraveyard(0, "")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {

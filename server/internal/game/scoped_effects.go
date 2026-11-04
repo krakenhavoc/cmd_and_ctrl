@@ -1170,10 +1170,15 @@ var modKinds = map[ModKind]modKindSpec{
 	// materialised onto Card.TextWords before the pass (text_words.go).
 	ModChangeText: {reader: readerText, layer: Layer3Text},
 	ModSetTypes:   {layer: Layer4Type},
+	// Origin of Spider-Man's "becomes a legendary … in addition to its
+	// other types" (become_named.go).
+	ModAddSupertypes: {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #4072: "isn't a Human" (lose_subtypes.go).
 	ModLoseSubtypes: {layer: Layer4Type},
+	// #4691: "loses all creature types" (lose_all_creature_types.go).
+	ModLoseAllCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
@@ -2166,10 +2171,19 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.setTypes(types, subtypes, supertypes)
 		}
+	case ModAddSupertypes:
+		supertypes := m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.addSupertypes(supertypes)
+		}
 	case ModLoseSubtypes:
 		subtypes := m.Subtypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.loseSubtypes(subtypes)
+		}
+	case ModLoseAllCreatureTypes:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.loseAllCreatureTypes()
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes

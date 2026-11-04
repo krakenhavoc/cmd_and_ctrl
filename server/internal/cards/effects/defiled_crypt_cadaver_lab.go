@@ -25,7 +25,7 @@ func init() {
 		Left: Door{Triggered: []game.TriggeredAbility{
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast},
 				func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return b16CardLeftYourGraveyard(ev, source, g) && curatorFirstThisTurn(crypt)(ev, source, lki, g)
+					return cardLeftYourGraveyard(ev, source, g) && curatorFirstThisTurn(crypt)(ev, source, lki, g)
 				}, crypt, Do(CreateToken{Template: game.Card{
 					Name: "Horror", TypeLine: "Token Enchantment Creature — Horror",
 					Power: 2, Toughness: 2, Colors: []string{"B"},

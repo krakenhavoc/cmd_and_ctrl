@@ -211,6 +211,12 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 				priced = true
 				continue
 			}
+			// #4559: a graveyard card the entry exiles (mana_sink.go).
+			if v, ok := p.graveyardExileValue(st, t, e, source); ok {
+				cards += v
+				priced = true
+				continue
+			}
 			if lethality && e != nil && e.Damage > 0 {
 				if v, ok := p.damageCardValue(st, t.ID, e.Damage, source); ok {
 					cards += v

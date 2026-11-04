@@ -70,7 +70,8 @@ func keyedFrameSample() *ReplacementEvent {
 		EntersAsCopyOf: &PrintedValues{Name: "Copied"}, copySourceID: id("copy"), copyUntilEndOfTurn: true,
 		auraHost: TargetRef{Kind: TargetCard, ID: id("host")}, auraHostFixed: true, auraHostSettled: true,
 		entersAsAura: true, exchangeTextWith: id("xt"),
-		entersAs:           &EntersAs{Types: []string{"Artifact"}, Subtypes: []string{"Food"}, Grants: []string{"test/food"}, Label: "test"},
+		entersAs: &EntersAs{Types: []string{"Artifact"}, Subtypes: []string{"Food"}, Grants: []string{"test/food"}, Label: "test",
+			AddTypes: []string{"Creature"}, AddSubtypes: []string{"Spirit"}, Keywords: []string{"flying"}, BasePT: &EntersAsPT{Power: 1, Toughness: 1}},
 		stackItem:          &StackItem{ID: id("item"), Controller: id("actor"), SourceCardID: id("card"), Label: "Spell"},
 		putByEntering:      true,
 		EntersWithCounters: map[string]int{CounterPlusOne: 2},
@@ -114,6 +115,7 @@ func keyedFrameSample() *ReplacementEvent {
 			},
 		},
 		landPlay: true, landPlayer: id("lander"),
+		landGains:          permissionCastGains{keywords: []string{"haste"}, abilities: []string{"grant-key"}, label: "Serra Paragon"},
 		entryControllerSet: true, entryControllerPrior: id("prior"),
 		zoneRoute: &zoneRoute{
 			CardID: id("card"), Dst: ZoneHand, DstOwner: id("owner"), Actor: id("actor"), ToBottom: true, Depth: 2,

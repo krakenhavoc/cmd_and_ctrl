@@ -12,6 +12,7 @@ tests-e2e/
 ├── package.json
 ├── tsconfig.json
 └── tests/
+    ├── arrival-ring-4711.spec.ts # #4711: a "new" ring on an opponent's arrival frames what is on screen of its card, follows it when the back row moves with no frame or resize, and its tag meets no group label, at 1366x768, 1280x720 and 1920x1080
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
     ├── away-seat-3337.spec.ts # ADR 0177: a closed page shows offline, the host is offered a way on after the away time (1 minute here): keep waiting, a bot, the player taking it back; and conceding for them
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
@@ -30,6 +31,7 @@ tests-e2e/
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
     ├── land-menu-2960.spec.ts # #2960: a land's ability menu is visible and clickable at 1280x720 and 1998x716; seven lands each keep a clickable tile
+    ├── land-strip-reach-4866.spec.ts # #4866: on a crowded board with fifteen lands, every land on every seat's strip (an across-table seat's included) can be scrolled into view, at 2, 3 and 4 seats and 1280x720, 1366x768 and 1920x1080
 ├── library-top-4127.spec.ts # #4127: a playable library top (Bolas's Citadel) is offered on a card-sized peek raised off the pile, its cast button 26px tall and not under the dev dock, at three viewports; a click starts the cast
     ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts

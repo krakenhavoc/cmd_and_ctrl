@@ -29,8 +29,9 @@ import (
 // ADR 0013 amendment of 2026-10-09): ReturnChosenFromGraveyard, with a
 // floor of zero. Nothing is targeted, so opponents see no pick at cast
 // and the spell cannot be countered for want of one. "Another" is
-// another than Rise itself, so the creature you just sacrificed is a
-// legal choice.
+// another than the creature you sacrificed: the official ruling
+// (2023-06-16) is "You cannot return the same permanent card that you
+// sacrificed."
 //
 // No simplification.
 func init() {
@@ -58,7 +59,7 @@ var riseOfTheWitchKingReturn = RunThen("prompt-run/rise-of-the-witch-king-return
 	return ReturnChosenFromGraveyard{
 		Player:   r.Carry[0],
 		Question: "Rise of the Witch-king — you may return another permanent card from your graveyard to the battlefield",
-		Except:   r.Source,
+		Except:   r.Sacrifices().By(r.Carry[0])[0],
 		Max:      1,
 	}.Apply(ctx)
 })

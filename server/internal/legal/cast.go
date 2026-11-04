@@ -276,7 +276,16 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// copies of "the card's layout, unless a grant names faces" is a
 	// picker row the enumerator would not offer, or the other way
 	// round.
-	for _, face := range game.CastableFacesUnder(c, perm, e.seat) {
+	//
+	// #4696: and each face under the permission that opens it
+	// (game.CastableFaceGrantsLocked), which is the one CastSpell finds
+	// for a cast of that face: two permissions opening different faces
+	// of one card (Vizier of the Menagerie's creature spells beside an
+	// "instant and sorcery spells" permission, over Bonecrusher Giant)
+	// offer both, each priced by its own.
+	firstPerm := perm
+	for _, fg := range g.CastableFaceGrantsLocked(e.seat, c, kind, firstPerm) {
+		face, perm := fg.Face, fg.Permission
 		// The face is materialised onto a COPY, exactly as CastSpell
 		// does, so all the type, cost and catalog reads below see the
 		// chosen half without any of them learning about faces.
@@ -315,11 +324,11 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	}
 	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
 	// cast as both halves, for both costs, with no alternative cost.
-	if kind == game.ZoneHand && perm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
+	if kind == game.ZoneHand && firstPerm == nil && game.HasFuse(c) && !game.FusedHalvesDeclareExtras(c.OracleID) {
 		fused := game.FusedSpell(c)
-		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, perm) {
+		for _, offer := range g.CastOffersForLocked(e.seat, fused, kind, firstPerm) {
 			if offer == nil {
-				e.castMovesForCard(fused, from, kind, perm, nil)
+				e.castMovesForCard(fused, from, kind, firstPerm, nil)
 			}
 		}
 	}
@@ -721,7 +730,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// enumerator that passed only the seat would offer the bot a
 	// pro-red creature for its red spell and the server would refuse
 	// the move — the #347 / #544 failure mode.
-	castSrc := game.SourceObject(e.seat, &card)
+	// #4869, CR 601.2a: SourceCast, so the card is never offered as a
+	// target of its own clauses in the zone it is being cast from.
+	castSrc := game.SourceCast(e.seat, &card)
 
 	// Timing is NOT re-asked here. It was a copy of the engine's
 	// three lines until #1195 — `!card.IsInstant() &&
@@ -1023,6 +1034,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// #3931: harmonize's tap is priced per creature as emerge's
 			// sacrifice is (CR 702.180a), and tapping none is legal.
 			altCostSets = e.harmonizePayments(card, offer, pool, cost, fromZone, spend, xFloor)
+		} else if offer.Beholds() {
+			// #4689: "behold three Elementals" spends nothing, so there is no
+			// cheapest fuel to sort by. The permanents go first (choosing one
+			// shows the table nothing it has not seen), then the hand cards,
+			// as the additional cost's behold pays (revealPayment).
+			altCostSets = e.combos(beholdOrder(g, e.seat, pool), want, want, e.capOr(maxEnumeratedCostPayments), CapCostPayments)
 		} else if offer.PaymentDefinesX() {
 			// #3175: "a white card with mana value X" — the card is the X
 			// announcement, so each payment carries its own X.
@@ -1991,6 +2008,15 @@ func (e *enumerator) affordableXExcluding(
 			best, ok = x, true
 			continue
 		}
+		// #4694: mana spendable only on a spell with mana value N or
+		// greater pays for this spell from some larger X on, so the cost
+		// is not monotonic in X across that threshold. Jump to it and
+		// scan on; with no such mana floating there is nothing to jump to.
+		if next, found := spend.NextManaValueX(e.p.ManaPool, x+1); found && next <= e.opts.MaxX &&
+			e.canPayExcluding(cost, next, spend, excluded) {
+			best, ok, x = next, true, next
+			continue
+		}
 		break
 	}
 	e.noteMaxX(best, func(x int) bool { return e.canPayExcluding(cost, x, spend, excluded) })
@@ -2023,6 +2049,12 @@ func (e *enumerator) canPayExcluding(
 	// would accept. #2575: with the exclusions, which a "no more than one
 	// mana of each color" clause chooses its colours around, as the
 	// engine's cast auto-tap does.
+	//
+	// #4694: and with the spell's mana value recounted for this X (CR
+	// 202.3e), so mana spendable only on a spell with mana value N or
+	// greater pays for an X spell whose X is large enough. A no-op for
+	// anything but a cast.
+	spend = spend.WithX(x)
 	cost = e.g.CostAsPaidByExcludingForEffect(e.seat, spend, cost, x, excluded)
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
@@ -2178,7 +2210,7 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 		hi = len(options)
 	}
 	limit := e.opts.MaxExpansionPerSource
-	out := modeSelections(options, lo, hi, ms.Repeatable, limit+1)
+	out := modeSelections(options, lo, hi, ms.Repeatable, limit+1, ms.WithinPawprints)
 	if len(out) > limit {
 		// ADR 0122 §6.2: the walk was asked for one selection past the
 		// budget, which leaves the first ones as they were; a spare one
@@ -2191,7 +2223,16 @@ func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec, q g
 
 // modeSelections is legalModeSets' walk over the choosable options:
 // every selection of size lo..hi, all-one-option first, up to budget.
-func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]int {
+//
+// `fits` is the selection's other bound, the CR 700.2i pawprint budget
+// (game.ModeSpec.WithinPawprints, #4786): a selection that spends more
+// {P} than the card allows is neither offered nor extended, because
+// every pawprint mode costs at least one {P} and a longer selection
+// can only spend more. Nil means no other bound.
+func modeSelections(options []int, lo, hi int, repeatable bool, budget int, fits func([]int) bool) [][]int {
+	if fits == nil {
+		fits = func([]int) bool { return true }
+	}
 	var out [][]int
 	add := func(sel []int) bool {
 		out = append(out, append([]int(nil), sel...))
@@ -2215,6 +2256,9 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 				for i := range sel {
 					sel[i] = opt
 				}
+				if !fits(sel) {
+					break
+				}
 				if !add(sel) {
 					return out
 				}
@@ -2227,6 +2271,9 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 	// emitted above.
 	var rec func(start int, cur []int) bool
 	rec = func(start int, cur []int) bool {
+		if !fits(cur) {
+			return true
+		}
 		if len(cur) >= lo && len(cur) <= hi {
 			if !(repeatable && game.SameModeThroughout(cur)) && !add(cur) {
 				return false

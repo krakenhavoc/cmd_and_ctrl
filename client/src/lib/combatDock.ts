@@ -393,6 +393,8 @@ export function combatSelectionRequest(
   onCancel: () => void,
   // ADR 0130 §7: the exert question, for an attacker that may be exerted.
   exert: ExertChoice | null = null,
+  // #4326: another creature clicked now joins the selection.
+  adds = false,
 ): DockRequest {
   const attacking = kind === "attacker";
   const asking = attacking && exert !== null;
@@ -404,9 +406,11 @@ export function combatSelectionRequest(
     live: true,
     question: asking
       ? exertQuestion(cardName, exert)
-      : attacking
-        ? `Attacking with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`
-        : `Blocking with ${cardName} — click an incoming attacker to commit, or the creature again to cancel.`,
+      : attacking && adds
+        ? `Attacking with ${cardName} — click an opponent's seat to commit, another creature to add it, or a selected one again to drop it.`
+        : attacking
+          ? `Attacking with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`
+          : `Blocking with ${cardName} — click an incoming attacker to commit, or the creature again to cancel.`,
     detail: asking ? EXERT_NOTE : undefined,
     row: asking ? exertRow(exert) : undefined,
     primary: null,

@@ -93,6 +93,11 @@ type activateParams struct {
 	// TapIDs are the creatures a "Tap another untapped creature you
 	// control" cost taps — station's (#759).
 	TapIDs []string `json:"tap_ids"`
+	// UnattachIDs are the Equipment an "Unattach an Equipment from
+	// <this>" cost takes off the source (#4799, Captain America, First
+	// Avenger): they stay on the battlefield, but the source loses what
+	// they gave it until something attaches them again.
+	UnattachIDs []string `json:"unattach_ids"`
 	// ExileIDs are the cards an "Exile N cards from your graveyard /
 	// hand" cost spends (#1297) — the same resource escape's exiled
 	// graveyard is, priced the same way.
@@ -170,10 +175,19 @@ type choiceParams struct {
 	// SearchZones answers an and/or search's zone question (#4519): the
 	// zones searched, asked before any candidate is shown.
 	SearchZones []string `json:"search_zones"`
+	// Modes answers a mode_pick (#764): the chosen ModeSpec indexes, in
+	// the order chosen; empty is "choose none" on an "up to" prompt.
+	Modes []int `json:"modes"`
 }
 
 type mulliganParams struct {
 	HandSize int `json:"hand_size"`
+}
+
+// playerManaParams is the one field that tells a player mana ability's
+// activate_mana_ability move (#4885) from a card's.
+type playerManaParams struct {
+	PlayerAbility string `json:"player_ability"`
 }
 
 type discardSelectionParams struct {

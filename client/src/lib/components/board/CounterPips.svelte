@@ -32,7 +32,13 @@
   <div class="pips" aria-hidden="true">
     {#each entries as [name, count] (name)}
       {@const style = counterStyle(name)}
-      <span class="pip" style:background={style.color} title={`${count}× ${name}`}>
+      <!-- data-counter: where TableEffects rings a counter put on (#4442). -->
+      <span
+        class="pip"
+        data-counter={name}
+        style:background={style.color}
+        title={`${count}× ${name}`}
+      >
         <span class="pip-abbr">{style.abbr}</span>
         <span class="pip-count">{count}</span>
       </span>

@@ -3,7 +3,8 @@ package game
 import "github.com/google/uuid"
 
 // Related targets are committed together: changing the anchor may require
-// changing a later target too. The stack item keeps its original targets
+// changing a later target too, the later picks of a many-pick clause
+// included (#4862). The stack item keeps its original targets
 // throughout the picker, including across an undo.
 func (g *Game) queueRelatedRetargetLocked(offer RetargetOffer, from int, next []TargetRef) error {
 	item := g.StackMeta[offer.ItemID]
@@ -29,7 +30,7 @@ func (g *Game) queueRelatedRetargetLocked(offer RetargetOffer, from int, next []
 		fits := func(kind TargetRefKind, id uuid.UUID) bool {
 			trial := append([]TargetRef(nil), next...)
 			trial[i] = TargetRef{Kind: kind, ID: id, Mode: ref.Mode, Slot: ref.Slot}
-			return g.copyTargetsCanFinishLocked(src, steps, item.Targets, trial, stepIndex+1)
+			return g.targetsAfterCanFinishLocked(src, steps, item.Targets, trial, i)
 		}
 		cards := alt.Cards[:0]
 		for _, id := range alt.Cards {
@@ -45,7 +46,7 @@ func (g *Game) queueRelatedRetargetLocked(offer RetargetOffer, from int, next []
 			}
 		}
 		alt.Players = players
-		canKeep := g.copyTargetsCanFinishLocked(src, steps, item.Targets, next, stepIndex+1)
+		canKeep := g.targetsAfterCanFinishLocked(src, steps, item.Targets, next, i)
 		if len(cards)+len(players) == 0 {
 			if !canKeep {
 				return ErrIllegalTarget

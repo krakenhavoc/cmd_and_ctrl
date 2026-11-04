@@ -1890,3 +1890,206 @@ the `Register` refusals) and `legal/up_to_cast_x_test.go` (the enumerator
 offers up to X and every move dispatches; nothing owed at X = 0).
 
 Proof card: The Ruinous Wrecking Crew (Full).
+
+## Amendment 2026-11-02: pawprint modes, "choose up to five {P} worth of modes" (#4786)
+
+**Sprint:** S76 — Cards: incubate, face-down and outside the game (the
+Marvel's Spider-Man push, #4460). Seam found on Hela's Arcanum.
+
+CR 107.18: "The pawprint symbol is {P}. This symbol is used to indicate the
+modes on some modal spells, and does not represent a cost, mana, counters, or
+any type of persistent resource." CR 700.2i: "Some modal spells have one or
+more pawprint symbols ({P}) rather than bullet points, as well as an
+instruction to choose up to a specified number of {P} 'worth of modes.' While
+casting such a spell, its controller can choose any number of modes such that
+the total number of pawprint symbols listed for the chosen modes is not
+greater than the specified number."
+
+Every count before this bounded how many bullets were chosen. A pawprint
+spell bounds what they WEIGH: Season of Loss's {P}, {P}{P} and {P}{P}{P}
+bullets under a budget of five allow five {P} bullets, or {P}{P}{P} beside
+{P}{P}, but not {P}{P}{P} twice, which is only two bullets.
+
+### Decision: two integers of catalog data, judged where the count is
+
+- **The data.** `ModeOption.Pawprints` (the bullet's printed {P}) and
+  `ModeSpec.Pawprints` (the budget), built with
+  `effects.ChooseUpToPawprints(budget, repeatable, …)` and
+  `effects.Pawprint(n, option)`. Nothing is persisted: a stack item records
+  the chosen indexes, as it always has, and the weight is read back off the
+  card, so a restore point or a copy (CR 700.2g) needs nothing new.
+- **The bound.** `ModeSpec.WithinPawprints` (the sum of each occurrence's
+  {P}, a repeat counted again, CR 700.2d) is asked by `validateModes`, the
+  announce gate a spell's cast already passes through, so a selection over
+  the budget is `ErrInvalidParam` before anything is paid. `Max` is set to the
+  budget: every bullet spends at least one {P}, so the count bound stays a
+  true upper bound for any reader that never asks about weight.
+- **The minimum is 0.** CR 700.2i's "any number of modes", and "up to" reads
+  that way everywhere else in the catalog ("Choose up to two", Call Damage
+  Control). It is card data (`Min`), so a ruling to the contrary is a one-line
+  change per card.
+- **Spells only.** CR 700.2i speaks of "modal spells". `effects.Register`
+  (`checkPawprints`) refuses pawprints on a trigger's or an activated
+  ability's modes, a bullet with no {P} under a budget, {P} with no budget,
+  and a budget beside a raised, random, "up to X" or "that hasn't been chosen"
+  count or escalate, none of which a printed pawprint card has.
+- **Order.** Unchanged: the bodies run in printed order (CR 608.2c,
+  `PrintedModeOrder`), each repeat in turn, and a mode that leaves a prompt
+  open holds the later ones (the 2026-10-16 amendment, #4012). So Season of
+  Loss's edict has settled before its draw mode counts the dead.
+
+### Wire, client and bots
+
+- `CardView.modes.pawprints` (the budget) and `modes.options[i].pawprints`
+  (each bullet's {P}), both omitted when zero and both public, since they are
+  printed text.
+- The cast-time picker (`ModePickerModal`) shows each bullet's {P}, counts the
+  selection in {P} ("3 / 5 {P}"), and disables a bullet that would overspend
+  the budget. The server refuses the overspend anyway.
+- `legal.modeSelections` takes the weight bound and prunes the walk with it
+  (a longer selection only spends more), so a bot is offered every selection
+  the gate accepts and none it refuses: 16 for Season of Loss, the empty one
+  included.
+
+Tests: `game/pawprint_modes_test.go` (the gate at 0 to 6 {P}; a spec with no
+budget is bounded by its count alone), `legal/pawprint_modes_test.go` (the
+walk's 16 selections, none over the budget), `legal/pawprint_enumerator_test.go`
+(Season of Loss in hand: no move over the budget, every move accepted),
+`protocol/pawprint_modes_view_test.go` (both fields, and on the public copy),
+`cards/effects/pawprint_cards_test.go` (the three proof cards through
+`CastSpell` with `Strict`, an overspend refused, printed order whatever the
+announce order) and `client/src/lib/modePickerPawprints.render.test.ts`.
+
+Proof cards: Hela's Arcanum, Season of Loss, Season of the Burrow (Full).
+Season of Gathering, Season of the Bold and Season of Weaving need nothing
+more from this seam.
+
+## Amendment 2026-11-03: a mode_pick carries its bullets, and the heuristic prices them (#4674)
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first (a bot
+gap found on #4617, the 2026-10-30 amendment's "Bots" note).
+
+The heuristic answered every `mode_pick` with the enumerator's first
+selection, and on a "choose up to" prompt that is none (CR 700.2b): Ertai
+Resurrected, Hullbreaker Horror, Ravager Wurm and The Ruinous Wrecking Crew
+never chose a mode for a bot. Nothing on the prompt said what a bullet does,
+and the bot reads no oracle text ([ADR 0033 §3](0033-ai-bot-seat.md)).
+
+### Decision: the prompt carries each offered bullet, as a modal card does
+
+- **Wire.** `mode_bullets`, parallel to `mode_options`: one `ModeOptionView`
+  per offered bullet, the shape `modes.options` has on a modal card (label,
+  declared purpose, and for a targeted bullet `legal_targets` / `clauses`
+  with the clause's `harmful` flag). The targets are judged from the
+  trigger's own source as the prompt was judged
+  (`Game.ModePickSpecLocked`, the mode_pick's continuation), so the set is
+  what the following `pick_target` will offer. The chooser's alone, as a
+  card's `legal_targets` are the asking seat's (#1172). Derived when the
+  view is built: nothing is persisted, and a prompt restored with no
+  continuation carries none. The browser does not read it.
+- **Heuristic.** `PriceModePicks` (`aiseat/heuristic/mode_pick.go`): an
+  answer is the sum of its bullets, each its purpose at `purposeValue` plus
+  the best legal pick per target clause, priced as `pick_target` prices it:
+  a harmful clause prices an own permanent at its loss, and a clause with no
+  declared direction is priced only when it cannot pick the bot's own (and
+  at nothing when it can, so Charming Prince's and Charming Scoundrel's
+  "choose one" keep their first bullet in the curated decks). The empty answer is worth nothing, so an "up to" takes every bullet that
+  helps and none when each hurts. `heuristic-nomodepicks` is the back-out.
+- **Catalog.** The four cards declare what the bot needs: the Crew's rummage
+  `Purpose{Draws: 1, Discards: 1}`, and `Harmful` on the clauses that destroy,
+  bounce or fight a permanent (Ertai's destroy, the Crew's token, Hullbreaker's
+  permanent bounce, both of Ravager Wurm's). No engine rule reads either.
+
+Out of scope, stated: what a bullet gives a player other than its target
+(Ertai's "its controller draws a card") and whether a fight's own creature
+survives are not declared, so not priced; a bullet with no purpose and no
+target (the Crew's symmetric edict) is worth nothing. The enumerator's
+`MaxExpansionPerSource` budget still cuts the later single-bullet selections
+of a four-bullet "up to X" at X >= 3; that is ADR 0033 §1's budget, unchanged.
+
+Tests: `aiseat/heuristic/mode_pick_test.go` (each card's bullets: the useful
+one taken, none when every one hurts, up to X summed, the back-out) and
+`aiseat/mode_pick_bot_test.go` (the real cards, wire, enumerator and policy:
+Ertai destroys an opponent's creature and spares its own, the Crew at X = 2
+takes the rummage and the drain, and the opponent's view carries no bullets).
+
+## Amendment 2026-11-03 (b): up to N target cards from a target player's graveyard (#4862)
+
+Sprint S79, tracker #4834. Quandrix Command's fourth bullet, "target player
+shuffles up to three target cards from their graveyard into their library",
+is two clauses where the second depends on the first, as in the 2026-10-11
+amendment, but its dependent clause picks up to three cards and its anchor
+is a player. The 2026-10-11 rules allowed one dependent pick and only
+permanent anchors for the graveyard relationship.
+
+### Decision: one new relationship, and the only one that takes several picks
+
+`game.TargetInTargetPlayersGraveyard` (`players_graveyard`, card-facing
+builder `effects.FromTargetPlayersGraveyard`) admits a card in the graveyard
+of the player the anchor clause picked. `TargetRelationKind.ManyPicks`
+reports it as the one kind whose dependent clause may pick more than one
+object; every other kind keeps "at most one pick". `effects.Register`
+refuses it unless the anchor is a player-only clause (`target player`, not
+`any target`), the dependent clause looks only in graveyards, and the
+dependent clause has no rule about its set of picks (difference, sameness,
+total, division). The anchor is still a required single pick.
+
+Each pick is judged against the anchor on its own, at announcement (CR
+601.2c) and again on resolution (CR 608.2b). A card that has left the
+graveyard is illegal and the others stay legal. An anchor that has become an
+illegal target (a player who gained hexproof) still names the graveyard, so
+its cards stay legal targets; the card body does nothing with them, because
+an illegal player performs no action. That is the printed ruling on Memory's
+Journey: "If the player is an illegal target by the time Memory's Journey
+resolves, the spell will have no effect, even if the cards are still legal
+targets." The difference shows only when every other target is illegal too:
+the spell then resolves and does nothing, rather than not resolving.
+
+### Decision: copies and retargets refill the picks, rather than search them
+
+A copy or a "choose new targets" effect that changes the player must change
+every card to the new player's graveyard (CR 115.7d; the engine already
+refused an unchanged dependent its new anchor makes illegal). The walks ask
+whether the rest of the set can still be completed
+(`relatedTargetsCanFinishLocked`, which replaces the body of
+`copyTargetsCanFinishLocked`). With one open pick it tries each candidate,
+as before. With several it refills them: a pick the anchor still admits
+stays, and each other open pick takes the next candidate the clause does
+not already hold. That is exact because each pick is judged against the
+anchor alone and Register keeps set rules off the clause, so any distinct
+candidates fit as well as any others, and it costs one check rather than a
+search over every set of three cards.
+
+Two call sites change with it. The related retarget asks one pick at a
+time, so it now leaves the rest of the pick's own clause open
+(`targetsAfterCanFinishLocked`) instead of only the later clauses. The copy
+picker asks one clause at a time; a candidate now fits when the clause's
+other picks can follow it (`copyStepCandidatesLocked`), and an original
+target of a dependent clause is offered only while the walk's anchor still
+admits it. Before this a copy that changed Quandrix Command's player offered
+the old player's cards and then refused them, or, with no fresh candidate
+on offer, created the copy with targets it would refuse.
+
+### Wire, client and bots
+
+Nothing new. `relation.pairs` already maps each player to the cards in
+their graveyard, the client's picker already narrows by a player anchor
+(Ravager of the Fells) and takes a clause's `min` and `max`, and the
+enumerator already builds a dependent clause's sets from the legal set for
+each prefix. Nothing is persisted: the relation is catalog data.
+
+Cards: Quandrix Command (Full). `effects.TargetPlayerShufflesTheirCards` is
+the shared body for the family (Gaea's Blessing, Loaming Shaman, Stream of
+Consciousness, Krosan Reclamation, Dwell on the Past, Witness the Future,
+Rite of Renewal, Memory's Journey). Memory's Journey and Krosan Reclamation
+also need #4869: cast with flashback, a spell can today name itself as a
+target in its own graveyard, which CR 601.2a forbids.
+
+Tests: `game/target_relation_many_test.go` (announcement with 0 to 3 picks,
+another graveyard, a fourth pick, the resolution re-check, the copy refill,
+the related retarget), `effects/quandrix_command_test.go` (each bullet, the
+fourth with 0, 1 and 3 picks, the refusals, cards that left, the player's
+legality, the picker's pairs, a copy moved to another player, and every
+answer the enumerator offers for the copy accepted),
+`effects/target_relation_players_graveyard_test.go` (Register's gate) and
+`client/src/lib/targetingRelation.test.ts`.

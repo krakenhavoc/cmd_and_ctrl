@@ -19,7 +19,7 @@ import (
 //   - The return is the ordinary targeted graveyard-to-hand. With no
 //     creature card to name the trigger is removed (CR 603.3d).
 //   - The leave trigger is Syr Konrad's condition,
-//     b02CreatureCardLeftYourGraveyard: one trigger per card, so two
+//     creatureCardLeftYourGraveyard: one trigger per card, so two
 //     cards leaving together amass twice (unlike Desecrated Tomb's "one
 //     or more"). The card the enters trigger just returned leaves the
 //     graveyard, so the enters trigger returning a creature
@@ -42,8 +42,8 @@ func init() {
 					}),
 				TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn()),
 			),
-			On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b02CreatureCardLeftYourGraveyard(ev, source, g)
+			OnAny(leftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return creatureCardLeftYourGraveyard(ev, source, g)
 			}, "Along the Crooked Way — amass Goblins 1", Do(Amass{Subtype: "Goblin", N: 1})),
 		},
 		Activated: []ActivatedAbility{{

@@ -159,11 +159,24 @@ const VariantNoEntryCounters = "noentrycounters"
 // NoEntryCountersContestant is an arena name only.
 const NoEntryCountersContestant = string(tiers.Heuristic) + "-" + VariantNoEntryCounters
 
+// VariantNoManaSink disables #4559's mana sink ordering and graveyard
+// exile pricing (Config.SinkManaLast and PriceGraveyardExile false).
+const VariantNoManaSink = "nomanasink"
+
+// NoManaSinkContestant is an arena name only.
+const NoManaSinkContestant = string(tiers.Heuristic) + "-" + VariantNoManaSink
+
+// VariantNoModePicks disables only #4674's mode_pick pricing.
+const VariantNoModePicks = "nomodepicks"
+
+// NoModePicksContestant is an arena name only.
+const NoModePicksContestant = string(tiers.Heuristic) + "-" + VariantNoModePicks
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
 // `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
-// `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`
-// or `heuristic-noentrycounters`.
+// `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`,
+// `heuristic-noentrycounters`, `heuristic-nomanasink` or `heuristic-nomodepicks`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -180,16 +193,20 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoReconfigure}, nil
 	case NoEntryCountersContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoEntryCounters}, nil
+	case NoModePicksContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoModePicks}, nil
 	case NoLandOrderContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoLandOrder}, nil
 	case NoOutnumberContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoOutnumber}, nil
 	case NoGrantsContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoGrants}, nil
+	case NoManaSinkContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoManaSink}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant, NoManaSinkContestant, NoModePicksContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -378,7 +395,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure, VariantNoOutnumber, VariantNoLandOrder, VariantNoEntryCounters:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure, VariantNoOutnumber, VariantNoLandOrder, VariantNoEntryCounters, VariantNoManaSink, VariantNoModePicks:
 		return true
 	}
 	return false
@@ -847,6 +864,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PriceEntryCounters = false
 		opt.Heuristic = &h
+	case VariantNoModePicks:
+		h := heuristic.DefaultConfig()
+		h.PriceModePicks = false
+		opt.Heuristic = &h
 	case VariantNoLandOrder:
 		h := heuristic.DefaultConfig()
 		h.OrderLandDrops = false
@@ -859,6 +880,11 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PriceGrantSaves = false
 		h.PriceEvasionGrants = false
+		opt.Heuristic = &h
+	case VariantNoManaSink:
+		h := heuristic.DefaultConfig()
+		h.SinkManaLast = false
+		h.PriceGraveyardExile = false
 		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {

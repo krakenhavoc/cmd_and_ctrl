@@ -50,3 +50,13 @@ func MayhemCastableZone() game.ConditionalCastZone {
 func discardedThisTurn(g *game.Game, _ uuid.UUID, card game.Card) bool {
 	return g.DiscardedThisTurn(card.InstanceID)
 }
+
+// PaidMayhem reports whether `key` — a StackItem's AltCost — is a mayhem
+// cost: the card's own ("mayhem") or one a permanent gave it
+// (game.AltCostKeyGrantedMayhem, Green Goblin's Goblin Formula). "Cast
+// using mayhem" and "if its mayhem cost was paid" are true for either,
+// since a card given mayhem has that cost. Read it, never the printed key
+// alone.
+func PaidMayhem(key string) bool {
+	return key == AltCostKeyMayhem || key == game.AltCostKeyGrantedMayhem
+}

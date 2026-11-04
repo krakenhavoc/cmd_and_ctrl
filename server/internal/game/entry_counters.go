@@ -299,6 +299,27 @@ func (g *Game) EntrySpentForEffect(ev *ReplacementEvent) ManaSpent {
 	return ev.stackItem.Paid.Spent()
 }
 
+// EntryAltCostForEffect is the alternative cost of the spell an entry
+// event is turning into a permanent (#4460): the key it was cast for
+// (StackItem.AltCost) and the objects that cost's card component paid
+// with (PaidCost.AltCostObjects, ADR 0135 §4), read INSIDE the CR 614
+// window, before CastProvenance is stamped on the permanent. Scarlet
+// Spider, Ben Reilly's "If Scarlet Spider was cast using web-slinging,
+// he enters with X +1/+1 counters on him, where X is the mana value of
+// the returned creature" is the reader: read the objects through
+// AltCostPermanentsForEffect.
+//
+// "" and nil for every entry that is not a resolving spell, and for a
+// spell cast for its mana cost. The refs are the caller's own copy.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) EntryAltCostForEffect(ev *ReplacementEvent) (string, []ObjectRef) {
+	if ev == nil || ev.stackItem == nil {
+		return "", nil
+	}
+	return ev.stackItem.AltCost, append([]ObjectRef(nil), ev.stackItem.Paid.AltCostObjects...)
+}
+
 // KeywordSunburst is CR 702.44's token in canonicalKeywords.
 const KeywordSunburst = "sunburst"
 

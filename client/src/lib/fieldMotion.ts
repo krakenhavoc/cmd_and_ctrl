@@ -307,6 +307,41 @@ export function uprightBox(card: Pick<FieldCard, "rect" | "tapped">): Box {
 }
 
 /**
+ * #4711: what is on screen of a tile: its box cut by every box that
+ * clips it (each ancestor that does not let overflow show, a scrolled
+ * row and the back row among them). Null when none of it is: a card
+ * scrolled wholly out of its row has nothing to ring. The layer the
+ * ring is drawn in is not clipped by the row, so an unclipped ring of a
+ * card half out of view was drawn whole, over the neighbouring groups
+ * and their labels.
+ */
+export function visibleBox(box: Box, clips: readonly Box[]): Box | null {
+  let left = box.left;
+  let top = box.top;
+  let right = box.left + box.width;
+  let bottom = box.top + box.height;
+  for (const c of clips) {
+    left = Math.max(left, c.left);
+    top = Math.max(top, c.top);
+    right = Math.min(right, c.left + c.width);
+    bottom = Math.min(bottom, c.top + c.height);
+  }
+  if (right - left < 1 || bottom - top < 1) return null;
+  return { left, top, width: right - left, height: bottom - top };
+}
+
+/** Whether two boxes differ by more than half a pixel on any edge (or one of them is missing). */
+export function boxMoved(a: Box | null | undefined, b: Box | null | undefined): boolean {
+  if (!a || !b) return a !== b;
+  return (
+    Math.abs(a.left - b.left) > 0.5 ||
+    Math.abs(a.top - b.top) > 0.5 ||
+    Math.abs(a.width - b.width) > 0.5 ||
+    Math.abs(a.height - b.height) > 0.5
+  );
+}
+
+/**
  * ArrivalClock keeps each ringed permanent's expiry. `ring` adds or
  * restarts one; `live` is the set still ringed at `now`, and drops the
  * rest.

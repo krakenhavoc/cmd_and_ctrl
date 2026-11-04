@@ -155,6 +155,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}Tombstone.svelte`],
     doc: "#4449: the epitaph on the tombstone that stays on an eliminated player's panel",
   }),
+  tombstoneDecked: label({
+    name: "Decked",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}Tombstone.svelte`],
+    doc: "#4879: the epitaph on the stone of a player who lost by drawing from an empty library (CR 704.5b), in place of the R. I. P.",
+  }),
   tombstoneOf: dynamicLabel({
     stem: " is out of the game",
     match: "suffix",
@@ -834,6 +841,18 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number",
   }),
+  playerManaAbility: dynamicLabel({
+    stem: " life, add ",
+    match: "contains",
+    shape: "<source>: pay <N> life, add <mana>",
+    make: (source: string, life: number, produced: string) =>
+      `${source}: pay ${life} life, add ${produced}`,
+    example: ["Channel", 1, "{C}"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}PlayerManaAbilities.svelte`],
+    doc: "a mana ability the viewer has as a player, bound to no card (#4885, Channel): beside the mana pool on your own panel until end of turn; each press pays the life and adds the mana, greyed when the life can't be paid (CR 119.4)",
+  }),
   payLifeForMana: label({
     name: "Pay life for {B}…",
     kind: "text",
@@ -1180,6 +1199,13 @@ export const LABEL_SPECS = {
     role: "textbox",
     owners: ["routes/Catalog.svelte"],
     doc: "the Catalogue's search field; the catalog.search hint points at it",
+  }),
+  filterCatalogueBySet: label({
+    name: "filter the catalogue by set",
+    kind: "aria",
+    role: "combobox",
+    owners: ["routes/Catalog.svelte"],
+    doc: "the Catalogue's set picker (#4790): narrows the grid to one set's cards and shows how many of its cards the game plays",
   }),
   searchRoadmap: label({
     name: "search the roadmap",

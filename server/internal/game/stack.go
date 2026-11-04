@@ -568,6 +568,17 @@ type StackItem struct {
 	// on a copy.
 	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
 
+	// BottomInsteadOfGraveyard is "If that spell would be put into a
+	// graveyard, put it on the bottom of its owner's library instead"
+	// (Quintorius, Loremaster) as a fact about this stack object: the
+	// sibling of ExileInsteadOfGraveyard with the library's bottom as the
+	// destination. It replaces only a move to the owner's graveyard, on
+	// every path that would make one (resolving, being countered, or
+	// fizzling); a spell returned to a hand or put into a library goes
+	// there. Stamped at the cast from the permission that granted it
+	// (CR 400.7g). Never set on a copy. Added in the S79 SOC run.
+	BottomInsteadOfGraveyard bool `json:"bottomInsteadOfGraveyard,omitempty"`
+
 	// Uncopyable is "This ability can't be copied" as a fact about
 	// this stack object (#1574, ADR 0043 Decision 20). Set at
 	// activation from ActivatedAbilityShape.Uncopyable; a triggered
@@ -608,7 +619,12 @@ type StackItem struct {
 
 	// PromisedCounters is the "enters with an additional counter" marks
 	// a spent next-spell promise (Savage Summoning) wrote onto this
-	// SPELL as it became cast (#1852, CR 601.2i). Read by
+	// SPELL as it became cast (#1852, CR 601.2i), or that a resolving
+	// effect wrote onto it while it waited on the stack
+	// (MarkSpellEntersWithCountersForEffect, Wildgrowth Archaic's cast
+	// trigger), or that the cast permission it was cast through
+	// carried (CastPermission.EntersWithCounters, Mikey & Don, #4679).
+	// All write through addPromisedCounterLocked. Read by
 	// applyCastEntryCountersLocked, so the counters ride the entry
 	// pipeline. Object-scoped like CantBeCountered: a copy never has
 	// them, and they end with the item. Never mutated in place.

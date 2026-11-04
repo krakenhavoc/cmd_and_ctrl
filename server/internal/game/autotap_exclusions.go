@@ -72,6 +72,11 @@ func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uui
 		full = append(full, pay.TapIDs, pay.ReturnIDs, pay.ExileIDs)
 		sacrificed = append(sacrificed, pay.SacrificeIDs)
 	}
+	// #4689: a behold's objects stay excluded outright too. Beholding
+	// spends nothing (CR 701.4a), but a hand card's mana ability exiles it
+	// (a Spirit Guide) and the reveal is paid after the mana (CR 601.2g
+	// before 601.2h), so the planner keeps its hands off them all; a
+	// player can still tap a beheld mana creature by hand first.
 	if alt != nil && alt.Sacrifice != nil {
 		sacrificed = append(sacrificed, params.AltCostIDs)
 	} else {

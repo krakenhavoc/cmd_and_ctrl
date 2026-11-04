@@ -108,6 +108,15 @@ type TargetSource struct {
 	// changes which words a clause names and nothing else: a cost walk
 	// that carries it still excludes nothing and compares nothing.
 	text *TextWords
+
+	// casting says Object is a card being CAST (SourceCast), not a spell
+	// already on the stack or a permanent: CR 601.2a moves the card to
+	// the stack before CR 601.2c's targets are announced, so the card is
+	// never a legal target of its own clauses in the zone it is leaving
+	// (#4869; Memory's Journey's flashback ruling). Read only by
+	// excludesSource, which every announce check and legal-target list
+	// shares.
+	casting bool
 }
 
 // WithTrigger is this source judging a clause for the triggered ability
@@ -231,6 +240,16 @@ func (g *Game) costCandidatesLocked(playerID, sourceID uuid.UUID, spec *TargetSp
 // SourceObject is the ordinary case: a live spell or ability source.
 func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj}
+}
+
+// SourceCast is SourceObject for a card about to be cast from a zone
+// (hand, graveyard, exile, library, ...): the card is the spell's own
+// source (CR 702.16b), and it is not a candidate for its own targets,
+// because CR 601.2a has moved it to the stack by the time CR 601.2c
+// announces them (#4869). The cast gate, the view's cast stamps and the
+// bot's enumerator all build their source here, so they agree.
+func SourceCast(controller uuid.UUID, obj *Card) TargetSource {
+	return TargetSource{Controller: controller, Object: obj, casting: true}
 }
 
 // SourceSnapshot is the value-copy case (spell_copy.go, an LKI read).
@@ -549,6 +568,22 @@ type TargetSpec struct {
 	// like it admits NOTHING on a walk with no fired trigger or an event
 	// naming no Actor. Build it with effects.ControlledByThatEventActor.
 	ControlledByEventActor bool
+
+	// ManaValueAtMostEventAmount is "with mana value X or less, where X is
+	// the amount of damage" the triggering event dealt (Venerable Warsinger:
+	// "return target creature card with mana value X or less from your
+	// graveyard to the battlefield, where X is the amount of damage this
+	// creature dealt to that player"). The bound is the triggering event's
+	// Amount, fixed when the trigger fires, so it is known when the target
+	// is chosen (CR 603.3d) and when it is re-checked on resolution (CR
+	// 608.2b).
+	//
+	// DATA, not a closure, for ControlledByThatPlayer's reasons: CardOK is
+	// handed the caster and the candidate, never the event. Judged in
+	// sourceAdmits; a walk with no fired trigger (a spell, an activation)
+	// admits NOTHING, never everything. Build it with
+	// effects.ManaValueAtMostTheEventAmount.
+	ManaValueAtMostEventAmount bool
 
 	// OpponentSlot is "for each opponent, … target … that player
 	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
@@ -1312,8 +1347,13 @@ func hiddenExileCard(zone ZoneKind, c *Card, chooser uuid.UUID) bool {
 // with no live source object — a cost payment, or a source that has
 // left (whose returned card is a new object, CR 400.7) — excludes
 // nothing here; a sacrifice cost drops the source at its own sites.
+//
+// A card being cast (SourceCast) is excluded from every clause, "another"
+// or not: CR 601.2a puts it on the stack before CR 601.2c announces its
+// targets, so a flashback spell's "target card in a graveyard" cannot
+// name the card itself (#4869).
 func (s *TargetSpec) excludesSource(src TargetSource, id uuid.UUID) bool {
-	return s != nil && s.ExcludeSource && src.Object != nil && src.Object.InstanceID == id
+	return s != nil && (s.ExcludeSource || src.casting) && src.Object != nil && src.Object.InstanceID == id
 }
 
 // abilityItemsBySeqLocked is every ACTIVATED or TRIGGERED item on the
@@ -1824,6 +1864,20 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 	return who != uuid.Nil && c.Controller == who
 }
 
+// eventAmountAdmits is ManaValueAtMostEventAmount's gate: true without the
+// flag, and with it only a candidate whose mana value is at most the
+// triggering event's Amount. No fired trigger admits nothing.
+func (s *TargetSpec) eventAmountAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.ManaValueAtMostEventAmount {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(c)
+	return ok && mv <= src.Trigger.Event.Amount
+}
+
 // chooserAdmits is ControlledByChooser's gate (#2055): true without the
 // flag; with it, a candidate controlled by the opponent bound as the
 // clause's chooser, or -- before one is bound -- by any player other
@@ -1861,7 +1915,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

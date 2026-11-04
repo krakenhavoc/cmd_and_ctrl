@@ -21,9 +21,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventZoneMove,
+			OncePerBatch(OnAny(leftGraveyardEvents,
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b02CreatureCardLeftYourGraveyard(ev, source, g)
+					return creatureCardLeftYourGraveyard(ev, source, g)
 				},
 				"Undead Hand Ninja — each opponent loses 1 life and you gain 1 life",
 				Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1}))),

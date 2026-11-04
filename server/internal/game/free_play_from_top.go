@@ -32,6 +32,12 @@ import "github.com/google/uuid"
 //     to the hand with no question: the player could not have played it,
 //     so "if you don't" is already true.
 //
+// #4697: the spell branch judges the face being cast, not the front face
+// (OffersASpell on the permission it stamps). The land branch still reads
+// the front face: a modal DFC whose back face is a land is not offered
+// as a land play, and a Town (land // sorcery Adventure) whose land can
+// be played is offered as the land play only.
+//
 // The look is private (CR 701.20): only the looker is marked a knower of
 // the card. The land's may_cast is marked private so its words, which
 // name the card, reach nobody else; the spell's resolution_cast names
@@ -89,10 +95,11 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	if !ok {
 		return nil
 	}
-	if c.IsLand() {
-		if !o.Land || !g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
-			return g.putLibraryCardIntoHandLocked(o, id)
-		}
+	// The land offer is about the card as it is in the library, its
+	// front face: a modal DFC whose BACK face is a land is not offered
+	// as a land play (#4697 left that half open: playing a back face
+	// during a resolution needs a face on the land play and its prompt).
+	if c.IsLand() && o.Land && g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
 		return g.QueueMayCastKeyedForEffect(MayCastPrompt{
 			Chooser:      o.Player,
 			Source:       o.Source,
@@ -104,8 +111,15 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 			Private:      !o.Reveal,
 		}, freePlayLandOrHand, nil)
 	}
-	mv, readable := g.ManaValueForEffect(c)
-	if !readable || mv > o.MaxManaValue || !g.playerInGameLocked(o.Player) {
+	// #4697: "a spell with mana value N or less" is about the spell, so
+	// the card is offered when some face a cast may choose is a spell
+	// that fits (CR 601.3e, 712.11c, 715.3a), asked of the permission
+	// the offer is about to stamp (CastPermission.OffersASpell, as
+	// #4509's free casts ask it): a modal DFC whose back face fits, a
+	// creature card whose Adventure fits, a Town's sorcery Adventure when
+	// the land is not played. The permission caps the face being cast,
+	// so the cast can only be a face that fits.
+	if !g.freeCastFromTopPermissionLocked(o).OffersASpell(c) || !g.playerInGameLocked(o.Player) {
 		return g.putLibraryCardIntoHandLocked(o, id)
 	}
 	if !g.grantFreeCastFromTopLocked(o, id) {
@@ -160,8 +174,19 @@ func (g *Game) grantFreeCastFromTopLocked(o FreePlayFromTop, cardID uuid.UUID) b
 	if !ok {
 		return false
 	}
+	g.GrantCastPermissionToCardsForEffect(*g.freeCastFromTopPermissionLocked(o), []Card{c})
+	return true
+}
+
+// freeCastFromTopPermissionLocked is the permission the spell offer
+// stamps, before it names its card: OfferFreePlayFromTopOrHandForEffect
+// asks it whether the card is a spell it could cast (OffersASpell), so
+// the offer and the cast it opens judge the same faces by the same cap.
+//
+// Caller must hold g.mu.
+func (g *Game) freeCastFromTopPermissionLocked(o FreePlayFromTop) *CastPermission {
 	limit := o.MaxManaValue
-	g.GrantCastPermissionToCardsForEffect(CastPermission{
+	return &CastPermission{
 		Player:            o.Player,
 		Zone:              ZoneLibrary,
 		Duration:          g.UntilEndOfTurnDuration(),
@@ -173,8 +198,7 @@ func (g *Game) grantFreeCastFromTopLocked(o FreePlayFromTop, cardID uuid.UUID) b
 		Source:            o.Source,
 		SourceName:        o.SourceName,
 		Label:             o.SourceName + " — cast it without paying its mana cost",
-	}, []Card{c})
-	return true
+	}
 }
 
 // putLibraryCardIntoHandLocked is "put that card into your hand": a move

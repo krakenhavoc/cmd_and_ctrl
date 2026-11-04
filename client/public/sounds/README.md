@@ -62,13 +62,22 @@ time.
 
 An entry here would be in `SOUND_MANIFEST` with no takes, so nothing is
 fetched (a listed file that is absent logs a 404) and it would play its
-fallback until the files land (ADR 0209 §6). `sounds.test.ts` fails if a
-manifest take has no file. In the PR that adds the files, list the takes in
-the manifest.
+fallback until the files land (ADR 0209 §6), or nothing when it has none.
+`sounds.test.ts` fails if a manifest take has no file, and if an entry with
+no takes is missing from its `NOT_MADE_YET` list. In the PR that adds the
+files, list the takes in the manifest and take the entry out of
+`NOT_MADE_YET`.
 
-| Entry    | Files          | Spec                                                                                                                                                                    | Falls back to |
-| -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `extort` | `extort-1.mp3` | About 2 s. A soul sucked out (~1.2 s rising whoosh), then a coin clinking onto a brass scale, with the clink at 1.2-1.4 s. Plays when an extort drain resolves (#4544). | `damage`      |
+| Entry              | Files                                                               | Spec                                                                                                                                                                                                                       | Falls back to |
+| ------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `extort`           | `extort-1.mp3`                                                      | About 2 s. A soul sucked out (~1.2 s rising whoosh), then a coin clinking onto a brass scale, with the clink at 1.2-1.4 s. Plays when an extort drain resolves (#4544).                                                    | `damage`      |
+| `token_create`     | `token_create-1.mp3` (and an optional `token_create-2.mp3`)         | At most 0.6 s. A soft poof or shimmer. Plays once when one or more tokens are created together, as the first of them pops in with a soft glow (#4441): ten tokens made at once are one sound.                              | none (silent) |
+| `counter_add`      | `counter_add-1.mp3` (and an optional `counter_add-2.mp3`)           | At most 0.4 s. A short rising tick. Plays once when +1/+1 counters are put on one or more permanents together, as their power/toughness pulses green (#4442): a proliferate is one sound.                                  | none (silent) |
+| `counter_remove`   | `counter_remove-1.mp3` (and an optional `counter_remove-2.mp3`)     | At most 0.4 s. A short falling tick. Plays once when -1/-1 counters are put on one or more permanents together, as their power/toughness pulses purple (#4442). A batch with both kinds plays the first one's.             | none (silent) |
+| `commander_cast`   | `commander_cast-1.mp3` (and an optional `commander_cast-2.mp3`)     | At most 1.2 s. A horn or choir swell. Plays once when a commander is cast from the command zone, as golden light rises from where it sat to the stack (#4443).                                                             | none (silent) |
+| `commander_return` | `commander_return-1.mp3` (and an optional `commander_return-2.mp3`) | At most 0.8 s. A soft whoosh home. Plays once when a commander is put back into the command zone (from its graveyard or exile, or instead of its hand or library), as it drifts home with a soft trail (#4443).            | none (silent) |
+| `attach_equip`     | `attach_equip-1.mp3` (and an optional `attach_equip-2.mp3`)         | At most 0.6 s. A metal clang or buckle. Plays once when an Equipment (or a Fortification) becomes attached to a permanent, as it slides onto its host and clasps with a spark (#4444).                                     | none (silent) |
+| `attach_aura`      | `attach_aura-1.mp3` (and an optional `attach_aura-2.mp3`)           | At most 0.6 s. A soft shimmer. Plays once when an Aura enchants a permanent (resolving onto it, entering attached, or a Role or a token copy created on it), as it slides onto its host and a soft light rings it (#4444). | none (silent) |
 
 ### Hits on a player and elimination (#4543, #4449)
 
@@ -77,14 +86,19 @@ Combat damage that lands on a player plays one of three sounds in the
 exactly 1, **medium** for 2 to 3 and **heavy** for 4 or more. Each is one
 take, and each falls back to `damage` if its file fails to load
 (`SOUND_FALLBACK`). A player leaving the game plays `player_eliminated`, one
-take, in the `effects` category, with no fallback.
+take, in the `effects` category, with no fallback. A player who loses by
+drawing from an empty library (CR 704.5b, cause `empty_draw`) plays
+`player_decked` instead (#4879), two takes in the `effects` category, falling
+back to `player_eliminated`.
 
-| Entry               | Files                     | When it plays                                                                               | Falls back to | Source                                           |
-| ------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------ |
-| `face_hit_light`    | `face_hit_light-1.mp3`    | 1 combat damage hits a player: a deflection, a dink                                         | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `face_hit_medium`   | `face_hit_medium-1.mp3`   | 2 or 3 combat damage hits a player: a blunt punch, no gore                                  | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `face_hit_heavy`    | `face_hit_heavy-1.mp3`    | 4 or more combat damage hits a player: a bone and blood crush (the skull crush)             | `damage`      | ElevenLabs (Ian's paid subscription), 2026-10-29 |
-| `player_eliminated` | `player_eliminated-1.mp3` | A player leaves the game, once for each: their avatar shatters like rock, a tombstone stays | none          | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| Entry               | Files                     | When it plays                                                                                                                          | Falls back to       | Source                                           |
+| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| `face_hit_light`    | `face_hit_light-1.mp3`    | 1 combat damage hits a player: a deflection, a dink                                                                                    | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_medium`   | `face_hit_medium-1.mp3`   | 2 or 3 combat damage hits a player: a blunt punch, no gore                                                                             | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `face_hit_heavy`    | `face_hit_heavy-1.mp3`    | 4 or more combat damage hits a player: a bone and blood crush (the skull crush)                                                        | `damage`            | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `player_eliminated` | `player_eliminated-1.mp3` | A player leaves the game, once for each: their avatar shatters like rock, a tombstone stays                                            | none                | ElevenLabs (Ian's paid subscription), 2026-10-29 |
+| `player_decked`     | `player_decked-1.mp3`     | A player is decked (drew from an empty library): a falling, wavering moan, then a flutter of cards at about 0.7 s; the library's ghost | `player_eliminated` | Synthesised                                      |
+| `player_decked`     | `player_decked-2.mp3`     | The second take of the same                                                                                                            | `player_eliminated` | Synthesised                                      |
 
 A face hit plays at the strike's contact, once per player a combat damage
 beat hits, and the tier is picked by all the combat damage that player takes
@@ -170,13 +184,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                 |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                    |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                             |
-| `effects`   | `heal`, `player_eliminated`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                       |
+| Category    | Sounds                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                                                                                                                                                                                        |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                                                                                                                                                                                           |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`, `face_hit_light`, `face_hit_medium`, `face_hit_heavy`                                                                                                                                                                                                                                                                                                    |
+| `effects`   | `heal`, `player_eliminated`, `player_decked`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `token_create`, `counter_add`, `counter_remove`, `commander_cast`, `commander_return`, `attach_equip`, `attach_aura`, `extort`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                                                                                                                                                                                              |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

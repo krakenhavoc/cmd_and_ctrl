@@ -40,8 +40,13 @@ type Card struct {
 	Name     string    `json:"name"`
 	// FlavorName is the alternate title printed on a reskinned card.
 	// It is an import alias; Name and OracleID remain the rules identity.
-	FlavorName  string `json:"flavor_name,omitempty"`
-	SetCode     string `json:"set"`
+	FlavorName string `json:"flavor_name,omitempty"`
+	SetCode    string `json:"set"`
+	// SetName is the set's display name ("Marvel's Spider-Man"), Scryfall's
+	// set_name. Carried for the public catalogue's set filter (#4790); Load
+	// interns it, since a set's name repeats on every one of its printings.
+	// Omitted on the wire when empty.
+	SetName     string `json:"set_name,omitempty"`
 	SetType     string `json:"set_type"`
 	CollectorNo string `json:"collector_number"`
 	Lang        string `json:"lang"`
@@ -509,6 +514,7 @@ func (i *Index) Load(path string) (int, error) {
 	byOracle := make(map[uuid.UUID]Card, 40_000)
 	bySetNo := make(map[string]uuid.UUID, 40_000)
 	var tokenPool []Card // ADR 0078 decision 3a/5: one pass, built here
+	setNames := make(map[string]string, 1_500)
 	for dec.More() {
 		var c Card
 		if err := dec.Decode(&c); err != nil {
@@ -516,6 +522,14 @@ func (i *Index) Load(path string) (int, error) {
 		}
 		if c.ID == uuid.Nil {
 			continue // a record without an ID is useless; skip rather than reject
+		}
+		if c.SetName != "" {
+			// One backing string per set, not one per printing (#4790).
+			if n, ok := setNames[c.SetName]; ok {
+				c.SetName = n
+			} else {
+				setNames[c.SetName] = c.SetName
+			}
 		}
 		c.AllParts = meldParts(c.AllParts)
 		loaded[c.ID] = c
@@ -649,6 +663,18 @@ func (i *Index) EachOracle(fn func(c Card, printings int)) {
 	}
 	for id, c := range i.byOracle {
 		fn(c, counts[id])
+	}
+}
+
+// EachPrinting calls fn once for every printing the index holds, in no
+// particular order. fn runs under the index's read lock and must not call
+// back into it. The public catalogue's per-set counts walk it once
+// (#4790).
+func (i *Index) EachPrinting(fn func(c Card)) {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	for _, c := range i.byID {
+		fn(c)
 	}
 }
 

@@ -30,7 +30,8 @@ func (g *Game) claimedAltCostLocked(playerID uuid.UUID, card Card, params CastSp
 	if !ok {
 		return nil
 	}
-	grant := g.CastPermissionForClaimLocked(playerID, card, srcKind, params.AlternativeCost)
+	// #4696: the permission that opens the face cast, as CastSpell finds it.
+	grant := g.CastPermissionForFaceLocked(playerID, card, srcKind, params.AlternativeCost, params.Face)
 	alt, err := g.resolveAlternativeCostLocked(playerID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return nil

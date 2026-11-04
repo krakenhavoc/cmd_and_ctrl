@@ -296,11 +296,18 @@ pinned game log. Collecting all four for "the stack panel should be
 wider" is waste — tens of MiB of replay, retained 90 days, that
 nobody will ever open.
 
-| kind | screenshots | client log | pinned replay | pinned game log |
-|---|---|---|---|---|
-| `bug` | yes | yes | yes | yes |
-| `idea` | yes | no | no | no |
-| `question` | yes | yes | no | yes |
+| kind | screenshots | client log | pinned replay | pinned game log | settings copy |
+|---|---|---|---|---|---|
+| `bug` | yes | yes | yes | yes | no |
+| `idea` | yes | no | no | no | yes |
+| `question` | yes | yes | no | yes | no |
+
+The settings copy was added on 2026-11-03 (#4103): an idea inlines the
+reporter's client settings, like the log, behind its own opt-out and
+"show" toggle. The issue is public, so the triage note on #4103 holds it
+to preferences (ADR 0149). The client and the server both drop
+`help.seen` and the card and prompt text of each auto-answer rule, keep
+only the known setting groups, and redact every string.
 
 A question sits between the two on purpose: "why did that die?" is
 answered from what **happened** — the public game log, a few KiB —

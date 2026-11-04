@@ -425,6 +425,56 @@ came from. A signed-in session for anyone else changes nothing.
 | 404 | game not found |
 | 409 | the table has been archived |
 
+### `GET /catalog`
+
+The public card catalogue ([ADR 0042](decisions/0042-card-catalog-page.md),
+`server/internal/catalog`): every card the engine automates, joined to its
+Scryfall printing, with how faithfully it is implemented. The client's
+`#/catalog` page renders it. No session is needed, and none is read.
+`Cache-Control: public, max-age=300`. The body is computed from the registry
+and the loaded Scryfall dump on each request (the dump changes only on a
+reload), and with no dump loaded it still lists the cards by name.
+
+**Response 200** (abridged)
+
+```json
+{
+  "counts": { "total": 3, "full": 2, "caveats": 0, "unreviewed": 1, "missing": 0 },
+  "cards": [
+    {
+      "oracle_id": "…", "scryfall_id": "…", "name": "Sol Ring",
+      "type_line": "Artifact", "types": ["artifact"],
+      "completeness": "full",
+      "sets": ["spm", "ltr", "cmm"]
+    }
+  ],
+  "sets": [
+    {
+      "code": "spm", "name": "Marvel's Spider-Man", "released": "2026-09-26",
+      "total": 188, "full": 118, "caveats": 2, "unreviewed": 0, "unsupported": 68
+    }
+  ]
+}
+```
+
+- `cards[].completeness` is `full`, `caveats` or `unreviewed`, never absent;
+  `caveats` are the player-facing sentences and are present exactly when it is
+  `caveats`.
+- `cards[].sets` (#4790, additive, omitted when empty) are the codes of the
+  sets the card is printed in, newest set first. Each is a `sets[].code`.
+- `sets` (#4790, additive, omitted with no dump loaded) is the set picker's
+  data, newest set first (by `released`, then `code`). It counts a set's
+  **unique cards** (oracle ids), not printings, and leaves out what is not a
+  card a player could play: tokens, double-faced tokens, emblems, art-series
+  and memorabilia records, planes, schemes and vanguards, digital-only
+  printings and basic lands. A set left with no card is not listed.
+  `full`, `caveats` and `unreviewed` split the set's catalogued cards by
+  `completeness`, and `unsupported` is the rest, so `full + caveats +
+  unreviewed + unsupported == total`. `released` is the date most of the
+  set's printings carry, and `name` falls back to the upper-cased code when
+  the dump has none. Only counts are published for the cards that are not
+  supported: no names, no art.
+
 ### `GET /roadmap`
 
 The public engine roadmap ([ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)):
@@ -432,8 +482,8 @@ every keyword, mechanic and engine gap in `server/internal/roadmap`'s
 registry, with a status a player can read. The client's `#/roadmap`
 page renders it. No session is needed, and none is read.
 
-It is public, while `GET /catalog` is not, because of what the body
-holds (ADR 0092 Decision 1): card **names** and caveat sentences this
+It was public before `GET /catalog` was (that one is public too now,
+ADR 0156), because of what the body holds (ADR 0092 Decision 1): card **names** and caveat sentences this
 repository wrote. It never holds card art, an image URL, a Scryfall
 printing ID or oracle text. `roadmap`'s handler tests fail if an
 `image`, `oracle_text`, `scryfall_id` or `engine_notes` key appears
@@ -1140,9 +1190,11 @@ Every spawn is **announced in the public game log** ("Luke (host) spawned
 2 × Treasure onto Ana's battlefield" — see `spawn` in
 [protocol.md](protocol.md)) and is **undoable** with the ordinary undo,
 attributed to the spawner and flagged free, so repairing a typo does not cost
-the host their per-turn take-back. A battlefield spawn emits `EventETB`, so
-enters-the-battlefield triggers fire and the spawn can put abilities on the
-stack; that is the point of the feature.
+the host their per-turn take-back. A card spawned onto the battlefield enters
+like any other card (#4763): a zone move, so its static abilities apply at once
+and it gets a timestamp, then `EventETB`, so enters-the-battlefield triggers
+fire and the spawn can put abilities on the stack, then the enters hook, so a
+planeswalker gets its starting loyalty. That is the point of the feature.
 
 **Request**
 
@@ -1178,12 +1230,12 @@ Treasure taps and sacrifices for mana like a real one.
 search lists Scryfall's token printings beside cards, so a `scryfall_id` or
 `name` can name, say, a Treasure token printing. A predefined token is defined
 by the rules (CR 111.10), not by a printing, so when the printing is one the
-catalog has a template for (Treasure, Food, Gold, Clue, Blood, Powerstone,
-Incubator, Map, Lander, Vibranium, Heartwood; a double-faced token printing is
+catalog has a template for (Treasure, Food, Gold, Shard, Clue, Blood, Powerstone,
+Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood; a double-faced token printing is
 matched on its front face), the spawn makes that template, exactly as `token`
 would, and the response is a token response. Made from the printing instead,
 the object had no catalog entry: it did not run its own ability, and the board
-flagged it unimplemented. A token printing with no template (Junk, Shard) is
+flagged it unimplemented. A token printing with no template (a Role) is
 still spawned as the printing and flagged. `POST /games/{id}/dev/spawn` does
 the same.
 
@@ -1279,7 +1331,7 @@ would have to be added to all three or it would 404 in production only.
 Three families share one list: the plain templates from
 `server/internal/cards/effects/tokens_table.go`, keyed the way a card prints
 them; the predefined tokens of CR 111.10 that have a template (Treasure, Food,
-Gold, Clue, Blood, Powerstone, Incubator, Map, Lander, Vibranium, Heartwood),
+Gold, Shard, Clue, Blood, Powerstone, Incubator, Map, Junk, Lander, Mutagen, Vibranium, Heartwood),
 keyed by name because the rules name them; and the other behaviour tokens
 (the Eldrazi Spawn, the Shapeshifters, the Phyrexian Wurms), keyed stat-first
 like the table. `tokens_spawn.go` assembles the list.
@@ -5143,7 +5195,7 @@ burst of 3, then ~1 report / 30 s per client IP.
 }
 ```
 
-`kind`, `description`, `context`, and `log` (and every field inside
+`kind`, `description`, `context`, `log` and `settings` (and every field inside
 them) are optional. `title` is capped at 200 characters,
 `description` at 5000. Context strings are clipped server-side and
 never trusted; the server adds the reporter identity, server time,
@@ -5152,11 +5204,11 @@ and `User-Agent` itself.
 **Report kinds.** `kind` is what the reporter is telling us. It picks
 the GitHub label and which artifacts the report collects:
 
-| `kind` | label | client log | pinned replay | pinned game log |
-|---|---|---|---|---|
-| `bug` (default) | `bug` | yes | yes | yes |
-| `idea` | `enhancement` | no | no | no |
-| `question` | `question` | yes | no | yes |
+| `kind` | label | client log | pinned replay | pinned game log | settings copy |
+|---|---|---|---|---|---|
+| `bug` (default) | `bug` | yes | yes | yes | no |
+| `idea` | `enhancement` | no | no | no | yes |
+| `question` | `question` | yes | no | yes | no |
 
 Screenshots are attached for every kind. The client names a **kind**,
 never a label: the mapping lives in the server so a session with a
@@ -5164,8 +5216,21 @@ report button can't attach (or create) arbitrary labels on the
 tracker. An omitted or empty `kind` means `bug` — that is what every
 client built before the field existed sends, and refusing those would
 break the button mid-game. Any other value is a 400 listing the
-accepted kinds. A `log` sent with a kind that doesn't take one is
-dropped, not refused.
+accepted kinds. A `log` or `settings` sent with a kind that doesn't
+take one is dropped, not refused.
+
+`settings` is the client's settings object (`client/src/lib/settings.ts`,
+#4103). It is inlined in a collapsed block of the issue, which is public,
+so the server keeps preferences only. It keeps the groups `__version`,
+`audio`, `animations`, `display`, `gameplay`, `shortcuts`,
+`accessibility` and `help`, and drops anything else. It drops
+`help.seen`, and drops `card` and `prompt` from each
+`gameplay.autoAnswers` rule. It redacts every key and string, replaces
+backticks, and clips each string to 256 bytes. A copy that is not a JSON
+object, or is over 32 KiB or more than four levels deep (the account
+copy's rule), is left out. So is one whose rendered form is over 24 KiB.
+In either case the footer says `Settings: not attached (…)`. A bad copy
+never costs the report.
 
 The title prefix is `[in-app] ` for every kind. The kind lives in the
 label (and in a `Kind:` row in the issue body), not in the title, so

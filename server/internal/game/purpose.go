@@ -390,6 +390,17 @@ type TargetPurpose struct {
 	// graveyard (#3161): Reanimate, Animate Dead, Zombify. The bot prices
 	// the pick as the permanent it becomes, not as a card it would cast.
 	Reanimates bool
+	// Exiles is set when the spell or ability exiles the picked card from
+	// its graveyard (#4559): Lion Sash and Scavenging Ooze. The bot prices
+	// the pick by what the exile takes away, not as a card it could use:
+	// a card of its own is one its graveyard plans lose, an opponent's is
+	// one their recursion loses.
+	Exiles bool
+	// ExileGrows is the card type an exiled pick must have for the effect
+	// to put a +1/+1 counter on its source: "permanent" (Lion Sash) or
+	// "creature" (Scavenging Ooze). Declared only beside Exiles; empty
+	// when the exile grows nothing.
+	ExileGrows string
 	// UntilEndOfTurn says which way a change the clause makes to the
 	// target PERMANENT cuts for that permanent's controller, when the
 	// whole change ends with the turn (#4302). "Another target creature
@@ -431,6 +442,16 @@ const (
 	TargetHarm TargetEffect = "harm"
 )
 
+// The card types TargetPurpose.ExileGrows names (#4559).
+const (
+	// ExileGrowsPermanent: an artifact, battle, creature, enchantment,
+	// land or planeswalker card (CR 110.4, as Card.IsPermanent reads it).
+	// Lion Sash.
+	ExileGrowsPermanent = "permanent"
+	// ExileGrowsCreature: a creature card. Scavenging Ooze.
+	ExileGrowsCreature = "creature"
+)
+
 // TargetReturn is what a removal spell hands the controller of the
 // permanent it removes, as printed amounts (#2679). A removal that
 // gives back a creature token, life or a land is worth less than the
@@ -465,7 +486,7 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
 	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.DamagePerTapped == 0 && t.Returns.IsZero() && !t.Reanimates &&
-		t.UntilEndOfTurn == "" && t.Pump == nil
+		!t.Exiles && t.ExileGrows == "" && t.UntilEndOfTurn == "" && t.Pump == nil
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a

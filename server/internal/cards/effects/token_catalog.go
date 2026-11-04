@@ -191,6 +191,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedFoodToken,
 	printedGingerbruteToken,
 	printedClueToken,
+	printedShardToken,
+	printedJunkToken,
 	printedMapToken,
 	printedBloodToken,
 	printedPowerstoneToken,
@@ -199,6 +201,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedEldraziSpawnToken,
 	printedB28EldraziScionToken,
 	printedB16LanderToken,
+	printedMutagenToken,
 	printedB14ReplicatedRingToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
@@ -230,6 +233,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
+
+	// Scriv, the Obligator's Contract: a white Aura token (#4834).
+	printedContractToken,
 
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
@@ -307,6 +313,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
 	printedVibraniumToken,
+
+	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
+	printedPestAttackToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

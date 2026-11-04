@@ -165,6 +165,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	switch kind {
 	case choiceOutsideCollection:
 		return st.valueTakenFromCollection(p.cfg, ch, cp.CardNames)
+	case choiceModePick:
+		// #4674: what the chosen bullets do (mode_pick.go).
+		return p.modePickValue(st, ch, cp.Modes)
 	case choicePayAmount:
 		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
@@ -465,6 +468,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				}
 			}
 			return v, "sacrifice the least"
+		}
+		// #4683: a blight's pick puts -1/-1 counters on the named
+		// creature. Give them to the creature they cost least.
+		if ch != nil && ch.ChooseDestination == chooseBlight {
+			return st.blightPickValue(cp.CardIDs, lookup), "blight the creature it costs least"
 		}
 		// #2680: a prompt that says the named card goes onto the
 		// battlefield is not a discard (puts.go).
@@ -1123,6 +1131,53 @@ const chooseManifest = "manifest"
 // chooseSacrifice is game.ChooseSacrifice on the wire: the named
 // permanents are sacrificed (an "each player sacrifices" edict, #3664).
 const chooseSacrifice = "sacrifice"
+
+// chooseBlight is game.ChooseBlight on the wire: the named creature, one
+// the bot controls, gets a blight's -1/-1 counters (#4683, CR 701.68a).
+const chooseBlight = "blight"
+
+// blightPayoff is what the bot reckons a "you may blight N. If you do, …"
+// buys: the wire does not say what follows, and every printed one (two
+// Goblin tokens, a Treasure, a card, a discard for each opponent, or the
+// 3 life Gutsplitter Gang takes when you don't) is worth about a small
+// creature. A "may" is taken when the cheapest creature costs less.
+const blightPayoff = 2.0
+
+// blightPickValue prices a blight pick: nothing named is zero (a
+// declined "may"), and a creature named is blightPayoff less what the
+// counters cost it. The wire does not carry N, so the cost is one
+// counter's worth: a creature with toughness 1 or less dies of it and
+// costs all it is worth; any other loses a point of toughness and, if it
+// has any, a point of power, never more than it is worth. So the bot puts
+// the counters on a big body (a wall loses the least) rather than on a
+// creature they would kill.
+func (st *state) blightPickValue(ids []string, lookup func(string) *protocol.CardView) float64 {
+	if len(ids) == 0 {
+		return 0
+	}
+	cost := 0.0
+	for _, id := range ids {
+		cost += st.blightCounterCost(lookup(id), 1)
+	}
+	return blightPayoff - cost
+}
+
+// blightCounterCost is what n -1/-1 counters cost the creature c: all it
+// is worth when its toughness is n or less (it dies, CR 704.5f), else n
+// points of toughness and up to n of its power, never more than it is
+// worth. blightPickValue reads it for one counter (the wire does not carry
+// a resolving blight's N); a "Blight N" cost (#4684) reads it with the N
+// legal.MoveCost.Blight carries.
+func (st *state) blightCounterCost(c *protocol.CardView, n int) float64 {
+	if c == nil || n <= 0 {
+		return 0
+	}
+	v := st.permanentValue(c)
+	if c.Toughness > n {
+		v = min(v, st.w.Power*float64(min(max(c.Power, 0), n))+st.w.Toughness*float64(n))
+	}
+	return v
+}
 
 // --- "choose a color" (#780) -----------------------------------------
 

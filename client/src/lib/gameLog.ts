@@ -75,6 +75,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // combat, not bookkeeping.
   no_blocks: "tone-combat",
   token: "tone-zone",
+  // #4444: an equip or an Aura landing moves a card onto another, like
+  // the token and zone lines beside it.
+  attach: "tone-zone",
   sacrifice: "tone-bad",
   // ADR 0130: an exert is part of an attack declaration.
   exert: "tone-combat",

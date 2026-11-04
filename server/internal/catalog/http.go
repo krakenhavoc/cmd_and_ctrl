@@ -58,7 +58,7 @@ func Handler(idx *cards.Index, cache *cards.ImageCache) http.Handler {
 		// and a browser holding a five-minute-old catalog is fine.
 		// Short enough that a refresh after a deploy shows new cards.
 		w.Header().Set("Cache-Control", "public, max-age=300")
-		_ = json.NewEncoder(w).Encode(Build(idx))
+		_ = json.NewEncoder(w).Encode(BuildWithSets(idx))
 	})
 
 	mux.HandleFunc("GET /catalog/image/{id}", func(w http.ResponseWriter, r *http.Request) {

@@ -404,6 +404,8 @@ func TestB40ZhurTaaDruidPingsEachOpponentWhenTappedForMana(t *testing.T) {
 	if got := poolColors(me); len(got) != 1 || got[0] != "G" {
 		t.Fatalf("tapped for {G}: pool %v", got)
 	}
+	// #4928: the damage is a trigger on the stack (CR 605.1b).
+	passPriorityAroundTable(t, g)
 	for i, p := range g.Seats {
 		want := before[i]
 		if i != 0 {

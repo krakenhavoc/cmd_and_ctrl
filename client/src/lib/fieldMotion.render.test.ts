@@ -166,6 +166,102 @@ describe("the arrival ring after an entrance pop (#3601)", () => {
   });
 });
 
+// #4711: the ring is drawn over the board, not in the row. A row that
+// re-lays itself out with no frame and no board resize used to leave it
+// where the card had been, its tag over a group's label; and a card half
+// scrolled out of its row was ringed whole, over the groups beside it.
+describe("the arrival ring follows its card (#4711)", () => {
+  let queue: FrameRequestCallback[] = [];
+  const realRAF = g.requestAnimationFrame;
+  const realCAF = g.cancelAnimationFrame;
+  let tileRect = FULL;
+  let rowRect = rect(0, 0, 1400, 900);
+  let row: HTMLDivElement;
+
+  beforeEach(() => {
+    queue = [];
+    g.requestAnimationFrame = (cb: FrameRequestCallback) => queue.push(cb);
+    g.cancelAnimationFrame = () => {};
+    // The pop is over: nothing animates the tile.
+    pop.removeAttribute("data-popping");
+    doc.getAnimations = () => [];
+    // The tile sits in a row that clips what overflows it.
+    row = document.createElement("div");
+    row.style.overflowX = "auto";
+    row.style.overflowY = "auto";
+    boardEl.appendChild(row);
+    row.appendChild(pop);
+    tileRect = FULL;
+    rowRect = rect(0, 0, 1400, 900);
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this === boardEl) return rect(0, 0, 1400, 900);
+      if (this === row) return rowRect;
+      if (this.hasAttribute("data-instance-id")) return tileRect;
+      return rect(0, 0, 0, 0);
+    };
+  });
+
+  afterEach(() => {
+    g.requestAnimationFrame = realRAF;
+    g.cancelAnimationFrame = realCAF;
+  });
+
+  // Runs what the follow asked for: its timer, then the frame.
+  async function nextFrame(): Promise<void> {
+    await new Promise((r) => setTimeout(r, 0));
+    const due = queue;
+    queue = [];
+    for (const cb of due) cb(0);
+    flushSync();
+  }
+
+  async function arrive() {
+    const r = render(FieldMotion, {
+      view: gameView([], 0),
+      viewerID: ME,
+      boardEl,
+      beatsPrimeKey: "live:false",
+    });
+    await flushMicrotasks();
+    r.setProps({ view: gameView([card("falk", OPP)], 1) });
+    await flushMicrotasks();
+    await nextFrame();
+    return () => r.container.querySelector<HTMLElement>("[data-field-arrival='falk']");
+  }
+
+  it("moves with its card when the row moves without a frame", async () => {
+    const ring = await arrive();
+    expect(ring()!.style.top).toBe("100px");
+
+    // The back row moves down 20px: no snapshot, no board resize.
+    tileRect = rect(100, 120, 200, 280);
+    await nextFrame();
+    await nextFrame();
+    expect(ring()!.style.left).toBe("100px");
+    expect(ring()!.style.top).toBe("120px");
+    expect(ring()!.style.height).toBe("280px");
+  });
+
+  it("frames only what is on screen of a card its row cuts, and nothing of one out of view", async () => {
+    rowRect = rect(0, 0, 150, 900);
+    const ring = await arrive();
+    expect(ring()!.style.left).toBe("100px");
+    expect(ring()!.style.width).toBe("50px");
+
+    // Scrolled wholly out of the row.
+    rowRect = rect(0, 0, 90, 900);
+    await nextFrame();
+    await nextFrame();
+    expect(ring()).toBeNull();
+
+    // And back.
+    rowRect = rect(0, 0, 1400, 900);
+    await nextFrame();
+    await nextFrame();
+    expect(ring()!.style.width).toBe("200px");
+  });
+});
+
 describe("settled", () => {
   it("resolves at once when nothing animates the element or an ancestor", async () => {
     animation.effect.target = document.createElement("div");

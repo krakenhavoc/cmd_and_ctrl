@@ -1776,11 +1776,13 @@ func (c *Client) sendFrame(f protocol.Frame) {
 // client's send channel. A full buffer disconnects the client rather
 // than dropping the frame silently — letting the pong for a ping, or
 // the snapshot for an action, be quietly dropped would mask real bugs.
-// kind is what cmdctrl_ws_frames_total counts a queued frame under.
+// kind is what cmdctrl_ws_frames_total counts a queued frame under,
+// and cmdctrl_ws_sent_bytes_total its length (ADR 0205).
 func (c *Client) sendRaw(kind protocol.Kind, raw []byte) {
 	select {
 	case c.send <- raw:
 		metrics.WSFrame(metrics.FrameOut, string(kind))
+		metrics.WSSentBytes(string(kind), len(raw))
 	default:
 		c.log.Warn("ws send buffer full, disconnecting client")
 		_ = c.conn.Close()
@@ -1969,6 +1971,13 @@ func (h *Hub) Spectators(gameID uuid.UUID) []LiveSpectator {
 // is terminal, and the removed-notice shows. The lobby calls it after the
 // host, the creator or an admin removes a spectator (#3113); the session
 // itself is refused from then on (auth.WithSeatCheck).
+//
+// The victims leave h.clients before it returns, not when their read
+// pumps notice the close: the lobby answers the removal with
+// Spectators straight after, and that list must not still hold the
+// session it just removed (#4254). The close frame goes first, so the
+// write pump's own empty close (on c.send closing) is never the frame
+// the client reads. The read pump's later unregister is a no-op.
 func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
 	if gameID == uuid.Nil || spectatorID == uuid.Nil {
 		return 0
@@ -1988,6 +1997,7 @@ func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
 			time.Now().Add(writeWait),
 		)
+		h.unregister(c)
 		_ = c.conn.Close()
 	}
 	return len(victims)

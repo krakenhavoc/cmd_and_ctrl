@@ -404,6 +404,15 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	for _, other := range g.otherGrantedOffersLocked(playerID, card, zone, grant) {
 		add(other.AlternativeCostFor(card), other)
 	}
+	// #4685: a live granted-miracle window prices its own cast. Listed
+	// here too because the hand permission handed in may be a printed
+	// miracle's (Terminus under Molecule Man), and the granting permanent
+	// may have left, taking the static's offer below with it.
+	if zone == ZoneHand {
+		if perm := g.CastPermissionForClaimLocked(playerID, card, zone, AltCostKeyGrantedMiracle); perm != nil && perm.AltCostKey == AltCostKeyGrantedMiracle {
+			add(perm.AlternativeCostFor(card), perm)
+		}
+	}
 	// ADR 0118 §3, #2163: the offers the caster's permanents grant to
 	// every spell they cast (Jodah's {W}{U}{B}{R}{G}, Omniscience's
 	// free cast from hand), last, in announce precedence. One that only

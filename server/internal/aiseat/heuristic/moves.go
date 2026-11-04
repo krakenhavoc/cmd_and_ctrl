@@ -187,6 +187,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		return 0, true
 	}
 	v -= poisonCostValue(st, c.Poison)
+	// #4684: "Blight N" (Gristle Glutton), priced by what the counters
+	// cost the creature the move names, as a resolving blight's pick is
+	// (blightCounterCost): a 1/1 token dies of them, a wall shrugs off a
+	// point. The enumerator offers one move per creature, so the policy
+	// takes the cheapest.
+	if b := c.Blight; b != nil {
+		v -= st.blightCounterCost(st.bf[b.CardID.String()], b.N)
+	}
 	return v, false
 }
 
@@ -483,6 +491,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// ADR 0126 §7: priced by the chance the bot would have kept
 		// each permanent, less its death payoffs (sacrifice.go).
 		v -= p.sacrificeCost(st, cp.SacrificeIDs)
+		// #4799: an Equipment unattached to pay the cost stays on the
+		// board and can be attached again, so it costs part of itself,
+		// the share a bounced permanent costs.
+		for _, id := range cp.UnattachIDs {
+			if c := st.bf[id]; c != nil {
+				v -= bounceShare * st.permanentValue(c)
+			}
+		}
 		// #1600: a permanent exiled to pay the cost leaves the board as
 		// surely as a sacrificed one, so it costs the same.
 		for _, id := range cp.ExilePermanentIDs {
@@ -600,6 +616,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// nothing and empties at the next step boundary (CR 106.4).
 		// Priced negative so it is only ever reached when literally
 		// nothing else is on offer.
+		if pm := decode[playerManaParams](m.Params); pm.PlayerAbility != "" {
+			// #4885: a player mana ability (Channel's "pay 1 life: add
+			// {C}") spends life to float mana the bot's auto-tapped
+			// casts cannot use. No rule here makes that worth it, so
+			// it is priced below a free float and never taken.
+			return p.cfg.ManaFloat - 1, "pay life to float mana"
+		}
 		return p.cfg.ManaFloat, "float mana"
 
 	case legal.KindAttack, legal.KindBlock:
@@ -756,8 +779,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// ADR 0135 §1: an offer that TAPS its permanents (Orim's Cure's
 	// creature, Battle Screech's three) spends none of them, so each is
 	// charged what tapping it costs (tapCreatureCost), not its value.
+	//
+	// #4689: an offer that BEHOLDS its cards (Kindle the Inner Flame's three
+	// Elementals) spends none of them and taps none, so they cost nothing.
 	taps := altCostTaps(card, cp.AlternativeCost)
+	beholds := altCostBeholds(card, cp.AlternativeCost)
 	for _, id := range cp.AltCostIDs {
+		if beholds {
+			break
+		}
 		if taps {
 			v -= p.tapFuelValue(st, id)
 			continue

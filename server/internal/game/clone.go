@@ -756,6 +756,7 @@ func clonePlayer(p *Player) *Player {
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut: p.LastTurnCastOrPut,
 		Eliminated:        p.Eliminated,
+		LossCause:         p.LossCause,
 		Removed:           p.Removed,
 		HandKept:          p.HandKept,
 		MulliganDecided:   p.MulliganDecided,
@@ -933,7 +934,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
 		// #3863
-		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
+		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
+		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
 		// token's Restrictions) because an undo snapshot that

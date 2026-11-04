@@ -55,7 +55,7 @@ func init() {
 						return DrawCards{Player: controller, N: 1}.Apply(ctx)
 					}),
 				ModeDoing("Destroy another target creature or planeswalker. Its controller draws a card.",
-					Another(TargetPermanent("another target creature or planeswalker", Or(Creature(), Planeswalker()))),
+					Harmful(Another(TargetPermanent("another target creature or planeswalker", Or(Creature(), Planeswalker())))),
 					func(_ *game.StackItem, ctx *Context, occ int) error {
 						t, ok := ModeTarget(ctx, occ)
 						if !ok || !onBattlefield(ctx.Game, t.ID) {

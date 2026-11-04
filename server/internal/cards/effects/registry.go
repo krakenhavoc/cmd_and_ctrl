@@ -59,6 +59,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -112,6 +113,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 			}
@@ -151,6 +153,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -201,9 +204,10 @@ func Register(spec Spec) {
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
 		if n := altCostCardComponents(ac); n > 1 {
-			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand and TapOthers",
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand, TapOthers and Behold",
 				spec.Name, ac.Key, n))
 		}
+		checkAltCostBehold(spec.Name, ac)
 		// The sacrifice component is the additional cost's clause and
 		// is held to the same shape, minus the two variable forms: no
 		// printed alternative cost sacrifices "X" or "any number", and
@@ -545,19 +549,24 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
-		// #4185, #4189: GainLife, OpponentsGainLife and PingOpponents build
-		// the rider the same way, so a spec carries at most one of the five.
-		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 || ma.PingOpponents < 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife, OpponentsGainLife and PingOpponents must be positive", spec.Name, i))
+		// #4185, #4189: GainLife and OpponentsGainLife build the rider the
+		// same way, so a spec carries at most one of the four.
+		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife and OpponentsGainLife must be positive", spec.Name, i))
 		}
 		riders := 0
-		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0, ma.PingOpponents > 0} {
+		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0} {
 			if set {
 				riders++
 			}
 		}
 		if riders > 1 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife, OpponentsGainLife and PingOpponents each build the rider — set one", spec.Name, i))
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife and OpponentsGainLife each build the rider — set one", spec.Name, i))
+		}
+		// #4928: the trigger is grown from the row's label, so a row with
+		// none could never be told apart from its siblings.
+		if ma.PingOpponentsTrigger < 0 || (ma.PingOpponentsTrigger > 0 && ma.Label == "") {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PingOpponentsTrigger must be positive and needs the row's Label", spec.Name, i))
 		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
@@ -704,6 +713,20 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q ability %d functions from the %s but declares %s — that component needs a permanent on the battlefield",
 					spec.Name, i, z, why))
 			}
+		}
+		// #4799: "Unattach an Equipment from <this>" — the one printed
+		// count is 1. The view's per-Equipment divided amount
+		// (divide.by_unattach) quotes one pick, so a larger count needs
+		// that wire shape widened first.
+		if n := ab.Cost.UnattachEquipment; n != 0 && n != 1 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d unattaches %d Equipment — only \"Unattach an Equipment\" (1) is supported",
+				spec.Name, i, n))
+		}
+		// #4684: "Blight N" puts at least one counter; a negative N is a
+		// card-file mistake (zero is "no component").
+		if ab.Cost.Blight < 0 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d blights %d — blight N is at least 1 (CR 701.68a)",
+				spec.Name, i, ab.Cost.Blight))
 		}
 		// #2028: the source pays one component (CR 118.3), so a cost
 		// cannot both return it and sacrifice or exile it. No printed
@@ -1641,7 +1664,28 @@ func altCostCardComponents(ac game.AlternativeCost) int {
 	if ac.TapOthers != nil {
 		n++
 	}
+	// #4689: a behold rides the same alt_cost_ids list.
+	if ac.Behold != nil {
+		n++
+	}
 	return n
+}
+
+// checkAltCostBehold holds an alternative cost's behold (#4689) to the
+// shape the cast path reads: a behold (not a plain reveal) of one
+// creature type, no colour quality, a positive count, and no count
+// without a behold to size.
+func checkAltCostBehold(card string, ac game.AlternativeCost) {
+	rc := ac.Behold
+	if rc == nil {
+		if ac.BeholdCount != 0 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a BeholdCount and no Behold — build it with FlashbackBehold", card, ac.Key))
+		}
+		return
+	}
+	if !rc.Behold || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
+		panic(fmt.Sprintf("effects.Register: %q offers %q with a malformed behold — build it with FlashbackBehold", card, ac.Key))
+	}
 }
 
 // checkAltCostTapOthers holds a tap alternative cost (ADR 0135 §1) to the
@@ -1755,11 +1799,13 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 			if r.Slot < 0 || r.Slot >= i || spec.Clause(r.Slot).Min != 1 || spec.Clause(r.Slot).Max != 1 {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate to one required earlier target", name, i))
 			}
-			if spec.Clause(i).Max != 1 || spec.Clause(i).Min > 1 {
+			if !r.Kind.ManyPicks() && (spec.Clause(i).Max != 1 || spec.Clause(i).Min > 1) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
 			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType:
+			case game.TargetInTargetPlayersGraveyard:
+				checkPlayersGraveyardRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
 			default:
 				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
 			}
@@ -2085,6 +2131,43 @@ func checkUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbil
 	if ms.Min != 0 || ms.Max != len(ms.Options) || ms.Repeatable || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() ||
 		ms.AtRandom || ms.NotChosen != game.ModeMemoryNone {
 		panic(fmt.Sprintf("effects.Register: %q declares \"choose up to X\" that is not a plain up-to count — build it with ChooseUpToX", name))
+	}
+}
+
+// checkPawprints validates a pawprint budget (CR 700.2i, #4786) at
+// boot. CR 700.2i speaks of "modal spells" only, so a trigger's or an
+// activated ability's modes may not carry one. On a spell every bullet
+// prints at least one {P} (so the count bound Max, which the helper
+// sets to the budget, stays a true upper bound), and the budget stands
+// alone: no raised, random, "up to X" or "that hasn't been chosen"
+// count and no escalate, none of which any printed pawprint card has.
+// A bullet with pawprints and no budget is refused too, since nothing
+// would read them.
+func checkPawprints(name, owner string, ms *game.ModeSpec, spell bool) {
+	if ms == nil {
+		return
+	}
+	any := ms.Pawprints != 0
+	for _, o := range ms.Options {
+		any = any || o.Pawprints != 0
+	}
+	if !any {
+		return
+	}
+	if !spell {
+		panic(fmt.Sprintf("effects.Register: %q declares pawprints on %s — CR 700.2i gives a pawprint budget to modal spells only", name, owner))
+	}
+	if ms.Pawprints <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q has pawprint bullets but no budget on %s — build it with ChooseUpToPawprints", name, owner))
+	}
+	for i, o := range ms.Options {
+		if o.Pawprints < 1 {
+			panic(fmt.Sprintf("effects.Register: %q mode %d prints no {P} under a pawprint budget (CR 700.2i)", name, i))
+		}
+	}
+	if ms.Max != ms.Pawprints || ms.RaisedMax != 0 || !ms.RaiseMaxIf.IsZero() || ms.AtRandom || !ms.NotRandomIf.IsZero() ||
+		ms.UpToCastX || ms.NotChosen != game.ModeMemoryNone || ms.Escalate != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares a pawprint budget beside another mode count — build it with ChooseUpToPawprints", name))
 	}
 }
 

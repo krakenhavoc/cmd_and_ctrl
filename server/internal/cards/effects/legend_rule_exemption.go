@@ -25,6 +25,19 @@ func LegendRuleDoesntApplyToYourCreatures() []game.LegendRuleExemption {
 	}}
 }
 
+// LegendRuleDoesntApplyToYourSubtype is "The "legend rule" doesn't apply
+// to <plural> you control." (Spider-Verse's Spiders, #4460): only the
+// controller's permanents with that subtype right now, the word read
+// through the exempting permanent's text. A legend of theirs without it,
+// and an opponent's, still answer to CR 704.5j.
+func LegendRuleDoesntApplyToYourSubtype(subtype, plural string) []game.LegendRuleExemption {
+	return []game.LegendRuleExemption{{
+		Label:   "The \"legend rule\" doesn't apply to " + plural + " you control.",
+		Whose:   game.LegendRuleExemptYourSubtype,
+		Subtype: subtype,
+	}}
+}
+
 // LegendRuleDoesntApply is "The "legend rule" doesn't apply." — every
 // player's permanents (Mirror Gallery).
 func LegendRuleDoesntApply() []game.LegendRuleExemption {

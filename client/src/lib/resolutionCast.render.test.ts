@@ -288,3 +288,45 @@ describe("ResolutionCastSheet — an effect's own cast (#4250, part 2)", () => {
     expect(primary && nameOf(primary)).toBe("Leave it in the graveyard");
   });
 });
+
+describe("ResolutionCastSheet — same-named targets (#4709)", () => {
+  const bears = (id: string, controller: string, token = false): CardView =>
+    ({
+      instance_id: id,
+      name: "Grizzly Bears",
+      owner: controller,
+      controller,
+      type_line: "Creature — Bear",
+      ...(token ? { is_token: true } : {}),
+    }) as CardView;
+  const targeting = (id: string): LegalMoveView => {
+    const m = castMove("Cast Dark Ritual targeting Grizzly Bears");
+    return { ...m, params: { ...m.params, targets: [{ kind: "card", id }] } } as LegalMoveView;
+  };
+
+  it("says which line is the token and whose each Bears is", () => {
+    const snap = snapWith([
+      targeting("bears"),
+      targeting("bears-copy"),
+      targeting("bob-bears"),
+      declineMove,
+    ]);
+    snap.battlefield = {
+      kind: "battlefield",
+      count: 3,
+      cards: [bears("bears", "me"), bears("bears-copy", "me", true), bears("bob-bears", "them")],
+    } as GameView["battlefield"];
+    render(
+      ChoiceDockHarness as never,
+      { snap, viewerID: "me", sendAction: () => {}, lastError: null } as never,
+    );
+    const rows = [...document.querySelectorAll<HTMLButtonElement>("ul.casts button")].map((b) =>
+      b.textContent!.trim(),
+    );
+    expect(rows).toEqual([
+      "Cast Dark Ritual targeting Grizzly Bears",
+      "Cast Dark Ritual targeting Grizzly Bears (token)",
+      "Cast Dark Ritual targeting Grizzly Bears (Bob's)",
+    ]);
+  });
+});

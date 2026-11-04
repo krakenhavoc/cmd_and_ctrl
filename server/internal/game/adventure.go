@@ -93,7 +93,48 @@ const adventureCreatureFace = 0
 // route to the battlefield, and one cast as its Adventure is an
 // instant or sorcery whichever cost paid for it.
 func castAsAdventure(c Card) bool {
-	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace
+	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace && !isVengeanceHalf(c)
+}
+
+// isVengeanceHalf reports whether `c`, as materialised, is the Vengeance
+// half of an adventure-layout card (Hela, Mistress of Darkness // Dark
+// Tutor): a sorcery whose type line reads "Sorcery — Vengeance" and whose
+// reminder text is "(Cast only from your graveyard. Then exile it.)".
+//
+// Vengeance is not in the pinned Comprehensive Rules, so this implements
+// exactly the reminder text and cites no rule number: the half can be cast
+// from a graveyard and from nowhere else (the same zone rule as aftermath,
+// CR 702.127a, aftermathZoneRule), and a spell cast from there is exiled
+// as it leaves the stack (mutations.go, AltCostExiles). It is NOT an
+// Adventure (CR 715), despite the layout: the creature half is never
+// castable from the exile it lands in, which is why castAsAdventure
+// refuses it.
+//
+// Read off the card's face type line, which is the one place the dump
+// says it; the layout and face index narrow it to the second half of an
+// adventure card, which is the only shape Vengeance has been printed in.
+func isVengeanceHalf(c Card) bool {
+	if c.Layout != LayoutAdventure || c.ActiveFace != adventureSpellFace || len(c.Faces) <= adventureSpellFace {
+		return false
+	}
+	f := c.Faces[adventureSpellFace]
+	if c.Name != f.Name {
+		return false
+	}
+	for _, w := range strings.Fields(strings.ReplaceAll(f.TypeLine, "—", " ")) {
+		if strings.EqualFold(w, "Vengeance") {
+			return true
+		}
+	}
+	return false
+}
+
+// castsOnlyFromGraveyard reports whether `c`, as materialised, is a half
+// that may be cast from a graveyard and from nowhere else and is exiled
+// as it leaves the stack: an aftermath half (CR 702.127a) or a Vengeance
+// half (isVengeanceHalf).
+func castsOnlyFromGraveyard(c Card) bool {
+	return isAftermathHalf(c) || isVengeanceHalf(c)
 }
 
 // adventureMainHalfIsLand reports whether the card's main half (face

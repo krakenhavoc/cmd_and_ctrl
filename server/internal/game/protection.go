@@ -67,6 +67,17 @@ const protectionAndFrom = " and from "
 // one it can enforce rather than by matching anything player-shaped.
 const protectionChosenPlayer = "the chosen player"
 
+// protectionNamedPlayer prefixes the seat id in the one token that
+// names a player outright: "protection from player <uuid>".
+const protectionNamedPlayer = "player "
+
+// ProtectionFromPlayer is the token for protection from one named
+// seat, the form a granted copy of "protection from the chosen player"
+// takes (see parseQuality).
+func ProtectionFromPlayer(id uuid.UUID) string {
+	return protectionPrefix + protectionNamedPlayer + id.String()
+}
+
 // ProtectionFromChosenPlayer is the token for CR 702.16k's printed
 // ability, "protection from the chosen player" (True-Name Nemesis).
 //
@@ -171,6 +182,11 @@ const (
 	// damage and targeting are not stopped by it; its LAST-KNOWN source
 	// after it left is still the permanent it was.
 	ProtectionQualityNoncreaturePermanents
+	// ProtectionQualityMulticolored is "protection from multicolored"
+	// (Stonecoil Serpent, #4834): the source has two or more colours
+	// (CR 105.2b). The same test that ManaRestrictMulticolored and the
+	// hexproof-from grammar make, here as a protection quality.
+	ProtectionQualityMulticolored
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -208,6 +224,8 @@ func (k ProtectionQualityKind) String() string {
 		return "multityped_creatures"
 	case ProtectionQualityNoncreaturePermanents:
 		return "noncreature_permanents"
+	case ProtectionQualityMulticolored:
+		return "multicolored"
 	}
 	return ""
 }
@@ -288,6 +306,17 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if lower == protectionChosenPlayer {
 		return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed}, true
 	}
+	// The same quality with the seat already named, for an effect that
+	// hands a creature protection from a player the GRANTING permanent
+	// chose (Concerted Effort sharing True-Name Nemesis's protection):
+	// the grantee made no choice of its own, so the token carries the
+	// seat. Tested by controller exactly like the chosen-player form.
+	if rest, ok := strings.CutPrefix(lower, protectionNamedPlayer); ok {
+		if id, err := uuid.Parse(rest); err == nil && id != uuid.Nil {
+			return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed, Player: id}, true
+		}
+		return ProtectionQuality{}, false
+	}
 	// CR 702.16i over CR 702.16k: a SET of players, each an opponent
 	// of whoever has the ability. Tested by controller like the one
 	// above, and resolved by the reader for the same reason. #2745.
@@ -311,6 +340,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityMultitypedCreatures, Printed: printed}, true
 	case "noncreature permanents":
 		return ProtectionQuality{Kind: ProtectionQualityNoncreaturePermanents, Printed: printed}, true
+	case "multicolored":
+		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
 	}
 	// A designation as a quality (CR 701.54b). Plural, as printed.
 	if lower == protectionRingBearers {
@@ -363,7 +394,9 @@ func parseManaValueAtMost(lower string) (int, bool) {
 // protectionColors maps the printed colour word to the engine's
 // one-letter wire colour. The five colours and nothing else:
 // "protection from all colors", "from monocolored" and "from
-// multicolored" are outside the grammar on purpose (ADR 0072 §10).
+// multicolored" are outside the grammar on purpose (ADR 0072 §10), except
+// "multicolored" alone, which Stonecoil Serpent prints (#4834) and which
+// parseQuality reads as a whole phrase.
 var protectionColors = map[string]string{
 	"white": "W",
 	"blue":  "U",
@@ -581,7 +614,9 @@ func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
 	}
 	switch q.Kind {
 	case ProtectionQualityPlayer:
-		q.Player = c.ChosenPlayer
+		if q.Player == uuid.Nil {
+			q.Player = c.ChosenPlayer
+		}
 	case ProtectionQualityOpponents:
 		q.Holder = c.Effective().Controller
 		if q.Holder == uuid.Nil {
@@ -674,6 +709,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) == 1
 	case ProtectionQualityAnyColor:
 		return len(src.Colors) > 0
+	case ProtectionQualityMulticolored:
+		return len(src.Colors) >= 2
 	case ProtectionQualityColor:
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:

@@ -130,6 +130,7 @@ var reviewedNotAWipe = map[string]string{
 	"Kaya's Guile":                             "each opponent sacrifices one creature: an edict, not a wipe",
 	"Last Laugh":                               "a ping engine that fires only when a permanent dies",
 	"Living Death":                             "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
+	"Living End":                               "Living Death with suspend: a symmetric mass reanimation",
 	"Mandate of Peace":                         "ends combat and exiles the stack",
 	"Obeka, Brute Chronologist":                "ends the turn",
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",
@@ -145,6 +146,7 @@ var reviewedNotAWipe = map[string]string{
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",
 	"Ugin, the Spirit Dragon":                  "the -X sweep is not registered (its caveat says so)",
 	"Vault 11: Voter's Dilemma":                "destroys only the creatures with the most votes, one per voter at most: removal, not a wipe",
+	"Volcanic Torrent":                         "damage equal to spells cast this turn, to opposing creatures and planeswalkers: no fixed amount or X for a sweep to declare",
 	"Watchdog":                                 "-1/-0 to attackers kills nothing",
 }
 

@@ -85,7 +85,7 @@ var g2LosesIndestructibleIfDealt = recipientTail("recipient/loses-indestructible
 // caster's graveyard this turn — Wilt in the Heat's "{2} less". A move
 // out of the graveyard is an EventZoneMove, or an EventCast whose
 // OldZone is the graveyard (a flashback); "your graveyard" is the one
-// the caster owns (b16CardLeftYourGraveyard reads the same two events
+// the caster owns (cardLeftYourGraveyard reads the same two events
 // for a trigger). Scanned off g.EventsThisTurn(), which is bounded at
 // the real turn boundary. A token is not a card (CR 108.2).
 //
@@ -102,13 +102,7 @@ func g2CardLeftYourGraveyardThisTurn() CostPredicate {
 			return true
 		}
 		for _, ev := range q.Game.EventsThisTurn() {
-			if ev.Kind != game.EventZoneMove && ev.Kind != game.EventCast {
-				continue
-			}
-			if ev.OldZone != game.ZoneGraveyard || ev.NewZone == game.ZoneGraveyard || ev.CardID == uuid.Nil {
-				continue
-			}
-			if c, ok := q.Game.LookupCardForEffect(ev.CardID); ok && c.Owner == q.Controller && !IsToken(c) {
+			if c, ok := cardThatLeftAGraveyard(ev, q.Game); ok && c.Owner == q.Controller {
 				return true
 			}
 		}

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -1674,4 +1675,41 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 		Match:            Creature(),
 		Label:            "a creature",
 	}.Apply(NewContext(g, item))
+}
+
+// returnTargetCreatureWithPlusOneCounter is the OnResolve of "return target
+// creature card from your graveyard to the battlefield with a +1/+1 counter
+// on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
+// "enters with".
+func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return nil
+	}
+	_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(ts[0].ID, ctx.Controller(), false,
+		map[string]int{game.CounterPlusOne: 1})
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil // CR 400.7: it left the graveyard in response
+	}
+	return err
+}
+
+// bounceTheTargetToHand is bounceTheTarget as a trigger or ability's Effect:
+// "return target creature to its owner's hand" (or "up to one") for the first
+// target still legal as it resolves (Chulane, Teller of Tales; Spider-Man
+// 2099, Miguel O'Hara).
+func bounceTheTargetToHand(g *game.Game, item *game.StackItem) error {
+	return bounceTheTarget(item, NewContext(g, item))
+}
+
+// conniveFirstLegalTarget is "target creature you control connives": the
+// announced creature, if still legal, connives (Mob Lookout, Scorpion,
+// Seething Striker).
+func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
 }

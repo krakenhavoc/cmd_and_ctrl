@@ -1730,8 +1730,8 @@ var items = []Item{
 		Rules:       []string{"601.2c", "608.2b", "608.2h", "115.7"},
 		Issue:       1943,
 		Tracked:     "#1943; S58 deck requests #2077, Mishra #2033",
-		Examples:    []string{"Goblin Welder", "Fiery Annihilation", "Breaking of the Fellowship"},
-		EngineNotes: "TargetSpec.Relation binds a single later pick to a required single earlier pick in the same mode occurrence. **Shipped** (ADR 0065 amendments of 2026-10-11 and 2026-10-15). InGraveyardOfTargetsController, AttachedToTarget and ControlledByTargetsController are the card-facing constructors. Announcement, resolution, trigger prompts, copy and retarget prompts, bot enumeration and the client picker share the relationship; retargeting commits the completed set together. Fiery Annihilation, Goblin Welder and Breaking of the Fellowship are Full. Welder's sacrifice and return share a settled entry and exit route, so observers see the finished board and either replacement window can pause and undo. The same-controller relationship reads an anchor that has left the battlefield by its last-known controller (CR 608.2h, `Game.LastKnownPermanentForEffect`), so Breaking of the Fellowship still resolves, and the Ring still tempts, when its first creature dies in response.",
+		Examples:    []string{"Goblin Welder", "Fiery Annihilation", "Breaking of the Fellowship", "Quandrix Command"},
+		EngineNotes: "TargetSpec.Relation binds a later pick to a required single earlier pick in the same mode occurrence. #4862 added the one relationship whose dependent clause may pick several cards, FromTargetPlayersGraveyard (\"up to three target cards from their graveyard\", where they are the earlier target player; ADR 0065 amendment 2026-11-03 (b)): each pick is judged on its own, and copies and retargets refill the picks when the player changes. Quandrix Command is Full. **Shipped** (ADR 0065 amendments of 2026-10-11 and 2026-10-15). InGraveyardOfTargetsController, AttachedToTarget and ControlledByTargetsController are the card-facing constructors. Announcement, resolution, trigger prompts, copy and retarget prompts, bot enumeration and the client picker share the relationship; retargeting commits the completed set together. Fiery Annihilation, Goblin Welder and Breaking of the Fellowship are Full. Welder's sacrifice and return share a settled entry and exit route, so observers see the finished board and either replacement window can pause and undo. The same-controller relationship reads an anchor that has left the battlefield by its last-known controller (CR 608.2h, `Game.LastKnownPermanentForEffect`), so Breaking of the Fellowship still resolves, and the Ring still tempts, when its first creature dies in response.",
 	},
 	{
 		// #1989. Closed; history in Closed seams.
@@ -3090,6 +3090,30 @@ var items = []Item{
 		Probe:       declaresRevealCards,
 		Examples:    []string{"Martyr of Bones", "Martyr of Sands"},
 		EngineNotes: "**Shipped** (#2598, ADR 0020's 2026-10-08 amendment, Decisions 58-60): `game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`), built by `effects.RevealX` / `effects.RevealN`. It embeds the either/or branch's `RevealCost`, so the candidate walk and the quality test are shared, and `RevealCost` gained a `Color`. The count is a printed N or the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, the mana cost stays the printed one, and X may be zero. The cards are named in `reveal_ids`, shown to the table and left in the hand (CR 701.20b), so no other component's pick excludes them. `effects.Register` refuses it beside another claim on the announced X, a zero count, an unknown colour, no label and behold. The wire carries `reveal_cost_label` / `reveal_cost_n` / `reveal_cost_count_from_x` (public) and `reveal_cost_options` (controller only); the client reuses its discard picker with the verb Reveal. The enumerator offers the first 1, 2 and 3 matching cards, holds an \"up to X\" target count to each payment's X, and never the X = 0 no-op for a card that declares `XMatters`. 5 cards shipped: the Martyr cycle. **Still open:** \"Reveal this card from your hand\" (forecast, augment, Tetzimoc) and Illuminated Folio's \"two cards that share a color\".",
+	},
+	{
+		// #4684 (ADR 0020's 2026-11-03 amendment). Closed; history in
+		// Closed seams.
+		Slug: "blight-ability-cost", Name: "Blight N as part of an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Activated abilities whose cost blights, putting -1/-1 counters on a creature you control of your choice, such as Gristle Glutton's loot.",
+		Rules:       []string{"701.68a", "701.68b", "602.2b", "614.16"},
+		Issue:       4684,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresAbilityBlight,
+		Examples:    []string{"Gristle Glutton", "Evershrike's Gift"},
+		EngineNotes: "**Shipped** (#4684, ADR 0020's 2026-11-03 amendment, Decision 78): `game.AbilityCost.Blight` (N), built by `effects.BlightN(n)`. The activator names the creature in `blight_ids`, any creature they control that can have counters put on it (`BlightOptionsForEffect`, the cast path's walk), and the counters go on through `blightLocked` marked `CounterFromCost`: Doubling Season doesn't double them, Vizier of Remedies applies (CR 614.16). With no creature to blight the ability can't be activated (CR 701.68b). The source's zone doesn't matter, so a graveyard ability blights a creature on the battlefield. The wire carries `blight` / `blight_options` on the row; the enumerator offers one move per creature, a survivor first, and `legal.MoveCost.Blight` prices the counters for the policy. Dawnhand Dissident waits for its cast permission's counter-removal cost.",
+	},
+	{
+		// #4799 (ADR 0020's 2026-11-02 amendment). Closed; history in
+		// Closed seams.
+		Slug: "unattach-equipment-cost", Name: "Unattaching an Equipment as an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Costs that unattach an Equipment from the permanent whose ability it is, such as Captain America, First Avenger's \"{3}, Unattach an Equipment from Captain America\", with damage divided by that Equipment's mana value. The Equipment stays on the battlefield.",
+		Rules:       []string{"601.2b", "601.2d", "602.2b", "701.3d"},
+		Issue:       4799,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresUnattachEquipment,
+		Examples:    []string{"Captain America, First Avenger"},
+		EngineNotes: "**Shipped** (#4799, ADR 0020's 2026-11-02 amendment, Decisions 76-77): `game.AbilityCost.UnattachEquipment` (a count, 1 on the one printed card), built by `effects.UnattachAnEquipment()`. The activator names the Equipment in `unattach_ids`: each an Equipment attached to the source, whoever controls it (`UnattachCostOptionsLocked`). Paid through `UnattachForEffect`, so `EventUnattach` fires and the Equipment stays on the battlefield. A divided amount may read the pick: `DivideAmountArgs.Unattached` is the announced list, and `effects.DivideUnattachedManaValue` sums its mana values. The wire carries `unattach_label` / `unattach_options` and, on the divided clause, `divide.by_unattach`; the enumerator makes one row per attached Equipment so each division is sized from its own pick.",
 	},
 	{
 		// #2527 (ADR 0113's 2026-10-07 amendment). Closed; history in

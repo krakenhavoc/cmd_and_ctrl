@@ -190,7 +190,19 @@ const GrantedMiracleTriggerLabel = "Miracle (granted) — cast it for its miracl
 // The item it builds is the printed one's: the revealed OBJECT in
 // Params.Object and a body that grants the cast permission, its source the
 // drawn card so the prompt, the log and the stack read as that card's
-// miracle. `cost` is the copy of the granted price.
+// miracle. `cost` is the granted price ("{0}", Lorehold, the Historian's
+// "{2}"), and it rides the item (Params.Cost) onto the permission, so once
+// the ability has triggered the cast no longer needs the permanent that
+// granted it (CR 113.7a, ADR 0066 amendment of 2026-11-03, #4685).
+//
+// The trigger is the GRANTING permanent's own: it fires only when that
+// permanent's static reaches the card, so Lorehold's "instant and sorcery"
+// never reveals a creature card that Molecule Man's "nonland" reaches
+// beside it. Two permanents that grant the same miracle at the same price
+// (two Loreholds) make one reveal, not two: the instances are identical,
+// and only the first such permanent in battlefield order fires. Two at
+// different prices (Molecule Man and Lorehold) each fire, each with its
+// own price.
 func GrantedMiracleTrigger(cost string) TriggeredAbility {
 	return TriggeredAbility{
 		Watches: []EventKind{EventDrawCard},
@@ -200,7 +212,7 @@ func GrantedMiracleTrigger(cost string) TriggeredAbility {
 			BeforeStack: true,
 		},
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, g *Game) bool {
-			return g.grantedMiracleCardLocked(source, ev) != nil
+			return g.grantedMiracleCardLocked(source, ev, cost) != nil
 		},
 		Build: func(ev Event, source *Card, _ Characteristic, g *Game) *StackItem {
 			if source == nil {
@@ -213,7 +225,7 @@ func GrantedMiracleTrigger(cost string) TriggeredAbility {
 			// in a hand is, epoch -1.
 			card := *source
 			ref := ObjectRef{ID: ev.CardID, Epoch: -1}
-			if c := g.grantedMiracleCardLocked(source, ev); c != nil {
+			if c := g.grantedMiracleCardLocked(source, ev, cost); c != nil {
 				ref = ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
 				g.RevealForEffect(RevealSpec{
 					Player: c.Owner,
@@ -232,11 +244,12 @@ func GrantedMiracleTrigger(cost string) TriggeredAbility {
 
 // grantedMiracleCardLocked is the card a granted-miracle trigger of
 // `source` is about for a draw event: the first card its controller drew
-// this turn, still in their hand, that the controller's granted miracle
-// reaches. Nil otherwise.
+// this turn, still in their hand, that `source`'s own granted miracle at
+// `cost` reaches, when `source` is the first permanent of theirs that
+// grants that miracle at that price to it. Nil otherwise.
 //
 // Caller must hold g.mu.
-func (g *Game) grantedMiracleCardLocked(source *Card, ev Event) *Card {
+func (g *Game) grantedMiracleCardLocked(source *Card, ev Event, cost string) *Card {
 	if source == nil || ev.Kind != EventDrawCard || ev.Actor != source.Controller ||
 		g.firstCardDrawnThisTurnLocked(ev.Actor) != ev.CardID {
 		return nil
@@ -253,15 +266,55 @@ func (g *Game) grantedMiracleCardLocked(source *Card, ev Event) *Card {
 		if g.grantedAlternativeCostByKeyLocked(ev.Actor, *c, ZoneHand, AltCostKeyGrantedMiracle) == nil {
 			return nil
 		}
+		if g.firstGrantedMiracleSourceLocked(ev.Actor, *c, cost) != source.InstanceID {
+			return nil
+		}
 		return c
 	}
 	return nil
 }
 
+// firstGrantedMiracleSourceLocked is the first permanent `playerID`
+// controls, in battlefield order, whose static grants the cards in their
+// hand miracle at `cost` and reaches `card` (its filter, its gate), or
+// uuid.Nil. It is what keeps a granted-miracle trigger its own
+// permanent's: one permanent's static never fires another's reveal, and a
+// second permanent granting the identical miracle adds no second reveal.
+//
+// Caller must hold g.mu.
+func (g *Game) firstGrantedMiracleSourceLocked(playerID uuid.UUID, card Card, cost string) uuid.UUID {
+	if CatalogGrantedAlternativeCosts == nil || g.Battlefield == nil || card.IsLand() {
+		return uuid.Nil
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		if src.Controller != playerID {
+			continue
+		}
+		key := catalogAbilityKeyOf(src)
+		if key == "" {
+			continue
+		}
+		for _, gr := range CatalogGrantedAlternativeCosts(key) {
+			if gr.Offer.Key != AltCostKeyGrantedMiracle || gr.Offer.ManaCost != cost {
+				continue
+			}
+			gr.Spells = gr.Spells.ThroughTextOf(src)
+			if gr.reaches(ZoneHand) && gr.covers(g, playerID, card) && gr.gatedOn(g, playerID, src) {
+				return src.InstanceID
+			}
+		}
+	}
+	return uuid.Nil
+}
+
 // miracleGrantedOfferBody is "miracle/granted-offer": a granted miracle
-// trigger's resolution, the printed one's with the granted key.
+// trigger's resolution, the printed one's with the granted key. The price
+// the trigger was made with (Params.Cost) goes on the permission, so the
+// cast is priced by the trigger and not by the permanent that granted the
+// keyword, which may have left by now (CR 113.7a, #4685).
 var miracleGrantedOfferBody = DelayedBody("miracle/granted-offer", func(g *Game, item *StackItem, p EffectParams) error {
-	g.grantMiracleCastKeyedLocked(item.Controller, p.Object, AltCostKeyGrantedMiracle)
+	g.grantMiracleCastKeyedLocked(item.Controller, p.Object, AltCostKeyGrantedMiracle, p.Cost)
 	return nil
 })
 
@@ -320,14 +373,18 @@ func (g *Game) miracleCardInHandLocked(owner uuid.UUID, ref ObjectRef) *Card {
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantMiracleCastLocked(owner uuid.UUID, ref ObjectRef) {
-	g.grantMiracleCastKeyedLocked(owner, ref, AltCostKeyMiracle)
+	g.grantMiracleCastKeyedLocked(owner, ref, AltCostKeyMiracle, "")
 }
 
 // grantMiracleCastKeyedLocked is grantMiracleCastLocked for the offer
-// under `key`: the printed miracle's, or a granted one's.
+// under `key`: the printed miracle's, or a granted one's. `cost` is empty
+// for the printed miracle, whose price is the card's own offer; a granted
+// miracle's permission carries its price (CastPermission.Cost), and
+// AlternativeCostFor synthesises the offer from it. ForClaim keeps that
+// price to the miracle claim alone.
 //
 // Caller must hold g.mu (write).
-func (g *Game) grantMiracleCastKeyedLocked(owner uuid.UUID, ref ObjectRef, key string) {
+func (g *Game) grantMiracleCastKeyedLocked(owner uuid.UUID, ref ObjectRef, key, cost string) {
 	c := g.miracleCardInHandLocked(owner, ref)
 	if c == nil {
 		return
@@ -337,6 +394,7 @@ func (g *Game) grantMiracleCastKeyedLocked(owner uuid.UUID, ref ObjectRef, key s
 		Zone:       ZoneHand,
 		Cards:      []PermissionCardRef{{ID: c.InstanceID, Epoch: c.ObjectEpoch}},
 		AltCostKey: key,
+		Cost:       cost,
 		Timing:     TimingFlash,
 		CastOnly:   true,
 		Source:     c.InstanceID,

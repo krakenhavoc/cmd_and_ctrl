@@ -1570,9 +1570,10 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //     A payable one is planned since #2392, in the pain tier, and so is
 //     a rider that declares its damage (RiderSelfDamage), the life it
 //     gains (RiderSelfLifeGain, #4185) or what it does to each opponent
-//     (RiderOpponentLifeGain, RiderOpponentDamage, #4189); a rider that
+//     (RiderOpponentLifeGain, #4189); a rider that
 //     declares none of these is a closure the planner cannot read, and
-//     it stays out;
+//     it stays out. A declared damage TRIGGER (TriggerOpponentDamage,
+//     #4928) is no rider and no cost; it only tiers the source as Table;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first, so
@@ -2004,15 +2005,16 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 // so the picker and the tier bit below cannot disagree about which
 // riders are declared.
 func (a ManaAbilityShape) riderDeclared() bool {
-	return a.RiderSelfDamage > 0 || a.RiderSelfLifeGain > 0 || a.touchesOpponents()
+	return a.RiderSelfDamage > 0 || a.RiderSelfLifeGain > 0 || a.RiderOpponentLifeGain > 0
 }
 
-// touchesOpponents reports whether a declared rider acts on the
-// controller's opponents (Grove of the Burnwillows, Zhur-Taa Druid). Such
-// a source is planned, but in the last tier before life-spending ones
-// (tapSource.Table).
+// touchesOpponents reports whether activating the ability acts on the
+// controller's opponents: a declared rider (Grove of the Burnwillows) or
+// a declared damage trigger that goes on the stack (Zhur-Taa Druid,
+// #4928). Such a source is planned, but in the last tier before
+// life-spending ones (tapSource.Table).
 func (a ManaAbilityShape) touchesOpponents() bool {
-	return a.RiderOpponentLifeGain > 0 || a.RiderOpponentDamage > 0
+	return a.RiderOpponentLifeGain > 0 || a.TriggerOpponentDamage > 0
 }
 
 // autoManaExileAbilityFor is autoTapAbilityFor for a source that is

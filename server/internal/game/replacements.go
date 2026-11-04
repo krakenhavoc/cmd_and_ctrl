@@ -676,12 +676,12 @@ type ReplacementEvent struct {
 	// the permanent as its own printed self. Added in S16.5 (#159).
 	EntersAsCopyOf *PrintedValues
 
-	// copySourceID names the permanent EntersAsCopyOf was taken
-	// from. Unexported because the catalog has no business reading
-	// it: it exists so the entry path can pick up the source's
-	// card-carried ability slices (the token case, which
-	// PrintedValues cannot carry — see copy.go) and so the copy
-	// event names what was copied.
+	// copySourceID names the object EntersAsCopyOf was taken from: a
+	// permanent, or a card in a graveyard (#4797). It exists so the
+	// entry path can pick up the source's card-carried ability slices
+	// (the token case, which PrintedValues cannot carry — see copy.go)
+	// and so the copy event names what was copied. The catalog reads it
+	// only through CopySourceForEffect, from an except clause.
 	copySourceID uuid.UUID
 
 	// copyUntilEndOfTurn marks EntersAsCopyOf as a copy WITH A
@@ -831,6 +831,14 @@ type ReplacementEvent struct {
 	// uuid.Nil falls back to Actor, which is every entry built before
 	// the field existed.
 	landPlayer uuid.UUID
+
+	// landGains is the permission's "if you play a land this way, it
+	// gains ..." rider (Serra Paragon), carried across a pause so a
+	// shockland that waits on its life payment still gains it. Applied
+	// by executeEntryToBattlefieldLocked once the land has landed. The
+	// keywords and abilities only: a land has nothing to enter tapped
+	// that the replacement pipeline did not already say.
+	landGains permissionCastGains
 
 	// entryControllerSet and entryControllerPrior are an
 	// entry-controller effect's bookkeeping (ADR 0102 decision 2): the

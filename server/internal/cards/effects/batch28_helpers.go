@@ -358,12 +358,8 @@ func b28CopyEachLegalTargetXTimes(ctx *Context) error {
 			ids = append(ids, t.ID)
 		}
 	}
-	for _, id := range ids {
-		if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: id, N: x}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One creation (#4594): every copy is created, and enters, together.
+	return CreateTokenCopiesTogether{Controller: ctx.Controller(), Copies: ids, N: x}.Apply(ctx)
 }
 
 // b28PutCountersOnEachCreatureYouControl puts n +1/+1 counters on

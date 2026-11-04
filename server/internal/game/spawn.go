@@ -76,8 +76,9 @@ var (
 // owner, and a spawn into a library is known to nobody — matching
 // the post-shuffle invariant.
 //
-// Battlefield spawns emit EventETB. That is deliberate and is the
-// point of the tool: putting Blood Artist onto the battlefield and
+// Battlefield spawns enter as any card does: EventZoneMove, EventETB
+// and the ETB hook (announceSpawnedPermanentsLocked). That is
+// deliberate and is the point of the tool: putting Blood Artist onto the battlefield and
 // having it actually watch for deaths is the interaction you are
 // trying to test. It also means a spawn can put triggers on the
 // stack, so callers should expect the resulting snapshot to differ
@@ -154,12 +155,40 @@ func (g *Game) SpawnCards(actor, controller uuid.UUID, zone ZoneKind, template C
 
 		dest.PushTop(c)
 		ids = append(ids, c.InstanceID)
-
-		if zone == ZoneBattlefield {
-			g.EmitEvent(Event{Kind: EventETB, Actor: controller, CardID: c.InstanceID})
-		}
+	}
+	if zone == ZoneBattlefield {
+		g.announceSpawnedPermanentsLocked(controller, ids)
 	}
 	return ids, nil
+}
+
+// announceSpawnedPermanentsLocked is the arrival of nontoken permanents
+// a spawn put onto the battlefield (#4763). They all landed first, as
+// one simultaneous entry does (CR 603.6a), and each is then announced
+// the way every other card entering is (announceEntryLocked, the
+// sandbox move):
+//
+//   - EventZoneMove onto the battlefield. It is what the layer listener
+//     reads to recompute continuous effects and stamp the permanent's
+//     CR 613.7 timestamp. Without it a spawned Goldspan Dragon did not
+//     give its Treasures their mana ability, and a spawned lord did not
+//     pump anything, until something else made the game recalculate.
+//     OldZone is empty: the card came from no zone. The game log skips
+//     that move, because EventSpawned has already announced it.
+//   - EventETB, so enters triggers fire.
+//   - The ETB hook: starting loyalty (CR 306.5b), a Saga's lore counter
+//     and a battle's defense counters, and the card's own as-enters
+//     hook. Without it a spawned planeswalker entered with no loyalty.
+//
+// Caller holds g.mu.
+func (g *Game) announceSpawnedPermanentsLocked(controller uuid.UUID, ids []uuid.UUID) {
+	for _, id := range ids {
+		g.EmitEvent(Event{Kind: EventZoneMove, Actor: controller, CardID: id, NewZone: ZoneBattlefield})
+		g.EmitEvent(Event{Kind: EventETB, Actor: controller, CardID: id})
+		if c := findBattlefieldCard(g, id); c != nil {
+			g.fireETBHookLocked(id, catalogKeyOf(c))
+		}
+	}
 }
 
 // spawnTokens is SpawnCards' token half. Split out so the announcement

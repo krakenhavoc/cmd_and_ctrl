@@ -28,6 +28,7 @@ registered, or when this file is stale.
 | `yourBoard` | `your board` | region | aria | `lib/components/board/PlayerPanel.svelte` | the viewer's own board panel; scopes the tutorial's lands and creatures anchors |
 | `seatBoard` | `<name> board` (ends with ` board`) | region | aria | `lib/components/board/PlayerPanel.svelte`<br>`lib/components/board/SeatSummary.svelte` | another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name) |
 | `tombstoneRip` | `R. I. P.` | generic | text | `lib/components/board/Tombstone.svelte` | #4449: the epitaph on the tombstone that stays on an eliminated player's panel |
+| `tombstoneDecked` | `Decked` | generic | text | `lib/components/board/Tombstone.svelte` | #4879: the epitaph on the stone of a player who lost by drawing from an empty library (CR 704.5b), in place of the R. I. P. |
 | `tombstoneOf` | `<name> is out of the game` (ends with ` is out of the game`) | group | aria | `lib/components/board/Tombstone.svelte` | #4449: the tombstone on an eliminated player's panel; its text is the player's name, their commander and the epitaph |
 | `reflowNextUp` | `Next up` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the active player (drawn upper case) |
 | `reflowAfterYou` | `After you` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the viewer (drawn upper case) |
@@ -108,6 +109,7 @@ registered, or when this file is stale.
 | `sacrifice` | `Sacrifice` | button | text | `lib/components/board/ChoicePromptModal.svelte` | a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice, an edict's choose_cards): enabled once the permanents are picked, in the sheet or on the board (#2880) |
 | `numberToChoose` | `number to choose` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's field when it asks for a number that is not paid (#1941): Volcano Hellion's amount of damage |
 | `chooseNumber` | `Choose <N>` (starts with `Choose `) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number |
+| `playerManaAbility` | `<source>: pay <N> life, add <mana>` (contains ` life, add `) | button | aria | `lib/components/board/PlayerManaAbilities.svelte` | a mana ability the viewer has as a player, bound to no card (#4885, Channel): beside the mana pool on your own panel until end of turn; each press pays the life and adds the mana, greyed when the life can't be paid (CR 119.4) |
 | `payLifeForMana` | `Pay life for {B}…` | menuitem | text | `lib/payLifeForMana.ts` | the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4) |
 | `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die |
 | `roll` | `Roll` | button | text | `lib/components/board/OpeningRollDock.svelte` | the opening roll's primary |
@@ -155,6 +157,7 @@ registered, or when this file is stale.
 | `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte`<br>`lib/components/DeckPicker.svelte` | a signed-in person's saved decks: the Decks page's grid (the decks.library hint points at it) and the deck picker's My decks grid |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
+| `filterCatalogueBySet` | `filter the catalogue by set` | combobox | aria | `routes/Catalog.svelte` | the Catalogue's set picker (#4790): narrows the grid to one set's cards and shows how many of its cards the game plays |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
 | `seatTile` | `seat <n>: <name>` (starts with `seat `) | listitem | aria | `lib/components/SeatTile.svelte` | a lobby table's seat tile, numbered from 1 as people count; an open one is `seat <n>: open` (ADR 0212 §1) |

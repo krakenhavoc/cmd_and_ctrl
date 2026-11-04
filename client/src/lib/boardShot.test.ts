@@ -19,6 +19,7 @@ import {
   boardShotFilter,
   captureBoardShot,
   encodeUnderCap,
+  inlineSvgPaint,
   maskPrivate,
   skipsBoardShot,
 } from "./boardShot";
@@ -134,6 +135,62 @@ describe("captureBoardShot", () => {
     expect(filter(form)).toBe(false);
     expect(filter(document.createElement("div"))).toBe(true);
     vi.doUnmock("html-to-image");
+  });
+});
+
+// #4728: html-to-image clones an <svg> whole, without the computed style
+// it copies onto every other element, so a class-styled arrow came out as
+// a solid black shape. Its paint is written inline for the picture.
+describe("inlineSvgPaint", () => {
+  function arrows(): { root: HTMLElement; path: SVGPathElement; style: HTMLStyleElement } {
+    const style = document.createElement("style");
+    style.textContent =
+      ".arrows path { fill: none; stroke: rgb(255, 122, 122); stroke-width: 3px; }";
+    document.head.appendChild(style);
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<svg class="arrows"><path class="attack" d="M 0 0 Q 5 5 10 10" style="stroke-dashoffset: 0"/></svg>';
+    document.body.appendChild(root);
+    return { root, path: root.querySelector("path")!, style };
+  }
+
+  it("writes each drawing's computed paint onto its inline style, then puts it back", () => {
+    const { root, path, style } = arrows();
+    const undo = inlineSvgPaint(root);
+    expect(path.style.getPropertyValue("fill")).toBe("none");
+    expect(path.style.getPropertyValue("stroke")).toBe("rgb(255, 122, 122)");
+    expect(path.style.getPropertyValue("stroke-width")).toBe("3px");
+    // The clone html-to-image makes of the svg carries it.
+    const clone = root.querySelector("svg")!.cloneNode(true) as SVGSVGElement;
+    expect(clone.querySelector("path")!.getAttribute("style")).toContain("fill: none");
+    // The svg itself is styled by the library; only what is inside it.
+    expect(root.querySelector("svg")!.getAttribute("style")).toBeNull();
+
+    undo();
+    expect(path.getAttribute("style")).toBe("stroke-dashoffset: 0");
+    root.remove();
+    style.remove();
+  });
+
+  it("is applied while the picture is taken, and undone after", async () => {
+    vi.resetModules();
+    const { root, path, style } = arrows();
+    let during: string | null = null;
+    vi.doMock("html-to-image", () => ({
+      toCanvas: async () => {
+        during = path.style.getPropertyValue("fill");
+        return {
+          toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(["x"], { type: "image/png" })),
+        };
+      },
+    }));
+    const { captureBoardShot: capture } = await import("./boardShot");
+    await capture(root);
+    expect(during).toBe("none");
+    expect(path.getAttribute("style")).toBe("stroke-dashoffset: 0");
+    vi.doUnmock("html-to-image");
+    root.remove();
+    style.remove();
   });
 });
 

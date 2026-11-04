@@ -25,19 +25,6 @@ func init() {
 			CostsLessIfItTargets(3, "This spell costs {3} less to cast if it targets a creature that was dealt damage this turn.",
 				And(Creature(), DealtDamageThisTurn())),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					continue
-				}
-				controller := c.Controller
-				if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), controller, -2)
-			}
-			return nil
-		},
+		OnResolve: jmpB2DestroyTargetCreatureItsControllerLosesTwo,
 	})
 }

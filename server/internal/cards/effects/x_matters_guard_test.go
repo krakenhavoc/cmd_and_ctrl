@@ -61,12 +61,14 @@ var xMattersAllowlist = map[string]string{
 	"ugin_the_spirit_dragon.go Ugin, the Spirit Dragon":           "a planeswalker with no X cost of its own: his −X at X=0 still exiles every coloured permanent with mana value 0, tokens included",
 	"domesticated_hydra.go Domesticated Hydra":                    "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                              "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
+	"fractalize.go Fractalize":                                    "the creature becomes a 1/1 Fractal at X=0: base power and toughness are X plus 1, so the effect still lands and is a real move",
 	"grand_crescendo.go Grand Crescendo":                          "\"Creatures you control gain indestructible until end of turn\" never reads X: at X=0 the spell still protects the team, a real trick",
 	"fated_firepower.go Fated Firepower":                          "an enchantment with flash: the permanent stays on the battlefield at X=0, amplifying by the 0 fire counters it entered with",
 	"invasion_of_new_phyrexia.go Invasion of New Phyrexia":        "a battle: the Siege survives at X=0 with its defense counters and its transformed cast, only the Knights count X",
 	"kessig_wolf_run.go Kessig Wolf Run":                          "the trample half never reads X: at X=0 the target gets +0/+0 and still gains trample until end of turn",
 	"lightning_serpent.go Lightning Serpent":                      "2/1 trample haste body: at X=0 it still attacks for 2 before the end-step sacrifice",
 	"mawloc.go Mawloc":                                            "2/2 body survives at X=0, and the Terror from the Deep fight is X-independent",
+	"mutagen_man_living_ooze.go Mutagen Man, Living Ooze":         "2/3 trample legendary body and the artifact-token discount: the creature stays when it brings no Mutagens",
 	"pull_from_tomorrow.go Pull from Tomorrow":                    "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
 	"spiteful_banditry.go Spiteful Banditry":                      "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":                      "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
@@ -78,6 +80,9 @@ var xMattersAllowlist = map[string]string{
 	"venarian_glimmer.go Venarian Glimmer":                        "the reveal never reads X: at X=0 the whole hand is still revealed to the table, and a nonland card with mana value 0 can still be chosen",
 	"way_of_the_mind_sculptor.go Way of the Mind Sculptor":        "no X of its own: its trigger reads the X ANOTHER loyalty ability announced, to count the counters a −X removed (#1944)",
 	"voracious_hydra.go Voracious Hydra":                          "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
+	"procrastinate.go Procrastinate":                              "\"Tap target creature\" never reads X: at X=0 the spell still taps the creature and puts no stun counters on it, a real (if weak) play",
+	"pterafractyl.go Pterafractyl":                                "\"When this creature enters, you gain 2 life\" never reads X: at X=0 the 1/0 dies, but its enters trigger still resolves and gains the 2 life",
+	"wild_hypothesis.go Wild Hypothesis":                          "the X counters scale with X but \"Surveil 2\" is a fixed rider: at X=0 the Fractal dies as a 0/0 and the spell still surveils 2, a real play",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

@@ -126,7 +126,12 @@
   import { provideCombatCues } from "../../combatCues.svelte";
   import { manaColorParams } from "../../manaSource";
   import { activatedAbilityRef, manaAbilityRef } from "../../abilityRef";
-  import { findCard, locateCard, type MenuActivate } from "../../contextMenu.logic";
+  import {
+    blightCostLabel,
+    findCard,
+    locateCard,
+    type MenuActivate,
+  } from "../../contextMenu.logic";
   import DockRequest from "./DockRequest.svelte";
   import { castAnywayConfirmRequest } from "../../targetingDock";
   import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
@@ -285,6 +290,9 @@
     selectedCombatCardID: string | null;
     // #3266: the attackers the viewer has staged, drawn as attacking.
     stagedAttackers?: ReadonlySet<string>;
+    // #4327: the same staged attackers with their targets, for the
+    // dashed lines CombatArrows draws before the declaration.
+    stagedAttacks?: readonly { attacker: string; target: string }[];
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
@@ -330,6 +338,7 @@
   }
 
   const NO_STAGED: ReadonlySet<string> = new Set();
+  const NO_STAGED_ATTACKS: readonly { attacker: string; target: string }[] = [];
 
   const {
     view,
@@ -339,6 +348,7 @@
     combatMode,
     selectedCombatCardID,
     stagedAttackers = NO_STAGED,
+    stagedAttacks = NO_STAGED_ATTACKS,
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
@@ -2014,6 +2024,11 @@
       if (abilityExilePermanentIDs.length > 0) {
         params.exile_permanent_ids = abilityExilePermanentIDs;
       }
+      // #4799: the Equipment unattached to pay (Captain America), which
+      // the division above was sized from.
+      if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
+      // #4684: the creature blighted to pay (Gristle Glutton).
+      if (abilityBlightIDs.length > 0) params.blight_ids = abilityBlightIDs;
       // #1297: the exile-N-cards picks, made at announce with the
       // discard picks. Their own field — an exiled card is not
       // discarded — and omitted when the cost has no such component.
@@ -2044,6 +2059,8 @@
       abilityTopIDs = [];
       abilityReturnIDs = [];
       abilityExilePermanentIDs = [];
+      abilityUnattachIDs = [];
+      abilityBlightIDs = [];
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
@@ -2135,6 +2152,37 @@
       me?.graveyard.cards,
       p.ability.exile_permanent_options?.cards,
     );
+  });
+
+  // #4799: "Unattach an Equipment from <this>" as a cost (Captain
+  // America, First Avenger), asked after the exile pick through the same
+  // picker with the verb "Unattach". A division may be sized from the
+  // pick (divide.by_unattach), so it is made before the targets.
+  let abilityUnattachPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityUnattachIDs: string[] = [];
+
+  const abilityUnattachOptions = $derived.by(() => {
+    const p = abilityUnattachPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.unattach_options?.cards);
+  });
+
+  // #4684: "Blight N" as a cost (Gristle Glutton), asked after the
+  // unattach pick through the same picker with the verb "Blight". The
+  // answer rides activate_ability as blight_ids.
+  let abilityBlightPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityBlightIDs: string[] = [];
+
+  const abilityBlightOptions = $derived.by(() => {
+    const p = abilityBlightPrompt;
+    if (!p) return [];
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.blight_options?.cards);
   });
 
   // #1600: the same component on a MANA ability (Food Chain).
@@ -2676,7 +2724,7 @@
       return;
     }
     abilityExilePermanentIDs = auto;
-    askAbilityTapCost(card, ability);
+    askAbilityUnattachCost(card, ability);
   }
 
   function confirmAbilityExilePermanentCost(ids: string[]): void {
@@ -2684,6 +2732,53 @@
     abilityExilePermanentPrompt = null;
     if (!p) return;
     abilityExilePermanentIDs = ids;
+    askAbilityUnattachCost(p.card, p.ability);
+  }
+
+  // #4799: the unattach pick, after the exile pick, skipped when exactly
+  // the Equipment the cost demands is attached.
+  function askAbilityUnattachCost(card: CardView, ability: ActivatedAbilityView): void {
+    const opts = ability.unattach_options;
+    if (opts) {
+      const options = opts.cards ?? [];
+      const need = opts.max ?? opts.min ?? 1;
+      if (options.length > need) {
+        abilityUnattachPrompt = { card, ability };
+        return;
+      }
+      abilityUnattachIDs = options;
+    } else {
+      abilityUnattachIDs = [];
+    }
+    askAbilityBlightCost(card, ability);
+  }
+
+  function confirmAbilityUnattachCost(ids: string[]): void {
+    const p = abilityUnattachPrompt;
+    abilityUnattachPrompt = null;
+    if (!p) return;
+    abilityUnattachIDs = ids;
+    askAbilityBlightCost(p.card, p.ability);
+  }
+
+  // #4684: the blight pick ("{T}, Blight 1:", Gristle Glutton), after
+  // the unattach pick: which creature you control takes the -1/-1
+  // counters. Skipped when you control exactly one that could.
+  function askAbilityBlightCost(card: CardView, ability: ActivatedAbilityView): void {
+    const options = ability.blight ? (ability.blight_options?.cards ?? []) : [];
+    if (options.length > 1) {
+      abilityBlightPrompt = { card, ability };
+      return;
+    }
+    abilityBlightIDs = options;
+    askAbilityTapCost(card, ability);
+  }
+
+  function confirmAbilityBlightCost(ids: string[]): void {
+    const p = abilityBlightPrompt;
+    abilityBlightPrompt = null;
+    if (!p) return;
+    abilityBlightIDs = ids;
     askAbilityTapCost(p.card, p.ability);
   }
 
@@ -3205,6 +3300,8 @@
         counter,
         modes,
         phyrexianLife,
+        // #4799: the division may be sized from the unattach pick.
+        abilityUnattachIDs,
       );
       const t = $targeting;
       if (t && t.steps.length > 0 && (t.legal || t.steps.length > 1)) return;
@@ -3241,6 +3338,10 @@
     if (abilityExilePermanentIDs.length > 0) {
       params.exile_permanent_ids = abilityExilePermanentIDs;
     }
+    // #4799: the Equipment unattached to pay, likewise.
+    if (abilityUnattachIDs.length > 0) params.unattach_ids = abilityUnattachIDs;
+    // #4684: the creature blighted to pay, likewise.
+    if (abilityBlightIDs.length > 0) params.blight_ids = abilityBlightIDs;
     // ADR 0109 §7: the card put on top of the library, likewise.
     if (abilityTopIDs.length > 0) params.top_ids = abilityTopIDs;
     // #2598: the cards revealed to pay "Reveal X black cards".
@@ -3255,6 +3356,8 @@
     abilityTopIDs = [];
     abilityReturnIDs = [];
     abilityExilePermanentIDs = [];
+    abilityUnattachIDs = [];
+    abilityBlightIDs = [];
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
@@ -4120,6 +4223,7 @@
     {view}
     {boardEl}
     cues={combatCues}
+    staged={stagedAttacks}
     stackTargets={!(
       laneShowsStack &&
       (floatingStackStyle === "fan" || floatingStackStyle === "pile")
@@ -4605,6 +4709,40 @@
     onConfirm={confirmAbilityExilePermanentCost}
     onCancel={() => {
       abilityExilePermanentPrompt = null;
+      abilityExilePermanentIDs = [];
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #4799: "Unattach an Equipment from <this>" as a cost (Captain
+       America, First Avenger). The sacrifice picker with the verb
+       "Unattach"; the answer rides unattach_ids. -->
+  <SacrificeCostModal
+    source={abilityUnattachPrompt?.card ?? null}
+    label={abilityUnattachPrompt?.ability.unattach_label ?? "an Equipment"}
+    options={abilityUnattachOptions}
+    count={abilityUnattachPrompt?.ability.unattach_options?.max ?? 1}
+    verb="Unattach"
+    onConfirm={confirmAbilityUnattachCost}
+    onCancel={() => {
+      abilityUnattachPrompt = null;
+      abilityUnattachIDs = [];
+      abilityExilePermanentIDs = [];
+      abilityReturnIDs = [];
+    }}
+  />
+  <!-- #4684: "Blight N" as a cost (Gristle Glutton). The sacrifice
+       picker with the verb "Blight"; the answer rides blight_ids. -->
+  <SacrificeCostModal
+    source={abilityBlightPrompt?.card ?? null}
+    label={blightCostLabel(abilityBlightPrompt?.ability.blight)}
+    options={abilityBlightOptions}
+    count={1}
+    verb="Blight"
+    onConfirm={confirmAbilityBlightCost}
+    onCancel={() => {
+      abilityBlightPrompt = null;
+      abilityBlightIDs = [];
+      abilityUnattachIDs = [];
       abilityExilePermanentIDs = [];
       abilityReturnIDs = [];
     }}
@@ -5124,9 +5262,13 @@
        left of their panel (CommandStrip, 42% of a card tall). */
     left: 196px;
     /* ADR 0204 §4: and short of the middle of the board, where an
-       opponent across the table now sits (their avatar and its hand
-       count, 62px left of centre). */
-    width: min(512px, calc(50% - 270px));
+       opponent across the table now sits. #4537: short of their name
+       line, not just their avatar and its hand count (62px left of
+       centre): the seated identity is up to 240px wide and centred
+       (PlayerIdentity, .identity.seated), so its left edge can be 120px
+       left of centre, and the strip ends 8px before that. At 196px +
+       74px it covered the first letters of "Practice Bot". */
+    width: min(512px, calc(50% - 324px));
     max-height: calc(100% - 20px);
     display: flex;
     flex-direction: column;

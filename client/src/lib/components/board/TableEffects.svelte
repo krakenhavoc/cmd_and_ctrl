@@ -2,10 +2,10 @@
   // TableEffects — the generic effect cues (ADR 0209 §1 and §3, #4396).
   //
   // When a permanent is destroyed, exiled, sacrificed or bounced, a spell
-  // is countered, a planeswalker arrives or goes, or a board wipe clears
-  // three or more permanents at once, this layer draws one cue over the
-  // table and plays its sound, so a player sees what happened before they
-  // read the log. The board already shows the frame's end state: this is
+  // is countered, a planeswalker arrives or goes, a token is created, or a
+  // board wipe clears three or more permanents at once, this layer draws
+  // one cue over the table and plays its sound, so a player sees what
+  // happened before they read the log. The board already shows the frame's end state: this is
   // presentation over it, and nothing waits for it (ADR 0209 §1: no input,
   // priority pass or bot seat ever does).
   //
@@ -15,6 +15,26 @@
   // The copy is mounted the moment the frame arrives, so the card never
   // blinks out; a board wipe's per-card cues hold the copy still until
   // the sweep reaches them.
+  //
+  // A created token (#4441) is the exception: it is on the board, so its
+  // pop-in moves its own tile (effectCueMotion.ts tokenPop, presentation
+  // only, cancelled with the cue) and this layer adds the glow over it.
+  // Counters put on a permanent (#4442) are on the board too: their pulse
+  // and tick are drawn over its power/toughness badge, and the tile is
+  // left alone.
+  //
+  // A commander (#4443) cast from the command zone gets golden light from
+  // where it sat to the spell on the stack (CastFlight flies the card);
+  // one put back into the command zone drifts home as a copy with a soft
+  // trail, from wherever it was, while its card there waits hidden until
+  // the copy lands (effectCueMotion.ts commandArrive, cancelled with the
+  // cue).
+  //
+  // An Equipment attached or an Aura enchanting a permanent (#4444) is on
+  // the board too, tucked under its host: its own tile slides there from
+  // where it was (effectCueMotion.ts attachSlide, cancelled with the cue),
+  // and this layer adds the clasp's spark (Equipment) or a soft ring of
+  // light (Aura) over the host.
   //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
@@ -38,20 +58,40 @@
   // tint (Toxic Deluge, #4416) marks the creatures its batch left standing
   // until the turn number changes (fx/tints.ts; FxTint.svelte draws it).
   //
+  // Decked out (#4879): a player who loses by drawing from an empty library
+  // (cause empty_draw, CR 704.5b) gets the library's ghost, a signature-
+  // length cue: their library slot pulses red, cold wisps rise from it, a
+  // translucent blue skull rises out of the pile and swells to fill their
+  // mat (clipped to it, never over another seat), sways and dissolves
+  // upward, and as it fills the mat their hand's cards are flung outward,
+  // spinning, and vanish (their faces for the player, backs for everyone
+  // else). It counts on the busy clock and a skip clears it. Still and
+  // reduced motion draw none of it: the grey seat and its "Decked" stone
+  // are Tombstone.svelte's, and the sound is EliminationFx.svelte's.
+  //
   // z 57 on DESIGN.md §4's ladder: above the action dock (55), below the
-  // hints (58). aria-hidden: the log and the board carry the news.
+  // tutorial's coach (58). aria-hidden: the log and the board carry the news.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
   import { settings } from "../../settings";
-  import { cardAnchors, findCardAnchor, findSeatAnchor, hasSize } from "../../boardAnchor";
+  import {
+    cardAnchors,
+    findAnchor,
+    findCardAnchor,
+    findSeatAnchor,
+    hasSize,
+  } from "../../boardAnchor";
+  import { stackItemSelector } from "../../castFlight";
+  import { pileSelector } from "../../stackLinger";
   import { boardExpandLayout } from "../../boardExpand";
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
   import { isCreature, isPlaneswalker } from "../../cardTypes";
   import { crumble } from "../../animations";
   import { cancelAnimations, settled } from "../../motion";
+  import { deckedMotion, type Box } from "../../deckedOutMotion";
   import { play } from "../../sounds";
   import { emptyBeatTracker, track } from "../../combatBeats";
   import {
@@ -68,6 +108,10 @@
     counterBurst,
     cueSound,
     cueTiming,
+    deckedFlings,
+    deckedSeats,
+    deckedTiming,
+    deckedWisps,
     effectLate,
     effectMotion,
     effectsScheduled,
@@ -81,12 +125,15 @@
     voidMotes,
     windCuts,
     wipeTiming,
+    type DeckedFling,
+    type DeckedWisp,
+    type CounterTone,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { cueMotion } from "../../effectCueMotion";
+  import { attachSlide, commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -146,6 +193,19 @@
     // and an exile drawn into a board wipe's vortex (its spiral path).
     fromDestroy?: boolean;
     pull?: { x: number; y: number }[] | null;
+    // Counters put on a permanent (#4442): which kind, so which colour
+    // and which way the tick goes.
+    counterTone?: CounterTone;
+    // A commander cast or going home (#4443): the size of what it reaches
+    // (the stack item, its command-zone card), the copy's scale there,
+    // and whether it lands on the card itself (else on the owner's seat).
+    dest?: { w: number; h: number };
+    commandScale?: number;
+    landsOnCard?: boolean;
+    // An attachment sliding onto its host (#4444): `fly` is where its
+    // tile starts, in the tile's own px; the cue is centred on the host,
+    // and `seam` is where the two meet, from that centre.
+    seam?: { x: number; y: number };
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -156,6 +216,26 @@
   }
 
   let fx = $state<Fx[]>([]);
+
+  // A decked-out cue (#4879). Boxes are in board px.
+  interface Decked {
+    key: string;
+    seat: string;
+    ms: number;
+    // The player's mat (their seat panel), the library pile within it (in
+    // the mat's own px) and their hand area.
+    mat: Box;
+    lib: Box;
+    hand: Box;
+    skull: number;
+    diag: number;
+    wisps: DeckedWisp[];
+    cards: { src: string; w: number; h: number; f: DeckedFling }[];
+  }
+  let decks = $state<Decked[]>([]);
+  // Each seat's hand as of the frame before: the frame that decks a player
+  // has already taken their cards out of the game (CR 800.4a).
+  const lastHands = new Map<string, { count: number; cards: CardView[] }>();
   let serial = 0;
   let destroyed = false;
 
@@ -239,18 +319,23 @@
   // nothing needs. Runs after every frame, so the box of a permanent that
   // leaves in the next frame is the one it had just before.
   function measure(): void {
+    measureBoxes(false);
+  }
+
+  // `onlyNew` measures only what has no box yet (#4410).
+  function measureBoxes(onlyNew: boolean): void {
     const b = boardSize();
     if (!b || !boardEl) return;
     const live = onBattlefieldNow();
     for (const [id, el] of cardAnchors(boardEl)) {
-      if (!live.has(id) || !hasSize(el)) continue;
+      if (!live.has(id) || (onlyNew && tiles.has(id)) || !hasSize(el)) continue;
       tiles.set(id, tileOf(el, b.rect, b.size));
       const src = el.querySelector<HTMLImageElement>("img")?.getAttribute("src");
       if (src) images.set(id, src);
     }
     for (const el of boardEl.querySelectorAll<HTMLElement>("[data-stack-item-id]")) {
       const id = el.dataset.stackItemId;
-      if (!id || !hasSize(el)) continue;
+      if (!id || (onlyNew && stackBoxes.has(id)) || !hasSize(el)) continue;
       const r = el.getBoundingClientRect();
       stackBoxes.set(id, {
         x: r.left + r.width / 2 - b.rect.left,
@@ -259,6 +344,7 @@
         h: r.height,
       });
     }
+    measureCommand(b.rect);
     prune();
   }
 
@@ -324,6 +410,18 @@
     counter: null,
     pw_enter: L.effectBadgePwEnter,
     pw_leave: L.effectBadgePwLeave,
+    // The token itself is the news: it is on the board, and the log says
+    // who made it. Still, it draws nothing, and its sound plays.
+    token_create: null,
+    // So are the counters: the badge already shows the new numbers.
+    counters: null,
+    // And a commander (#4443): the spell is on the stack, or the card is
+    // back in its command zone, where the board shows it.
+    commander_cast: null,
+    commander_return: null,
+    // And an attachment (#4444): the board draws it under its host.
+    attach_equip: null,
+    attach_aura: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -345,6 +443,7 @@
     for (const t of timers) clearTimeout(t);
     timers.clear();
     fx = [];
+    decks = [];
     busy.reset();
   }
 
@@ -392,6 +491,22 @@
     }
     const cardID = cue.cardID;
     if (!cardID) return;
+    if (cue.kind === "token_create") {
+      placeToken(cardID, base, motion, b);
+      return;
+    }
+    if (cue.kind === "counters") {
+      placeCounters(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "commander_cast" || cue.kind === "commander_return") {
+      placeCommander(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "attach_equip" || cue.kind === "attach_aura") {
+      placeAttach(cue, base, motion, b);
+      return;
+    }
     // A planeswalker that just entered is still in its entrance pop (the
     // tile is scaled down and fading in), so its box is read once that
     // has settled, not when the frame arrives. A leaver is drawn at once
@@ -450,6 +565,307 @@
     add(f);
   }
 
+  // A created token's glow, over its live tile (#4441), mounted at once so
+  // the pop starts with the frame. The tile is mid-way through its own
+  // entrance pop, which scales its box about its centre, so the centre is
+  // read from the box and the size from the layout, which no transform
+  // changes. A token already gone, or a still cue, draws nothing.
+  function placeToken(
+    cardID: string,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(cardID)) return;
+    const el = findCardAnchor(boardEl, cardID, { accept: hasSize });
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const tapped = el.dataset.tapped === "true";
+    add({
+      ...base,
+      x: r.left + r.width / 2 - b.rect.left,
+      y: r.top + r.height / 2 - b.rect.top,
+      width: el.offsetWidth || (tapped ? r.height : r.width),
+      height: el.offsetHeight || (tapped ? r.width : r.height),
+      rot: tapped ? 90 : 0,
+    });
+  }
+
+  // Counters put on a permanent (#4442): the pulse rings what shows the
+  // count. +1/+1 and -1/-1 counters ring the power/toughness badge;
+  // another kind rings its own pip (CounterPips). A tile with neither
+  // (a token group's member, a vehicle not yet a creature) rings its own
+  // corner. The badges stay upright on a tapped tile, so no turn. A
+  // permanent already gone, or a still cue, draws nothing.
+  function placeCounters(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const cardID = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(cardID)) return;
+    const tile = findCardAnchor(boardEl, cardID, { accept: hasSize });
+    if (!tile) return;
+    const tone = cue.counterTone ?? "other";
+    const label = cue.counterLabel ?? "";
+    const pip = [...tile.querySelectorAll<HTMLElement>("[data-counter]")].find(
+      (el) => el.dataset.counter === label && hasSize(el),
+    );
+    const pt = tile.querySelector<HTMLElement>(".badge.pt");
+    const el = (tone === "other" ? pip : pt && hasSize(pt) ? pt : pip) ?? null;
+    const r = (el ?? tile).getBoundingClientRect();
+    // A tile's corner: a box the size of a P/T badge, inside its bottom right.
+    const w = Math.min(36, r.width);
+    const box = el
+      ? r
+      : { left: r.left + r.width - w - 4, top: r.top + r.height - 22, width: w, height: 18 };
+    add({
+      ...base,
+      x: box.left + box.width / 2 - b.rect.left,
+      y: box.top + box.height / 2 - b.rect.top,
+      width: box.width,
+      height: box.height,
+      counterTone: tone,
+    });
+  }
+
+  // ---- A commander cast from the command zone, or going home (#4443) ----
+
+  type CmdBox = { x: number; y: number; w: number; h: number };
+
+  // Each commander's last box in its command zone, and whose command zone
+  // it was, so a cast's light starts where it sat once the card has left.
+  // Rebuilt on every measure. Not reactive.
+  const commandBoxes = new Map<string, CmdBox & { owner: string }>();
+
+  // The other motion layers' copies are never where a commander is.
+  const CMD_OVERLAYS =
+    "[data-table-effects], [data-cast-flight-layer], [data-stack-linger-layer], [data-field-motion-layer], [data-stack-arrival-layer]";
+  const cmdLive = (el: HTMLElement) => hasSize(el) && !el.closest(CMD_OVERLAYS);
+
+  function cmdBox(el: HTMLElement, b: DOMRect): CmdBox {
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left + r.width / 2 - b.left,
+      y: r.top + r.height / 2 - b.top,
+      w: r.width,
+      h: r.height,
+    };
+  }
+
+  function measureCommand(b: DOMRect): void {
+    commandBoxes.clear();
+    if (!boardEl) return;
+    for (const s of view.seats ?? []) {
+      for (const c of s.command?.cards ?? []) {
+        const el = findCardAnchor(boardEl, c.instance_id, { accept: cmdLive });
+        if (el) commandBoxes.set(c.instance_id, { ...cmdBox(el, b), owner: s.id });
+      }
+    }
+  }
+
+  // The commander's card in a command zone now, and that zone's seat.
+  function inCommand(id: string): { card: CardView; seat: string } | null {
+    for (const s of view.seats ?? []) {
+      const card = s.command?.cards.find((c) => c.instance_id === id);
+      if (card) return { card, seat: s.id };
+    }
+    return null;
+  }
+
+  function isCommanderNow(id: string): boolean {
+    return inCommand(id)?.card.is_commander === true;
+  }
+
+  function commanderOwner(id: string): string {
+    return (
+      inCommand(id)?.seat ??
+      commandBoxes.get(id)?.owner ??
+      lastViews.get(id)?.owner ??
+      view.stack?.cards.find((c) => c.instance_id === id)?.owner ??
+      ""
+    );
+  }
+
+  function liveBox(selector: string, b: DOMRect): CmdBox | null {
+    if (!boardEl) return null;
+    const el = findAnchor(boardEl, selector, { accept: cmdLive });
+    return el ? cmdBox(el, b) : null;
+  }
+
+  function seatBox(seat: string, b: DOMRect): CmdBox | null {
+    if (!boardEl || !seat) return null;
+    const el = findSeatAnchor(boardEl, seat, { accept: cmdLive });
+    return el ? cmdBox(el, b) : null;
+  }
+
+  // A cast rises from the commander's last command-zone box (else its
+  // owner's seat) to its spell on the stack (else straight up); a return
+  // drifts from where it was to its card in the command zone (else its
+  // owner's seat). One end missing is made up from the other; with
+  // neither, or a still cue, nothing is drawn and the sound plays.
+  function placeCommander(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const id = cue.cardID ?? "";
+    const owner = commanderOwner(id);
+    if (cue.kind === "commander_cast") {
+      let from: CmdBox | null = commandBoxes.get(id) ?? seatBox(owner, b.rect);
+      let to = liveBox(stackItemSelector(id), b.rect);
+      if (!from && !to) return;
+      if (!from && to) from = { x: to.x, y: to.y + to.h, w: to.w * 0.6, h: to.h * 0.6 };
+      if (!from) return;
+      if (!to) {
+        to = {
+          x: from.x,
+          y: from.y - Math.max(120, from.h * 1.5),
+          w: from.w * 1.4,
+          h: from.h * 1.4,
+        };
+      }
+      add({
+        ...base,
+        x: from.x,
+        y: from.y,
+        width: from.w,
+        height: from.h,
+        fly: { x: to.x - from.x, y: to.y - from.y },
+        dest: { w: to.w, h: to.h },
+      });
+      return;
+    }
+
+    // commander_return: where it lands first, so a pile's start can take
+    // the card's size.
+    const cardEl = findCardAnchor(boardEl, id, { accept: cmdLive });
+    const onCard = cardEl !== null && inCommand(id) !== null;
+    let to: CmdBox | null = onCard && cardEl ? cmdBox(cardEl, b.rect) : seatBox(owner, b.rect);
+    let start: { box: CmdBox; width: number; height: number; rot: number } | null = null;
+    const zone = cue.commanderFrom ?? "";
+    if (zone === "battlefield") {
+      const t = cardTile(id, b);
+      if (t) start = { box: t.box, width: t.width, height: t.height, rot: t.rot };
+    } else if (zone === "stack") {
+      const s = stackBoxes.get(id);
+      if (s) start = { box: s, width: s.w, height: s.h, rot: 0 };
+    } else {
+      const pile =
+        zone === "hand"
+          ? liveBox(`[data-hand-owner="${owner.replace(/["\\]/g, "\\$&")}"]`, b.rect)
+          : zone === "graveyard" || zone === "exile" || zone === "library"
+            ? liveBox(pileSelector(zone, owner), b.rect)
+            : null;
+      const p = pile ?? seatBox(owner, b.rect);
+      // A pile or a seat is no card's size: the copy starts at its card's.
+      const w = to && onCard ? to.w : 60;
+      const h = to && onCard ? to.h : 84;
+      if (p) start = { box: p, width: w, height: h, rot: 0 };
+    }
+    if (!start && !to) return;
+    if (!start && to) {
+      start = { box: { ...to, y: to.y - 90 }, width: to.w, height: to.h, rot: 0 };
+    }
+    if (!start) return;
+    if (!to) to = { ...start.box, y: start.box.y - 80, w: start.width, h: start.height };
+    const scale = onCard ? to.w / Math.max(1, start.width) : 0.4;
+    const card = inCommand(id)?.card;
+    add({
+      ...base,
+      x: start.box.x,
+      y: start.box.y,
+      width: start.width,
+      height: start.height,
+      rot: start.rot,
+      src: (card ? cardImageURL(card, "small") : null) ?? imageFor(id),
+      fly: { x: to.x - start.box.x, y: to.y - start.box.y },
+      dest: { w: to.w, h: to.h },
+      commandScale: Math.min(3, Math.max(0.2, scale)),
+      landsOnCard: onCard,
+    });
+  }
+
+  // The commander's own card in the command zone, which waits hidden for
+  // its copy to land (#4443).
+  function commandCardOf(f: Fx): HTMLElement | null {
+    if (!f.landsOnCard || !boardEl) return null;
+    return findCardAnchor(boardEl, f.cardID, { accept: cmdLive });
+  }
+
+  // A beam or a trail from a cue's start to its end: its length, and its
+  // turn from straight up, in degrees.
+  function reachOf(f: Fx): { len: number; turn: number } {
+    return {
+      len: Math.hypot(f.fly.x, f.fly.y),
+      turn: (Math.atan2(f.fly.x, -f.fly.y) * 180) / Math.PI,
+    };
+  }
+  const CMD_MOTES = [0, 1, 2, 3, 4, 5, 6];
+
+  // ---- An Equipment is attached, or an Aura enchants a permanent (#4444) ----
+
+  // How far a new attachment slides in from, as shares of its own size:
+  // from above its rest and out to the side it peeks from.
+  const ATTACH_IN = { x: -0.3, y: -0.45 };
+
+  // The attachment's own tile slides onto its host from its last box on
+  // the battlefield (an Equipment moving from where it stood, or from
+  // another creature), or, when it is new there (an Aura that resolved or
+  // entered attached, a token created attached), from just above and to
+  // the side of its rest. The cue is centred on the host, where its spark
+  // or ring of light is drawn; a host the board draws no tile for (a
+  // token group's member) lends the attachment's own box. An attachment
+  // already gone, or a still cue, draws nothing, and the sound plays.
+  function placeAttach(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const id = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(id)) return;
+    const el = findCardAnchor(boardEl, id, { accept: cmdLive });
+    if (!el) return;
+    const now = tileOf(el, b.rect, b.size);
+    const w = el.offsetWidth || now.width;
+    const h = el.offsetHeight || now.height;
+    // Board px to the tile's own px (a row may draw its cards scaled).
+    const k = el.offsetWidth > 0 ? now.width / el.offsetWidth : 1;
+    const before = usableTile(tiles.get(id), b.size);
+    const moved =
+      before !== null && Math.hypot(before.box.x - now.box.x, before.box.y - now.box.y) > 4;
+    const fly = moved
+      ? { x: (before.box.x - now.box.x) / k, y: (before.box.y - now.box.y) / k }
+      : { x: ATTACH_IN.x * w, y: ATTACH_IN.y * h };
+    const hostEl = cue.hostID ? findCardAnchor(boardEl, cue.hostID, { accept: cmdLive }) : null;
+    const r = (hostEl ?? el).getBoundingClientRect();
+    add({
+      ...base,
+      x: r.left + r.width / 2 - b.rect.left,
+      y: r.top + r.height / 2 - b.rect.top,
+      width: r.width,
+      height: r.height,
+      fly,
+      // The host's left edge, a little below its middle: where the
+      // attachment, drawn out to its left and a little lower, meets it.
+      seam: hostEl ? { x: -r.width / 2 + 2, y: r.height * 0.08 } : { x: 0, y: 0 },
+    });
+  }
+  const ATT_SPARKS = [0, 1, 2, 3, 4, 5];
+  // Where an Aura's glints twinkle, as shares of the host's box from its centre.
+  const ATT_GLINTS = [
+    [-0.44, -0.34],
+    [0.36, -0.46],
+    [0.47, 0.12],
+    [-0.47, 0.24],
+    [0.12, 0.49],
+    [-0.1, -0.5],
+  ];
+
   function frame(log: GameView["log"]): void {
     const prime = reprimeNext;
     reprimeNext = false;
@@ -487,7 +903,11 @@
       }),
       visibility,
     );
-    const generic = planEffects(r.fresh, log, { isPlaneswalker: isPW, combatMotion: strikes });
+    const generic = planEffects(r.fresh, log, {
+      isPlaneswalker: isPW,
+      combatMotion: strikes,
+      isCommander: isCommanderNow,
+    });
     // Signatures take the batches they name, once their scene has loaded.
     const found = planSignatures(r.fresh, { sceneOf: sceneOfCard });
     // The creatures a tinting scene left standing keep its stain this
@@ -502,12 +922,25 @@
     }
     const sp = withSignatures(generic, found, (s) => signatures.ready(s) !== null, motion);
     const plan = sp.plan;
-    if (plan.cues.length === 0 && plan.wipes.length === 0 && sp.sigs.length === 0) return;
+    // #4879: the players this frame says were decked out. Their sound is
+    // EliminationFx's; the ghost is drawn here, only with motion.
+    const decked = deckedSeats(r.fresh)
+      .map((i) => view.seats[i])
+      .filter((seat) => seat !== undefined);
+    if (
+      plan.cues.length === 0 &&
+      plan.wipes.length === 0 &&
+      sp.sigs.length === 0 &&
+      decked.length === 0
+    )
+      return;
 
     const at = Date.now();
     // animations.speed, compressed on a busy table: many cues close
-    // together each play shorter (tableEffects.ts busyScale).
-    const speed = s.animations.speed * busy.frame(headlines(plan, sp.sigs.length), at);
+    // together each play shorter (tableEffects.ts busyScale). A decked-out
+    // cue counts as a signature does.
+    const speed =
+      s.animations.speed * busy.frame(headlines(plan, sp.sigs.length + decked.length), at);
     const gameID = view.id;
     // Sounds always play (a hidden tab included); motion only when the
     // page is showing and the board can be measured.
@@ -582,6 +1015,101 @@
 
     // Drawn last, so a scene is over the cards it takes.
     if (b) for (const sig of sp.sigs) drawSignature(sig, motion, speed, b);
+    if (b) for (const seat of decked) drawDecked(seat, motion, speed, b);
+  }
+
+  // ---- Decked out (#4879) ----
+
+  function boxIn(el: Element, origin: { left: number; top: number }): Box {
+    const r = el.getBoundingClientRect();
+    return { x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height };
+  }
+
+  function byOwner(selector: string, attr: string, seatID: string): HTMLElement | null {
+    if (!boardEl) return null;
+    for (const el of boardEl.querySelectorAll<HTMLElement>(selector)) {
+      if (el.getAttribute(attr) === seatID && hasSize(el)) return el;
+    }
+    return null;
+  }
+
+  function drawDecked(
+    seat: GameView["seats"][number],
+    motion: EffectMotion,
+    speed: number,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const t = deckedTiming(motion, speed);
+    if (!t || !boardEl) return;
+    // The mat is the seat's panel; a collapsed seat has none, and keeps
+    // its stone alone.
+    const pile = byOwner('[data-pile="library"]', "data-pile-owner", seat.id);
+    const panel =
+      pile?.closest<HTMLElement>(".seat-panel") ??
+      findSeatAnchor(boardEl, seat.id, { accept: hasSize })?.closest<HTMLElement>(".seat-panel") ??
+      null;
+    if (!panel || !hasSize(panel)) return;
+    const mat = boxIn(panel, b.rect);
+    const matRect = panel.getBoundingClientRect();
+    // No pile drawn: the ghost rises from the mat's lower middle.
+    const lib = pile ? boxIn(pile, matRect) : { x: mat.w / 2 - 24, y: mat.h * 0.7, w: 48, h: 66 };
+    const handEl = byOwner("[data-hand-owner]", "data-hand-owner", seat.id);
+    const hand = handEl
+      ? boxIn(handEl, b.rect)
+      : { x: mat.x + mat.w * 0.25, y: mat.y + mat.h * 0.8, w: mat.w * 0.5, h: mat.h * 0.2 };
+
+    // Faces where this player can see them (their own hand), backs
+    // otherwise, from the frame before the cards left.
+    const now = seat.hand;
+    const before = lastHands.get(seat.id);
+    const shown = (now?.cards?.length ?? 0) > 0 ? now.cards : (before?.cards ?? []);
+    const count = Math.max(now?.count ?? 0, before?.count ?? 0, shown.length);
+    const flings = deckedFlings(seat.id, count);
+    const ch = Math.max(36, Math.min(120, hand.h * 0.85));
+    const cw = Math.round(ch * (63 / 88));
+    const cards = flings.map((f, i) => {
+      const c = shown[i];
+      const src = c && !showsCardBack(c) ? cardImageURL(c, "small") : "/card-back-small.jpg";
+      return { src: src ?? "/card-back-small.jpg", w: cw, h: Math.round(ch), f };
+    });
+
+    const key = `decked-${++serial}`;
+    decks = [
+      ...decks,
+      {
+        key,
+        seat: seat.id,
+        ms: t.ms,
+        mat,
+        lib,
+        hand,
+        skull: Math.min(mat.w, mat.h / 1.2) * 0.96,
+        diag: Math.hypot(b.size.w, b.size.h),
+        wisps: deckedWisps(seat.id),
+        cards,
+      },
+    ];
+    later(() => {
+      decks = decks.filter((d) => d.key !== key);
+    }, t.ms + 80);
+  }
+
+  function deckedOf(node: HTMLElement, d: Decked) {
+    const runs = deckedMotion(node, {
+      ms: d.ms,
+      lib: d.lib,
+      mat: { w: d.mat.w, h: d.mat.h },
+      skull: d.skull,
+      diag: d.diag,
+      wisps: d.wisps,
+      flings: d.cards.map((c) => c.f),
+    });
+    return {
+      destroy: () => {
+        for (const r of runs) r.cancel();
+        cancelTree(node);
+      },
+    };
   }
 
   // ---- Signatures ----
@@ -716,12 +1244,31 @@
     });
   });
 
+  // Remember each seat's hand as of the latest frame, after frame() has
+  // read the one before (#4879: a decked player's hand is flung from it).
+  $effect(() => {
+    const seats = view.seats;
+    untrack(() => {
+      for (const seat of seats ?? []) {
+        if (seat.eliminated) continue;
+        lastHands.set(seat.id, {
+          count: seat.hand?.count ?? 0,
+          cards: [...(seat.hand?.cards ?? [])],
+        });
+      }
+    });
+  });
+
   // Measure on every frame (after layout) and whenever the board or the
   // expanded board changes size, as the strike layer does.
   $effect(() => {
     void view;
     void $boardExpandLayout;
     if (!boardEl) return;
+    // What is new in this frame is measured now as well (#4410): a
+    // permanent or spell that goes in the next frame, before the
+    // animation frame below has run, still has a box to be drawn from.
+    untrack(() => measureBoxes(true));
     if (typeof requestAnimationFrame === "undefined") return;
     let raf = requestAnimationFrame(measure);
     if (typeof ResizeObserver === "undefined") return () => cancelAnimationFrame(raf);
@@ -740,7 +1287,7 @@
   // passive, so the click still reaches what it was aimed at, and Escape
   // still closes whatever else listens for it.
   $effect(() => {
-    if (fx.length === 0 || typeof window === "undefined") return;
+    if ((fx.length === 0 && decks.length === 0) || typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") clearAll();
     };
@@ -781,6 +1328,42 @@
           delay: f.delay,
         });
       }
+    } else if (f.kind === "token_create") {
+      // The token's own tile pops in; only this run is cancelled with
+      // the cue, never another animation on the tile.
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: hasSize }) : null;
+      const pop = tile ? tokenPop(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          pop?.cancel();
+          cancelTree(node);
+        },
+      };
+    } else if (f.kind === "commander_return") {
+      // #4443: its card in the command zone waits, hidden, for the copy;
+      // only this run is cancelled with the cue.
+      const card = commandCardOf(f);
+      const held = card ? commandArrive(card, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          held?.cancel();
+          cancelTree(node);
+        },
+      };
+    } else if (f.kind === "attach_equip" || f.kind === "attach_aura") {
+      // #4444: the attachment's own tile slides onto its host; only this
+      // run is cancelled with the cue (a token's pop on it is its own).
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: cmdLive }) : null;
+      const slide = tile ? attachSlide(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          slide?.cancel();
+          cancelTree(node);
+        },
+      };
     } else {
       cueMotion(node, f);
     }
@@ -993,6 +1576,171 @@
             <path class="palm-crease" d={PALM_CREASE} />
           </svg>
         </div>
+      </div>
+    {:else if f.kind === "token_create"}
+      <!-- #4441: a soft glow over the new token as its tile pops in. -->
+      <div
+        class="fx m"
+        data-effect="token_create"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="tglow"
+          style:width={`${f.width * 1.6}px`}
+          style:height={`${f.height * 1.4}px`}
+          style:--fx-rot={`${f.rot}deg`}
+        ></div>
+      </div>
+    {:else if f.kind === "counters"}
+      <!-- #4442: a ring over the power/toughness badge, and a tick that
+           rises (+1/+1) or falls (-1/-1) above it. -->
+      <div
+        class="fx m"
+        data-effect="counters"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-tone={f.counterTone}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cpulse"
+          style:width={`${f.width + 10}px`}
+          style:height={`${f.height + 8}px`}
+        ></div>
+        {#if f.counterTone !== "other"}
+          <div class="ctick" style:top={`${-(f.height / 2 + 9)}px`}></div>
+        {/if}
+      </div>
+    {:else if f.kind === "commander_cast"}
+      <!-- #4443: golden light rising from the command zone to the stack. -->
+      {@const beam = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect="commander_cast"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cmd-bloom"
+          style:width={`${f.width * 1.8}px`}
+          style:height={`${f.height * 1.5}px`}
+        ></div>
+        <div
+          class="cmd-beam"
+          style:width={`${Math.max(16, f.width * 0.42)}px`}
+          style:height={`${beam.len}px`}
+          style:rotate={`${beam.turn}deg`}
+        ></div>
+        {#each CMD_MOTES as i (i)}
+          <i class="cmd-mote"></i>
+        {/each}
+        <div
+          class="cmd-crown"
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${(f.dest?.w ?? f.width) + 14}px`}
+          style:height={`${(f.dest?.h ?? f.height) + 14}px`}
+        ></div>
+      </div>
+    {:else if f.kind === "commander_return"}
+      <!-- #4443: the commander drifts home with a soft trail. -->
+      {@const trail = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect="commander_return"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-lands={f.landsOnCard ? "card" : "seat"}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="cmd-streak"
+          style:width={`${Math.max(10, f.width * 0.22)}px`}
+          style:height={`${trail.len}px`}
+          style:rotate={`${trail.turn}deg`}
+        ></div>
+        {#each [0, 1] as g (g)}
+          <div class="copy cmd-ghost">
+            <div
+              class="face"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+              style:--fx-rot={`${f.rot}deg`}
+            >
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        {/each}
+        <div class="copy cmd-copy">
+          <div
+            class="face"
+            style:width={`${f.width}px`}
+            style:height={`${f.height}px`}
+            style:--fx-rot={`${f.rot}deg`}
+          >
+            {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+          </div>
+        </div>
+        <div
+          class="cmd-home"
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${(f.dest?.w ?? f.width) + 12}px`}
+          style:height={`${(f.dest?.h ?? f.height) + 12}px`}
+        ></div>
+      </div>
+    {:else if f.kind === "attach_equip"}
+      <!-- #4444: the Equipment's tile slides under its host (attachSlide);
+           a flash and sparks where the two meet, and a glint on the host. -->
+      <div
+        class="fx m"
+        data-effect="attach_equip"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="att-rim" style:width={`${f.width}px`} style:height={`${f.height}px`}></div>
+        <div class="att-seam" style:left={`${f.seam?.x ?? 0}px`} style:top={`${f.seam?.y ?? 0}px`}>
+          <div class="att-flash"></div>
+          {#each ATT_SPARKS as i (i)}
+            <i class="att-spark"></i>
+          {/each}
+        </div>
+      </div>
+    {:else if f.kind === "attach_aura"}
+      <!-- #4444: the Aura's tile slides under its host (attachSlide); a
+           soft ring of light around the host, and glints at its edge. -->
+      <div
+        class="fx m"
+        data-effect="attach_aura"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="att-halo"
+          style:width={`${f.width + 10}px`}
+          style:height={`${f.height + 10}px`}
+        ></div>
+        {#each ATT_GLINTS as [gx, gy], i (i)}
+          <i class="att-glint" style:left={`${gx * f.width}px`} style:top={`${gy * f.height}px`}
+          ></i>
+        {/each}
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -1223,6 +1971,135 @@
       </div>
     {/if}
   {/each}
+  <!-- #4879: decked out, the library's ghost. The mat box clips the pulse,
+       the wisps and the skull to the player's own seat; the flung cards
+       are outside it, so they can leave the board. -->
+  {#each decks as d (d.key)}
+    <div class="decked m" data-decked-out={d.seat} use:deckedOf={d}>
+      <div
+        class="dk-mat"
+        style:left="{d.mat.x}px"
+        style:top="{d.mat.y}px"
+        style:width="{d.mat.w}px"
+        style:height="{d.mat.h}px"
+      >
+        <span
+          class="dk-pulse"
+          style:left="{d.lib.x}px"
+          style:top="{d.lib.y}px"
+          style:width="{d.lib.w}px"
+          style:height="{d.lib.h}px"
+        ></span>
+        {#each d.wisps as w, i (i)}
+          <span
+            class="dk-wisp"
+            style:left="{d.lib.x + d.lib.w * w.x}px"
+            style:top="{d.lib.y + d.lib.h * 0.35}px"
+            style:width="{d.lib.w * w.size}px"
+            style:height="{d.lib.w * w.size * 2.2}px"
+          ></span>
+        {/each}
+        <div
+          class="dk-skull"
+          style:left="{d.mat.w / 2 - d.skull / 2}px"
+          style:top="{d.mat.h / 2 - d.skull * 0.6}px"
+          style:width="{d.skull}px"
+          style:height="{d.skull * 1.2}px"
+        >
+          <svg viewBox="0 0 100 120" width="100%" height="100%">
+            <defs>
+              <radialGradient id="{d.key}-bone" cx="50%" cy="45%" r="60%">
+                <stop offset="0%" stop-color="#f2f8ff" stop-opacity="0.95" />
+                <stop offset="45%" stop-color="#b9d4f7" stop-opacity="0.8" />
+                <stop offset="80%" stop-color="#3f74c6" stop-opacity="0.7" />
+                <stop offset="100%" stop-color="#173d8a" stop-opacity="0.85" />
+              </radialGradient>
+              <filter id="{d.key}-glow" x="-200%" y="-200%" width="500%" height="500%">
+                <feGaussianBlur stdDeviation="1.6" />
+              </filter>
+            </defs>
+            <!-- The cranium and cheeks, then the jaw. -->
+            <path
+              d="M50 4C24 4 8 22 8 48c0 16 6 26 14 32l2 14c0 5 4 8 9 8h34c5 0 9-3 9-8l2-14c8-6 14-16 14-32C92 22 76 4 50 4z"
+              fill="url(#{d.key}-bone)"
+              stroke="#1b3f86"
+              stroke-opacity="0.6"
+              stroke-width="1.5"
+            />
+            <path
+              d="M30 100v12c0 4 4 6 8 6h24c4 0 8-2 8-6v-12z"
+              fill="url(#{d.key}-bone)"
+              stroke="#1b3f86"
+              stroke-opacity="0.6"
+              stroke-width="1.5"
+            />
+            <!-- The eye sockets, and their small glowing pupils. -->
+            <ellipse cx="33" cy="52" rx="12" ry="13" fill="#061433" fill-opacity="0.9" />
+            <ellipse cx="67" cy="52" rx="12" ry="13" fill="#061433" fill-opacity="0.9" />
+            <circle
+              cx="34"
+              cy="54"
+              r="5.5"
+              fill="#6fd3ff"
+              opacity="0.45"
+              filter="url(#{d.key}-glow)"
+            />
+            <circle
+              cx="66"
+              cy="54"
+              r="5.5"
+              fill="#6fd3ff"
+              opacity="0.45"
+              filter="url(#{d.key}-glow)"
+            />
+            <circle cx="34" cy="54" r="2.4" fill="#d8f7ff" />
+            <circle cx="66" cy="54" r="2.4" fill="#d8f7ff" />
+            <!-- The nasal cavity. -->
+            <path d="M50 66l-6 14c2 3 5 2 6 0 1 2 4 3 6 0z" fill="#061433" fill-opacity="0.9" />
+            <!-- The teeth, upper and lower. -->
+            {#each [0, 1, 2, 3, 4, 5] as t (t)}
+              <rect
+                x={33.5 + t * 5.6}
+                y="94"
+                width="4.6"
+                height="9"
+                rx="1.2"
+                fill="#e8f2ff"
+                fill-opacity="0.85"
+                stroke="#2a5297"
+                stroke-opacity="0.5"
+                stroke-width="0.6"
+              />
+              <rect
+                x={33.5 + t * 5.6}
+                y="104"
+                width="4.6"
+                height="8"
+                rx="1.2"
+                fill="#e8f2ff"
+                fill-opacity="0.8"
+                stroke="#2a5297"
+                stroke-opacity="0.5"
+                stroke-width="0.6"
+              />
+            {/each}
+          </svg>
+        </div>
+      </div>
+      {#each d.cards as c, i (i)}
+        <img
+          class="dk-card"
+          src={c.src}
+          alt=""
+          draggable="false"
+          style:left="{d.hand.x + d.hand.w * (0.15 + 0.7 * c.f.x)}px"
+          style:top="{d.hand.y + d.hand.h / 2}px"
+          style:width="{c.w}px"
+          style:height="{c.h}px"
+        />
+      {/each}
+    </div>
+  {/each}
 </div>
 
 <style>
@@ -1231,7 +2108,7 @@
     inset: 0;
     pointer-events: none;
     /* The table's z-index ladder (DESIGN.md §4, ADR 0209 §4): above the
-       action dock (55), below the hints (58). */
+       action dock (55), below the coach (58). */
     z-index: 57;
     overflow: hidden;
   }
@@ -1610,6 +2487,227 @@
     opacity: 0;
   }
 
+  /* A token that is created (#4441): a soft, warm shimmer over the card,
+     screened so the art shows through it. */
+  .tglow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    rotate: var(--fx-rot, 0deg);
+    border-radius: 18px;
+    background: radial-gradient(
+      ellipse,
+      rgba(255, 250, 232, 0.75) 0%,
+      color-mix(in srgb, var(--accent) 35%, rgba(255, 236, 190, 0.45)) 38%,
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+
+  /* Counters put on a permanent (#4442): a ring over its power/toughness,
+     green for +1/+1, purple for -1/-1, a soft gold for any other kind,
+     and a small tick above it. */
+  .fx[data-effect="counters"] {
+    --fx-c: #8ef0a8;
+    --fx-c-glow: rgba(74, 222, 128, 0.7);
+  }
+  .fx[data-effect="counters"][data-effect-tone="minus"] {
+    --fx-c: #d2a4ff;
+    --fx-c-glow: rgba(168, 85, 247, 0.75);
+  }
+  .fx[data-effect="counters"][data-effect-tone="other"] {
+    --fx-c: #f3e2b0;
+    --fx-c-glow: rgba(234, 200, 120, 0.6);
+  }
+  .cpulse {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 999px;
+    border: 2px solid var(--fx-c);
+    box-shadow:
+      0 0 14px 3px var(--fx-c-glow),
+      inset 0 0 8px var(--fx-c-glow);
+    opacity: 0;
+  }
+  .ctick {
+    position: absolute;
+    left: 0;
+    width: 12px;
+    height: 8px;
+    translate: -50% 0;
+    background: var(--fx-c);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    opacity: 0;
+  }
+  .fx[data-effect-tone="minus"] .ctick {
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+  }
+
+  /* A commander (#4443). Cast: a golden bloom where it sat, a beam that
+     rises to the stack with motes riding it, and a crown of light on the
+     spell. Home: its copy drifts back with two after-images and a faint
+     streak, and a soft halo meets it on its card. Warm gold over the
+     table, so it reads on a dark board. */
+  .cmd-bloom {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(255, 246, 214, 0.9) 0%,
+      rgba(255, 206, 92, 0.55) 36%,
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .cmd-beam,
+  .cmd-streak {
+    position: absolute;
+    left: 0;
+    top: 0;
+    /* Its foot on the start, pointing at the end (the inline rotate). */
+    translate: -50% -100%;
+    transform-origin: 50% 100%;
+    border-radius: 999px;
+    opacity: 0;
+  }
+  .cmd-beam {
+    background: linear-gradient(
+      to top,
+      rgba(255, 184, 60, 0) 0%,
+      rgba(255, 196, 80, 0.8) 30%,
+      rgba(255, 232, 160, 0.95) 88%,
+      rgba(255, 244, 210, 0) 100%
+    );
+    box-shadow: 0 0 20px 6px rgba(255, 180, 48, 0.5);
+    filter: blur(1.5px);
+  }
+  .cmd-streak {
+    background: linear-gradient(to top, rgba(255, 196, 90, 0) 0%, rgba(255, 210, 120, 0.7) 100%);
+    box-shadow: 0 0 12px 3px rgba(255, 180, 48, 0.3);
+    filter: blur(3px);
+  }
+  .cmd-mote {
+    position: absolute;
+    left: -3.5px;
+    top: -3.5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ffe9a8;
+    box-shadow: 0 0 10px 3px rgba(255, 186, 60, 0.85);
+    opacity: 0;
+  }
+  .cmd-crown,
+  .cmd-home {
+    position: absolute;
+    translate: -50% -50%;
+    border: 3px solid #ffd36a;
+    box-shadow:
+      0 0 24px 8px rgba(255, 184, 48, 0.7),
+      inset 0 0 14px rgba(255, 184, 48, 0.6);
+    opacity: 0;
+  }
+  .cmd-crown {
+    border-radius: 12px;
+  }
+  .cmd-home {
+    border-radius: 10px;
+    border-width: 2px;
+  }
+  .cmd-copy .face {
+    box-shadow:
+      0 0 16px 4px rgba(255, 206, 92, 0.55),
+      0 10px 24px rgba(0, 0, 0, 0.5);
+  }
+  .cmd-ghost {
+    opacity: 0;
+  }
+  .cmd-ghost .face {
+    box-shadow: 0 0 14px 3px rgba(255, 206, 92, 0.5);
+    filter: sepia(0.4) brightness(1.15);
+  }
+
+  /* An attachment (#4444). Its own tile does the sliding; this is the
+     light over its host. An Equipment clasps cold and bright: a white-
+     silver flash where it meets the host, a fan of sparks and a glint
+     along the host's edge. An Aura is soft: a pale violet ring of light
+     around the host and a few glints twinkling at its edge. Both are
+     screened, so the art shows through on a dark board. */
+  .att-rim,
+  .att-halo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    opacity: 0;
+  }
+  .att-rim {
+    border-radius: 8px;
+    border: 1.5px solid rgba(236, 244, 255, 0.9);
+    box-shadow:
+      0 0 10px 2px rgba(200, 220, 255, 0.55),
+      inset 0 0 8px rgba(200, 220, 255, 0.4);
+  }
+  .att-seam {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  .att-flash {
+    position: absolute;
+    left: -18px;
+    top: -18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      #ffffff 0%,
+      rgba(226, 236, 255, 0.85) 30%,
+      rgba(150, 180, 230, 0) 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .att-spark {
+    position: absolute;
+    left: -7px;
+    top: -1.5px;
+    width: 14px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), #fffbe8);
+    box-shadow: 0 0 6px 1px rgba(255, 236, 170, 0.8);
+    opacity: 0;
+  }
+  .att-halo {
+    border-radius: 12px;
+    border: 2px solid rgba(232, 214, 255, 0.85);
+    box-shadow:
+      0 0 22px 7px rgba(186, 150, 255, 0.55),
+      inset 0 0 16px rgba(206, 180, 255, 0.5);
+    mix-blend-mode: screen;
+  }
+  .att-glint {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    /* Centred by margin: the motion animates translate. */
+    margin: -6px 0 0 -6px;
+    background: #fbf4ff;
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+    filter: drop-shadow(0 0 4px rgba(200, 160, 255, 0.95));
+    opacity: 0;
+  }
+
   /* A counterspell: the stack item cracks and its glass flies out. */
   .spot {
     position: absolute;
@@ -1895,6 +2993,57 @@
   .badge[data-effect="bounce"],
   .badge[data-effect="pw_enter"] {
     background: color-mix(in srgb, var(--block) 60%, #0a1220);
+  }
+
+  /* #4879: decked out. Every part is placed by the script and moved by
+     deckedOutMotion.ts; at rest (before its beat) each is hidden or still. */
+  .decked {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .dk-mat {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .dk-pulse {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 70, 70, 0.9);
+    border-radius: 6px;
+    background: rgba(255, 40, 40, 0.18);
+    opacity: 0;
+  }
+  .dk-wisp {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at 50% 60%,
+      rgba(200, 232, 255, 0.9) 0%,
+      rgba(96, 160, 255, 0.55) 45%,
+      rgba(40, 90, 200, 0) 75%
+    );
+    filter: blur(3px);
+    opacity: 0;
+  }
+  .dk-skull {
+    position: absolute;
+    opacity: 0;
+    transform-origin: 50% 50%;
+    filter: drop-shadow(0 0 18px rgba(80, 150, 255, 0.55));
+    will-change: transform, opacity, filter;
+  }
+  .dk-skull svg {
+    display: block;
+    overflow: visible;
+  }
+  .dk-card {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 5px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+    object-fit: cover;
   }
 
   /* The OS's reduced-motion signal (DESIGN.md §4, the third way): every

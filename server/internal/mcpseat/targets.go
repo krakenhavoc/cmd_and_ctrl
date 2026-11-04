@@ -298,6 +298,7 @@ func targetsText(v *protocol.GameView, w *window, n int) (string, error) {
 	}
 	b.WriteString("Candidates: " + source + ".\n")
 	b.WriteString("Answer with act(window: " + strconv.Quote(w.token) + ", move: " + strconv.Itoa(n) + ", targets: [{slot, ids: [...]}, ...]).\n")
+	f := newFolder(v, me, nw)
 	for _, c := range clauses {
 		head := fmt.Sprintf("slot %d", c.Slot)
 		if c.Mode > 0 {
@@ -320,14 +321,48 @@ func targetsText(v *protocol.GameView, w *window, n int) (string, error) {
 		for _, id := range c.Players {
 			fmt.Fprintf(&b, "  player %s — id %s\n", targetRef(v, me, "player", id), id)
 		}
-		for _, id := range c.Cards {
-			fmt.Fprintf(&b, "  %s\n", targetRef(v, me, "card", id))
+		shown, under := f.foldCandidates(c.Cards)
+		for _, id := range shown {
+			fmt.Fprintf(&b, "  %s%s\n", targetRef(v, me, "card", id), candidateFoldNote(under[id]))
 		}
 		if len(c.Players)+len(c.Cards) == 0 {
 			b.WriteString("  no legal candidate right now\n")
 		}
 	}
 	return b.String(), nil
+}
+
+// foldCandidates splits a clause's card candidates into the ones the list
+// prints and, for each printed one, the identical permanents folded under
+// it (#4766): the same fold as the move list's (fold.go), by the board's
+// own entry, so 296 Treasures are one line and a tapped one, one with a
+// counter or another player's is a line of its own. A card that is not a
+// permanent on the board, or is face down, never folds. Order is kept:
+// each line is the first of its kind.
+func (f *folder) foldCandidates(ids []string) (shown []string, under map[string][]string) {
+	under = map[string][]string{}
+	first := map[string]string{}
+	for _, id := range ids {
+		if tok, ok := f.same[id]; ok {
+			if r, seen := first[tok]; seen {
+				under[r] = append(under[r], id)
+				continue
+			}
+			first[tok] = id
+		}
+		shown = append(shown, id)
+	}
+	return shown, under
+}
+
+// candidateFoldNote is the tail of a candidate line that stands for more
+// permanents than its own: how many, and every id, each one act's
+// targets takes.
+func candidateFoldNote(more []string) string {
+	if len(more) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" [and %d more like it, each an identical permanent: ids %s]", len(more), strings.Join(more, ", "))
 }
 
 // unionClauses builds each slot's candidates from the targets of every

@@ -1063,6 +1063,14 @@ export type LogKind =
   // sentence for every viewer.
   | "no_blocks"
   | "token"
+  // #4444: an Aura, Equipment or Fortification became attached (CR
+  // 701.3a). `card_id` is the attachment, `target` the host card
+  // (`target_seat` a host player, for a Curse), and `label` what it is:
+  // "Aura", "Equipment" or "Fortification" (absent for any other
+  // permanent, and redacted with the card's name). A token created
+  // attached has its `token` entry in the same `batch`. A re-attach to
+  // the same host (CR 701.3b) and an unattach have no line.
+  | "attach"
   | "sacrifice"
   // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
   // the player, `card_id` the permanent; server-rendered `text`.
@@ -1382,6 +1390,11 @@ export interface LogEvent {
   target?: string;
   // Signed / counting payload: life delta, damage dealt, cards drawn.
   amount?: number;
+  // #4442: on a `counters` entry, the signed change (+2 for two put on,
+  // -1 for one taken off), where `amount` is the count after it. Redacted
+  // with `amount`. Absent (0) on every other kind, and on an entry from a
+  // server that predates the field.
+  delta?: number;
   // #1036: the SIZE of a `scry` / `surveil` entry's keyword action —
   // the "2" in "scry 2" — where `amount` is how many cards the table
   // then watched move. Absent on every other kind, and absent on a
@@ -1424,7 +1437,8 @@ export interface LogEvent {
   // #1021: the printed name of the thing the entry is about when it is
   // not a card — the special action as the card prints it ("Foretell
   // {2}") on a `special_action` entry, the counter kind ("+1/+1") on a
-  // `counters` one. Redacted with the card's name exactly as `choice`
+  // `counters` one, what the attachment is ("Aura", "Equipment",
+  // "Fortification") on an `attach` one (#4444). Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
   // ADR 0057: why an `eliminated` player left, or how a `game_over`
@@ -1889,6 +1903,11 @@ export interface PendingChoiceView {
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
   trade_for?: string;
+  // #4877: on a "trigger_prompt" whose question is about one card (Lazav,
+  // Dimir Mastermind's "become a copy of that card"), that card. Only
+  // ever a card face up in a public zone; absent on every other prompt,
+  // and on one whose card the table can't see.
+  subject?: CardView;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
@@ -2575,10 +2594,13 @@ export interface VoteView {
   ballots: Record<string, number>;
 }
 
-// ManaPoolRun is one run of PlayerView.mana_pool (#3041).
+// ManaPoolRun is one run of PlayerView.mana_pool (#3041). restrictions
+// (#4694) is the spend restrictions the run's mana carries, absent for
+// ordinary mana; two runs of one colour may differ only in it.
 export interface ManaPoolRun {
   color: string;
   count: number;
+  restrictions?: string[];
 }
 
 // IgnorableEffectView is one CR 116.2d special action a seat may take
@@ -2592,6 +2614,19 @@ export interface IgnorableEffectView {
   source_name: string;
   label: string;
   sacrifice_ids: string[];
+}
+
+// PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
+// (#4885): Channel's "until end of turn, any time you could activate a
+// mana ability, you may pay 1 life. If you do, add {C}." The owner sends
+// `activate_mana_ability { player_ability: source }` (no card_id).
+// `usable` is false while the life can't be paid (CR 119.4).
+export interface PlayerManaAbilityView {
+  source: string;
+  label: string;
+  life_cost: number;
+  produced: string;
+  usable: boolean;
 }
 
 export interface PlayerView {
@@ -2621,6 +2656,11 @@ export interface PlayerView {
   // and disables their action buttons. Omitempty on the wire — only
   // present when true.
   eliminated?: boolean;
+  // Why the player left (#4879), once eliminated: the log line's
+  // `cause` vocabulary ("life", "empty_draw", "poison",
+  // "commander_damage", "effect", "concede"). Absent while they play,
+  // and on a seat restored from a snapshot that predates it.
+  loss_cause?: string;
   // True once the player has committed to their opening hand during
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
@@ -2769,6 +2809,9 @@ export interface PlayerView {
   // (CR 106.4), so this is absent / empty in the common case
   // outside an active cast sequence.
   mana_pool?: ManaPoolRun[];
+  // #4885: the mana abilities this seat has as a player (Channel), each
+  // one button beside its mana pool. Absent for a seat with none.
+  mana_abilities?: PlayerManaAbilityView[];
   // #623 (CR 114): the emblems this seat has, in creation order.
   // Absent for a seat with none, which is nearly every seat.
   //
@@ -2996,6 +3039,11 @@ export interface ModeSpecView {
   // already clamped to 1 + `max_extra`, so the picker never offers a
   // count whose cards or creatures the viewer lacks.
   escalate?: EscalateView;
+  // #4786, CR 700.2i: "Choose up to five {P} worth of modes" is 5. The
+  // chosen options' `pawprints`, a repeat counted again, may not add up
+  // to more; the server refuses a selection that does. Absent for a
+  // modal card without pawprints.
+  pawprints?: number;
 }
 
 // EscalateView is ModeSpecView.escalate. Discards ride cast_spell's
@@ -3283,6 +3331,12 @@ export interface AlternativeCostView {
   // picker words its prompt "Discard". A discard with a set rule (Foil's
   // "an Island card and another card") carries `pay_options.each_of`.
   discards?: boolean;
+  // #4689: the `pay_options` are BEHELD (CR 701.4a) — Kindle the Inner
+  // Flame's "Behold three Elementals": matching cards in your hand and
+  // matching permanents you control, min == max == the count. A hand card
+  // is revealed, nothing moves or taps. The picker words its prompt
+  // "Behold".
+  behold?: boolean;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you
@@ -3729,6 +3783,22 @@ export interface ActivatedAbilityView {
   // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #4799: an "Unattach an Equipment from <this>" cost (Captain America,
+  // First Avenger). The Equipment attached to this permanent right now,
+  // whoever controls them, min / max the cost's count (1). The pick rides
+  // activate_ability as `unattach_ids`. An empty list means the cost
+  // cannot be paid (CR 118.3). A divided clause whose amount is read from
+  // the pick carries `divide.by_unattach`.
+  unattach_label?: string;
+  unattach_options?: LegalTargetsView;
+  // #4684: a "Blight N" cost (Gristle Glutton's "{T}, Blight 1:"):
+  // `blight` is N, the -1/-1 counters the cost puts on one creature you
+  // control, and `blight_options` the creatures that could take them
+  // (min / max 1), in the shape a cast's blight ships. The pick rides
+  // activate_ability as `blight_ids`. An empty list means the cost
+  // cannot be paid (CR 701.68b).
+  blight?: number;
+  blight_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
   // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
   // shape a hand card's convoke / waterbend ships as `tap_cost`, so
@@ -4097,6 +4167,10 @@ export interface TargetPurposeView {
   damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
+  // #4559: the effect exiles the picked graveyard card.
+  exiles?: boolean;
+  // #4559: the card type an exiled pick must have to put a +1/+1 counter on the source.
+  exile_grows?: "permanent" | "creature";
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
   // #4302: which way a change to the picked permanent that ends with the
@@ -4172,6 +4246,10 @@ export interface ModeOptionView {
   used?: boolean;
   // ADR 0126 §6: what this bullet does. Bot data.
   purpose?: PurposeView;
+  // #4786, CR 700.2i: the bullet's printed {P} count under a pawprint
+  // budget (ModeSpecView.pawprints) — what choosing it once spends.
+  // Absent for a bullet-point mode.
+  pawprints?: number;
 }
 
 // LegalTargetsView is a clause's legal set right now plus its
@@ -4303,6 +4381,12 @@ export interface DivideView {
   // Judgment's madness X) arrives already resolved into the fields
   // above; there is nothing for the client to compute.
   up_to?: boolean;
+  // #4799: an amount read from the Equipment an "Unattach an Equipment
+  // from <this>" cost names (Captain America, First Avenger): the amount
+  // each candidate in the row's `unattach_options` would announce, by id.
+  // When present, the division is by_unattach[the picked Equipment] and
+  // `total` is ignored.
+  by_unattach?: Record<string, number>;
 }
 
 // TargetDifferenceView is a clause's set rule (#1559): `label`
@@ -4697,6 +4781,10 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // #4692 (CR 101.2): this permanent can't have counters put on it
+  // (Blossombind). The server refuses every placement; the card shows a
+  // chip. Public; battlefield only.
+  cant_have_counters?: boolean;
   // ADR 0187 §4 (CR 510.1a): this creature assigns no combat damage this
   // turn (Carrion Rats, Carrion Wurm). Public; battlefield only.
   assigns_no_combat_damage?: boolean;
@@ -5252,8 +5340,8 @@ export interface ProtectionView {
   // against: "color", "card_type", "subtype", "everything",
   // "player", "mana_value_at_most" (value = the bound N, #2181),
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
-  // "mana_value_even", "multityped_creatures" or "noncreature_permanents"
-  // (#4307).
+  // "mana_value_even", "multityped_creatures", "noncreature_permanents"
+  // (#4307) or "multicolored" (#4834).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

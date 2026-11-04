@@ -1,0 +1,6 @@
+---
+title: "A spell copy that gains a triggered ability"
+date: 2026-11-03
+issues: [4688]
+---
+**A spell copy that gains a triggered ability** (#4688, [ADR 0218](decisions/0218-a-spell-copy-that-gains-a-triggered-ability.md)): "Copy target creature spell you control. The copy gains haste and 'At the beginning of the end step, sacrifice this token.'" CR 707.9a makes an ability gained as part of the copying process a copiable value of the copy, so the token the copy becomes (CR 608.3f) keeps it, a Clone of the token copies it, and a token that loses all its abilities loses it. That is the existing #665 copy grant: `CopySpell.Except` calls `PrintedValues.AddKeyword` and `PrintedValues.GrantAbility` with a bundle the card declares in `Spec.Grants`. The name rides the copy on the stack (`copySpellFromLocked`) and the token (`tokenCopyOfSpell`), and the composite catalog key gives the token the trigger. No engine change was needed; the issue's premise that `PrintedValues` had nowhere to put a triggered ability predated #665. Spider-Verse's "if the copy is a permanent spell, it gains haste" stays a `copyGrant`, an effect and not a copiable value (CR 611.2). **Cards:** Choreographed Sparks (Full).

@@ -850,6 +850,9 @@ type playerSnapshot struct {
 	// ends.
 	LastTurnCastOrPut bool `json:"lastTurnCastOrPut,omitempty"`
 	Eliminated        bool `json:"eliminated"`
+	// LossCause is Player.LossCause (#4879). Additive within v9: a file
+	// written before it restores an eliminated player with no cause.
+	LossCause string `json:"lossCause,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -1667,10 +1670,14 @@ type stackItemSnapshot struct {
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
 	// spell reach the graveyard.
-	ExileInsteadOfGraveyard bool   `json:"exileInsteadOfGraveyard,omitempty"`
-	Seq                     uint64 `json:"seq"`
-	Ordered                 bool   `json:"ordered"`
-	Commutes                bool   `json:"commutes,omitempty"` // #1511
+	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
+	// BottomInsteadOfGraveyard is Quintorius, Loremaster's "put it on the
+	// bottom of its owner's library instead". Carried for the reason
+	// ExileInsteadOfGraveyard is.
+	BottomInsteadOfGraveyard bool   `json:"bottomInsteadOfGraveyard,omitempty"`
+	Seq                      uint64 `json:"seq"`
+	Ordered                  bool   `json:"ordered"`
+	Commutes                 bool   `json:"commutes,omitempty"` // #1511
 
 	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
 	// (#1539): a queued trigger whose targets are chosen and whose
@@ -1979,6 +1986,9 @@ type pendingChoiceSnapshot struct {
 	// resolution tail, so the prompt is a restore point.
 	OptionalItem     uuid.UUID `json:"optionalItem,omitempty"`
 	OptionalTradeFor uuid.UUID `json:"optionalTradeFor,omitempty"`
+	// OptionalSubject is PendingChoice's (#4877): the object the
+	// question is about. Additive within the version.
+	OptionalSubject uuid.UUID `json:"optionalSubject,omitempty"`
 	// NoGain is PendingChoice's (ADR 0197 §10, #2731): the row's "yes
 	// would not help" warning, computed as the question was asked.
 	NoGain      bool        `json:"noGain,omitempty"`
@@ -3034,6 +3044,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
+		LossCause:             string(p.LossCause),
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
@@ -3132,15 +3143,16 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
-		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
-		Commutes:                s.Commutes,
-		Paid:                    clonePaidCost(s.Paid),
-		HasEffect:               s.Effect != nil,
-		HasTargetSpec:           s.targetSpec != nil,
-		HasModeSpec:             s.modeSpec != nil,
-		OracleID:                oracleID,
-		Body:                    s.Body,
-		Params:                  effectParamsOrNil(s.Params),
+		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
+		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		Commutes:                 s.Commutes,
+		Paid:                     clonePaidCost(s.Paid),
+		HasEffect:                s.Effect != nil,
+		HasTargetSpec:            s.targetSpec != nil,
+		HasModeSpec:              s.modeSpec != nil,
+		OracleID:                 oracleID,
+		Body:                     s.Body,
+		Params:                   effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -3398,6 +3410,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
+		OptionalSubject:       c.OptionalSubject,
 		NoGain:                c.NoGain,
 		ChooseCards:           copyUUIDs(c.ChooseCards),
 		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),
@@ -4177,6 +4190,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
+		LossCause:          LossCause(p.LossCause),
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
@@ -4291,11 +4305,12 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
-		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
-		Commutes:                s.Commutes,
-		Paid:                    clonePaidCost(s.Paid),
-		Body:                    s.Body,
-		Params:                  effectParamsValue(s.Params),
+		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
+		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		Commutes:                 s.Commutes,
+		Paid:                     clonePaidCost(s.Paid),
+		Body:                     s.Body,
+		Params:                   effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
@@ -4486,6 +4501,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
+		OptionalSubject:       c.OptionalSubject,
 		NoGain:                c.NoGain,
 		ChooseCards:           copyUUIDs(c.ChooseCards),
 		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),

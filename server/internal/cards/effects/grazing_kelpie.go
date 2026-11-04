@@ -21,13 +21,7 @@ func init() {
 			Label:   "{G/U}, Sacrifice this creature: Put target card from a graveyard on the bottom of its owner's library.",
 			Cost:    Plus(ManaCost("{G/U}"), SacrificeThis()),
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					return PutIntoLibrary{Card: t.ID, ToBottom: true}.Apply(ctx)
-				}
-				return nil
-			},
+			Effect:  socB37PutTargetGraveyardCardOnBottom,
 		}},
 	})
 }

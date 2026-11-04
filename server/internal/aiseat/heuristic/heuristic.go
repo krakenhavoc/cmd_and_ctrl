@@ -333,6 +333,22 @@ type Config struct {
 	// OwnPermanentTarget. Needs PriceTargetPurposes. Off (the baseline)
 	// prices the pick as cardTargetValue always did.
 	PriceReanimation bool
+	// PriceGraveyardExile prices a graveyard target a row or spell
+	// declares it exiles (TargetPurpose.Exiles, #4559, mana_sink.go) by
+	// what the exile takes away, plus the +1/+1 counter ExileGrows puts on
+	// the source: a card of the bot's own costs what a cost that exiled it
+	// would (fuelValue), an opponent's denies FuelIdle (FuelFloor for a
+	// land), the unseen recursion it could feed. Needs PriceTargetPurposes.
+	// Off (the baseline) prices the pick as cardTargetValue always did:
+	// the bot's own card as one it could use, an opponent's at
+	// OwnPermanentTarget.
+	PriceGraveyardExile bool
+	// SinkManaLast spends a repeatable mana sink last (#4559,
+	// mana_sink.go): an activation of the bot's own permanent whose only
+	// cost is mana is taken only when no other move clears its bar, and
+	// the turn plan is weighed against the best move that is not one. Off
+	// lets it outbid the turn's spells one window at a time, as before.
+	SinkManaLast bool
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -444,6 +460,13 @@ type Config struct {
 	// zero value) scores every answer 0 and the enumerator's order
 	// decides.
 	PriceOwnPermanentPicks bool
+	// PriceModePicks scores a mode_pick answer (a modal trigger's "choose
+	// one" or "choose up to N") by what its bullets do for the bot (#4674,
+	// mode_pick.go): each bullet's declared purpose and its best legal
+	// target, so an "up to" prompt takes the bullets that help and none
+	// when every bullet hurts. Off (the zero value) scores every answer 0
+	// and the enumerator's first, on an "up to" prompt none, is taken.
+	PriceModePicks bool
 	// PriceExtraLandDrops prices a declared extra land drop (#2678,
 	// puts.go): one more land this turn while the bot holds a land it
 	// could not otherwise play, at ManaSource plus the ramp premium,
@@ -863,7 +886,10 @@ func DefaultConfig() Config {
 		// #4302: a change until end of turn, priced by what it does now.
 		PriceTemporaryEffects: true,
 		PriceReconfigure:      true,
-		CombatGrant:           0.50,
+		// #4559: a mana sink spent last, an exile priced by what it takes.
+		PriceGraveyardExile: true,
+		SinkManaLast:        true,
+		CombatGrant:         0.50,
 		// #4312: a grant that saves a permanent, and evasion before
 		// blockers.
 		PriceGrantSaves:    true,
@@ -904,6 +930,7 @@ func DefaultConfig() Config {
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
+		PriceModePicks:         true,
 		PriceExtraLandDrops:    true,
 		PriceEntryCounters:     true,
 		ExtraLandDropRecurring: 0.50,
@@ -1034,6 +1061,8 @@ func BaselineConfig() Config {
 	// #4302: a change until end of turn priced as an ordinary target.
 	c.PriceTemporaryEffects = false
 	c.PriceReconfigure = false
+	c.PriceGraveyardExile = false
+	c.SinkManaLast = false
 	c.CombatGrant = 0
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
@@ -1122,6 +1151,8 @@ func BaselineConfig() Config {
 	// land drops.
 	c.PricePutsFromHand = false
 	c.PriceOwnPermanentPicks = false
+	// #4674: mode_pick answers.
+	c.PriceModePicks = false
 	c.PriceExtraLandDrops = false
 	c.PriceEntryCounters = false
 	c.ExtraLandDropRecurring = 0
@@ -1492,6 +1523,11 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	take, takeVal, takeReason := -1, 0.0, ""
 	// waited is the best cast held for the main phase (waitmain.go).
 	waited, waitedVal, waitedReason := -1, 0.0, ""
+	// #4559 (mana_sink.go): sink is the best mana sink that clears its
+	// bar, taken only when nothing else does. A sink is left out of best,
+	// so the turn plan is weighed against the best development move.
+	sink, sinkVal, sinkReason := -1, 0.0, ""
+	anySink, anySinkVal, anySinkReason := -1, 0.0, ""
 	vals := make([]float64, len(moves))
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
@@ -1502,8 +1538,19 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		}
 		v, reason := p.valueOf(st, moves[i])
 		vals[i] = v
-		if best < 0 || v > bestVal {
+		isSink := p.cfg.SinkManaLast && p.manaSink(st, moves[i])
+		if !isSink && (best < 0 || v > bestVal) {
 			best, bestVal, bestReason = i, v, reason
+		}
+		if isSink && st.beforeMyMain {
+			// #4559: the bot's own upkeep and draw step are not a spend
+			// window for a sink either (waitmain.go's premise): the same
+			// activation is on offer in the main phase, where it goes after
+			// the spells that want the mana.
+			if v > threshold && (waited < 0 || v > waitedVal) {
+				waited, waitedVal, waitedReason = i, v, reason
+			}
+			continue
 		}
 		if p.waitsForMain(st, moves[i]) {
 			if v > threshold && (waited < 0 || v > waitedVal) {
@@ -1530,6 +1577,15 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			// remove, with mana the rest of the turn does not need.
 			bar = p.cfg.LeftoverThreshold
 			reason += ", spare mana for a save"
+		}
+		if isSink {
+			if anySink < 0 || v > anySinkVal {
+				anySink, anySinkVal, anySinkReason = i, v, reason
+			}
+			if v > bar && (sink < 0 || v > sinkVal) {
+				sink, sinkVal, sinkReason = i, v, reason
+			}
+			continue
 		}
 		if v > bar && (take < 0 || v > takeVal) {
 			take, takeVal, takeReason = i, v, reason
@@ -1578,6 +1634,10 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			return aiseat.Decision{Index: i, Reason: fmt.Sprintf("cast idle mana source, leftover mana (+%.2f)", p.cfg.LeftoverThreshold)}, nil
 		}
 	}
+	if take < 0 && sink >= 0 {
+		// #4559: the sink spends what nothing else wanted.
+		take, takeVal, takeReason = sink, sinkVal, sinkReason+", mana sink last"
+	}
 	if take >= 0 {
 		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil
 	}
@@ -1589,6 +1649,9 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	}
 	if best >= 0 && bestVal > 0 {
 		return aiseat.Decision{Index: best, Reason: bestReason + " (no pass on offer)"}, nil
+	}
+	if anySink >= 0 && anySinkVal > 0 {
+		return aiseat.Decision{Index: anySink, Reason: anySinkReason + " (no pass on offer)"}, nil
 	}
 	// #1571: no pass, but an answer the enumerator marks always-legal
 	// — the attack a CR 508.1d requirement owes while the active

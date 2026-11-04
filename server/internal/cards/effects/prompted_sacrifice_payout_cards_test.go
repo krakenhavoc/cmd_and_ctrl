@@ -71,16 +71,18 @@ func TestRiseOfTheWitchKingWaitsForEveryAnswer(t *testing.T) {
 	}
 }
 
-// TestRiseOfTheWitchKingCanReturnTheCreatureYouSacrificed is #2863's
-// headline: the card is chosen on resolution, after the sacrifices, so
-// the creature you just sacrificed is "another permanent card" and can
-// be the one that comes back. Under the old cast-time pick it was not
-// in the graveyard yet.
-func TestRiseOfTheWitchKingCanReturnTheCreatureYouSacrificed(t *testing.T) {
+// TestRiseOfTheWitchKingCantReturnTheCreatureYouSacrificed: the card is
+// chosen on resolution, after the sacrifices (#2863), but "another
+// permanent card" excludes the creature you just sacrificed — the
+// official ruling (2023-06-16): "You cannot return the same permanent
+// card that you sacrificed." With nothing else in your graveyard there
+// is no offer at all.
+func TestRiseOfTheWitchKingCantReturnTheCreatureYouSacrificed(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
 
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery",
 		b17RiseOfTheWitchKingOracle, nil)
@@ -89,18 +91,33 @@ func TestRiseOfTheWitchKingCanReturnTheCreatureYouSacrificed(t *testing.T) {
 	answerSacrifice(t, g, opp.ID, theirs)
 
 	pick := chooseCardsChoiceFor(g, me.ID)
-	if pick == nil || !hasID(pick.ChooseCards, mine) {
-		t.Fatalf("the creature you sacrificed is on offer: %+v", pick)
+	if pick == nil || !hasID(pick.ChooseCards, rock) {
+		t.Fatalf("your other permanent card is on offer: %+v", pick)
+	}
+	if hasID(pick.ChooseCards, mine) {
+		t.Error("the creature you sacrificed is not \"another\" permanent card")
 	}
 	if hasID(pick.ChooseCards, theirs) {
 		t.Error("only YOUR graveyard is on offer")
 	}
-	answerChooseCards(t, g, me.ID, mine)
-	if !g.Battlefield.Contains(mine) || controllerOf(t, g, mine) != me.ID {
-		t.Error("the sacrificed creature returns to the battlefield under your control")
+	answerChooseCards(t, g, me.ID, rock)
+	if !g.Battlefield.Contains(rock) || g.Battlefield.Contains(mine) {
+		t.Error("the Sol Ring returns; the sacrificed Bear stays in the graveyard")
 	}
-	if g.Battlefield.Contains(theirs) {
-		t.Error("their creature stays sacrificed")
+
+	// Only the sacrificed creature in the graveyard: nothing to offer.
+	g2 := newCatalogGame(t)
+	me2 := g2.Seats[0]
+	bear := pushVanillaCreature(g2, me2.ID, "Lone Bear", 2, 2)
+	castCatalogSpell(t, g2, "Rise of the Witch-king", "Sorcery",
+		b17RiseOfTheWitchKingOracle, nil)
+	passPriorityAroundTable(t, g2)
+	answerSacrifice(t, g2, me2.ID, bear)
+	if c := chooseCardsChoiceFor(g2, me2.ID); c != nil && !isSacrificePrompt(c) {
+		t.Errorf("no other permanent card, so no offer: %+v", c.ChooseCards)
+	}
+	if g2.Battlefield.Contains(bear) {
+		t.Error("the sacrificed Bear must not come back")
 	}
 }
 
@@ -110,14 +127,15 @@ func TestRiseOfTheWitchKingMayReturnNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
 
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery",
 		b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)
 	answerSacrifice(t, g, me.ID, mine)
 	answerChooseCards(t, g, me.ID)
-	if g.Battlefield.Contains(mine) || !me.Graveyard.Contains(mine) {
-		t.Error("declining leaves the creature in the graveyard")
+	if g.Battlefield.Contains(rock) || !me.Graveyard.Contains(rock) || !me.Graveyard.Contains(mine) {
+		t.Error("declining returns nothing")
 	}
 }
 

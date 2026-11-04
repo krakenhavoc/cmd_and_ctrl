@@ -39,8 +39,13 @@ import (
 //     values (CR 707.2), and the cached characteristic in particular
 //     is a pointer — a wholesale struct copy would have the token and
 //     its original sharing one layer cache.
-//   - It does not read last-known information: the copy is taken from
-//     wherever the named card sits right now.
+//   - It does not read the card's printed fields blindly: the copy
+//     takes the COPIABLE values (CR 707.2) through
+//     game.TokenCopySourceForEffect — the permanent's own, as other copy
+//     effects changed them, while it is on the battlefield, and its
+//     last-known ones when it has left and not moved since (CR 608.2h).
+//     A card that has moved on (exiled from a graveyard by embalm or The
+//     Scarab God, discarded) is copied as the card it now is.
 
 // CreateTokenCopy creates N tokens that are copies of the card
 // `Copy`, which may be in ANY zone — Hashaton copies a card in the
@@ -84,6 +89,54 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	return createTokenCopies(ctx, c.Controller, tmpl, c.N)
 }
 
+// CreateTokenCopiesTogether is "for each <object>, create a token that's a
+// copy of it" (#4594): N tokens copying each of Copies, made by ONE
+// creation with a group per original, so every copy is created at the
+// same time (CR 608.2f). The copies enter the battlefield in one event,
+// each newcomer sees the others enter (CR 603.6a), and a "one or more"
+// trigger or a "the first time you would create tokens" replacement sees
+// one occurrence (CR 603.2c). Saheeli, the Gifted's −7 is the shape.
+//
+// Copies is the list the effect fixed as it began (a copy is never itself
+// copied); an original that can no longer be found is skipped. Except is
+// the "except …" clause, applied to each template (CR 707.9). Then is the
+// rest of the effect, told the tokens that landed (TailOutcome.IDs), and
+// runs whether or not a copy's entry stopped to ask a question; the zero
+// tail is "nothing more".
+type CreateTokenCopiesTogether struct {
+	Controller uuid.UUID
+	Copies     []uuid.UUID
+	// N is how many tokens copy each original; zero means one.
+	N      int
+	Except func(t *game.Card)
+	Then   game.KeyedTail
+}
+
+func (c CreateTokenCopiesTogether) Apply(ctx *Context) error {
+	n := c.N
+	if n <= 0 {
+		n = 1
+	}
+	controller := c.Controller
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	groups := make([]game.TokenGroup, 0, len(c.Copies))
+	for _, id := range c.Copies {
+		tmpl, ok := TokenCopyTemplate(ctx.Game, id)
+		if !ok {
+			continue
+		}
+		if c.Except != nil {
+			c.Except(&tmpl)
+		}
+		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: n})
+	}
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: controller, Source: ctx.Source(), Groups: groups, Together: true,
+	}, c.Then)
+}
+
 // TokenCopyGainsHaste is the "except it has haste" exception clause
 // shared by every hasty-token-copy card — Reflection of Kiki-Jiki's
 // activated ability and Electroduplicate's sorcery both print exactly
@@ -97,6 +150,46 @@ func TokenCopyGainsHaste(t *game.Card) {
 		}
 	}
 	t.Keywords = append(t.Keywords, "haste")
+}
+
+// TokenCopyWithHasteSacrificedAtEndStep is the whole body of "Create a
+// token that's a copy of target creature you control, except it has haste
+// and 'At the beginning of the end step, sacrifice this token.'"
+// (Electroduplicate, Kindle the Inner Flame #4689). `label` names the
+// sacrifice on the stack.
+//
+// Haste rides the token's printed Keywords (TokenCopyGainsHaste), and the
+// sacrifice is a CR 603.7 delayed trigger scheduled against the token's
+// own instance, read back off EventTokenCreated because CreateTokenCopy
+// mints the instance and returns nothing. "The end step" is the StepEnd
+// default ScheduleDelayedTrigger already uses. The target is re-read out
+// of ctx.LegalTargets(), so a creature that left in response is skipped
+// (CR 608.2b).
+func TokenCopyWithHasteSacrificedAtEndStep(label string) func(*game.StackItem, *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		id, ok := b16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		cursor := b25LastEventSeq(ctx.Game)
+		if err := (CreateTokenCopy{
+			Controller: item.Controller,
+			Copy:       id,
+			N:          1,
+			Except:     TokenCopyGainsHaste,
+		}).Apply(ctx); err != nil {
+			return err
+		}
+		tokens := b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
+		if len(tokens) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			Label: label,
+			Cards: tokens,
+			Body:  sacrificeListedCardsBody,
+		}.Apply(ctx)
+	}
 }
 
 // TokenCopyOfSingleTarget is the whole body of the "create a token
@@ -124,12 +217,15 @@ func TokenCopyOfSingleTarget(item *game.StackItem, ctx *Context) error {
 }
 
 // TokenCopyTemplate builds a CreateToken template carrying the
-// copiable values (CR 707.2) of the card `cardID`, wherever it
-// currently sits. Reports ok=false when no such card exists.
+// copiable values (CR 707.2) of the card `cardID`: a permanent's
+// copiable values, its last-known ones if it has just left the
+// battlefield (CR 608.2h), and otherwise the card wherever it now sits
+// (game.TokenCopySourceForEffect). Reports ok=false when no such card
+// exists.
 //
 // The type line gains the "Token" supertype so IsToken and the
 // client's token affordances recognise it. Everything else is the
-// printed card: name, oracle ID, Scryfall ID (so the client renders
+// copied values: name, oracle ID, Scryfall ID (so the client renders
 // the original's art), type line, P/T, mana cost and colours.
 // VariableToughness travels with Toughness (#683): a token copy of a
 // `*` creature copies the importer's 0 stand-in, so it copies the bit
@@ -137,7 +233,7 @@ func TokenCopyOfSingleTarget(item *game.StackItem, ctx *Context) error {
 // skipping it after it loses its last counter, as it does the
 // original.
 func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
-	src, ok := g.LookupCardForEffect(cardID)
+	src, ok := g.TokenCopySourceForEffect(cardID)
 	if !ok {
 		return game.Card{}, false
 	}

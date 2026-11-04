@@ -516,6 +516,16 @@ type PendingChoiceView struct {
 	// may" it controls. Absent on every other prompt.
 	TradeFor string `json:"trade_for,omitempty"`
 
+	// Subject populates a "trigger_prompt" whose question is about one
+	// card (game.TriggerOptionalPrompt.ShowSubject, #4877): the creature
+	// card Lazav, Dimir Mastermind would become a copy of, so the dialog
+	// can show it and several prompts at once can be told apart. It is
+	// set only while that card is face up in a public zone (a
+	// graveyard, exile, the battlefield or the command zone), so it
+	// shows nothing any seat could not already see. Absent on every
+	// other prompt, and on one whose card is hidden.
+	Subject *CardView `json:"subject,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -936,6 +946,15 @@ type PendingChoiceView struct {
 	ModeUsedOptions []string `json:"mode_used_options,omitempty"`
 	ModeUsedIndexes []int    `json:"mode_used_indexes,omitempty"`
 	ModeNotChosen   string   `json:"mode_not_chosen,omitempty"`
+	// ModeBullets is, parallel to ModeOptions, what each offered bullet
+	// does (#4674): its declared purpose and, for a targeted bullet, its
+	// legal targets as the trigger would be judged right now, with the
+	// clause's `harmful` flag. The shape a modal card's `modes.options`
+	// entries have. A bot prices a bullet from it before choosing; the
+	// browser does not read it. The chooser's alone, as a card's
+	// `legal_targets` are the asking seat's (#1172). Absent when the
+	// prompt's ability could not be found.
+	ModeBullets []ModeOptionView `json:"mode_bullets,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -1304,11 +1323,19 @@ type SacrificeGroupView struct {
 // never learns there was a rule. `up_to` is "distribute UP TO that
 // many" (Lathiel): the shares may sum to less than the amount, each
 // target still at least 1.
+//
+// #4799: `by_unattach` is an amount read from the Equipment an "Unattach
+// an Equipment from <this>" cost names (Captain America's "damage equal
+// to that Equipment's mana value"): the amount each candidate in the
+// row's `unattach_options` would announce, by wire id. When it is
+// present the division is by_unattach[the picked Equipment], and
+// `total` (the amount with no pick, 0) is ignored.
 type DivideView struct {
-	Total       int  `json:"total,omitempty"`
-	FromX       bool `json:"from_x,omitempty"`
-	DoubleFromX int  `json:"double_from_x,omitempty"`
-	UpTo        bool `json:"up_to,omitempty"`
+	Total       int            `json:"total,omitempty"`
+	FromX       bool           `json:"from_x,omitempty"`
+	DoubleFromX int            `json:"double_from_x,omitempty"`
+	UpTo        bool           `json:"up_to,omitempty"`
+	ByUnattach  map[string]int `json:"by_unattach,omitempty"`
 }
 
 // divideView projects a clause's division, or nil for none. The spec
@@ -1424,6 +1451,11 @@ type ModeSpecView struct {
 	// and `tap_options` are the asking seat's answer and ride only its
 	// own frame (publicModeSpec drops them).
 	Escalate *EscalateView `json:"escalate,omitempty"`
+	// Pawprints is CR 700.2i's budget, "Choose up to five {P} worth of
+	// modes" is 5 (#4786): the chosen modes' `pawprints`, a repeat
+	// counted again, may not add up to more. Absent for a modal card
+	// without pawprints. Printed text, so public.
+	Pawprints int `json:"pawprints,omitempty"`
 
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
@@ -1504,6 +1536,10 @@ type ModeOptionView struct {
 	// (ADR 0126 §6): Farewell's "Exile all creatures" is a creature
 	// sweep. Public alongside `label`, which says the same in words.
 	Purpose *PurposeView `json:"purpose,omitempty"`
+	// Pawprints is the bullet's printed {P} count under a pawprint
+	// budget (CR 700.2i, #4786): what choosing it once spends of the
+	// spec's `pawprints`. Absent for a bullet-point mode. Public.
+	Pawprints int `json:"pawprints,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -1917,6 +1953,16 @@ type AlternativeCostView struct {
 	// Treasure for an Island). Absent for every other offer. Public with
 	// the rest of the printed offer.
 	Discards bool `json:"discards,omitempty"`
+
+	// Behold marks an offer whose `pay_options` are BEHELD (#4689, CR
+	// 701.4a): Kindle the Inner Flame's "Behold three Elementals". The
+	// options are the matching cards in the caster's hand and the matching
+	// permanents they control, min and max both the count; the picks ride
+	// `alt_cost_ids`, a hand card is revealed and nothing moves or taps. The
+	// client words its prompt "Behold", and a policy charges nothing for
+	// them. Absent for every other offer. Public with the rest of the
+	// printed offer.
+	Behold bool `json:"behold,omitempty"`
 
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
@@ -2516,6 +2562,14 @@ type PlayerView struct {
 	// still spectates, but the UI greys them out and disables their
 	// quick-action buttons. Added in S08.
 	Eliminated bool `json:"eliminated,omitempty"`
+	// LossCause is why an eliminated player left (#4879): the engine's
+	// game.LossCause, the same vocabulary as a LogEliminated entry's
+	// cause ("life", "empty_draw", "poison", "commander_damage",
+	// "effect", "concede"). Public, like the log line. Empty while the
+	// player plays, and for a player restored from a snapshot that
+	// predates it. The client draws the decked-out cue and its "Decked"
+	// stone for "empty_draw" (CR 704.5b).
+	LossCause string `json:"loss_cause,omitempty"`
 	// HandKept reflects Player.HandKept — true once the player has
 	// committed to their opening hand. Drives the per-seat
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
@@ -2731,6 +2785,14 @@ type PlayerView struct {
 	// step boundary, so this is the common case outside a cast).
 	// Drives the S15 ManaPoolPips UI. Added in S15 sub-PR 2.
 	ManaPool []ManaPoolRun `json:"mana_pool,omitempty"`
+
+	// ManaAbilities are the mana abilities this PLAYER has, bound to no
+	// card (#4885): Channel's "until end of turn, any time you could
+	// activate a mana ability, you may pay 1 life. If you do, add {C}."
+	// The owner activates one with activate_mana_ability carrying
+	// `player_ability` set to its `source`. Public, like the spell that
+	// granted it. Absent for every seat that has none.
+	ManaAbilities []PlayerManaAbilityView `json:"mana_abilities,omitempty"`
 
 	// Emblems are the emblems this player has (CR 114), in creation
 	// order. Absent for every seat that has none, which is nearly
@@ -3922,6 +3984,12 @@ type CardView struct {
 	// the thing #429 spent a PR deleting.
 	Restrictions []string `json:"restrictions,omitempty"`
 
+	// CantHaveCounters is true for a permanent that can't have counters
+	// put on it (Blossombind's enchanted creature, #4692, CR 101.2). The
+	// engine refuses every placement, counter cost and proliferate choice
+	// on it; the client shows the chip. Public; battlefield only.
+	CantHaveCounters bool `json:"cant_have_counters,omitempty"`
+
 	// AttackTargetRestrictions are this creature's CR 508.1c
 	// restrictions on WHOM it may attack (ADR 0106 §2, #1794), with
 	// the player each names already resolved: Xantcha's "can't attack
@@ -5013,6 +5081,30 @@ type ActivatedAbilityView struct {
 	// is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// UnattachLabel / UnattachOptions describe an "Unattach an Equipment
+	// from <this>" cost component (#4799) — Captain America, First
+	// Avenger's throw. The same LegalTargetsView the return and exile
+	// picks ship: min and max the cost's count (1), and cards the
+	// Equipment attached to this permanent right now, whoever controls
+	// them (game.UnattachCostOptionsForEffect). The chosen Equipment go
+	// back as `unattach_ids`. Absent when the cost has no such
+	// component; present with too few cards means the cost cannot be
+	// paid (CR 118.3). Not a target list: unattaching to pay a cost does
+	// not target (CR 601.2h). A divided clause whose amount is read from
+	// the pick carries `divide.by_unattach`.
+	UnattachLabel   string            `json:"unattach_label,omitempty"`
+	UnattachOptions *LegalTargetsView `json:"unattach_options,omitempty"`
+	// Blight / BlightOptions describe a "Blight N" cost component
+	// (#4684, CR 701.68a) — Gristle Glutton's "{T}, Blight 1:". Blight
+	// is N, the -1/-1 counters the cost puts on; BlightOptions is the
+	// creatures the activator controls that could take them right now
+	// (game.BlightOptionsForEffect), min and max 1, in the shape a cast's
+	// blight ships. The chosen creature goes back as `blight_ids`. Absent
+	// when the cost has no blight; present with no cards means it can't
+	// be paid (CR 701.68b). Not a target list: a hexproof creature you
+	// control is on it.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -6208,7 +6300,14 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// about the CARD IN THIS ZONE — its price list, its
 					// modes, the clause refusing the cast — which every
 					// player may read off a card in a public zone.
-					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, grant)
+					// #4696: the face the pile shows is stamped under
+					// the permission that opens THAT face, which is the
+					// one a cast of it would use.
+					faceGrant := grant
+					if grant != nil && live != nil {
+						faceGrant = g.CastPermissionForFaceLocked(caster, *live, zone.kind, "", c.ActiveFace)
+					}
+					s := castStampsFor(g, caster, c, activeFace(c), zone.kind, faceGrant)
 					s.applyPublicTo(c, zone.kind)
 					c.stampsFor(caster, s)
 					stampCastableFaces(g, caster, c, zone.kind, grant, true)
@@ -6952,7 +7051,8 @@ func castFaceOf(c *CardView, i int) castFace {
 // holder's stamps, where nothing about the answer is public because
 // the seat it was computed for is not the seat the pile belongs to.
 //
-// The face list is game.CastableFacesUnder, which is the same answer
+// The face list is game.CastableFaceGrantsLocked (CastableFacesUnder,
+// plus a face a second permission opens, #4696), which is the same answer
 // the bot enumerator walks (legal/cast.go): both halves of a modal
 // DFC and of an adventure card, the front alone of a transform card,
 // and exactly the faces a grant names when one does. A view that
@@ -6968,7 +7068,14 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 	if !ok {
 		return
 	}
-	for _, i := range game.CastableFacesUnder(live, grant, caster) {
+	// #4696: each face under the permission that opens it, which is the
+	// one CastSpell finds for a cast of that face and the one the bot
+	// enumerator walks it under (game.CastableFaceGrantsLocked): Vizier
+	// of the Menagerie's creature spells beside an "instant and sorcery
+	// spells" permission stamp both halves of Bonecrusher Giant, each
+	// priced by its own permission.
+	for _, fg := range g.CastableFaceGrantsLocked(caster, live, kind, grant) {
+		i := fg.Face
 		if i < 0 || i >= len(c.Faces) {
 			continue
 		}
@@ -6977,7 +7084,7 @@ func stampCastableFaces(g *game.Game, caster uuid.UUID, c *CardView, kind game.Z
 		if !game.FaceCastableFromZone(live, i, kind) {
 			continue
 		}
-		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, grant)
+		s := castStampsFor(g, caster, c, castFaceOf(c, i), kind, fg.Permission)
 		if public {
 			s.applyPublicToFace(&c.Faces[i], kind)
 		}
@@ -7668,7 +7775,7 @@ type ProtectionView struct {
 	// "everything", "player", "mana_value_at_most" (Value is the
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
-	// "noncreature_permanents" (#4307).
+	// "noncreature_permanents" (#4307) or "multicolored" (#4834).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
@@ -8133,6 +8240,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByManaValue = true
 				v.SacrificePrices = emergePricesView(g, caster, *live, zone, ac.Key, v.SacrificeOptions)
 			}
+		} else if rc := ac.Behold; rc != nil {
+			// #4689: "behold three Elementals" — the engine's one reveal
+			// walk (matching hand cards, then matching permanents the
+			// caster controls), min and max both the count, the picks on
+			// alt_cost_ids. `behold` tells the picker and a policy that
+			// nothing is spent.
+			n := ac.CardPaymentCount()
+			castID, _ := uuid.Parse(self)
+			v.PayOptions = &LegalTargetsView{Min: n, Max: n, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, rc))}
+			v.Behold = true
 		} else if tc := ac.TapOthers; !tc.Empty() {
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.
@@ -8424,17 +8541,46 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
 		NotChosen:  modeMemoryWire(ms.NotChosen),
+		Pawprints:  ms.Pawprints,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
-		ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Used: slices.Contains(used, i), Purpose: viewOfPurpose(o.Purpose)}
-		if o.Targets != nil {
-			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
-			ov.Clauses = viewOfClauses(g, src, o.Targets)
-		}
+		ov := viewOfModeOption(g, src, o)
+		ov.Used = slices.Contains(used, i)
 		out.Options = append(out.Options, ov)
+	}
+	return out
+}
+
+// viewOfModeOption projects one bullet: its label, cost, purpose and,
+// when it targets, its legal set from `src`'s point of view. Caller must
+// hold g.mu.
+func viewOfModeOption(g *game.Game, src game.TargetSource, o game.ModeOption) ModeOptionView {
+	ov := ModeOptionView{Label: o.Label, Cost: o.Cost, Purpose: viewOfPurpose(o.Purpose), Pawprints: o.Pawprints}
+	if o.Targets != nil {
+		ov.TargetMode = o.Targets.Mode
+		ov.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+		ov.Clauses = viewOfClauses(g, src, o.Targets)
+	}
+	return ov
+}
+
+// viewOfModePickBullets is a mode_pick's `mode_bullets` (#4674): each
+// offered bullet, in the prompt's order (`options` is its
+// ModeOptionIndex), judged from the trigger's own source. Nil when an
+// index is out of the spec's range, so a bullet is never mispaired with
+// its label. Caller must hold g.mu.
+func viewOfModePickBullets(g *game.Game, src game.TargetSource, ms *game.ModeSpec, options []int) []ModeOptionView {
+	if len(options) == 0 {
+		return nil
+	}
+	out := make([]ModeOptionView, 0, len(options))
+	for _, i := range options {
+		if i < 0 || i >= len(ms.Options) {
+			return nil
+		}
+		out = append(out, viewOfModeOption(g, src, ms.Options[i]))
 	}
 	return out
 }
@@ -9517,6 +9663,37 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 	}
 }
 
+// publicSubjectView is the view of a prompt's subject card (#4877) when
+// every seat may see it: face up in a public zone. A card in a library
+// or a hand, a face-down card, or one no zone holds gives nil, and the
+// prompt reads as it did before it named a subject. Caller must hold
+// g's read lock.
+func publicSubjectView(g *game.Game, id uuid.UUID) *CardView {
+	if id == uuid.Nil {
+		return nil
+	}
+	z := g.FindCardZoneForEffect(id)
+	if z == nil {
+		return nil
+	}
+	switch z.Kind {
+	case game.ZoneGraveyard, game.ZoneExile, game.ZoneBattlefield, game.ZoneCommand:
+	default:
+		return nil
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID != id {
+			continue
+		}
+		if z.Cards[i].FaceDown {
+			return nil
+		}
+		v := viewOfCardPtr(&z.Cards[i])
+		return &v
+	}
+	return nil
+}
+
 // viewOfPendingChoices materialises the PendingChoices queue,
 // inlining the candidate cards from the live game state so the
 // per-viewer filter can redact them uniformly. Caller must hold
@@ -9631,6 +9808,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+			v.Subject = publicSubjectView(g, c.Subject())
 			// #3817: one target for every copy of the card's trigger.
 			v.SharedTargetKey = c.SharedTargetKey()
 		}
@@ -10031,6 +10209,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ModeUsedOptions = append([]string(nil), c.ModeUsedLabel...)
 			v.ModeUsedIndexes = append([]int(nil), c.ModeUsedIndex...)
 			v.ModeNotChosen = modeMemoryWire(c.ModeNotChosen)
+			if src, ms, ok := g.ModePickSpecLocked(c); ok {
+				v.ModeBullets = viewOfModePickBullets(g, src, ms, c.ModeOptionIndex)
+			}
 		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
@@ -10511,6 +10692,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CommanderDamage:       cmdrDamage,
 		LifeHistory:           history,
 		Eliminated:            p.Eliminated,
+		LossCause:             string(p.LossCause),
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		MulliganBottom:        viewOfMulliganBottom(g, p),
@@ -10542,6 +10724,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
+		ManaAbilities:       viewOfPlayerManaAbilities(g, p.ID),
 		Emblems:             emblems,
 		Companion:           companion,
 		Sideboard:           sideboard,
@@ -11284,6 +11467,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// #3817: so is the trigger's card identity, which names the
 			// card behind a prompt only its chooser answers.
 			out[i].SharedTargetKey = ""
+			// #4674: and a mode_pick's bullets, whose legal targets are
+			// the chooser's answer (#1172).
+			out[i].ModeBullets = nil
 		}
 		// ADR 0198: a collection pick is the chooser's. Nothing in it is
 		// hidden information (it is the card database), but what a player
@@ -12303,6 +12489,8 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
+		// #4692: only a battlefield static writes it.
+		CantHaveCounters: eff.CantHaveCounters,
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
 		AttackTargetRestrictions: viewOfAttackTargetRestrictions(c, eff),
 		// #781. Straight off the card, with no zone gate and no
@@ -13141,6 +13329,18 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ExilePermanentLabel = ec.Label
 			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
 		}
+		// #4799: the unattach component, from the walk the engine
+		// validates against.
+		if n := a.Cost.UnattachEquipment; n > 0 {
+			v.UnattachLabel = unattachCostLabel(c)
+			v.UnattachOptions = unattachCostOptions(g, c.InstanceID, n)
+		}
+		// #4684: the blight component, from the walk the engine
+		// validates against. The activator is the viewer of this row.
+		if n := a.Cost.Blight; n > 0 {
+			v.Blight = n
+			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,
 		// so a Waterbend {X} ships Max 0 and DemandsX and the client
@@ -13167,6 +13367,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// protection from that permanent's colour or type.
 			v.LegalTargets = abilityLegalTargets(g, abilitySrc, a.Targets)
 			v.Clauses = viewOfClauses(g, abilitySrc, a.Targets)
+			// #4799: a division read from the unattach pick, per pick.
+			if v.UnattachOptions != nil {
+				stampUnattachDivide(g, v.LegalTargets, abilitySrc, a.Targets, v.UnattachOptions.Cards)
+				for i := range v.Clauses {
+					stampUnattachDivide(g, &v.Clauses[i], abilitySrc, a.Targets.Clause(i), v.UnattachOptions.Cards)
+				}
+			}
 			v.TargetChargedManaCosts = targetChargedManaCosts(g, caster, c, zone, a, v.LegalTargets)
 		}
 		// #764: a modal activated ability announces its modes with
@@ -13303,6 +13510,46 @@ func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetS
 	return v
 }
 
+// unattachCostLabel is an unattach component's words without the verb:
+// "an Equipment from <the source's name>".
+func unattachCostLabel(c game.Card) string {
+	return "an Equipment from " + c.Name
+}
+
+// unattachCostOptions is the Equipment that could pay an
+// UnattachEquipment cost of `n` right now (#4799), min and max both n.
+// Caller must hold g.mu.
+func unattachCostOptions(g *game.Game, sourceID uuid.UUID, n int) *LegalTargetsView {
+	return &LegalTargetsView{Min: n, Max: n, Cards: cardIDStrings(g.UnattachCostOptionsForEffect(sourceID))}
+}
+
+// stampUnattachDivide writes divide.by_unattach onto a divided clause
+// whose amount rule may read the unattach pick (#4799): the amount the
+// rule answers for each candidate, read as the gate will read it
+// (game.DivideAmountArgs.Unattached). A clause that divides a fixed or
+// X amount is left alone. Caller must hold g.mu.
+func stampUnattachDivide(g *game.Game, v *LegalTargetsView, src game.TargetSource, spec *game.TargetSpec, candidates []string) {
+	if v == nil || v.Divide == nil || spec == nil || spec.Divide == nil || spec.Divide.AmountKey.IsZero() {
+		return
+	}
+	args := game.DivideAmountArgs{Controller: src.Controller}
+	if src.Object != nil {
+		args.Source = src.Object.InstanceID
+	}
+	by := make(map[string]int, len(candidates))
+	for _, raw := range candidates {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		args.Unattached = []uuid.UUID{id}
+		by[raw] = g.DivideAmountForEffect(spec.Divide, args).TotalFor(0)
+	}
+	if len(by) > 0 {
+		v.Divide.ByUnattach = by
+	}
+}
+
 // targetChargedManaCosts prices an activation of `a` once per legal
 // target, for ActivatedAbilityView.TargetChargedManaCosts (#1296). Nil
 // unless the price reads the target and the ability is the one shape
@@ -13363,11 +13610,12 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 		// colours still decide whether a protected creature is a legal
 		// target of the spell it would become.
 		if oc, found := g.LookupOutsideCardForEffect(id); found {
-			return game.SourceObject(caster, &oc)
+			return game.SourceCast(caster, &oc)
 		}
 		return game.SourceChooser(caster)
 	}
-	return game.SourceObject(caster, c)
+	// #4869, CR 601.2a: the card being cast is not its own target.
+	return game.SourceCast(caster, c)
 }
 
 // sacrificeCostOptions is the set of permanents that can pay an

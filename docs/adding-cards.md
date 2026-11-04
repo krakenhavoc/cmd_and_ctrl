@@ -47,6 +47,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
+  - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
+  - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
+  - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
+  - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -317,12 +321,18 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Distinct` for "another"), or `SharesACardTypeWithTarget(spec,
    earlierSlot)` for "two target nonland permanents that share a card type"
    (Burglar's Plot, #4454; both on the battlefield with a card type in
-   common after the layers). The anchor must be a required single pick,
-   and the dependent clause may pick at most one object. Announcement,
+   common after the layers), or `FromTargetPlayersGraveyard(spec,
+   earlierSlot)` for "target player shuffles up to three target cards from
+   their graveyard" (Quandrix Command, #4862; the anchor is a `TargetPlayer`
+   clause and the cards a `TargetCardInGraveyard` clause with its count).
+   The anchor must be a required single pick, and the dependent clause may
+   pick at most one object, except under `FromTargetPlayersGraveyard`,
+   whose picks are each judged on their own and which takes no set rule.
+   `TargetPlayerShufflesTheirCards` is that family's shared body. Announcement,
    resolution and all pickers share the gate; no custom resolution-only
    target check is needed. The same-controller relation reads an anchor
    that has left the battlefield by its last-known controller (CR 608.2h).
-   A relationship none of the three covers is a new `TargetRelationKind`.
+   A relationship none of these covers is a new `TargetRelationKind`.
 
    **Modal cards ("Choose one —", S20 sub-PR 4)** declare
    `Spec.Modes` instead of `Spec.Targets`, with the target clause on
@@ -2906,6 +2916,16 @@ move and `EventETB`, pinned to that object by its epoch:
   reanimation is a new object without it (CR 400.7), and a copy copies
   the printed card (CR 707.2).
 
+"In addition to its other types" is the same overwrite with the add
+fields instead of `Types` (#4834): Excava, the Risen Past's "It's a 1/1
+Spirit creature with flying in addition to its other types" is
+`EntersAs{AddTypes: []string{"Creature"}, AddSubtypes:
+ctx.TextSubtypes("Spirit"), Keywords: []string{"flying"}, BasePT:
+&game.EntersAsPT{Power: 1, Toughness: 1}}` (layer 4 add, layer 6
+keyword, layer 7b base power and toughness, one record). `Problem`
+refuses an overwrite that both sets and adds types. See
+`excava_the_risen_past.go`.
+
 A "dies, if it was a creature, return it" trigger (Tom, Bert, and
 William) reads `lki.Types` in `AppliesTo`. The returned artifact was
 not a creature when it died, so it does not loop. See
@@ -3207,7 +3227,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"skulk"` | Skulk (CR 702.118b) — blocker power cannot exceed attacker power |
 | `"protection from <quality>"` | Protection (CR 702.16) — #662, all four DEBT checks. The one PARAMETERISED token; see "Protection" below before writing one |
 | `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
-| `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
+| `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature. It works from the stack (CR 702.80c), printed or given: "those spells gain wither" for a spell and the copy a trigger makes of it (Spinerock Tyrant, #4693) is `g.CopyLastKnownSpellGainingKeywordsForEffect(…, []string{game.KeywordWither}, …)` for the copy and `g.GrantKeywordsToSpellForEffect` for the original, and the damage tail reads the granted keyword like a printed one. A copy some other effect makes does not have it (CR 707.2) |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
@@ -3410,7 +3430,9 @@ owner (`server/internal/game/protection.go`):
    Demons and from Dragons" is two tokens (CR 702.16m), and each is
    checked on its own. Never write a joined one.
 2. **The closed grammar is colours (`red`), card types (`artifacts`),
-   creature subtypes (`Demons`), `everything` and `the chosen player`.**
+   creature subtypes (`Demons`), `everything`, `the chosen player` and
+   `multicolored` (a source with two or more colours, CR 105.2b; Stonecoil
+   Serpent, #4834).**
    Anything else — "monocolored", "opponents" — parses as NOTHING, so
    the permanent gets no protection at all and the card keeps its ADR
    0037 unimplemented flag. That is the honest answer, not a bug: do not
@@ -3556,6 +3578,15 @@ same PR, and assert `dispatchAll` over the enumerated moves.
 
 Restrictions are checked **at declaration only** (CR 508.1c, 509.1b).
 A creature pacified after attackers were declared keeps attacking.
+
+**"Can't attack or block unless its power is N or greater"** (Technodrome,
+#4678) is not a conditional `RestrictSelf`: a layer-6 static runs before
+layer 7, so it would read the power before anthems and counters. Write
+`Static: []game.StaticAbility{CantAttackOrBlockUnlessPowerAtLeast(6)}`. It
+records the floor on `Characteristic.AttackBlockPowerFloor`, and the layer
+pass folds `CantAttack | CantBlock` in after every layer has run while the
+power (counters included) is below it (CR 613.11, `game/power_floor.go`).
+Every gate and the enumerator read the bits, so nothing else changes.
 
 **"Can't attack its owner"** ([ADR 0106 §2](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
 #1794) is not a bit either: it says WHOM the creature may not attack,
@@ -3959,6 +3990,14 @@ names no player, and on a spell or an activated ability, it admits
 nothing. Use it on a mode's clause too: a bullet with no legal target is
 not on offer.
 
+**"Mana value X or less, where X is the amount of damage" the trigger's
+event dealt** (Venerable Warsinger's "return target creature card with mana
+value X or less from your graveyard to the battlefield") is
+`ManaValueAtMostTheEventAmount(TargetCardInGraveyard(...))`. The bound is the
+triggering event's `Amount`, data on the clause, so the picker, the announce
+check and the resolution re-check agree. On a spell or an activation it
+admits nothing.
+
 **"Change a target … to this creature"** (Spellskite, Mizzium Meddler)
 needs nothing from a card file past `changeATargetToThisCreature`; when
 the same creature fills two instances of "target", the controller is
@@ -4303,6 +4342,89 @@ around, and almost every ability should carry on from last known
 information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
+
+### Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)
+
+`Plus(ManaCost("{3}"), UnattachAnEquipment())` is Captain America, First Avenger's "{3}, Unattach an Equipment from
+Captain America". The activator picks one Equipment attached to the source, whoever controls it; it stays on the
+battlefield unattached. With nothing attached the ability can't be activated. A divided amount that reads the pick is
+`Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
+the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
+
+### "Can't have counters put on it" (#4692, CR 101.2)
+
+Blossombind's "Enchanted creature … can't have counters put on it" is
+`Static: []game.StaticAbility{AttachedCantHaveCounters()}`, which sets
+`Characteristic.CantHaveCounters` on the host. It is a prohibition, not a
+replacement: the engine refuses the placement before the CR 614 window
+opens, so Doubling Season, Hardened Scales and Vizier of Remedies never
+see it and no ordering prompt is asked. One predicate,
+`cantHaveCountersLocked` (`game/cant_have_counters.go`), is read by every
+placement door (effects, entering with counters, Sagas, wither and infect
+damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
+(a counter cost can't be paid, CR 118.3), by the blight options (CR
+701.68b) and by the proliferate candidates. A refused placement is told
+zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
+counters is unaffected. A +N loyalty cost can't be paid either. The view
+ships `cant_have_counters` and the card shows a NO COUNTERS chip.
+
+### Blight as an effect (#4683, CR 701.68)
+
+"You may blight 2. If you do, …", "blight 1" and "each opponent blights
+1" are `Blight{N, Players, May, Then}` in
+[blight_effect.go](../server/internal/cards/effects/blight_effect.go),
+called from the ability's `Effect`:
+
+```go
+Blight{N: 2, May: true, Then: sourbreadAuntieTokens}.Apply(NewContext(g, item))
+Blight{N: 1, Players: ctx.Opponents()}.Apply(ctx) // High Perfect Morcant
+```
+
+Each blighting player is asked as the ability resolves, one `choose_cards`
+prompt each in APNAP order (ADR 0175's ordered collector), over
+`Game.BlightOptionsForEffect`: the creatures they control that can have
+counters put on them. It is not a target, so hexproof does not stop it.
+A player with no such creature is not asked and does not blight (CR
+701.68b), and a mandatory blight with one candidate asks nothing. The
+counters go on through `Game.BlightKeyedForEffect`, an effect's
+placement and not a cost's: Doubling Season doubles them (CR 614.16), the
+blighting player is the placer, and two counter replacements pause on
+the CR 616 ordering prompt.
+
+Everything printed after the blight is a `Blighted`, registered once from
+a package-level var with `RegisterBlighted("blight/<card>-<what>", fn)`
+(ledgered as a run and a tail). `fn(ctx, d)` runs once every counter has
+landed, and also when nobody could blight. `d.Did()` is "if you do" (a
+creature was chosen, even if a replacement removed its counters), its
+negation is "if you don't" (Gutsplitter Gang), `d.By(player)` and
+`d.Creatures` are CR 701.68c's "blighted creature", and `d.Placed` is the
+counters that landed. "When you do" is a `WhenYouDo` reflexive trigger
+applied from `fn` when `d.Did()` (Warren Torchmaster). Never declare the
+choice as the trigger's `Targets`. A blight paid as a COST is
+`OptionalBlight` / `BlightCost` / `BlightXCost` on a spell (#1703), which
+`game.blightLocked` pays, and `BlightN` on an activated ability (next
+subsection).
+
+### Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)
+
+"Blight N" inside an activation cost is `BlightN(n)`, composed with `Plus`:
+
+```go
+Cost: Plus(TapCost(), BlightN(1)),                         // Gristle Glutton
+Cost: Plus(ManaCost("{1}{W}"), BlightN(1), SacrificeThis()), // Spiral into Solitude
+```
+
+The activator names the creature as they activate (`blight_ids`): any
+creature they control that can have counters put on it, the source
+included. It is not `AddCounterToThis`, which is "put a counter on this
+creature" (Devoted Druid). The counters are a cost's, not an effect's, so
+Doubling Season doesn't double them and Vizier of Remedies applies (CR
+614.16). With no creature to blight the ability can't be activated (CR
+701.68b). The source's zone doesn't matter: Evershrike's Gift's
+graveyard ability (`Zones: []game.ZoneKind{game.ZoneGraveyard}`) blights a
+creature on the battlefield. The card file declares nothing else; the
+view, the client's picker, the enumerator and the bot's price come with
+the component.
 
 ### Adding a block-rule card (S37+, #750)
 
@@ -4776,7 +4898,13 @@ does not carry ("you sacrificed a *Food* this turn") ranges over
 old upkeep-bounded scans missed the untap step, which is where #1009
 finally bit. A counter the tally
 should carry and does not is a field on `PlayerTurnTally` plus one case
-in `turnTallyListener`, not a new scan.
+in `turnTallyListener`, not a new scan. Questions about the spells a
+player cast this turn read `g.CastTallyFor(player)` instead, written
+in `CastSpell` as each spell becomes cast (CR 601.2i) and read off the
+spell on the stack: `SpellColorsCast()` is "colors among spells you've
+cast this turn" (First Family) and `CardTypesCast()` is "card type
+among spells you've cast this turn" (April O'Neil, Hacktivist, #4677;
+kindred counts, a copy and a land played do not).
 
 **Never anchor a "this turn" question on `EventBeginUpkeep`.** The turn
 begins at `onTurnBeganLocked`, which resets the tally *before* the untap
@@ -5090,6 +5218,41 @@ for; the source's types can't say it, because an Equipment's other
 abilities are not equip abilities. A mana ability whose cost is life and
 no {T} is never planned by the auto-tapper, so the player fires it first
 and the mana floats; the top-up then spends it only where the tag allows.
+
+**Mana for costs that contain {X} (#4834):** "Spend this mana only on
+costs that contain {X}" is `Restrictions: []string{game.ManaRestrictXCost}`
+(Elementalist's Palette). It matches `ManaSpendContext.CostHasX`: a
+spell whose mana cost (or the alternative cost it is cast for) has {X},
+or an activated ability with {X} in its mana, and the mana then pays the
+whole cost, not only X.
+
+**Mana for spells with {X} in their mana costs (#4834):** "Spend this mana
+only to cast spells with {X} in their mana costs" is
+`game.ManaRestrictSpellXCost` (Troyan, Gutsy Explorer), usually inside a
+`ManaRestrictAnyOf` with another clause. Unlike `ManaRestrictXCost` it
+asks about the spell's own printed mana cost (`ManaSpendContext.ManaCostHasX`),
+not the cost being paid, so an alternative cost without {X} still
+qualifies and an activated ability never does.
+
+**Doubling X, and "if that ability's activation cost contains {X}"
+(#4834):** `Game.DoubleSpellXForEffect(spellID)` doubles the X announced
+for a spell still on the stack (`StackItem.XValue`, which the mana value on
+the stack, "enters with X counters" and an enter trigger's X all read);
+Unbound Flourishing's first ability. `Event.XCost` is stamped on every
+`EventActivateAbility` whose cost has an {X} mana symbol, for its second
+ability's intervening "if" (a spell's side is the printed mana cost,
+`socB9HasXInManaCost`).
+
+**Mana for spells with mana value N or greater (#4694):** "Spend this
+mana only to cast spells with mana value 4 or greater" is
+`Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
+Rimebound; `ManaRestrictManaValueAtMost(n)` is "N or less"). It matches
+`ManaSpendContext.ManaValue`, the spell's mana value as it is on the
+stack: the face being cast (a transformed spell reads its front face, CR
+712.8c), and {X} at the value announced (CR 202.3e), so an X spell with X
+large enough may spend it. Activations, unlocks and payments that name
+no spell refuse it. Floating mana keeps its restriction on the wire
+(`ManaPoolRun.restrictions`), which is what the bot plans from.
 
 **Cheaper equip abilities (#3778):** the activation's cost query
 carries the equip bit too, so "Equip abilities you activate cost {1}
@@ -5412,6 +5575,24 @@ it fires only when the spell resolves and competes with the others under
 CR 616.1. The cards it leaves behind are found by their counter
 (`c.Counters[game.CounterDream] > 0` on `g.Exile.Cards`) and cast through a
 `GrantCastPermissionToCardsForEffect` grant, as Crabomination's are.
+
+**"If you cast a creature spell this way, that creature enters with an
+additional +1/+1 counter on it" (#4679, CR 614.1c, CR 614.12):** Mikey &
+Don, Party Planners. Set `EntersWithCounterKind: game.CounterPlusOne` and
+`EntersWithCounters: 1` on the `CastPermission`, beside its other "this
+way" riders (`EntersTapped`, `GainsKeywords`). `CastSpell` reads them
+where the permission is consumed and marks the spell's item through
+`addPromisedCounterLocked` (`markPermissionEntryCountersLocked`), so it is
+the Wildgrowth Archaic read side from there: Doubling Season doubles it, a
+countered spell takes it along, and a cast from hand or through another
+permission gets none. Only a creature spell as cast is marked (every
+printed rider says "that creature"), so a noncreature spell, a
+noncreature face and a bestowed Aura spell cast this way get nothing. A
+finality counter works the same way (Leonardo, Sewer Samurai, which also
+needs a power-or-toughness filter the permission does not have yet).
+`PermissionFilter.CreatureTypesAny` holds two types and must not be
+widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
+Turtle spells" is two permissions with the same rider.
 
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
@@ -7010,6 +7191,30 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
+2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
+Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
+true}`) with `BeholdCount`, built with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                       // Kindle the Inner Flame
+AlternativeCosts: []game.AlternativeCost{FlashbackBehold("{1}{R}", 3, "Elemental", "Elementals")},
+```
+
+It keeps flashback's graveyard binding and `ExileOnLeavingStack`. The
+caster names N distinct objects in `alt_cost_ids`, each a permanent of
+that creature type they control or a card of it in their hand (a
+changeling counts), through the reveal walk the additional cost's
+behold already reads (`RevealCostOptionsForEffect`). The hand cards are
+revealed with the spell on the stack; nothing moves or taps. With fewer
+than N candidates the offer is not stamped and the cast is refused. The
+view ships `pay_options` (min == max == N) and `behold: true`, so the
+client's pay picker reads "Behold", and the bot charges nothing for the
+picks. `Register` counts the behold as the offer's one card component
+and refuses a malformed one (a plain reveal, no type, a colour, no
+count). An additional cost of "behold a … and exile it" (#4687) is not
+this shape: that card is spent.
+
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
 does and declares the offer with one constructor:
@@ -7179,6 +7384,16 @@ OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
 // cast spends it), with ExileInsteadOnlyInstantOrSorcery narrowing the
 // exile to the spells the clause names (#4505).
 bilboCastFromGraveyard(g, item)                         // Bilbo, Thief in the Night
+// "You may cast that card this turn without paying its mana cost. If that
+// spell would be put into a graveyard, put it on the bottom of its owner's
+// library instead": a per-card ScopeCards permission at {0} under the
+// granted-cost key, at the card's own timing, with
+// CastPermission.BottomInsteadOfGraveyard (Quintorius, Loremaster, S79
+// SOC batch 11). It is ExileInsteadOfGraveyard with the owner's library
+// bottom as the destination, on the same three paths (resolving, countered,
+// fizzled) and as a CR 616.1 exit beside buyback and rebound; a permission
+// sets one of the two.
+```
 ```
 
 Five rules worth knowing before you write one. **The key is shared with
@@ -7239,6 +7454,16 @@ type a multi-type card uses (`cast_spell.permission_type`), keeps the
 spent types (on a stored permission, or in the turn tally for one a
 permanent grants, per granting object), and a land can only spend
 "land", beside the turn's land drop.
+
+**"Once during each of your turns, play a land or cast a permanent spell" (#4834).**
+Serra Paragon's one shared use is `PerType: []string{game.PermissionTypePermanent}`:
+a single pseudo-type that any play or cast spends and that asks the caster
+nothing. Pair it with `Filter: game.PermissionFilter{PermanentOnly: true}` (a
+land card or any permanent card, never an instant or sorcery) and
+`MaxSpellManaValue`. "It gains …" is `GainsAbilities`, which a spell cast through
+the permission carries to the permanent and a land played through it does too
+(`ReplacementEvent.landGains`, applied as the entry finishes, so a shockland
+waiting on its life payment still gains it).
 
 **"If you do, …" after a cast permission (#2173).** Set
 `CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
@@ -7840,7 +8065,12 @@ CreateTokenCopy{Controller: item.Controller, Copy: cardID, N: 1,
 ```
 
 `Copy` may be in **any** zone (graveyard for Hashaton, exile for
-eternalize, battlefield for a Clone-style copy). The copied card's
+eternalize, battlefield for a Clone-style copy). A permanent is copied
+by its copiable values (CR 707.2: a Clone copying a dragon is the
+dragon, a face-down permanent a nameless 2/2), and a permanent that has
+left the battlefield and not moved since by its last-known ones (CR
+608.2h, #4794); a card that has moved on is copied as the card it now
+is (`game.TokenCopySourceForEffect`). The copied card's
 oracle ID rides onto the token, so its triggered / static / mana /
 activated abilities all come along for free — every one of those hooks
 does a catalog lookup rather than reading a field. Since #762 the token
@@ -7869,6 +8099,7 @@ devoid either.
 | "Whenever you sacrifice a permanent" | `EventSacrifice` | `ev.Actor == source.Controller` — fires while the permanent is still on the battlefield, before its `EventLTB` |
 | "Whenever a player sacrifices a permanent" | `EventSacrifice` | `ev.CardID != uuid.Nil` (Mayhem Devil) — any player, any permanent type |
 | "Whenever another creature dies" | `EventLTB` | `diedCreature(ev, g)` — resolves the dying card post-move, but "was a creature" is its type as it last existed (`ev.LastKnownTypes`, CR 603.10a), so a crewed Vehicle or an animated land counts. Test any other card type of a departed permanent with `leftAsType(ev, c, "artifact")`, never `c.IsArtifact()` on the moved card. Test a subtype the same way — `leftAsSubtype(ev, dead, "Zombie")`, never `dead.HasSubtype` — so a creature that was a Zombie only through Maskwood Nexus or a lord's grant counts, and a supertype with `leftAsSupertype(ev, dead, "Legendary")`, so a Clone of a legend counts, and a colour with `leftAsColor(ev, dead, "B")`, never `dead.HasColor` — so a creature painted black only by Darkest Hour or another effect counts. Add `leftUnderControlOf(ev, dead) == source.Controller` for "you control" (`!=` for "an opponent controls") — never `dead.Controller`: a card in a graveyard has no controller (CR 108.4), and a stolen creature its thief sacrificed died under the thief's control. `!IsToken(dead)` for "nontoken" |
+| "Whenever one or more cards leave your graveyard" / "a creature card leaves your graveyard" | `leftGraveyardEvents` (`EventZoneMove` + `EventCast`) | `cardLeftYourGraveyard(ev, source, g)` / `creatureCardLeftYourGraveyard(ev, source, g)` plus `OncePerBatch` for "one or more" (`left_graveyard.go`, #4899). A spell cast from a graveyard is only an `EventCast` with `OldZone` graveyard, never a zone move, so a trigger watching `EventZoneMove` alone misses flashback and escape; a land played from one is a `Played` zone move. Read other types with `cardThatLeftYourGraveyard` and `wasCardInAGraveyard`, and "a graveyard" with `cardThatLeftAGraveyard` |
 | "Whenever an attacking creature dies" / "a blocking creature dies" | `EventLTB` | `diedWhileAttacking(ev, g)` / `diedWhileBlocking(ev, g)` (Kardur, Doomscourge; Death Tyrant) — the combat state rides the event (`ev.AttackingTarget`, `ev.BlockingTarget`, `ev.Blocked`, CR 603.10a), because the exit clears it from the card before any watcher runs. Never read `AttackingTarget` off the dead card. Add `leftUnderControlOf(ev, dead) == source.Controller` for "you control"; a creature removed from combat before it died reads as neither |
 | "Whenever ~ attacks" | `EventAttack` | `attackDeclared(ev, source)` — `EventAttack` carries the attacking creature in `CardID`, exactly as `EventETB` carries the entering permanent |
 | "Whenever a creature you control attacks" | `EventAttack` | `attackDeclaredByYou(ev, source.Controller)` — reads `ev.Actor` (the attacker's controller); fires **once per attacking creature**, so a three-creature alpha strike triggers three times. Add `ev.CardID != source.InstanceID` for "another". `ev.Target` is the defending player |
@@ -7892,6 +8123,8 @@ devoid either.
 | "Whenever **one or more** creatures you control attack / enter / leave" (no object named) | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed |
 | "Whenever ~ / a [thing] you control **is dealt damage**, … **that much**" | `EventDealDamage` | add `AtBatchEnd: ThatMuchDamage()` (needs a `Key`). The engine emits one event per source, so without it a creature double-blocked triggers twice; with it the ability waits for the batch to settle and reads the TOTAL dealt to that object in one damage instance, in `item.Trigger.Event.Amount` (Wrathful Red Dragon, Repercussion, #3172). Hand-built test damage needs `g.RunStateChecksForTest()` before the trigger appears |
 | "Whenever you [discard / create / have enter] **one or more** …, … **that many**" | the per-object kind | wrap with `withAtBatchEnd(On(…), ThatManyEvents())` and read `settledEventAmount(item)` — one trigger per batch with the count of matching events (Cryptcaller Chariot, Magmakin Artillerist, Ingenious Artillerist) |
+| "Whenever ~ **deals N or more damage**" (the total, across every recipient) | `EventDealDamage` | `withAtBatchEnd(On(game.EventDealDamage, <source is this, Amount > 0>, label, body), ThatMuchDamageDealtAtLeast(N))` (needs a `Key`, which `On` sets from the label). It sums what ONE source dealt in one damage instance (a combat damage step, or one damage instruction) over all recipients, so 2 to a blocker and 2 to a player is one 4; a first-strike step and the regular step, or two instructions, are never summed (`BatchTotalDamageDealt`, Spinneret and Spiderling) |
+| "Whenever you attack with **N or more** [type]" | `EventAttack` | `withAtBatchEnd(On(game.EventAttack, <attacker is yours and that type>, label, body), ThatManyEventsAtLeast(N))` counts the declaration's attackers through the layered view and fires once (Spinneret and Spiderling); "you gain **that much**" with the same condition and `ThatManyEvents()` reads `settledEventAmount(item)` (Amazing Alliance) |
 | "Whenever **one or more** [creature] cards are put into your graveyard **from anywhere**" (… **that many**) | `game.EventMill`, `EventZoneMove`, `EventDiscardCard` (`graveyardArrivalKinds`) | `OncePerBatch(OnAny(graveyardArrivalKinds, graveyardArrivals{Match: …}.When(), …))` and read `InBatch(g, item.Trigger.Event.Batch, item.Controller)` as it resolves (Voracious Brood, #4721). One batch is one resolution; a token is never a card |
 | "Whenever **an artifact** is put into your graveyard from the battlefield or an artifact **card** from anywhere other than the battlefield" | the above plus `EventLTB` | `WhenAnotherArtifactIsPutIntoYourGraveyard(label, effect)` — one trigger per object, no batch; a token artifact dying counts (Ultron's Auxiliary, #4721) |
 | "Whenever **one or more** creatures you control deal combat damage to **a player**" / "whenever you attack **a player**" | the same kind as the per-creature wording | `OncePerBatchPerPlayer(...)`, or the ready-made `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature, label, effect)` — once per **player**, not once per step (#784, CR 603.2c). The clause names an object, so the guard keys on it: three creatures hitting three opponents are three triggers, two hitting one opponent are one. A card whose stack label is computed per player (Breena, Nature's Will) sets a static `Key` and lets the guard supply the player |
@@ -9834,6 +10067,16 @@ named subtypes and nothing else, so a Human lord stops pumping the
 creature while the effect lasts (Werewolf Pack Leader). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
+
+**"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
+(#4691, layer 4, CR 613.1d): every creature type goes and none comes,
+the every-creature-type fact included (a changeling's, or an earlier
+"gains all creature types"), while the card types and other subtypes
+stay (CR 205.1a). A later "gains all creature types" wins by timestamp
+(CR 613.7). It removes no ability, so a changeling keeps the keyword.
+Put it in the same record as the card's other changes (Nameless
+Inversion's +3/-3). The kind `loseAllCreatureTypes` is an on-disk
+identity.
 
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
@@ -11956,6 +12199,23 @@ of up to `Max` cards, which `game.PutFromOutsideIntoLibraryForEffect` puts in th
 library unrevealed (the second door out of the container, beside
 `BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
 nothing was chosen or there was nothing to choose from (CR 701.24d).
+
+**Searching your library and/or outside the game** (Turtles Forever, #4681) is
+not a flag on `SearchLibrarySpec`: the database pool (ADR 0198) answers with
+card names, which no library search prompt can hold beside instance IDs. It is
+three keyed prompts in a row, in `effects/turtles_forever.go`: a `PickOption`
+for the zones (both, the library only, outside the game only; asked first, so
+the library is searched, and announced, only when chosen, as #4519 does for
+"and/or graveyard"), then the library search, then an outside pick for the
+room the library left. The library's finds wait on top of the library (`ToTop`,
+Gifts Ungiven's shape) and ride the outside pick as its `Carry`; their names
+ride as its `MatchArg`, so the registered filter leaves them out on both
+branches and after a restore. A "different names" rule over the outside picks
+themselves is the pick's set rule (`RegisterOutsidePickRule`). Both halves may
+come up short: a library search for a stated quality (CR 701.23b), and a search
+outside the game, where the player "may choose" (CR 701.23j). The cards found
+are then revealed together, `RevealForEffect` for the library's and
+`RevealOutsideForEffect` for the rest, and settled from where each card is now.
 
 **Learn** (CR 701.48a, #3525) is `Learn{}` in `effects/learn.go`, the last
 instruction of every printing:

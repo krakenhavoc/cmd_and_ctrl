@@ -54,6 +54,10 @@ var redactedCardKeys = map[string]bool{
 	// ADR 0187 §4: "assigns no combat damage this turn", a bit like the
 	// regeneration mark above.
 	"assigns_no_combat_damage": true,
+	// #4692: "can't have counters put on it" is a bit another permanent
+	// (Blossombind) puts there in front of the table, and says nothing
+	// about which card it is.
+	"cant_have_counters": true,
 	// ADR 0109 §1: a resolved effect's land-type change names the
 	// effect's source and its duration, facts about the object and not
 	// about which card it is (and a face-down permanent is no land).
@@ -355,6 +359,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Purpose:      &PurposeView{Draws: 2},
 		Abilities:    []string{"flying"},
 		Restrictions: []string{"cant_block"},
+		// #4692: public, see redactedCardKeys.
+		CantHaveCounters: true,
 		// ADR 0106 §2: redacted with Restrictions.
 		AttackTargetRestrictions: []AttackTargetRestrictionView{{Player: "p-owner", Planeswalkers: true, Source: "Xantcha, Sleeper Agent"}},
 		// ADR 0083. Public on a token the viewer can see, and a token
@@ -400,7 +406,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		Modes: &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{
 			Label: "mode", TargetMode: "creature", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt},
 			Cost: "{1}{U}", Used: true,
-			Purpose: &PurposeView{Sweep: &SweepView{Matches: "creatures", How: "exile"}},
+			Purpose:   &PurposeView{Sweep: &SweepView{Matches: "creatures", How: "exile"}},
+			Pawprints: 2,
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
@@ -418,7 +425,9 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			ReducesByPower: true,
 			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
 			Discards:       true,
-			XLockedAtZero:  true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// #4689.
+			Behold:        true,
+			XLockedAtZero: true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// #3225.
@@ -945,6 +954,8 @@ var modeOptionScopes = map[string]castSurfaceScope{
 	// ADR 0126 §6: the catalog's declared purpose for the bullet, read
 	// off the printed card like Label, which says the same in words.
 	"Purpose": surfacePublicPile,
+	// CR 700.2i, #4786: the bullet's printed {P}, read off the card.
+	"Pawprints": surfacePublicPile,
 	// #1172: the legal sets. Narrowed by hexproof, shroud, protection
 	// and "target opponent", so seat A's is not seat B's to read.
 	"LegalTargets": surfacePrivate,
@@ -964,7 +975,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// ADR 0152 §5: which printed face the offer casts is printed.
 	"CastsFace": surfacePublicPile,
 	// ADR 0135 §2: whether the price discards its cards is printed.
-	"Discards":         surfacePublicPile,
+	"Discards": surfacePublicPile,
+	// #4689: whether the price beholds its cards is printed.
+	"Behold":           surfacePublicPile,
 	"TargetMode":       surfacePublicPile,
 	"XLockedAtZero":    surfacePublicPile,
 	"PhyrexianSymbols": surfacePublicPile,

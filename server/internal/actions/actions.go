@@ -1777,6 +1777,15 @@ func dispatch(g *game.Game, a Action) error {
 			// harness, Altar of Bhaal). Its own field rather than
 			// exile_ids, which names cards in a hand or a graveyard.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #4799 — unattach_ids names the Equipment paid to an
+			// "Unattach an Equipment from <this>" cost (Captain America,
+			// First Avenger). A divided amount may read it, so it rides
+			// with the distribution.
+			UnattachIDs []string `json:"unattach_ids,omitempty"`
+			// #4684 — blight_ids names the creature a "Blight N" cost
+			// puts its -1/-1 counters on (Gristle Glutton). The name a
+			// cast's blight pick rides.
+			BlightIDs []string `json:"blight_ids,omitempty"`
 			// #2598 — reveal_ids names the cards revealed to pay a
 			// "Reveal X black cards from your hand" cost (Martyr of
 			// Bones). The name a cast's reveal pick rides; the count
@@ -1891,6 +1900,22 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				exilePermanentIDs = append(exilePermanentIDs, id)
 			}
+			var unattachIDs []uuid.UUID
+			for _, raw := range p.UnattachIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability unattach_ids: %w", err)
+				}
+				unattachIDs = append(unattachIDs, id)
+			}
+			var blightIDs []uuid.UUID
+			for _, raw := range p.BlightIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability blight_ids: %w", err)
+				}
+				blightIDs = append(blightIDs, id)
+			}
 			revealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
 			for _, raw := range p.RevealIDs {
 				id, err := uuid.Parse(raw)
@@ -1933,6 +1958,8 @@ func dispatch(g *game.Game, a Action) error {
 				TopIDs:            topIDs,
 				ReturnIDs:         returnIDs,
 				ExilePermanentIDs: exilePermanentIDs,
+				UnattachIDs:       unattachIDs,
+				BlightIDs:         blightIDs,
 				RevealIDs:         revealIDs,
 				WaterbendIDs:      waterbendIDs,
 				CostBranch:        p.CostBranch,
@@ -2704,9 +2731,25 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #4885 — player_ability names a mana ability the PLAYER
+			// has, bound to no card (Channel's "pay 1 life: add {C}"),
+			// by the object that granted it
+			// (PlayerView.mana_abilities[].source). Sent instead of
+			// card_id; the two together are refused.
+			PlayerAbility string `json:"player_ability,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
+		}
+		if p.PlayerAbility != "" {
+			if p.CardID != "" {
+				return fmt.Errorf("activate_mana_ability: send card_id or player_ability, not both: %w", game.ErrInvalidParam)
+			}
+			source, err := uuid.Parse(p.PlayerAbility)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability player_ability: %w", err)
+			}
+			return g.ActivatePlayerManaAbility(a.Player, source)
 		}
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {

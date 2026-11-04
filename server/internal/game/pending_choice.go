@@ -554,9 +554,11 @@ type PendingChoice struct {
 	// the parked resolution tail holds; uuid.Nil on the harvest-time
 	// prompt (miracle's reveal) and every other kind. Plain data, so
 	// the prompt is a restore point. OptionalTradeFor is the item's
-	// OptionalTrigger.TradeFor, for TradeSubject.
+	// OptionalTrigger.TradeFor, for TradeSubject. OptionalSubject is
+	// its OptionalTrigger.Subject, for Subject (#4877).
 	OptionalItem     uuid.UUID
 	OptionalTradeFor uuid.UUID
+	OptionalSubject  uuid.UUID
 
 	// NoGain marks a resolution-time "you may" whose row says "yes"
 	// would leave the chooser no better off as things stand (ADR 0197
@@ -1479,6 +1481,18 @@ func (c *PendingChoice) TradeSubject() uuid.UUID {
 		return uuid.Nil
 	}
 	return c.triggerResume.tc.Event.CardID
+}
+
+// Subject is the object a resolution-time "you may" is about, on a
+// prompt whose ability declares TriggerOptionalPrompt.ShowSubject: the
+// card Lazav, Dimir Mastermind would become a copy of (#4877). uuid.Nil
+// on every other prompt. It is an ID, not a view: whether the asked
+// player may see the card is the wire's question (protocol).
+func (c *PendingChoice) Subject() uuid.UUID {
+	if c == nil || c.OptionalItem == uuid.Nil {
+		return uuid.Nil
+	}
+	return c.OptionalSubject
 }
 
 // TriggerDoubler returns the doubler attribution carried by a harvested

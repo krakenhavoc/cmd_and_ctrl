@@ -390,3 +390,82 @@ func TestTargetsForFallsBackToTheWindowsMoves(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// #4766: targets_for folds identical candidates as the move list folds
+// identical moves (#4737). The 30 untapped Treasures of one controller are
+// one line, with the count and every id, and any of those ids is a pick
+// act takes. A tapped Treasure, one with a counter, the seat's own and a
+// face-down permanent are kept apart, as the board keeps them apart.
+func TestTargetsForFoldsIdenticalCandidates(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	spell := uuid.New()
+	opp, me := f.oppID.String(), f.playerID.String()
+	perm := func(name, ctl string, mut func(*protocol.CardView)) protocol.CardView {
+		c := protocol.CardView{InstanceID: uuid.NewString(), Name: name, TypeLine: "Token Artifact — Treasure",
+			IsToken: true, Owner: ctl, Controller: ctl}
+		if mut != nil {
+			mut(&c)
+		}
+		return c
+	}
+	var board []protocol.CardView
+	for range 10 {
+		board = append(board, perm("Treasure", opp, nil))
+	}
+	board = append(board, perm("Pestilence", opp, func(c *protocol.CardView) { c.TypeLine, c.IsToken = "Enchantment", false }))
+	for range 20 {
+		board = append(board, perm("Treasure", opp, nil))
+	}
+	board = append(board,
+		perm("Treasure", opp, func(c *protocol.CardView) { c.Tapped = true }),
+		perm("Treasure", opp, func(c *protocol.CardView) { c.Tapped = true }),
+		perm("Treasure", opp, func(c *protocol.CardView) { c.Counters = map[string]int{"oil": 1} }),
+		perm("Treasure", me, nil),
+		perm("face-down", opp, func(c *protocol.CardView) { c.FaceDown = true }),
+		perm("face-down", opp, func(c *protocol.CardView) { c.FaceDown = true }),
+	)
+	ids := make([]string, len(board))
+	for i, c := range board {
+		ids[i] = c.InstanceID
+	}
+	lt := &protocol.LegalTargetsView{Cards: ids, Min: 1, Max: 1, Label: "target artifact or enchantment"}
+	v := targetView(f, spell, lt, nil)
+	v.Battlefield.Cards = board
+	f.setState(v, []legal.Move{f.pass(),
+		castTargeting(f, spell, "Cast Spell targeting Treasure", map[string]any{"kind": "card", "id": ids[0]}),
+	}, false)
+	tok, _ := decisionWindow(t, s)
+
+	r, _ := s.LegalMoves(context.Background(), LegalMovesInput{TargetsFor: ptr(1)})
+	plain := append(append([]string(nil), ids[1:10]...), ids[11:31]...)
+	for _, want := range []string{
+		"  Treasure [" + ids[0] + "] (battlefield, controlled by opponent «Bob» (seat 1)) [and 29 more like it, each an identical permanent: ids " + strings.Join(plain, ", ") + "]\n",
+		"  Pestilence [" + ids[10] + "] (battlefield, controlled by opponent «Bob» (seat 1))\n",
+		"  Treasure [" + ids[31] + "] (battlefield, controlled by opponent «Bob» (seat 1)) [and 1 more like it, each an identical permanent: ids " + ids[32] + "]\n",
+		"  Treasure [" + ids[33] + "] (battlefield, controlled by opponent «Bob» (seat 1))\n",
+		"  Treasure [" + ids[34] + "] (battlefield, yours)\n",
+	} {
+		if !strings.Contains(r.Text, want) {
+			t.Errorf("targets_for missing %q:\n%s", want, r.Text)
+		}
+	}
+	for _, id := range ids[35:] {
+		if strings.Count(r.Text, id) != 1 || strings.Contains(r.Text, id+", ") {
+			t.Errorf("a face-down permanent %s should have a line of its own:\n%s", id, r.Text)
+		}
+	}
+	if n := strings.Count(r.Text, "\n  "); n != 7 {
+		t.Errorf("%d candidate lines; want 7 (the 30 Treasures, Pestilence, the two tapped, the oiled, yours, two face-down):\n%s", n, r.Text)
+	}
+
+	// A folded id is a pick like any other.
+	r, _ = s.Act(context.Background(), ActInput{Window: tok, Move: 1, Targets: []TargetPick{{IDs: []string{ids[20]}}}})
+	if !strings.Contains(r.Text, "status: accepted") {
+		t.Fatalf("act: %s", r.Text)
+	}
+	if a := f.lastAction(); !strings.Contains(string(a.Params), ids[20]) || strings.Contains(string(a.Params), ids[0]) {
+		t.Errorf("sent %s; want the folded Treasure %s", a.Params, ids[20])
+	}
+}

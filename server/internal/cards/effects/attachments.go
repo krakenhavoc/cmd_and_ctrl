@@ -128,6 +128,28 @@ func AttachSourceToTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// AttachTargetsToSource is the reverse direction: "attach up to one
+// target Equipment you control to <this>" (Cloud, Ex-SOLDIER; Captain
+// America, First Avenger). Each target still legal is attached to the
+// source (CR 608.2b). A source that has left the battlefield, or is back
+// as a new object (CR 400.7), is not there to attach to, so nothing moves
+// (CR 701.3b).
+func AttachTargetsToSource(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	if info, ok := ctx.SourcePermanent(); !ok || info.Left {
+		return nil
+	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := g.AttachForEffect(t.ID, game.TargetRef{Kind: game.TargetCard, ID: item.SourceCardID}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AttachedToSource is the AppliesTo predicate for every "equipped
 // creature" and "enchanted creature" static. One card scoped by one
 // relation — the same shape as selfOnly, which is the precedent for

@@ -220,6 +220,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
 			}
 		}},
+		// CR 205.4b: the supertype is gained and the type line stays.
+		{"addSupertypes", []Mod{AddSupertypesMod("Legendary")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Creature"}) || !reflect.DeepEqual(c.Subtypes, []string{"Bear"}) ||
+				!typeListHas(c.Supertypes, "Legendary") {
+				t.Errorf("type line = %v %v — %v, want Legendary Creature — Bear", c.Supertypes, c.Types, c.Subtypes)
+			}
+		}},
 		// #2144: CR 205.1a for the creature types alone: the Bear goes,
 		// the Frog comes, and the card types stay.
 		{"setCreatureTypes", []Mod{SetCreatureTypesMod("Frog")}, func(t *testing.T, _, c Characteristic, _ *Game) {
@@ -231,6 +238,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 		{"loseSubtypes", []Mod{AddSubtypesMod("Human"), LoseSubtypesMod("human")}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			if typeListHas(c.Subtypes, "Human") || !reflect.DeepEqual(c.Types, []string{"Creature"}) {
 				t.Errorf("type line = %v — %v, want Creature with no Human", c.Types, c.Subtypes)
+			}
+		}},
+		// #4691: the Bear goes and nothing comes; the card type stays.
+		{"loseAllCreatureTypes", []Mod{LoseAllCreatureTypesMod()}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if len(c.Subtypes) != 0 || c.AllCreatureTypes || !reflect.DeepEqual(c.Types, []string{"Creature"}) {
+				t.Errorf("type line = %v — %v (all %v), want Creature with no creature type", c.Types, c.Subtypes, c.AllCreatureTypes)
 			}
 		}},
 	}
@@ -373,11 +386,13 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// illusion_of_choice_test.go.
 		ModVoteChooser: true,
 		// #2562: cases above.
-		ModSetName: true, ModSetTypes: true,
+		ModSetName: true, ModSetTypes: true, ModAddSupertypes: true,
 		// #2144: case above.
 		ModSetCreatureTypes: true,
 		// #4072: case above and in lose_subtypes_test.go.
 		ModLoseSubtypes: true,
+		// #4691: case above and in lose_all_creature_types_test.go.
+		ModLoseAllCreatureTypes: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,

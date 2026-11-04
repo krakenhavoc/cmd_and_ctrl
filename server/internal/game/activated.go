@@ -324,6 +324,24 @@ type AbilityCost struct {
 	// order has to be decided somewhere) reads left to right.
 	AddCounter *CounterAddCost
 
+	// Blight is "Blight N" as part of the cost (#4684, CR 701.68a):
+	// put N -1/-1 counters on a creature the ACTIVATOR controls, any
+	// one of them and not only the source — Gristle Glutton's "{T},
+	// Blight 1:", Evershrike's Gift's "{1}{W}, Blight 2:" from the
+	// graveyard. Zero means no such component.
+	//
+	// The activator names the creature in ActivateAbilityParams.BlightIDs
+	// at announce (`blight_ids`, the name the cast path's blight pick
+	// rides). It is the cast path's cost one surface over: the candidates
+	// are BlightOptionsForEffect, the validator is
+	// validateBlightCreatureLocked, and the payment is blightLocked, which
+	// marks the counters CounterFromCost so a replacement worded "if an
+	// effect would put" (Doubling Season) leaves them alone while one
+	// that names no effect (Vizier of Remedies) applies (CR 614.16). With
+	// no creature that can take the counters the ability can't be
+	// activated (CR 701.68b, CR 118.3). See blight_ability_cost.go.
+	Blight int
+
 	// MinX is the floor the printed text puts on the announced X —
 	// Helm of Obedience's "X can't be 0" is MinX: 1. Zero means the
 	// ordinary floor of zero, which is what every other {X} cost
@@ -524,6 +542,27 @@ type AbilityCost struct {
 	// no longer on the battlefield, and one the same payment already
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
+
+	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
+	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
+	// Avenger's "{3}, Unattach an Equipment from Captain America:". The
+	// number of Equipment the cost unattaches; zero means no such
+	// component, which is every other ability. effects.Register admits
+	// only 1, the one printed count. See unattach_cost.go.
+	//
+	// The activator names the Equipment in
+	// ActivateAbilityParams.UnattachIDs at announce, beside the other
+	// picks: each must be an Equipment attached to the source right now
+	// (CR 701.3d), whoever controls it. Unattaching moves nothing — the
+	// Equipment stays on the battlefield — so the pick is excluded from
+	// no other component. Battlefield only (AbilityNeedsPermanentSource).
+	//
+	// A divided amount may read the pick: DivideAmountArgs.Unattached is
+	// the announced list, so "damage equal to that Equipment's mana value
+	// divided as you choose" is sized from the Equipment the same
+	// announcement names (CR 601.2b's "a choice that player would make
+	// later" made at announce).
+	UnattachEquipment int
 
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
@@ -1226,6 +1265,19 @@ type ActivateAbilityParams struct {
 	// against different zones.
 	ExilePermanentIDs []uuid.UUID
 
+	// UnattachIDs names the Equipment paid to an UnattachEquipment cost
+	// (#4799): exactly the cost's count, each once, each an Equipment
+	// attached to the source. On the wire as `unattach_ids`. A divided
+	// amount that reads the pick (DivideAmountArgs.Unattached) is sized
+	// from this list, so the client must send it with the division.
+	UnattachIDs []uuid.UUID
+
+	// BlightIDs names the creature paid to a Blight cost (#4684):
+	// exactly one, a creature the activator controls that can have
+	// counters put on it (BlightOptionsForEffect). On the wire as
+	// `blight_ids`, the name a cast's blight pick rides.
+	BlightIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -1679,6 +1731,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if n := ab.Cost.LoyaltyDelta(params.XValue); n < 0 && source.Counters[CounterLoyalty] < -n {
 			return ErrInsufficientLoyalty
 		}
+		// #4692, CR 118.3: a +N cost puts loyalty counters on, which a
+		// permanent that can't have counters put on it can't pay.
+		if n := ab.Cost.LoyaltyDelta(params.XValue); n > 0 && g.cantHaveCountersLocked(source) {
+			return ErrCantPayCounterCost
+		}
 	}
 	if ab.Cost.Tap {
 		if source.Tapped {
@@ -1763,6 +1820,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// #4799: "Unattach an Equipment from <this>" (Captain America, First
+	// Avenger). Unattaching moves nothing, so the pick competes with no
+	// other component; it is checked here with the rest so a refusal
+	// costs nothing (ADR 0020 §3, CR 118.3).
+	if err := g.validateUnattachCostLocked(cardID, srcZone, ab.Cost.UnattachEquipment, params.UnattachIDs); err != nil {
+		return err
+	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
 	// else to check: an exert cost can be paid tapped or untapped, and
 	// again after an earlier exert this turn (CR 701.43b).
@@ -1803,6 +1867,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// leaves the source untapped and the pool untouched.
 	if !g.canPlaceCounterLocked(playerID, cardID, ab.Cost.AddCounter) {
 		return ErrCantPayCounterCost
+	}
+	// #4684, CR 701.68a: "Blight N" — the creature the activator names
+	// for it, checked with everything else so a refusal costs nothing.
+	if err := g.validateAbilityBlightLocked(playerID, ab.Cost.Blight, params.BlightIDs); err != nil {
+		return err
 	}
 	// #660: the discard components. Validated here with everything
 	// else and paid last (a discard moves the source out of hand,
@@ -1910,7 +1979,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// validated above, which Simic Manipulator's power bound reads.
 	bindStepsBound(steps, AnnouncedBound{X: params.XValue, CountersRemoved: counters.total})
 	// #1657: a divided amount read off the board, fixed at activation.
-	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
+	// #4799: and one read off the Equipment the cost unattaches, which
+	// this same announcement names (validated above).
+	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID, Unattached: params.UnattachIDs})
 	// #2055: the payload names targets for the controller's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
@@ -1994,6 +2065,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// counter-removal component takes counters off. None of them moves
 	// or taps, and each spends an object a paused exit has taken.
 	spending := append([]uuid.UUID{cardID}, counters.cardIDs()...)
+	// #4684: and the creature a blight cost puts its counters on.
+	if ab.Cost.Blight > 0 {
+		spending = append(spending, params.BlightIDs...)
+	}
 	// #1445 / #1427 / #1474: a card an EFFECT has already paused on
 	// its way out cannot pay, or activate. See
 	// refusePausedCostCardsLocked.
@@ -2085,6 +2160,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.PowerUp = ab.PowerUp
 		// CR 702.6 (#4600): and "...or activate equip abilities".
 		riderCtx.Equip = ab.Equip
+		// #4834: "spend this mana only on costs that contain {X}".
+		riderCtx.CostHasX = ab.Cost.XSlots() > 0
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -2228,6 +2305,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		}
 		paid.CountersAdded = added
 	}
+	// #4684: "Blight N", beside the other counter cost and before the
+	// sacrifices, so Spiral into Solitude's "Blight 1, Sacrifice this
+	// Aura" reads left to right. A creature that dies of the counters
+	// still paid (CR 704.5f runs after the cost is paid).
+	if err := g.payAbilityBlightLocked(playerID, ab.Cost.Blight, params.BlightIDs); err != nil {
+		return err
+	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
 	// ADR 0113 §1: which objects they were, named before they move.
@@ -2240,6 +2324,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// #4799: the unattach component, at the same point: the Equipment
+	// stays on the battlefield, attached to nothing (CR 701.3d).
+	g.payUnattachCostLocked(params.UnattachIDs)
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
@@ -2531,6 +2618,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// loyalty ability is one with a loyalty symbol in its cost
 		// (CR 606.2), granted or printed.
 		Loyalty: ab.Cost.Loyalty != nil,
+		// CR 107.3a: an {X} mana symbol in the activation cost.
+		XCost: ab.Cost.XSlots() > 0,
 		// #3855: what the activator declared about a waived payment
 		// is public, as a cast's is.
 		Unpaid:        paper.Free,

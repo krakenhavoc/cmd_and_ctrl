@@ -10,6 +10,16 @@
   // find, fades in place. A permanent new on someone else's board is
   // ringed for a few seconds.
   //
+  // #4711: the ring is drawn in a layer over the board, not in the row,
+  // so it follows its card on every animation frame while it is live: a
+  // row re-lays itself out without a snapshot frame or a board resize
+  // (fitRow settling over a few frames, a row starting to wrap, the back
+  // row moving down as it grows, a row scrolled sideways), and a ring
+  // left where the card had been put its tag over a group's label. It
+  // frames only what is on screen of the card (visibleBox), so a card
+  // half scrolled out of its row is not ringed whole over the groups
+  // beside it.
+  //
   // Every rule lives in lib/fieldMotion.ts and is unit-tested there;
   // this file only measures, draws and flies. Display only, as
   // StackLinger is: the layer is aria-hidden and takes no pointer
@@ -34,6 +44,7 @@
   import { flightAllowed, flightTransform, type Box } from "../../stackLinger";
   import {
     ArrivalClock,
+    boxMoved,
     DEPART_FADE_MS,
     DEPART_FLIGHT_MAX,
     DEPART_FLIGHT_MS,
@@ -43,6 +54,7 @@
     fieldLandingSelectors,
     trackField,
     uprightBox,
+    visibleBox,
     type FieldCard,
     type FieldDeparture,
   } from "../../fieldMotion";
@@ -73,6 +85,8 @@
   }
 
   const LAYER_ATTR = "data-field-motion-layer";
+  // The overflow values that cut what overflows a box.
+  const CLIPPING = new Set(["hidden", "clip", "auto", "scroll"]);
 
   let ghosts = $state<Ghost[]>([]);
   let rings = $state<Ring[]>([]);
@@ -87,6 +101,11 @@
   let serial = 0;
   let destroyed = false;
   let raf = 0;
+  let follow = 0;
+  // The tile each permanent was drawn in as of the last measure, and for
+  // a ringed one the ancestors that clip it (read once per measure).
+  let tiles = new Map<string, HTMLElement>();
+  let clipCache = new WeakMap<HTMLElement, HTMLElement[]>();
   let ringTimer: ReturnType<typeof setTimeout> | null = null;
   const els = new Map<string, HTMLElement>();
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -142,7 +161,9 @@
     if (!b) return;
     const cards = fieldCards(v);
     const next = new Map<string, FieldCard>();
-    for (const [id, el] of tilesFor(cards)) {
+    tiles = tilesFor(cards);
+    clipCache = new WeakMap();
+    for (const [id, el] of tiles) {
       const c = cards.get(id)!;
       next.set(id, {
         id,
@@ -184,12 +205,66 @@
 
   // ---- arrivals ----------------------------------------------------------
 
-  function paintRings(): void {
-    const ids = clock.live(Date.now());
-    rings = ids.flatMap((id) => {
-      const d = drawn.get(id);
-      return d ? [{ id, box: d.rect }] : [];
+  // The ancestors of a tile, up to the board, that clip what overflows
+  // them: its row, the back row, a scrolled overlay.
+  function clippers(el: HTMLElement): HTMLElement[] {
+    const hit = clipCache.get(el);
+    if (hit) return hit;
+    const out: HTMLElement[] = [];
+    for (let a = el.parentElement; a && a !== boardEl; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (CLIPPING.has(cs.overflowX) || CLIPPING.has(cs.overflowY)) out.push(a);
+    }
+    clipCache.set(el, out);
+    return out;
+  }
+
+  // Every live ring, at what is on screen of its card now. Null when a
+  // ringed card's tile has been replaced since the last measure.
+  function liveRings(b: DOMRect): Ring[] | null {
+    const out: Ring[] = [];
+    for (const id of clock.live(Date.now())) {
+      const el = tiles.get(id);
+      if (!el) continue;
+      if (!el.isConnected) return null;
+      const clips = clippers(el).map((a) => toBox(a.getBoundingClientRect(), b));
+      const box = visibleBox(toBox(el.getBoundingClientRect(), b), clips);
+      if (box) out.push({ id, box });
+    }
+    return out;
+  }
+
+  function ringsMoved(a: readonly Ring[], b: readonly Ring[]): boolean {
+    return a.length !== b.length || a.some((r, i) => r.id !== b[i].id || boxMoved(r.box, b[i].box));
+  }
+
+  // While anything is ringed, read the ringed tiles again each frame and
+  // redraw only when one has moved (#4711).
+  function followRings(): void {
+    if (follow || destroyed || clock.next() === null) return;
+    if (typeof requestAnimationFrame === "undefined") return;
+    follow = requestAnimationFrame(() => {
+      follow = 0;
+      if (destroyed) return;
+      const b = boardEl?.getBoundingClientRect();
+      if (!b) return;
+      const next = liveRings(b);
+      if (next === null) {
+        measure(view);
+        return;
+      }
+      if (ringsMoved(rings, next)) rings = next;
+      // Asked for again after this frame rather than from inside it, so
+      // next frame's read comes after the frame callbacks the rows asked
+      // for meanwhile (fitRow re-fits a row from its resize observer on
+      // the next frame) and sees the row as it will be painted.
+      later(followRings, 0);
     });
+  }
+
+  function paintRings(): void {
+    const b = boardEl?.getBoundingClientRect();
+    rings = (b && liveRings(b)) || [];
     if (ringTimer) clearTimeout(ringTimer);
     ringTimer = null;
     const due = clock.next();
@@ -202,6 +277,7 @@
         Math.max(16, due - Date.now()),
       );
     }
+    followRings();
   }
 
   // ---- departures --------------------------------------------------------
@@ -314,7 +390,10 @@
     for (const t of timers) clearTimeout(t);
     timers.clear();
     if (ringTimer) clearTimeout(ringTimer);
-    if (raf && typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(raf);
+    if (typeof cancelAnimationFrame !== "undefined") {
+      if (raf) cancelAnimationFrame(raf);
+      if (follow) cancelAnimationFrame(follow);
+    }
   });
 </script>
 
@@ -370,6 +449,8 @@
     position: absolute;
     box-sizing: border-box;
     border-radius: 6px;
+    /* #4711: the tag never paints past the part of the card on screen. */
+    overflow: hidden;
     box-shadow:
       0 0 0 2px var(--accent),
       0 0 14px 2px color-mix(in srgb, var(--accent) 60%, transparent);

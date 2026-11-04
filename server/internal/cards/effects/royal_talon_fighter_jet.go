@@ -33,13 +33,7 @@ func init() {
 				Do(CreateTokensForEach{
 					Template: TokenCard("1/1 white Soldier"),
 					Name:     "the +1/+1 counters on it",
-					Count: func(ctx *Context) int {
-						self, ok := ctx.SourcePermanent()
-						if !ok {
-							return 0
-						}
-						return self.Counters[game.CounterPlusOne]
-					},
+					Count:    socB9PlusOneCountersOnSource,
 				})),
 		},
 		Activated: []ActivatedAbility{{

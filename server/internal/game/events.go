@@ -192,6 +192,12 @@ const (
 	// AttachForEffect, which is the only writer of Card.AttachedTo
 	// outside the state-based action.
 	//
+	// Label is what the attachment is as it attaches: "Aura",
+	// "Equipment" or "Fortification" (CR 303.4, 301.5, 301.6), or empty
+	// for any other permanent. AlreadyAttached marks a re-attach to the
+	// host it was already on, which does nothing (CR 701.3b). The public
+	// log's `attach` line reads both (#4444).
+	//
 	// An event rather than a bare layerVersion bump because
 	// attachment has more consumers than the layer engine — "becomes
 	// attached" triggers read it, and the replay log and public game
@@ -1970,6 +1976,17 @@ type Event struct {
 	// nothing it acts on.
 	Loyalty bool `json:"loyalty,omitempty"`
 
+	// XCost marks an EventActivateAbility whose ability has an {X} mana
+	// symbol in its activation cost (CR 107.3a): "whenever you ... activate
+	// an ability, if that ability's activation cost contains {X}, copy that
+	// ability" (Unbound Flourishing). Only the mana component counts; an
+	// ability whose cost merely says X without the symbol (a "-X" loyalty
+	// cost, "remove X counters") does not. A bit on the event for Exhaust's
+	// reason: the announcement is the one moment the ability's cost is
+	// plainly knowable. False on every other event. Additive within
+	// schema v9.
+	XCost bool `json:"x_cost,omitempty"`
+
 	// Converted marks an EventTransform whose turn-over was a CONVERT
 	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
 	// transform. A convert follows the rules for transforming, so every
@@ -1999,6 +2016,16 @@ type Event struct {
 	// was created in, not the one current when it lands. Added for
 	// #187 (ADR 0053 Decision 1).
 	CombatStep string `json:"combat_step,omitempty"`
+
+	// AlreadyAttached marks an EventAttach whose attachment was already
+	// attached to that host (the same object, CR 400.7): by CR 701.3b the
+	// effect does nothing, so the public log writes no line for it and the
+	// client plays no cue (#4444). The event still fires, because
+	// AttachForEffect still restamps the attachment's timestamp and the
+	// layer pass has to see that. Written only by AttachForEffect; absent
+	// on every other kind and on an event recorded before the field
+	// existed, which reads as a real attach.
+	AlreadyAttached bool `json:"already_attached,omitempty"`
 
 	// AttackingTarget, BlockingTarget and Blocked are a leaving
 	// permanent's COMBAT STATE as it last existed on the battlefield,

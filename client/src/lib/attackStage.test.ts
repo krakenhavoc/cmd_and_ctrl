@@ -3,7 +3,9 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  groupPickerSeed,
   isStaged,
+  keptBesidePick,
   pruneStage,
   soleTarget,
   stageAt,
@@ -106,6 +108,36 @@ describe("staging a token group's members (#4423)", () => {
   it("takes some members back out, which is how the count changes", () => {
     expect(unstageMany(stage, ["wolf1", "nobody"])).toEqual([{ attacker: "bear", target: "cy" }]);
     expect(unstageMany(stage, [])).toEqual(stage);
+  });
+});
+
+describe("the picker a token group opens (#4430)", () => {
+  const stage: StagedAttack[] = [
+    { attacker: "bear", target: "bob" },
+    { attacker: "elk", target: "cy", exert: true },
+  ];
+
+  it("opens with what is staged at the seat and the group's members, nothing else", () => {
+    expect(groupPickerSeed(stage, "bob", ["wolf1", "wolf2"])).toEqual(["bear", "wolf1", "wolf2"]);
+    expect(groupPickerSeed(stage, "bob", ["bear"])).toEqual(["bear"]);
+    expect(groupPickerSeed([], "bob", ["wolf1"])).toEqual(["wolf1"]);
+  });
+
+  it("keeps a creature staged at another seat, as it was, unless it was checked here", () => {
+    const shown = new Set(["bear", "elk", "wolf1"]);
+    expect(keptBesidePick(stage, "bob", shown, ["wolf1"])).toEqual([
+      { attacker: "elk", target: "cy", exert: true },
+    ]);
+    // Checked here: it goes at bob with the rest, not twice.
+    expect(keptBesidePick(stage, "bob", shown, ["wolf1", "elk"])).toEqual([]);
+  });
+
+  it("drops a creature staged at the seat that the player unchecked", () => {
+    expect(keptBesidePick(stage, "bob", new Set(["bear"]), [])).toEqual([
+      { attacker: "elk", target: "cy", exert: true },
+    ]);
+    // Not listed by the picker (it can no longer attack bob): untouched.
+    expect(keptBesidePick(stage, "bob", new Set(), [])).toEqual(stage);
   });
 });
 

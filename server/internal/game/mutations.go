@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/bits"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -786,7 +787,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// nil for hand and the command zone, and nil for a card whose own
 	// text already opens the zone — Gravecrawler and a printed
 	// flashback need no permission and must not be repriced by one.
-	grant := g.CastPermissionForClaimLocked(playerID, card, src.Kind, params.AlternativeCost)
+	//
+	// #4696: and the permission is the one that opens the face asked
+	// for, when two open different faces of the card (CR 601.3): Vizier
+	// of the Menagerie casts Bonecrusher Giant and an "instant and
+	// sorcery spells" permission casts Stomp. A face no permission opens
+	// gets the first one, as before, so a grant naming one face still
+	// settles it below.
+	grant := g.CastPermissionForFaceLocked(playerID, card, src.Kind, params.AlternativeCost, params.Face)
 	// CR 702.143c, #658. Asked here, of the card as it sits in its
 	// source zone, because the answer stops being readable the moment
 	// the card moves: CR 406.3a turns a foretold card face up as it is
@@ -1302,7 +1310,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// and type — not its caster's (#662).
 	// CR 202.3e: the X announced with the cast counts in the spell's mana
 	// value, which "protection from mana value N or less" reads (#2181).
-	castSrc := SourceObject(playerID, &card)
+	// #4869, CR 601.2a: and it is cast, so it is not its own target.
+	castSrc := SourceCast(playerID, &card)
 	castSrc.X = params.XValue
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
@@ -1806,6 +1815,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// ADR 0102: whose land drop this spends, kept apart from
 			// Actor, which an entry-controller effect may rewrite.
 			landPlayer: playerID,
+			// A permission's "it gains ..." rider (Serra Paragon) for a
+			// land played through it; zero for anything else.
+			landGains: castGains,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -2095,12 +2107,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// graveyard is exiled instead of going anywhere else as it
 		// leaves the stack, however it leaves — the same replacement
 		// flashback's cost carries.
-		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
+		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && castsOnlyFromGraveyard(card)),
 		// #3863: "if that spell would be put into your graveyard,
 		// exile it instead" — the narrower clause, carried for the same
 		// reason.
 		ExileInsteadOfGraveyard: alt != nil && alt.ExileInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
-		CastFromZone:            src.Kind,
+		// The same clause with the owner's library bottom as the
+		// destination (Quintorius, Loremaster).
+		BottomInsteadOfGraveyard: alt != nil && alt.BottomInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
+		CastFromZone:             src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
 		// XValue is: by resolution the tokens are gone from the pool
@@ -2152,7 +2167,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// never disagree about what the spell is. A trigger queued here is
 	// placed by the runStateChecksLocked at the bottom of the cast,
 	// above the spell.
-	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind), card)
+	// #4694: with the spell's mana value at its announced X (CR 202.3e).
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -2165,6 +2181,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3768: "it gains haste and '<ability>'", registered here for the
 	// same reason and against the same object.
 	g.grantGainsForCastLocked(cardID, castGains)
+	// #4679: "that creature enters with an additional +1/+1 counter",
+	// marked on the spell's item for the same reason.
+	g.markPermissionEntryCountersLocked(cardID, castGains)
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
@@ -2359,9 +2378,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
 			ch := SourceCharacteristics(sc)
 			tally = tally.withSpellColors(ch.Colors)
+			// #4677: April O'Neil's "card type among spells you've cast".
+			tally = tally.withSpellCardTypes(ch.Types)
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
+					tally.InstantSorceryMaxManaValue = mv
+				}
 			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
@@ -2371,11 +2395,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
 			}
+			// Lattice Library's "first spell with {X} in its mana cost".
+			if strings.Contains(manaCostForValue(*sc), "{X}") {
+				tally.XSpells++
+			}
 			// #2743: the running mana value, with the X this spell was
 			// cast with. SourceCharacteristics already priced it that
 			// way, face down included.
 			if mv, ok := g.castManaValueLocked(sc); ok {
 				tally.ManaValue += mv
+				if mv > tally.MaxManaValue {
+					tally.MaxManaValue = mv
+				}
 			}
 			break
 		}
@@ -3742,7 +3773,9 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// #4509: `card` is the face being cast, so a permission whose filter
 	// does not admit it prices nothing, as CastSpell casts nothing
 	// through it (ForSpell).
-	grant := g.CastPermissionForClaimLocked(p.ID, card, srcKind, params.AlternativeCost).ForSpell(card)
+	//
+	// #4696: the permission that opens that face, as CastSpell finds it.
+	grant := g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face).ForSpell(card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
@@ -4720,6 +4753,11 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// resolves the clause is one of the exits below instead, so it
 		// competes with buyback and rebound under CR 616.1.
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	} else if !resolved && bottomsInsteadOfGraveyard(item) {
+		// Quintorius, Loremaster's clause, with the owner's library
+		// bottom as the destination; as it resolves it is one of the
+		// exits below instead.
+		r.Dst, r.DstOwner, r.Actor, r.ToBottom = ZoneLibrary, c.Owner, c.Owner, true
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two
 		// or more is CR 616.1's choice, asked of the spell's
@@ -4952,6 +4990,9 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	// not paid and then cleaned up.
 	if delta < 0 && pw.Counters[CounterLoyalty] < -delta {
 		return ErrInsufficientLoyalty
+	}
+	if delta > 0 && g.cantHaveCountersLocked(pw) {
+		return ErrCantPayCounterCost // #4692, CR 118.3
 	}
 	// payCostCounterLocked (counter_cost.go): a loyalty ability's
 	// counter change is a COST (CR 606.4), not an effect, so a
@@ -5848,6 +5889,7 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 		return false
 	}
 	p.Eliminated = true
+	p.LossCause = cause
 	p.AttemptedEmptyDraw = false
 	// #2450: a player leaving the game is loop progress (ADR 0055's
 	// 2026-10-07 amendment, option B, owner decision 3a).
@@ -8102,6 +8144,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// them, so a painland activated at 1 life loses the game on the
 	// way out of this call rather than at some later boundary.
 	needStateChecks := false
+	// #4928: the queue as it stood before this activation. A triggered
+	// ability the activation queues — Zhur-Taa Druid's "whenever you tap
+	// this creature for mana", which is no mana ability because it could
+	// not add mana (CR 605.1b) — is put on the stack the next time a
+	// player would receive priority (CR 603.3), and that is now: the
+	// activator still holds it. The boundary below drains the queue; it
+	// holds while a resolution is open (a "pay {1}" answered with mana),
+	// so a trigger waits for that resolution to finish.
+	pendingBefore := len(g.PendingTriggers)
 
 	// #789: the one paid-cost record, built as the components are
 	// charged. A mana ability has no stack item to hang it on (CR
@@ -8349,7 +8400,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		needStateChecks = true
 	}
 	defer func() {
-		if needStateChecks {
+		if needStateChecks || len(g.PendingTriggers) > pendingBefore {
 			g.runStateChecksLocked()
 		}
 	}()
@@ -11317,6 +11368,11 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 		if z.Cards[i].InstanceID == cardID {
 			// #1824: a counter that can't be removed stays put.
 			if delta < 0 && g.counterRemovalLockedLocked(&z.Cards[i], name) {
+				return nil
+			}
+			// #4692: and one can't be put on a permanent that can't have
+			// counters put on it (cant_have_counters.go).
+			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCountersLocked(&z.Cards[i]) {
 				return nil
 			}
 			hadCounters := len(z.Cards[i].Counters) > 0

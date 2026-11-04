@@ -35,6 +35,12 @@ import (
 //     its own group, so Blasphemous Act is one trigger per creature,
 //     and two separate instructions on one creature in the same
 //     resolution are two groups, because they are two events.
+//   - BatchTotalDamageDealt: the sum of the damage ONE SOURCE dealt, to
+//     every recipient together, in the staged event's damage instance.
+//     Dealt at different times (a first-strike step and the regular
+//     step, two separate damage instructions) is a different group, so
+//     it is never summed. With BatchEndCondition.AtLeast it reads
+//     "deals N or more damage".
 //   - BatchTotalEvents: the number of events the ability matches in
 //     the batch. One group for the whole batch, the OncePerBatch unit
 //     (CR 603.2c), so two instructions of one resolution count as one
@@ -59,14 +65,31 @@ const (
 	// BatchTotalDamage sums Amount over the EventDealDamage events one
 	// damage instance dealt to one object.
 	BatchTotalDamage BatchTotal = "damage"
+	// BatchTotalDamageDealt sums Amount over the EventDealDamage events
+	// ONE SOURCE dealt in one damage instance, across every recipient:
+	// "whenever ~ deals 4 or more damage" (Spinneret and Spiderling),
+	// where 2 to a blocker and 2 to a player are one 4. One group per
+	// (source, damage instance).
+	BatchTotalDamageDealt BatchTotal = "damage_dealt"
 	// BatchTotalEvents counts the batch's matching events.
 	BatchTotalEvents BatchTotal = "events"
+	// BatchTotalLifeLost is the life the staged event's player lost in
+	// the batch, over every source (batchLifeLost): "whenever a player
+	// loses life, ... that many" (Hela, Mistress of Darkness). One group
+	// per player.
+	BatchTotalLifeLost BatchTotal = "life_lost"
 )
 
 // group is the staging key's second dimension for an event: one
 // staged entry per distinct value, so two damaged creatures are two
 // triggers and one creature damaged twice by one step is one.
 func (c *BatchEndCondition) group(ev Event) string {
+	if c != nil && c.Total == BatchTotalLifeLost {
+		return ev.Target.String()
+	}
+	if c != nil && c.Total == BatchTotalDamageDealt {
+		return ev.Source.String() + "|" + strconv.FormatUint(uint64(ev.DamageInstance), 10)
+	}
 	if c == nil || c.Total != BatchTotalDamage {
 		return ""
 	}
@@ -80,6 +103,13 @@ func (c *BatchEndCondition) group(ev Event) string {
 //
 // Caller must hold g.mu.
 func (g *Game) batchTotalLocked(src *Card, lki Characteristic, t TriggeredAbility, first Event) int {
+	if t.AtBatchEnd.Total == BatchTotalLifeLost {
+		// The running per-player total (life_batch.go) already counts
+		// what was LOST after every replacement, from every source. A
+		// persisted snapshot drops it, so never report less than the
+		// staged event's own loss: weaker than printed, never stronger.
+		return max(g.lifeLostInBatchLocked(first.Target), eventLifeLoss(first))
+	}
 	total := 0
 	// Events are appended in batch order, so walk back from the end and
 	// stop once the batch is behind us.
@@ -92,6 +122,12 @@ func (g *Game) batchTotalLocked(src *Card, lki Characteristic, t TriggeredAbilit
 			continue
 		}
 		weight := 1
+		if t.AtBatchEnd.Total == BatchTotalDamageDealt {
+			if ev.Source == uuid.Nil || ev.Source != first.Source || ev.DamageInstance != first.DamageInstance {
+				continue
+			}
+			weight = ev.Amount
+		}
 		if t.AtBatchEnd.Total == BatchTotalDamage {
 			if ev.Target == uuid.Nil || ev.Target != first.Target || ev.DamageInstance != first.DamageInstance {
 				continue
@@ -109,8 +145,21 @@ func (g *Game) batchTotalLocked(src *Card, lki Characteristic, t TriggeredAbilit
 	if t.AtBatchEnd.Total == BatchTotalEvents && total < 1 {
 		total = 1
 	}
-	if t.AtBatchEnd.Total == BatchTotalDamage && total < first.Amount {
+	if (t.AtBatchEnd.Total == BatchTotalDamage || t.AtBatchEnd.Total == BatchTotalDamageDealt) && total < first.Amount {
 		total = first.Amount
 	}
 	return total
+}
+
+// eventLifeLoss is the life one EventChangeLife or EventDealDamage cost
+// its player: a negative life change, or the damage that was life loss
+// (Event.DamageLifeLoss). Zero for anything else.
+func eventLifeLoss(ev Event) int {
+	switch ev.Kind {
+	case EventChangeLife:
+		return max(-ev.Amount, 0)
+	case EventDealDamage:
+		return ev.DamageLifeLoss()
+	}
+	return 0
 }

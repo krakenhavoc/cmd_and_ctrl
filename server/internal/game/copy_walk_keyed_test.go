@@ -163,6 +163,55 @@ func TestMisplacedCopyWalkIsRefused(t *testing.T) {
 	}
 }
 
+// #4460, Spider-Verse: what a copy gains once it exists rides the walk
+// to the disk and back, and lands on the copy the restored answer builds.
+func TestCopyWalkCarriesWhatTheCopyGainsAcrossARestore(t *testing.T) {
+	g := newActiveGame(t)
+	retargetSpecs(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me, opp := g.Seats[0], g.Seats[1]
+	victim := pushRetargetCreature(g, opp, "Victim")
+	other := pushRetargetCreature(g, opp, "Other")
+	item := castTargeted(t, g, me, retargetOneOracle, []TargetRef{{Kind: TargetCard, ID: victim}})
+	g.WithWriteLock(func() {
+		if err := g.CopyLastKnownSpellGainingKeywordsForEffect(victim, item.ID, me.ID, true, []string{"haste"}, "gains haste"); err != nil {
+			t.Fatalf("copy: %v", err)
+		}
+	})
+	snap := throughJSON(t, g.CaptureSnapshot())
+	if pc := copyWalkChoice(t, snap); pc.CopyWalk == nil || pc.CopyWalk.Gains == nil || len(pc.CopyWalk.Gains.Keywords) != 1 {
+		t.Fatalf("the walk did not write what the copy gains: %+v", pc.CopyWalk)
+	}
+	restored, err := snap.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
+	}
+	me = restored.Seats[0]
+	c := findPickTarget(restored, me.ID)
+	if c == nil || c.copyResume == nil {
+		t.Fatal("the restored prompt has no walk")
+	}
+	if err := restored.ResolvePickTarget(c.ID, me.ID, TargetRef{Kind: TargetCard, ID: other}); err != nil {
+		t.Fatalf("ResolvePickTarget: %v", err)
+	}
+	var copied, original *Card
+	for i := range restored.Stack.Cards {
+		card := &restored.Stack.Cards[i]
+		switch {
+		case card.InstanceID == item.ID:
+			original = card
+		case restored.StackMeta[card.InstanceID] != nil && restored.StackMeta[card.InstanceID].IsCopy:
+			copied = card
+		}
+	}
+	if copied == nil || !HasKeyword(copied, "haste") {
+		t.Fatalf("the copy %+v does not have haste", copied)
+	}
+	if original != nil && HasKeyword(original, "haste") {
+		t.Error("the original gained haste too")
+	}
+}
+
 // #4361 S12: the records a keyed tail carries are held to the vocabulary
 // the live registry is, so a newer binary's mod kind on a parked copy's
 // control records is refused, not restored as a record that does nothing.

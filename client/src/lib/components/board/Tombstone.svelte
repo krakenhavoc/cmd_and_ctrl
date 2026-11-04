@@ -18,6 +18,14 @@
   // every seat (#4552, tombstoneAnchor.ts): centred across the panel and
   // centred in the part of it the seat's identity leaves free. It takes no
   // pointer events, so nothing under it is blocked.
+  //
+  // A player decked out (a draw from an empty library, CR 704.5b, #4879)
+  // gets a cold stone: its epitaph reads "Decked", and the whole panel
+  // drains to a cold grey-blue under it. Both read the seat's own
+  // `loss_cause`, so they hold on a reload too, and in every motion mode:
+  // still and reduced motion are this, the grey seat and the badge, alone.
+  // An arriving decked stone waits for the library's ghost
+  // (TableEffects.svelte) to reach its badge beat, not for a burst.
 
   import { untrack } from "svelte";
   import { get } from "svelte/store";
@@ -32,7 +40,12 @@
     rememberCommanders,
     tombstoneCommanders,
   } from "../../elimination";
-  import { effectMotion, type EffectMotion } from "../../tableEffects";
+  import {
+    deckedBadgeDelay,
+    effectMotion,
+    seatDecked,
+    type EffectMotion,
+  } from "../../tableEffects";
   import { tombstoneBand, tombstoneFits, type Span } from "../../tombstoneAnchor";
 
   interface Props {
@@ -44,6 +57,7 @@
   const { seat, view, compact = false }: Props = $props();
 
   const eliminated = $derived(seat.eliminated === true);
+  const decked = $derived(seatDecked(seat));
   const name = $derived(seat.display_name ?? seat.name);
 
   // Remember the commander while it can be seen: the frame that eliminates
@@ -133,10 +147,17 @@
       reduceMotion: s.accessibility.reduceMotion,
       osReduceMotion: osReducesMotion(),
     });
-    // A still stone has no burst to wait for.
+    // A still stone has no burst to wait for; a decked one waits for the
+    // ghost's badge beat.
+    const isDecked = untrack(() => decked);
     arrival = {
       motion,
-      delayMs: motion === "still" ? 0 : Math.round(TOMBSTONE_DELAY_MS * s.animations.speed),
+      delayMs:
+        motion === "still"
+          ? 0
+          : isDecked
+            ? deckedBadgeDelay(motion, s.animations.speed)
+            : Math.round(TOMBSTONE_DELAY_MS * s.animations.speed),
     };
   });
 </script>
@@ -149,7 +170,9 @@
     class:snug
     class:arrives={arrival !== null}
     class:still={arrival?.motion === "still"}
+    class:decked
     data-tombstone={seat.id}
+    data-decked={decked ? "true" : undefined}
     data-motion={arrival?.motion}
     style:--tomb-delay={arrival ? `${arrival.delayMs}ms` : undefined}
     style:--tomb-drop={`${TOMBSTONE_DROP_MS}ms`}
@@ -157,11 +180,15 @@
     role="group"
     aria-label={L.tombstoneOf(name)}
   >
+    {#if decked && !compact}
+      <!-- #4879: the seat drains to a cold grey-blue. -->
+      <span class="drain" aria-hidden="true"></span>
+    {/if}
     <div class="stone">
       <svg class="cross" viewBox="0 0 12 16" aria-hidden="true">
         <path d="M5 0h2v4h4v2H7v10H5V6H1V4h4z" fill="currentColor" />
       </svg>
-      <span class="rip">{L.tombstoneRip}</span>
+      <span class="rip">{decked ? L.tombstoneDecked : L.tombstoneRip}</span>
       <span class="who">{name}</span>
       {#if commander}
         <span class="commander">{commander}</span>
@@ -278,6 +305,33 @@
     font-size: 0.6rem;
   }
 
+  /* #4879: a decked seat drains to a cold grey-blue, and its stone is cold.
+     The drain greys what is under it and washes it blue; it is a colour,
+     not motion, so it shows in every mode. */
+  .drain {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(84, 106, 140, 0.42);
+    backdrop-filter: grayscale(0.85) brightness(0.8);
+    -webkit-backdrop-filter: grayscale(0.85) brightness(0.8);
+  }
+  .tomb.arrives .drain {
+    animation: tomb-fade var(--tomb-drop) var(--tomb-delay, 0ms) ease-out both;
+  }
+  .decked .stone {
+    /* Over the drain, which is positioned. */
+    position: relative;
+    --stone-hi: color-mix(in srgb, #9fbde6 26%, var(--surface-sunken));
+    --stone-lo: color-mix(in srgb, #4a6a9c 12%, var(--surface-sunken));
+    border-color: color-mix(in srgb, #8fb0dc 40%, var(--surface-sunken));
+  }
+  .decked .rip {
+    color: #cfe2ff;
+    text-shadow:
+      0 0 8px rgba(110, 170, 255, 0.55),
+      0 2px 4px rgba(0, 0, 0, 0.7);
+  }
   /* A stone that arrives waits for the burst, then drops and settles. The
      first keyframe holds it hidden through the delay. Without an arrival
      (a reload, a reconnect) there is no animation at all. */

@@ -345,6 +345,7 @@ var gameFields = plan(
 	// batch counter being carried too. Clone shares it for undo.
 	"resolving", carried, "GameSnapshot.Resolving",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
+	"layerPassing", dropped, "not game state: a re-entrancy guard for one layer pass, defer-cleared, so it is false between actions (#4909)",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
 	// guard. Both are defer-cleared inside one mutation.
@@ -753,6 +754,9 @@ var playerFields = plan(
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",
 	"Eliminated", carried, "",
+	// #4879: why the player left (a LossCause), for the seat view's
+	// loss_cause. Carried, additive within v9.
+	"LossCause", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
 	// it would let the removed player straight back in.
@@ -932,6 +936,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
+	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -1085,6 +1090,7 @@ var pendingChoiceFields = plan(
 	// tail, so the open question is a restore point.
 	"OptionalItem", carried, "",
 	"OptionalTradeFor", carried, "",
+	"OptionalSubject", carried, "",
 	// #2731: the row's "yes would not help" warning, computed as the
 	// question was asked. Carried with the question it qualifies.
 	"NoGain", carried, "",

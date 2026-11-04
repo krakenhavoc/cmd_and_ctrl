@@ -241,3 +241,75 @@ func TestFaceDownSpellIsNotAFiveDropToThryx(t *testing.T) {
 		t.Error("a face-down spell can't be countered: Thryx's shield read the mana value of the card it hides")
 	}
 }
+
+// scrapTrawlerActed reports whether Scrap Trawler's trigger got past CR
+// 603.3d: queued, on the stack, or asking for its target.
+func scrapTrawlerActed(g *game.Game, trawler uuid.UUID) bool {
+	acted := false
+	g.WithWriteLock(func() {
+		for _, it := range g.PendingTriggers {
+			acted = acted || it.SourceCardID == trawler
+		}
+		for _, it := range g.StackMeta {
+			acted = acted || (it != nil && it.SourceCardID == trawler)
+		}
+		for _, pc := range g.PendingChoices {
+			acted = acted || (pc != nil && pc.Source == trawler)
+		}
+	})
+	return acted
+}
+
+// TestScrapTrawlerReadsADyingFaceDownArtifactAsManaValueZero is #4762
+// through a card. A face-down artifact creature (listed as one, CR
+// 708.2) hiding a mana value 6 card dies under Scrap Trawler. It is
+// turned face up on the way to the graveyard (CR 708.9), but the
+// trigger looks back (CR 603.10a) at the 2/2 with no mana cost that
+// died: mana value 0, so no artifact card is "lesser" and the ability
+// is removed (CR 603.3d). Before #4762 the ceiling was 6 and the
+// trigger offered the mana value 3 artifact in the graveyard.
+func TestScrapTrawlerReadsADyingFaceDownArtifactAsManaValueZero(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	trawler := pushCatalogPermanent(g, me.ID, "Scrap Trawler", "Artifact Creature — Construct", scrapTrawlerOracle, false)
+	me.Graveyard.PushTop(game.Card{
+		InstanceID: uuid.New(), Name: "Three Drop", TypeLine: "Artifact", ManaCost: "{3}",
+		Owner: me.ID, Controller: me.ID,
+	})
+
+	hidden := game.Card{
+		Name: "Griselbrand", TypeLine: "Legendary Creature — Demon",
+		ManaCost: "{4}{B}{B}", Power: 7, Toughness: 7, Colors: []string{"B"},
+		KnownBy: map[uuid.UUID]bool{me.ID: true},
+	}
+	hidden.SetFaceDownListed(game.FaceDownManifested, &game.FaceDownListing{
+		Types: []string{"Artifact", "Creature"}, Power: 2, Toughness: 2,
+	})
+	id := apaPush(g, me.ID, me.ID, hidden)
+	if c, ok := g.LookupCardForEffect(id); !ok || !c.IsArtifact() {
+		t.Fatal("the fixture is not a face-down artifact on the battlefield")
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(id); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+
+	if scrapTrawlerActed(g, trawler) {
+		t.Error("Scrap Trawler's trigger offered a mana value 3 artifact for a face-down artifact that died: " +
+			"its ceiling read the card turned face up in the graveyard (6), not the object that died (0)")
+	}
+
+	// The control: the same yard, a face-up mana value 4 artifact dies,
+	// and the trigger does find the 3-drop.
+	four := apaPush(g, me.ID, me.ID, game.Card{Name: "Four Drop", TypeLine: "Artifact", ManaCost: "{4}"})
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(four); err != nil {
+			t.Fatalf("destroy: %v", err)
+		}
+	})
+	if !scrapTrawlerActed(g, trawler) {
+		t.Error("Scrap Trawler did not trigger for a face-up mana value 4 artifact over a mana value 3 one: the harness is wrong")
+	}
+}

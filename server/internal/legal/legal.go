@@ -463,6 +463,29 @@ type MoveCost struct {
 	// payment that would reach ten loses the game (CR 704.5c), which a
 	// policy prices as such.
 	Poison int `json:"poison,omitempty"`
+
+	// Blight is the -1/-1 counters a "Blight N" cost PUTS on a creature
+	// the seat controls (#4684, CR 701.68a) — Gristle Glutton's "{T},
+	// Blight 1:". The params name the creature (`blight_ids`) but not N,
+	// so without it a policy would read the blight as free. Counter is
+	// always "-1/-1" and N always positive. A creature the counters kill
+	// is a legal payment (CR 701.68b asks only that they can be put), so
+	// the price may be the whole creature.
+	Blight *CounterPrice `json:"blight,omitempty"`
+}
+
+// withBlight adds a "Blight N" payment on `creature` to a (possibly nil)
+// MoveCost (#4684). Nil stays nil when nothing is blighted.
+func withBlight(c *MoveCost, creature []uuid.UUID, n int) *MoveCost {
+	if n <= 0 || len(creature) != 1 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Blight = &CounterPrice{CardID: creature[0], Counter: game.CounterMinusOne, N: n}
+	return &out
 }
 
 // withLibraryExile adds an "Exile the top N cards of your library"
@@ -1015,6 +1038,9 @@ type enumerator struct {
 	// rowEquip is whether that row is an equip ability, for the spend
 	// context's ManaRestrictEquip (#4600).
 	rowEquip bool
+	// rowCostHasX is whether that row's cost contains {X}, for the
+	// spend context's ManaRestrictXCost (#4834).
+	rowCostHasX bool
 	// window is the answer window the seat is in (answer_window.go,
 	// #4734), read on first use by answerWindow: the moves of one
 	// enumeration share it.
@@ -1027,6 +1053,7 @@ func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 	spend.PowerUp = e.rowPowerUp
 	spend.Equip = e.rowEquip
+	spend.CostHasX = e.rowCostHasX
 	return spend
 }
 

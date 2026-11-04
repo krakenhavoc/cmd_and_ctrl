@@ -29,8 +29,8 @@ func init() {
 				"This spell costs {1} less to cast for each creature card in your graveyard."),
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b02CreatureCardLeftYourGraveyard(ev, source, g)
+			OncePerBatch(OnAny(leftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return creatureCardLeftYourGraveyard(ev, source, g)
 			}, "Cyan, Vengeful Samurai — put a +1/+1 counter on Cyan",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
 		},

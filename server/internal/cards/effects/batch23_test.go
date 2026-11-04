@@ -729,7 +729,9 @@ func TestB23DionusUntapsAndGrowsEachElfOncePerTurn(t *testing.T) {
 	theirElf := b21Push(g, opp.ID, "Their Elves", "Creature — Elf Druid", llanowarElvesOracle, 1, 1, "G")
 	advanceToMain(t, g)
 	b23TapMana(t, g, me.ID, elf)
-	if len(g.PendingTriggers) == 0 && triggerOnStack(g, dionus) == nil {
+	// #4928: a trigger a mana activation queues reaches the stack at once,
+	// and a granted trigger's source is the Elf that has it.
+	if len(g.PendingTriggers) == 0 && triggerOnStack(g, dionus) == nil && triggerOnStack(g, elf) == nil {
 		t.Fatal("an Elf you control tapped on your turn: the granted ability triggers")
 	}
 	passPriorityAroundTable(t, g)

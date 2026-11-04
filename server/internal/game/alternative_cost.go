@@ -295,10 +295,29 @@ type AlternativeCost struct {
 	// taps X.
 	TapOthers *TapOthersCost
 
+	// Behold is "behold N <quality>" as part of the price (CR 701.4a,
+	// #4689): Kindle the Inner Flame's "Flashback—{1}{R}, Behold three
+	// Elementals". The caster names BeholdCount DISTINCT objects on
+	// CastSpellParams.AltCostIDs, each a matching permanent they control
+	// or a matching card in their hand, through the one candidate walk
+	// the additional cost's behold reads (RevealCostOptionsForEffect), so
+	// a changeling counts and the spell itself, already on the stack (CR
+	// 601.2a), never does. Paying it reveals the hand cards to the table
+	// and moves nothing (payBeholdLocked); a chosen permanent is neither
+	// revealed nor tapped. The auto-tapper still leaves the named objects
+	// alone, as it does every alt_cost_ids pick (CastAutoTapExclusions). It
+	// is a card component like the six above, so effects.Register refuses
+	// it beside another one. Built with effects.FlashbackBehold.
+	Behold *RevealCost
+
+	// BeholdCount is how many objects Behold names: the printed N.
+	// Zero reads as one.
+	BeholdCount int
+
 	// PayLabel is the picker's prompt copy for the card component —
 	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand,
-	// Sacrifice or TapOthers ("a blue card", "an Island you control",
-	// "three creatures"). Empty falls back to Label.
+	// Sacrifice, TapOthers or Behold ("a blue card", "an Island you
+	// control", "three creatures"). Empty falls back to Label.
 	PayLabel string
 
 	// SacrificeOnEntry is evoke's "it's sacrificed when it enters".
@@ -351,6 +370,12 @@ type AlternativeCost struct {
 	// (CastPermission.ExileInsteadOfGraveyard, #3863): only a move to
 	// its owner's graveyard is replaced. Stamped onto the stack item.
 	ExileInsteadOfGraveyard bool
+
+	// BottomInsteadOfGraveyard is the same clause with the owner's
+	// library bottom as the destination (CastPermission.
+	// BottomInsteadOfGraveyard, Quintorius, Loremaster). Stamped onto the
+	// stack item.
+	BottomInsteadOfGraveyard bool
 
 	// WarpExile is warp's "exile this permanent at the beginning of
 	// the next end step, then you may cast it from exile on a later
@@ -658,6 +683,28 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 	return nil, "", 0
 }
 
+// beholdComponent returns the behold half of the price (#4689) and how
+// many objects it names, or (nil, 0). It sits beside cardComponent rather
+// than inside it because a behold is paid from two zones at once — the
+// hand and the battlefield (CR 701.4a) — and names its candidates through
+// the reveal walk, not a TargetSpec. Nil-safe.
+func (a *AlternativeCost) beholdComponent() (*RevealCost, int) {
+	if a == nil || a.Behold == nil {
+		return nil, 0
+	}
+	if a.BeholdCount < 1 {
+		return a.Behold, 1
+	}
+	return a.Behold, a.BeholdCount
+}
+
+// Beholds reports whether this offer's card component is a behold
+// (#4689): its picks are shown or chosen, never spent. Nil-safe.
+func (a *AlternativeCost) Beholds() bool {
+	rc, _ := a.beholdComponent()
+	return rc != nil
+}
+
 // PaymentDefinesX reports whether this offer's card component is bound
 // to the announced X — Shining Shoal's "a white card with mana value X"
 // (#3175, CR 107.3a). Such an offer is an alternative cost that includes
@@ -812,7 +859,7 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
 	spec, _, _ := a.cardComponent()
-	return spec != nil
+	return spec != nil || a.Beholds()
 }
 
 // CardPaymentCount is how many cards the caster must name in
@@ -825,6 +872,9 @@ func (a *AlternativeCost) PaysCards() bool {
 // announcement — the bot enumerator, a client picker — has to know
 // the number rather than discover it from a rejection. Nil-safe.
 func (a *AlternativeCost) CardPaymentCount() int {
+	if rc, n := a.beholdComponent(); rc != nil {
+		return n
+	}
 	_, _, n := a.cardComponent()
 	return n
 }
@@ -915,6 +965,12 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	// the predicate the activation and the payment both read.
 	if EnergyShortfall(p, alt.Energy) != nil {
 		return false
+	}
+	// #4689: "behold three Elementals" — enough distinct candidates in
+	// the hand and on the battlefield together. Register keeps any other
+	// card component off a beholding offer.
+	if rc, n := alt.beholdComponent(); rc != nil {
+		return len(g.RevealCostOptionsForEffect(playerID, castID, rc)) >= n
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1035,6 +1091,9 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	// an activation gives (CR 118.3).
 	if err := EnergyShortfall(p, alt.Energy); err != nil {
 		return err
+	}
+	if rc, n := alt.beholdComponent(); rc != nil {
+		return g.validateBeholdPaymentLocked(playerID, castID, rc, n, ids)
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1164,6 +1223,11 @@ func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
 // Nil for an offer whose only components are mana and life, and for
 // nil. Caller must hold g.mu.
 func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *AlternativeCost) []uuid.UUID {
+	// #4689: a behold's candidates are the reveal walk's — matching hand
+	// cards, then matching permanents the caster controls.
+	if rc, _ := alt.beholdComponent(); rc != nil {
+		return g.RevealCostOptionsForEffect(playerID, castID, rc)
+	}
 	spec, kind, _ := alt.cardComponent()
 	if spec == nil {
 		return nil
@@ -1232,6 +1296,11 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		if err := g.PayLifeForEffect(uuid.Nil, playerID, alt.Life); err != nil {
 			return err
 		}
+	}
+	if rc, _ := alt.beholdComponent(); rc != nil {
+		// #4689: a behold moves nothing; the hand cards are shown.
+		g.payBeholdLocked(playerID, castID, rc, alt.PayLabel, ids)
+		return nil
 	}
 	if len(ids) == 0 {
 		return nil

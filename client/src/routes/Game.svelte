@@ -56,7 +56,9 @@
     type AttackerSelection,
   } from "../lib/exert";
   import {
+    groupPickerSeed,
     isStaged,
+    keptBesidePick,
     pruneStage,
     soleTarget,
     stageAt,
@@ -66,6 +68,13 @@
     unstageMany,
     type StagedAttack,
   } from "../lib/attackStage";
+  import {
+    attackPicked,
+    dropFromSelection,
+    joinsSelection,
+    selectionName,
+    stageSelectionAt,
+  } from "../lib/attackSelect";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
   import { closeManaSourcePicker, manaSourcePicker } from "../lib/manaSourcePicker";
   import { abilityPopover, closeAbilityPopover } from "../lib/abilityPopover";
@@ -259,6 +268,7 @@
   } from "../lib/autopassDecision";
   import {
     actionableCount,
+    attackTargetOpen,
     highlightsLive,
     legalActionsOf,
     visibleHighlights,
@@ -1923,6 +1933,10 @@
   let attackStage = $state<StagedAttack[]>([]);
   const stagedAttackerIDs = $derived(new Set(attackStage.map((s) => s.attacker)));
 
+  // #4326: the selected attackers other than `combatSelection`, oldest
+  // first (lib/attackSelect.ts). One target click stages them all.
+  let attackPickMore = $state<string[]>([]);
+
   function selectAttacker(cardID: string): void {
     // A staged creature's second click takes it back out.
     if (isStaged(attackStage, cardID)) {
@@ -1930,24 +1944,37 @@
       combatSelection = null;
       return;
     }
-    if (combatSelection?.kind === "attacker" && combatSelection.cardID === cardID) {
-      combatSelection = null;
+    // #4326: a selected creature's second click takes it out of the
+    // selection, and only it.
+    const current = combatSelection?.kind === "attacker" ? combatSelection : null;
+    if (current && (current.cardID === cardID || attackPickMore.includes(cardID))) {
+      const left = dropFromSelection(current, attackPickMore, cardID);
+      attackPickMore = left.more;
+      combatSelection = left.primary;
       return;
     }
     const sel = selectAttackerFor(cardID, legalActions);
     if (stageAtSoleTarget(sel)) return;
+    // #4326: a second creature joins the selection instead of replacing it.
+    if (joinsSelection(current, sel, isAttacking)) {
+      attackPickMore = [...attackPickMore, current!.cardID];
+    } else {
+      attackPickMore = [];
+    }
     combatSelection = sel;
   }
   // stageAtSoleTarget stages a creature with one legal attack target
   // there at once (every duel without a planeswalker or battle). Not
   // one already declared: re-pointing it is still declare_attacker's.
+  // #4326: the selection is cleared only when it was this creature, so
+  // staging one at its sole target keeps the others selected.
   function stageAtSoleTarget(sel: AttackerSelection): boolean {
     if (isAttacking(sel.cardID)) return false;
     const only = soleTarget(legalActions.attackTargets(sel.cardID));
     const next = only ? stageAt(attackStage, sel, only) : null;
     if (!next) return false;
     attackStage = next;
-    combatSelection = null;
+    if (combatSelection?.cardID === sel.cardID) combatSelection = null;
     return true;
   }
   function isAttacking(cardID: string): boolean {
@@ -1971,11 +1998,27 @@
     // #3266: a creature not yet attacking is staged at the clicked
     // player, planeswalker or battle; the primary sends the lot. ADR
     // 0130 §7: nothing is staged while the exert question is open.
+    // #4326: every selected creature that may attack it is staged there;
+    // the rest stay selected.
     if (!isAttacking(combatSelection.cardID)) {
-      const next = stageAt(attackStage, combatSelection, targetPlayerID);
-      if (!next) return;
-      attackStage = next;
-      combatSelection = null;
+      const r = stageSelectionAt(
+        attackStage,
+        combatSelection,
+        attackPickMore,
+        targetPlayerID,
+        (id, target) =>
+          attackTargetOpen(
+            legalActions,
+            view?.battlefield.cards.find((c) => c.instance_id === id),
+            id,
+            target,
+          ),
+      );
+      if (!r) return;
+      attackStage = r.stage;
+      const last = r.left.at(-1);
+      attackPickMore = r.left.slice(0, -1);
+      combatSelection = last ? { kind: "attacker", cardID: last } : null;
       return;
     }
     // Re-pointing a declared attacker is declare_attacker's, as before.
@@ -2070,6 +2113,24 @@
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
     passPriority(ATTACK_PASS_REASON);
+  });
+  // #4326: the others go with the selection, and the board is told
+  // which they are.
+  $effect(() => {
+    if (combatSelection?.kind !== "attacker" && untrack(() => attackPickMore).length > 0) {
+      attackPickMore = [];
+    }
+  });
+  $effect(() => {
+    attackPicked.set(new Set(attackPickMore));
+  });
+  onDestroy(() => attackPicked.set(new Set()));
+  // A selected creature that can no longer attack leaves the selection.
+  $effect(() => {
+    const more = attackPickMore;
+    if (more.length === 0) return;
+    const live = more.filter((id) => legalActions.canAttack(id) && !isAttacking(id));
+    if (live.length !== more.length) attackPickMore = live;
   });
   // The stage lives for one declaration: it empties when the step ends,
   // and a creature that can no longer attack drops out of it.
@@ -2240,18 +2301,20 @@
 
   // #4423: set when the picker was opened by a token group's attack,
   // whose confirm adds to the creatures already staged by clicking
-  // rather than replacing them. "Attack with all" leaves it off: it is
-  // the action that asks for the reset.
-  let attackPickerKeepsStage = false;
-  function openAttackPicker(defenderSeatID: string, keepStage = false): void {
+  // rather than replacing them. "Attack with all" leaves it null: it is
+  // the action that asks for the reset. #4430: it is the group's
+  // members, so the picker opens with only them (and what is already
+  // staged at that seat) checked.
+  let attackPickerGroup = $state<string[] | null>(null);
+  function openAttackPicker(defenderSeatID: string, groupIDs: string[] | null = null): void {
     attackPickerLimitReason = null;
-    attackPickerKeepsStage = keepStage;
+    attackPickerGroup = groupIDs;
     attackPickerDefenderID = defenderSeatID;
   }
   function openAttackPickerFromRefusal(): void {
     if (!bulkRefusal) return;
     attackPickerLimitReason = bulkRefusal.kind === "limit" ? ($lastError?.message ?? null) : null;
-    attackPickerKeepsStage = false;
+    attackPickerGroup = null;
     attackPickerDefenderID = bulkRefusal.defenderSeatID;
     client.lastError.set(null);
   }
@@ -2265,9 +2328,9 @@
     phyrexianLife = 0,
   ): void {
     const defenderSeatID = attackPickerDefenderID;
-    const keepsStage = attackPickerKeepsStage;
+    const keepsStage = attackPickerGroup !== null;
     attackPickerDefenderID = null;
-    attackPickerKeepsStage = false;
+    attackPickerGroup = null;
     if (!defenderSeatID) return;
     attackPickerLimitReason = null;
     const params = attackAllParams(attackPlan, defenderSeatID, {
@@ -2280,14 +2343,17 @@
     });
     if (!params) return;
     if (keepsStage) {
-      // #4423: the picker lists every creature that may attack this
-      // seat, so a staged one it shows is the player's to uncheck. A
-      // staged one it does not show (aimed at another seat) stays
-      // staged. One declaration carries both.
+      // #4423: one declaration carries the picker's choice and the rest
+      // of the staged set. A creature staged at this seat is a row the
+      // player could uncheck; one staged at another seat stays aimed
+      // there unless they checked it here (#4430). The picker sized the
+      // Phyrexian payment over the same set.
       const shown = new Set(eligibleAt(attackPlan, defenderSeatID).map((c) => c.instance_id));
-      const chosen = new Set(params.attackers.map((a) => a.attacker));
-      const kept = attackStage.filter((s) => !shown.has(s.attacker) && !chosen.has(s.attacker));
-      params.attackers = [...params.attackers, ...kept.map((s) => ({ ...s }))];
+      const chosen = params.attackers.map((a) => a.attacker);
+      params.attackers = [
+        ...params.attackers,
+        ...keptBesidePick(attackStage, defenderSeatID, shown, chosen),
+      ];
     }
     sendBulkAttack(defenderSeatID, params);
   }
@@ -2300,7 +2366,7 @@
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
     if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
-      openAttackPicker(defenderSeatID, true);
+      openAttackPicker(defenderSeatID, attackerIDs);
       return;
     }
     // #4198: the picker asks mana or life for a Phyrexian tax.
@@ -2311,7 +2377,7 @@
         actingLife,
       )
     ) {
-      openAttackPicker(defenderSeatID, true);
+      openAttackPicker(defenderSeatID, attackerIDs);
       return;
     }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
@@ -2329,6 +2395,7 @@
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
+    attackPickerGroup = null;
     attackPickerLimitReason = null;
   }
 
@@ -2695,13 +2762,19 @@
     combatSelection && !mulligansOpen
       ? combatSelectionRequest(
           combatSelection.kind,
-          cardLabel(combatSelection.cardID).name,
+          // #4326: "Wolf and 2 more" while several are selected.
+          selectionName(cardLabel(combatSelection.cardID).name, attackPickMore.length),
           () => (combatSelection = null),
           // ADR 0130 §7: "Attack" / "Attack and exert" for a creature
           // that may be exerted as it attacks.
           combatSelection.kind === "attacker" && combatSelection.exert !== undefined
             ? { chosen: combatSelection.exert, onChoose: chooseExert }
             : null,
+          // #4326: an undeclared attacker with no question is one more
+          // can join.
+          combatSelection.kind === "attacker" &&
+            combatSelection.exert === undefined &&
+            !isAttacking(combatSelection.cardID),
         )
       : null,
   );
@@ -3385,6 +3458,7 @@
           {combatMode}
           {selectedCombatCardID}
           stagedAttackers={stagedAttackerIDs}
+          stagedAttacks={attackStage}
           onSelectCombatCard={handleSelectCombatCard}
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
@@ -3879,6 +3953,10 @@
         limitReason={attackPickerLimitReason}
         legalGate={legalActions}
         life={actingLife}
+        seed={attackPickerGroup && attackPickerDefenderID
+          ? groupPickerSeed(attackStage, attackPickerDefenderID, attackPickerGroup)
+          : null}
+        keptStage={attackPickerGroup ? attackStage : null}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
       />

@@ -3899,3 +3899,143 @@ fails the equip-ability tests in `effects`; dropping the enumerator's `rowEquip`
 `TestEquipOnlyManaMakesAnEquipAbilityAMoveAndNothingElse`; dropping the preview's bit fails
 `TestAutoTapPreviewAbilityReadsTheEquipBitOfTheRow`; matching the tag on any activation fails the matcher tables and
 `TestRoninManaPaysNothingButEquipmentSpellsAndEquipAbilities`.
+
+## Amendment 2026-11-02 ([#4799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4799)): unattaching an Equipment as a cost, and a division read from it
+
+Captain America, First Avenger: "Throw ... — {3}, Unattach an Equipment from Captain America: He deals damage equal to
+that Equipment's mana value divided as you choose among one, two, or three targets." Two things were missing: a cost
+component that unattaches, and a divided amount that depends on which Equipment the cost names. CR text checked
+against the 2026-09-25 edition (CR 118.3, 301.5d, 601.2b, 601.2d, 601.2h, 602.2b, 701.3d).
+
+### Decision 76: "Unattach an Equipment from <this>" is a counted cost component
+
+`game.AbilityCost.UnattachEquipment` is an int, the number of Equipment the cost unattaches; `effects.Register` admits
+only 1, the one printed count, and refuses the component on an ability that functions off the battlefield
+(`AbilityNeedsPermanentSource`). The activator names the Equipment in `ActivateAbilityParams.UnattachIDs`
+(`unattach_ids` on the wire). The one candidate walk is `UnattachCostOptionsLocked`: the permanents attached to the
+source that have the subtype Equipment through the layered view, whoever controls them. The printed words are "from
+Captain America", not "you control", and CR 301.5d separates an Equipment's controller from the equipped creature's.
+
+The validator runs with every other component, before anything is paid (§3): ids sent for an ability without the
+component, a count other than the cost's, a repeated id or a source off the battlefield are `ErrInvalidParam`; an id
+that is not an Equipment attached to the source is `ErrIllegalTarget`. With nothing attached the cost can't be paid and
+the activation is refused (CR 118.3). The payment is `UnattachForEffect`, the one primitive every unattach uses, so
+the Equipment stays on the battlefield attached to nothing (CR 701.3d) and `EventUnattach` fires. It is paid with the
+reveals, before any component that moves a permanent. Nothing moves, so the pick is excluded from no other component,
+and naming an Equipment to pay a cost does not target it (CR 601.2h), so hexproof does not matter.
+
+The pick is part of the announcement a parked activation writes into the snapshot
+(`pendingChoices[].parked.activate.params.UnattachIDs`), an additive key in v9.
+
+### Decision 77: a divided amount may read the unattach pick
+
+CR 601.2d announces the division before CR 601.2h pays the cost, but the amount here is "that Equipment's mana value",
+which only the cost choice names. CR 601.2b covers the shape for a variable: "If the value of that variable is defined
+in the text of the spell by a choice that player would make later in the announcement or resolution of the spell,
+that player makes that choice at this time instead of that later time." The engine already takes the whole
+announcement in one message (CR 602.2b), so the choice is made with it: `DivideAmountArgs.Unattached` carries the
+validated `UnattachIDs` into `bindDivideAmountsLocked`, and an amount rule reads them while the Equipment is still
+attached. `effects.DivideUnattachedManaValue` sums their printed mana values (CR 202.3). The amount is fixed there, as
+every bound amount is (ADR 0065's 2026-09-28 amendment), so nothing done in response changes the division. An
+Equipment with mana value 0 sizes the division at 0, so no target can be chosen and the ability can't be activated with
+it.
+
+The protocol view can't know the pick, so the divided clause on the row carries `divide.by_unattach`: the amount each
+candidate in `unattach_options` would announce, read by the same rule (`stampUnattachDivide`). The client asks for the
+Equipment before the targets, as CR 602.2b orders the cost announcement, and sizes the split from that entry. The
+legal-move enumerator makes one row per attached Equipment (`expandUnattachPicks`, beside `expandCostBranches`), so
+each row's steps are bound with its own pick before its targets and division are built, and a row with nothing
+attached offers no move (#544). The bot prices an unattached Equipment at the share of a bounced permanent: it stays on
+the battlefield and can be attached again.
+
+### Cards
+
+Captain America, First Avenger (Full). Its "... Catch" trigger is Cloud, Ex-SOLDIER's attach at the beginning of combat
+on your turn; the shared body moved to `effects.AttachTargetsToSource`, which now also does nothing when the source
+has left the battlefield or come back as a new object (CR 400.7, CR 701.3b).
+
+### Snapshot, closure and ledger
+
+`ActivateAbilityParams.UnattachIDs` is a new key in `snapshot_shape/v9.txt` under the parked activation; a file
+written without it restores with no pick, which only an ability without the component can have. The component is an
+int and the divided amount is a registered key, so no `Game` route to a func is added and the closure counts do not
+move. The new divided-amount key is not an effect key, so the ledger takes none.
+
+### Tests and back-outs
+
+`game/unattach_cost_test.go` (the candidate walk, the validator's table, the payment and its event, a bound amount
+reading the pick, the parked announcement's round trip), `cards/effects/captain_america_first_avenger_test.go`
+(paying with one Equipment, choosing between two with one an opponent's, refusals with nothing attached under strict
+activation, a division sized for the wrong Equipment refused with nothing paid, a restore with the ability on the
+stack, and the Catch trigger answered after a restore at its target prompt), `legal/unattach_cost_test.go` (one row
+per attached Equipment, each division sized by its own mana value, every move accepted, none with nothing attached)
+`protocol/unattach_cost_view_test.go` and `aiseat/heuristic/unattach_cost_test.go` (an activation that unattaches
+prices below the same one free; dropping the price fails it). Dropping `Unattached` from the activation's `bindDivideAmountsLocked` call
+sizes every division at 0 and fails the card tests; dropping the payment leaves the Equipment attached and fails
+`TestCaptainAmericaThrowsOneEquipmentForItsManaValue`; dropping the validator lets an Equipment that is not attached
+to him pay and fails `TestCaptainAmericaCannotThrowWithNothingAttached`; dropping the enumerator's pick from its
+binding fails `TestUnattachCostIsOneRowPerEquipmentSizedByItsManaValue`.
+
+## Amendment 2026-11-03 ([#4684](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4684)): blight N as part of the cost
+
+Lorwyn Eclipsed prints "Blight N" inside activation costs: Gristle Glutton's "{T}, Blight 1: Discard a card. If you
+do, draw a card.", Sting-Slinger's "{1}{R}, {T}, Blight 1:", Evershrike's Gift's "{1}{W}, Blight 2:" from the
+graveyard, Spiral into Solitude's "{1}{W}, Blight 1, Sacrifice this Aura:". `AbilityCost.AddCounter` puts a counter on
+the source only (Devoted Druid); blight lets the activator choose any creature they control (CR 701.68a). CR text
+checked against the 2026-09-25 edition (CR 118.3, 601.2h, 602.2b, 614.16, 701.68a-d).
+
+### Decision 78: "Blight N" is a counted cost component paid by the cast path's blight
+
+`game.AbilityCost.Blight` is N; zero is no component, and `effects.Register` refuses a negative one. `effects.BlightN(n)`
+builds it and `effects.Plus` keeps it. Nothing new is decided about blight itself: the component is the cast path's
+blight cost (#1703, ADR 0073) one surface over, and shares every piece of it.
+
+- **The pick.** The activator names one creature in `ActivateAbilityParams.BlightIDs` (`blight_ids`, the name a cast's
+  blight pick rides). The candidates are `BlightOptionsForEffect(activator)`, the creatures they control that can have
+  counters put on them, the source included; the check is `validateBlightCreatureLocked`. It is chosen with the rest
+  of the announcement, as every other cost pick is (CR 602.2b runs CR 601.2h, and the engine takes the announcement in
+  one message). It is not a target, so hexproof does not matter. The source's zone does not matter either: a graveyard
+  ability blights a creature on the battlefield.
+- **The refusals.** Ids sent for an ability without the component are `ErrInvalidParam`, as a stray `unattach_ids`
+  is. With no creature to blight the cost can't be paid (CR 701.68b, CR 118.3) and the activation is refused with
+  `ErrCantPayCounterCost`, the counter cost's refusal. A 1/1 is a candidate for blight 2: it dies of the counters at the
+  next state-based check, after the cost is paid.
+- **The payment.** `blightLocked`, which marks the counters `CounterFromCost` and settles the CR 614 window at once (a
+  cost can't pause). A cost is not "the effect of a resolving spell or ability" (CR 614.16), so Doubling Season ("if an
+  effect would put") leaves the counters alone, and a replacement that names no effect (Vizier of Remedies, Winding
+  Constrictor) applies. The cost is paid whatever the window settles on. It is paid beside `AddCounter`, after the
+  counter removal and before the sacrifices, so "Blight 1, Sacrifice this Aura" reads left to right; the creature is on
+  the list `refusePausedCostCardsLocked` checks.
+
+The pick is part of the announcement a parked activation writes into the snapshot
+(`pendingChoices[].parked.activate.params.BlightIDs`), an additive key in v9. The component is an int, so no `Game`
+route to a func is added and the closure counts do not move; no effect key is added.
+
+**The wire.** The row carries `blight` (N) and `blight_options`, a `LegalTargetsView` `{ cards[], min: 1, max: 1 }`
+from the same walk; present and empty means the cost can't be paid, and the client greys the row. The client asks
+which creature after the unattach pick, through the sacrifice picker with the verb "Blight", and skips the question
+when exactly one creature could pay.
+
+**The enumerator and the bot.** The cast path offers one blight payment, the cheapest. An ability's pick is the
+activation's whole price, so the enumerator offers one move per candidate (`expandBlightPicks`, beside
+`expandUnattachPicks`), in the cast path's order: a creature that survives the counters first, then the least power.
+`legal.MoveCost.Blight` names the creature and N, since the params carry no N, and the heuristic prices it by
+`blightCounterCost`, the price #4683 gave a resolving blight's pick: the whole creature when the counters kill it,
+else N points of toughness and up to N of power.
+
+### Cards
+
+Gristle Glutton, Sting-Slinger, Evershrike's Gift and Spiral into Solitude ship Full. Dawnhand Dissident waits: its
+third ability casts creature cards it exiled "by removing three counters from among creatures you control in addition
+to paying their other costs", an additional cost a granted cast can't carry yet. Champion of the Weird waits for a
+"behold a Goblin and exile it" additional cost.
+
+### Tests
+
+`game/blight_ability_cost_test.go` (the validator's table and the payment), `cards/effects/blight_ability_cost_test.go`
+(each card, a creature of the activator's choice and the source itself, the refusals paying nothing, a hexproof
+creature, a creature that dies of the counters, Doubling Season and Vizier of Remedies, the graveyard activation with
+and without a creature, and a restore with the ability on the stack), `legal/blight_ability_cost_test.go` (one move per
+creature in order, none from the graveyard with no creature, every move accepted), `protocol/blight_cost_view_test.go`
+and `aiseat/heuristic/blight_cost_test.go` (an activation that blights prices below the same one free, and a wall
+takes the counter rather than a 1/1; dropping the price fails both).

@@ -16,11 +16,18 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			return DrawCards{Player: item.Targets[0].ID, N: ctx.X()}.Apply(ctx)
-		},
+		OnResolve:    targetPlayerDrawsX(),
 	})
+}
+
+// targetPlayerDrawsX is "Target player draws X cards" (Stroke of Genius,
+// Braingeyser): the target, if still legal, draws X. A constructor, so
+// the XMatters guard sees each card call it.
+func targetPlayerDrawsX() func(*game.StackItem, *Context) error {
+	return func(_ *game.StackItem, ctx *Context) error {
+		if p, ok := firstLegalPlayerTarget(ctx); ok {
+			return DrawCards{Player: p, N: ctx.X()}.Apply(ctx)
+		}
+		return nil
+	}
 }

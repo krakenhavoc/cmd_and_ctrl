@@ -92,6 +92,15 @@ type ModeOption struct {
 	// Charm's third bullet draws two and discards two. Catalog data for
 	// the view; the engine never reads it.
 	Purpose Purpose
+
+	// Pawprints is the number of pawprint symbols ({P}, CR 107.18)
+	// printed in place of this mode's bullet: Season of Loss's
+	// "{P}{P} — Draw a card for each creature that died under your
+	// control this turn" is 2. Read only under a ModeSpec.Pawprints
+	// budget (CR 700.2i); zero for every bullet-point mode. Catalog
+	// data, never persisted: a stack item records the chosen indexes,
+	// and the weight is read back off the card. Added by #4786.
+	Pawprints int
 }
 
 // ModeSpec declares a modal spell's or ability's choice.
@@ -236,6 +245,52 @@ type ModeSpec struct {
 	// only an enters trigger the spell's X. Build it with
 	// effects.ChooseUpToX.
 	UpToCastX bool
+
+	// Pawprints is CR 700.2i's budget: "Choose up to five {P} worth of
+	// modes" is 5. "While casting such a spell, its controller can
+	// choose any number of modes such that the total number of pawprint
+	// symbols listed for the chosen modes is not greater than the
+	// specified number." So a selection is bounded by the SUM of its
+	// occurrences' ModeOption.Pawprints, each repeat counted again (CR
+	// 700.2d), and not by how many bullets it has. Zero is a modal card
+	// without pawprints.
+	//
+	// Max is still an upper bound on the count, because every pawprint
+	// mode costs at least one {P}: effects.ChooseUpToPawprints sets it
+	// to the budget, so a reader that asks only modeBoundsLocked never
+	// offers more occurrences than could fit. The weight itself is
+	// judged in validateModes (the announce gate) and by
+	// WithinPawprints, which the enumerator and the view's picker ask.
+	//
+	// A spell's modes only (CR 700.2i: "Some modal spells"):
+	// effects.Register refuses it on a trigger or an activated ability,
+	// on a bullet with no pawprint, and beside a raised or random
+	// count. Added by #4786, ADR 0065's 2026-11-02 amendment.
+	Pawprints int
+}
+
+// PawprintsOf is the number of pawprint symbols a selection spends
+// (CR 700.2i): the sum of each chosen occurrence's ModeOption.Pawprints,
+// a repeated mode counted once per occurrence (CR 700.2d). An index
+// outside the options counts nothing; validateModes refuses it anyway.
+func PawprintsOf(ms *ModeSpec, modes []int) int {
+	if ms == nil {
+		return 0
+	}
+	n := 0
+	for _, m := range modes {
+		if m >= 0 && m < len(ms.Options) {
+			n += ms.Options[m].Pawprints
+		}
+	}
+	return n
+}
+
+// WithinPawprints reports whether `modes` fits the spec's pawprint
+// budget (CR 700.2i). Always true for a spec with no budget, which is
+// every modal card without pawprints.
+func (ms *ModeSpec) WithinPawprints(modes []int) bool {
+	return ms == nil || ms.Pawprints <= 0 || PawprintsOf(ms, modes) <= ms.Pawprints
 }
 
 // EscalateCost is the price of CR 702.120a's escalate: what ONE mode
@@ -534,6 +589,11 @@ func validateModes(spec *ModeSpec, lo, hi int, modes []int) error {
 		seen[m] = true
 	}
 	if len(modes) < lo || (hi > 0 && len(modes) > hi) {
+		return ErrInvalidParam
+	}
+	// CR 700.2i (#4786): a pawprint spell is bounded by the {P} its
+	// chosen modes spend, not only by how many there are.
+	if !spec.WithinPawprints(modes) {
 		return ErrInvalidParam
 	}
 	return nil

@@ -32,6 +32,7 @@ func eventMetrics() []prometheus.Collector {
 		wsDisconnects,
 		wsRejections,
 		wsFrames,
+		wsSentBytes,
 		wsBroadcast,
 		// engine.go
 		actionsTotal,

@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(WhenThisEnters("Magmatic Galleon — 5 damage to target creature an opponent controls",
-				magmaticGalleonETBDamage),
+				sourceDealsFiveToTheChosenTarget),
 				TargetCreature("target creature an opponent controls", OpponentControls())), ForTargets(DamageToTarget(0, 5))),
 			OncePerBatch(On(game.EventDealDamage, magmaticGalleonExcessNoncombatDamage,
 				"Magmatic Galleon — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1}))),
@@ -52,10 +52,10 @@ func init() {
 	})
 }
 
-// magmaticGalleonETBDamage reads the chosen target off ctx.LegalTargets()
+// sourceDealsFiveToTheChosenTarget (Magmatic Galleon, Steel Wrecking Ball) reads the chosen target off ctx.LegalTargets()
 // (CR 608.2b re-checks legality; an illegal-by-resolution target is
 // simply not there any more) and deals 5 damage.
-func magmaticGalleonETBDamage(g *game.Game, item *game.StackItem) error {
+func sourceDealsFiveToTheChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {

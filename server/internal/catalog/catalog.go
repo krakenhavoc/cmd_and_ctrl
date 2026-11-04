@@ -80,6 +80,13 @@ type Entry struct {
 	// first. Empty for ordinary cards.
 	Faces []Face `json:"faces,omitempty"`
 
+	// Sets are the codes of the sets this card is printed in, newest
+	// set first, each one a SetSummary.Code in Response.Sets (#4790).
+	// Filled only by BuildWithSets, which is what GET /catalog serves;
+	// empty for a Missing card and for a card whose every printing is
+	// one the set tally leaves out (see countsInSet).
+	Sets []string `json:"sets,omitempty"`
+
 	// Missing reports that the catalog registers this oracle ID but
 	// the loaded Scryfall dump has no printing for it. The entry
 	// still appears — the engine really does automate it — but with
@@ -117,6 +124,10 @@ type Counts struct {
 type Response struct {
 	Counts Counts  `json:"counts"`
 	Cards  []Entry `json:"cards"`
+
+	// Sets is the set picker's data, newest set first (#4790). Present
+	// only on a BuildWithSets response with a loaded dump.
+	Sets []SetSummary `json:"sets,omitempty"`
 }
 
 // Build joins every registered spec against idx and returns the

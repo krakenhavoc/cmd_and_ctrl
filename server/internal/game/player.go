@@ -273,6 +273,15 @@ type Player struct {
 	// an effect wins it (CR 104.2b), which eliminates nobody.
 	Eliminated bool
 
+	// LossCause is why the player left (#4879): the LossCause
+	// leaveGameLocked was given, written once with Eliminated and never
+	// cleared. Empty while they play, and on a player restored from a
+	// snapshot written before the field (they left for a reason no one
+	// recorded). The seat view forwards it, so a client can tell a
+	// player who was decked (LossEmptyDraw) from one who lost to life
+	// on any frame, a reload included.
+	LossCause LossCause
+
 	// Removed is set when an admin removed this seat from a game that
 	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player
 	// left through Concede, so Eliminated is true as well; Removed is

@@ -215,3 +215,52 @@ func TestManaValueBoundAdmitsAFaceDownPermanentAsZero(t *testing.T) {
 		t.Error("X=0: a face-up mana value 6 creature is admitted")
 	}
 }
+
+// TestADyingFaceDownPermanentsTriggerSeesManaValueZero is #4762, the
+// look-back half of the rule. A face-down permanent is revealed and
+// turned face up as it leaves the battlefield (CR 708.9), so the card in
+// the graveyard has its real cost again. A leaves-the-battlefield
+// trigger looks back in time (CR 603.10a) and judges the object as it
+// last existed: a face-down 2/2 with no mana cost, mana value 0 (CR
+// 708.2a, 202.3a). Scrap Trawler's ceiling and Krile Baldesion's match
+// both read this number off the trigger's object snapshot.
+func TestADyingFaceDownPermanentsTriggerSeesManaValueZero(t *testing.T) {
+	for _, kind := range []FaceDownKind{FaceDownTurned, FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked} {
+		t.Run(string(kind), func(t *testing.T) {
+			g := newActiveGame(t)
+			me := g.Seats[0]
+			triggerCatalog(t, TriggeredAbility{
+				Watches:   []EventKind{EventLTB},
+				AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return true },
+				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+					return NewTriggeredItem(source, "watcher")
+				},
+			})
+			watcher := watcherNamed(g, me.ID, "Watcher")
+			hidden := turnableCreature(t, g, me, "Sheoldred")
+			g.WithWriteLock(func() { g.applyFaceDownLandingLocked(g.Battlefield, hidden, kind, nil) })
+			if c := battlefieldCardOf(t, g, hidden); !c.FaceDownIsPermanent() || c.ManaCost != hiddenCost {
+				t.Fatalf("the fixture is not a face-down permanent hiding %s: %+v", hiddenCost, c)
+			}
+
+			destroy(t, g, hidden)
+
+			if c, zone, _ := cardAnywhere(g, hidden); zone != ZoneGraveyard || c.FaceDown {
+				t.Fatalf("the destroyed card is in %q face down=%v, want the graveyard face up (CR 708.9)", zone, c.FaceDown)
+			}
+			var item *StackItem
+			for _, it := range g.PendingTriggers {
+				if it.SourceCardID == watcher {
+					item = it
+				}
+			}
+			if item == nil || item.Trigger == nil || item.Trigger.Object == nil {
+				t.Fatal("the watcher's dies-trigger did not fire, or carried no object snapshot")
+			}
+			if mv := item.Trigger.Object.ManaValue; mv != 0 {
+				t.Errorf("the dies-trigger reads the face-down permanent's mana value as %d, want 0: "+
+					"it read the card turned face up in the graveyard, not the object that died", mv)
+			}
+		})
+	}
+}

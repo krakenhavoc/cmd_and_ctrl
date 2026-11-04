@@ -16,10 +16,12 @@ import {
   formatBytes,
   joinPhrases,
   redactBugContext,
+  settingsForReport,
   validateAttachments,
   validateBugReport,
 } from "./bugReport";
 import type { GameView } from "./protocol";
+import { defaultSettings } from "./settings";
 
 function viewWithTurn(turn: Partial<GameView["turn"]>): GameView {
   return {
@@ -213,13 +215,29 @@ describe("report kinds", () => {
   });
 
   it("mirrors the server's per-kind artifact policy", () => {
-    expect(bugKindSpec("bug")).toMatchObject({ log: true, replay: true, gameLog: true });
+    expect(bugKindSpec("bug")).toMatchObject({
+      log: true,
+      replay: true,
+      gameLog: true,
+      settings: false,
+    });
     // A question is answered from what happened, not from
     // frame-by-frame state — the expensive pin stays off.
-    expect(bugKindSpec("question")).toMatchObject({ log: true, replay: false, gameLog: true });
+    expect(bugKindSpec("question")).toMatchObject({
+      log: true,
+      replay: false,
+      gameLog: true,
+      settings: false,
+    });
     // An idea is about what the game SHOULD do: a screenshot is the
-    // evidence, and a 30 MiB replay would be pure waste.
-    expect(bugKindSpec("idea")).toMatchObject({ log: false, replay: false, gameLog: false });
+    // evidence, and a 30 MiB replay would be pure waste. The settings
+    // copy says how the reporter's table looks (#4103).
+    expect(bugKindSpec("idea")).toMatchObject({
+      log: false,
+      replay: false,
+      gameLog: false,
+      settings: true,
+    });
   });
 
   it("describes what a bug attaches, in the reporter's words", () => {
@@ -244,8 +262,9 @@ describe("report kinds", () => {
     expect(joinPhrases(["one", "two", "three"])).toBe("one, two and three");
   });
 
-  it("says nothing extra rides along with an idea", () => {
-    expect(describeBugAttachments(bugKindSpec("idea"), true)).toEqual([]);
+  it("says an idea carries a copy of the settings and nothing forensic", () => {
+    expect(describeBugAttachments(bugKindSpec("idea"), true)).toEqual(["a copy of your settings"]);
+    expect(describeBugAttachments(bugKindSpec("idea"), false)).toEqual(["a copy of your settings"]);
   });
 
   it("drops the game-bound artifacts when there is no game", () => {
@@ -275,5 +294,76 @@ describe("redactBugContext (#721)", () => {
 
   it("passes undefined through", () => {
     expect(redactBugContext(undefined)).toBeUndefined();
+  });
+});
+
+describe("settingsForReport (#4103)", () => {
+  function settingsWithHistory() {
+    const s = defaultSettings();
+    s.display.cardSize = "large";
+    s.gameplay.autoAnswers = [
+      {
+        key: "6b8cf2a0-b045-4d91-9d91-c602d40c6237|pay",
+        card: "Rhystic Study",
+        prompt: "Pay {1} or Mallory Seatname draws a card",
+        answer: "always",
+      },
+    ];
+    s.help.seen = { "hint.first-game": 1 };
+    s.help.tipsOff = true;
+    s.shortcuts.bindings = { pass: "https://x.test/#/join/a?token=s3cr3t-value-here" };
+    return s;
+  }
+
+  it("keeps every preference group", () => {
+    const got = settingsForReport(settingsWithHistory());
+    expect(Object.keys(got).sort()).toEqual([
+      "__version",
+      "accessibility",
+      "animations",
+      "audio",
+      "display",
+      "gameplay",
+      "help",
+      "shortcuts",
+    ]);
+    expect((got.display as { cardSize: string }).cardSize).toBe("large");
+  });
+
+  it("drops what could name or follow a person, and redacts the rest", () => {
+    const got = settingsForReport(settingsWithHistory());
+    const text = JSON.stringify(got);
+    for (const gone of ["Mallory", "Rhystic Study", "hint.first-game", "s3cr3t-value-here"]) {
+      expect(text).not.toContain(gone);
+    }
+    expect((got.gameplay as { autoAnswers: unknown[] }).autoAnswers).toEqual([
+      { key: "6b8cf2a0-b045-4d91-9d91-c602d40c6237|pay", answer: "always" },
+    ]);
+    expect(got.help).toEqual({ tipsOff: true });
+  });
+
+  it("does not touch the live settings it copies", () => {
+    const s = settingsWithHistory();
+    settingsForReport(s);
+    expect(s.gameplay.autoAnswers[0].card).toBe("Rhystic Study");
+    expect(s.help.seen).toEqual({ "hint.first-game": 1 });
+  });
+
+  it("fits the server's limits: a 32 KiB object nested at most four deep", () => {
+    const text = JSON.stringify(settingsForReport(defaultSettings()));
+    expect(text.length).toBeLessThan(32 * 1024);
+    let depth = 0;
+    let max = 0;
+    let inString = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inString) {
+        if (c === "\\") i++;
+        else if (c === '"') inString = false;
+      } else if (c === '"') inString = true;
+      else if (c === "{" || c === "[") max = Math.max(max, ++depth);
+      else if (c === "}" || c === "]") depth--;
+    }
+    expect(max).toBeLessThanOrEqual(4);
   });
 });

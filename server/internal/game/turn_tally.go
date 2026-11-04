@@ -54,6 +54,11 @@ type PlayerTurnTally struct {
 	// CreaturesDied counts creatures this player controlled that went
 	// from the battlefield to a graveyard (CR 700.4).
 	CreaturesDied int `json:"creaturesDied,omitempty"`
+	// ModifiedCreaturesDied counts the creatures among CreaturesDied that
+	// were modified as they last existed on the battlefield (CR 700.9):
+	// Intermediate Chirography's "if a modified creature died under your
+	// control this turn" (#4834). See modified_died.go.
+	ModifiedCreaturesDied int `json:"modifiedCreaturesDied,omitempty"`
 	// TokensCreated counts tokens created under this player's control.
 	TokensCreated int `json:"tokensCreated,omitempty"`
 	// PermanentsSacrificed counts permanents this player sacrificed.
@@ -151,6 +156,13 @@ type PlayerTurnTally struct {
 	// that has since left still counts. Arboria reads it, a turn later,
 	// through Player.LastTurnCastOrPut. Additive within schema v9.
 	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
+	// NontokenCreaturesEntered counts the nontoken creatures that
+	// entered the battlefield under this player's control this turn,
+	// judged as each entered (after the layers, EnteredSubtypes'
+	// reading), so one that has since left, stopped being a creature or
+	// changed controller still counts (Gyome, Master Chef's ruling,
+	// #4834). Additive.
+	NontokenCreaturesEntered int `json:"nontokenCreaturesEntered,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -610,6 +622,26 @@ func (g *Game) TimesAttackedThisTurn(cardID uuid.UUID) int {
 		}
 	}
 	return n
+}
+
+// CreaturesAttackedThisTurn is how many distinct creatures were declared
+// as attackers this turn, whoever controls them: The Mary Janes' "costs
+// {1} less to cast for each creature that attacked this turn". A creature
+// that attacked in two combats counts once; one that left and came back is
+// a new object (CR 400.7) and counts again. Creatures that have since left
+// the battlefield still count (they attacked).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesAttackedThisTurn() int {
+	type obj struct {
+		id    uuid.UUID
+		epoch int
+	}
+	seen := map[obj]bool{}
+	for _, a := range g.TurnTally.Attacks {
+		seen[obj{a.Attacker, a.Epoch}] = true
+	}
+	return len(seen)
 }
 
 // noteBecameTappedLocked counts one tap of the object `cardID` names.
@@ -1931,6 +1963,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.recordEnteredSubtypesLocked(controller, entered)
 		g.recordEnteredCardTypesLocked(controller, entered)
 		g.recordEnteredFlierLocked(controller, entered)
+		if controller != uuid.Nil && entered.IsCreature() && !entered.IsToken() {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NontokenCreaturesEntered++ })
+		}
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return
@@ -1982,6 +2017,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = c.Owner
 		}
 		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesDied++ })
+		if g.departedWasModifiedLocked(ev.CardID) {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.ModifiedCreaturesDied++ })
+		}
 		g.recordDiedSubtypesLocked(ev, controller)
 	case EventResolve:
 		if ev.Source == uuid.Nil {

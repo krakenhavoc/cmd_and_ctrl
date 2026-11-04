@@ -123,8 +123,19 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	}
 	o := gr.Offer
 	if o.Key == AltCostKeyGrantedMiracle {
-		// Molecule Man: the granted keyword, in the printed words.
+		// The granted keyword, in the printed words: Molecule Man's
+		// "Nonland cards …", or the card's own subject (Lorehold, the
+		// Historian's "Each instant and sorcery card in your hand").
+		if gr.SpellsText != "" {
+			return gr.SpellsText + " has miracle " + o.ManaCost + "."
+		}
 		return "Nonland cards in your hand have miracle " + o.ManaCost + "."
+	}
+	if o.ReturnToHand != nil && o.Sacrifice == nil {
+		// Peter Parker // Amazing Spider-Man: web-slinging, granted.
+		// SpellsText is the singular noun phrase ("legendary spell that's
+		// one or more colors").
+		return "Each " + subject + " you cast has web-slinging " + o.ManaCost + "."
 	}
 	if gr.PricedAtManaCost || o.Sacrifice != nil {
 		return "Each " + strings.TrimSuffix(subject, "s") + " you cast can be cast by sacrificing a creature, reducing its cost by that creature's mana value."
