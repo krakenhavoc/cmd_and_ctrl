@@ -1770,6 +1770,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
+tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
