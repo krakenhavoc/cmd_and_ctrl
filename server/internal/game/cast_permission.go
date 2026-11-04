@@ -297,9 +297,15 @@ type PermissionFilter struct {
 	//
 	// A two-slot ARRAY rather than a slice because PermissionFilter is
 	// compared with == (a slice field makes the struct incomparable and
-	// breaks every `a.Filter != b.Filter` in the engine and its tests);
-	// two is the widest printed union, and a card that needs a third
-	// widens the array.
+	// breaks every `a.Filter != b.Filter` in the engine and its tests).
+	//
+	// DO NOT WIDEN IT IN PLACE. The key has no omitempty, so every stored
+	// permission writes the whole array, and a third slot changes how
+	// every fixture holding one re-encodes (TestSnapshotCorpusRestores
+	// fails on it, #4679). A wider union is a standing card's second
+	// permission: Mikey & Don, Party Planners' "Mutant, Ninja, or Turtle
+	// spells" is {Mutant, Ninja} and a CreatureType "Turtle" permission
+	// side by side.
 	CreatureTypesAny [2]string `json:"creatureTypesAny"`
 
 	// NoncreatureOrCreatureType is Scarlet Witch, Chaotic Avenger's "a Hero
@@ -839,6 +845,25 @@ type CastPermission struct {
 	// cast this way gains nothing. Empty gains nothing.
 	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
 	GainsAbilities []string `json:"gainsAbilities,omitempty"`
+
+	// EntersWithCounterKind and EntersWithCounters are "If you cast a
+	// creature spell this way, that creature enters with an additional
+	// +1/+1 counter on it" (Mikey & Don, Party Planners; #4679): a
+	// replacement effect from another source that modifies how the
+	// permanent enters (CR 614.1c, CR 614.12). Like EntersTapped it
+	// belongs to the PERMISSION: the same creature cast from hand, or
+	// through another permission, gets nothing.
+	//
+	// Read once, in CastSpell, where the permission is consumed, and
+	// written onto the spell's item as a StackItem.PromisedCounters mark
+	// (markPermissionEntryCountersLocked), which applyCastEntryCountersLocked
+	// seeds onto the entry event before the CR 614 pipeline runs, so
+	// Doubling Season sees it. Only a CREATURE spell is marked, because
+	// every printed rider says "that creature": a noncreature spell,
+	// a creature card's noncreature face or a bestowed Aura spell cast
+	// this way gets nothing. Zero, or no kind, adds nothing.
+	EntersWithCounterKind string `json:"entersWithCounterKind,omitempty"`
+	EntersWithCounters    int    `json:"entersWithCounters,omitempty"`
 
 	// MaxSpellManaValue caps the mana value of the SPELL this
 	// permission lets a player cast (ADR 0099 §3). Discover's "if the

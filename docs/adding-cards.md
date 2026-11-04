@@ -5576,6 +5576,24 @@ CR 616.1. The cards it leaves behind are found by their counter
 (`c.Counters[game.CounterDream] > 0` on `g.Exile.Cards`) and cast through a
 `GrantCastPermissionToCardsForEffect` grant, as Crabomination's are.
 
+**"If you cast a creature spell this way, that creature enters with an
+additional +1/+1 counter on it" (#4679, CR 614.1c, CR 614.12):** Mikey &
+Don, Party Planners. Set `EntersWithCounterKind: game.CounterPlusOne` and
+`EntersWithCounters: 1` on the `CastPermission`, beside its other "this
+way" riders (`EntersTapped`, `GainsKeywords`). `CastSpell` reads them
+where the permission is consumed and marks the spell's item through
+`addPromisedCounterLocked` (`markPermissionEntryCountersLocked`), so it is
+the Wildgrowth Archaic read side from there: Doubling Season doubles it, a
+countered spell takes it along, and a cast from hand or through another
+permission gets none. Only a creature spell as cast is marked (every
+printed rider says "that creature"), so a noncreature spell, a
+noncreature face and a bestowed Aura spell cast this way get nothing. A
+finality counter works the same way (Leonardo, Sewer Samurai, which also
+needs a power-or-toughness filter the permission does not have yet).
+`PermissionFilter.CreatureTypesAny` holds two types and must not be
+widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
+Turtle spells" is two permissions with the same rider.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse

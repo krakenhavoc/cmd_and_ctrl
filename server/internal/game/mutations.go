@@ -2181,6 +2181,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3768: "it gains haste and '<ability>'", registered here for the
 	// same reason and against the same object.
 	g.grantGainsForCastLocked(cardID, castGains)
+	// #4679: "that creature enters with an additional +1/+1 counter",
+	// marked on the spell's item for the same reason.
+	g.markPermissionEntryCountersLocked(cardID, castGains)
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
