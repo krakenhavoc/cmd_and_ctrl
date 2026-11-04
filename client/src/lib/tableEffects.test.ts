@@ -13,6 +13,7 @@ import {
   BUSY_WINDOW_MS,
   BusyClock,
   COUNTER_SOUND,
+  DAY_NIGHT_FLIP_DELAY_MS,
   EFFECT_BASE_MS,
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
@@ -30,6 +31,7 @@ import {
   WIPE_VORTEX_MS,
   SACRIFICE_KNIFE_SOUND,
   SHATTER_BREAK,
+  TRANSFORM_TURN,
   TOKEN_SPREAD_MS,
   TOKEN_STAGGER_MS,
   attachKind,
@@ -39,6 +41,7 @@ import {
   cueMs,
   cueSound,
   cueTiming,
+  dayNightOf,
   effectLate,
   effectMotion,
   effectsScheduled,
@@ -1125,6 +1128,204 @@ describe("a player searches a library (#4447)", () => {
     const w = pileWindows(RIFFLE_CARDS);
     expect(w[0].a).toBe(0);
     expect(w[RIFFLE_CARDS - 1].b).toBeCloseTo(1, 9);
+  });
+});
+
+describe("a double-faced card transforms, or day and night changes (#4448)", () => {
+  // The engine's log, as log_transform_test.go pins it: a `transform`
+  // entry per permanent turned over (`label` the face it was), a `meld`
+  // entry naming the melded permanent, and a `day_night` entry with what
+  // the game became; night falling and the werewolves it turns over share
+  // one batch, the change first.
+  const transform = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "transform",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    label: "Front Face",
+    text: "Front Face transformed into Back Face",
+    ...extra,
+  });
+  const meld = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "meld",
+    turn: 3,
+    seat: 0,
+    card_id: id,
+    label: "Midnight Scavengers and Graf Rats",
+    text: "Midnight Scavengers and Graf Rats melded into Chittering Host",
+    ...extra,
+  });
+  const dayNight = (label: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "day_night",
+    turn: 4,
+    seat: -1,
+    label,
+    text: `It becomes ${label}`,
+    ...extra,
+  });
+  const counters = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "counters",
+    turn: 3,
+    seat: -1,
+    card_id: id,
+    label: "+1/+1",
+    amount: 1,
+    delta: 1,
+    text: "",
+    ...extra,
+  });
+
+  it("a transform is one flip on its card, with the transform sound", () => {
+    const p = plan([transform("a", { batch: 4 })]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.batch, q.delayMs, q.follows])).toEqual([
+      ["transform", "a", 4, 0, undefined],
+    ]);
+    expect(cueSound(p.cues[0])).toEqual({ name: "transform", volume: 1 });
+    expect(EFFECT_SOUND.transform).toBe("transform");
+    // A convert is the same entry, marked converted (CR 701.28a).
+    expect(kinds([transform("b", { converted: true, batch: 5 })])).toEqual(["transform"]);
+  });
+
+  it("several permanents turned over at once are one sound, the first's", () => {
+    const p = plan([
+      transform("a", { batch: 6 }),
+      transform("b", { batch: 6 }),
+      transform("c", { batch: 6 }),
+      transform("d", { batch: 7 }),
+    ]);
+    expect(p.cues.map((q) => [q.cardID, q.follows === true])).toEqual([
+      ["a", false],
+      ["b", true],
+      ["c", true],
+      ["d", false],
+    ]);
+    expect(p.cues.filter((q) => cueSound(q) !== null)).toHaveLength(2);
+    expect(headlines(p)).toBe(2);
+  });
+
+  it("night falling is one wash and one sound, the bell; the werewolves it turns over follow, a beat later", () => {
+    const p = plan([
+      dayNight("night", { batch: 9 }),
+      transform("wolf-1", { batch: 9 }),
+      transform("wolf-2", { batch: 9 }),
+    ]);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.sky, q.follows === true, q.delayMs])).toEqual([
+      ["day_night", null, "night", false, 0],
+      ["transform", "wolf-1", undefined, true, DAY_NIGHT_FLIP_DELAY_MS],
+      ["transform", "wolf-2", undefined, true, DAY_NIGHT_FLIP_DELAY_MS],
+    ]);
+    expect(p.cues.map((q) => cueSound(q))).toEqual([{ name: "day_night", volume: 1 }, null, null]);
+    expect(headlines(p)).toBe(1);
+    // Day breaking is the same, with no werewolf to turn as well.
+    expect(plan([dayNight("day", { batch: 10 })]).cues.map((q) => [q.kind, q.sky])).toEqual([
+      ["day_night", "day"],
+    ]);
+    expect(dayNightOf(dayNight("dusk"))).toBeNull();
+    expect(kinds([dayNight("dusk", { batch: 11 })])).toEqual([]);
+  });
+
+  it("a flip after night falls still ends inside the Short cap", () => {
+    const t = cueTiming(
+      { kind: "transform", weight: "full", delayMs: DAY_NIGHT_FLIP_DELAY_MS },
+      "short",
+      1,
+    );
+    expect(t.delayMs + t.ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS);
+    expect(EFFECT_BASE_MS.transform).toBe(600);
+    expect(cueTiming({ kind: "day_night", weight: "full", delayMs: 0 }, "short", 1).ms).toBe(1000);
+  });
+
+  it("a meld is one flip on the melded permanent, unless it is a planeswalker, whose arrival it is", () => {
+    const entries = [
+      zone("rats", "exile", { batch: 12 }),
+      zone("host", "battlefield", { batch: 12 }, "exile"),
+      meld("host", { batch: 12 }),
+    ];
+    const p = plan(entries);
+    expect(p.cues.map((q) => [q.kind, q.cardID, q.melded])).toEqual([
+      ["exile", "rats", undefined],
+      ["transform", "host", true],
+    ]);
+    // One moment, one sound: the cards it was melded from leave in the
+    // exile's void, silently, and the flip plays.
+    expect(p.cues.map((q) => cueSound(q)?.name ?? null)).toEqual([null, "transform"]);
+    // Urza, Planeswalker: its pw_enter is the arrival, and no flip.
+    const urza = plan(
+      [zone("urza", "battlefield", { batch: 13 }, "exile"), meld("urza", { batch: 13 })],
+      ctx({ isPlaneswalker: (id) => id === "urza" }),
+    );
+    expect(urza.cues.map((q) => q.kind)).toEqual(["pw_enter"]);
+    expect(cueSound(urza.cues[0])?.name).toBe("pw_enter");
+    // An exile in a batch with no meld keeps its sound.
+    expect(cueSound(plan([zone("x", "exile", { batch: 19 })]).cues[0])?.name).toBe("exile");
+  });
+
+  it("an entry with no card is no flip, and a card's entries in one batch are one", () => {
+    expect(kinds([transform("a", { card_id: undefined, batch: 14 })])).toEqual([]);
+    expect(kinds([transform("a", { batch: 15 }), transform("a", { batch: 15 })])).toEqual([
+      "transform",
+    ]);
+  });
+
+  it("what is not a transform is no flip: an entry at night, a disturb cast, a face turned up, a return transformed", () => {
+    // A daybound card entering at night, a disturbed creature entering
+    // back face up, a card returned transformed: each only a zone move.
+    expect(kinds([zone("wolf", "battlefield", { batch: 16 }, "hand")])).toEqual([]);
+    expect(
+      kinds([
+        {
+          seq: ++seq,
+          kind: "cast",
+          turn: 3,
+          seat: 0,
+          card_id: "drifter",
+          old_zone: "graveyard",
+          text: "",
+        },
+      ]),
+    ).toEqual([]);
+    expect(
+      kinds([
+        { seq: ++seq, kind: "turn_face_up", turn: 3, seat: 0, card_id: "morph", text: "" },
+        { seq: ++seq, kind: "flip_permanent", turn: 3, seat: 0, card_id: "tok", text: "" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("counters put on a card that flips in the same batch pulse once it turns edge-on", () => {
+    const p = plan([
+      transform("a", { batch: 17 }),
+      counters("a", { batch: 17 }),
+      counters("b", { batch: 17 }),
+    ]);
+    const pulse = (id: string) => p.cues.find((q) => q.kind === "counters" && q.cardID === id)!;
+    expect(pulse("a").delayMs).toBe(TRANSFORM_TURN * EFFECT_BASE_MS.transform);
+    expect(pulse("b").delayMs).toBe(0);
+    // Each its own moment, its own sound: the flip's, then the counter's.
+    expect(cueSound(p.cues[0])).toEqual({ name: "transform", volume: 1 });
+    expect(cueSound(pulse("a"))).toEqual({ name: "counter_add", volume: 1 });
+    // After night falls the pulse waits for the later flip, and still
+    // ends inside the Short cap.
+    const n = plan([
+      dayNight("night", { batch: 18 }),
+      transform("w", { batch: 18 }),
+      counters("w", { batch: 18 }),
+    ]);
+    const c = n.cues.find((q) => q.kind === "counters")!;
+    expect(c.delayMs).toBe(DAY_NIGHT_FLIP_DELAY_MS + TRANSFORM_TURN * EFFECT_BASE_MS.transform);
+    const t = cueTiming(c, "short", 1);
+    expect(t.delayMs + t.ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS);
+  });
+
+  it("the sounds are effects-category entries with no takes yet", () => {
+    for (const name of ["transform", "day_night"] as const) {
+      expect(SOUND_CATEGORY[name]).toBe("effects");
+      expect(SOUND_MANIFEST[name]).toEqual([]);
+    }
   });
 });
 

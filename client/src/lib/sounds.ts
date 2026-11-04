@@ -101,6 +101,10 @@ export type SoundName =
   | "reanimate"
   // #4447: a library searched (a quick card riffle).
   | "library_search"
+  // #4448: a double-faced card turned over (a flip whoosh with a short
+  // sting), and the game becoming day or night (a bell).
+  | "transform"
+  | "day_night"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -170,6 +174,8 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   discard: "effects",
   reanimate: "effects",
   library_search: "effects",
+  transform: "effects",
+  day_night: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -253,6 +259,13 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // optional -2) are listed here (client/public/sounds/README.md, "Files
   // not made yet"). A search's own shuffle plays nothing of its own.
   library_search: [],
+  // #4448: files not made yet, and no fallback, so a card's flip to its
+  // other face and the sky's wash as it becomes day or night are silent
+  // until transform-1.mp3 and day_night-1.mp3 (each with an optional -2)
+  // are listed here (client/public/sounds/README.md, "Files not made
+  // yet"). Night turning werewolves over is one sound, the bell.
+  transform: [],
+  day_night: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

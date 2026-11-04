@@ -6,8 +6,9 @@
 // from the command zone or put back into it (#4443), an Equipment
 // attached or an Aura enchanting a permanent (#4444), cards milled or
 // discarded into a graveyard (#4445), cards returned from a graveyard to
-// the battlefield or a hand (#4446), a library searched (#4447) and a
-// board wipe
+// the battlefield or a hand (#4446), a library searched (#4447), a
+// double-faced permanent transforming or the game becoming day or night
+// (#4448) and a board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -134,7 +135,12 @@ export type EffectKind =
   | "reanimate"
   // A player searched a library (CR 701.23a): a tutor, a fetch land's
   // effect (#4447).
-  | "library_search";
+  | "library_search"
+  // A double-faced permanent turned over to its other face (CR 701.27a,
+  // a convert, CR 701.28a, or two cards melded into one, CR 701.42a),
+  // and the game becoming day or night (CR 731.1) (#4448).
+  | "transform"
+  | "day_night";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -150,6 +156,8 @@ export type EffectKind =
  * (discard) into a graveyard about half a second, and one card's rise out
  * of a graveyard (reanimate) about 0.8 s (pileBaseMs for more), and a
  * riffle through a library pile while it is searched about half a second.
+ * A double-faced card's flip to its other face is about 0.6 s, and the
+ * sky's wash across the table as it becomes day or night about a second.
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -175,6 +183,9 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   reanimate: 800,
   // A riffle through the library pile (#4447).
   library_search: 500,
+  // A card's flip to its other face, and the sky's wash (#4448).
+  transform: 600,
+  day_night: 1000,
 };
 
 /**
@@ -207,6 +218,8 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   discard: "discard",
   reanimate: "reanimate",
   library_search: "library_search",
+  transform: "transform",
+  day_night: "day_night",
 };
 
 /**
@@ -325,6 +338,13 @@ export interface EffectCue {
    */
   librarySeat?: number;
   /**
+   * For a transform cue (#4448): the permanent was melded out of two
+   * cards (CR 701.42a), so the face it turns from is its first card's,
+   * not its own other face. For a day_night cue: what the game became.
+   */
+  melded?: boolean;
+  sky?: "day" | "night";
+  /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
    */
@@ -438,6 +458,7 @@ export function planEffects(
   const piles: { kind: "mill" | "discard"; e: LogEvent }[] = [];
   const rises: LogEvent[] = [];
   const searches: LogEvent[] = [];
+  const turns: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -453,6 +474,12 @@ export function planEffects(
     }
     if (e.kind === "counters") {
       counters.push(e);
+      continue;
+    }
+    // #4448: a permanent turned over, two cards melded, or the game
+    // becoming day or night. None of them is a zone move.
+    if (e.kind === "transform" || e.kind === "meld" || e.kind === "day_night") {
+      turns.push(e);
       continue;
     }
     // #4447: a library searched, told by its `search` line or by the
@@ -590,6 +617,9 @@ export function planEffects(
   cues.push(...pileCues(piles));
   cues.push(...reanimateCues(rises));
   cues.push(...searchCues(searches));
+  cues.push(...turnCues(turns, ctx));
+  waitForFlips(cues);
+  meldIsOneSound(cues, turns);
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -1020,6 +1050,137 @@ function searchCues(entries: readonly LogEvent[]): EffectCue[] {
     out.push(c);
   }
   return out;
+}
+
+// ---- A double-faced card transforms, or day and night (#4448) ----
+
+/**
+ * In a batch where the game becomes day or night, the permanents it turns
+ * over (CR 702.145c, 702.145f) flip this long into the sky's wash, so the
+ * table sees night fall and then the werewolves turn. The flip still ends
+ * inside the Short cap: 250 + 600 ms.
+ */
+export const DAY_NIGHT_FLIP_DELAY_MS = 250;
+/**
+ * The share of a flip at which the card is edge-on and its new face starts
+ * to show. Counters put on a permanent that flips in the same batch pulse
+ * from here, on the face that has them.
+ */
+export const TRANSFORM_TURN = 0.5;
+
+/**
+ * dayNightOf is what a `day_night` entry says the game became (CR 731.1),
+ * or null for anything else.
+ */
+export function dayNightOf(e: LogEvent): "day" | "night" | null {
+  if (e.kind !== "day_night") return null;
+  return e.label === "day" || e.label === "night" ? e.label : null;
+}
+
+/**
+ * turnCues gives each permanent turned over in one batch one flip (#4448):
+ * a `transform` entry (a transform, or a convert, CR 701.28a) or a `meld`
+ * entry (the melded permanent, CR 701.42a), with its `card_id`; and each
+ * batch in which the game became day or night one wash over the table,
+ * what it became last. One batch is one moment and one sound: when night
+ * falls the wash plays its sound and the werewolves it turns over follow
+ * it, a beat later (DAY_NIGHT_FLIP_DELAY_MS); otherwise the batch's first
+ * flip plays it (Moonmist turning every Human over). A melded planeswalker
+ * (Urza, Planeswalker) is its arrival's cue, pw_enter, and no flip. An
+ * entry with no card_id (a viewer who may not identify the card) is no
+ * flip. A daybound card entering at night, a disturb cast, a face-down
+ * permanent turned face up and "return it transformed" write no such
+ * entry: none of them transforms (CR 701.27b, 712.14a).
+ */
+function turnCues(entries: readonly LogEvent[], ctx: PlanContext): EffectCue[] {
+  const skies = new Map<string, EffectCue>();
+  for (const e of entries) {
+    const sky = dayNightOf(e);
+    if (!sky) continue;
+    const batch = e.batch ?? null;
+    const at = batch === null ? `q${e.seq}` : String(batch);
+    const was = skies.get(at);
+    if (was) {
+      was.sky = sky;
+      continue;
+    }
+    skies.set(at, {
+      id: `${e.seq}:sky`,
+      seq: e.seq,
+      kind: "day_night",
+      cardID: null,
+      stackItemID: null,
+      batch,
+      weight: "full",
+      delayMs: 0,
+      sky,
+    });
+  }
+  const out: EffectCue[] = [...skies.values()];
+  const seen = new Set<string>();
+  const lead = new Set<string>(skies.keys());
+  for (const e of entries) {
+    if ((e.kind !== "transform" && e.kind !== "meld") || !e.card_id) continue;
+    const melded = e.kind === "meld";
+    if (melded && ctx.isPlaneswalker(e.card_id)) continue;
+    const batch = e.batch ?? null;
+    const at = batch === null ? `q${e.seq}` : String(batch);
+    const k = `${at}|${e.card_id}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const c: EffectCue = {
+      id: `${e.seq}:turn`,
+      seq: e.seq,
+      kind: "transform",
+      cardID: e.card_id,
+      stackItemID: null,
+      batch,
+      weight: "full",
+      delayMs: skies.has(at) ? DAY_NIGHT_FLIP_DELAY_MS : 0,
+    };
+    if (melded) c.melded = true;
+    if (lead.has(at)) c.follows = true;
+    else lead.add(at);
+    out.push(c);
+  }
+  return out;
+}
+
+/**
+ * waitForFlips holds the pulse of counters put on a permanent that flips
+ * in the same batch (#4448) until the flip turns edge-on (TRANSFORM_TURN),
+ * so it rings the face the counters are on, not a card mid-turn. Its own
+ * sound waits with it.
+ */
+function waitForFlips(cues: EffectCue[]): void {
+  const flips = new Map<string, number>();
+  for (const c of cues) {
+    if (c.kind !== "transform" || c.batch === null || !c.cardID) continue;
+    flips.set(`${c.batch}|${c.cardID}`, c.delayMs);
+  }
+  if (flips.size === 0) return;
+  for (const c of cues) {
+    if (c.kind !== "counters" || c.batch === null || !c.cardID) continue;
+    const at = flips.get(`${c.batch}|${c.cardID}`);
+    if (at === undefined) continue;
+    c.delayMs = Math.max(c.delayMs, at + TRANSFORM_TURN * EFFECT_BASE_MS.transform);
+  }
+}
+
+/**
+ * meldIsOneSound: a meld exiles its two cards and puts them back as one
+ * (CR 701.42a), in one batch, and that is one moment. The two cards still
+ * leave in the exile's white void, which is what happened to them, but
+ * play no sound: the melded permanent's flip (or a melded planeswalker's
+ * arrival) is the batch's sound.
+ */
+function meldIsOneSound(cues: EffectCue[], turns: readonly LogEvent[]): void {
+  const melds = new Set<number>();
+  for (const e of turns) if (e.kind === "meld" && e.card_id && e.batch != null) melds.add(e.batch);
+  if (melds.size === 0) return;
+  for (const c of cues) {
+    if (c.kind === "exile" && c.batch !== null && melds.has(c.batch)) c.follows = true;
+  }
 }
 
 function toneOf(g: readonly Exit[], ctx: PlanContext): WipeTone {
@@ -1554,8 +1715,9 @@ export function busyScale(n: number): number {
  * created attached, whose token cue follows its attach cue, the
  * players one effect makes mill or discard, and the cards one effect
  * returns from graveyards (and a returned planeswalker's or Aura's
- * arrival or attach cue, which follows its rise), and the libraries one
- * effect has players search.
+ * arrival or attach cue, which follows its rise), the libraries one
+ * effect has players search, and the permanents one batch turns over
+ * (and, when night falls, the werewolves that follow its wash).
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

@@ -5,7 +5,8 @@
 // put on a permanent (#4442), a commander cast from the command zone or
 // going home (#4443), an Equipment attached or an Aura enchanting a
 // permanent (#4444), cards milled or discarded into a graveyard (#4445),
-// a card returned from a graveyard (#4446), a library searched (#4447) and
+// a card returned from a graveyard (#4446), a library searched (#4447), a
+// double-faced card transforming or day and night changing (#4448) and
 // a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
@@ -42,6 +43,7 @@ import {
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
   EFFECT_STILL_HOLD_MS,
+  DAY_NIGHT_FLIP_DELAY_MS,
   TOKEN_STAGGER_MS,
   WIPE_FIRST_CARD_MS,
   REANIMATE_HAND_VOLUME,
@@ -1962,6 +1964,225 @@ describe("a player searches a library (#4447)", () => {
       expect(effects()).toHaveLength(0);
       expect(badges()).toHaveLength(0);
       expect(sounds("library_search")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a double-faced card transforms, or day and night changes (#4448)", () => {
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  // The art a tile shows: cardImage.ts's URL, face 0 with no face.
+  const art = (id: string, face: number) =>
+    `/cards/sf-${id}/image?size=art_crop${face > 0 ? `&face=${face}` : ""}`;
+  const dfc = (id: string, face: number, extra: Partial<CardView> = {}) =>
+    permanent(id, "opp", {
+      layout: "transform",
+      active_face: face,
+      faces: [
+        { name: `${id} front`, image: `/cards/sf-${id}/image?face=0` },
+        { name: `${id} back`, image: `/cards/sf-${id}/image?face=1` },
+      ],
+      ...extra,
+    } as Partial<CardView>);
+  const transform = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "transform",
+    turn: 3,
+    seat: 1,
+    card_id: id,
+    label: `${id} front`,
+    batch: 4,
+    text: `${id} front transformed into ${id} back`,
+    ...extra,
+  });
+  const night = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "day_night",
+    turn: 4,
+    seat: -1,
+    label: "night",
+    batch: 9,
+    text: "It becomes night",
+    ...extra,
+  });
+  const tileOf = (board: HTMLElement, id: string) =>
+    board.querySelector<HTMLElement>(`[data-instance-id="${id}"]`)!;
+  const showFace = (board: HTMLElement, id: string, face: number) =>
+    tileOf(board, id).querySelector("img")!.setAttribute("src", art(id, face));
+
+  // `ids` are on the board front face up; then `log` lands with each card
+  // in `flipped` back face up, its tile showing that face.
+  function frame(ids: string[], flipped: string[], log: LogEvent[], tapped: string[] = []) {
+    const board = makeBoard(ids);
+    for (const id of ids) showFace(board, id, 0);
+    for (const id of tapped) {
+      const el = tileOf(board, id);
+      const r = el.getBoundingClientRect();
+      el.dataset.tapped = "true";
+      el.getBoundingClientRect = () => new DOMRect(r.left, r.top, r.height, r.width);
+    }
+    const before = ids.map((id) => dfc(id, 0));
+    const r = render(
+      TableEffects as never,
+      { view: viewWith([], before), boardEl: board } as never,
+    );
+    advance(50);
+    for (const id of flipped) showFace(board, id, 1);
+    const after = ids.map((id) => dfc(id, flipped.includes(id) ? 1 : 0));
+    r.setProps({ view: viewWith(log, after) } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  it("a transform flips the card over its tile from the face it was to the face it is, with one sound", () => {
+    const { board } = frame(["a", "b"], ["a"], [transform("a")]);
+    const cues = effects("transform");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-card")).toBe("a");
+    // Centred on its tile, at its size.
+    expect(cues[0].style.left).toBe(`${100 + TILE.width / 2}px`);
+    expect(cues[0].style.top).toBe(`${300 + TILE.height / 2}px`);
+    const from = cues[0].querySelector<HTMLElement>(".turn-from")!;
+    const to = cues[0].querySelector<HTMLElement>(".turn-to")!;
+    expect(from.querySelector("img")?.getAttribute("src")).toBe(art("a", 0));
+    expect(to.querySelector("img")?.getAttribute("src")).toBe(art("a", 1));
+    expect(from.style.width).toBe(`${TILE.width}px`);
+    expect(from.style.height).toBe(`${TILE.height}px`);
+    // It turns about its vertical axis, half a turn, edge-on midway.
+    const turn = runsOn(cues[0].querySelector(".turn-card")!);
+    expect(turn).toHaveLength(1);
+    const frames = turn[0][1] as Keyframe[];
+    expect(frames[0].transform).toMatch(/rotateY\(0deg\)/);
+    expect(frames.find((k) => /rotateY\(90deg\)/.test(String(k.transform)))).toBeTruthy();
+    expect(frames.at(-1)?.transform).toMatch(/rotateY\(180deg\)/);
+    expect(runsOn(cues[0].querySelector(".turn-rim")!)).toHaveLength(1);
+    // Its tile waits hidden under the copy, and only its tile.
+    const held = runsOn(tileOf(board, "a"));
+    expect(held).toHaveLength(1);
+    expect((held[0][1] as Keyframe[])[0].opacity).toBe(0);
+    expect((held[0][1] as Keyframe[]).at(-1)?.opacity).toBe(1);
+    expect(held[0][2].fill).toBe("backwards");
+    expect(runsOn(tileOf(board, "b"))).toHaveLength(0);
+    // About 0.6 s, and nothing waits on it.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.transform + 1e-6);
+    expect(sounds("transform")).toEqual([["transform", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("transform")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a tapped card flips about its own long axis, at its unturned size", () => {
+    frame(["a"], ["a"], [transform("a")], ["a"]);
+    const cue = effects("transform")[0];
+    expect(cue.querySelector<HTMLElement>(".turn")!.style.rotate).toBe("90deg");
+    const from = cue.querySelector<HTMLElement>(".turn-from")!;
+    expect(from.style.width).toBe(`${TILE.width}px`);
+    expect(from.style.height).toBe(`${TILE.height}px`);
+  });
+
+  it("night falling washes the table and turns every werewolf a beat later, as one sound, the bell", () => {
+    frame(
+      ["a", "b", "c"],
+      ["a", "b"],
+      [night(), transform("a", { batch: 9 }), transform("b", { batch: 9 })],
+    );
+    const sky = effects("day_night");
+    expect(sky).toHaveLength(1);
+    expect(sky[0].getAttribute("data-sky")).toBe("night");
+    for (const part of [".sky-tint", ".sky-band", ".sky-orb"]) {
+      expect(runsOn(sky[0].querySelector(part)!)).toHaveLength(1);
+    }
+    const flips = effects("transform");
+    expect(flips.map((c) => c.getAttribute("data-effect-card"))).toEqual(["a", "b"]);
+    for (const c of flips) {
+      const turn = runsOn(c.querySelector(".turn-card")!)[0];
+      expect(turn[2].delay).toBe(DAY_NIGHT_FLIP_DELAY_MS);
+    }
+    // One moment: the bell once, and the flips play nothing of their own.
+    expect(sounds("day_night")).toEqual([["day_night", { volume: 1, batch: "g1:9" }]]);
+    expect(sounds("transform")).toHaveLength(0);
+    // Inside the cap.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS);
+    advance(EFFECT_CAP_MS + 200);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("day breaking with no werewolf out is the wash alone, in the day's colours", () => {
+    frame(["a"], [], [night({ label: "day", text: "It becomes day", batch: 10 })]);
+    const sky = effects("day_night");
+    expect(sky).toHaveLength(1);
+    expect(sky[0].getAttribute("data-sky")).toBe("day");
+    expect(effects("transform")).toHaveLength(0);
+    expect(sounds("day_night")).toHaveLength(1);
+  });
+
+  it("a melded permanent flips from its first card's front to the melded face", () => {
+    const board = makeBoard(["host"]);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    showFace(board, "host", 0);
+    const host = permanent("host", "opp", {
+      layout: "meld",
+      melded_from: [
+        { name: "Midnight Scavengers", image: "/cards/sf-scav/image" },
+        { name: "Graf Rats", image: "/cards/sf-rats/image" },
+      ],
+    } as Partial<CardView>);
+    const meld: LogEvent = {
+      seq: ++seq,
+      kind: "meld",
+      turn: 3,
+      seat: 1,
+      card_id: "host",
+      label: "Midnight Scavengers and Graf Rats",
+      batch: 12,
+      text: "Midnight Scavengers and Graf Rats melded into Chittering Host",
+    };
+    r.setProps({
+      view: viewWith([zone("host", "battlefield", { batch: 12 }, "exile"), meld], [host]),
+    } as never);
+    flushSync();
+    const cues = effects("transform");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].querySelector(".turn-from img")?.getAttribute("src")).toBe(
+      "/cards/sf-scav/image?size=art_crop",
+    );
+    expect(cues[0].querySelector(".turn-to img")?.getAttribute("src")).toBe(art("host", 0));
+    expect(sounds("transform")).toHaveLength(1);
+  });
+
+  it("a card no longer on the board, or one with no other face, draws nothing and still plays the sound", () => {
+    frame(["a"], [], [transform("gone", { batch: 14 })]);
+    expect(effects()).toHaveLength(0);
+    expect(sounds("transform")).toHaveLength(1);
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing, holds no tile and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    frame(["a"], ["a"], [night(), transform("a", { batch: 9 })]);
+    expect(effects("transform")).toHaveLength(1);
+    expect(effects("day_night")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame(["a"], ["a"], [night({ batch: 20 }), transform("a", { batch: 20 })]);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("day_night")).toHaveLength(1);
+      expect(sounds("transform")).toHaveLength(0);
       cleanup();
       document.body.innerHTML = "";
     }

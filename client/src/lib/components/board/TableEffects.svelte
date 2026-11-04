@@ -53,6 +53,13 @@
   // nothing about what the library holds, or what the search found, is
   // drawn, and a search that finds nothing looks the same.
   //
+  // A double-faced permanent that transforms (#4448) flips on its own
+  // vertical axis from the face it was to the face it is, as a copy over
+  // its tile, which waits hidden until the copy settles (effectCueMotion.ts
+  // flipHold, cancelled with the cue). The game becoming day or night
+  // washes the table in the sky's tint, and the werewolves it turns over
+  // flip a beat later.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -157,6 +164,7 @@
     attachSlide,
     commandArrive,
     cueMotion,
+    flipHold,
     pileLandAt,
     riseArrive,
     tokenPop,
@@ -248,6 +256,10 @@
     tileIDs?: (string | null)[];
     // A library searched (#4447): whose library pile riffles, a seat ID.
     library?: string;
+    // A permanent that transforms (#4448): the face it turns from (`src`
+    // is the face it turns to). The game becoming day or night: which.
+    from?: string;
+    sky?: "day" | "night";
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -474,6 +486,11 @@
     // And a library searched (#4447): the log says who searched whose
     // library, and the board shows where whatever was found went.
     library_search: null,
+    // And a permanent that transforms, or the game becoming day or night
+    // (#4448): the board shows the new face, the dock shows day or night,
+    // and the log says both.
+    transform: null,
+    day_night: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -552,6 +569,14 @@
     }
     if (cue.kind === "library_search") {
       placeRiffle(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "day_night") {
+      placeSky(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "transform") {
+      placeTransform(cue, base, motion, b);
       return;
     }
     const cardID = cue.cardID;
@@ -1175,6 +1200,76 @@
     });
   }
 
+  // ---- A double-faced card transforms, or day and night (#4448) ----
+
+  // `src` as the face `face` of its card, at the size of `like`: an image
+  // URL built by cardImage.ts ("/cards/{id}/image?size=…&face=N", face 0
+  // with no face).
+  function imageAs(src: string, like: string, face?: number): string {
+    const [path, query = ""] = src.split("?");
+    const q = new URLSearchParams(query);
+    const size = new URLSearchParams(like.split("?")[1] ?? "").get("size");
+    if (size) q.set("size", size);
+    if (face !== undefined) {
+      if (face > 0) q.set("face", String(face));
+      else q.delete("face");
+    }
+    const out = q.toString();
+    return out ? `${path}?${out}` : path;
+  }
+
+  // The permanent flips over its own tile, from the face it was to the
+  // face its tile shows now, at the tile's size and turn. The face it was
+  // is its other face, or, for a melded permanent, its first card's front
+  // (its tile has just entered, so its size is the layout's, which its
+  // entrance pop does not change). A permanent already gone, one with no
+  // art, or a still cue draws nothing, and the sound plays.
+  function placeTransform(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const id = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(id)) return;
+    const card = view.battlefield.cards.find((c) => c.instance_id === id);
+    const el = findCardAnchor(boardEl, id, { accept: fieldTile });
+    if (!card || !el || showsCardBack(card)) return;
+    const to =
+      el.querySelector<HTMLImageElement>("img")?.getAttribute("src") ?? cardImageURL(card, "small");
+    if (!to) return;
+    const first = card.melded_from?.[0]?.image;
+    let from: string | null = null;
+    if (cue.melded) from = first ? imageAs(first, to) : null;
+    else if ((card.faces?.length ?? 0) >= 2) {
+      from = imageAs(to, to, (card.active_face ?? 0) === 0 ? 1 : 0);
+    }
+    if (!from) return;
+    const now = tileOf(el, b.rect, b.size);
+    add({
+      ...base,
+      x: now.box.x,
+      y: now.box.y,
+      width: cue.melded ? el.offsetWidth || now.width : now.width,
+      height: cue.melded ? el.offsetHeight || now.height : now.height,
+      rot: now.rot,
+      src: to,
+      from,
+    });
+  }
+
+  // The sky's wash covers the whole table. A still cue draws nothing, and
+  // the sound plays.
+  function placeSky(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still") return;
+    add({ ...base, width: b.size.w, height: b.size.h, sky: cue.sky ?? "night" });
+  }
+
   // Where an Aura's glints twinkle, as shares of the host's box from its centre.
   const ATT_GLINTS = [
     [-0.44, -0.34],
@@ -1682,6 +1777,18 @@
       return {
         destroy: () => {
           slide?.cancel();
+          cancelTree(node);
+        },
+      };
+    } else if (f.kind === "transform") {
+      // #4448: the permanent's own tile waits, hidden, under its flip;
+      // only this run is cancelled with the cue.
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: fieldTile }) : null;
+      const held = tile ? flipHold(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          held?.cancel();
           cancelTree(node);
         },
       };
@@ -2220,6 +2327,47 @@
             ></div>
           </div>
         {/each}
+      </div>
+    {:else if f.kind === "transform"}
+      <!-- #4448: the card flips on its own vertical axis to its other face,
+           over its tile, which waits hidden under it. -->
+      <div
+        class="fx m"
+        data-effect="transform"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="turn" style:rotate={`${f.rot}deg`}>
+          <div
+            class="turn-rim"
+            style:width={`${f.width + 10}px`}
+            style:height={`${f.height + 10}px`}
+          ></div>
+          <div class="turn-card">
+            <div class="face turn-from" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+              {#if f.from}<img src={f.from} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+            <div class="face turn-to" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        </div>
+      </div>
+    {:else if f.kind === "day_night"}
+      <!-- #4448: the table takes the sky's tint as it becomes day or night. -->
+      <div
+        class="sky m"
+        data-effect="day_night"
+        data-effect-motion={f.motion}
+        data-sky={f.sky}
+        use:motionOf={f}
+      >
+        <div class="sky-tint"></div>
+        <div class="sky-band" style:width={`${Math.max(160, f.board.w * 0.45)}px`}></div>
+        <div class="sky-orb" style:left={`${f.board.w / 2}px`}></div>
       </div>
     {:else if f.kind === "pw_enter"}
       <div
@@ -3261,6 +3409,90 @@
     );
     filter: blur(3px);
     opacity: 0;
+  }
+
+  /* A permanent that transforms (#4448): two faces back to back, turned
+     with a tapped card, so the flip is about the card's own vertical axis;
+     a pale rim lights it as it turns edge-on. */
+  .turn {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+  }
+  .turn-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+  }
+  .turn-card .face {
+    backface-visibility: hidden;
+    transform: translate(-50%, -50%);
+  }
+  .turn-card .face.turn-to {
+    transform: translate(-50%, -50%) rotateY(180deg);
+  }
+  .turn-rim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 2px rgba(226, 232, 255, 0.85),
+      0 0 22px 6px rgba(178, 192, 255, 0.55);
+    opacity: 0;
+  }
+
+  /* The game becomes day or night (#4448): the sky's tint over the table,
+     a band of its light crossing it, and the moon or the sun at the top. */
+  .sky {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    --sky-tint: rgba(18, 28, 84, 0.34);
+    --sky-light: rgba(150, 172, 255, 0.22);
+  }
+  .sky[data-sky="day"] {
+    --sky-tint: rgba(255, 196, 96, 0.2);
+    --sky-light: rgba(255, 236, 180, 0.3);
+  }
+  .sky-tint {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, var(--sky-tint) 0%, transparent 85%);
+    opacity: 0;
+  }
+  .sky-band {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(90deg, transparent, var(--sky-light), transparent);
+    filter: blur(8px);
+    opacity: 0;
+  }
+  .sky-orb {
+    position: absolute;
+    top: 18px;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
+    border-radius: 50%;
+    background: #eef1ff;
+    /* A crescent: the dark of the night sky over most of the disc. */
+    box-shadow:
+      inset -9px -3px 0 1px rgba(30, 38, 90, 0.95),
+      0 0 18px 4px rgba(190, 204, 255, 0.55);
+    opacity: 0;
+  }
+  .sky[data-sky="day"] .sky-orb {
+    background: radial-gradient(circle, #fff6d6 0%, #ffd56a 60%, #ffb63a 100%);
+    box-shadow: 0 0 26px 10px rgba(255, 206, 110, 0.6);
   }
 
   /* A library searched (#4447): card backs riffled off the pile, which
