@@ -515,6 +515,7 @@ choose choose-cards/london-mulligan-bottom
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/malcolm-free-cast-offer
+choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-something-worth-saving-pick
@@ -1998,6 +1999,7 @@ tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/locke-treasure-hunter-mug-step
+tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
 tail then/mazemind-tome-gain-life
 tail then/megatron-when-you-do
