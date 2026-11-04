@@ -2205,6 +2205,10 @@ time a spec was refactored.
 | `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
 | `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
 | `wubrg-dragons` | Dragon Hoard | The Ur-Dragon | Tribal (WUBRG) — nineteen Dragons that The Ur-Dragon makes cheaper and turns into cards and free permanents. The one built-in deck with a companion: Jegantha, the Wellspring waits outside the game ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md) decision 8) |
+| `mono-blue-artifacts` | Thopter Swarm | Sai, Master Thopterist | Artifacts (U) — cheap artifacts and mana rocks; every artifact spell is a flying Thopter from Sai, and spare Thopters become cards |
+| `izzet-spellslinger` | Spell Echo | Veyran, Voice of Duality | Spellslinger (UR) — burn, card draw and counterspells behind creatures that reward each spell; Veyran makes every one of those rewards trigger twice |
+| `orzhov-aristocrats` | Grave Dividends | Teysa Karlov | Aristocrats (WB) — tokens to sacrifice and drains on every death; Teysa makes each death trigger fire twice and gives the tokens lifelink |
+| `gruul-counters` | Growing Pains | Grumgully, the Generous | Counters (RG) — +1/+1 counters: Grumgully and the counter doublers make every creature enter bigger, and the Hydras keep growing |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -2234,10 +2238,18 @@ cost) shaped the list, so there is no Wrath of God or Sun Titan in it.
 it through the same pipeline a pasted list runs, and the heuristic is
 offered the `companion` special action like any seat with one.
 
+The last four (Thopter Swarm, Spell Echo, Grave Dividends, Growing
+Pains) are #554's second round, for the gaps it still listed: no
+mono-blue deck, no second aristocrats or control option, and no
+precon-style theme such as spellslinger. Each is in a colour or colour
+pair no other deck uses, and each is held to the same bar: every
+non-basic card graded `full` (72, 79, 78 and 80 cards), and every
+instant declaring what it answers.
+
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-All seven are in the picker. The `placeholder-mono-red` stand-in that
+All twelve are in the picker. The `placeholder-mono-red` stand-in that
 sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
 from it.
 
