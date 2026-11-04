@@ -512,7 +512,10 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 	if c.AttachedTo.Kind == TargetCard {
 		if idx := findCardOnBattlefield(g, c.AttachedTo.ID); idx >= 0 {
 			host := &g.Battlefield.Cards[idx]
-			if HasProtection(host) && ProtectedFrom(host, SourceCharacteristics(c)) {
+			// CR 702.16n: an instance that "doesn't remove this Aura"
+			// (or "doesn't remove Auras") is skipped for this Aura; any
+			// other instance of the same quality still counts (#4843).
+			if HasProtection(host) && ProtectedFromAttachment(host, c) {
 				return false
 			}
 		}
