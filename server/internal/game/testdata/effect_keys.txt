@@ -1681,6 +1681,7 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail gandalf-shadows-foe/return-lands-tapped
 tail gemstone-mine/sacrifice-if-empty
+tail georgiou-terran-emperor/draw-then-officers
 tail ghostly-flicker/return-under-your-control
 tail ghouls-night-out/black-zombies
 tail gifts-ungiven/choose
