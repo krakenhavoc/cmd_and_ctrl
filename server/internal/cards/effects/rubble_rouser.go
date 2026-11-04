@@ -13,14 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // loot): the draw only follows a discard that happened. The second ability is
 // a mana ability (CR 605.1a) whose exile is a cost the activator picks
 // (ExileCardsFromGraveyard, the exile-from-graveyard cost component on a mana
-// ability) and whose damage is the rider after "Add {R}"
-// (PingOpponents, Zhur-Taa Druid's declaration): it runs in the same atomic
-// resolution, so the damage is not a separate stack object the way the
-// printed reflexive "When you do" is (CR 603.12), and nobody can respond
-// between the mana and the damage. That is the catalog's reading of a mana
-// ability's damage clause.
-//
-// No simplification beyond that timing.
+// ability). Its "When you do" is a reflexive triggered ability (CR 603.12),
+// not part of the mana ability: it cannot add mana, so it is an ordinary
+// trigger that uses the stack (CR 605.1b, #4928). PingOpponentsTrigger,
+// Zhur-Taa Druid's declaration, builds it: the {R} lands at once (CR 605.3b)
+// and the damage goes on the stack when a player would next receive priority.
 func init() {
 	const lootLabel = "Rubble Rouser — you may discard a card; if you do, draw a card"
 	Register(Spec{
@@ -33,10 +30,10 @@ func init() {
 			}),
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:          ManaAbilityCost{Tap: true, ExileCards: ExileCardsFromGraveyard(1, "a card", nil)},
-			Produced:      "{R}",
-			Label:         "{T}, Exile a card from your graveyard: Add {R}. When you do, this creature deals 1 damage to each opponent",
-			PingOpponents: 1,
+			Cost:                 ManaAbilityCost{Tap: true, ExileCards: ExileCardsFromGraveyard(1, "a card", nil)},
+			Produced:             "{R}",
+			Label:                "{T}, Exile a card from your graveyard: Add {R}. When you do, this creature deals 1 damage to each opponent",
+			PingOpponentsTrigger: 1,
 		}},
 	})
 }
