@@ -13,7 +13,6 @@ func rampantGrowthSearch() func(*game.StackItem, *Context) error {
 			Predicate:     IsBasicLand,
 			Dest:          game.ZoneBattlefield,
 			Limit:         1,
-			Reveal:        true,
 			Shuffle:       true,
 			TappedOnEntry: true,
 			Reason:        "Rampant Growth — a basic land",
