@@ -20,7 +20,7 @@ The project pins the Comprehensive Rules effective September 25, 2026 (`MagicCom
 
 - **The rule numbers here are the ones the owner's brief on #4870 names** (901.1–901.15, 901.5, 901.6, 901.7/901.7a, 901.8, 901.9a–d, 901.10/901.10a–b, 901.11a–c, 901.13, 901.15a–c, 311, 311.7, 312, 706.7, 116, 800.4p). None is cited from memory, and no rule text is quoted.
 - **Where a decision depends on the exact wording**, this ADR says what it depends on and leaves the reading to the slice that implements it. That slice quotes the rule verbatim in the file's header comment, the way `dungeon.go` and `initiative.go` quote CR 309 and CR 726, and corrects this ADR in a dated amendment if the text disagrees.
-- **Before this ADR is merged**, someone with the TXT checks each number above against it. The PR's test plan has that box.
+- **Before this ADR is merged**, someone with the TXT checks each number above against it. *Done 2026-11-04 by the owner: every cited number exists in the pinned text, and the paraphrased rules match it ([Owner answers](#owner-answers-ian-2026-11-04)). The slices still quote each rule verbatim before writing code.*
 
 ---
 
