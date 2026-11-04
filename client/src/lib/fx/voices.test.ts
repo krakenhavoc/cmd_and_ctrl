@@ -85,6 +85,39 @@ describe("VoiceBus", () => {
     expect(r.bus.speak(A, "leave")).toBe(true); // the walker is not on cooldown
   });
 
+  it("follows the duck while a line plays, and lets go when it ends (#4410)", () => {
+    let hear: ((f: number) => void) | null = null;
+    const volumes: number[] = [];
+    const done: Array<(failed: boolean) => void> = [];
+    const bus = new VoiceBus({
+      manifest,
+      now: () => 0,
+      muted: () => false,
+      volume: () => 0.8,
+      random: () => 0,
+      duck: (fn) => {
+        hear = fn;
+        fn(0.5); // an interface cue is already playing
+        return () => {
+          hear = null;
+        };
+      },
+      player: (_url, vol, d) => {
+        volumes.push(vol);
+        done.push(d);
+        return (v) => volumes.push(v);
+      },
+    });
+    expect(bus.speak(A, "enter")).toBe(true);
+    expect(volumes[0]).toBeCloseTo(0.4); // it starts ducked
+    hear!(1);
+    expect(volumes.at(-1)).toBeCloseTo(0.8); // the cue ended
+    hear!(0.5);
+    expect(volumes.at(-1)).toBeCloseTo(0.4); // another cue
+    done[0](false);
+    expect(hear).toBeNull(); // the line is over: it stops listening
+  });
+
   it("swallows a player that throws", () => {
     const bus = new VoiceBus({
       manifest,

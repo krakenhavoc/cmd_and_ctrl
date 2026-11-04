@@ -29,8 +29,9 @@
   // pointer events, so the click also reaches the board under it.
   //
   // z 57 on DESIGN.md §4's ladder, the table-effects rung: after
-  // TableEffects in the DOM, above the action dock (55), below the hints
-  // (58). aria-hidden: the log and the life popups carry the news.
+  // TableEffects in the DOM, above the action dock (55), below the
+  // tutorial's coach (58). aria-hidden: the log and the life popups carry
+  // the news.
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
@@ -519,7 +520,7 @@
     inset: 0;
     pointer-events: none;
     /* The table-effects rung of DESIGN.md §4's ladder: above the action
-       dock (55), below the hints (58). */
+       dock (55), below the coach (58). */
     z-index: 57;
     overflow: hidden;
   }

@@ -17,7 +17,11 @@ import (
 // Duplication's: a token copy of the object (copiable values, the original's
 // triggers and abilities along) with the legendary supertype taken off its
 // type line, part of the copy's copiable values (CR 707.9b). A creature that
-// has left by then is skipped.
+// has left by then is skipped. Every copy is made by ONE creation, one group
+// per original (#4594, CreateTokenCopiesTogether): the tokens are created
+// at the same time (CR 608.2f) and enter together, so each newcomer sees
+// the others enter (CR 603.6a) and a "one or more" trigger counts one
+// event (CR 603.2c).
 //
 // No simplification.
 func init() {
@@ -32,19 +36,13 @@ func init() {
 					originals = append(originals, c.InstanceID)
 				}
 			}
-			for _, id := range originals {
-				if err := (CreateTokenCopy{
-					Controller: item.Controller,
-					Copy:       id,
-					N:          1,
-					Except: func(tok *game.Card) {
-						tok.TypeLine = removeLegendaryFromTypeLine(tok.TypeLine)
-					},
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return CreateTokenCopiesTogether{
+				Controller: item.Controller,
+				Copies:     originals,
+				Except: func(tok *game.Card) {
+					tok.TypeLine = removeLegendaryFromTypeLine(tok.TypeLine)
+				},
+			}.Apply(ctx)
 		},
 	})
 }

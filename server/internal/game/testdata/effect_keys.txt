@@ -1676,6 +1676,7 @@ tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters
 tail kaya-orzhov-usurper/gain-2-if-creature
+tail kindred-charge/haste-and-exile-copies
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission

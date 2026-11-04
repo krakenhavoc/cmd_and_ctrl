@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_MS,
   ArrivalClock,
+  boxMoved,
   combatCards,
   departureCaption,
   departureCaptions,
@@ -17,6 +18,7 @@ import {
   fieldLandingSelectors,
   trackField,
   uprightBox,
+  visibleBox,
   type FieldCard,
   type FieldTracker,
 } from "./fieldMotion";
@@ -339,5 +341,44 @@ describe("ArrivalClock", () => {
     expect(c.live(ARRIVAL_MS + 1)).toEqual(["a"]);
     expect(c.live(1000 + ARRIVAL_MS)).toEqual([]);
     expect(c.next()).toBeNull();
+  });
+});
+
+describe("visibleBox (#4711)", () => {
+  const card = { left: 100, top: 40, width: 60, height: 84 };
+
+  it("keeps a card no box clips", () => {
+    expect(visibleBox(card, [])).toEqual(card);
+    expect(visibleBox(card, [{ left: 0, top: 0, width: 400, height: 300 }])).toEqual(card);
+  });
+
+  it("cuts a card half out of its row to the part on screen", () => {
+    const row = { left: 0, top: 30, width: 130, height: 200 };
+    const back = { left: 20, top: 0, width: 500, height: 100 };
+    expect(visibleBox(card, [row, back])).toEqual({ left: 100, top: 40, width: 30, height: 60 });
+  });
+
+  it("is null for a card wholly out of view", () => {
+    expect(visibleBox(card, [{ left: 200, top: 0, width: 100, height: 300 }])).toBeNull();
+    expect(visibleBox(card, [{ left: 0, top: 0, width: 100.5, height: 300 }])).toBeNull();
+  });
+});
+
+describe("boxMoved (#4711)", () => {
+  const a = { left: 10, top: 20, width: 60, height: 84 };
+
+  it("ignores sub-pixel jitter", () => {
+    expect(boxMoved(a, { ...a, left: 10.4, height: 84.5 })).toBe(false);
+  });
+
+  it("sees a move or a resize", () => {
+    expect(boxMoved(a, { ...a, top: 36 })).toBe(true);
+    expect(boxMoved(a, { ...a, width: 56 })).toBe(true);
+  });
+
+  it("sees a ring appear or go", () => {
+    expect(boxMoved(a, null)).toBe(true);
+    expect(boxMoved(undefined, a)).toBe(true);
+    expect(boxMoved(null, null)).toBe(false);
   });
 });

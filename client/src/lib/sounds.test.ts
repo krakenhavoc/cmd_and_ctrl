@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SoundName } from "./sounds";
 
 // sounds.ts keeps module-level state (gains, the missing set, the burst
 // memory), so each test loads a fresh copy of it. The suite runs in Node:
@@ -194,6 +195,98 @@ describe("sounds", () => {
         .flat()
         .filter((u) => !exists(u));
       expect(absent).toEqual([]);
+    });
+
+    // The cues whose files are not made yet (client/public/sounds/README.md,
+    // "Files not made yet"): each lists no takes, so nothing is fetched, and
+    // plays its fallback, or nothing when it has none. The PR that adds a
+    // cue's files lists its takes in the manifest and removes it here.
+    const NOT_MADE_YET: readonly SoundName[] = [
+      "extort", // #4544, falls back to damage
+      "token_create", // #4441, silent
+      "counter_add", // #4442, silent
+      "counter_remove", // #4442, silent
+      "commander_cast", // #4443, silent
+      "commander_return", // #4443, silent
+      "attach_equip", // #4444, silent
+      "attach_aura", // #4444, silent
+    ];
+
+    it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
+      const m = await load();
+      const empty = (Object.keys(m.SOUND_MANIFEST) as SoundName[]).filter(
+        (n) => m.SOUND_MANIFEST[n].length === 0,
+      );
+      expect(empty.sort()).toEqual([...NOT_MADE_YET].sort());
+    });
+
+    it("plays nothing for token_create until its file lands, and itself once a take is listed (#4441)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.token_create).toBe("effects");
+      expect(m.SOUND_FALLBACK.token_create).toBeUndefined();
+      m.play("token_create");
+      await settle();
+      expect(played()).toHaveLength(0);
+
+      tick();
+      m.SOUND_MANIFEST.token_create = ["/sounds/token_create-1.mp3"];
+      m.play("token_create");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/token_create-1.mp3");
+    });
+
+    it("plays nothing for counter_add and counter_remove until their files land, and each itself once a take is listed (#4442)", async () => {
+      const m = await load();
+      for (const name of ["counter_add", "counter_remove"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["counter_add", "counter_remove"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for commander_cast and commander_return until their files land, and each itself once a take is listed (#4443)", async () => {
+      const m = await load();
+      for (const name of ["commander_cast", "commander_return"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["commander_cast", "commander_return"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for attach_equip and attach_aura until their files land, and each itself once a take is listed (#4444)", async () => {
+      const m = await load();
+      for (const name of ["attach_equip", "attach_aura"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["attach_equip", "attach_aura"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
     });
 
     // #4543: three hit sounds by how much combat damage lands, each its
@@ -397,6 +490,23 @@ describe("sounds", () => {
       expect(played()[0].volume).toBeCloseTo(m.DUCK_FACTOR);
       prompt.fire("ended");
       expect(played()[0].volume).toBe(1);
+    });
+
+    it("ducks a voice line as well (#4410)", async () => {
+      const m = await load();
+      const { VoiceBus } = await import("./fx/voices");
+      const line = "/voices/w-enter-1.mp3";
+      const bus = new VoiceBus({ manifest: { w: { enter: [line] } } });
+      m.setCategoryVolume("voice", 0.8);
+      expect(bus.speak("w", "enter")).toBe(true);
+      const voice = FakeAudio.instances.find((a) => a.src === line)!;
+      expect(voice.volume).toBeCloseTo(0.8);
+
+      m.play("priority");
+      const cue = played().find((a) => a.src !== line)!;
+      expect(voice.volume).toBeCloseTo(0.8 * m.DUCK_FACTOR);
+      cue.fire("ended");
+      expect(voice.volume).toBeCloseTo(0.8);
     });
 
     it("ducks on top of the category volume", async () => {

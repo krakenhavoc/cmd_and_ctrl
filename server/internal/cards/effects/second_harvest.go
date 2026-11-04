@@ -12,8 +12,10 @@ import (
 //	 permanent."
 //
 // The tokens you control are fixed when the spell starts to resolve, so
-// the copies it makes are not themselves copied. Each copy is its own
-// creation instruction (a token-doubling replacement applies to each).
+// the copies it makes are not themselves copied. The copies are one
+// creation instruction (#4594, CreateTokenCopiesTogether): they are
+// created at the same time (CR 608.2f), so they enter together, and a
+// token-doubling replacement doubles every one of them.
 //
 // No simplification.
 func init() {
@@ -29,12 +31,7 @@ func init() {
 					ids = append(ids, c.InstanceID)
 				}
 			}
-			for _, id := range ids {
-				if err := (CreateTokenCopy{Controller: item.Controller, Copy: id, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return CreateTokenCopiesTogether{Controller: item.Controller, Copies: ids}.Apply(ctx)
 		},
 	})
 }

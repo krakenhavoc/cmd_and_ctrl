@@ -12,9 +12,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Curse of Opulence's player attachment (Card.AttachedTo is a player ref)
 // with "Enchant opponent" as the cast target. Both triggers read an attack
-// declaration, once per defending player (OncePerBatchPerPlayer: three
+// declaration, once per attacked player (OncePerBatchPerPlayer: three
 // creatures at one player are one attack, CR 603.2c, the Horizon Explorer
-// ruling).
+// ruling). Both are "[a player] attacks [another player]", CR 508.3e: a
+// creature declared attacking the player ITSELF (attackedPlayer). An
+// attack at that player's planeswalker or battle triggers neither (#4839).
 //
 //   - Drain: you attack the enchanted player. The player who loses life is
 //     the one attacked, which is the enchanted player at the moment it
@@ -51,7 +53,7 @@ func msc18YouAttackTheEnchantedPlayer(ev game.Event, source *game.Card, _ game.C
 	if source == nil || ev.Kind != game.EventAttack || ev.Actor != source.Controller {
 		return false
 	}
-	return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == b17DefendingPlayer(g, ev)
+	return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == attackedPlayer(g, ev)
 }
 
 // msc18APlayerAttacksYou is "whenever a player attacks you".
@@ -59,13 +61,13 @@ func msc18APlayerAttacksYou(ev game.Event, source *game.Card, _ game.Characteris
 	if source == nil || ev.Kind != game.EventAttack || ev.Actor == source.Controller {
 		return false
 	}
-	return b17DefendingPlayer(g, ev) == source.Controller
+	return attackedPlayer(g, ev) == source.Controller
 }
 
 // msc18TheAttackedPlayerLoses2 is "that player loses 2 life": the player the
 // attack named, read off the triggering event.
 func msc18TheAttackedPlayerLoses2(ctx *Context) error {
-	who := b17DefendingPlayer(ctx.Game, ctx.Trigger().Event)
+	who := attackedPlayer(ctx.Game, ctx.Trigger().Event)
 	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
 		return nil
 	}

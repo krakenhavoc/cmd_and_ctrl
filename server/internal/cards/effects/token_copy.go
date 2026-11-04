@@ -89,6 +89,54 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	return createTokenCopies(ctx, c.Controller, tmpl, c.N)
 }
 
+// CreateTokenCopiesTogether is "for each <object>, create a token that's a
+// copy of it" (#4594): N tokens copying each of Copies, made by ONE
+// creation with a group per original, so every copy is created at the
+// same time (CR 608.2f). The copies enter the battlefield in one event,
+// each newcomer sees the others enter (CR 603.6a), and a "one or more"
+// trigger or a "the first time you would create tokens" replacement sees
+// one occurrence (CR 603.2c). Saheeli, the Gifted's −7 is the shape.
+//
+// Copies is the list the effect fixed as it began (a copy is never itself
+// copied); an original that can no longer be found is skipped. Except is
+// the "except …" clause, applied to each template (CR 707.9). Then is the
+// rest of the effect, told the tokens that landed (TailOutcome.IDs), and
+// runs whether or not a copy's entry stopped to ask a question; the zero
+// tail is "nothing more".
+type CreateTokenCopiesTogether struct {
+	Controller uuid.UUID
+	Copies     []uuid.UUID
+	// N is how many tokens copy each original; zero means one.
+	N      int
+	Except func(t *game.Card)
+	Then   game.KeyedTail
+}
+
+func (c CreateTokenCopiesTogether) Apply(ctx *Context) error {
+	n := c.N
+	if n <= 0 {
+		n = 1
+	}
+	controller := c.Controller
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	groups := make([]game.TokenGroup, 0, len(c.Copies))
+	for _, id := range c.Copies {
+		tmpl, ok := TokenCopyTemplate(ctx.Game, id)
+		if !ok {
+			continue
+		}
+		if c.Except != nil {
+			c.Except(&tmpl)
+		}
+		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: n})
+	}
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: controller, Source: ctx.Source(), Groups: groups, Together: true,
+	}, c.Then)
+}
+
 // TokenCopyGainsHaste is the "except it has haste" exception clause
 // shared by every hasty-token-copy card — Reflection of Kiki-Jiki's
 // activated ability and Electroduplicate's sorcery both print exactly

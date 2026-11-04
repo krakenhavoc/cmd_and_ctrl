@@ -1063,6 +1063,14 @@ export type LogKind =
   // sentence for every viewer.
   | "no_blocks"
   | "token"
+  // #4444: an Aura, Equipment or Fortification became attached (CR
+  // 701.3a). `card_id` is the attachment, `target` the host card
+  // (`target_seat` a host player, for a Curse), and `label` what it is:
+  // "Aura", "Equipment" or "Fortification" (absent for any other
+  // permanent, and redacted with the card's name). A token created
+  // attached has its `token` entry in the same `batch`. A re-attach to
+  // the same host (CR 701.3b) and an unattach have no line.
+  | "attach"
   | "sacrifice"
   // ADR 0130 §5: a player exerted a permanent (CR 701.43a). `seat` is
   // the player, `card_id` the permanent; server-rendered `text`.
@@ -1382,6 +1390,11 @@ export interface LogEvent {
   target?: string;
   // Signed / counting payload: life delta, damage dealt, cards drawn.
   amount?: number;
+  // #4442: on a `counters` entry, the signed change (+2 for two put on,
+  // -1 for one taken off), where `amount` is the count after it. Redacted
+  // with `amount`. Absent (0) on every other kind, and on an entry from a
+  // server that predates the field.
+  delta?: number;
   // #1036: the SIZE of a `scry` / `surveil` entry's keyword action —
   // the "2" in "scry 2" — where `amount` is how many cards the table
   // then watched move. Absent on every other kind, and absent on a
@@ -1424,7 +1437,8 @@ export interface LogEvent {
   // #1021: the printed name of the thing the entry is about when it is
   // not a card — the special action as the card prints it ("Foretell
   // {2}") on a `special_action` entry, the counter kind ("+1/+1") on a
-  // `counters` one. Redacted with the card's name exactly as `choice`
+  // `counters` one, what the attachment is ("Aura", "Equipment",
+  // "Fortification") on an `attach` one (#4444). Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
   // ADR 0057: why an `eliminated` player left, or how a `game_over`

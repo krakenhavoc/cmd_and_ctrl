@@ -53,12 +53,8 @@ func init() {
 					originals = append(originals, c.InstanceID)
 				}
 				ctx.RecordStep(faceYourselfRecord, nil, int(b25LastEventSeq(ctx.Game)))
-				for _, id := range originals {
-					if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: id, N: 1, Except: TokenCopyGainsHaste}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+				// One creation (#4594): the copies are created, and enter, together.
+				return CreateTokenCopiesTogether{Controller: ctx.Controller(), Copies: originals, Except: TokenCopyGainsHaste}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
 				r := ctx.StepRecord(faceYourselfRecord)

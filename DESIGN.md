@@ -236,10 +236,11 @@ and the seat panels' soft drop (`.seat-panel`).
 
 **Layers.** The table's z-index ladder (ADR 0111 §3, checked in code): game log
 drawer 30, top bar and strip 40, vote panel 50, action dock and its sheets 55,
-table effects 57 (`board/TableEffects.svelte`, ADR 0209), hints 58, mana menus
-60 and 70, full-screen dialogs 200, hover zoom 300, card context menu 3000. The
-site header is sticky at 30. Put a new layer on this ladder and say where in a
-comment.
+table effects 57 (`board/TableEffects.svelte`, ADR 0209), the tutorial's coach
+58 (`tutorial/TutorialCoach.svelte`, over the cues that cross its corner of the
+board, #4410), hints 59, mana menus 60 and 70, full-screen dialogs 200, hover
+zoom 300, card context menu 3000. The site header is sticky at 30. Put a new
+layer on this ladder and say where in a comment.
 
 **Motion.** One easing, `--ease: cubic-bezier(0.2, 0.7, 0.1, 1)`. Hover and
 state transitions are 120ms; dialogs fade in 160ms and rise in 220ms

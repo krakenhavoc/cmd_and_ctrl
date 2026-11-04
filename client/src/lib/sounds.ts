@@ -77,6 +77,21 @@ export type SoundName =
   | "board_wipe"
   | "pw_enter"
   | "pw_leave"
+  // S80 cues for common moments (#4441 on), in the effects category. Each
+  // ships silent, with no takes and no fallback, until its file lands.
+  | "token_create"
+  // #4442: +1/+1 counters put on a permanent (a rising tick), -1/-1
+  // counters put on one (a falling tick).
+  | "counter_add"
+  | "counter_remove"
+  // #4443: a commander cast from the command zone (a horn or choir
+  // swell), and one that returns to it (a soft whoosh home).
+  | "commander_cast"
+  | "commander_return"
+  // #4444: an Equipment attached to a permanent (a metal clang or
+  // buckle), and an Aura enchanting one (a soft shimmer).
+  | "attach_equip"
+  | "attach_aura"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -135,6 +150,13 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   board_wipe: "effects",
   pw_enter: "effects",
   pw_leave: "effects",
+  token_create: "effects",
+  counter_add: "effects",
+  counter_remove: "effects",
+  commander_cast: "effects",
+  commander_return: "effects",
+  attach_equip: "effects",
+  attach_aura: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -181,6 +203,28 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],
   pw_enter: ["/sounds/pw_enter-1.mp3", "/sounds/pw_enter-2.mp3"],
   pw_leave: ["/sounds/pw_leave-1.mp3"],
+  // #4441: file not made yet, and no fallback, so a token's pop-in is
+  // silent until token_create-1.mp3 (and an optional -2) is listed here
+  // (client/public/sounds/README.md, "Files not made yet").
+  token_create: [],
+  // #4442: files not made yet, and no fallback, so a counter's pulse is
+  // silent until counter_add-1.mp3 and counter_remove-1.mp3 (and an
+  // optional -2 of each) are listed here (client/public/sounds/README.md,
+  // "Files not made yet").
+  counter_add: [],
+  counter_remove: [],
+  // #4443: files not made yet, and no fallback, so a commander's rise to
+  // the stack and its drift home are silent until commander_cast-1.mp3
+  // and commander_return-1.mp3 (and an optional -2 of each) are listed
+  // here (client/public/sounds/README.md, "Files not made yet").
+  commander_cast: [],
+  commander_return: [],
+  // #4444: files not made yet, and no fallback, so an attachment's slide
+  // onto its host is silent until attach_equip-1.mp3 and attach_aura-1.mp3
+  // (and an optional -2 of each) are listed here
+  // (client/public/sounds/README.md, "Files not made yet").
+  attach_equip: [],
+  attach_aura: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],
@@ -477,6 +521,21 @@ export function onDuck(fn: ((factor: number) => void) | null): void {
   fn?.(duckFactor());
 }
 
+// Callers that play their own files on a bus (fx/voices.ts) and so lower
+// them themselves (#4410).
+const duckWatchers = new Set<(factor: number) => void>();
+
+// watchDuck adds a listener for the duck factor. It hears the current
+// factor at once and every change after; the function it returns removes
+// it.
+export function watchDuck(fn: (factor: number) => void): () => void {
+  duckWatchers.add(fn);
+  fn(duckFactor());
+  return () => {
+    duckWatchers.delete(fn);
+  };
+}
+
 function duckFactor(): number {
   return duckCount > 0 ? DUCK_FACTOR : 1;
 }
@@ -489,6 +548,7 @@ function applyDuck(): void {
   const f = duckFactor();
   for (const p of playing) setVolume(p, f);
   duckListener?.(f);
+  for (const w of duckWatchers) w(f);
 }
 
 // duckFor ducks the other buses until `audio` ends, errors, or DUCK_MAX_MS
