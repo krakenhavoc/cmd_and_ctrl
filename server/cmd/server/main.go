@@ -241,7 +241,9 @@ const (
 	// CMDCTRL_DATA_DIR. Matches scripts/scryfall-refresh.sh.
 	scryfallSubdir      = "scryfall"
 	scryfallDefaultFile = "default-cards.json"
-	imagesSubdir        = "images"
+	// scryfallRolesFile is cmd/cardroles' output beside the dump.
+	scryfallRolesFile = "card-roles.json"
+	imagesSubdir      = "images"
 )
 
 func main() {
@@ -1937,6 +1939,19 @@ func loadCardAssets(log *slog.Logger, dataDir string) (*cards.Index, *cards.Imag
 		}
 	} else {
 		log.Info("scryfall index loaded", "cards", n, "path", dumpPath)
+	}
+	// Card roles for the advanced stats (ADR 0217 §7), written weekly by
+	// cmd/cardroles. A missing file is normal until its first run: roles
+	// then fall back to the catalog Purpose and card types.
+	rolesPath := filepath.Join(dataDir, scryfallSubdir, scryfallRolesFile)
+	if n, err := idx.LoadRoles(rolesPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("card roles not found; run cmd/cardroles", "path", rolesPath)
+		} else {
+			log.Error("card roles load failed", "path", rolesPath, "err", err)
+		}
+	} else {
+		log.Info("card roles loaded", "cards", n, "path", rolesPath)
 	}
 
 	cache, err := cards.NewImageCache(filepath.Join(dataDir, imagesSubdir))
