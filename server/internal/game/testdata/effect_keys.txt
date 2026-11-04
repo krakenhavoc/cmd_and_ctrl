@@ -135,6 +135,7 @@ body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body gaze-of-pain/damage-equal-to-its-power
+body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
@@ -1289,6 +1290,7 @@ run prompt-run/frantic-scapegoat-suspect
 run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
+run prompt-run/general-traag-sacrifice
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/god-eternal-bontu-sacrifice
@@ -1850,6 +1852,7 @@ tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
