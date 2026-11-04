@@ -58,6 +58,7 @@ body breeches/copy-that-spell
 body bullseye-death-dealer/damage
 body cait-sith/boost
 body cascade/bottom-if-not-cast
+body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
 body catalog/triggered
@@ -160,6 +161,7 @@ body invisible-woman/pump
 body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
+body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
 body leyline-tyrant/damage
 body lichs-relic/destroy
@@ -751,6 +753,7 @@ confirm confirm/arc-of-fortune-embark
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
+confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
@@ -1136,6 +1139,7 @@ payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jolted-awake-return
 payunless pay-unless/kazuul-ogre
+payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
@@ -1498,6 +1502,7 @@ tail counter/double-if-grew
 tail counter/double-plus-one
 tail counter/draw-per-counter
 tail counter/put-on-each-next
+tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
@@ -1702,6 +1707,7 @@ tail kindred-charge/haste-and-exile-copies
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
+tail krang-and-shredder/after-exile
 tail krenko-tin-street-kingpin/goblins
 tail krosan-verge/plains-search
 tail lady-loki/damage-then-cast
