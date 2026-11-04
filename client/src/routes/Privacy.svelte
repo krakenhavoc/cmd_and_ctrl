@@ -73,6 +73,14 @@
       source: "migration 0022 notification_prefs; notify/notifier.go; ws/presence.go",
     },
     {
+      what: "Stats settings",
+      details:
+        "Whether advanced stats are on for you, and whether you or an admin set it. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
+      why: "So the Stats page shows the advanced stats only to the people who want them.",
+      howLong: "Until you change it or delete your account.",
+      source: "migration 0029 stats_prefs; lobby/stats_prefs.go",
+    },
+    {
       what: "Your own model key for AI opponents",
       details:
         "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",
@@ -281,10 +289,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, deck-request history, playmats, settings, last table setup, notification settings and
-        Discord sign-in, signs you out everywhere, and turns your seat in every table that has ended
-        into “Deleted player”, so the other players keep their games. It is refused while you hold a
-        seat at a table that has not ended.
+        decks, deck-request history, playmats, settings, last table setup, notification settings,
+        stats settings and Discord sign-in, signs you out everywhere, and turns your seat in every
+        table that has ended into “Deleted player”, so the other players keep their games. It is
+        refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

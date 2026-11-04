@@ -88,8 +88,15 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * (the requester is in deck_request_asks, which account deletion
  * removes) and is kept, like deck_requests; the "Deck requests" row now
  * says the server remembers the cards an issue listed.
+ *
+ * 29 (#4880, ADR 0217 slice 3) adds stats_prefs: whether advanced stats
+ * are on for a person, and whether they or an admin set it (plus empty
+ * columns for the later sharing slices). The new "Stats settings" row
+ * names it, and account deletion removes the row. It also adds
+ * stats_settings, the server's advanced-stats default, which names no
+ * one.
  */
-export const PRIVACY_SCHEMA_VERSION = 28;
+export const PRIVACY_SCHEMA_VERSION = 29;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
