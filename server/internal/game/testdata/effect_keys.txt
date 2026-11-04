@@ -125,6 +125,7 @@ body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
 body flicker/return-exiled-to-owners-tapped
+body flicker/return-exiled-with-a-plus-one-counter
 body flicker/return-exiled-with-additional-counters
 body flip/the-source
 body foray-of-orcs/damage
