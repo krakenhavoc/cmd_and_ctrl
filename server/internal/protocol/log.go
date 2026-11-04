@@ -3416,6 +3416,12 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s set the away time to 1 minute", who)
 		}
 		return fmt.Sprintf("%s set the away time to %s minutes", who, e.Choice)
+	case game.SettingPlanechase:
+		// ADR 0216 §1.
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s turned on Planechase", who)
+		}
+		return fmt.Sprintf("%s turned off Planechase", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)
