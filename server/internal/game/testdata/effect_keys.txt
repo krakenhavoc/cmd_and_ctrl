@@ -1635,6 +1635,7 @@ tail engine/revealed-pick-done
 tail engine/revealed-pick-then
 tail engine/sacrifice-leg-settled
 tail engine/spell-copy-token
+tail engine/spell-copy-token-alt-cost
 tail engine/spell-copy-token-control
 tail engine/surveil-routed
 tail engine/suspend-exiled
