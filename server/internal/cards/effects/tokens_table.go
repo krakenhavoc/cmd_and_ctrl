@@ -326,4 +326,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1},
 	"2/2 red Mutant":               {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 white Dinosaur Soldier":   {Name: "Dinosaur Soldier", TypeLine: "Token Creature — Dinosaur Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}},
+
+	// #4457 batch 3: Foot Mystic's Ninja.
+	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
 }
