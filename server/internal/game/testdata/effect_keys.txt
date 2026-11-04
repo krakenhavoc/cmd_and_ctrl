@@ -867,7 +867,7 @@ confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
-confirm confirm/turtles-in-time-shuffle
+confirm confirm/turtles-in-time-ask
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/wandering-archaic-copy
@@ -2047,7 +2047,6 @@ tail then/this-is-how-it-ends-shuffle-choice
 tail then/tibalts-trickery-exile-until
 tail then/torment-of-hailfire-punisher-sacrificed
 tail then/tribal-unity-type-chosen
-tail then/turtles-in-time-shuffle-then-draw
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil
 tail then/valakut-exploration-damage

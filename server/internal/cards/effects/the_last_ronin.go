@@ -38,9 +38,9 @@ func init() {
 		Name:         name,
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			ChapterTrigger(1, SagaChapterLabel(name, 1, "destroy all creatures"), func(g *game.Game, item *game.StackItem) error {
+			TriggerWithPurpose(ChapterTrigger(1, SagaChapterLabel(name, 1, "destroy all creatures"), func(g *game.Game, item *game.StackItem) error {
 				return DestroyAllMatching{Match: Creature()}.Apply(NewContext(g, item))
-			}),
+			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}}),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "mill four cards; when you do, return target creature card from your graveyard to your hand"), Do(
 				Instruction(func(ctx *Context) error {
 					p := ctx.Game.PlayerByIDForEffect(ctx.Controller())

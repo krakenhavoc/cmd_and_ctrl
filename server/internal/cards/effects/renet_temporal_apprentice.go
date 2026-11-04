@@ -28,6 +28,9 @@ func init() {
 		Name:            "Renet, Temporal Apprentice",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
+		// A bounce sweep of nonland permanents that spares those already
+		// on the battlefield before this turn (ADR 0126 owner decision 2).
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Renet, Temporal Apprentice — return each other nonland permanent that entered this turn to its owner's hand",
 				func(g *game.Game, item *game.StackItem) error {

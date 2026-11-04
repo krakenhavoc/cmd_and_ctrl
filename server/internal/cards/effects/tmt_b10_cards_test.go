@@ -633,37 +633,56 @@ func TestTmtB10TokkaAndRahzarCantBeCountered(t *testing.T) {
 
 // --- Turtles in Time --------------------------------------------------------------------
 
-func TestTmtB10TurtlesInTimeBouncesThenEachPlayerChooses(t *testing.T) {
+func TestTmtB10TurtlesInTimeAsksEveryoneBeforeAnyoneShufflesOrDraws(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	order := apnapPlayers(g)
+	if len(order) < 4 {
+		t.Fatalf("want a four-player table, got %d seats", len(order))
+	}
+	me, second := g.PlayerByIDForEffect(order[0]), g.PlayerByIDForEffect(order[1])
+	third := g.PlayerByIDForEffect(order[2])
 	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
-	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, third.ID, "Their Bear", "Creature — Bear", 2, 2)
 	myGrave := tmtB10Graveyard(me, "Old Card", "Sorcery", "{1}")
-	oppGrave := tmtB10Graveyard(opp, "Their Old Card", "Sorcery", "{1}")
+	thirdGrave := tmtB10Graveyard(third, "Their Old Card", "Sorcery", "{1}")
 
 	spell := castCatalogSpell(t, g, "Turtles in Time", "Sorcery", tmtB10TurtlesTimeOracle, nil)
 	passPriorityAroundTable(t, g)
 	if tmtB10Zone(g, mine) != game.ZoneHand || tmtB10Zone(g, theirs) != game.ZoneHand {
 		t.Fatal("every creature returns to its owner's hand")
 	}
-	for _, p := range g.Seats {
-		if p.ID == opp.ID {
-			continue
-		}
-		answerMayChoice(t, g, p.ID, p.ID == me.ID)
+	hands := map[uuid.UUID]int{}
+	for _, id := range order {
+		hands[id] = g.PlayerByIDForEffect(id).Hand.Size()
 	}
-	oppHand := opp.Hand.Size()
-	answerMayChoice(t, g, opp.ID, false)
+	// APNAP: the caster is asked first, and only the caster.
+	if latestConfirmFor(g, second.ID) != nil {
+		t.Fatal("the second player was asked before the first answered")
+	}
+	answerMayChoice(t, g, me.ID, true)
+	answerMayChoice(t, g, second.ID, true)
+	// Two players have said yes; nobody has shuffled or drawn yet.
+	for _, p := range []*game.Player{me, second} {
+		if p.Hand.Size() != hands[p.ID] {
+			t.Errorf("%s's hand changed from %d to %d before every player answered", p.Name, hands[p.ID], p.Hand.Size())
+		}
+	}
+	if tmtB10Zone(g, mine) != game.ZoneHand || tmtB10Zone(g, myGrave) != game.ZoneGraveyard {
+		t.Error("the caster shuffled before every player answered")
+	}
+	answerMayChoice(t, g, third.ID, false)
+	answerMayChoice(t, g, order[3], false)
 	passPriorityAroundTable(t, g)
 
-	if me.Hand.Size() != 7 {
-		t.Errorf("the caster shuffled and has %d cards, want 7", me.Hand.Size())
+	for _, p := range []*game.Player{me, second} {
+		if p.Hand.Size() != 7 {
+			t.Errorf("%s shuffled and has %d cards, want 7", p.Name, p.Hand.Size())
+		}
 	}
 	if z := tmtB10Zone(g, myGrave); z != game.ZoneLibrary && z != game.ZoneHand {
 		t.Errorf("the caster's graveyard card is in %q, want shuffled in", z)
 	}
-	if opp.Hand.Size() != oppHand || tmtB10Zone(g, oppGrave) != game.ZoneGraveyard || tmtB10Zone(g, theirs) != game.ZoneHand {
+	if third.Hand.Size() != hands[third.ID] || tmtB10Zone(g, thirdGrave) != game.ZoneGraveyard || tmtB10Zone(g, theirs) != game.ZoneHand {
 		t.Error("a player who declined keeps their hand and graveyard")
 	}
 	if tmtB10Zone(g, spell) != game.ZoneExile {
