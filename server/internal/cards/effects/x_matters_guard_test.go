@@ -80,6 +80,8 @@ var xMattersAllowlist = map[string]string{
 	"venarian_glimmer.go Venarian Glimmer":                        "the reveal never reads X: at X=0 the whole hand is still revealed to the table, and a nonland card with mana value 0 can still be chosen",
 	"way_of_the_mind_sculptor.go Way of the Mind Sculptor":        "no X of its own: its trigger reads the X ANOTHER loyalty ability announced, to count the counters a −X removed (#1944)",
 	"voracious_hydra.go Voracious Hydra":                          "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
+	"procrastinate.go Procrastinate":                              "\"Tap target creature\" never reads X: at X=0 the spell still taps the creature and puts no stun counters on it, a real (if weak) play",
+	"pterafractyl.go Pterafractyl":                                "\"When this creature enters, you gain 2 life\" never reads X: at X=0 the 1/0 dies, but its enters trigger still resolves and gains the 2 life",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its
