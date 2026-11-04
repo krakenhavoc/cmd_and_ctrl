@@ -453,19 +453,19 @@ Ian, 2026-11-03, on #4880. **Decided.**
 8. **Sharing and pods.** A person can share their stats. A pod sees its members' stats and a leaderboard. Sharing is opt-in per person, and deleted accounts never appear (§6).
 9. **A good-looking stats experience.** Visual, with charts and clear comparisons, following DESIGN.md, with accessible text equivalents for every chart (§8).
 
-## Still open
+## Owner answers to the open questions (Ian, 2026-11-04)
 
-For the owner, or for Luke where named. None blocks slice 2, except where a slice is named.
+These supersede the "still open" list this ADR was drafted with.
 
-1. **Luke:** should advanced stats be automatic for everyone (`AdvancedDefault = true`)? Needed by slice 3.
-2. Are the combo thresholds right (10 repeats, 30 actions, 4 combats)? Slice 2 ships them, and changing them later is a bump.
-3. Are the screw, flood and colour-screw game thresholds right (2 in the first 6, 3, 2)?
-4. Computing version 2 for every seat, with the setting gating only what is shown: acceptable, or should it be computed only for people who opted in?
-5. **Pods:** confirm a pod gets its own ADR, and whether ADR 0213's friends should be its seed (a pod made of friends), or a pod should be joinable by link by people who are not friends. Needed before slice 7.
-6. May a share link be read without signing in, given it reveals decklists? Needed by slice 6.
-7. The leaderboard's ranking (win rate, then average place, minimum 5 games), and whether "All games" should be offered at all.
-8. Is using Scryfall Tagger tags this way within Scryfall's API terms? Needed by slice 4.
-9. DESIGN.md makes tablet the minimum and gives app screens no phone layout. These pages are one column below 819 px, which works on a phone. Should the stats pages be held to phone width as a requirement (the 390 px screenshots), or only tablet?
+1. **Default: not automatic, and an admin can change it.** Advanced stats stay opt-in for now. Instead of a code constant, the default is an **admin setting** stored on the server: `gamestats.AdvancedDefault` becomes the fallback when the setting is unset, and `PUT /admin/stats/advanced-default` (behind `requireAdmin`, audited) flips it. Slice 3 also adds an admin page listing accounts with their advanced-stats state (on, off, or following the default) and who set it. On that page an admin can switch it on or off for a person, as §2's `PUT /admin/users/{id}/advanced-stats` already allows. Luke can then make it automatic without a deploy. Anyone who switched it off themselves stays off.
+2. **Combo thresholds** (10 repeats, 30 actions, 4 combats): accepted.
+3. **Screw, flood and colour-screw game thresholds** (2 in the first 6 turns, 3, 2): accepted.
+4. **Compute version 2 for every seat**, with the setting gating only what is shown: accepted, **on one condition**. Slice 2 measures the cost: the time and memory `gamestats.Compute` v2 adds per finished game, a backfill rate on the fixture corpus, and the stored bytes per game. It reports the numbers in its PR. If the cost is negligible at beta scale (ADR 0148), nothing more is needed. If not, compute only for opted-in players and backfill when someone opts in.
+5. **Pods** get their own ADR. A pod can be formed from friends (ADR 0213), and/or joined by an invite link. C2 may also **suggest** a pod to players who often play together. A suggestion forms nothing on its own: each member accepts it, consistent with §6's per-person opt-in.
+6. **A share link may be read without signing in.** The person sharing has already chosen to reveal what it shows, including decklists. Revoking the link still makes it answer 404.
+7. **Leaderboard:** ranked by win rate, then average place, with a minimum of 5 games. It covers games within the pod only; there is no "All games" leaderboard.
+8. **Scryfall Tagger tags:** check Scryfall's API terms before slice 4. If the terms don't allow this use, the roles come from C2's own tagging (catalog `Purpose` plus a hand-curated table) instead.
+9. **Screen sizes:** PC and tablet are the primary targets and must look good there. Phones are supported too: the pages must work at 390 px, with the one-column layout below 819 px.
 
 ## Sprint
 
