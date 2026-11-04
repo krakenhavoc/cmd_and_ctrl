@@ -4513,6 +4513,13 @@ store it answers an empty overview.
 ```json
 {
   "totals": { "games": 40, "live": 38, "replay": 2, "log_complete": 39, "log_incomplete": 1, "unrecorded": 3 },
+  "coverage": [
+    { "version": 1, "games": 4, "frames_complete": 0, "frames_incomplete": 0 },
+    { "version": 2, "games": 36, "frames_complete": 34, "frames_incomplete": 2 }
+  ],
+  "win_kinds": [{ "kind": "combat", "games": 21 }, { "kind": "combo", "games": 6 }, { "kind": "concession", "games": 5 }],
+  "combo_rules": [{ "kind": "loop", "games": 2 }, { "kind": "repeats", "games": 4 }],
+  "makeup": { "people_only": 22, "with_bots": 15, "bots_only": 3 },
   "recent": [{ "game_id": "<uuid>", "name": "Friday night", "ended_at": 1791868000000, "turns": 21, "rounds": 6, "source": "live" }],
   "people": [{ "name": "Alice", "kind": "account", "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4 }],
   "commanders_by_games": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
@@ -4523,6 +4530,20 @@ store it answers an empty overview.
 
 - `totals.unrecorded` counts ended games with a `games` row and no
   record: run `statsbackfill` to fill them in.
+- `coverage` is the version-2 coverage ([ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md)
+  §9): one entry per `stats_version` in use, oldest first, with how many
+  of its records read the game's replay whole (`frames_complete`) and how
+  many did not (a replay missing or cut short). A version-1 record counts
+  in neither. Records below the current `gamestats.Version` are what one
+  `statsbackfill` run brings up to date.
+- `win_kinds` counts games by how they were won (ADR 0217 §3: `combo`,
+  `concession`, `win_effect`, `poison`, `commander_damage`, `combat`,
+  `noncombat`, `decking`), in that order, leaving out kinds with no
+  games. `combo_rules` counts the combo wins by the rule that fired
+  (`loop`, `repeats`, `actions`, `combats`). `makeup` counts recorded
+  games by their seats: every seat a person (guests count), people and
+  bots, or every seat a bot or agent. All three are aggregates and name
+  no game or person.
 - `people` is keyed by account (its display name), else a guest's seat
   name (`kind: "guest"`), else a bot tier (`"bot"`). The counting rules
   are `GET /me/stats`'s: only a win, loss or draw counts, and

@@ -89,6 +89,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * removes) and is kept, like deck_requests; the "Deck requests" row now
  * says the server remembers the cards an issue listed.
  *
+ * 29 (#4880, ADR 0217) is game statistics version 2: new columns on
+ * game_stats and seat_stats, and seat_turn_stats, seat_target_stats and
+ * seat_card_seen, worked out from a game's log and its replay. Like
+ * migration 0023's tables they are keyed by game and seat, name no one,
+ * and are kept with the game. The "Game statistics" row now says what
+ * the replay adds.
+ *
  * 30 (#4880, ADR 0217 slice 3) adds stats_prefs: whether advanced stats
  * are on for a person, and whether they or an admin set it (plus empty
  * columns for the later sharing slices). The new "Stats settings" row
