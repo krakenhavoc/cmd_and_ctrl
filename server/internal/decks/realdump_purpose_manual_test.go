@@ -111,6 +111,7 @@ var reviewedNotAWipe = map[string]string{
 	// it created itself, every player's, never another permanent.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
 	"Bag of Holding":                           "returns the cards it exiled, not permanents",
+	"Northampton Farm":                         "returns the cards it exiled to hand, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
 	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
