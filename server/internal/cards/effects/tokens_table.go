@@ -333,4 +333,6 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Insect Warrior with flying": {Name: "Insect Warrior", TypeLine: "Token Creature — Insect Warrior", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	// #4457 batch 3: Foot Mystic's Ninja.
 	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
+	"2/1 red Klingon Warrior with haste": {Name: "Klingon Warrior", TypeLine: "Token Creature — Klingon Warrior", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }
