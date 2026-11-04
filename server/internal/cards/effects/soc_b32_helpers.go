@@ -81,9 +81,9 @@ func socB32YouCastASpellThat(when func(spell game.Card, source *game.Card, g *ga
 // information if it has left the stack (CR 608.2h).
 func socB32GrantsStorm(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
-		Keyword: KeywordStorm,
-		Key:     label,
-		Watches: []game.EventKind{game.EventCast},
+		Keyword:   KeywordStorm,
+		Key:       label,
+		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: socB32YouCastASpellThat(when),
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label+" — storm")

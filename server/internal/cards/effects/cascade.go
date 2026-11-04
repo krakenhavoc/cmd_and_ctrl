@@ -81,10 +81,10 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 	return game.TriggeredAbility{
 		// The granted cascade is still cascade (#1258): a caveat on
 		// Maelstrom Nexus that said otherwise would be false.
-		Keyword: KeywordCascade,
-		Key:     label,
-		Effect:  cascadeEffect,
-		Watches: []game.EventKind{game.EventCast},
+		Keyword:   KeywordCascade,
+		Key:       label,
+		Effect:    cascadeEffect,
+		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: socB32YouCastASpellThat(when),
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			mv := 0
