@@ -12,7 +12,7 @@ package effects
 // back is seeing the keyword and nothing else.
 //
 // Unearth is an ACTIVATED ability that functions from the graveyard
-// (CR 702.82a), so this Spec is one `Unearth("{B}")` entry and the
+// (CR 702.84a), so this Spec is one `Unearth("{B}")` entry and the
 // zone dimension does the rest — the same shape a Triome's cycling
 // has one zone over. See unearth.go.
 //

@@ -291,8 +291,8 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 // cardID counts as a SACRIFICE — the question "for each permanent
 // sacrificed this way" (God-Eternal Bontu's draw) is asking.
 //
-// CR 701.17a: "To sacrifice a permanent, its controller moves it from
-// the battlefield to its owner's graveyard." The sacrifice is that
+// CR 701.21a: "To sacrifice a permanent, its controller moves it from
+// the battlefield directly to its owner's graveyard." The sacrifice is that
 // MOVE OFF the battlefield, and nothing replaces the sacrifice itself
 // — a replacement rewrites where the permanent goes. So the answer is
 // "is it still on the battlefield":
@@ -314,7 +314,7 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 // rules are why. CR 701.8a defines a destruction BY the graveyard, so
 // a permanent a replacement sent to exile was not destroyed however
 // thoroughly it left (destroyedThisWayLocked, #863) — the command zone
-// is destroy's one declared carry-over. CR 701.17a names the same
+// is destroy's one declared carry-over. CR 701.21a names the same
 // destination but the keyword action is the controller's move off the
 // battlefield, and Korvold triggers on a sacrifice whose card an
 // "exile it instead" replacement took. Two rules, two functions, one
@@ -424,9 +424,9 @@ func destroyRouteWith(opts DestroyOptions) zoneRoute {
 
 // sacrificeRoute is the SEVENTH template (#910): the exit a SACRIFICE
 // takes, built on battlefieldExitRoute rather than on destroyRoute
-// because a sacrifice is not a destruction (CR 701.17a — "sacrificing
-// a permanent doesn't destroy it, so regeneration and other effects
-// that replace destruction can't affect it"). Inheriting the
+// because a sacrifice is not a destruction (CR 701.21a — "sacrificing
+// a permanent doesn't destroy it, so regeneration or other effects
+// that replace destruction can't affect this action"). Inheriting the
 // undestructive route is what makes that true by construction rather
 // than by a comment: no Destruction flag, so the CR 701.19 shield
 // never sees it (#667).
@@ -617,7 +617,7 @@ func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card) error {
 	if r.ViaBattlefieldLeave {
 		if r.Sacrifice {
 			// Before the window, while the permanent is still there:
-			// CR 701.17a's announcement is not part of the move, and a
+			// CR 701.21a's announcement is not part of the move, and a
 			// "whenever you sacrifice" payoff reads characteristics
 			// that are gone a line later (sacrifice.go).
 			if err := g.announceSacrificeLocked(id, r.Source, r.leaveMoveCause()); err != nil {

@@ -307,7 +307,7 @@ func TestMassDestructionClearsTheDamageOnEveryPermanentThatLeft(t *testing.T) {
 //   - "EXILE IT INSTEAD" and friends move the permanent, so there is
 //     nothing left to re-doom.
 //   - REGENERATION would remove the damage in its own replacement
-//     (CR 701.15a), which is precisely why the destroy path must not do
+//     (CR 701.19a), which is precisely why the destroy path must not do
 //     it. Regeneration is not modelled in this engine yet.
 //
 // What is left is a replacement that cancels a destruction outright

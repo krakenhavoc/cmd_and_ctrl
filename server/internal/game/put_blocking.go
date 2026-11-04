@@ -3,7 +3,7 @@ package game
 import "github.com/google/uuid"
 
 // put_blocking.go — a permanent put onto the battlefield BLOCKING an
-// attacking creature without being declared a blocker (CR 506.3d, 509.5;
+// attacking creature without being declared a blocker (CR 506.3d, 509.4;
 // #3172). The twin of stampEntryAttackerLocked.
 
 // stampEntryBlockerLocked makes a creature that has just landed on the

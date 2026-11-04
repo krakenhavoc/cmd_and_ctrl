@@ -7,7 +7,7 @@ import (
 )
 
 // revolt.go — "if a permanent you controlled left the battlefield this
-// turn" (revolt, CR 702.136; #2148).
+// turn" (revolt, CR 207.2c; #2148).
 //
 // One fact, read off the per-player turn tally
 // (game.PlayerTurnTally.PermanentsLeft): every battlefield exit counts,

@@ -3838,7 +3838,7 @@ export interface ActivatedAbilityView {
   // nothing to ask and the client skips its picker.
   discard_self?: boolean;
   // #1221: scavenge's and embalm's "Exile this card from your
-  // graveyard" (CR 702.96a / CR 702.128a) — `discard_self` one zone
+  // graveyard" (CR 702.97a / CR 702.128a) — `discard_self` one zone
   // over, advisory for the same reason and sending nothing for the
   // same reason: the source IS the payment.
   exile_self?: boolean;

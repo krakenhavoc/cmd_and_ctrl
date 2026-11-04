@@ -45,7 +45,7 @@ type PaidCost struct {
 	// (#761). Nil when no mana component was paid. Each entry is a
 	// RUN (#3041): read amounts through Spent(), never len(Mana).
 	//
-	// Readers: converge (CR 702.86) counts distinct colours,
+	// Readers: converge (CR 207.2c) counts distinct colours,
 	// sunburst (CR 702.44) counts them at entry, adamant counts one
 	// colour, and "if no mana was spent" asks whether this is empty
 	// — but only together with OnPaper, which is the difference

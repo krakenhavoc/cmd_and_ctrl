@@ -17,7 +17,7 @@ import (
 //
 // The land that is never a dead draw, and the batch-01 triage filed
 // it under "deferred combat keywords" — which channel is not. Channel
-// (CR 702.142) is an ACTIVATED ability that functions from the hand,
+// (CR 207.2c) is an ACTIVATED ability that functions from the hand,
 // and #660 gave `ActivatedAbility.Zones` exactly that dimension: the
 // hand zone, the `DiscardSelf` cost component, and one activation
 // path that finds its source wherever it lives and treats the card's

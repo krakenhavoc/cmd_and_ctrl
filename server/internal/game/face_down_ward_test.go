@@ -46,7 +46,7 @@ func TestWardIsTheOneAbilityAFaceDownObjectHas(t *testing.T) {
 		{"disguised has ward {2} (CR 702.168a)", FaceDownDisguised, true},
 		{"cloaked has ward {2} (CR 701.58a)", FaceDownCloaked, true},
 		{"morphed has none (CR 702.37)", FaceDownMorphed, false},
-		{"manifested has none (CR 701.34)", FaceDownManifested, false},
+		{"manifested has none (CR 701.40)", FaceDownManifested, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			withFaceDownWard(t, wardKey)

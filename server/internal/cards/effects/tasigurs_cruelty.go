@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stack.
 //
 // The APNAP fan-out over every opponent (EachPlayerDiscardsForEffect),
-// each discarding player choosing their own two (CR 701.8a). No
+// each discarding player choosing their own two (CR 701.9b). No
 // simplification.
 func init() {
 	Register(Spec{

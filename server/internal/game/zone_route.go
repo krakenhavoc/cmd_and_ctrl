@@ -259,7 +259,7 @@ type zoneRoute struct {
 	// shares and so none of them has to name.
 	Cause MoveCause
 
-	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.17a)
+	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.21a)
 	// rather than a destruction, so the leg announces EventSacrifice
 	// while the permanent is still on the battlefield, before the
 	// window opens over its move. Only meaningful with
@@ -271,7 +271,7 @@ type zoneRoute struct {
 	//
 	// It is deliberately NOT a flavour of Destruction below, and the
 	// template says so by building on battlefieldExitRoute: a sacrifice
-	// is not a destruction (CR 701.17a), so the CR 701.19 regeneration
+	// is not a destruction (CR 701.21a), so the CR 701.19 regeneration
 	// built-in must never see one.
 	Sacrifice bool
 

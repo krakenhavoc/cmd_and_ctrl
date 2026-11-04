@@ -7,7 +7,7 @@ import (
 )
 
 // sacrifice_run.go — the CONTINUATION of a prompted sacrifice
-// (#1019, CR 701.17a, ADR 0013 §5x).
+// (#1019, CR 701.21a, ADR 0013 §5x).
 //
 // PlayerSacrificesForEffect and EachPlayerSacrificesForEffect do not
 // sacrifice anything. They queue a QUESTION per seat and return how

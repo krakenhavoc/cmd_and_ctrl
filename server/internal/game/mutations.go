@@ -2688,7 +2688,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 }
 
 // spendStrategyForCast asks the catalog whether this spell reads the
-// colours that paid for it (#761). Converge (CR 702.86) and sunburst
+// colours that paid for it (#761). Converge (CR 207.2c) and sunburst
 // (CR 702.44) do; everything else keeps the default order.
 //
 // A DECLARATION on the spec rather than something inferred from the
