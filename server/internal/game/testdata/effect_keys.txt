@@ -2101,6 +2101,7 @@ tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
 tail turtle-van/double
 tail turtles-forever/library-found
+tail twinflame/exile-copies
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
 tail ultra-magnus-tactician/convert-at-end-of-combat
