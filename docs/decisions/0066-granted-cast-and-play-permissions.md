@@ -4920,3 +4920,56 @@ and cast for exactly {2}, with the printed {R}{R}{R} not repriced; a creature ca
 opponent's Lorehold and a declined reveal are refused; Lorehold destroyed after the reveal still leaves the {2} cast; two
 Loreholds make one reveal; beside Molecule Man a creature is revealed once and an instant twice; a draw on an opponent's turn;
 the bot's move list and the view; the loot in each opponent's upkeep, declined, and not in its controller's own.
+
+## Amendment — 2026-11-04 (#4964): a filter on power or toughness, and a `*` card judged where it sits
+
+Leonardo, Sewer Samurai — "During your turn, you may cast creature spells with power or toughness 1 or less from your graveyard.
+If you cast a spell this way, that creature enters with a finality counter on it" — was left out of the TMT batches (#4957)
+because `PermissionFilter` spoke about types, subtypes, colours, counters and arrivals, and about neither of the two numbers.
+Shipping it without the clause would have made every creature card in the graveyard castable, which is stronger than printed.
+
+**The clause.** `PermissionFilter.PowerOrToughnessCapped` (bool) with `PowerOrToughnessAtMost` (int). The flag carries the
+clause's presence because 0 is a legal N ("power or toughness 0 or less"), and a filter without it writes neither key. It is an
+OR over the two numbers — a 2/1 and a 1/2 both qualify under "1 or less", a 2/2 does not — and only over a creature: a card that
+is not a creature has no power or toughness at all off the battlefield (CR 208.3). It composes with every other clause as a
+further AND, as `ColorsAny` does (the 2026-10-30 amendment), and Leonardo pairs it with `CreatureOnly`.
+
+**The hard half: a `*/*` card in a graveyard.** A characteristic-defining ability conveys an object's power or toughness and
+*functions in all zones* (CR 604.3, CR 113.6a; CR 208.2a says the same of a printed `*`), so Tarmogoyf in a graveyard really is
+the creature its own ability makes it, and the number needs the game — the graveyards it counts, the board around it. A stored
+permission's filter is pure data and `Matches` is handed a `Card`, not a `*Game` (the type's file header), and that is not
+negotiable: a closure in a permission is not snapshottable.
+
+So the lookups that hold the game **lend** the card its reading, exactly as `ThroughTextOf` lends a judging object's text to a
+target predicate. `Game.withPTAnywhereLocked` writes one reading per face onto a value copy (`Card.ptAnywhere`), worked out by
+#2115's `cdaAnywhereLocked` — the same reader Talara's Bane and craft already use for "that card's toughness" off the
+battlefield — and `lendPTLocked` does it only for a permission that carries the clause, so every other permission costs nothing.
+`permissionForSpellLocked` is `ForSpell` with the lend, and the stored, standing, per-face, per-type, pile and offer paths all go
+through one of the two, so the permission lookup, `castable_here` and the view's offers, the bot enumerator and `CastSpell` read
+one answer. The reading is per face because CR 712.11c judges the face that would be cast.
+
+**Unknown is never "1 or less".** A card with such an ability that reaches `Matches` without a reading (a caller that did not
+lend one) and a `*` the engine cannot compute at all (`Card.VariableToughness`, no catalogued layer-7a ability) both fail the
+clause. The failure mode of a missed lookup is therefore a permission that is *narrower* than printed, never one that casts a
+Tarmogoyf it should not — the direction AGENTS.md §7 asks for.
+
+**Timing and the rider are not new.** "During your turn" is `Timing: game.TimingYourTurnOnly` (#2179), which closes the cast off
+the holder's turn and leaves each creature's own timing in force, and "that creature enters with a finality counter" is #4679's
+`CastPermission.EntersWithCounterKind` / `EntersWithCounters` with `game.CounterFinality`, put on through the CR 614 pipeline as
+the creature enters, after which CR 122.1h's replacement exiles it instead of letting it die. Nothing limits the number of casts:
+the card prints no "once each turn", so there is no `PerType` and no `CastsLeft`.
+
+**Snapshot.** `filter.powerOrToughnessCapped` and `filter.powerOrToughnessAtMost`, additive in v9 and absent when unset, on
+`seats[].castPermissions[]` and every keyed tail's `permission`, recorded in `snapshot_shape/v9.txt`. `Card.ptAnywhere` is
+derived like `wordLens` and `zoneLayered`: set only on a value copy handed to a lookup, never on a card in a zone, never
+persisted, and cleared by `MoveCard` for good measure. No closure route from `Game` is added.
+
+**Tests.** `game/permission_pt_test.go`: the OR over both numbers, 0 as a legal N, a noncreature, an uncomputable `*`, a lent
+characteristic-defining reading that changes with the board, and the lend that only a clause-carrying permission gets.
+`cards/effects/leonardo_sewer_samurai_test.go`: the registration (Full, sneak {2}{W}{W}, double strike, the rider, no budget);
+a 2/1 and a 1/2 cast and a 2/2 and a 5/5 refused; no other card type castable from the graveyard; Tarmogoyf in the graveyard
+cast as a 1/2 and refused once a second card type makes it a 2/3; an uncomputable `*` refused; only your own turn and your own
+graveyard; the finality counter on entry, absent on a cast from hand, and exiling the creature instead of killing it; double
+strike; and a restore with the permission open.
+
+**Cards.** Leonardo, Sewer Samurai — Full.

@@ -483,6 +483,9 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 	}
 	g.StartingSeat = startingSeat
 	g.Turn = newStartingTurn(startingSeat)
+	// CR 901.6, ADR 0216 §3: the starting player is the first planar
+	// controller, and so owns the communal planar deck (CR 901.15b).
+	g.followActivePlayerAsPlanarControllerLocked()
 	// The one turn that does not begin through the rotation seam
 	// still counts as a turn begun (ADR 0063 Decision 3).
 	g.noteTurnBegunLocked(startingSeat)

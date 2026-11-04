@@ -823,7 +823,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
 	// permission for this cast, from here down: the path gate refuses a
 	// zone nothing else opens, and a hand cast is an ordinary one.
-	grant = grant.ForSpell(card)
+	grant = g.permissionForSpellLocked(grant, card)
 	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
@@ -3775,7 +3775,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// through it (ForSpell).
 	//
 	// #4696: the permission that opens that face, as CastSpell finds it.
-	grant := g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face).ForSpell(card)
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face), card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err

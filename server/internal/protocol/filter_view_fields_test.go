@@ -105,6 +105,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
 		}},
+		Planechase: &PlanechaseView{PlanarController: ownerID, DeckCount: 74,
+			FaceUp: []CardView{{InstanceID: "plane-1", Name: "Test Plane", Layout: "planar", KnownByYou: true}}},
 
 		StackItems:      []StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: "card-1"}},
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},

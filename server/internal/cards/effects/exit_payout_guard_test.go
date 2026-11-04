@@ -128,6 +128,11 @@ var exitPayoutAllowlist = map[string]string{
 		"init() it sits in (the header says so), and on the enclosing pass every mode's locals " +
 		"look like one function's. The per-closure pass sees the Treasure mode with no exit in " +
 		"it at all — it creates a token — and reports nothing, which is the right answer.",
+	"tainted_treats.go:37": "Tainted Treats' `small` gates on the target's mana value, not on the " +
+		"destruction (#4457): \"If its mana value was 4 or less, create a Food token\" has no \"if " +
+		"you do\", so an indestructible or regenerated target still makes the Food. The value is " +
+		"read before the destroy because that is the last moment the permanent is guaranteed " +
+		"findable (CR 608.2h).",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

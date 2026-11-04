@@ -223,6 +223,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// object off the battlefield. The new object is stamped by the next
 	// pass (the layer-version bump on a move between such zones).
 	c.zoneLayered = nil
+	// #4964: a lent power-and-toughness reading is never on a card in a
+	// zone; this is the belt to that braces.
+	c.ptAnywhere = nil
 	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
 	// and the permanent it becomes, never to the card. Every zone
 	// change ends it, a resolving one included: the battlefield entry

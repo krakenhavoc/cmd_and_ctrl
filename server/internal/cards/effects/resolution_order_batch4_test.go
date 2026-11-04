@@ -177,8 +177,8 @@ func TestCollectiveDefianceDrawWaitsForTheDiscardsPromptAndKeepsTheCount(t *test
 }
 
 // Ruin Grinder — "When this dies, each player may discard their hand and draw
-// seven cards." Every player's question is open at once, and each answer runs
-// the continuation for that player (ThenSteps.RunAt): each ends with seven cards.
+// seven cards." Every player chooses in APNAP order before anyone discards or
+// draws (CR 101.4); then each player who said yes ends with seven new cards.
 func TestRuinGrinderEachPlayerWheelsTheirOwnHand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -192,11 +192,17 @@ func TestRuinGrinderEachPlayerWheelsTheirOwnHand(t *testing.T) {
 	grinder := pushCatalogPermanent(g, me.ID, "Ruin Grinder", "Creature — Zombie", deck3655GrinderOracle, false)
 	killCreature(t, g, me.ID, grinder)
 	passPriorityAroundTable(t, g)
-	// Answer in reverse seat order, the last one asked first.
-	for i := len(g.Seats) - 1; i >= 1; i-- {
+	// APNAP: the active player (seat 0) says no, the rest say yes. No hand
+	// changes until the last answer is in.
+	answerMayChoice(t, g, me.ID, false)
+	for i := 1; i < len(g.Seats); i++ {
+		for j, p := range g.Seats {
+			if p.Hand.Size() != j+1 {
+				t.Fatalf("before seat %d answered, seat %d hand %d, want %d", i, j, p.Hand.Size(), j+1)
+			}
+		}
 		answerMayChoice(t, g, g.Seats[i].ID, true)
 	}
-	answerMayChoice(t, g, me.ID, false)
 	for i, p := range g.Seats {
 		want := 7
 		if i == 0 {
@@ -204,6 +210,9 @@ func TestRuinGrinderEachPlayerWheelsTheirOwnHand(t *testing.T) {
 		}
 		if p.Hand.Size() != want {
 			t.Fatalf("seat %d hand %d, want %d", i, p.Hand.Size(), want)
+		}
+		if i > 0 && p.Graveyard.Size() != i+1 {
+			t.Fatalf("seat %d graveyard %d, want %d", i, p.Graveyard.Size(), i+1)
 		}
 	}
 }

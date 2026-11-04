@@ -515,6 +515,7 @@ choose choose-cards/london-mulligan-bottom
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/malcolm-free-cast-offer
+choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-something-worth-saving-pick
@@ -760,6 +761,7 @@ confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
 confirm confirm/arc-of-fortune-embark
+confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
@@ -846,11 +848,13 @@ confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/pygmy-hippo-lose-mana
+confirm confirm/raphaels-technique-may-wheel
 confirm confirm/ratchet-field-medic-convert
 confirm confirm/reactor-raid-sacrifice
 confirm confirm/reckless-endeavor-result
 confirm confirm/requiem-monolith-ping
 confirm confirm/rhystic-study-draw
+confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/sail-into-the-west-embark
@@ -1086,6 +1090,7 @@ option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
+option option-pick/wingnut-bat-on-the-belfry-keyword
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
@@ -1359,6 +1364,7 @@ run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
+run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
 run prompt-run/wilhelt-the-rotcleaver-draw
 run prompt-run/will-of-the-abzan-lose-life
@@ -1389,6 +1395,7 @@ steps then-steps/cyclonus-connive-draw-and-discard
 steps then-steps/cyclonus-connive-rest
 steps then-steps/damocles-base-lose-and-draw
 steps then-steps/dawn-of-a-new-age-draw
+steps then-steps/each-player-may-wheel
 steps then-steps/emissary-green-rewards
 steps then-steps/forgotten-ancient-move
 steps then-steps/gain-then-draw-sacrificed-power
@@ -1761,6 +1768,7 @@ tail mass/oversimplify-exiled
 tail mass/overwrite-the-multiverse-empower
 tail mass/phyrexian-rebirth-horror
 tail mass/settle-the-wreckage-fetch-basics
+tail mass/shredders-technique-enchantment-loss
 tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
@@ -1792,6 +1800,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
+tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
@@ -1860,6 +1869,7 @@ tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
+tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
@@ -1998,6 +2008,7 @@ tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/locke-treasure-hunter-mug-step
+tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
 tail then/mazemind-tome-gain-life
 tail then/megatron-when-you-do

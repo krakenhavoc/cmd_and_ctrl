@@ -232,3 +232,12 @@ character for the event.
 300 ms fade-out, in code, so its tail doesn't cover the sounds after combat.
 The files are untouched. The caps live in `SOUND_MAX_MS` and `SOUND_FADE_MS`
 in `client/src/lib/sounds.ts` (#4567).
+
+## Files waiting to be wired
+
+Delivered by Ian on 2026-11-04 (ElevenLabs Sound Effects, his Creator plan, which allows commercial use; normalised to −16 LUFS, peak −1 dBTP). They are not in `SoundName` yet. The cue that plays them is #4427, which is claimed on `claude/brave-galileo-t0um7r-stacked`.
+
+| Sound         | Files                                         | When it plays                            |
+| ------------- | --------------------------------------------- | ---------------------------------------- |
+| `food_enters` | `food_enters-1.mp3`, `-2`, `-3` (about 1.2 s) | A Food token enters                      |
+| `food_sac`    | `food_sac-1.mp3`, `-2`, `-3` (about 1.2 s)    | A Food is sacrificed for its own ability |
