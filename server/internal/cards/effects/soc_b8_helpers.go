@@ -20,7 +20,13 @@ import (
 // `key` names the step record that carries the event cursor and N across
 // a pause: an on-disk identity.
 func socB8FractalWithCounters(key string, count func(ctx *Context) int) Effect {
-	return Do(
+	return Do(socB8FractalWithCountersSteps(key, count)...)
+}
+
+// socB8FractalWithCountersSteps are the two steps of socB8FractalWithCounters,
+// for a spell that writes its OnResolve with ResolveSteps (Fractal Anomaly).
+func socB8FractalWithCountersSteps(key string, count func(ctx *Context) int) []Applier {
+	return []Applier{
 		Instruction(func(ctx *Context) error {
 			ctx.RecordStep(key, nil, int(b25LastEventSeq(ctx.Game)), count(ctx))
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal")), 1, game.TokenEntryOptions{})
@@ -41,7 +47,7 @@ func socB8FractalWithCounters(key string, count func(ctx *Context) int) Effect {
 			}
 			return nil
 		}),
-	)
+	}
 }
 
 // socB8IsFractal reports whether the permanent is a Fractal token: the
