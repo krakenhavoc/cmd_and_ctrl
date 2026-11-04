@@ -80,6 +80,13 @@ type EntersAs struct {
 	// BasePT, when set, is the base power and toughness the effect gives
 	// it (layer 7b, CR 613.4b): Excava's "1/1". Nil keeps the card's own.
 	BasePT *EntersAsPT `json:"basePT,omitempty"`
+	// CreatureTypes, when set, REPLACE the object's creature types and
+	// leave its card types and other subtypes alone (layer 4, CR 205.1b's
+	// "[creature type] artifact creature"): assimilate's "It's a Borg
+	// artifact creature and loses all other creature types" is
+	// AddTypes ["Artifact"] with CreatureTypes ["Borg"]. Beside AddTypes
+	// only; an overwrite that sets Types names its subtypes in Subtypes.
+	CreatureTypes []string `json:"creatureTypes,omitempty"`
 }
 
 // EntersAsPT is an entry overwrite's base power and toughness.
@@ -100,6 +107,9 @@ func (e *EntersAs) mods() []Mod {
 	}
 	if len(e.AddSubtypes) > 0 {
 		mods = append(mods, AddSubtypesMod(e.AddSubtypes...))
+	}
+	if len(e.CreatureTypes) > 0 {
+		mods = append(mods, SetCreatureTypesMod(e.CreatureTypes...))
 	}
 	if len(e.Keywords) > 0 {
 		mods = append(mods, AddKeywordsMod(e.Keywords...))
@@ -122,7 +132,7 @@ func (e *EntersAs) Problem() string {
 	if len(e.Types) == 0 && len(e.AddTypes) == 0 {
 		return "an entry overwrite names no card type"
 	}
-	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0) {
+	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0 || len(e.CreatureTypes) > 0) {
 		return "an entry overwrite both sets and adds types"
 	}
 	if len(e.Types) == 0 && len(e.Subtypes) > 0 {
@@ -130,6 +140,9 @@ func (e *EntersAs) Problem() string {
 	}
 	for _, m := range e.mods() {
 		if p := becomeNamedModProblem(m); p != "" {
+			return p
+		}
+		if p := setCreatureTypesModProblem(m); p != "" {
 			return p
 		}
 		if m.Kind == ModGrantAbilities && len(m.Grants) == 0 {
@@ -144,7 +157,8 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 		return nil
 	}
 	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
-		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords)}
+		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords),
+		CreatureTypes: copyStrings(e.CreatureTypes)}
 	if e.BasePT != nil {
 		pt := *e.BasePT
 		out.BasePT = &pt
