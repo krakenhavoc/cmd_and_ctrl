@@ -268,7 +268,7 @@ func (g *Game) spendPermissionTypeLocked(holder uuid.UUID, card Card, grant *Cas
 	spent := false
 	for _, perm := range p.CastPermissions {
 		if !spent && len(perm.PerType) > 0 && perm.Source == grant.Source && perm.Label == grant.Label &&
-			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(card, perm.Zone) {
+			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(g.lendPTLocked(&perm, card), perm.Zone) {
 			spent = true
 			perm.PerTypeUsed = append(append([]string(nil), perm.PerTypeUsed...), typ)
 			if len(perm.PerTypeUsed) >= len(perm.PerType) {
@@ -386,7 +386,7 @@ func (g *Game) perTypeOthersLocked(holder uuid.UUID, grant *CastPermission, exce
 	}
 	var out []Card
 	for _, c := range pile {
-		if c.InstanceID != except && grant.CoversCard(c, grant.Zone) {
+		if c.InstanceID != except && grant.CoversCard(g.lendPTLocked(grant, c), grant.Zone) {
 			out = append(out, c)
 		}
 	}
