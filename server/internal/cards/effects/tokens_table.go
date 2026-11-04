@@ -329,4 +329,9 @@ var tokenTable = map[string]game.Card{
 
 	// #4457 batch 12: The Last Ronin's Technique's Ninja Turtle Spirit.
 	"1/1 white Ninja Turtle Spirit": {Name: "Ninja Turtle Spirit", TypeLine: "Token Creature — Ninja Turtle Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	// #4457: Teenage Mutant Ninja Turtles' Ninja (Uneasy Alliance).
+	// #4457: Lord Dregg, Insect Invader's token.
+	"1/1 black Insect Warrior with flying": {Name: "Insect Warrior", TypeLine: "Token Creature — Insect Warrior", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	// #4457 batch 3: Foot Mystic's Ninja.
+	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
 }
