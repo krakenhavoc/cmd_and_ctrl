@@ -583,8 +583,14 @@ func main() {
 	// you own from outside the game" from the card database. With no
 	// index the hook stays nil and such a player has nothing outside the
 	// game, which is ADR 0191's behaviour.
+	// ADR 0216 §2: the same collection is the Planechase communal
+	// planar deck's source, a separate reader of the planar rows the
+	// pool above excludes. With no index a Planechase table refuses to
+	// start (game.ErrNoPlanarCards).
 	if cardIdx != nil {
-		game.OutsideCollection = deck.NewCollection(cardIdx)
+		col := deck.NewCollection(cardIdx)
+		game.OutsideCollection = col
+		game.PlanarCards = col
 	}
 	// Timed and logged unconditionally (#524): the strong hypothesis
 	// on #515 is that startup — not this restore pass — dominates the

@@ -219,3 +219,7 @@ Decision 2's continuation rode a library search's `searchResumeFrame` (its `Pred
 **Compatibility.** No snapshot field changes. A file holding a plain pick names `engine/outside-pick-plain`, which an older binary does not register, so it refuses the file (`checkEffectKeys`), as it does for any new key.
 
 **Test** (`game/library_search_frames_restore_test.go`): a plain collection pick, a plain sideboard pick and a keyed collection pick with a set rule are each restored strictly mid-prompt and answered on the restored table.
+
+## Amendment 2026-11-04 (#4870, ADR 0216 slice 1): the planar rows have a second reader
+
+ADR 0216's amendment of §2 is carried out. `notInACollection` and `collectible` are unchanged, so `Search`, `Named` and `Suggest` still never hand a player a plane or a phenomenon. `deck.Collection.PlanarCards(kinds)` is a separate reader of the same index that keeps exactly those rows: a `Playable()` printing whose Scryfall layout is `planar` and whose type line is a plane's (`Plane —`) or, when asked for, a phenomenon's, one per oracle ID, in oracle-ID order. `main.go` installs the one collection as both `game.OutsideCollection` and `game.PlanarCards`. `TestPlanarCardsAreThePlanesTheCollectionExcludes` (`internal/deck`) holds both halves.

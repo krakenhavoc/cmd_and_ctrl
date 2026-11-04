@@ -175,6 +175,27 @@ type Game struct {
 	// snapshot.
 	OpeningRoll *OpeningRoll
 
+	// Planechase is the Planechase option's planar controller and die
+	// count (CR 901, ADR 0216), nil when the table is not playing
+	// Planechase. Every Planechase code path is behind a nil check, so
+	// a table without the option runs none of it. Carried by Clone,
+	// RestoreFrom and the snapshot.
+	Planechase *PlanechaseState
+
+	// PlanarDeck is the communal planar deck (CR 901.15), face down in
+	// the command zone (CR 901.4), bottom first and top last; and
+	// PlanarFaceUp is the face-up plane cards, in the order they were
+	// turned up. Both are of kind ZoneCommand and both are OUTSIDE the
+	// card index: no ZoneRef reaches them, so nothing but the
+	// Planechase code moves a planar card (ADR 0216 §3, ADR 0207's
+	// containers). Nil when the table is not playing Planechase. Read
+	// through planarDeckForLocked and planarFaceUpLocked. Every card in
+	// both is owned and controlled by the planar controller (CR
+	// 901.15b, setPlanarControllerLocked). Carried by Clone,
+	// RestoreFrom and the snapshot (inside its `planechase` object).
+	PlanarDeck   *Zone
+	PlanarFaceUp *Zone
+
 	// Monarch is the player ID currently designated as the monarch
 	// (CR 725). uuid.Nil means "no monarch currently". Handed out by
 	// the set_monarch action or by a card effect; from #375 onward the
@@ -1555,6 +1576,16 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	if len(g.Seats) < MinPlayers {
 		return ErrNotEnoughPlayers
 	}
+	// ADR 0216 §§1–2: a Planechase table checks its communal planar
+	// deck before anything moves, so a refused Start leaves the table
+	// as it was.
+	var planar []Card
+	if g.Settings.Planechase {
+		var err error
+		if planar, err = planarTemplates(g.playersInGameLocked()); err != nil {
+			return err
+		}
+	}
 
 	switch {
 	case key != nil:
@@ -1567,6 +1598,9 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	// No "<= 0 means default" rewrite here any more (ADR 0075 §2.2):
 	// NewGame sets the defaults, and a limit of 0 set in the lobby is
 	// a table that wants no undos.
+	if g.Settings.Planechase {
+		g.installPlanarDeckLocked(planar)
+	}
 	g.beginPregameLocked()
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
 	// NOT fire at Start — the cursor sits idle on Untap until the

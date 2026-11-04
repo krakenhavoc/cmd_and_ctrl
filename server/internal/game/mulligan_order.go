@@ -259,6 +259,10 @@ func (g *Game) settleMulliganLocked() {
 	// asked, in turn order from the starting player (ADR 0133). The
 	// prompts hold the table the way any open choice does.
 	g.offerOpeningHandActionsLocked()
+	// CR 901.5 (ADR 0216 §3): a Planechase table's starting plane is
+	// turned face up once the hands are kept. See planechase.go for why
+	// this comes as the opening-hand prompts are queued.
+	g.turnUpStartingPlaneLocked()
 	// CR 727.4 (#3856): in a restarted game, the effect that restarted
 	// it finishes resolving now, just before the first turn's untap
 	// step. Its entry begins that step when it is done (restart.go).
