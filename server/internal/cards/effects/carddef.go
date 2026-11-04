@@ -107,7 +107,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			RiderSelfDamage:           a.PainToYou,
 			RiderSelfLifeGain:         a.GainLife,
 			RiderOpponentLifeGain:     a.OpponentsGainLife,
-			RiderOpponentDamage:       a.PingOpponents,
+			TriggerOpponentDamage:     a.PingOpponentsTrigger,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
@@ -127,9 +127,10 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 // manaRider is the built ability's rider: the declared Rider, the
 // PainRider a PainToYou declaration stands for (#2392), the
 // GainLifeRider a GainLife declaration stands for (#4185), or the
-// opponent-facing riders OpponentsGainLife and PingOpponents stand for
-// (#4189). Register refuses a spec that sets two, so at most one is
-// non-zero here.
+// opponent-facing rider OpponentsGainLife stands for (#4189). Register
+// refuses a spec that sets two, so at most one is non-zero here.
+// PingOpponentsTrigger is not among them: it is a triggered ability
+// (CR 605.1b), grown as a Triggered row by manaActivationTriggers.
 func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) error {
 	if a.PainToYou > 0 {
 		return PainRider(a.PainToYou)
@@ -139,9 +140,6 @@ func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) e
 	}
 	if a.OpponentsGainLife > 0 {
 		return EachOpponentGainsLifeRider(a.OpponentsGainLife)
-	}
-	if a.PingOpponents > 0 {
-		return PingEachOpponentRider(a.PingOpponents)
 	}
 	return a.Rider
 }
@@ -397,6 +395,13 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
+	// #4928 / CR 605.1b: a damage trigger printed beside a mana ability
+	// is an ordinary triggered ability, grown here as a Triggered row and
+	// appended after every other one, so a card's declared rows keep
+	// their indexes (ADR 0041 P9).
+	if rows := manaActivationTriggers(spec.Name, spec.ManaAbilities); len(rows) > 0 {
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...), rows...)
+	}
 	// #4236: the printed keywords are NOT a static. They are the object's
 	// own characteristics, so they are in the baseline the layer pass
 	// starts from (CR 613.1; printedInputs.characteristicFrom reads

@@ -8139,6 +8139,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// them, so a painland activated at 1 life loses the game on the
 	// way out of this call rather than at some later boundary.
 	needStateChecks := false
+	// #4928: the queue as it stood before this activation. A triggered
+	// ability the activation queues — Zhur-Taa Druid's "whenever you tap
+	// this creature for mana", which is no mana ability because it could
+	// not add mana (CR 605.1b) — is put on the stack the next time a
+	// player would receive priority (CR 603.3), and that is now: the
+	// activator still holds it. The boundary below drains the queue; it
+	// holds while a resolution is open (a "pay {1}" answered with mana),
+	// so a trigger waits for that resolution to finish.
+	pendingBefore := len(g.PendingTriggers)
 
 	// #789: the one paid-cost record, built as the components are
 	// charged. A mana ability has no stack item to hang it on (CR
@@ -8386,7 +8395,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		needStateChecks = true
 	}
 	defer func() {
-		if needStateChecks {
+		if needStateChecks || len(g.PendingTriggers) > pendingBefore {
 			g.runStateChecksLocked()
 		}
 	}()
