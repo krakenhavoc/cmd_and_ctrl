@@ -13,21 +13,34 @@ import "github.com/google/uuid"
 // Also the extra-turn count H.M.S. Bounty reads, which shipped in the
 // same batch: Player.ExtraTurnsBegun.
 
-// emitFacedDilemmaLocked records that `player` chose one or more modes
-// for the spell or ability `source` (the spell, or the ability's
-// source).
+// emitFacedDilemmaLocked tells the listeners — the trigger harvester
+// among them — that `player` chose one or more modes for the spell or
+// ability `source` (the spell, or the ability's source).
+//
+// The event is delivered to the listeners and NOT appended to
+// g.Events. It is a silent kind (the cast, activation or mode-choice
+// line already says it, protocol's log gate), and keeping it off the
+// log is what keeps every game that chooses a mode recording the same
+// events it did before the kind existed: the frozen v9 restore points
+// (#522; modal_trigger.json is one) hold those event lists, and a
+// fixture is never rewritten. It carries the Seq and batch of the event
+// before it, so batch-keyed triggers group it with the action that
+// chose the modes.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) emitFacedDilemmaLocked(player, source uuid.UUID) {
 	if player == uuid.Nil {
 		return
 	}
-	g.EmitEvent(Event{
+	ev := Event{
 		Kind:   EventFacedDilemma,
 		Actor:  player,
 		Source: source,
 		CardID: source,
-	})
+		Seq:    g.eventSeq,
+		Batch:  g.currentEventBatchLocked(),
+	}
+	g.notifyListenersLocked(ev)
 }
 
 // ExtraTurnsBegunForEffect is how many extra turns `player` has begun

@@ -43,7 +43,7 @@ func init() {
 				RemoveCountersAmong("", 3, "creatures you control", Creature()),
 			),
 			Effect:  drawOneCardEffect,
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 		}},
 	})
 }

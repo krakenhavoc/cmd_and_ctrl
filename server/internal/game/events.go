@@ -1072,7 +1072,8 @@ const (
 	// activated ability is put on the stack, and as a modal trigger's
 	// mode_pick is answered. A copy (CR 700.2g), a mode chosen at
 	// random, and a "choose up to" answered with no mode choose nothing
-	// and emit nothing.
+	// and emit nothing. Delivered to the listeners only, never appended
+	// to Game.Events (emitFacedDilemmaLocked says why).
 	EventFacedDilemma EventKind = "faced_dilemma"
 
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
