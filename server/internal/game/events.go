@@ -1719,6 +1719,12 @@ type Event struct {
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
 
+	// PlanarFace is the face a planar die showed on an EventRollDie
+	// (CR 901.3a, ADR 0216 §4): PlanarFaceBlank, PlanarFaceChaos or
+	// PlanarFacePlaneswalk. Amount is 0 on such an event: the planar die
+	// has no numerical result (CR 901.9d). Empty on every other event.
+	PlanarFace string `json:"planarFace,omitempty"`
+
 	// Seats are the seat indexes an EventOpeningRoll names: the seats
 	// that tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`

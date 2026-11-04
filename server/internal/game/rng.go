@@ -65,6 +65,10 @@ const (
 	// planar deck before the game begins (ADR 0216 §2), apart from
 	// every library's stream so the option moves no player's shuffle.
 	rngStreamPlanarShuffle = "planar_shuffle"
+	// rngStreamPlanarDie rolls the planar die (CR 901.3a, ADR 0216 §4),
+	// apart from the roll stream so a planar roll never moves a card's
+	// die.
+	rngStreamPlanarDie = "planar_die"
 	// rngStreamTable is ADR 0121 §5's table roll. It is NOT drawn
 	// through randForLocked: its counter is Game.tableRollNext, per
 	// game and never reset, and it never touches rngCounters.

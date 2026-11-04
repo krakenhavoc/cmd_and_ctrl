@@ -1021,6 +1021,7 @@ events[].new_zone	string
 events[].old_zone	string
 events[].paperDeclared	bool
 events[].paperPaid	string
+events[].planarFace	string
 events[].played	bool
 events[].power_up	bool
 events[].public_names	map:array
@@ -1782,6 +1783,7 @@ followUpParks[].then.asked.trigger.Event.new_zone	string
 followUpParks[].then.asked.trigger.Event.old_zone	string
 followUpParks[].then.asked.trigger.Event.paperDeclared	bool
 followUpParks[].then.asked.trigger.Event.paperPaid	string
+followUpParks[].then.asked.trigger.Event.planarFace	string
 followUpParks[].then.asked.trigger.Event.played	bool
 followUpParks[].then.asked.trigger.Event.power_up	bool
 followUpParks[].then.asked.trigger.Event.public_names	map:array
@@ -2390,6 +2392,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.public_names	map:array
@@ -2977,6 +2980,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.planarFace	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.played	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.public_names	map:array
@@ -3555,6 +3559,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.played	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.public_names	map:array
@@ -4301,6 +4306,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.public_names	map:array
@@ -4994,6 +5000,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.new_
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.played	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
@@ -5644,6 +5651,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.played	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
@@ -6222,6 +6230,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.planarFace	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.played	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.public_names	map:array
@@ -6832,6 +6841,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.new_zon
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.planarFace	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.played	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
@@ -7430,6 +7440,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.played	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
@@ -8416,6 +8427,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
@@ -9016,6 +9028,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.played	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
@@ -9597,6 +9610,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.public_names	map:array
@@ -10949,6 +10963,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.played	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.public_names	map:array
@@ -11525,6 +11540,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.public_names	map:array
@@ -12446,6 +12462,7 @@ frozenEntries[].event.stackItem.trigger.Event.new_zone	string
 frozenEntries[].event.stackItem.trigger.Event.old_zone	string
 frozenEntries[].event.stackItem.trigger.Event.paperDeclared	bool
 frozenEntries[].event.stackItem.trigger.Event.paperPaid	string
+frozenEntries[].event.stackItem.trigger.Event.planarFace	string
 frozenEntries[].event.stackItem.trigger.Event.played	bool
 frozenEntries[].event.stackItem.trigger.Event.power_up	bool
 frozenEntries[].event.stackItem.trigger.Event.public_names	map:array
@@ -13012,6 +13029,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.played	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.public_names	map:array
@@ -14368,6 +14386,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.new_zone
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.played	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
@@ -14978,6 +14997,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ne
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.planarFace	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.played	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
@@ -15554,6 +15574,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.new_zone	stri
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.played	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
@@ -16150,6 +16171,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.new_zone	st
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.played	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
@@ -16811,6 +16833,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.new_zone	s
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperPaid	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.planarFace	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.played	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
@@ -18913,6 +18936,7 @@ lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.paperDeclared	bool
 lastKnownStack[].item.trigger.Event.paperPaid	string
+lastKnownStack[].item.trigger.Event.planarFace	string
 lastKnownStack[].item.trigger.Event.played	bool
 lastKnownStack[].item.trigger.Event.power_up	bool
 lastKnownStack[].item.trigger.Event.public_names	map:array
@@ -19383,6 +19407,7 @@ pausedModeWalk.item.trigger.Event.new_zone	string
 pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.paperDeclared	bool
 pausedModeWalk.item.trigger.Event.paperPaid	string
+pausedModeWalk.item.trigger.Event.planarFace	string
 pausedModeWalk.item.trigger.Event.played	bool
 pausedModeWalk.item.trigger.Event.power_up	bool
 pausedModeWalk.item.trigger.Event.public_names	map:array
@@ -19703,6 +19728,7 @@ pausedResolutionTail.item.trigger.Event.new_zone	string
 pausedResolutionTail.item.trigger.Event.old_zone	string
 pausedResolutionTail.item.trigger.Event.paperDeclared	bool
 pausedResolutionTail.item.trigger.Event.paperPaid	string
+pausedResolutionTail.item.trigger.Event.planarFace	string
 pausedResolutionTail.item.trigger.Event.played	bool
 pausedResolutionTail.item.trigger.Event.power_up	bool
 pausedResolutionTail.item.trigger.Event.public_names	map:array
@@ -20017,6 +20043,7 @@ pausedStepWalk.item.trigger.Event.new_zone	string
 pausedStepWalk.item.trigger.Event.old_zone	string
 pausedStepWalk.item.trigger.Event.paperDeclared	bool
 pausedStepWalk.item.trigger.Event.paperPaid	string
+pausedStepWalk.item.trigger.Event.planarFace	string
 pausedStepWalk.item.trigger.Event.played	bool
 pausedStepWalk.item.trigger.Event.power_up	bool
 pausedStepWalk.item.trigger.Event.public_names	map:array
@@ -20200,6 +20227,7 @@ pendingChoices[].asked.trigger.Event.new_zone	string
 pendingChoices[].asked.trigger.Event.old_zone	string
 pendingChoices[].asked.trigger.Event.paperDeclared	bool
 pendingChoices[].asked.trigger.Event.paperPaid	string
+pendingChoices[].asked.trigger.Event.planarFace	string
 pendingChoices[].asked.trigger.Event.played	bool
 pendingChoices[].asked.trigger.Event.power_up	bool
 pendingChoices[].asked.trigger.Event.public_names	map:array
@@ -21324,6 +21352,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.new_zone	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.old_zone	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.paperPaid	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.planarFace	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.played	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.power_up	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.public_names	map:array
@@ -22474,6 +22503,7 @@ pendingChoices[].copyWalk.item.trigger.Event.new_zone	string
 pendingChoices[].copyWalk.item.trigger.Event.old_zone	string
 pendingChoices[].copyWalk.item.trigger.Event.paperDeclared	bool
 pendingChoices[].copyWalk.item.trigger.Event.paperPaid	string
+pendingChoices[].copyWalk.item.trigger.Event.planarFace	string
 pendingChoices[].copyWalk.item.trigger.Event.played	bool
 pendingChoices[].copyWalk.item.trigger.Event.power_up	bool
 pendingChoices[].copyWalk.item.trigger.Event.public_names	map:array
@@ -23155,6 +23185,7 @@ pendingChoices[].diceRoll.pending[]	object
 pendingChoices[].diceRoll.pending[].chooser	custom(uuid.UUID)
 pendingChoices[].diceRoll.pending[].label	string
 pendingChoices[].diceRoll.pending[].source	custom(uuid.UUID)
+pendingChoices[].diceRoll.planar	bool
 pendingChoices[].diceRoll.player	custom(uuid.UUID)
 pendingChoices[].diceRoll.rolls	array
 pendingChoices[].diceRoll.rolls[]	number:int
@@ -23264,6 +23295,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.new_zone	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.old_zone	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.planarFace	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.played	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.power_up	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.public_names	map:array
@@ -24213,6 +24245,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.new_zone	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.paperPaid	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.planarFace	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.played	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.public_names	map:array
@@ -24791,6 +24824,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.new_zone	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.planarFace	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.played	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.public_names	map:array
@@ -25375,6 +25409,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.new_zone	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.old_zone	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.planarFace	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.played	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.power_up	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.public_names	map:array
@@ -26009,6 +26044,7 @@ pendingChoices[].nameThen.asked.trigger.Event.new_zone	string
 pendingChoices[].nameThen.asked.trigger.Event.old_zone	string
 pendingChoices[].nameThen.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].nameThen.asked.trigger.Event.paperPaid	string
+pendingChoices[].nameThen.asked.trigger.Event.planarFace	string
 pendingChoices[].nameThen.asked.trigger.Event.played	bool
 pendingChoices[].nameThen.asked.trigger.Event.power_up	bool
 pendingChoices[].nameThen.asked.trigger.Event.public_names	map:array
@@ -26594,6 +26630,7 @@ pendingChoices[].ordered.asked.trigger.Event.new_zone	string
 pendingChoices[].ordered.asked.trigger.Event.old_zone	string
 pendingChoices[].ordered.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].ordered.asked.trigger.Event.paperPaid	string
+pendingChoices[].ordered.asked.trigger.Event.planarFace	string
 pendingChoices[].ordered.asked.trigger.Event.played	bool
 pendingChoices[].ordered.asked.trigger.Event.power_up	bool
 pendingChoices[].ordered.asked.trigger.Event.public_names	map:array
@@ -27045,6 +27082,7 @@ pendingChoices[].pickTail.asked.trigger.Event.new_zone	string
 pendingChoices[].pickTail.asked.trigger.Event.old_zone	string
 pendingChoices[].pickTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].pickTail.asked.trigger.Event.paperPaid	string
+pendingChoices[].pickTail.asked.trigger.Event.planarFace	string
 pendingChoices[].pickTail.asked.trigger.Event.played	bool
 pendingChoices[].pickTail.asked.trigger.Event.power_up	bool
 pendingChoices[].pickTail.asked.trigger.Event.public_names	map:array
@@ -27667,6 +27705,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ne
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.public_names	map:array
@@ -28254,6 +28293,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.public_names	map:array
@@ -28832,6 +28872,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.public_names	map:array
@@ -29578,6 +29619,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.new
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.public_names	map:array
@@ -30271,6 +30313,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
@@ -30921,6 +30964,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
@@ -31499,6 +31543,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.new
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.public_names	map:array
@@ -32109,6 +32154,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
@@ -32707,6 +32753,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
@@ -33693,6 +33740,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
@@ -34293,6 +34341,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
@@ -34874,6 +34923,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.new_z
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.public_names	map:array
@@ -36226,6 +36276,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.n
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.public_names	map:array
@@ -36802,6 +36853,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.new_z
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.public_names	map:array
@@ -37723,6 +37775,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.public_names	map:array
@@ -38289,6 +38342,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.new_
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.public_names	map:array
@@ -39645,6 +39699,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
@@ -40255,6 +40310,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
@@ -40831,6 +40887,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
@@ -41427,6 +41484,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
@@ -42088,6 +42146,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperPaid	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.planarFace	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.played	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
@@ -43080,6 +43139,7 @@ pendingChoices[].scryThen.asked.trigger.Event.new_zone	string
 pendingChoices[].scryThen.asked.trigger.Event.old_zone	string
 pendingChoices[].scryThen.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].scryThen.asked.trigger.Event.paperPaid	string
+pendingChoices[].scryThen.asked.trigger.Event.planarFace	string
 pendingChoices[].scryThen.asked.trigger.Event.played	bool
 pendingChoices[].scryThen.asked.trigger.Event.power_up	bool
 pendingChoices[].scryThen.asked.trigger.Event.public_names	map:array
@@ -43703,6 +43763,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.new_zone	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.paperDeclared	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.paperPaid	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.planarFace	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.played	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.public_names	map:array
@@ -45039,6 +45100,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.new_zone	string
 pendingChoices[].targetWalk.frame.trigger.Event.old_zone	string
 pendingChoices[].targetWalk.frame.trigger.Event.paperDeclared	bool
 pendingChoices[].targetWalk.frame.trigger.Event.paperPaid	string
+pendingChoices[].targetWalk.frame.trigger.Event.planarFace	string
 pendingChoices[].targetWalk.frame.trigger.Event.played	bool
 pendingChoices[].targetWalk.frame.trigger.Event.power_up	bool
 pendingChoices[].targetWalk.frame.trigger.Event.public_names	map:array
@@ -45717,6 +45779,7 @@ pendingChoices[].triggerFrame.trigger.Event.new_zone	string
 pendingChoices[].triggerFrame.trigger.Event.old_zone	string
 pendingChoices[].triggerFrame.trigger.Event.paperDeclared	bool
 pendingChoices[].triggerFrame.trigger.Event.paperPaid	string
+pendingChoices[].triggerFrame.trigger.Event.planarFace	string
 pendingChoices[].triggerFrame.trigger.Event.played	bool
 pendingChoices[].triggerFrame.trigger.Event.power_up	bool
 pendingChoices[].triggerFrame.trigger.Event.public_names	map:array
@@ -46039,6 +46102,7 @@ pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.paperDeclared	bool
 pendingTriggers[].trigger.Event.paperPaid	string
+pendingTriggers[].trigger.Event.planarFace	string
 pendingTriggers[].trigger.Event.played	bool
 pendingTriggers[].trigger.Event.power_up	bool
 pendingTriggers[].trigger.Event.public_names	map:array
@@ -47404,6 +47468,7 @@ promptRuns[].asked.trigger.Event.new_zone	string
 promptRuns[].asked.trigger.Event.old_zone	string
 promptRuns[].asked.trigger.Event.paperDeclared	bool
 promptRuns[].asked.trigger.Event.paperPaid	string
+promptRuns[].asked.trigger.Event.planarFace	string
 promptRuns[].asked.trigger.Event.played	bool
 promptRuns[].asked.trigger.Event.power_up	bool
 promptRuns[].asked.trigger.Event.public_names	map:array
@@ -48127,6 +48192,7 @@ resolving.item.trigger.Event.new_zone	string
 resolving.item.trigger.Event.old_zone	string
 resolving.item.trigger.Event.paperDeclared	bool
 resolving.item.trigger.Event.paperPaid	string
+resolving.item.trigger.Event.planarFace	string
 resolving.item.trigger.Event.played	bool
 resolving.item.trigger.Event.power_up	bool
 resolving.item.trigger.Event.public_names	map:array
@@ -53065,6 +53131,7 @@ stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.paperDeclared	bool
 stackMeta[].trigger.Event.paperPaid	string
+stackMeta[].trigger.Event.planarFace	string
 stackMeta[].trigger.Event.played	bool
 stackMeta[].trigger.Event.power_up	bool
 stackMeta[].trigger.Event.public_names	map:array

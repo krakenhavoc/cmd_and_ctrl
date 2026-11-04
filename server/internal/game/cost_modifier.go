@@ -723,6 +723,8 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	// command-zone card says works there, so a modifier without the flag
 	// is skipped, and a card in any other zone is never asked.
 	out = g.appendEminenceCostModifiersLocked(out, q)
+	// ADR 0216 §6: a face-up plane's cost modifiers, all of them.
+	out = g.appendPlanarCostModifiersLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the

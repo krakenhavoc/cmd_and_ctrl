@@ -322,7 +322,7 @@ func (g *Game) activeUntapCapsLocked(activePlayer uuid.UUID) []boundUntapCap {
 			gather(&g.Battlefield.Cards[i])
 		}
 	}
-	g.forEachEmblemLocked(gather)
+	g.forEachCommandSourceLocked(gather)
 	return out
 }
 

@@ -296,7 +296,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 		// departing player wrote onto others. The emblem leaves with its
 		// owner, so its presence is the duration.
 		var refused *CantCastError
-		g.forEachEmblemLocked(func(src *Card) bool {
+		g.forEachCommandSourceLocked(func(src *Card) bool {
 			refused = refusedBy(src)
 			return refused == nil
 		})

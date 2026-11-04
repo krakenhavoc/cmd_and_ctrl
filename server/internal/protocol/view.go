@@ -14103,8 +14103,7 @@ type TableSettingsView struct {
 	Planechase bool `json:"planechase,omitempty"`
 }
 
-// PlanechaseView is GameView.planechase (ADR 0216 §9). The planar die's
-// count and cost (die_rolls, die_cost) arrive with the die in slice 2.
+// PlanechaseView is GameView.planechase (ADR 0216 §9).
 type PlanechaseView struct {
 	// PlanarController is the planar controller's player ID (CR 901.6),
 	// empty until the starting player is known.
@@ -14117,6 +14116,12 @@ type PlanechaseView struct {
 	// type_line so a client can lay a plane out landscape. Empty until
 	// the hands are kept (CR 901.5).
 	FaceUp []CardView `json:"face_up"`
+	// DieRolls is how many times the planar die special action has been
+	// taken this turn (CR 901.9), and DieCost what the active player
+	// would pay to take it now, priced by the CR 601.2f pass: "{0}",
+	// "{1}" and so on.
+	DieRolls int    `json:"die_rolls"`
+	DieCost  string `json:"die_cost"`
 }
 
 // viewOfPlanechase projects the planar state, nil when the table is not
@@ -14129,11 +14134,22 @@ func viewOfPlanechase(g *game.Game, ids *idStrings) *PlanechaseView {
 	if face == nil {
 		face = []CardView{}
 	}
-	return &PlanechaseView{
+	out := &PlanechaseView{
 		PlanarController: uuidStringOrEmpty(g.Planechase.Controller),
 		DeckCount:        len(g.PlanarDeckCards()),
 		FaceUp:           face,
+		DieRolls:         g.PlanarDieRollsThisTurnLocked(),
+		DieCost:          g.PlanarDieCostLocked(),
 	}
+	if seat := g.Turn.ActiveSeat; seat >= 0 && seat < len(g.Seats) && g.Seats[seat] != nil {
+		if cost, ok := g.PlanarDieCostForEffect(g.Seats[seat].ID); ok {
+			out.DieCost = cost.String()
+			if out.DieCost == "" {
+				out.DieCost = "{0}"
+			}
+		}
+	}
+	return out
 }
 
 // filterPlanechaseFor is the per-viewer copy. The face-up cards are
