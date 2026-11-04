@@ -60,6 +60,14 @@ func init() {
 // card already moved out of the graveyard in response is not exiled, and
 // the rebuy does not happen.
 func exileItThenRebuyACreatureCard(name string) Effect {
+	return exileItFromTheGraveyardThen(name+" — return target creature card from your graveyard to your hand", undeadButlerReturnBody)
+}
+
+// exileItFromTheGraveyardThen is "you may exile it. When you do, …" for a
+// dies trigger whose reflexive half is `body` (Undead Butler's return,
+// Paramecia Coloniex's tuck): the exile of the source out of the
+// graveyard, and the reflexive trigger only once it is really in exile.
+func exileItFromTheGraveyardThen(label string, body game.BodyRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {
@@ -69,9 +77,6 @@ func exileItThenRebuyACreatureCard(name string) Effect {
 		if z == nil || z.Kind != game.ZoneExile {
 			return nil
 		}
-		return ReflexiveTrigger{
-			Label: name + " — return target creature card from your graveyard to your hand",
-			Body:  undeadButlerReturnBody,
-		}.Apply(ctx)
+		return ReflexiveTrigger{Label: label, Body: body}.Apply(ctx)
 	}
 }

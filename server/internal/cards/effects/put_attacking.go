@@ -19,7 +19,9 @@ import (
 // zones is a new object, and the instruction names the old one). The
 // helper began life in the Grim Captain's file hard-wired to exile
 // (#2709); Interceptor, Shadow's Hound returns itself from the graveyard
-// (#3771), and the question and the entry are the same.
+// (#3771), and the question and the entry are the same. Raph & Mikey,
+// Troublemakers puts the creature card its reveal stopped on from the
+// library (#4457).
 //
 // The card was never declared as an attacker, so its own "whenever this
 // attacks" does not trigger and neither does anyone else's "whenever a
@@ -101,12 +103,14 @@ func putAttacking(g *game.Game, me, card uuid.UUID, f putAttackingForm, target u
 // names one; the zone and the entry counters are the registration's.
 var putAttackingThens = map[putAttackingForm]game.OptionPickThen{
 	{from: game.ZoneExile}:                     putAttackingFromExile,
+	{from: game.ZoneLibrary}:                   putAttackingFromLibrary,
 	{from: game.ZoneGraveyard}:                 putAttackingFromGraveyard,
 	{from: game.ZoneGraveyard, finality: true}: putAttackingFromGraveyardFinality,
 }
 
 var (
 	putAttackingFromExile             = OptionPickThen("option-pick/put-attacking-from-exile", putAttackingAnswer(putAttackingForm{from: game.ZoneExile}))
+	putAttackingFromLibrary           = OptionPickThen("option-pick/put-attacking-from-library", putAttackingAnswer(putAttackingForm{from: game.ZoneLibrary}))
 	putAttackingFromGraveyard         = OptionPickThen("option-pick/put-attacking-from-graveyard", putAttackingAnswer(putAttackingForm{from: game.ZoneGraveyard}))
 	putAttackingFromGraveyardFinality = OptionPickThen("option-pick/put-attacking-from-graveyard-finality", putAttackingAnswer(putAttackingForm{from: game.ZoneGraveyard, finality: true}))
 )

@@ -957,3 +957,45 @@ Citations in `player_statics.go` and `player_keywords.go` were moved to
 the September 25, 2026 numbering as they were touched: hexproof on a
 player is CR 702.11c, "hexproof from" CR 702.11d, and a player's
 protection from targeting CR 702.16b.
+
+## Amendment (2026-11-04, #4843): protection that "doesn't remove" an Aura (CR 702.16n)
+
+> 702.16n Some Auras both give the enchanted creature protection from a
+> quality and say "this effect doesn't remove" either that specific Aura
+> or all Auras. This means that the specified Auras aren't put into their
+> owners' graveyards as a state-based action. If the creature has other
+> instances of protection from the same quality, those instances affect
+> Auras as normal.
+
+Flickering Ward and Ward of Lights are white Auras that may give
+protection from white. §1 stored protection as a bare token, deduplicated
+in the ability list, so the CR 704.5m check in `attachmentLegalLocked`
+could not tell the Aura's own instance from another source's and dropped
+the Aura into the graveyard.
+
+**Decision: the exemption rides on the token, so it is per instance.**
+`ProtectionSparingAura(tok, auraID)` mints
+`protection from white (doesn't remove <aura id>)` and
+`ProtectionSparingAuras(tok)` mints
+`protection from white (doesn't remove Auras)`. `ParseProtectionQuality`
+cuts the suffix into `ProtectionQuality.SparesAura` / `SparesAuras` and
+leaves `Printed` as the quality alone, so the badge, the block sentence
+and `CardView.protection` read exactly as before (the client already
+filters raw `protection from ` abilities and renders `card.protection`).
+A malformed suffix parses as no protection at all, the weaker direction.
+
+- **Per instance for free.** Two Auras granting the same quality mint two
+  different tokens and the list keeps both. A second Ward's token, or a
+  plain `protection from white` from anything else, does not spare this
+  Aura, so it falls off: CR 702.16n's last sentence.
+- **One consumer.** Only `ProtectedFromAttachment`, the CR 704.5m half of
+  the CR 702.16c-d check, reads the exemption. Targeting, damage and
+  blocking go through `MatchedProtection` and see plain protection.
+- **Data, not a closure.** The token is a string in the effective ability
+  list, recomputed from the Aura's id and `Card.ChosenColor` on every
+  layer pass, so nothing new reaches the snapshot and the closure census
+  does not move.
+- **Not built:** a printed "doesn't remove" on a permanent that is not an
+  Aura's grant has no card yet. CR 303.4g's "can't enter attached"
+  (`auraHostCandidatesLocked`) is not CR 702.16n's business and still
+  reads plain protection.
