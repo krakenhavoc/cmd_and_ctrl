@@ -673,6 +673,7 @@ choose choose-cards/yunas-decision-put
 choose choose-cards/zack-fair-move-equipment
 choose choose-cards/zara-renegade-recruiter-put
 choose choose-cards/zenos-yae-galvus-first-friend
+choose choose-cards/zimones-experiment-reveal
 choose choose-source/desperate-gambit
 choose choose-source/shield
 choose engine/outside-pick-plain
@@ -1330,6 +1331,7 @@ run prompt-run/wilhelt-the-rotcleaver-draw
 run prompt-run/will-of-the-abzan-lose-life
 run prompt-run/winter-tormented-loner-sacrifice
 run prompt-run/witch-king-of-angmar-ring
+run prompt-run/witherbloom-charm-sacrifice-draw
 run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
@@ -1813,6 +1815,7 @@ tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
+tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
@@ -2060,6 +2063,7 @@ tail wrenn-and-realmbreaker/after-mill
 tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail zara-renegade-recruiter/return-at-end-step
+tail zimones-experiment/creatures-then-rest
 tail zombie-apocalypse/destroy-humans
 tail zukos-exile/after-exile
 tapcost waterbend
