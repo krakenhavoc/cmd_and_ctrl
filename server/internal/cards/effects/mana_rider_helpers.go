@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -63,31 +65,43 @@ func EachOpponentGainsLifeRider(n int) func(g *game.Game, controller, source uui
 	}
 }
 
-// PingEachOpponentRider is the mana-ability rider "this permanent deals N
-// damage to each opponent" (Zhur-Taa Druid), run inside the same atomic
-// mana-ability resolution as the mana (CR 605.3b). The damage is one
-// instance dealt to every opponent still in the game,
-// through DealDamageToPlayerForEffect so prevention and doubling apply.
-//
-// It cannot use damageToEachOpponent, which reads the opponent list off a
-// resolving stack item: a mana ability never uses the stack (CR 605.3), so
-// the seat walk is done here against the activator. Declare it with
-// ManaAbility.PingOpponents, which also tells the auto-tapper what it does
-// (#4189).
-func PingEachOpponentRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
-	return func(g *game.Game, controller, source uuid.UUID) error {
-		return g.DamageInstanceForEffect(func() error {
-			for _, p := range g.Seats {
-				if p == nil || p.Eliminated || p.ID == controller {
-					continue
-				}
-				if err := g.DealDamageToPlayerForEffect(source, p.ID, n); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+// manaActivationTriggers grows the Triggered rows the mana abilities'
+// PingOpponentsTrigger declarations stand for (#4928), in ability order.
+// Nil when none declares one, which is every card but a handful.
+func manaActivationTriggers(name string, abilities []ManaAbility) []game.TriggeredAbility {
+	var out []game.TriggeredAbility
+	for _, a := range abilities {
+		if a.PingOpponentsTrigger > 0 {
+			out = append(out, manaActivationPing(name, a.Label, a.PingOpponentsTrigger))
+		}
 	}
+	return out
+}
+
+// manaActivationPing is "Whenever you tap this creature for mana, it
+// deals N damage to each opponent" (Zhur-Taa Druid) and its reflexive
+// twin "… Add {R}. When you do, this creature deals N damage to each
+// opponent" (Rubble Rouser, CR 603.12): a triggered ability that fires
+// when the row labelled `label` is activated, and goes on the stack.
+//
+// CR 605.1b is why it is not a rider: a triggered ability is a mana
+// ability only if "it could add mana to a player's mana pool when it
+// resolves", and damage cannot. The mana ability itself still resolves
+// at once (CR 605.3b), so the mana is in the pool before the trigger is
+// even put on the stack (CR 603.3, the next time a player would receive
+// priority).
+//
+// The watch is game.EventManaAbilityActivated, which the hand-clicked
+// activation and the auto-tapper both emit with the row's label — not
+// EventTapCard, which also fires for an attack, a crew or an opponent's
+// tap effect. "You" is the activator: the source's controller.
+func manaActivationPing(name, label string, n int) game.TriggeredAbility {
+	return On(game.EventManaAbilityActivated,
+		func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			return source != nil && ev.Source == source.InstanceID && ev.Label == label && ev.Actor == source.Controller
+		},
+		fmt.Sprintf("%s — %d damage to each opponent", name, n),
+		Do(DamageEachOpponent{N: n}))
 }
 
 // painDual is the second ability shared by all eight painlands and

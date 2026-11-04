@@ -18,7 +18,9 @@ import (
 //
 //   - OpponentsGainLife: Grove of the Burnwillows' "Each opponent gains
 //     1 life";
-//   - PingOpponents: Zhur-Taa Druid's "deals 1 damage to each opponent".
+//   - PingOpponentsTrigger: Zhur-Taa Druid's "deals 1 damage to each
+//     opponent", which is a trigger on the stack, not a rider (#4928),
+//     and is declared to the planner all the same.
 //
 // A source that gives the table something is planned, but only after every
 // source that does not (tapSource.Table). The sources whose rider spends a
@@ -60,12 +62,12 @@ func TestOpponentRidersAreDeclaredAsData(t *testing.T) {
 	if len(grove) != 2 || grove[0].Rider != nil || grove[0].RiderOpponentLifeGain != 0 {
 		t.Fatalf("Grove's {C} half should have no rider: %+v", grove)
 	}
-	if grove[1].Rider == nil || grove[1].RiderOpponentLifeGain != 1 || grove[1].RiderOpponentDamage != 0 || grove[1].RiderSelfDamage != 0 {
+	if grove[1].Rider == nil || grove[1].RiderOpponentLifeGain != 1 || grove[1].TriggerOpponentDamage != 0 || grove[1].RiderSelfDamage != 0 {
 		t.Errorf("Grove's coloured half = %+v, want an opponent life gain of 1 and nothing else declared", grove[1])
 	}
 	druid := game.ManaAbilitiesForCard(game.Card{OracleID: b40ZhurTaaDruidOracle})
-	if len(druid) != 1 || druid[0].Rider == nil || druid[0].RiderOpponentDamage != 1 || druid[0].RiderOpponentLifeGain != 0 {
-		t.Errorf("Zhur-Taa Druid = %+v, want an opponent damage of 1 and nothing else declared", druid)
+	if len(druid) != 1 || druid[0].Rider != nil || druid[0].TriggerOpponentDamage != 1 || druid[0].RiderOpponentLifeGain != 0 {
+		t.Errorf("Zhur-Taa Druid = %+v, want no rider and a declared opponent damage trigger of 1", druid)
 	}
 }
 
@@ -81,13 +83,11 @@ func TestRegisterRefusesTwoRidersOnOneManaAbility(t *testing.T) {
 		return ma
 	}
 	for name, ma := range map[string]ManaAbility{
-		"Rider and OpponentsGainLife":         with(func(m *ManaAbility) { m.Rider, m.OpponentsGainLife = rider, 1 }),
-		"Rider and PingOpponents":             with(func(m *ManaAbility) { m.Rider, m.PingOpponents = rider, 1 }),
-		"PainToYou and PingOpponents":         with(func(m *ManaAbility) { m.PainToYou, m.PingOpponents = 1, 1 }),
-		"GainLife and OpponentsGainLife":      with(func(m *ManaAbility) { m.GainLife, m.OpponentsGainLife = 1, 1 }),
-		"OpponentsGainLife and PingOpponents": with(func(m *ManaAbility) { m.OpponentsGainLife, m.PingOpponents = 1, 1 }),
-		"a negative OpponentsGainLife":        with(func(m *ManaAbility) { m.OpponentsGainLife = -1 }),
-		"a negative PingOpponents":            with(func(m *ManaAbility) { m.PingOpponents = -1 }),
+		"Rider and OpponentsGainLife":        with(func(m *ManaAbility) { m.Rider, m.OpponentsGainLife = rider, 1 }),
+		"GainLife and OpponentsGainLife":     with(func(m *ManaAbility) { m.GainLife, m.OpponentsGainLife = 1, 1 }),
+		"a negative OpponentsGainLife":       with(func(m *ManaAbility) { m.OpponentsGainLife = -1 }),
+		"a negative PingOpponentsTrigger":    with(func(m *ManaAbility) { m.Label, m.PingOpponentsTrigger = "Add {G}", -1 }),
+		"PingOpponentsTrigger with no Label": with(func(m *ManaAbility) { m.PingOpponentsTrigger = 1 }),
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {
@@ -216,6 +216,12 @@ func TestZhurTaaDruidPaysForASpellAndPingsEachOpponent(t *testing.T) {
 	if !isTapped(g, druid) {
 		t.Error("the Druid did not tap")
 	}
+	// #4928: the auto-tapper activated the mana ability, so the damage
+	// trigger is on the stack (CR 605.1b), not dealt with the mana.
+	if triggerOnStack(g, druid) == nil {
+		t.Fatal("the auto-tapped Druid put no damage trigger on the stack")
+	}
+	passPriorityAroundTable(t, g)
 	after := opponentLife(g, me)
 	for i := range after {
 		if after[i] != before[i]-1 {
@@ -401,7 +407,7 @@ func TestSourcesWhoseRiderUsesAResourceStayManual(t *testing.T) {
 				if ab.Rider == nil && ab.PreRider == nil {
 					t.Fatalf("%s: the ability has no rider; the table is stale", tc.name)
 				}
-				if ab.RiderSelfDamage != 0 || ab.RiderSelfLifeGain != 0 || ab.RiderOpponentLifeGain != 0 || ab.RiderOpponentDamage != 0 {
+				if ab.RiderSelfDamage != 0 || ab.RiderSelfLifeGain != 0 || ab.RiderOpponentLifeGain != 0 || ab.TriggerOpponentDamage != 0 {
 					t.Fatalf("%s declares a rider the planner can read: %+v", tc.name, ab)
 				}
 			}

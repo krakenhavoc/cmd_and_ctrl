@@ -829,12 +829,20 @@ type ManaAbilityShape struct {
 	// nothing else.
 	RiderOpponentLifeGain int
 
-	// RiderOpponentDamage is the damage Rider deals each opponent of the
-	// ability's controller, in one damage instance, when Rider is exactly
-	// "this creature deals N damage to each opponent" (effects.ManaAbility.
-	// PingOpponents builds both): Zhur-Taa Druid. Zero for an opaque rider,
-	// or none. Declared and tiered as RiderOpponentLifeGain is.
-	RiderOpponentDamage int
+	// TriggerOpponentDamage is the damage each opponent of the ability's
+	// controller takes from a TRIGGERED ability that activating this row
+	// triggers: Zhur-Taa Druid's "Whenever you tap this creature for mana,
+	// it deals 1 damage to each opponent", Rubble Rouser's reflexive
+	// "When you do" (effects.ManaAbility.PingOpponentsTrigger builds both
+	// this and the catalog's Triggered row). Zero for none.
+	//
+	// It is not Rider's: CR 605.1b makes a trigger a mana ability only if
+	// it could add mana, so the damage is an ordinary trigger that uses
+	// the stack (#4928), and nothing here runs it. The number exists for
+	// the auto-tapper alone, which taps the source and counts its mana but
+	// tiers it as RiderOpponentLifeGain is (tapSource.Table): the plan
+	// reaches for it only when nothing quieter could pay.
+	TriggerOpponentDamage int
 
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and

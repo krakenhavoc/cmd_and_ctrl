@@ -937,6 +937,15 @@ adds the rest of the cases and decides each source in the #4189 list.
   that does this is still a mana ability (CR 605.1a). `Register` refuses a spec
   that sets more than one of `Rider`, `PainToYou`, `GainLife`, `OpponentsGainLife`
   and `PingOpponents`.
+- **Amendment (#4928).** Zhur-Taa Druid's damage was never a rider. Its printed
+  "Whenever you tap this creature for mana" is a triggered ability, and CR 605.1b
+  makes a trigger a mana ability only if "it could add mana to a player's mana
+  pool when it resolves". `PingOpponents`, `PingEachOpponentRider` and
+  `RiderOpponentDamage` are gone. `ManaAbility.PingOpponentsTrigger` grows a
+  catalog `Triggered` row that watches the activation of that row and uses the
+  stack. It carries `ManaAbilityShape.TriggerOpponentDamage` to the planner, which
+  tiers the source as `tapSource.Table` as before. `OpponentsGainLife` stays a
+  rider: Grove prints the life gain as part of the ability.
 - **The tier.** A source that acts on other players is `tapSource.Table`. It
   spends nothing, so it needs no budget, but a click that casts a spell should
   not also feed or ping the table while a quieter source could pay. It shares the

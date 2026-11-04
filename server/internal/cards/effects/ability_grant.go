@@ -307,6 +307,13 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		}
 		return false
 	}
+	// #4928: a mana trigger is grown into the card's own Triggered list,
+	// and a bundle's mana rows are projected without one.
+	for i, ma := range gr.Mana {
+		if ma.PingOpponentsTrigger != 0 {
+			panic(where("mana ability", i) + " declares PingOpponentsTrigger — declare the trigger in the bundle's Triggered instead")
+		}
+	}
 	for i, t := range gr.Triggered {
 		if t.ActiveWhen.IsGate() {
 			panic(where("trigger", i) + " declares ActiveWhen — a designation is the host's; gate the grantor's static instead")

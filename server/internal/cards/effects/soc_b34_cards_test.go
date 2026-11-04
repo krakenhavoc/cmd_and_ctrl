@@ -170,6 +170,14 @@ func TestSocB34RubbleRouserTapsAndExilesACardForRedAndPingsEachOpponent(t *testi
 	if c, _ := battlefieldCard(g, rouser); !c.Tapped {
 		t.Error("the Rouser did not tap")
 	}
+	// The "When you do" damage is a reflexive trigger on the stack (CR
+	// 603.12, CR 605.1b), so nobody has taken it yet.
+	for i, now := range lifeOfOpponents(g) {
+		if now != lives[i] {
+			t.Errorf("opponent %d took damage before the trigger resolved: %d -> %d", i, lives[i], now)
+		}
+	}
+	passPriorityAroundTable(t, g)
 	for i, now := range lifeOfOpponents(g) {
 		if now != lives[i]-1 {
 			t.Errorf("opponent %d life %d -> %d, want -1", i, lives[i], now)

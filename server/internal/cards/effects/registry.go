@@ -549,19 +549,24 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
-		// #4185, #4189: GainLife, OpponentsGainLife and PingOpponents build
-		// the rider the same way, so a spec carries at most one of the five.
-		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 || ma.PingOpponents < 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife, OpponentsGainLife and PingOpponents must be positive", spec.Name, i))
+		// #4185, #4189: GainLife and OpponentsGainLife build the rider the
+		// same way, so a spec carries at most one of the four.
+		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife and OpponentsGainLife must be positive", spec.Name, i))
 		}
 		riders := 0
-		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0, ma.PingOpponents > 0} {
+		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0} {
 			if set {
 				riders++
 			}
 		}
 		if riders > 1 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife, OpponentsGainLife and PingOpponents each build the rider — set one", spec.Name, i))
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife and OpponentsGainLife each build the rider — set one", spec.Name, i))
+		}
+		// #4928: the trigger is grown from the row's label, so a row with
+		// none could never be told apart from its siblings.
+		if ma.PingOpponentsTrigger < 0 || (ma.PingOpponentsTrigger > 0 && ma.Label == "") {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PingOpponentsTrigger must be positive and needs the row's Label", spec.Name, i))
 		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
