@@ -139,8 +139,9 @@ func (c CreateTokenCopiesTogether) Apply(ctx *Context) error {
 
 // TokenCopyGainsHaste is the "except it has haste" exception clause
 // shared by every hasty-token-copy card — Reflection of Kiki-Jiki's
-// activated ability and Electroduplicate's sorcery both print exactly
-// this fragment on top of a scheduled sacrifice. Haste rides the
+// activated ability prints exactly this fragment on top of a scheduled
+// sacrifice, and Electroduplicate's sorcery beside a granted one
+// (TokenCopyGainsHasteAnd). Haste rides the
 // token's printed Keywords, not a Layer 6 grant: a token has no
 // catalog key of its own to hang one off.
 func TokenCopyGainsHaste(t *game.Card) {
@@ -155,40 +156,63 @@ func TokenCopyGainsHaste(t *game.Card) {
 // TokenCopyWithHasteSacrificedAtEndStep is the whole body of "Create a
 // token that's a copy of target creature you control, except it has haste
 // and 'At the beginning of the end step, sacrifice this token.'"
-// (Electroduplicate, Kindle the Inner Flame #4689). `label` names the
-// sacrifice on the stack.
+// (Electroduplicate, Kindle the Inner Flame #4689). `grant` is the key of
+// the card's SacrificeThisTokenAtEndStepGrant bundle.
 //
-// Haste rides the token's printed Keywords (TokenCopyGainsHaste), and the
-// sacrifice is a CR 603.7 delayed trigger scheduled against the token's
-// own instance, read back off EventTokenCreated because CreateTokenCopy
-// mints the instance and returns nothing. "The end step" is the StepEnd
-// default ScheduleDelayedTrigger already uses. The target is re-read out
-// of ctx.LegalTargets(), so a creature that left in response is skipped
-// (CR 608.2b).
-func TokenCopyWithHasteSacrificedAtEndStep(label string) func(*game.StackItem, *Context) error {
+// Both halves of the exception are gained as part of the copying process,
+// so both are copiable values of the token (CR 707.9a): haste rides its
+// printed Keywords and the trigger rides Card.GrantedAbilities, the #665
+// copy grant (TokenCopyGainsHasteAnd). The token is sacrificed by its OWN
+// trigger, so a copy of the token (a Clone, a Spark Double, another token
+// copy) has the trigger and is sacrificed too, and a token that loses all
+// its abilities is not (#4950). A delayed trigger of the spell would get
+// both wrong.
+//
+// The copy is made by CreateTokenCopiesTogether, the one creation path
+// every token copy shares. The target is re-read out of ctx.LegalTargets(),
+// so a creature that left in response is skipped (CR 608.2b).
+func TokenCopyWithHasteSacrificedAtEndStep(grant string) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		id, ok := b16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
-		cursor := b25LastEventSeq(ctx.Game)
-		if err := (CreateTokenCopy{
+		return CreateTokenCopiesTogether{
 			Controller: item.Controller,
-			Copy:       id,
-			N:          1,
-			Except:     TokenCopyGainsHaste,
-		}).Apply(ctx); err != nil {
-			return err
-		}
-		tokens := b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
-		if len(tokens) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label: label,
-			Cards: tokens,
-			Body:  sacrificeListedCardsBody,
+			Copies:     []uuid.UUID{id},
+			Except:     TokenCopyGainsHasteAnd(grant),
 		}.Apply(ctx)
+	}
+}
+
+// TokenCopyGainsHasteAnd is "except it has haste and '<ability>'": haste
+// (TokenCopyGainsHaste) and the named Spec.Grants bundle, both copiable
+// values of the token (CR 707.9a). Granting a bundle the copied object
+// already carries is one grant (PrintedValues.GrantAbility).
+func TokenCopyGainsHasteAnd(grant string) func(t *game.Card) {
+	return func(t *game.Card) {
+		TokenCopyGainsHaste(t)
+		v := game.PrintedValues{GrantedAbilities: t.GrantedAbilities}
+		v.GrantAbility(grant)
+		t.GrantedAbilities = v.GrantedAbilities
+	}
+}
+
+// SacrificeThisTokenAtEndStepGrant is the bundle "At the beginning of the
+// end step, sacrifice this token.", declared in the granting card's
+// Spec.Grants under `key` (an on-disk identity, "<card>/<what>"). "The end
+// step" is every end step, whoever's turn it is, so the trigger is
+// AtEachStep; the permanent that has it is the one sacrificed. `label`
+// names the trigger on the stack.
+func SacrificeThisTokenAtEndStepGrant(key, label string) AbilityGrant {
+	return AbilityGrant{
+		Key:  key,
+		Text: "At the beginning of the end step, sacrifice this token.",
+		Triggered: []game.TriggeredAbility{
+			AtEachStep(game.StepEnd, label, func(g *game.Game, item *game.StackItem) error {
+				return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+			}),
+		},
 	}
 }
 
@@ -251,6 +275,10 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 		Keywords:           append([]string(nil), src.Keywords...),
 		ManaAbilities:      append([]game.ManaAbilityShape(nil), src.ManaAbilities...),
 		ActivatedAbilities: append([]game.ActivatedAbilityShape(nil), src.ActivatedAbilities...),
+		// An ability a copy effect granted is a copiable value (CR 707.9a),
+		// so a token copy of a Phantasmal Image or of an Electroduplicate
+		// token has it too (#4950).
+		GrantedAbilities: append([]string(nil), src.GrantedAbilities...),
 	}
 	if src.OracleID == "" && src.TokenKey != "" {
 		// A copy of a TOKEN (CR 707.2) takes the token's catalog

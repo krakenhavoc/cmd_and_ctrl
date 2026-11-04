@@ -108,11 +108,18 @@ func BaseCatalogKey(key string) string {
 }
 
 // catalogKeyWithGrants appends a card's granted-ability keys to its
-// base catalog key. An empty base (no oracle ID, or a face-down
-// permanent's CR 708.2a silence) stays empty: an object with no text
-// has no granted text either.
+// base catalog key.
+//
+// The base may be EMPTY (#4950): an object with neither an oracle ID nor
+// a token key, such as a token copy of a vanilla 4/4 Angel token, still
+// has the ability its copy effect granted (CR 707.9a), so the key is the
+// grant-only composite "|grant:<a>", the shape ADR 0093's layer-6 grants
+// already give such an object, and mergedCatalogDef answers it with the
+// bundles alone. A face-down permanent's CR 708.2a silence never reaches
+// here: printedTextKeyOf returns "" before the grants are read, so a
+// face-down copy still has no text and no granted text.
 func catalogKeyWithGrants(base string, grants []string) string {
-	if base == "" || len(grants) == 0 {
+	if len(grants) == 0 {
 		return base
 	}
 	var b strings.Builder
