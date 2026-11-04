@@ -2666,6 +2666,12 @@ export interface PlayerView {
   // "commander_damage", "effect", "concede"). Absent while they play,
   // and on a seat restored from a snapshot that predates it.
   loss_cause?: string;
+  // #4912: what the player had at the moment they left the game,
+  // recorded before CR 800.4a took their objects out of it. Public and
+  // the same for every viewer, the hand included (owner decision,
+  // 2026-11-04); never the library. Absent while they play, and on a
+  // seat restored from a snapshot that predates it.
+  final_board?: FinalBoardView;
   // True once the player has committed to their opening hand during
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
@@ -4718,6 +4724,42 @@ export interface StickerSheetView {
   name: string;
   scryfall_id?: string;
   stickers: StickerView[];
+}
+
+/**
+ * #4912: an eliminated seat's final board, PlayerView.final_board. Each
+ * zone is absent when it was empty.
+ */
+export interface FinalBoardView {
+  battlefield?: FinalCardView[];
+  hand?: FinalCardView[];
+  graveyard?: FinalCardView[];
+  exile?: FinalCardView[];
+  command?: FinalCardView[];
+}
+
+/**
+ * #4912: one card of a final board, with CardView's keys and nothing that
+ * acts. `attached_to` / `attached_to_name` name what an Aura or Equipment
+ * was on (a card, or a player for a Curse). `face_down` with no name is a
+ * face-down exiled card nothing revealed.
+ */
+export interface FinalCardView {
+  instance_id: string;
+  name?: string;
+  scryfall_id?: string;
+  layout?: string;
+  active_face?: number;
+  type_line?: string;
+  power?: number;
+  toughness?: number;
+  tapped?: boolean;
+  face_down?: boolean;
+  is_token?: boolean;
+  is_commander?: boolean;
+  counters?: Record<string, number>;
+  attached_to?: string;
+  attached_to_name?: string;
 }
 
 export interface CardView extends CastSurfaceView {

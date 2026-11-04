@@ -282,6 +282,13 @@ type Player struct {
 	// on any frame, a reload included.
 	LossCause LossCause
 
+	// FinalBoard is what the player had when they left the game (#4912,
+	// final_board.go): their battlefield, hand, graveyard, exile and
+	// command zone as plain data, written once by leaveGameLocked before
+	// CR 800.4a takes their objects out of the game, and never changed.
+	// Nil while they play. The seat view sends it to everyone.
+	FinalBoard *FinalBoard
+
 	// Removed is set when an admin removed this seat from a game that
 	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player
 	// left through Concede, so Eliminated is true as well; Removed is

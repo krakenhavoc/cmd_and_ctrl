@@ -2584,6 +2584,12 @@ type PlayerView struct {
 	// predates it. The client draws the decked-out cue and its "Decked"
 	// stone for "empty_draw" (CR 704.5b).
 	LossCause string `json:"loss_cause,omitempty"`
+	// FinalBoard is what an eliminated player had when they left the
+	// game (#4912, final_board_view.go): battlefield, hand, graveyard,
+	// exile and command zone, never the library. Public and identical
+	// for every viewer, the hand included (owner decision, 2026-11-04).
+	// Absent while the player plays.
+	FinalBoard *FinalBoardView `json:"final_board,omitempty"`
 	// HandKept reflects Player.HandKept — true once the player has
 	// committed to their opening hand. Drives the per-seat
 	// "kept ✓" / "deciding…" indicator during the mulligan window.
@@ -10709,6 +10715,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		LifeHistory:           history,
 		Eliminated:            p.Eliminated,
 		LossCause:             string(p.LossCause),
+		FinalBoard:            viewOfFinalBoard(p.FinalBoard),
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
 		MulliganBottom:        viewOfMulliganBottom(g, p),
