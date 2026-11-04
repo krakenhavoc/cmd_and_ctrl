@@ -98,10 +98,10 @@ func parseCost(s string) cost {
 		var accept colours
 		twobrid := false
 		for _, p := range parts {
-			switch {
-			case p == "P":
+			switch p {
+			case "P":
 				phyrexian = true
-			case p == "2":
+			case "2":
 				twobrid = true
 			default:
 				accept |= colourOf(p)
