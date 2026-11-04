@@ -841,6 +841,7 @@ confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/snort-wheel
+confirm confirm/social-snub-copy
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
@@ -1291,6 +1292,7 @@ run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/slaughter-the-strong-keep
 run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
+run prompt-run/social-snub-drain
 run prompt-run/sorin-imperious-bloodlord-sacrifice
 run prompt-run/springbloom-druid-search
 run prompt-run/summon-valefor-sonic-wings
