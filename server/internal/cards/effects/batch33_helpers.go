@@ -93,33 +93,14 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID, island string) int
 
 // b33CountersPlacedDelta is how many `kind` counters the
 // EventCounterPlaced `ev` PUT on its target, or zero for a removal.
-// b11CountersWerePlaced's walk with the delta kept: the event carries
-// only the post-change total, so the previous total is the most
-// recent EventCounterPlaced for the same card and kind, or zero if
-// the card arrived on the battlefield more recently than that (CR
-// 400.7 — it came with no counters).
+// The event carries only the post-change total; the previous total is
+// the engine's read of the log (Game.CounterCountBeforeForEffect,
+// #4865).
 func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 	if ev.Kind != game.EventCounterPlaced || ev.Label != kind {
 		return 0
 	}
-	before := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if (prev.Kind == game.EventETB || prev.Kind == game.EventTokenCreated) && prev.CardID == ev.Target {
-			break
-		}
-		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
-			before = prev.Amount
-			break
-		}
-	}
-	if ev.Amount <= before {
-		return 0
-	}
-	return ev.Amount - before
+	return max(0, ev.Amount-g.CounterCountBeforeForEffect(ev))
 }
 
 // --- trigger conditions ------------------------------------------

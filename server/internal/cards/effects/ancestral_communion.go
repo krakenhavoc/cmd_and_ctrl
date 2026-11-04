@@ -9,20 +9,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 this spell. You may choose a new target for the copy.
 //	 Return target permanent card from your graveyard to your hand."
 //
-// A cast trigger of the spell itself (WhenYouCastThisSpell) with an
-// intervening if (CR 603.4): the commander is checked as the spell is
-// cast, so the trigger is never put on the stack otherwise, and again
-// as it resolves. The copy is CopySpell (Fin Fang Foom) on the spell
-// itself, which asks for a new target. The spell's own ability is the
-// shared graveyard-to-hand return.
+// A cast trigger of the spell itself (WhenYouCastThisSpell). "While you
+// control your commander" is part of what triggers it; the wording has no
+// "if", so CR 603.4's intervening-if recheck does not apply. The
+// commander is checked once, as the spell is cast, and not again when the
+// trigger resolves: a commander that left in between still gets the
+// copy. The copy is CopySpell (Fin Fang Foom) on the spell itself, which
+// asks for a new target. The spell's own ability is the shared
+// graveyard-to-hand return.
 //
 // No simplification.
 func init() {
 	copyOnCast := WhenYouCastThisSpell("Ancestral Communion — copy this spell; you may choose a new target for the copy",
 		func(g *game.Game, item *game.StackItem) error {
-			if !b18ControlsYourCommander(g, item.Controller) {
-				return nil
-			}
 			ctx := NewContext(g, item)
 			return CopySpell{StackID: item.SourceCardID, ChooseNewTargets: true}.Apply(ctx)
 		})

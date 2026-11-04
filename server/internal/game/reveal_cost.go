@@ -16,6 +16,12 @@ import (
 // caster who takes it names the card on RevealIDs, and the plan walk below
 // finds it wherever it sits.
 //
+// An alternative cost's "behold N <quality>" (#4689, AlternativeCost.
+// Behold: Kindle the Inner Flame's flashback) is the same component with
+// a count, named on CastSpellParams.AltCostIDs with the rest of the
+// offer's price; validateBeholdPaymentLocked and payBeholdLocked below
+// are its validator and payer.
+//
 // The caster names the ONE card on CastSpellParams.RevealIDs. Paying
 // the cost reveals it (RevealForEffect: the whole table sees it, and
 // nothing moves — CR 701.20b); a beholding caster may instead name a
@@ -160,4 +166,63 @@ func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, i
 		reason = c.Name + " — " + reason
 	}
 	g.RevealForEffect(RevealSpec{Player: playerID, Source: castID, Reason: reason, Cards: ids})
+}
+
+// validateBeholdPaymentLocked checks the objects named to an alternative
+// cost's "behold N <quality>" (#4689, CR 701.4a): exactly n of them, no
+// object twice, and each one a candidate RevealCostOptionsForEffect
+// lists — a matching card in the caster's hand or a matching permanent
+// they control, never the spell being cast. Nothing is revealed here.
+//
+// Exactly n, like escape's exile: three beholds are three objects, and a
+// caster who named the same Elemental three times has beheld one.
+//
+// Caller must hold g.mu.
+func (g *Game) validateBeholdPaymentLocked(playerID, castID uuid.UUID, rc *RevealCost, n int, ids []uuid.UUID) error {
+	if len(ids) != n {
+		return ErrInvalidParam
+	}
+	options := make(map[uuid.UUID]bool)
+	for _, id := range g.RevealCostOptionsForEffect(playerID, castID, rc) {
+		options[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if seen[id] || !options[id] {
+			return ErrInvalidParam
+		}
+		seen[id] = true
+	}
+	return nil
+}
+
+// payBeholdLocked pays an alternative cost's behold (#4689): the named
+// cards in the caster's hand are revealed to the table, as one reveal
+// (CR 701.4a, 701.20a), and the chosen permanents are not, because
+// choosing a permanent shows nothing the battlefield did not. Nothing
+// moves and nothing taps. Validated at announce.
+//
+// Caller must hold g.mu.
+func (g *Game) payBeholdLocked(playerID, castID uuid.UUID, rc *RevealCost, label string, ids []uuid.UUID) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return
+	}
+	var shown []uuid.UUID
+	for _, id := range ids {
+		if p.Hand.Contains(id) {
+			shown = append(shown, id)
+		}
+	}
+	if len(shown) == 0 {
+		return
+	}
+	if label == "" {
+		label = rc.Subtype
+	}
+	reason := "behold " + label
+	if c, ok := g.LookupCardForEffect(castID); ok {
+		reason = c.Name + " — " + reason
+	}
+	g.RevealForEffect(RevealSpec{Player: playerID, Source: castID, Reason: reason, Cards: shown})
 }

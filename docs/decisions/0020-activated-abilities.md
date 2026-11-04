@@ -3975,3 +3975,67 @@ sizes every division at 0 and fails the card tests; dropping the payment leaves 
 `TestCaptainAmericaThrowsOneEquipmentForItsManaValue`; dropping the validator lets an Equipment that is not attached
 to him pay and fails `TestCaptainAmericaCannotThrowWithNothingAttached`; dropping the enumerator's pick from its
 binding fails `TestUnattachCostIsOneRowPerEquipmentSizedByItsManaValue`.
+
+## Amendment 2026-11-03 ([#4684](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4684)): blight N as part of the cost
+
+Lorwyn Eclipsed prints "Blight N" inside activation costs: Gristle Glutton's "{T}, Blight 1: Discard a card. If you
+do, draw a card.", Sting-Slinger's "{1}{R}, {T}, Blight 1:", Evershrike's Gift's "{1}{W}, Blight 2:" from the
+graveyard, Spiral into Solitude's "{1}{W}, Blight 1, Sacrifice this Aura:". `AbilityCost.AddCounter` puts a counter on
+the source only (Devoted Druid); blight lets the activator choose any creature they control (CR 701.68a). CR text
+checked against the 2026-09-25 edition (CR 118.3, 601.2h, 602.2b, 614.16, 701.68a-d).
+
+### Decision 78: "Blight N" is a counted cost component paid by the cast path's blight
+
+`game.AbilityCost.Blight` is N; zero is no component, and `effects.Register` refuses a negative one. `effects.BlightN(n)`
+builds it and `effects.Plus` keeps it. Nothing new is decided about blight itself: the component is the cast path's
+blight cost (#1703, ADR 0073) one surface over, and shares every piece of it.
+
+- **The pick.** The activator names one creature in `ActivateAbilityParams.BlightIDs` (`blight_ids`, the name a cast's
+  blight pick rides). The candidates are `BlightOptionsForEffect(activator)`, the creatures they control that can have
+  counters put on them, the source included; the check is `validateBlightCreatureLocked`. It is chosen with the rest
+  of the announcement, as every other cost pick is (CR 602.2b runs CR 601.2h, and the engine takes the announcement in
+  one message). It is not a target, so hexproof does not matter. The source's zone does not matter either: a graveyard
+  ability blights a creature on the battlefield.
+- **The refusals.** Ids sent for an ability without the component are `ErrInvalidParam`, as a stray `unattach_ids`
+  is. With no creature to blight the cost can't be paid (CR 701.68b, CR 118.3) and the activation is refused with
+  `ErrCantPayCounterCost`, the counter cost's refusal. A 1/1 is a candidate for blight 2: it dies of the counters at the
+  next state-based check, after the cost is paid.
+- **The payment.** `blightLocked`, which marks the counters `CounterFromCost` and settles the CR 614 window at once (a
+  cost can't pause). A cost is not "the effect of a resolving spell or ability" (CR 614.16), so Doubling Season ("if an
+  effect would put") leaves the counters alone, and a replacement that names no effect (Vizier of Remedies, Winding
+  Constrictor) applies. The cost is paid whatever the window settles on. It is paid beside `AddCounter`, after the
+  counter removal and before the sacrifices, so "Blight 1, Sacrifice this Aura" reads left to right; the creature is on
+  the list `refusePausedCostCardsLocked` checks.
+
+The pick is part of the announcement a parked activation writes into the snapshot
+(`pendingChoices[].parked.activate.params.BlightIDs`), an additive key in v9. The component is an int, so no `Game`
+route to a func is added and the closure counts do not move; no effect key is added.
+
+**The wire.** The row carries `blight` (N) and `blight_options`, a `LegalTargetsView` `{ cards[], min: 1, max: 1 }`
+from the same walk; present and empty means the cost can't be paid, and the client greys the row. The client asks
+which creature after the unattach pick, through the sacrifice picker with the verb "Blight", and skips the question
+when exactly one creature could pay.
+
+**The enumerator and the bot.** The cast path offers one blight payment, the cheapest. An ability's pick is the
+activation's whole price, so the enumerator offers one move per candidate (`expandBlightPicks`, beside
+`expandUnattachPicks`), in the cast path's order: a creature that survives the counters first, then the least power.
+`legal.MoveCost.Blight` names the creature and N, since the params carry no N, and the heuristic prices it by
+`blightCounterCost`, the price #4683 gave a resolving blight's pick: the whole creature when the counters kill it,
+else N points of toughness and up to N of power.
+
+### Cards
+
+Gristle Glutton, Sting-Slinger, Evershrike's Gift and Spiral into Solitude ship Full. Dawnhand Dissident waits: its
+third ability casts creature cards it exiled "by removing three counters from among creatures you control in addition
+to paying their other costs", an additional cost a granted cast can't carry yet. Champion of the Weird waits for a
+"behold a Goblin and exile it" additional cost.
+
+### Tests
+
+`game/blight_ability_cost_test.go` (the validator's table and the payment), `cards/effects/blight_ability_cost_test.go`
+(each card, a creature of the activator's choice and the source itself, the refusals paying nothing, a hexproof
+creature, a creature that dies of the counters, Doubling Season and Vizier of Remedies, the graveyard activation with
+and without a creature, and a restore with the ability on the stack), `legal/blight_ability_cost_test.go` (one move per
+creature in order, none from the graveyard with no creature, every move accepted), `protocol/blight_cost_view_test.go`
+and `aiseat/heuristic/blight_cost_test.go` (an activation that blights prices below the same one free, and a wall
+takes the counter rather than a 1/1; dropping the price fails both).

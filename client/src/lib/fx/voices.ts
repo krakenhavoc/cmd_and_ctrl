@@ -8,9 +8,10 @@
 //   - one voice line plays at a time across the whole table;
 //   - lines play on the `voice` bus (master x the voice volume, from
 //     sounds.ts), and the mute toggle silences them;
+//   - an interface cue ducks a line as it ducks every other bus (#4410);
 //   - a file that is not there is silent, never an error.
 
-import { busGain, isMuted } from "../sounds";
+import { busGain, isMuted, watchDuck } from "../sounds";
 
 /** The moments a walker can speak at. */
 export type VoiceMoment = "enter" | "leave" | "ultimate";
@@ -41,8 +42,16 @@ export const VOICE_COOLDOWN_MS = 20_000;
 // never fires (a stalled load, a suspended tab).
 const VOICE_MAX_MS = 3500;
 
-/** Plays one file; calls `done(false)` when it ends, `done(true)` when it could not play. */
-export type VoicePlayer = (url: string, volume: number, done: (failed: boolean) => void) => void;
+/**
+ * Plays one file; calls `done(false)` when it ends, `done(true)` when it
+ * could not play. It may return a setter for the line's volume while it
+ * plays, which the duck uses.
+ */
+export type VoicePlayer = (
+  url: string,
+  volume: number,
+  done: (failed: boolean) => void,
+) => ((volume: number) => void) | void;
 
 export interface VoiceDeps {
   manifest: VoiceManifest;
@@ -51,6 +60,8 @@ export interface VoiceDeps {
   muted: () => boolean;
   volume: () => number;
   random: () => number;
+  /** Hears the duck factor now and on every change; returns its unsubscribe. */
+  duck: (fn: (factor: number) => void) => () => void;
 }
 
 export class VoiceBus {
@@ -67,6 +78,7 @@ export class VoiceBus {
       muted: isMuted,
       volume: () => busGain("voice"),
       random: Math.random,
+      duck: watchDuck,
       ...deps,
     };
   }
@@ -94,10 +106,20 @@ export class VoiceBus {
     const url = takes[Math.min(takes.length - 1, Math.floor(this.deps.random() * takes.length))]!;
     this.busy = true;
     this.lastSpoke.set(oracleID, now);
+    // The bus volume is read once, as the line starts; the duck follows
+    // the line until it ends.
+    const base = this.deps.volume();
+    let factor = 1;
+    let setVolume: ((volume: number) => void) | void = undefined;
+    const unwatch = this.deps.duck((f) => {
+      factor = f;
+      setVolume?.(base * f);
+    });
     let finished = false;
     const finish = (failed: boolean) => {
       if (finished) return;
       finished = true;
+      unwatch();
       this.busy = false;
       if (failed) {
         // The file is not there: remember it, and let the walker try
@@ -107,7 +129,7 @@ export class VoiceBus {
       }
     };
     try {
-      this.deps.player(url, this.deps.volume(), finish);
+      setVolume = this.deps.player(url, base * factor, finish);
     } catch {
       finish(true);
     }
@@ -116,17 +138,25 @@ export class VoiceBus {
   }
 }
 
-function audioPlayer(url: string, volume: number, done: (failed: boolean) => void): void {
+function audioPlayer(
+  url: string,
+  volume: number,
+  done: (failed: boolean) => void,
+): ((volume: number) => void) | void {
   if (typeof Audio === "undefined") {
     done(true);
     return;
   }
   const audio = new Audio(url);
-  audio.volume = Math.min(1, Math.max(0, volume));
+  const set = (v: number) => {
+    audio.volume = Math.min(1, Math.max(0, v));
+  };
+  set(volume);
   audio.addEventListener?.("ended", () => done(false));
   audio.addEventListener?.("error", () => done(true));
   // A 404 or an autoplay block rejects; both are silent.
   void audio.play().catch(() => done(true));
+  return set;
 }
 
 /** The table's one voice bus. */

@@ -77,6 +77,20 @@ func b17DefendingPlayer(g *game.Game, ev game.Event) uuid.UUID {
 	return g.DefendingPlayerForAttackForEffect(ev.Target)
 }
 
+// attackedPlayer is the player an EventAttack is aimed at ITSELF, or
+// uuid.Nil when the creature attacks a planeswalker or a battle.
+// "Whenever [a player] attacks [another player]" (CR 508.3e) and
+// "whenever [a creature] attacks [a player]" (CR 508.3a) read this, not
+// b17DefendingPlayer: an attack at a player's planeswalker or battle is
+// not an attack on that player (#4839). "Defending player" is still
+// b17DefendingPlayer.
+func attackedPlayer(g *game.Game, ev game.Event) uuid.UUID {
+	if ev.Kind != game.EventAttack || ev.Target == uuid.Nil || g.PlayerByIDForEffect(ev.Target) == nil {
+		return uuid.Nil
+	}
+	return ev.Target
+}
+
 // b17OpponentHasMoreLifeThanAnother is Breena's intervening if: `opp`
 // (an opponent of `controller`) has more life than at least one
 // OTHER opponent of `controller` still in the game.

@@ -404,10 +404,13 @@ type StaticAbility struct {
 	// EventBlock also covers the other exit of a block, combat ending or
 	// a blocker leaving combat (invalidateLayersForAttackChangeLocked).
 	//
+	// "As long as you gained life this turn" (Tenured Concocter) lists
+	// EventChangeLife, which the tally reads.
+	//
 	// Same contract and same reason as the flags above; the list keeps
-	// a third and fourth card from needing a flag each. Only these four
-	// kinds are read by the listener (its EventScry arm), so any other
-	// kind here would do nothing.
+	// a third and fourth card from needing a flag each. Only these five
+	// kinds are read by the listener (its EventScry and EventChangeLife
+	// arms), so any other kind here would do nothing.
 	DependsOnEvents []EventKind
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
@@ -1045,6 +1048,33 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 	g.recomputeLayersLocked()
 }
 
+// freshForEffectLocked brings stale layers current for an effect-API
+// read of a permanent's characteristics (#4909): within one resolution a
+// read sees every earlier step of it (CR 608.2), so "gets +1/+0 until end
+// of turn, then deals damage equal to its power" deals the pumped power.
+// A step that changes a characteristic only marks the layers stale; this
+// is where the read settles them, so a resolution of several steps pays
+// for at most one pass per read that follows a change.
+//
+// It recomputes only while a resolution is open (resolution_pause.go:
+// from the moment an item begins to resolve until its CR 704.3
+// boundary, so the steps after a prompt's answer are covered too), only
+// for a caller holding the WRITE lock (a recompute is a write; a
+// read-lock holder keeps reading what ReadSnapshot settled),
+// and never from inside a layer pass, whose own AppliesTo predicates
+// read cards through the same functions. Outside a resolution the reads
+// are what they always were: the next settle point brings them current.
+//
+// Reports whether a pass ran.
+func (g *Game) freshForEffectLocked() bool {
+	if !g.resolutionOpen || g.layerPassing || !g.mu.writeHeld() {
+		return false
+	}
+	before := g.recomputeCount.Load()
+	g.RecomputeLayersIfStaleLocked()
+	return g.recomputeCount.Load() != before
+}
+
 // recomputeLayersLocked is the unconditional recompute. Always runs
 // end-to-end; advances lastResolvedVersion on completion.
 //
@@ -1071,6 +1101,11 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 // test can assert it ran exactly once.
 func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
+	// #4909: a read the pass reaches (its gather, its sweeps, the
+	// control changes it emits) must not start another pass.
+	wasPassing := g.layerPassing
+	g.layerPassing = true
+	defer func() { g.layerPassing = wasPassing }()
 	// S38 (ADR 0063): a "for as long as ~" duration is a condition
 	// the board can falsify at any moment — the source dies, it is
 	// flickered into a new object (CR 400.7), its controller changes
@@ -1173,6 +1208,11 @@ func (g *Game) layerPassLocked() {
 // a resolving spell, which CR 400.7a carries onto the permanent it
 // becomes.
 func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
+	// #4909: see freshForEffectLocked. A dry run swaps the battlefield
+	// for its own slice, so a recompute inside it would write there.
+	wasPassing := g.layerPassing
+	g.layerPassing = true
+	defer func() { g.layerPassing = wasPassing }()
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]

@@ -65,10 +65,6 @@ func ocelotPrideEndStep(g *game.Game, item *game.StackItem) error {
 			tokens = append(tokens, c.InstanceID)
 		}
 	}
-	for _, id := range tokens {
-		if err := (CreateTokenCopy{Controller: item.Controller, Copy: id, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One creation (#4594): the copies are created, and enter, together.
+	return CreateTokenCopiesTogether{Controller: item.Controller, Copies: tokens}.Apply(ctx)
 }

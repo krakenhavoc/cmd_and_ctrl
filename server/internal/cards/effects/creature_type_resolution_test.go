@@ -418,7 +418,7 @@ func TestKindredChargeCopiesEachCreatureOfTheTypeWithHasteAndExilesThem(t *testi
 		for _, c := range g.Battlefield.Cards {
 			if IsToken(c) {
 				tokens++
-				if !hasKw(c.Keywords, "haste") {
+				if !game.HasKeyword(&c, "haste") {
 					t.Errorf("token %s has no haste", c.Name)
 				}
 				if c.Name == "Goblin Guide" {

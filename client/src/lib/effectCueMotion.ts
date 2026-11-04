@@ -11,9 +11,9 @@
 //
 // Nothing here touches game state, and nothing waits on it.
 
-import { EASE, run } from "./motion";
+import { EASE, run, type Run } from "./motion";
 import { SHATTER_BREAK, SHATTER_BREAK_LIGHT, sacrificeBeats } from "./tableEffects";
-import type { EffectKind, WipeTone } from "./tableEffects";
+import type { CounterTone, EffectKind, WipeTone } from "./tableEffects";
 
 export interface CueMotion {
   kind: EffectKind | "wipe" | "signature";
@@ -33,6 +33,21 @@ export interface CueMotion {
   fromDestroy?: boolean;
   board: { w: number; h: number };
   tone: WipeTone;
+  /** A counter cue's counters (#4442): which way its tick moves. */
+  counterTone?: CounterTone;
+  /**
+   * A commander going home (#4443): the copy's tap turn at the start,
+   * which it straightens out of, and its scale on arrival (the command
+   * zone's card is smaller than a permanent).
+   */
+  rot?: number;
+  commandScale?: number;
+  /**
+   * An attachment sliding onto its host (#4444): `fly` is where its tile
+   * starts, from where it rests, in the tile's own px; `seam` is where it
+   * meets the host, from the cue's centre (the host's), in board px.
+   */
+  seam?: { x: number; y: number };
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -89,6 +104,24 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "pw_enter":
       pwEnter(node, f);
+      return;
+    case "token_create":
+      tokenGlow(node, f);
+      return;
+    case "counters":
+      counterPulse(node, f);
+      return;
+    case "commander_cast":
+      commanderRise(node, f);
+      return;
+    case "commander_return":
+      commanderDrift(node, f);
+      return;
+    case "attach_equip":
+      attachClasp(node, f);
+      return;
+    case "attach_aura":
+      attachShimmer(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -753,6 +786,415 @@ function pwEnter(node: HTMLElement, f: CueMotion): void {
       span(f, 0, 1, EASE.power2Out),
     );
   }
+}
+
+// ---- A token is created (#4441): a small pop-in with a soft glow ----
+
+/** The token's own scale as its pop-in starts: about 80%. */
+export const TOKEN_POP_FROM = 0.8;
+
+/**
+ * tokenPop pops the new token's own tile in: from about 80% and hidden,
+ * up a touch past full size and bright, then settling at rest. It is the
+ * one cue that moves a live tile, because a batch's tokens are on the
+ * board at once and only the tile can wait for its turn: `fill:
+ * "backwards"` holds a later token hidden through its stagger, and once
+ * the pop is over the tile is its own style again (no end state is kept).
+ * The caller cancels the returned run when the cue is removed or skipped.
+ */
+export function tokenPop(tile: HTMLElement, f: CueMotion): Run {
+  return run(
+    tile,
+    [
+      { offset: 0, scale: String(TOKEN_POP_FROM), opacity: 0, filter: "brightness(1.6)" },
+      { offset: 0.55, scale: "1.04", opacity: 1, filter: "brightness(1.3)" },
+      { offset: 1, scale: "1", opacity: 1, filter: "brightness(1)" },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.power2Out, fill: "backwards" },
+  );
+}
+
+/** The soft glow that blooms over the token as it pops in, and fades. */
+function tokenGlow(node: HTMLElement, f: CueMotion): void {
+  const glow = node.querySelector<HTMLElement>(".tglow");
+  if (!glow) return;
+  run(
+    glow,
+    [
+      { offset: 0, scale: "0.7", opacity: 0 },
+      { offset: 0.4, scale: "1", opacity: 0.85 },
+      { offset: 1, scale: "1.2", opacity: 0 },
+    ],
+    span(f, 0, 1, EASE.power2Out),
+  );
+}
+
+// ---- Counters are put on a permanent (#4442): a pulse and a tick ----
+
+/** How far a counter cue's tick travels, px. */
+export const COUNTER_TICK_PX = 14;
+
+/**
+ * counterPulse rings the permanent's power/toughness badge (or its
+ * counter's pip) once, brightening and fading, while a small tick above
+ * it rises for +1/+1 counters and falls for -1/-1 ones. Other counters
+ * have the ring alone.
+ */
+function counterPulse(node: HTMLElement, f: CueMotion): void {
+  const ring = node.querySelector<HTMLElement>(".cpulse");
+  if (ring) {
+    run(
+      ring,
+      [
+        { offset: 0, scale: "0.85", opacity: 0 },
+        { offset: 0.3, scale: "1.12", opacity: 1 },
+        { offset: 1, scale: "1.3", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
+  const tick = node.querySelector<HTMLElement>(".ctick");
+  if (!tick) return;
+  const up = f.counterTone !== "minus";
+  const from = up ? COUNTER_TICK_PX / 2 : -COUNTER_TICK_PX / 2;
+  const to = up ? -COUNTER_TICK_PX / 2 : COUNTER_TICK_PX / 2;
+  run(
+    tick,
+    [
+      { offset: 0, translate: `0px ${from}px`, opacity: 0 },
+      { offset: 0.25, opacity: 1 },
+      { offset: 1, translate: `0px ${to}px`, opacity: 0 },
+    ],
+    span(f, 0, 1, EASE.power2Out),
+  );
+}
+
+// ---- A commander is cast from the command zone, or goes home (#4443) ----
+
+/** The share of a commander cast at which its light reaches the stack, and the crown blooms. */
+export const COMMANDER_ARRIVE = 0.45;
+/** The share of a commander's drift home at which it lands on its command-zone card. */
+export const COMMANDER_LAND = 0.9;
+
+/**
+ * commanderRise is a commander cast (CR 903.8): a golden bloom where it
+ * sat in the command zone, a beam of light that rises from there to the
+ * spell on the stack with motes riding it, and a crown of light that
+ * blooms on the spell as the beam arrives. CastFlight still flies the
+ * card itself; this is the light around it.
+ */
+function commanderRise(node: HTMLElement, f: CueMotion): void {
+  const bloom = node.querySelector<HTMLElement>(".cmd-bloom");
+  if (bloom) {
+    run(
+      bloom,
+      [
+        { offset: 0, scale: "0.5", opacity: 0 },
+        { offset: 0.25, scale: "1", opacity: 0.9 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, 0, 0.6, EASE.power2Out),
+    );
+  }
+  const beam = node.querySelector<HTMLElement>(".cmd-beam");
+  if (beam) {
+    run(
+      beam,
+      [
+        { offset: 0, scale: "1 0", opacity: 0, easing: EASE.power1Out },
+        // Full length as the cue reaches COMMANDER_ARRIVE (the beam starts at 0.05).
+        {
+          offset: (COMMANDER_ARRIVE - 0.05) / 0.95,
+          scale: "1 1",
+          opacity: 0.95,
+          easing: EASE.power1In,
+        },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.05, 1),
+    );
+  }
+  // The motes ride up the beam, each a little off it, a beat apart.
+  const len = Math.hypot(f.fly.x, f.fly.y) || 1;
+  const px = -f.fly.y / len;
+  const py = f.fly.x / len;
+  const motes = all<HTMLElement>(node, ".cmd-mote");
+  motes.forEach((m, i) => {
+    const reach = 0.55 + (0.45 * ((i * 3) % motes.length)) / Math.max(1, motes.length);
+    const side = (i % 2 === 0 ? -1 : 1) * (5 + ((i * 7) % 9));
+    const x = f.fly.x * reach + px * side;
+    const y = f.fly.y * reach + py * side;
+    const a = 0.05 + i * 0.05;
+    run(
+      m,
+      [
+        { offset: 0, translate: "0px 0px", scale: "0.6", opacity: 0 },
+        { offset: 0.2, opacity: 1 },
+        { offset: 1, translate: `${x}px ${y}px`, scale: "1", opacity: 0 },
+      ],
+      span(f, a, a + 0.55, EASE.power2Out),
+    );
+  });
+  const crown = node.querySelector<HTMLElement>(".cmd-crown");
+  if (crown) {
+    run(
+      crown,
+      [
+        { offset: 0, scale: "0.7", opacity: 0 },
+        { offset: 0.35, scale: "1.05", opacity: 1 },
+        { offset: 1, scale: "1.3", opacity: 0 },
+      ],
+      span(f, COMMANDER_ARRIVE, 1, EASE.power2Out),
+    );
+  }
+}
+
+/**
+ * The path of a commander drifting home: a small lift, then a gentle arc
+ * to its card in the command zone, straightening out of a tap and
+ * shrinking to that card's size on the way.
+ */
+function driftPath(f: CueMotion): Keyframe[] {
+  const s = f.commandScale ?? 1;
+  const r = -(f.rot ?? 0);
+  const arc = Math.min(60, 20 + Math.hypot(f.fly.x, f.fly.y) * 0.12);
+  const end = `${f.fly.x}px ${f.fly.y}px`;
+  return [
+    { offset: 0, translate: "0px 0px", scale: "1", rotate: "0deg", easing: EASE.power1Out },
+    { offset: 0.14, translate: "0px -8px", scale: "1.05", rotate: "0deg", easing: EASE.sineInOut },
+    {
+      offset: 0.55,
+      translate: `${f.fly.x / 2}px ${f.fly.y / 2 - arc}px`,
+      scale: String((1.05 + s) / 2),
+      rotate: `${r / 2}deg`,
+      easing: EASE.sineInOut,
+    },
+    { offset: COMMANDER_LAND, translate: end, scale: String(s), rotate: `${r}deg` },
+    { offset: 1, translate: end, scale: String(s), rotate: `${r}deg` },
+  ];
+}
+
+/**
+ * commanderDrift is a commander going home (CR 903.9a, 903.9b): its copy
+ * drifts back to its card in the command zone with a soft golden trail,
+ * two after-images and a faint streak behind it, and a soft halo blooms
+ * on the card as it lands.
+ */
+function commanderDrift(node: HTMLElement, f: CueMotion): void {
+  const path = driftPath(f);
+  const copy = node.querySelector<HTMLElement>(".cmd-copy");
+  if (copy) {
+    run(copy, path, span(f, 0, 1));
+    run(
+      copy,
+      [
+        { offset: 0, opacity: 1 },
+        { offset: COMMANDER_LAND - 0.04, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  all<HTMLElement>(node, ".cmd-ghost").forEach((g, i) => {
+    const lag = (i + 1) * 0.09;
+    const peak = i === 0 ? 0.4 : 0.22;
+    run(g, path, span(f, lag, 1));
+    run(
+      g,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.18, opacity: peak },
+        { offset: 0.8, opacity: peak },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, lag, 1),
+    );
+  });
+  const streak = node.querySelector<HTMLElement>(".cmd-streak");
+  if (streak) {
+    run(
+      streak,
+      [
+        { offset: 0, scale: "1 0", opacity: 0 },
+        { offset: 0.2, opacity: 0.55 },
+        { offset: 0.8, scale: "1 1", opacity: 0.4 },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.1, 1, EASE.sineInOut),
+    );
+  }
+  const home = node.querySelector<HTMLElement>(".cmd-home");
+  if (home) {
+    run(
+      home,
+      [
+        { offset: 0, scale: "0.8", opacity: 0 },
+        { offset: 0.4, scale: "1.08", opacity: 0.9 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, COMMANDER_LAND - 0.1, 1, EASE.power2Out),
+    );
+  }
+}
+
+/**
+ * commandArrive holds the commander's own card in the command zone
+ * hidden until its copy lands there, then shows it: so the copy is the
+ * one card on screen on its way home. `fill: "backwards"` hides it from
+ * the frame on, and once the run is over the card is its own style again.
+ * The caller cancels the returned run when the cue is removed or skipped,
+ * which shows the card at once.
+ */
+export function commandArrive(card: HTMLElement, f: CueMotion): Run {
+  return run(
+    card,
+    [
+      { offset: 0, opacity: 0 },
+      { offset: COMMANDER_LAND, opacity: 0 },
+      { offset: 1, opacity: 1 },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+// ---- An Equipment is attached, or an Aura enchants a permanent (#4444) ----
+
+/** The share of an attach cue at which the attachment reaches its host, and clasps. */
+export const ATTACH_LAND = 0.6;
+/** The most an attachment slides past its rest before it settles back, px. */
+export const ATTACH_OVERSHOOT_PX = 4;
+
+/**
+ * attachSlide moves the attachment's own tile onto its host: from where it
+ * was (its last box on the battlefield, or just above and to the side of
+ * its rest when it is new there), sliding in with a slight tilt that
+ * straightens, a touch past its rest at ATTACH_LAND, then a small settle.
+ * The board already draws it tucked under the host, so the host stays on
+ * top the whole way. Like tokenPop it moves a live tile, presentation
+ * only: `fill: "backwards"` holds it at the start from the frame on, and
+ * once the slide is over the tile is its own style again. Only translate
+ * and rotate move, so a token's pop (scale, opacity) on the same tile
+ * plays with it. The caller cancels the run when the cue is removed or
+ * skipped, which puts the tile at rest at once.
+ */
+export function attachSlide(tile: HTMLElement, f: CueMotion): Run {
+  const len = Math.hypot(f.fly.x, f.fly.y) || 1;
+  const over = Math.min(ATTACH_OVERSHOOT_PX, len * 0.06);
+  const ox = (-f.fly.x / len) * over;
+  const oy = (-f.fly.y / len) * over;
+  // An Equipment swings in with more tilt, and drops a little harder.
+  const metal = f.kind === "attach_equip";
+  const tilt = (f.fly.x <= 0 ? -1 : 1) * (metal ? 5 : 3);
+  const drop = metal ? 1.5 : 0.5;
+  return run(
+    tile,
+    [
+      {
+        offset: 0,
+        translate: `${f.fly.x}px ${f.fly.y}px`,
+        rotate: `${tilt}deg`,
+        easing: EASE.power2Out,
+      },
+      {
+        offset: ATTACH_LAND,
+        translate: `${ox}px ${oy}px`,
+        rotate: `${-tilt * 0.2}deg`,
+        easing: EASE.sineInOut,
+      },
+      {
+        offset: 0.8,
+        translate: `${-ox * 0.35}px ${-oy * 0.35 + drop}px`,
+        rotate: "0deg",
+        easing: EASE.sineInOut,
+      },
+      { offset: 1, translate: "0px 0px", rotate: "0deg" },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+/**
+ * attachClasp is an Equipment's clang as it reaches its host: a hard
+ * white-silver flash where the two meet, a fan of sparks thrown out from
+ * there, and a quick glint along the host's edge.
+ */
+function attachClasp(node: HTMLElement, f: CueMotion): void {
+  const flash = node.querySelector<HTMLElement>(".att-flash");
+  if (flash) {
+    run(
+      flash,
+      [
+        { offset: 0, scale: "0.3", opacity: 0 },
+        { offset: 0.25, scale: "1.1", opacity: 1 },
+        { offset: 1, scale: "1.4", opacity: 0 },
+      ],
+      span(f, ATTACH_LAND - 0.04, 1, EASE.power2Out),
+    );
+  }
+  const sparks = all<HTMLElement>(node, ".att-spark");
+  sparks.forEach((s, i) => {
+    // Out from the seam, away from the host: a fan to the left.
+    const a = ((180 + (i - (sparks.length - 1) / 2) * 28) * Math.PI) / 180;
+    const d = 20 + ((i * 7) % 11);
+    run(
+      s,
+      [
+        { offset: 0, translate: "0px 0px", rotate: `${(a * 180) / Math.PI}deg`, opacity: 0 },
+        { offset: 0.15, opacity: 1 },
+        {
+          offset: 1,
+          translate: `${Math.cos(a) * d}px ${Math.sin(a) * d}px`,
+          rotate: `${(a * 180) / Math.PI}deg`,
+          opacity: 0,
+        },
+      ],
+      span(f, ATTACH_LAND - 0.02, 1, EASE.power2Out),
+    );
+  });
+  const rim = node.querySelector<HTMLElement>(".att-rim");
+  if (rim) {
+    run(
+      rim,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.3, opacity: 0.8 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, ATTACH_LAND, 1, EASE.power1Out),
+    );
+  }
+}
+
+/**
+ * attachShimmer is an Aura settling on its host: a soft light rings the
+ * host as the Aura slides in, and a few glints twinkle around its edge
+ * as it lands, then all of it fades.
+ */
+function attachShimmer(node: HTMLElement, f: CueMotion): void {
+  const halo = node.querySelector<HTMLElement>(".att-halo");
+  if (halo) {
+    run(
+      halo,
+      [
+        { offset: 0, scale: "0.97", opacity: 0 },
+        { offset: 0.45, scale: "1.02", opacity: 0.85 },
+        { offset: 1, scale: "1.06", opacity: 0 },
+      ],
+      span(f, 0.2, 1, EASE.sineInOut),
+    );
+  }
+  all<HTMLElement>(node, ".att-glint").forEach((g, i) => {
+    const a = ATTACH_LAND - 0.25 + i * 0.06;
+    run(
+      g,
+      [
+        { offset: 0, translate: "0px 0px", scale: "0", opacity: 0 },
+        { offset: 0.4, scale: "1", opacity: 1 },
+        { offset: 1, translate: "0px -6px", scale: "0.2", opacity: 0 },
+      ],
+      span(f, a, Math.min(1, a + 0.45), EASE.power1Out),
+    );
+  });
 }
 
 // ---- Board wipes ----

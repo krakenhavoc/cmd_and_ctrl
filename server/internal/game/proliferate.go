@@ -226,7 +226,7 @@ func (g *Game) proliferatedSinceLocked(player uuid.UUID, since uint64) Prolifera
 		}
 		switch ev.Kind {
 		case EventCounterPlaced:
-			if ev.Amount > g.counterAmountBeforeLocked(i) {
+			if ev.Amount > g.counterCountBeforeLocked(*ev) {
 				seen[ev.Target] = true
 				out.Permanents = append(out.Permanents, ev.Target)
 			}
@@ -238,34 +238,6 @@ func (g *Game) proliferatedSinceLocked(player uuid.UUID, since uint64) Prolifera
 		}
 	}
 	return out
-}
-
-// counterAmountBeforeLocked is the count of g.Events[i]'s counter kind
-// on its permanent before that event changed it: the most recent
-// earlier EventCounterPlaced for the same permanent and kind, or zero
-// when the permanent's arrival is more recent (CR 400.7) or nothing
-// earlier is logged.
-//
-// Caller must hold g.mu.
-func (g *Game) counterAmountBeforeLocked(i int) int {
-	ev := g.Events[i]
-	for j := i - 1; j >= 0; j-- {
-		prev := g.Events[j]
-		if prev.CardID == ev.Target {
-			switch prev.Kind {
-			case EventETB, EventTokenCreated:
-				return 0
-			case EventZoneMove:
-				if prev.NewZone == ZoneBattlefield {
-					return 0
-				}
-			}
-		}
-		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
-			return prev.Amount
-		}
-	}
-	return 0
 }
 
 // sortedCounterKinds snapshots the counter names present on a

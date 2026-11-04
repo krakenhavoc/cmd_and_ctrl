@@ -728,6 +728,10 @@ export interface AbilityCost {
   // Avenger), greyed when nothing is attached to the permanent.
   unattach_label?: string;
   unattach_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #4684: a "Blight N" cost (Gristle Glutton), greyed when you control
+  // no creature that could take the counters.
+  blight?: number;
+  blight_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   // #759: a tap-another cost (station). Greyed on the same terms as
   // the return cost: fewer untapped creatures than the clause needs.
   tap_others_label?: string;
@@ -969,6 +973,25 @@ export function unattachShortfall(opts: ReturnOptionsShape | undefined, label?: 
   return `nothing to unattach (${label ?? "an Equipment"})`;
 }
 
+// blightShortfall is returnShortfall for a "Blight N" cost (#4684): with
+// no creature you control that could take the counters it cannot be
+// paid (CR 701.68b).
+export function blightShortfall(
+  n: number | undefined,
+  opts: ReturnOptionsShape | undefined,
+): string {
+  if (!n || !opts) return "";
+  if ((opts.cards?.length ?? 0) >= (opts.min ?? 1)) return "";
+  return `no creature to blight ${n}`;
+}
+
+// blightCostLabel is the blight picker's object, after its verb
+// "Blight": "a creature you control (1 -1/-1 counter)".
+export function blightCostLabel(n: number | undefined): string {
+  const count = n && n > 0 ? n : 1;
+  return `a creature you control (${count} -1/-1 ${count === 1 ? "counter" : "counters"})`;
+}
+
 // tapOthersShortfall is returnShortfall for a tap-another cost (#759):
 // the reason it can't be paid right now, or "" when it can. The
 // server's option list already excludes tapped creatures, other
@@ -1040,6 +1063,9 @@ export function abilityBlocked(
   // #4799: and the unattach cost.
   const unattach = unattachShortfall(a.unattach_options, a.unattach_label);
   if (unattach) return unattach;
+  // #4684: and the blight cost.
+  const blight = blightShortfall(a.blight, a.blight_options);
+  if (blight) return blight;
   // #759: and the tap-another cost.
   const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
   if (tapOthers) return tapOthers;

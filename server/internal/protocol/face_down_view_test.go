@@ -425,7 +425,9 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			ReducesByPower: true,
 			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
 			Discards:       true,
-			XLockedAtZero:  true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// #4689.
+			Behold:        true,
+			XLockedAtZero: true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// #3225.
@@ -973,7 +975,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// ADR 0152 §5: which printed face the offer casts is printed.
 	"CastsFace": surfacePublicPile,
 	// ADR 0135 §2: whether the price discards its cards is printed.
-	"Discards":         surfacePublicPile,
+	"Discards": surfacePublicPile,
+	// #4689: whether the price beholds its cards is printed.
+	"Behold":           surfacePublicPile,
 	"TargetMode":       surfacePublicPile,
 	"XLockedAtZero":    surfacePublicPile,
 	"PhyrexianSymbols": surfacePublicPile,

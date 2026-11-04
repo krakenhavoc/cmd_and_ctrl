@@ -13,11 +13,15 @@ import (
 // `unattach` is the Equipment an "Unattach an Equipment from <this>"
 // cost names on this row (#4799, expandUnattachPicks), nil for every
 // other ability.
+//
+// `blight` is the creature a "Blight N" cost names on this row (#4684,
+// expandBlightPicks), nil for every other ability.
 type costBranchRow struct {
 	row      int
 	ab       game.ActivatedAbilityShape
 	branch   *int
 	unattach []uuid.UUID
+	blight   []uuid.UUID
 }
 
 // expandCostBranches lists the rows abilityMovesForSource walks: each

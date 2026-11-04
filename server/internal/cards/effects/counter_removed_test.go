@@ -163,6 +163,31 @@ func TestProteanHydraRemovedBeyondItsCountersDiesAndGetsNothing(t *testing.T) {
 	}
 }
 
+// #4865: a Hydra CAST for X enters with its counters, and those are
+// logged before its arrival. A hit that takes one off is still one
+// removal, so it schedules one end-step trigger and gets two back.
+func TestProteanHydraCastForXRemovesFromTheCountersItEnteredWith(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	id := castXSpell(t, g, "Protean Hydra", "Creature — Hydra", oracleProteanHydra, "{X}{G}{G}", 3, nil)
+	passPriorityAroundTable(t, g)
+	if got := pr8Counters(g, id, game.CounterPlusOne); got != 3 {
+		t.Fatalf("entered with %d counters, want 3", got)
+	}
+	if g.Stack.Size()+len(g.PendingTriggers) != 0 {
+		t.Fatalf("%d stack items after the Hydra entered, want 0 (its entry counters are not a removal)", g.Stack.Size()+len(g.PendingTriggers))
+	}
+	src := pr7Creature(g, opp.ID, "Bear", 1, "G")
+	pr6Damage(t, g, src, id, 1)
+	if got := pr8Counters(g, id, game.CounterPlusOne); got != 2 {
+		t.Fatalf("counters after the hit: got %d, want 2", got)
+	}
+	crEndOfTurn(t, g)
+	if got := pr8Counters(g, id, game.CounterPlusOne); got != 2+2 {
+		t.Fatalf("counters at end step: got %d, want 4 (one trigger, two counters)", got)
+	}
+}
+
 func TestProteanHydraDeclarationIsFull(t *testing.T) {
 	spec, ok := Lookup(oracleProteanHydra)
 	if !ok {

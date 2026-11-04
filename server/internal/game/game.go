@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"strings"
@@ -1229,8 +1230,39 @@ type Game struct {
 	// written to a restore point as GameSnapshot.ParkedDraws.
 	parkedDraws map[uuid.UUID]*parkedDraw
 
-	mu sync.RWMutex
+	// layerPassing is true while a layer pass is running (the real
+	// recompute or a dry-run look-ahead), so a reader the pass reaches
+	// does not start a second pass inside it (#4909, freshForEffectLocked).
+	// Defer-cleared, so it is false between actions.
+	layerPassing bool
+
+	mu gameMutex
 }
+
+// gameMutex is the game's RWMutex, recording whether its WRITE lock is
+// held (#4909). A caller that holds g.mu in either mode can ask
+// writeHeld: readers and the writer exclude each other, so true means
+// the caller is the writer. That is what lets an effect-API reader bring
+// stale layers current (a recompute is a write) without ever doing so
+// under a read lock.
+type gameMutex struct {
+	sync.RWMutex
+	writer atomic.Bool
+}
+
+func (m *gameMutex) Lock() {
+	m.RWMutex.Lock()
+	m.writer.Store(true)
+}
+
+func (m *gameMutex) Unlock() {
+	m.writer.Store(false)
+	m.RWMutex.Unlock()
+}
+
+// writeHeld reports whether the write lock is held. Meaningful only to a
+// caller that holds g.mu in some mode.
+func (m *gameMutex) writeHeld() bool { return m.writer.Load() }
 
 // NewGame constructs a game in the lobby state with a fresh ID and
 // empty shared zones.
@@ -1978,6 +2010,17 @@ type CastTally struct {
 	// spells you've cast this turn" (#4455). Additive within the snapshot
 	// version.
 	Colors string `json:"colors,omitempty"`
+	// CardTypes is the card types (CR 205.2a) of EVERY spell the player
+	// cast this turn, as a set of type names in alphabetical order joined
+	// by spaces ("Artifact Creature Instant"), read off the spell as it
+	// became cast (CR 601.2i) like Colors: April O'Neil, Hacktivist's
+	// "card type among spells you've cast this turn" (#4677). So an MDFC
+	// cast as its back face, or one half of a split card (CR 709.3b),
+	// adds that face's types only; kindred is a card type of its own (CR
+	// 205.2a, 308.1); a copy is not cast (CR 707.10) and a land played is
+	// never a spell (CR 305.1), so neither adds anything. Read through
+	// CardTypesCast. Additive within the snapshot version.
+	CardTypes string `json:"cardTypes,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
@@ -2063,6 +2106,33 @@ func (t CastTally) withInstantSorceryColors(colors []string) CastTally {
 func (t CastTally) withSpellColors(colors []string) CastTally {
 	t.Colors = unionColorLetters(t.Colors, colors)
 	return t
+}
+
+// cardTypes205Sorted is CR 205.2a's card types in alphabetical order,
+// the order CastTally.CardTypes keeps them in.
+var cardTypes205Sorted = slices.Sorted(maps.Keys(cardTypes205))
+
+// withSpellCardTypes adds a cast spell's card types to CardTypes,
+// skipping any word that is not a CR 205.2a card type.
+func (t CastTally) withSpellCardTypes(types []string) CastTally {
+	have := strings.Fields(t.CardTypes)
+	var out []string
+	for _, ct := range cardTypes205Sorted {
+		if slices.Contains(have, ct) || slices.ContainsFunc(types, func(s string) bool { return strings.EqualFold(s, ct) }) {
+			out = append(out, ct)
+		}
+	}
+	t.CardTypes = strings.Join(out, " ")
+	return t
+}
+
+// CardTypesCast is the distinct card types among the spells the player
+// cast this turn, in alphabetical order: an artifact creature spell
+// adds two, a second creature spell adds none. April O'Neil,
+// Hacktivist's "for each card type among spells you've cast this turn"
+// is its length.
+func (t CastTally) CardTypesCast() []string {
+	return strings.Fields(t.CardTypes)
 }
 
 // unionColorLetters is the set of colour letters in `have` and `colors`,

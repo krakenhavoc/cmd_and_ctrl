@@ -92,8 +92,18 @@ func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
 // characteristics BEFORE moving it (Swords to Plowshares → read
 // power before exile; Path to Exile → read controller before
 // exile to drive the search clause).
+//
+// During a resolution a permanent's characteristics are current
+// (#4909): under the write lock, stale layers are recomputed before the
+// copy is taken, so a read sees every earlier step of the resolution it
+// is part of (CR 608.2). See freshForEffectLocked.
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 	z, pos := g.locateCardLocked(cardID)
+	if z != nil && z.Kind == ZoneBattlefield && g.freshForEffectLocked() {
+		// A pass moves no card, but it emits control changes, and
+		// nothing promises their listeners leave the zone as it was.
+		z, pos = g.locateCardLocked(cardID)
+	}
 	if z == nil {
 		// #762: a token whose entry window is open is in no zone at
 		// all — it is minted and not yet pushed. An entry replacement
@@ -164,6 +174,11 @@ type DiscardPrompt struct {
 	Source uuid.UUID
 	// N is the printed count.
 	N int
+	// HalfHand makes the count half the cards in the discarding player's
+	// hand, rounded down, read as that player is asked (Pox Plague's
+	// "discards half the cards in their hand"). N is ignored. Plain data,
+	// so a run over several seats gives each its own count.
+	HalfHand bool
 	// UpTo makes N a ceiling rather than an exact count ("discard up
 	// to two cards"), which is the difference between a floor of N
 	// and a floor of zero on the underlying pick.
@@ -287,6 +302,11 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	}
 	player := g.playerByIDLocked(p.Player)
 	n := p.N
+	if p.HalfHand {
+		// "half the cards in their hand, rounded down" (Pox Plague), read as
+		// this seat is asked, so a run asks each seat for its own count.
+		n = player.Hand.Size() / 2
+	}
 	if g.effectDiscardBlockedLocked(p.Player) {
 		// #2178: an opponent's spell or ability can't make this player
 		// discard, so nothing is asked and nothing is discarded; the
@@ -427,6 +447,8 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 	if g.Battlefield == nil {
 		return nil
 	}
+	// #4909: current characteristics, as LookupCardForEffect.
+	g.freshForEffectLocked()
 	out := make([]Card, len(g.Battlefield.Cards))
 	copy(out, g.Battlefield.Cards)
 	return out

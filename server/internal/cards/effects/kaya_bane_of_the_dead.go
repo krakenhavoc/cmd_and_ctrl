@@ -43,15 +43,7 @@ func init() {
 			Label:   "−3: Exile target creature.",
 			Cost:    LoyaltyCost(-3),
 			Targets: TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ExileTarget{Target: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  socB37ExileTheLegalTarget,
 		}},
 	})
 }

@@ -99,7 +99,7 @@ func TestMsc9AbsorbingManDoublesYourCreaturesDamageOnly(t *testing.T) {
 
 // --- Ancestral Communion -------------------------------------------------
 
-func msc9Commander(g *game.Game, owner uuid.UUID) {
+func msc9Commander(g *game.Game, owner uuid.UUID) uuid.UUID {
 	id := b12Creature(g, owner, "My Commander", "Legendary Creature — Human", 2, 2)
 	g.WithWriteLock(func() {
 		for i := range g.Battlefield.Cards {
@@ -108,6 +108,7 @@ func msc9Commander(g *game.Game, owner uuid.UUID) {
 			}
 		}
 	})
+	return id
 }
 
 func TestMsc9AncestralCommunionReturnsAPermanentCard(t *testing.T) {

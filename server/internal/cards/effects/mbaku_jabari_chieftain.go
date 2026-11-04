@@ -18,10 +18,12 @@ import (
 // Both triggers carry an intervening "if" (CR 603.4), checked when the
 // trigger event happens and again as it resolves: nobody has taken the
 // crown by the time the first resolves, and the defending player still
-// holds it when the second does. The defending player is the player behind
-// the attack's target (b17DefendingPlayer; a planeswalker or battle counts
-// as its controller), and "one of your opponents" excludes M'Baku's own
-// controller. The creature may be any player's, M'Baku's included.
+// holds it when the second does. "A creature attacks one of your
+// opponents" is CR 508.3a: the creature was declared attacking that
+// opponent ITSELF (attackedPlayer). A creature attacking the monarch's
+// planeswalker or battle is not attacking the monarch and gets nothing
+// (#4839). "One of your opponents" excludes M'Baku's own controller. The
+// creature may be any player's, M'Baku's included.
 //
 // No simplification.
 func init() {
@@ -69,9 +71,10 @@ func init() {
 }
 
 // mbakuAttackedTheMonarch is both halves of the second ability's trigger and
-// its intervening "if": the attack is aimed at an opponent of `you`, and
-// that opponent is the monarch.
+// its intervening "if": the attack is aimed at an opponent of `you` (the
+// player, not a planeswalker or battle of theirs), and that opponent is the
+// monarch.
 func mbakuAttackedTheMonarch(g *game.Game, ev game.Event, you uuid.UUID) bool {
-	defender := b17DefendingPlayer(g, ev)
+	defender := attackedPlayer(g, ev)
 	return defender != uuid.Nil && defender != you && YoureTheMonarch(g, defender)
 }

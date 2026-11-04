@@ -363,7 +363,7 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		// reduces the price (Herigast). checkEmerge holds its shape.
 		emerge := o.ReducedBySacrificedManaValue && o.Sacrifice != nil &&
 			o.ExileFromHand == nil && o.DiscardFromHand == nil && o.ReturnToHand == nil &&
-			o.ExileFromGraveyard == nil && o.TapOthers == nil
+			o.ExileFromGraveyard == nil && o.TapOthers == nil && o.Behold == nil
 		if emerge {
 			checkEmerge(name, o)
 		}
@@ -372,7 +372,7 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		// permanent to its owner's hand and nothing else.
 		webSlinging := o.ReturnToHand != nil && o.Sacrifice == nil && !o.ReducedBySacrificedManaValue &&
 			o.ExileFromHand == nil && o.DiscardFromHand == nil &&
-			o.ExileFromGraveyard == nil && o.TapOthers == nil
+			o.ExileFromGraveyard == nil && o.TapOthers == nil && o.Behold == nil
 		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
 			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash || o.Blitz || o.Sneak ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {

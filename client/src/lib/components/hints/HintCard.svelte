@@ -142,12 +142,13 @@
 </aside>
 
 <style>
-  /* z 58: over the coach (57) and the dock (55); under the card-local
-     menus (60+), the modals (200) and the hover zoom (300). Fixed, so it
-     sits where place.ts put it in viewport coordinates. */
+  /* z 59 (DESIGN.md §4): over the coach (58), the table effects (57) and
+     the dock (55); under the card-local menus (60+), the modals (200) and
+     the hover zoom (300). Fixed, so it sits where place.ts put it in
+     viewport coordinates. */
   .hint-ring {
     position: fixed;
-    z-index: 58;
+    z-index: 59;
     pointer-events: none;
     border: 2px solid var(--accent);
     border-radius: 10px;
@@ -163,7 +164,7 @@
   }
   .hint-card {
     position: fixed;
-    z-index: 58;
+    z-index: 59;
     box-sizing: border-box;
     width: 280px;
     display: flex;

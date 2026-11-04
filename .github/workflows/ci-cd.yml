@@ -262,6 +262,33 @@ jobs:
         working-directory: server
         run: go vet ./...
 
+      # golangci-lint's own analysis cache (#4855). Nothing else restores
+      # ~/.cache/golangci-lint: setup-go caches only the module and build
+      # caches. So every hosted run linted the whole tree from nothing:
+      # PR #4849 (run 41624504245) ran past the 6m budget then in force
+      # with 0 issues, and a rerun of the same commit passed. The key is
+      # day-stamped like the Scryfall cache: one entry a day per branch,
+      # and a PR reads its base branch's entry. Results for unchanged
+      # packages, the standard library and the modules come back; only
+      # what changed, and what imports it, is analysed again. The
+      # Makefile (the pinned version) and .golangci.yml
+      # are in the prefix, so a version or config change starts clean.
+      # Hosted only, like the Go cache above: a self-hosted runner keeps
+      # ~/.cache between jobs.
+      - name: Compute lint cache key
+        id: lint-cache-stamp
+        if: runner.environment == 'github-hosted'
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache golangci-lint results
+        if: runner.environment == 'github-hosted'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('server/Makefile', 'server/.golangci.yml') }}-${{ steps.lint-cache-stamp.outputs.date }}
+          restore-keys: |
+            golangci-lint-${{ runner.os }}-${{ hashFiles('server/Makefile', 'server/.golangci.yml') }}-
+
       - name: Server — lint
         working-directory: server
         # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
