@@ -48,6 +48,11 @@
   // the copy lands, effectCueMotion.ts riseArrive, cancelled with the cue)
   // or its owner's hand.
   //
+  // A library searched (#4447) riffles: a few card backs flick up off that
+  // library's pile and settle, over a cool light. They are backs only:
+  // nothing about what the library holds, or what the search found, is
+  // drawn, and a search that finds nothing looks the same.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -141,6 +146,7 @@
     type DeckedWisp,
     pileShown,
     PILE_SWEEP_MIN,
+    RIFFLE_CARDS,
     type CounterTone,
     type EffectCue,
     type EffectKind,
@@ -240,6 +246,8 @@
     paths?: PilePath[];
     flips?: boolean[];
     tileIDs?: (string | null)[];
+    // A library searched (#4447): whose library pile riffles, a seat ID.
+    library?: string;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -463,6 +471,9 @@
     // And a card returned from a graveyard (#4446): it is where it went,
     // where the board shows it, and the log names it.
     reanimate: null,
+    // And a library searched (#4447): the log says who searched whose
+    // library, and the board shows where whatever was found went.
+    library_search: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -537,6 +548,10 @@
     }
     if (cue.kind === "reanimate") {
       placeReanimate(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "library_search") {
+      placeRiffle(cue, base, motion, b);
       return;
     }
     const cardID = cue.cardID;
@@ -1127,6 +1142,39 @@
       tileIDs,
     });
   }
+  // ---- A library searched (#4447) ----
+
+  // The riffled card backs, one each.
+  const RIFFLE = Array.from({ length: RIFFLE_CARDS }, (_, i) => i);
+
+  // The searched library's pile riffles, at the size of its top card (a
+  // back); with no library pile on the board, its owner's seat does, at a
+  // card's size. With neither, or a still cue, nothing is drawn and the
+  // sound plays.
+  function placeRiffle(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const owner = view.seats?.[cue.librarySeat ?? -1]?.id ?? "";
+    if (!owner) return;
+    const at = pileBox("library", owner, b.rect) ?? seatBox(owner, b.rect);
+    if (!at) return;
+    // The pile's top card is card-sized; a seat is not.
+    const card = at.h > at.w * 1.2 ? { w: at.w, h: at.h } : PILE_CARD;
+    add({
+      ...base,
+      x: at.x,
+      y: at.y,
+      width: card.w,
+      height: card.h,
+      count: RIFFLE_CARDS,
+      library: owner,
+    });
+  }
+
   // Where an Aura's glints twinkle, as shares of the host's box from its centre.
   const ATT_GLINTS = [
     [-0.44, -0.34],
@@ -2143,6 +2191,33 @@
                 {#if src}<img {src} alt="" decoding="async" draggable="false" />{/if}
               </div>
             {/if}
+          </div>
+        {/each}
+      </div>
+    {:else if f.kind === "library_search"}
+      <!-- #4447: a few card backs flick up off the searched library's pile
+           one after another and settle, over a cool light. Backs only. -->
+      <div
+        class="fx m"
+        data-effect="library_search"
+        data-effect-motion={f.motion}
+        data-effect-library={f.library}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="riffle-glow"
+          style:width={`${f.width * 2}px`}
+          style:height={`${f.height * 1.5}px`}
+        ></div>
+        {#each RIFFLE.slice(0, f.count) as i (i)}
+          <div class="copy riffle-card" style:transform-origin={`0px ${f.height / 2}px`}>
+            <div
+              class="face back-only"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+            ></div>
           </div>
         {/each}
       </div>
@@ -3182,6 +3257,30 @@
       rgba(132, 206, 112, 0.6) 0%,
       rgba(40, 112, 40, 0.42) 38%,
       rgba(20, 58, 22, 0.22) 58%,
+      transparent 72%
+    );
+    filter: blur(3px);
+    opacity: 0;
+  }
+
+  /* A library searched (#4447): card backs riffled off the pile, which
+     start hidden (the motion shows each while it moves), and a cool,
+     moonlit light under the pile while it is looked through. */
+  .riffle-card {
+    opacity: 0;
+  }
+  .riffle-card .face {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+  .riffle-glow {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(214, 228, 255, 0.75) 0%,
+      rgba(136, 164, 228, 0.42) 40%,
+      rgba(74, 96, 160, 0.16) 60%,
       transparent 72%
     );
     filter: blur(3px);

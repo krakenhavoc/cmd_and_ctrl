@@ -5,7 +5,8 @@
 // put on a permanent (#4442), a commander cast from the command zone or
 // going home (#4443), an Equipment attached or an Aura enchanting a
 // permanent (#4444), cards milled or discarded into a graveyard (#4445),
-// a card returned from a graveyard (#4446) and a board wipe each draw their cue
+// a card returned from a graveyard (#4446), a library searched (#4447) and
+// a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -1798,6 +1799,169 @@ describe("a card returns from a graveyard to the battlefield or a hand (#4446)",
       expect(effects()).toHaveLength(0);
       expect(badges()).toHaveLength(0);
       expect(sounds("reanimate")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a player searches a library (#4447)", () => {
+  // Each seat's library pile (a button with its top card's back).
+  const LIB = { left: 1000, top: 560, width: 40, height: 56 };
+  const MY_LIB = { left: 100, top: 700, width: 40, height: 56 };
+  const centre = (r: typeof LIB) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+
+  function pile(board: HTMLElement, owner: string, r: typeof LIB) {
+    const button = rectEl("data-pile", "library", r);
+    button.setAttribute("data-pile-owner", owner);
+    button.appendChild(rectEl("class", "thumb", r));
+    board.appendChild(button);
+  }
+
+  // Both library piles are on the board; then `log` lands.
+  function frame(log: LogEvent[], cards: CardView[] = []) {
+    const board = makeBoard([]);
+    pile(board, "opp", LIB);
+    pile(board, "me", MY_LIB);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: viewWith(log, cards) } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const search = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "search",
+    turn: 3,
+    seat: 1,
+    target_seat: 1,
+    library_seat: 1,
+    label: "search_shuffled",
+    batch: 4,
+    text: "P2 searched their library and shuffled it",
+    ...extra,
+  });
+
+  it("a search riffles card backs off the searched library's pile, one after another, with one sound", () => {
+    frame([search()]);
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    const at = centre(LIB);
+    expect(cues[0].style.left).toBe(`${at.x}px`);
+    expect(cues[0].style.top).toBe(`${at.y}px`);
+    expect(cues[0].getAttribute("data-effect-library")).toBe("opp");
+    const backs = [...cues[0].querySelectorAll<HTMLElement>(".riffle-card")];
+    expect(backs.length).toBeGreaterThanOrEqual(3);
+    for (const c of backs) {
+      // Backs only, at the pile's top card's size: no face, no art.
+      const face = c.querySelector<HTMLElement>(".face")!;
+      expect(face.classList.contains("back-only")).toBe(true);
+      expect(c.querySelector("img")).toBeNull();
+      expect(face.style.width).toBe(`${LIB.width}px`);
+      expect(face.style.height).toBe(`${LIB.height}px`);
+    }
+    // One after another: each sets off later than the one before.
+    const starts = backs.map((c) => runsOn(c)[0][2].delay as number);
+    expect(starts[0]).toBe(0);
+    for (let i = 1; i < starts.length; i++) expect(starts[i]).toBeGreaterThan(starts[i - 1]);
+    expect(runsOn(cues[0].querySelector(".riffle-glow")!)).toHaveLength(1);
+    // About half a second, and nothing waits on it.
+    for (const ms of runEnds())
+      expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.library_search + 1e-6);
+    expect(sounds("library_search")).toEqual([["library_search", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("library_search")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a fetch land's reveal riffles the searcher's library, and the found land's arrival is its own", () => {
+    // "P1 fetched Forest from their library onto the battlefield".
+    const fetched: LogEvent = {
+      seq: ++seq,
+      kind: "reveal",
+      turn: 3,
+      seat: 0,
+      library_seat: 0,
+      old_zone: "library",
+      amount: 1,
+      batch: 7,
+      text: "P1 fetched Forest from their library onto the battlefield",
+    };
+    frame([fetched, zone("forest", "battlefield", { seat: 0, batch: 7 }, "library")]);
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-library")).toBe("me");
+    expect(cues[0].style.left).toBe(`${centre(MY_LIB).x}px`);
+    expect(sounds("library_search")).toEqual([["library_search", { volume: 1, batch: "g1:7" }]]);
+  });
+
+  it("another player's library riffles that pile; each library searched at once is one sound", () => {
+    frame([
+      search({ seat: 0, library_seat: 1, batch: 9 }),
+      search({ seat: 0, target_seat: 0, library_seat: 0, batch: 9 }),
+    ]);
+    const cues = effects("library_search");
+    expect(cues.map((c) => c.getAttribute("data-effect-library"))).toEqual(["opp", "me"]);
+    expect(sounds("library_search")).toHaveLength(1);
+  });
+
+  it("a plain shuffle, or a reveal no search made, riffles nothing and plays nothing", () => {
+    frame([
+      search({ label: "shuffle", library_seat: undefined, batch: 11 }),
+      {
+        seq: ++seq,
+        kind: "reveal",
+        turn: 3,
+        seat: 1,
+        old_zone: "library",
+        amount: 1,
+        batch: 12,
+        text: "",
+      },
+    ]);
+    expect(effects()).toHaveLength(0);
+    expect(sounds("library_search")).toHaveLength(0);
+  });
+
+  it("with no library pile on the board it riffles over the owner's seat at a card's size", () => {
+    const board = makeBoard([]);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: viewWith([search()], []) } as never);
+    flushSync();
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    // makeBoard's opponent avatar: 60 x 60 at (560, 20).
+    expect(cues[0].style.left).toBe("590px");
+    expect(cues[0].style.top).toBe("50px");
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    frame([search()]);
+    expect(effects("library_search")).toHaveLength(1);
+    for (const ms of runEnds())
+      expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.library_search + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame([search({ batch: 20 })]);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("library_search")).toHaveLength(1);
       cleanup();
       document.body.innerHTML = "";
     }

@@ -154,6 +154,9 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
     case "reanimate":
       pileSlide(node, f);
       return;
+    case "library_search":
+      libraryRiffle(node, f);
+      return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
       else if (f.tone === "dark") windCuts(node, f);
@@ -1435,6 +1438,82 @@ function pileSlide(node: HTMLElement, f: CueMotion): void {
         { offset: 1, scale: "1.25", opacity: 0 },
       ],
       span(f, at - 0.04, 1, EASE.power2Out),
+    );
+  }
+}
+
+// ---- A library searched (#4447) ----
+
+/** How high a riffled card lifts off its library pile, as a share of the card's height. */
+export const RIFFLE_LIFT = 0.36;
+
+/**
+ * libraryRiffle thumbs through the top of a library pile while it is
+ * searched: a few card backs, drawn on the pile, flick up off it one
+ * after another, each tipping back a little by its bottom edge and
+ * fanned to alternate sides, and drop back onto it, the next setting off
+ * PILE_STAGGER into the one before (pileWindows), so the last settles as
+ * the cue ends. A cool light comes up under the pile while it is looked
+ * through and fades as the last card settles. Every card is a back: the
+ * cue shows nothing of what the library holds, or of what the search
+ * found (CR 401.2, 701.23b).
+ */
+function libraryRiffle(node: HTMLElement, f: CueMotion): void {
+  const cards = all<HTMLElement>(node, ".riffle-card");
+  const wins = pileWindows(cards.length);
+  const lift = Math.max(6, f.height * RIFFLE_LIFT);
+  cards.forEach((card, i) => {
+    const w = wins[i];
+    const side = i % 2 === 0 ? 1 : -1;
+    run(
+      card,
+      [
+        {
+          offset: 0,
+          transform: "perspective(420px) translate(0px, 0px) rotateX(0deg) rotate(0deg)",
+          easing: EASE.power2Out,
+        },
+        {
+          offset: 0.42,
+          transform: `perspective(420px) translate(${side * 4}px, ${-lift}px) rotateX(14deg) rotate(${side * 8}deg)`,
+          easing: EASE.power2In,
+        },
+        {
+          offset: 0.86,
+          transform: `perspective(420px) translate(0px, 1px) rotateX(-3deg) rotate(${side * -1}deg)`,
+          easing: EASE.sineInOut,
+        },
+        {
+          offset: 1,
+          transform: "perspective(420px) translate(0px, 0px) rotateX(0deg) rotate(0deg)",
+        },
+      ],
+      span(f, w.a, w.b),
+    );
+    // On the pile, a back over a back: seen only while it moves, and
+    // gone once it settles, so the pile's own top card is what stays.
+    run(
+      card,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.08, opacity: 1 },
+        { offset: 0.9, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, w.a, w.b),
+    );
+  });
+  const glow = node.querySelector<HTMLElement>(".riffle-glow");
+  if (glow) {
+    run(
+      glow,
+      [
+        { offset: 0, scale: "0.7", opacity: 0 },
+        { offset: 0.25, scale: "1", opacity: 1 },
+        { offset: 0.75, scale: "1.05", opacity: 0.7 },
+        { offset: 1, scale: "1.15", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
     );
   }
 }

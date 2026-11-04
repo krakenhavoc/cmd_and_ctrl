@@ -51,6 +51,8 @@ import {
   planEffects,
   reanimateTo,
   REANIMATE_HAND_VOLUME,
+  RIFFLE_CARDS,
+  searchedLibrary,
   sacrificeBeats,
   shatterPlan,
   soundBatch,
@@ -970,6 +972,159 @@ describe("a card returns from a graveyard to the battlefield or a hand (#4446)",
       expect(pileLandAt(3, i)).toBeCloseTo(w[i].a + (w[i].b - w[i].a) * PILE_LAND, 9);
     }
     expect(pileLandAt(3, 2, true)).toBeCloseTo(PILE_LAND, 9);
+  });
+});
+
+describe("a player searches a library (#4447)", () => {
+  // The server writes one entry per search with `library_seat`: its
+  // `search` line, or the `reveal` line that took its place when the
+  // search revealed what it took (a fetch land, Bribery).
+  // log_library_search_test.go pins it.
+  const search = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "search",
+    turn: 3,
+    seat: 0,
+    target_seat: 0,
+    library_seat: 0,
+    label: "search_shuffled",
+    batch: 5,
+    text: "",
+    ...extra,
+  });
+  const reveal = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "reveal",
+    turn: 3,
+    seat: 0,
+    old_zone: "library",
+    amount: 1,
+    batch: 5,
+    text: "",
+    ...extra,
+  });
+
+  it("a search, found or not, is a riffle on the searched library, with its sound", () => {
+    expect(searchedLibrary(search())).toBe(0);
+    const p = plan([search({ batch: 7 })]);
+    expect(p.cues.map((q) => [q.kind, q.seat, q.librarySeat, q.cardID, q.batch])).toEqual([
+      ["library_search", 0, 0, null, 7],
+    ]);
+    expect(cueSound(p.cues[0])).toEqual({ name: "library_search", volume: 1 });
+    expect(EFFECT_SOUND.library_search).toBe("library_search");
+    expect(SOUND_CATEGORY.library_search).toBe("effects");
+    expect(SOUND_MANIFEST.library_search).toEqual([]);
+    // A search that did not shuffle, or one that found nothing, is the
+    // same cue: the log says neither what nor whether.
+    expect(kinds([search({ label: "" })])).toEqual(["library_search"]);
+  });
+
+  it("a fetch land's reveal carries the search, and a reveal no search made is none", () => {
+    // "P1 fetched Forest from their library onto the battlefield".
+    const fetched = reveal({ library_seat: 0, batch: 9 });
+    expect(searchedLibrary(fetched)).toBe(0);
+    expect(kinds([fetched])).toEqual(["library_search"]);
+    // Dark Confidant, a "reveal the top card": no library_seat.
+    expect(searchedLibrary(reveal())).toBeNull();
+    expect(kinds([reveal()])).toEqual([]);
+  });
+
+  it("a plain shuffle is no search, and neither is anything else", () => {
+    const shuffle = search({ label: "shuffle", library_seat: undefined });
+    expect(searchedLibrary(shuffle)).toBeNull();
+    expect(kinds([shuffle])).toEqual([]);
+    expect(searchedLibrary(zone("a", "hand", {}, "library"))).toBeNull();
+    expect(searchedLibrary({ ...sacrifice("f"), library_seat: 0 })).toBeNull();
+  });
+
+  it("a search line from an older server reads its target_seat", () => {
+    const old = search({ library_seat: undefined, target_seat: 1, seat: 0 });
+    expect(searchedLibrary(old)).toBe(1);
+    expect(plan([old]).cues.map((q) => [q.seat, q.librarySeat])).toEqual([[0, 1]]);
+  });
+
+  it("another player's library riffles that library, not the searcher's", () => {
+    // Bribery: P1 searches P2's library and reveals what it takes.
+    const p = plan([reveal({ seat: 0, library_seat: 1, batch: 4 })]);
+    expect(p.cues.map((q) => [q.kind, q.seat, q.librarySeat])).toEqual([["library_search", 0, 1]]);
+  });
+
+  it("one effect's searches are one sound; one library searched twice in a batch is one riffle", () => {
+    // "Each player searches their library": one riffle per library, one sound.
+    const p = plan([
+      search({ seat: 0, library_seat: 0, batch: 6 }),
+      search({ seat: 1, library_seat: 1, batch: 6 }),
+    ]);
+    expect(p.cues.map((q) => [q.librarySeat, cueSound(q)?.name ?? null])).toEqual([
+      [0, "library_search"],
+      [1, null],
+    ]);
+    expect(headlines(p)).toBe(1);
+    // CR 701.23h: searched again before the shuffle, still one search.
+    expect(kinds([search({ batch: 8 }), search({ batch: 8 })])).toEqual(["library_search"]);
+    // Two tutors are two moments.
+    const q = plan([search({ batch: 10 }), search({ batch: 11 })]);
+    expect(q.cues.map((c) => cueSound(c)?.name)).toEqual(["library_search", "library_search"]);
+  });
+
+  it("the found card's own cues play beside it, each with its own sound", () => {
+    // A fetch land resolving: the land's arrival is a zone entry the
+    // riffle does not touch. A found planeswalker keeps its arrival and
+    // its sound; a found Aura entering attached keeps its attach cue; a
+    // found commander its owner sends to the command zone instead of a
+    // hand (CR 903.9b) is commander_return.
+    const pw = ctx({
+      isPlaneswalker: (id) => id === "jace",
+      isCommander: (id) => id === "cmdr",
+    });
+    const p = plan(
+      [
+        reveal({ library_seat: 0, batch: 3 }),
+        zone("jace", "battlefield", { seat: 0, batch: 3 }, "library"),
+        {
+          seq: ++seq,
+          kind: "attach",
+          turn: 3,
+          seat: 0,
+          card_id: "rancor",
+          target: "bear",
+          label: "Aura",
+          batch: 3,
+          text: "",
+        },
+        zone("cmdr", "command", { seat: 0, batch: 3 }, "library"),
+      ],
+      pw,
+    );
+    expect(p.cues.map((q) => [q.kind, cueSound(q)?.name ?? null])).toEqual([
+      ["library_search", "library_search"],
+      ["pw_enter", "pw_enter"],
+      ["attach_aura", "attach_aura"],
+      ["commander_return", "commander_return"],
+    ]);
+    // A fetch land's sacrifice is its cost, in the activation's batch.
+    expect(
+      kinds([sacrifice("wilds", { batch: 2 }), zone("wilds", "graveyard", { batch: 2 })]),
+    ).toEqual(["sacrifice"]);
+  });
+
+  it("riffles in about half a second, the same in Short, and is still when motion is off", () => {
+    expect(EFFECT_BASE_MS.library_search).toBe(500);
+    expect(RIFFLE_CARDS).toBeGreaterThanOrEqual(3);
+    for (const mode of ["full", "short"] as const) {
+      expect(cueTiming({ kind: "library_search", weight: "full", delayMs: 0 }, mode, 1)).toEqual({
+        delayMs: 0,
+        ms: 500,
+      });
+    }
+    expect(cueTiming({ kind: "library_search", weight: "full", delayMs: 0 }, "still", 1)).toEqual({
+      delayMs: 0,
+      ms: EFFECT_STILL_HOLD_MS,
+    });
+    // The riffled backs go one after another, the last settling as it ends.
+    const w = pileWindows(RIFFLE_CARDS);
+    expect(w[0].a).toBe(0);
+    expect(w[RIFFLE_CARDS - 1].b).toBeCloseTo(1, 9);
   });
 });
 

@@ -213,6 +213,7 @@ describe("sounds", () => {
       "mill", // #4445, silent
       "discard", // #4445, silent
       "reanimate", // #4446, silent
+      "library_search", // #4447, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -322,6 +323,20 @@ describe("sounds", () => {
       m.play("reanimate", { volume: 0.6 });
       await settle();
       expect(played().at(-1)?.src).toBe("/sounds/reanimate-1.mp3");
+    });
+
+    it("plays nothing for library_search until its files land, and itself once a take is listed (#4447)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.library_search).toBe("effects");
+      expect(m.SOUND_FALLBACK.library_search).toBeUndefined();
+      m.play("library_search");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.library_search = ["/sounds/library_search-1.mp3"];
+      m.play("library_search");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/library_search-1.mp3");
     });
 
     // #4543: three hit sounds by how much combat damage lands, each its
