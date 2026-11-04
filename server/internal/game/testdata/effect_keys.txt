@@ -1068,6 +1068,7 @@ option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
+option option-pick/wingnut-bat-on-the-belfry-keyword
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
@@ -1339,6 +1340,7 @@ run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
+run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
 run prompt-run/wilhelt-the-rotcleaver-draw
 run prompt-run/will-of-the-abzan-lose-life
@@ -1837,6 +1839,7 @@ tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
+tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
