@@ -4920,3 +4920,18 @@ and cast for exactly {2}, with the printed {R}{R}{R} not repriced; a creature ca
 opponent's Lorehold and a declined reveal are refused; Lorehold destroyed after the reveal still leaves the {2} cast; two
 Loreholds make one reveal; beside Molecule Man a creature is revealed once and an instant twice; a draw on an opponent's turn;
 the bot's move list and the view; the loot in each opponent's upkeep, declined, and not in its controller's own.
+
+## Amendment — 2026-11-04 (#4969): a priced permission accepts only its own offer
+
+Rule 4 of `validateCastPathLocked` refused a cast that claimed nothing under a permission that names a price, but accepted
+any other claim. So a card that a priced permission alone let out of a zone could be cast there for an alternative cost it
+prints instead: a Mulldrifter in the graveyard under Green Goblin's granted mayhem was evokeable, discarded this turn or not,
+and a Cyclonic Rift opened in exile by a `{0}` permission could be overloaded too. Only one alternative cost can be applied to
+a spell (CR 118.9a), and the permission's price is that cost. Rule 4 is now `permissionClaimOK`: a permission with a claimable
+offer (Green Goblin, Underworld Breach, Snapcaster, Bolas's Citadel, a `granted-cost` grant, foretell, madness) accepts only a
+claim under its own key, or its granted-instance spelling (#3938); one with a flat price (airbend, cascade, discover, a
+waterbend) accepts no claim. A permission at the printed cost (`AltCostKey` empty, `NamesPrice()` false: Yawgmoth's Will,
+Muldrotha, an impulse exile) still lets the card's own alternative costs through, and rule 4 still applies only when the
+permission is the reason the cast is legal: a card that opens the zone itself keeps its own paths. The view's offer list and
+the bot enumerator ask the same gate, so neither lists a refused claim. Nothing new is stored. Tests:
+`cards/effects/priced_permission_claims_test.go`.

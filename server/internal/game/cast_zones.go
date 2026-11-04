@@ -493,6 +493,34 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 	return !aftermathOpens && !g.cardOpensZoneLocked(card, castPathKey(card, alt), srcKind)
 }
 
+// permissionClaimOK is rule 4 of validateCastPathLocked: may a cast that
+// `grant` is the only reason for claim `alt` (nil: the printed cost)?
+//
+// A permission at the printed cost (Yawgmoth's Will, Muldrotha, an
+// impulse exile: no AltCostKey, no flat price) opens the zone and names
+// no price, so the card may be cast for its mana cost or for any
+// alternative cost it prints (Muldrotha's ruling of 2020-11-10).
+//
+// A permission with a price of its own is that alternative cost, and
+// only one alternative cost can be applied to a spell (CR 118.9a). So a
+// claimable offer (Green Goblin's mayhem, Underworld Breach's escape,
+// Snapcaster's flashback, Bolas's Citadel's life) must be claimed, and
+// under its own key; a flat price (airbend's {2}, cascade's {0}, a
+// waterbend) charges itself and admits no claim. Without this a card
+// that prints another alternative cost (evoke, overload) was castable
+// from the zone for that cost instead, which is stronger than printed
+// (#4969).
+func permissionClaimOK(card Card, alt *AlternativeCost, grant *CastPermission) bool {
+	if grant.AltCostKey == "" && !grant.NamesPrice() {
+		return true
+	}
+	if alt == nil {
+		return grant.AlternativeCostFor(card) == nil
+	}
+	// A granted instance (#3938) is claimed as "<key>/granted".
+	return grant.AltCostKey != "" && AltCostKeyword(alt.Key) == grant.AltCostKey
+}
+
 // validateCastPathLocked is the S29 gate, widened by ADR 0066: may
 // this player cast this card out of this zone, under the alternative
 // cost they claimed?
@@ -522,7 +550,8 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 //     a card on top of the library under Bolas's Citadel is not
 //     castable without the life. A permission whose price is a flat
 //     Cost (airbend's {2}, cascade's {0}) names no claimable offer
-//     and charges itself.
+//     and charges itself. And it is paid for at ITS price only
+//     (#4969): see permissionClaimOK.
 //
 // Rule 3 gives way to a permission at the printed cost (#1987): a
 // flashback card under Shaman's Trance or Yawgmoth's Will may be cast
@@ -621,7 +650,7 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// made a Breach on the table strictly WORSE for its controller,
 	// which is the wrong direction twice over.
 	if grant != nil && !opensItself {
-		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
+		if !permissionClaimOK(card, alt, grant) {
 			return ErrCastCostRequired
 		}
 		return nil
