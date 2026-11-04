@@ -676,6 +676,15 @@ type CastPermission struct {
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
 
+	// SneakCost is the price of a granted sneak (#4680, Ninja Teen's
+	// "Creature cards in your graveyard have sneak {3}{B}"), read only
+	// under AltCostKeyGrantedSneak: the synthesised offer charges it and
+	// returns an unblocked creature you control (CR 702.190a). Not Cost,
+	// which is a flat price charged over any claim (CastCostFor) and would
+	// reprice a card's own sneak claimed under the same permission. Only a
+	// derived standing permission carries it; none is ever stored.
+	SneakCost string `json:"sneakCost,omitempty"`
+
 	// DiscardCard is The Infamous Cruelclaw's "You may cast that card by
 	// discarding a card rather than paying its mana cost" (CR 118.9,
 	// ADR 0135 §2): the synthesised offer charges no mana and one card
@@ -1374,6 +1383,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 			FromPermission: true,
 		}
 	}
+	if p.AltCostKey == AltCostKeyGrantedSneak {
+		// #4680: the granted sneak's price and riders (sneak.go).
+		return grantedSneakOffer(p, card)
+	}
 	out := AlternativeCost{
 		Key:            p.AltCostKey,
 		Label:          p.Label,
@@ -1913,7 +1926,11 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 			// the same card with no offer of its own (Shaman's Trance's
 			// plain play of another player's graveyard).
 			for _, perm := range g.standingCastPermissionsLocked(p) {
-				if perm.AltCostKey == claim && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
+				// #4680: a claim of the card's own sneak is cast under a
+				// granted-sneak permission too ("using their sneak
+				// abilities"), which is the door it opens.
+				answers := perm.AltCostKey == claim || (perm.AltCostKey == AltCostKeyGrantedSneak && printedSneakClaim(card, claim))
+				if answers && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
 					out := perm
 					if !acceptsPermission(accept, &out) {
 						continue
