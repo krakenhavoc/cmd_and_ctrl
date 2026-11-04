@@ -9,6 +9,11 @@ distinguishes consecutive turns taken by the same seat.
 decision 3 below ("no animation") is reversed by the owner: every roll
 and flip now animates for the whole table, alongside the log line and
 the reveal-strip cue, which stay.
+**Amended by:** [ADR 0216](0216-planechase-as-a-table-option.md)
+(2026-11-03). Decision 10's "no Planechase" no longer holds: the planar
+die (CR 901.9, 706.7) is a special action whose roll goes through this
+ADR's dice door on a stream of its own, and emits `EventRollDie` with no
+number and a `planar_face`. Nothing else in this ADR changes.
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)) and is
 skipped here, as ADR 0053 also skips it. On 2026-09-17 every remote
@@ -657,7 +662,8 @@ much the stream advances.
   Decision 5 orders the API so it can be added without moving events.
 - **Fixed flip results and extra flips** (CR 705.3): Krark's Thumb.
 - **Stored results** (CR 706.8): Centaur of Attention.
-- **The planar die** (CR 706.7, 901): no Planechase.
+- **The planar die** (CR 706.7, 901): no Planechase. *(Superseded
+  2026-11-03 by [ADR 0216](0216-planechase-as-a-table-option.md) §4.)*
 - **Reflexive "when you do"** (Ancient Brass Dragon) is #636.
 - **Changing a spell's targets and copying abilities** (Wyll's Reversal,
   Krark, the Thumbless's copy) belong to their own seams.
