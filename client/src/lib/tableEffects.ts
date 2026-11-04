@@ -6,7 +6,8 @@
 // from the command zone or put back into it (#4443), an Equipment
 // attached or an Aura enchanting a permanent (#4444), cards milled or
 // discarded into a graveyard (#4445), cards returned from a graveyard to
-// the battlefield or a hand (#4446) and a board wipe
+// the battlefield or a hand (#4446), a library searched (#4447) and a
+// board wipe
 // each get one cue over the table, so a player sees what happened before
 // they read the log. TableEffects.svelte measures, draws and plays; every
 // rule is here, pure and unit-tested:
@@ -130,7 +131,10 @@ export type EffectKind =
   // A card returned from a graveyard to the battlefield (Reanimate,
   // unearth, CR 702.84a, undying, a land put back) or to a hand
   // (Regrowth) (#4446).
-  | "reanimate";
+  | "reanimate"
+  // A player searched a library (CR 701.23a): a tutor, a fetch land's
+  // effect (#4447).
+  | "library_search";
 
 /**
  * Base length of each cue at speed 1, before the cap. About 1.35 times
@@ -144,7 +148,8 @@ export type EffectKind =
  * attachment's slide onto its host about 0.4 s (an Aura's shimmer a
  * beat longer, so it can fade), one card's slide (mill) or toss
  * (discard) into a graveyard about half a second, and one card's rise out
- * of a graveyard (reanimate) about 0.8 s (pileBaseMs for more).
+ * of a graveyard (reanimate) about 0.8 s (pileBaseMs for more), and a
+ * riffle through a library pile while it is searched about half a second.
  */
 export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   destroy: 1250,
@@ -168,6 +173,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   discard: 420,
   // One card's rise out of the graveyard (#4446), pileBaseMs for more.
   reanimate: 800,
+  // A riffle through the library pile (#4447).
+  library_search: 500,
 };
 
 /**
@@ -199,6 +206,7 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   mill: "mill",
   discard: "discard",
   reanimate: "reanimate",
+  library_search: "library_search",
 };
 
 /**
@@ -310,6 +318,12 @@ export interface EffectCue {
    * them; not always whose graveyard it was).
    */
   reanimateTo?: "battlefield" | "hand";
+  /**
+   * For a library_search cue (#4447): whose library was searched, as the
+   * log's seat index (not always the searcher's: Bribery searches an
+   * opponent's). `seat` is the searcher.
+   */
+  librarySeat?: number;
   /**
    * An exile that was a destruction replaced by exile (Rest in Peace):
    * it looks like an exile, with a slight crumble as it goes (#4416).
@@ -423,6 +437,7 @@ export function planEffects(
   const attaches: LogEvent[] = [];
   const piles: { kind: "mill" | "discard"; e: LogEvent }[] = [];
   const rises: LogEvent[] = [];
+  const searches: LogEvent[] = [];
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
@@ -438,6 +453,12 @@ export function planEffects(
     }
     if (e.kind === "counters") {
       counters.push(e);
+      continue;
+    }
+    // #4447: a library searched, told by its `search` line or by the
+    // reveal that took that line's place. Neither is anything else here.
+    if (searchedLibrary(e) !== null) {
+      searches.push(e);
       continue;
     }
     if (e.kind === "attach") {
@@ -568,6 +589,7 @@ export function planEffects(
   cues.push(...attachCues(attaches, new Set(rises.map(arrivalKey))));
   cues.push(...pileCues(piles));
   cues.push(...reanimateCues(rises));
+  cues.push(...searchCues(searches));
   cues.sort((a, b) => a.seq - b.seq);
   return { cues, wipes };
 }
@@ -936,6 +958,65 @@ function reanimateCues(entries: readonly LogEvent[]): EffectCue[] {
     if (lead.has(at)) c.follows = true;
     else lead.add(at);
     byKey.set(k, c);
+    out.push(c);
+  }
+  return out;
+}
+
+/**
+ * searchedLibrary is the seat whose library an entry says was searched
+ * (#4447, CR 701.23a), or null. The server writes one entry per search,
+ * with `library_seat`: its `search` line, or, when the search revealed
+ * what it took (a fetch land, a "reveal it" tutor, Bribery), the
+ * `reveal` line that already told it in that line's place. A `search`
+ * from a server older than `library_seat` reads its `target_seat`. A
+ * plain shuffle (`label` "shuffle") is no search, and a reveal that no
+ * search made has no `library_seat`. Nothing here says what was found,
+ * or whether anything was (CR 701.23b): a library is a face-down pile
+ * no one may look at (CR 401.2), and a failed search is the same cue.
+ */
+export function searchedLibrary(e: LogEvent): number | null {
+  if (e.kind !== "search" && e.kind !== "reveal") return null;
+  if (e.library_seat !== undefined) return e.library_seat;
+  if (e.kind !== "search" || e.label === "shuffle") return null;
+  return e.target_seat ?? e.seat;
+}
+
+/** How many card backs a library_search cue riffles off the pile (#4447). */
+export const RIFFLE_CARDS = 4;
+
+/**
+ * searchCues gives each library searched in one batch one riffle
+ * (#4447), on that library's pile. One batch is one moment ("each player
+ * searches their library"; a search made twice before one shuffle,
+ * CR 701.23h): the first cue plays the sound and the rest follow it.
+ */
+function searchCues(entries: readonly LogEvent[]): EffectCue[] {
+  const seen = new Set<string>();
+  const lead = new Set<string>();
+  const out: EffectCue[] = [];
+  for (const e of entries) {
+    const lib = searchedLibrary(e);
+    if (lib === null || lib < 0) continue;
+    const batch = e.batch ?? null;
+    const at = batch === null ? `q${e.seq}` : String(batch);
+    const k = `${at}|${lib}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const c: EffectCue = {
+      id: `${e.seq}:search`,
+      seq: e.seq,
+      kind: "library_search",
+      cardID: null,
+      stackItemID: null,
+      batch,
+      weight: "full",
+      delayMs: 0,
+      seat: e.seat,
+      librarySeat: lib,
+    };
+    if (lead.has(at)) c.follows = true;
+    else lead.add(at);
     out.push(c);
   }
   return out;
@@ -1473,7 +1554,8 @@ export function busyScale(n: number): number {
  * created attached, whose token cue follows its attach cue, the
  * players one effect makes mill or discard, and the cards one effect
  * returns from graveyards (and a returned planeswalker's or Aura's
- * arrival or attach cue, which follows its rise).
+ * arrival or attach cue, which follows its rise), and the libraries one
+ * effect has players search.
  */
 export function headlines(plan: EffectPlan, signatures = 0): number {
   return (

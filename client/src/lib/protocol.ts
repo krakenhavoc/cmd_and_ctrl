@@ -1099,7 +1099,9 @@ export type LogKind =
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
-  // text names no card for anyone.
+  // text names no card for anyone. #4447: a reveal a library search made
+  // (a fetch land's "fetched", a "reveal it" tutor) also tells the search,
+  // whose own `search` line is then not written: it carries `library_seat`.
   | "reveal"
   // A player milled cards from their library (CR 701.17a). The milled cards
   // are named in `text`; no card_id, and `amount` is the card count.
@@ -1114,7 +1116,8 @@ export type LogKind =
   | "discard"
   // A player searched a library, or shuffled one. `label` "shuffle" is a plain
   // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
-  // `target_seat` is set when the library was another player's.
+  // `target_seat` is whose library it was. #4447: a search (not a plain
+  // shuffle) also carries `library_seat`, the same seat.
   | "search"
   // S30 random effects: the server-rendered public outcome of a die
   // roll or coin flip. The event text is already redacted and ready
@@ -1383,6 +1386,11 @@ export interface LogEvent {
   // Seat index of the player the entry acts on (who was attacked, who
   // took the damage). Absent when the entry targets a card or nothing.
   target_seat?: number;
+  // #4447: the seat whose library was searched (CR 701.23a), on the one
+  // entry that tells a library search: a `search` that is not a plain
+  // shuffle, or the `reveal` a search made. It says nothing about what was
+  // found, or whether anything was. Absent on every other entry.
+  library_seat?: number;
   // Instance ID of the card the entry is about. Absent when the entry
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.

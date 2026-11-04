@@ -728,6 +728,21 @@ type LogEvent struct {
 	// who was attacked, who took the damage. Nil when the entry
 	// targets a card (see Target) or nothing.
 	TargetSeat *int `json:"target_seat,omitempty"`
+	// LibrarySeat is the seat whose library was searched (CR 701.23a),
+	// on the one entry that tells a library search (#4447, ADR 0209 §3):
+	// a LogSearch that is a search (not a plain shuffle), where it
+	// equals TargetSeat, or, when the search revealed what it took (a
+	// fetch land, a "reveal it" tutor, Bribery), the LogReveal that
+	// already told it, whose search line the fold drops. The reveal is
+	// stamped with the searcher's seat as it is folded, because the
+	// search line can come a frame later (a fetched shock land's entry
+	// prompt in between), and the dropped line corrects it to the
+	// library's owner when that is someone else (Bribery). A seat is
+	// public, and the field says nothing about what was
+	// found, or whether anything was (CR 701.23b), so it is not
+	// redacted. Nil on every other entry. It is what lets the client's
+	// library_search cue riffle the right library pile.
+	LibrarySeat *int `json:"library_seat,omitempty"`
 	// CardID is the card the entry is about, when the viewer is
 	// entitled to know a card is involved at all. Empty for entries
 	// that deliberately carry no card reference (draws; any zone
@@ -1150,8 +1165,12 @@ type logFold struct {
 	// (revealTo set), and cleared by the search's own LogSearch line,
 	// which the fold then drops: the reveal already said it. The seat is
 	// the searcher, so a search by someone else is still its own line.
+	// revealedSearchSeq is that reveal's RevealSeq, which revealAt maps
+	// to its entry: the dropped search line's LibrarySeat goes there
+	// (#4447).
 	revealedSearch     bool
 	revealedSearchSeat int
+	revealedSearchSeq  uint64
 	// replaying is set from a loop replay's EventLoopReplayBegin to its
 	// EventLoopReplayed: every event between is folded out, and the
 	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
@@ -1325,6 +1344,17 @@ func (f *logFold) feed(events []game.Event) int {
 			// The search this reveal belongs to comes after it; see the
 			// LogSearch case below.
 			f.revealedSearch, f.revealedSearchSeat = true, e.Seat
+			f.revealedSearchSeq = e.revealSeq
+			// #4447: a search made this reveal, so it tells the search,
+			// and says so now: the search line can come a frame later,
+			// after a prompt the found card's entry asks (a fetched
+			// shock land's "pay 2 life?"). Until that line names whose
+			// library it was, it is the searcher's own, which it is for
+			// every search but one of another player's library.
+			if e.Seat != NoSeat {
+				lib := e.Seat
+				e.LibrarySeat = &lib
+			}
 		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
 			if at, seen := f.revealAt[e.revealSeq]; seen {
@@ -1373,6 +1403,15 @@ func (f *logFold) feed(events []game.Event) int {
 		// "searched their library" again would say the same thing twice.
 		if e.Kind == LogSearch && e.Label != "shuffle" && f.revealedSearch && f.revealedSearchSeat == e.Seat {
 			f.revealedSearch = false
+			// #4447: the reveal line tells the search too, so it carries
+			// whose library it was, which this line now says for certain
+			// (Bribery's is an opponent's). Its entry may already have
+			// fallen off the ring, and then there is nothing to mark.
+			if at, seen := f.revealAt[f.revealedSearchSeq]; seen && e.LibrarySeat != nil {
+				if prev := ring.pushed(at); prev != nil && prev.Kind == LogReveal {
+					prev.LibrarySeat = e.LibrarySeat
+				}
+			}
 			continue
 		}
 		// CR 702.29b: a cycling's cost DISCARDED the card, and the
@@ -1793,6 +1832,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.Target != uuid.Nil {
 			if seat := seatOf(ev.Target); seat != NoSeat {
 				base.TargetSeat = &seat
+				// #4447: a search, not a plain shuffle, names whose
+				// library it was where the client's search cue reads it.
+				if ev.Label != "shuffle" {
+					lib := seat
+					base.LibrarySeat = &lib
+				}
 			}
 		}
 		return base, true
