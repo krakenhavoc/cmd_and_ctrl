@@ -65,9 +65,13 @@ func ManaAbilitiesOf(c *Card) []ManaAbilityShape { return manaAbilitiesOf(c) }
 // a caller must not write through it. It exists for the view, which
 // runs under the read lock and only reads; an effect that wants the
 // card's characteristics before moving it still wants LookupCardForEffect,
-// whose copy survives the move.
+// whose copy survives the move. During a resolution its characteristics
+// are current, as LookupCardForEffect's are (#4909).
 func (g *Game) LookupCardPtrForEffect(cardID uuid.UUID) (*Card, bool) {
 	z, pos := g.locateCardLocked(cardID)
+	if z != nil && z.Kind == ZoneBattlefield && g.freshForEffectLocked() {
+		z, pos = g.locateCardLocked(cardID)
+	}
 	if z == nil {
 		c, ok := g.enteringTokenLocked(cardID)
 		if !ok {

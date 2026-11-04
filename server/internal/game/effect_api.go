@@ -92,8 +92,18 @@ func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
 // characteristics BEFORE moving it (Swords to Plowshares → read
 // power before exile; Path to Exile → read controller before
 // exile to drive the search clause).
+//
+// During a resolution a permanent's characteristics are current
+// (#4909): under the write lock, stale layers are recomputed before the
+// copy is taken, so a read sees every earlier step of the resolution it
+// is part of (CR 608.2). See freshForEffectLocked.
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 	z, pos := g.locateCardLocked(cardID)
+	if z != nil && z.Kind == ZoneBattlefield && g.freshForEffectLocked() {
+		// A pass moves no card, but it emits control changes, and
+		// nothing promises their listeners leave the zone as it was.
+		z, pos = g.locateCardLocked(cardID)
+	}
 	if z == nil {
 		// #762: a token whose entry window is open is in no zone at
 		// all — it is minted and not yet pushed. An entry replacement
@@ -427,6 +437,8 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 	if g.Battlefield == nil {
 		return nil
 	}
+	// #4909: current characteristics, as LookupCardForEffect.
+	g.freshForEffectLocked()
 	out := make([]Card, len(g.Battlefield.Cards))
 	copy(out, g.Battlefield.Cards)
 	return out

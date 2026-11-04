@@ -1957,7 +1957,9 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 // followed a static-ability-relevant state change (cast a spell,
 // move a permanent), call g.RecomputeLayersIfStaleLocked first so
 // Effective() reflects the new state. Combat damage and the SBA
-// loop both do this at their top.
+// loop both do this at their top, and a card read through
+// LookupCardForEffect or BattlefieldCardsForEffect during a resolution
+// already has it done (#4909).
 func (c Card) CurrentPower() int { return clampPower(c.PowerForComparison()) }
 
 // clampPower is CurrentPower's rule on a power already read: a
