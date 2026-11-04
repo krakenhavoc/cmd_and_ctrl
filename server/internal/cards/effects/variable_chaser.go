@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	Arc of Fortune — "Each player may discard their hand and draw seven
 //	 cards."
 //
-// Each player is asked in turn order starting with the caster and
-// finishes their own discard-and-draw before the next is asked.
+// Every player chooses in APNAP order, then the players who said yes
+// discard their hands, then each of them draws seven (CR 101.4,
+// each_player_may_wheel.go).
 //
 // No simplification.
 func init() {
@@ -30,22 +31,18 @@ func init() {
 		Name:         "Arc of Fortune",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, who := range tablePlayers(ctx) {
-				player := who
-				if err := (MayChoice{
-					Player:   player,
-					Question: "Arc of Fortune — discard your hand and draw seven cards?",
-					Draws:    7,
-					Then:     arcOfFortuneAnswer,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+			return arcOfFortuneMayWheel.Start(ctx)
 		},
 	})
 }
 
+var arcOfFortuneMayWheel = newMayWheel("confirm/arc-of-fortune-may-wheel",
+	"Arc of Fortune — discard your hand and draw seven cards?")
+
+// arcOfFortuneEmbark and its answer below are the spell's old shape, every
+// player's question open at once and each yes wheeling at once. Kept, with
+// their keys, for a restore point taken while one of those was open.
+//
 // arcOfFortuneEmbark is one player's discard and draw: the draw waits for a
 // prompt the discards ask (a madness or a replacement offer; CR 608.2c, #4155).
 // The player is the seat the answer was given for.
@@ -59,8 +56,8 @@ var arcOfFortuneEmbark = RegisterThenSteps("then-steps/arc-of-fortune-embark",
 	}),
 )
 
-// arcOfFortuneAnswer is a player's "yes": they discard their hand and draw
+// The old answer is a player's "yes": they discard their hand and draw
 // seven. Keyed (#4291).
-var arcOfFortuneAnswer = MayYes("confirm/arc-of-fortune-embark", func(ctx *Context, r game.ConfirmAnswer) error {
+var _ = MayYes("confirm/arc-of-fortune-embark", func(ctx *Context, r game.ConfirmAnswer) error {
 	return arcOfFortuneEmbark.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
 })
