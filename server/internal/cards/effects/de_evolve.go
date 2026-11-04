@@ -34,9 +34,9 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b34GraveyardHasAtLeast(g, source.Controller, 7)
+				return fraThresholdMet(g, source.Controller)
 			}, "De-evolve — threshold: exile enchanted creature", func(g *game.Game, item *game.StackItem) error {
-				if !b34GraveyardHasAtLeast(g, item.Controller, 7) {
+				if !fraThresholdMet(g, item.Controller) {
 					return nil
 				}
 				return exileEnchantedCreature(g, item)
