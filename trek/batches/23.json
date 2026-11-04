@@ -1,0 +1,261 @@
+{
+ "batch": 23,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "U.S.S. Voyager, Lone Wanderer",
+   "oracle_id": "33e8904a-9285-4031-900c-0a5c8f0bf6c0",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When U.S.S. Voyager enters, reveal cards from the top of your library until you reveal two land cards. Put those land cards onto the battlefield tapped and the rest on the bottom of your library in a random order.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n8+ | Flying, vigilance",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "222",
+   "set": "trk"
+  },
+  {
+   "name": "Warp Speed",
+   "oracle_id": "5a824931-2b65-42b1-8653-d4313a6693d2",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Lands you control enter untapped.\nWhen this enchantment enters, search your library for a basic land card or Planet card, reveal it, put it into your hand, then shuffle.\nStrange new worlds — {7}{U}{U}, Sacrifice this enchantment: Draw two cards. This ability costs {X} less to activate, where X is the number of differently named lands you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "223",
+   "set": "trk"
+  },
+  {
+   "name": "Xenobotanist",
+   "oracle_id": "a9df60bf-f327-4d50-ab4d-99324fc2dcfe",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Vulcan Scientist",
+   "oracle_text": "{T}: Add one mana of any color.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "224",
+   "set": "trk"
+  },
+  {
+   "name": "Xindi Surveyors",
+   "oracle_id": "5fdff691-686d-4ce0-bd12-eea676a648b4",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Xindi Scientist",
+   "oracle_text": "Landfall — Whenever a land you control enters, put a +1/+1 counter on this creature.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "225",
+   "set": "trk"
+  },
+  {
+   "name": "All Good Things...",
+   "oracle_id": "61dc9770-1e29-49fa-a31b-b63b5f0496fb",
+   "layout": "saga",
+   "mana_cost": "{3}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after IV.)\nI, II, III — Draw two cards, then exile a card from your hand.\nIV — If all cards exiled with this Saga share a card type, you gain 10 life.",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "226",
+   "set": "trk"
+  },
+  {
+   "name": "Borg Cube",
+   "oracle_id": "a59b854c-0e04-4581-b9d3-1516263d7ace",
+   "layout": "normal",
+   "mana_cost": "{5}{W}{B}",
+   "cmc": 7.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "Affinity for artifact creatures\nWhenever this Spacecraft enters or attacks, assimilate a creature card exiled with it. If you can't, exile up to one target creature. (To assimilate a card, put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)\nStation\n12+ | Artifact creatures you control have flying.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Assimilate",
+    "Affinity",
+    "Station"
+   ],
+   "collector_number": "227",
+   "set": "trk"
+  },
+  {
+   "name": "The City on the Edge of Forever",
+   "oracle_id": "47c9ef8c-7ba7-4702-bd8c-5fedc59c8166",
+   "layout": "saga",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — All artifacts and creatures phase out. Create a 0/1 white Human creature token with \"Permanents can't phase in.\" (Treat phased-out permanents and anything attached to them as though they don't exist.)\nII — You draw two cards and each player loses 2 life.\nIII — Sacrifice a creature token. If you do, you gain 5 life.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "228",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Human",
+     "type_line": "Token Creature — Human",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Cleveland Booker, Empath",
+   "oracle_id": "b80879d3-5abd-47e5-8b8c-61db120854e4",
+   "layout": "normal",
+   "mana_cost": "{2}{R/G}{R/G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Kwejian Rogue",
+   "oracle_text": "Landfall — Whenever a land you control enters, create a 2/2 red and green Worm creature token with \"This token can't block.\"\n{8}: Creatures you control get +2/+0 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "229",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Worm",
+     "type_line": "Token Creature — Worm",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Constable Odo",
+   "oracle_id": "74b58f31-7634-4b51-a900-6fbfccfb3cd2",
+   "layout": "normal",
+   "mana_cost": "{3}{W/U}{W/U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Shapeshifter Detective",
+   "oracle_text": "When Constable Odo enters, choose one —\n• Tap target creature an opponent controls. Put two stun counters on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\n• Investigate twice. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "230",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Dal R'El, Augment Orphan",
+   "oracle_id": "7cecf129-3df9-4ebf-b194-28d1b34faaab",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Mutant Rogue",
+   "oracle_text": "Landfall — Whenever a land you control enters, add {R} or {G}.\n{3}, Sacrifice a land: Draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "produced_mana": [
+    "G",
+    "R"
+   ],
+   "collector_number": "231",
+   "set": "trk"
+  }
+ ]
+}

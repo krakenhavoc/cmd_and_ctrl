@@ -1,0 +1,241 @@
+{
+ "batch": 1,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "70,000 Light-Years from Home",
+   "oracle_id": "9356aee1-3d2b-4d17-8863-663e1ddf56f3",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile target creature or Spacecraft. Its controller may search their library for a basic land card, reveal it, put it into their hand, then shuffle.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "1",
+   "set": "trk"
+  },
+  {
+   "name": "Andromedan Automatons",
+   "oracle_id": "2da322e6-a8e2-4d7a-bd34-54a3dfa85940",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Android",
+   "oracle_text": "When this creature enters, you may search your library for any number of cards named Andromedan Automatons, reveal them, put them into your hand, then shuffle.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "2",
+   "set": "trk"
+  },
+  {
+   "name": "Antagonist Incorporator",
+   "oracle_id": "6f0b814b-94e6-48f2-9ccf-c376ca03bba3",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have \"Whenever this creature deals combat damage to a player, you may pay {1}. If you do, create a 1/1 colorless Borg artifact creature token.\"",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "3",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Assembly Specialist",
+   "oracle_id": "deb26a1b-2b83-4da2-a2e5-31c17a57eb1e",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "When this creature enters, create a 1/1 colorless Borg artifact creature token.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "4",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Brad Boimler, Eager Ensign",
+   "oracle_id": "10af9cd9-1700-48f9-97e1-61e239536fef",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Lifelink\nWhenever Brad Boimler becomes tapped, until end of turn, if one or more counters would be put on a permanent you control, that many plus one of each of those kinds of counters are put on that permanent instead.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "5",
+   "set": "trk"
+  },
+  {
+   "name": "Captain Benjamin Sisko",
+   "oracle_id": "f997ad8a-6903-47b1-83af-837b3b55a3d4",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "At the beginning of your end step, create a 1/1 red Officer creature token for each dilemma you've faced this turn.\n{2}{W}{U}{B}{R}{G}, {T}: Exile the top five cards of your library. You may cast any number of spells with mana value less than or equal to the number of Officers you control from among those cards without paying their mana costs.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "6",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Captain Jean-Luc Picard",
+   "oracle_id": "04624f75-5981-4607-aa8f-706554f826e1",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Other creatures you control get +1/+1.\nWhenever you cast a creature or Spacecraft spell, create a 1/1 red Officer creature token.\nTap seven untapped Officers you control: Search your library for a Spacecraft card, put it onto the battlefield with seven charge counters on it, then shuffle.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "7",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Command Decision",
+   "oracle_id": "1c4afb0d-6d6e-4d21-9fe0-5621cd2fd27c",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Destroy target creature with power 4 or greater.\n• Draw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "8",
+   "set": "trk"
+  },
+  {
+   "name": "Command Subadjunct",
+   "oracle_id": "85b67121-340f-4cff-a26d-2160aa923ec3",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have vigilance.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "9",
+   "set": "trk"
+  },
+  {
+   "name": "Conquest Mission",
+   "oracle_id": "35906166-71d1-4089-bbe4-4055edb81fb0",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a nontoken artifact you control enters, put a quest counter on this enchantment. Create a 1/1 colorless Borg artifact creature token. If this enchantment has six or more quest counters on it, create two of those tokens instead.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "10",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

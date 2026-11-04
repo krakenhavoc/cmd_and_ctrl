@@ -1,0 +1,237 @@
+{
+ "batch": 10,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Armus, Skin of Evil",
+   "oracle_id": "42c77c4d-90bb-45d6-a9e0-36704b5a2b11",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Ooze Horror",
+   "oracle_text": "Menace\nAt the beginning of your end step, target opponent discards two cards.\n{2}{B}, Discard this card: Target creature gets -4/-4 until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "91",
+   "set": "trk"
+  },
+  {
+   "name": "Assault Drone",
+   "oracle_id": "18832d7a-9a1f-45f1-a0f9-8e768a36af07",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control get +1/+0.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "trk"
+  },
+  {
+   "name": "Automated Warfare System",
+   "oracle_id": "b28b4fe9-1a35-48c1-8818-f6f786b04e3e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Flying\nWhenever this creature attacks, you may sacrifice another creature or artifact. If you do, draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "93",
+   "set": "trk"
+  },
+  {
+   "name": "Bat'leth",
+   "oracle_id": "1000d26e-7a29-48df-806f-9eb7d4e1082d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, target creature an opponent controls gets -2/-2 until end of turn.\nEquipped creature gets +2/+0.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "94",
+   "set": "trk"
+  },
+  {
+   "name": "Battle-Scarred Survivalist",
+   "oracle_id": "0e0e15d9-bd29-495a-9975-d1bd2ebb4bff",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Scout",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever another creature dies, put a +1/+1 counter on this creature. This ability triggers only once each turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "95",
+   "set": "trk"
+  },
+  {
+   "name": "Blastoneuron",
+   "oracle_id": "87bcc935-e7e7-4e98-a23c-01c5a9b7cfcd",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Jellyfish Leech",
+   "oracle_text": "Flying\nWhen this creature enters, exile target creature card with mana value 3 or less from your graveyard. Create a token that's a copy of it. That token gains haste. Sacrifice it at the beginning of the next end step.\nWhenever one or more cards leave your graveyard, each opponent loses 1 life and you gain 1 life.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "96",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Cha'DIch Investigator",
+   "oracle_id": "cfdef803-6f7a-4055-8d51-8e8c60953928",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "When this creature enters, create a 2/1 red Klingon Warrior creature token with haste.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "97",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Collation Trimatrix",
+   "oracle_id": "4042ab14-c579-4d82-a642-576b88508ec7",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Tap three untapped artifact creatures you control: You draw a card and lose 1 life.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "trk"
+  },
+  {
+   "name": "Collective Drone",
+   "oracle_id": "d9806ba7-8af4-4e8e-9238-7bc40c6bee0b",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Collective Drone's power is equal to the number of artifact creatures you control.",
+   "power": "*",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "99",
+   "set": "trk"
+  },
+  {
+   "name": "Commander Raffi Musiker",
+   "oracle_id": "4f8a70cb-2487-4e6d-9a3f-c6c5313b8e82",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "When Commander Musiker enters, choose one —\n• Exile up to one target card from a graveyard. You gain 2 life.\n• Investigate. You lose 2 life. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "100",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

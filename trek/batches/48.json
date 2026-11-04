@@ -1,0 +1,388 @@
+{
+ "batch": 48,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Benjamin Sisko, Besieged",
+   "oracle_id": "f1416577-97d0-4d6c-afd2-455798556d4c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Play with the top card of your library revealed.\nYou may play lands and cast creature spells from the top of your library.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "200",
+   "set": "trc"
+  },
+  {
+   "name": "Tenacious Tosk",
+   "oracle_id": "48c2dc82-7bed-4730-8b8b-1970b743414f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Tosk Rogue",
+   "oracle_text": "This creature can't be blocked by more than one creature.\nWhenever this creature deals combat damage to a player, put a +1/+1 counter on it.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "201",
+   "set": "trc"
+  },
+  {
+   "name": "Chronomantic Escape",
+   "oracle_id": "629133e2-af20-4107-bc82-11ba32d5e2a6",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Until your next turn, creatures can't attack you. Exile Chronomantic Escape with three time counters on it.\nSuspend 3—{2}{W} (Rather than cast this card from your hand, you may pay {2}{W} and exile it with three time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Suspend"
+   ],
+   "collector_number": "419",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2024-02-02",
+     "text": "The mana value of a spell cast without paying its mana cost is determined by its mana cost, even though that cost wasn't paid."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If you cast a card \"without paying its mana cost,\" such as with suspend, you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those if you want to cast the card."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If the card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "Suspend is a keyword that represents three abilities. The first is a static ability that allows you to exile the card from your hand with the specified number of time counters (the number before the dash) on it by paying its suspend cost (listed after the dash). The second is a triggered ability that removes a time counter from the suspended card at the beginning of each of your upkeeps. The third is a triggered ability that gives you the option to cast the card when the last time counter is removed."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "You can exile a card in your hand using suspend any time you could cast that card. Consider its card type, any effects that modify when you could cast it (such as flash) and any other effects that stop you from casting it (such as from Meddling Mage's ability) to determine if and when you can do this. Whether you could actually complete all steps in casting the card is irrelevant. For example, you can exile a card with suspend that has no mana cost or that requires a target even if no legal targets are available at that time."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "Cards exiled with suspend are exiled face up."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "Exiling a card with suspend isn't casting that card. This action doesn't use the stack and can't be responded to."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If the spell requires any targets, those targets are chosen when the spell is finally cast, not when it's exiled."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If an effect refers to a \"suspended card,\" that means a card that (1) has suspend, (2) is in exile, and (3) has one or more time counters on it."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If the first triggered ability of suspend (the one that removes time counters) is countered, no time counter is removed. The ability will trigger again at the beginning of the card's owner's next upkeep."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "When the last time counter is removed, the second triggered ability of suspend (the one that lets you cast the card) triggers. It doesn't matter why the last time counter was removed or what effect removed it."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "If the second triggered ability is countered, the card can't be cast. It remains exiled with no time counters on it, and it's no longer suspended."
+    },
+    {
+     "date": "2024-02-02",
+     "text": "Due to a recent rules change to suspend, you are no longer required to cast the suspended card as the second triggered ability of suspend resolves. Instead, as the second triggered ability resolves, you may cast the card. Timing permissions based on the card's type are ignored. If you don't cast the card, it remains exiled with no time counters on it, and it's no longer suspended."
+    },
+    {
+     "date": "2014-02-01",
+     "text": "Unless some effect explicitly says otherwise, a creature that can't attack you can still attack a planeswalker you control."
+    },
+    {
+     "date": "2013-04-15",
+     "text": "Chronomantic Escape can affect creatures that aren't on the battlefield at the time it resolves, because it modifies the announcement of an attack, not the creatures on the battlefield. For example, if Chronomantic Escape resolves on your turn, then on your opponent's turn they cast a creature with haste, that creature can't attack that turn."
+    }
+   ]
+  },
+  {
+   "name": "Cryptic Command",
+   "oracle_id": "a3e51a35-09df-4189-b131-08a21e6a557d",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose two —\n• Counter target spell.\n• Return target permanent to its owner's hand.\n• Tap all creatures your opponents control.\n• Draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "435",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2017-11-17",
+     "text": "You choose both modes as you cast Cryptic Command. You must choose two different modes."
+    },
+    {
+     "date": "2017-11-17",
+     "text": "Look at both chosen modes to determine how many targets Cryptic Command has, if any. If it has at least one target, and all its targets are illegal when it tries to resolve, then it won’t resolve and none of its effects will happen. For example, if you choose the second and fourth modes, and the permanent is an illegal target when Cryptic Command tries to resolve, you won’t draw a card."
+    }
+   ]
+  },
+  {
+   "name": "Augur of Autumn",
+   "oracle_id": "9e774188-caa1-4b62-b9cc-547f8e444b7f",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "You may look at the top card of your library any time.\nYou may play lands from the top of your library.\nCoven — As long as you control three or more creatures with different powers, you may cast creature spells from the top of your library.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Coven"
+   ],
+   "collector_number": "458",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2021-09-24",
+     "text": "Augur of Autumn doesn't change the times when you can play a land card from the top of your library. You can play a land only during your main phase when you have priority and the stack is empty. Doing so counts as your land play for the turn."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "Many coven abilities, such as that of Dawnhart Wardens above, are triggered abilities with intervening if clauses. You must control three or more creatures with different powers at the time the ability triggers and at the time the ability tries to resolve. They do not, however, need to be the same set of creatures in both cases."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "Essentially, Augur of Autumn lets you play with the top card of your library revealed only to you. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand. You may look at the top card of your library whenever you want, even if you don't have priority. This action doesn't use the stack."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "For three creatures to have different powers from one another, each of their powers needs to be different. A 1/1 creature, a 2/1 creature, and another 2/1 creature aren't three creatures with different powers, even though both 2/1 creatures have different power than the 1/1 creature."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "A creature has different power from another if their powers are different numbers. For example, a 1/1 creature and a 2/1 creature have different powers."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "If the top card of your library changes during the process of casting a spell or activating an ability, you can't look at the new top card until the process of casting the spell or activating the ability ends (all targets are chosen, all costs are paid, and so on)."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "The top card of your library isn't in your hand, so you can't suspend it, cycle it, discard it, or activate any of its activated abilities."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "You still pay all costs for that spell, including additional costs. You may also pay alternative costs."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "While you have three creatures with different powers, Augur of Autumn allows you to cast the top card of your library if it's a creature card, it's your main phase, and the stack is empty. If that creature card has flash, you'll be able to cast it any time you could cast an instant, even on an opponent's turn."
+    }
+   ]
+  },
+  {
+   "name": "Satyr Wayfinder",
+   "oracle_id": "ead4c01a-e2ae-49c9-95d9-651d81005907",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Satyr",
+   "oracle_text": "When this creature enters, reveal the top four cards of your library. You may put a land card from among them into your hand. Put the rest into your graveyard.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "469",
+   "set": "trc"
+  },
+  {
+   "name": "Faithful Mending",
+   "oracle_id": "b997a982-09e1-4ae1-a972-3c2e5f101e8c",
+   "layout": "normal",
+   "mana_cost": "{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "You gain 2 life, draw two cards, then discard two cards.\nFlashback {1}{W}{U} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "473",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2025-06-06",
+     "text": "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\""
+    },
+    {
+     "date": "2025-06-06",
+     "text": "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast."
+    }
+   ]
+  },
+  {
+   "name": "Pest Control",
+   "oracle_id": "072db429-3838-42ba-89b6-e26cbce22af9",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all nonland permanents with mana value 1 or less.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "477",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2024-04-12",
+     "text": "If the mana cost of a permanent includes {X}, X is 0 for the purpose of determining its mana value."
+    },
+    {
+     "date": "2024-04-12",
+     "text": "The mana value of a token that isn’t a copy of another object is 0. A token that is a copy of another object has the same mana cost as that object."
+    }
+   ]
+  },
+  {
+   "name": "Rite of Oblivion",
+   "oracle_id": "99957aa7-b654-41b5-9b96-7bce47545d25",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, sacrifice a nonland permanent.\nExile target nonland permanent.\nFlashback {2}{W}{B} (You may cast this card from your graveyard for its flashback cost and any additional costs. Then exile it.)",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "478",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2025-06-06",
+     "text": "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way."
+    },
+    {
+     "date": "2025-06-06",
+     "text": "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\""
+    },
+    {
+     "date": "2025-06-06",
+     "text": "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast."
+    },
+    {
+     "date": "2021-09-24",
+     "text": "If you cast Rite of Oblivion using flashback, you must still pay its additional cost of sacrificing a nonland permanent."
+    }
+   ]
+  },
+  {
+   "name": "The Immortal Sun",
+   "oracle_id": "52232aad-e4ca-4551-8c8d-c69a3b6b49c7",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "Players can't activate planeswalkers' loyalty abilities.\nAt the beginning of your draw step, draw an additional card.\nSpells you cast cost {1} less to cast.\nCreatures you control get +1/+1.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "495",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2018-01-19",
+     "text": "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+    }
+   ]
+  }
+ ]
+}

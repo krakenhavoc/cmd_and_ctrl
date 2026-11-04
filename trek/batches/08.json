@@ -1,0 +1,219 @@
+{
+ "batch": 8,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Make It So",
+   "oracle_id": "a9368972-4697-4a10-97e3-324149a26fba",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Untap target permanent you control. Target player draws two cards.\n• Create a 1/1 red Officer creature token and draw two cards.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "71",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Marooned",
+   "oracle_id": "74e02bdf-a074-4356-9d06-0df01dd2df66",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant artifact or creature\nWhen this Aura enters, you may pay {3}. If you do, tap enchanted permanent.\nEnchanted permanent doesn't untap during its controller's untap step and can't be beamed up.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "72",
+   "set": "trk"
+  },
+  {
+   "name": "Melkotian Adjudicator",
+   "oracle_id": "1fdcdb1c-a140-40ee-b711-5ea539eb1084",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Melkotian Advisor",
+   "oracle_text": "Flying, vigilance\nWhenever you face a dilemma, put a +1/+1 counter on this creature. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Face a dilemma"
+   ],
+   "collector_number": "73",
+   "set": "trk"
+  },
+  {
+   "name": "Mr. Spock, Science Officer",
+   "oracle_id": "869bde03-8813-43a9-9df5-a21c62511b4b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Vulcan Human Scientist",
+   "oracle_text": "If you would draw a card, draw two cards instead.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "74",
+   "set": "trk"
+  },
+  {
+   "name": "Nyota Uhura, Communications",
+   "oracle_id": "d89f34e4-8628-4faf-89e6-c9c16023ae8b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Hailing Frequencies — As Nyota Uhura enters, choose a number between 0 and 10.\nOpen a Channel — Whenever an opponent casts a spell with mana value equal to the chosen number, you draw a card.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Open a Channel",
+    "Hailing Frequencies"
+   ],
+   "collector_number": "75",
+   "set": "trk"
+  },
+  {
+   "name": "Open Communications",
+   "oracle_id": "b08c5b86-4f84-46a3-877f-bbf71ec17adb",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Draw a card.\nBeam me up {2}{U} (You may cast this card from your graveyard for {2}{U} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "76",
+   "set": "trk"
+  },
+  {
+   "name": "Romulan Bird-of-Prey",
+   "oracle_id": "e614f97b-da8e-4569-9bdd-f76371c66836",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "Cloaking Device — As long as this Spacecraft isn't a creature, it has hexproof.\nWhenever you cast a noncreature spell, if this Spacecraft isn't a creature, put two charge counters on it.\nStation\n8+ | Flying",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Station",
+    "Cloaking Device"
+   ],
+   "collector_number": "77",
+   "set": "trk"
+  },
+  {
+   "name": "Rules of Acquisition",
+   "oracle_id": "5068eba6-ccf0-45f2-b0db-40f787ee3308",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Follow the 3rd Rule — Gain control of target nonland permanent an opponent controls. That opponent draws three cards.\n• Follow the 98th Rule — Target opponent gains control of target nonland permanent you control. If they do, you draw three cards.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Follow the 98th Rule"
+   ],
+   "collector_number": "78",
+   "set": "trk"
+  },
+  {
+   "name": "Scotty, Miracle Worker",
+   "oracle_id": "8e5057ae-165c-4fe4-b712-a638b7eea038",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "During your main phase, each card in your graveyard has beam me up. The beam me up cost is equal to that spell's mana cost. Scotty can't be beamed up to cast a spell this way. (Only instant and sorcery spells can be cast this way. You may cast a card from your graveyard for its beam me up cost if you also return another creature you control to its owner's hand. Then exile that spell.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "trk"
+  },
+  {
+   "name": "Seven of Nine, Unassimilated",
+   "oracle_id": "af9c9b8a-0713-4904-8e86-2b3331ec5495",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact Creature — Human Officer",
+   "oracle_text": "At the beginning of your first main phase, draw a card. Then discard a card unless you control five or more differently named lands.\n{6}{U}: Seven of Nine's base power and toughness become 7/9. Activate only if you control seven or more differently named lands.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "80",
+   "set": "trk"
+  }
+ ]
+}

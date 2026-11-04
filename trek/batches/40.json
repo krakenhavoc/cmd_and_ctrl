@@ -1,0 +1,269 @@
+{
+ "batch": 40,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Kor, Cause of Vengeance",
+   "oracle_id": "fc8d8c51-428c-4b2f-965d-c43ec94997c3",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Whenever you attack, you may sacrifice another creature. If you do, draw a card, then Klingons and Warriors you control get +2/+2 until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "96",
+   "set": "trc"
+  },
+  {
+   "name": "Locutus of Borg",
+   "oracle_id": "d0cff43a-2a22-4e05-9f71-983cb297989f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact Creature — Borg",
+   "oracle_text": "Lifelink\nArtifact creatures you control have \"Whenever this creature deals combat damage to a player, create a 1/1 colorless Borg artifact creature token.\"",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "97",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Lt. Arex, Ever-Adapting",
+   "oracle_id": "51a2671b-677e-434c-9f1a-d768fe1190c9",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Edosian Officer",
+   "oracle_text": "Trample\nStrange new worlds — Lt. Arex's power and toughness are each equal to the number of differently named lands you control.\nWhen Lt. Arex enters, draw three cards. You may put up to three land cards from your hand onto the battlefield tapped.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Trample",
+    "Strange new worlds"
+   ],
+   "collector_number": "98",
+   "set": "trc"
+  },
+  {
+   "name": "McCoy, Not a Bricklayer",
+   "oracle_id": "c71c7e0c-64d8-486a-9e66-1b343868eb0a",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "Whenever McCoy or another Doctor you control enters, put a +1/+1 counter on each creature you control.\nCreatures you control with counters on them have lifelink.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "99",
+   "set": "trc"
+  },
+  {
+   "name": "One, Borg Evolved",
+   "oracle_id": "eecdf18b-7a85-4b29-9a8a-26ee40da9e7a",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{U}{B}",
+   "cmc": 7.0,
+   "type_line": "Legendary Artifact Creature — Borg Artificer",
+   "oracle_text": "Artifact creatures you control have flying, double strike, vigilance, menace, lifelink, and ward {2}.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "100",
+   "set": "trc"
+  },
+  {
+   "name": "Pavel Chekov, First Posting",
+   "oracle_id": "473aba5a-5c87-4294-a556-f8aca0e5fe39",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "If you would draw a card, you may instead choose land or nonland and reveal cards from the top of your library until you reveal a card of the chosen kind. Put that card into your hand and put all other cards revealed this way on the bottom of your library in a random order.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "101",
+   "set": "trc"
+  },
+  {
+   "name": "Reg Barclay, Fidgety Fantasist",
+   "oracle_id": "adcf571f-c465-44c6-8941-48313810e732",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, create a token that's a copy of another target creature you control, except it isn't legendary, it's an Illusion artifact in addition to its other types, and it has haste. Exile that token at the beginning of the next end step.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out"
+   ],
+   "collector_number": "102",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Rite of Ascension",
+   "oracle_id": "08c6ca45-09ff-4fe4-bc9b-45876e94f430",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Battlefront — Whenever you attack, for each opponent you attacked this turn, create a tapped and attacking 2/1 red Klingon Warrior creature token with haste.",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Battlefront"
+   ],
+   "collector_number": "103",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Sins of the Father",
+   "oracle_id": "bce974a2-d9ad-4ef5-bc2e-7aa2833a39f5",
+   "layout": "saga",
+   "mana_cost": "{3}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Each opponent sacrifices a nontoken creature of their choice.\nII — For each opponent, you create a 2/1 red Klingon Warrior creature token with haste.\nIII — Exile target player's graveyard. Each opponent loses life equal to the number of creature cards exiled this way.",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "104",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Tom Paris, Risk-Taker",
+   "oracle_id": "327458f1-d3c4-4e66-8abd-a6533bef63f7",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, creatures you control gain flying, double strike, vigilance, and haste until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out"
+   ],
+   "collector_number": "105",
+   "set": "trc"
+  }
+ ]
+}

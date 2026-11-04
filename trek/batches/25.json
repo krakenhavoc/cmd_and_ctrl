@@ -1,0 +1,253 @@
+{
+ "batch": 25,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Kira Nerys, Firebrand",
+   "oracle_id": "ff9f5bbb-43c4-481e-9bd7-db9f246355ae",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Bajoran Soldier",
+   "oracle_text": "Trample\nIf a creature you control would enter while you control an attacking creature, instead it enters tapped and attacking.\nWhenever another creature you control enters, it gets +1/+1 until end of turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "242",
+   "set": "trk"
+  },
+  {
+   "name": "Kirk, Commanding Officer",
+   "oracle_id": "e85ad29a-ebd6-4f81-af99-556deaedbfe0",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Whenever you attack while creatures you control have total power 8 or greater, exile the top card of your library. You may play that card this turn.\n{2}, Sacrifice Kirk: Destroy target artifact or enchantment.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "243",
+   "set": "trk"
+  },
+  {
+   "name": "Live Long and Prosper",
+   "oracle_id": "ff6bc9f5-5a83-42d9-b1a4-f0979aed28ad",
+   "layout": "normal",
+   "mana_cost": "{5}{W}{U}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "This spell can't be countered.\nDouble your life total. Draw cards equal to the number of cards in your hand. You have no maximum hand size until your next turn.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "244",
+   "set": "trk"
+  },
+  {
+   "name": "Locutus, the One Who Speaks",
+   "oracle_id": "46ba09a7-42e4-42cd-911c-71d0ade01180",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control get +1/+1.\n{W}{B}, Discard this card: It deals 2 damage to target creature. You gain 2 life.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "245",
+   "set": "trk"
+  },
+  {
+   "name": "Lore, Positronic Provocateur",
+   "oracle_id": "ee712451-01de-4486-9048-fafb5aa5a584",
+   "layout": "normal",
+   "mana_cost": "{1}{U/B}{U/B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Android Rogue",
+   "oracle_text": "When Lore enters, choose one —\n• Target creature gets +1/+0 until end of turn and can't be blocked this turn.\n• Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "246",
+   "set": "trk"
+  },
+  {
+   "name": "L'Rell, Fierce Visionary",
+   "oracle_id": "ea684e78-483c-4b89-b184-b2aeede83cc7",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Warrior",
+   "oracle_text": "At the beginning of combat on your turn, create a 2/1 red Klingon Warrior creature token with haste. Sacrifice it at the beginning of the next end step.\n{2}, Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "247",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Mirror Universe Intrusion",
+   "oracle_id": "007d08e8-4db2-47d1-ba39-8bb8efa491a1",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Kicker {4}{U}{B} (You may pay an additional 4 as you cast this spell.)\nCreate a token that's a copy of target creature an opponent controls, except it has menace. If this spell was kicked, instead for each creature target opponent controls, create a token that's a copy of that creature, except it has menace.",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "248",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Nog, Ambitious Cadet",
+   "oracle_id": "5a8ae1c0-1935-4d03-aa94-9e9088650821",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Ferengi Rogue",
+   "oracle_text": "Menace\n{1}: If Nog is a Rogue, he becomes a Ferengi Scout with base power and toughness 3/4 and gains \"Whenever Nog becomes tapped, surveil 2.\"\n{3}: If Nog is a Scout, he becomes a Ferengi Officer and gains \"You may play lands from your graveyard\" and \"You may play an additional land on each of your turns.\"",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Surveil",
+    "Menace"
+   ],
+   "collector_number": "249",
+   "set": "trk"
+  },
+  {
+   "name": "Phlox, Unorthodox Doctor",
+   "oracle_id": "b04cb333-ca7a-464f-a084-03cf8f468baf",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Denobulan Doctor",
+   "oracle_text": "Trample\nWhenever a creature you control with a counter on it deals combat damage to a player, draw a card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "250",
+   "set": "trk"
+  },
+  {
+   "name": "Sarek, Federation Ambassador",
+   "oracle_id": "72c51539-5f15-4636-8cb8-b688cf53f431",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Vulcan Advisor",
+   "oracle_text": "Federation — At the beginning of combat on your turn, draw a card for every five creature types among non-Borg creatures you control. If you draw three or more cards this way, put two +1/+1 counters on each creature you control.",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "251",
+   "set": "trk"
+  }
+ ]
+}

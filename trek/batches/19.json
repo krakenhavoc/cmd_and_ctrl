@@ -1,0 +1,234 @@
+{
+ "batch": 19,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Adversary by Algorithm",
+   "oracle_id": "37f3eda9-3242-4d62-846f-935543d8f4fd",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 3/3 colorless Illusion artifact creature token.\nBeam me up {3}{G} (You may cast this card from your graveyard for {3}{G} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "182",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Illusion",
+     "type_line": "Token Artifact Creature — Illusion",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Amok Time",
+   "oracle_id": "98a752ff-f041-4032-9f3f-c6c4007f10f1",
+   "layout": "saga",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Target creature you control fights up to one target creature an opponent controls.\nII — You gain 3 life.\nIII — Return target creature card from your graveyard to your hand.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight"
+   ],
+   "collector_number": "183",
+   "set": "trk"
+  },
+  {
+   "name": "Astute Terraformer",
+   "oracle_id": "c5a7a82e-3c13-4fa1-8bf5-bb85b2890f75",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Vulcan Scientist",
+   "oracle_text": "Strange new worlds — {6}: This creature gets +2/+2 until end of turn. This ability costs {X} less to activate, where X is the number of differently named lands you control. Activate only once each turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "184",
+   "set": "trk"
+  },
+  {
+   "name": "Branching Timeline",
+   "oracle_id": "6e13c619-706d-4c77-bc7d-187df0fd054a",
+   "layout": "normal",
+   "mana_cost": "{6}{G}{G}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Strange new worlds — Reveal the top X cards of your library, where X is the number of differently named lands you control. Put all permanent cards revealed this way onto the battlefield tapped and the rest on the bottom of your library in a random order.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "185",
+   "set": "trk"
+  },
+  {
+   "name": "Captain Jonathan Archer",
+   "oracle_id": "85df3564-5134-4dc2-9021-40ec84ee6d08",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "When Captain Archer enters, create Porthos, a legendary 1/1 green Dog creature token.\nFederation — {G}, {T}: Target creature you control gets +X/+X until end of turn, where X is the number of creature types among non-Borg creatures you control. Activate only as a sorcery.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "186",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Porthos",
+     "type_line": "Token Legendary Creature — Dog",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Captain Kathryn Janeway",
+   "oracle_id": "d77d1895-ce02-4302-87c9-649e852fd0ea",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "You may play an additional land on each of your turns.\nWhenever Captain Janeway or another creature you control enters, that creature explores. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on the creature, then put the card back or put it into your graveyard.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "187",
+   "set": "trk"
+  },
+  {
+   "name": "Captain Pike, Fullness of Time",
+   "oracle_id": "745633e6-8635-4d99-8a4e-edc5d500bb3d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer Scout",
+   "oracle_text": "Strange new worlds — Captain Pike's power and toughness are each equal to the number of differently named lands you control.\nYou may look at the top card of your library any time.\nYou may play lands from the top of your library.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "188",
+   "set": "trk"
+  },
+  {
+   "name": "Cold-Blooded Crew",
+   "oracle_id": "d5e9b04f-4a97-4da1-bf86-3715fc75ab23",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Gorn Warrior",
+   "oracle_text": "When this creature enters, put two +1/+1 counters on target creature.\nThis creature can't be blocked by creatures with power 2 or less.\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Landcycling",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "189",
+   "set": "trk"
+  },
+  {
+   "name": "Common Goal",
+   "oracle_id": "d4030d30-4c24-458c-87a9-c2f80bb68d27",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "One or two target creatures you control each deal damage equal to their power to target creature an opponent controls.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "190",
+   "set": "trk"
+  },
+  {
+   "name": "Culber and Stamets, Star-Crossed",
+   "oracle_id": "5b8e8ef2-2f04-4485-ae12-08f52dac81a2",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Doctor Artificer",
+   "oracle_text": "When Culber and Stamets enter, choose one —\n• Put a +1/+1 counter on target creature.\n• Add two mana of any one color.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "191",
+   "set": "trk"
+  }
+ ]
+}

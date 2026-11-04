@@ -1,0 +1,229 @@
+{
+ "batch": 20,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Dathon and Picard at El-Adrel",
+   "oracle_id": "76b7e1ee-43f0-4b56-822a-71b064c9201b",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Temba, His Arms Wide — Target creature gets +3/+3 and gains trample until end of turn.\n• Shaka, When the Walls Fell — Each opponent sacrifices a nontoken artifact or enchantment of their choice.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Temba, His Arms Wide",
+    "Shaka, When the Walls Fell"
+   ],
+   "collector_number": "192",
+   "set": "trk"
+  },
+  {
+   "name": "David and Carol Marcus, Creators",
+   "oracle_id": "15885e58-76a9-49fa-ae67-a0482aacd81c",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Scientist",
+   "oracle_text": "When David and Carol Marcus enter, create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "193",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Dominion Assault Force",
+   "oracle_id": "b093916c-cc0a-4b3b-9de6-8a2db53cdfe0",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Jem'Hadar Warrior",
+   "oracle_text": "Vigilance\nWhen this creature enters, choose one —\n• Exile target card from a graveyard.\n• Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil",
+    "Vigilance"
+   ],
+   "collector_number": "194",
+   "set": "trk"
+  },
+  {
+   "name": "Dominion Supervisor",
+   "oracle_id": "d151c8ed-58bf-4b82-a993-1d81f789aa0e",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vorta Doctor",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature.\nCreatures you control with counters on them have trample.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "195",
+   "set": "trk"
+  },
+  {
+   "name": "Dr. Joseph M'Benga",
+   "oracle_id": "046c4052-4c3c-4207-b44e-e9a98a8c017f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "Other creatures you control with counters on them have hexproof.\nIf you would put one or more counters on a creature you control, put twice that many of each of those kinds of counters on that creature instead.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "196",
+   "set": "trk"
+  },
+  {
+   "name": "Dr. Leonard \"Bones\" McCoy",
+   "oracle_id": "0157faee-f307-43c0-b308-bbf36ce02e32",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "Flash\nWhen Dr. McCoy enters, choose one —\n• Return target non-Doctor permanent card from your graveyard to your hand.\n• Choose up to one other target creature. When it dies this turn, return that card to the battlefield under its owner's control with a +1/+1 counter on it at the beginning of the next end step.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "197",
+   "set": "trk"
+  },
+  {
+   "name": "Final Frontier",
+   "oracle_id": "26f7e903-2a00-4878-b8b7-d5abe35c9526",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\nBeam me up {1}{G} (You may cast this card from your graveyard for {1}{G} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "198",
+   "set": "trk"
+  },
+  {
+   "name": "First Contact",
+   "oracle_id": "81229e0a-8413-40cf-8087-9d580cbb21c3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Mill four cards. You may put a permanent card from among them into your hand. If this spell is the first spell you've cast this game, you gain 2 life. (To mill four cards, put the top four cards of your library into your graveyard.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "199",
+   "set": "trk"
+  },
+  {
+   "name": "Genesis Device",
+   "oracle_id": "bb86849c-fdec-4ca5-a8c0-ed682d921759",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "When Genesis Device enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\n{3}{G}{G}, {T}, Sacrifice Genesis Device: Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "200",
+   "set": "trk"
+  },
+  {
+   "name": "Holo-Engineer",
+   "oracle_id": "0d830d0c-3339-49cc-8527-4f4edf787925",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "When this creature enters, create a 3/3 colorless Illusion artifact creature token.\nIf one or more tokens would be created under your control, that many 3/3 colorless Illusion artifact creature tokens are created instead.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "201",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Illusion",
+     "type_line": "Token Artifact Creature — Illusion",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

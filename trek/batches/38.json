@@ -1,0 +1,255 @@
+{
+ "batch": 38,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Rom and Leeta, Unlikely Pair",
+   "oracle_id": "b98ab107-3908-4425-89d3-634043bb4d4b",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Ferengi Bajoran",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, create two tapped Treasure tokens.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out",
+    "Treasure"
+   ],
+   "collector_number": "76",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Amanda Grayson, Logic's Link",
+   "oracle_id": "13d4a70f-c48c-4739-8f3e-5f0302c5484c",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Affinity for Vulcans (This spell costs {1} less to cast for each Vulcan you control.)\nLandfall — Whenever a land you control enters, put two +1/+1 counters on target creature you control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Affinity",
+    "Landfall"
+   ],
+   "collector_number": "77",
+   "set": "trc"
+  },
+  {
+   "name": "Christine Chapel, Combat Medic",
+   "oracle_id": "330e8a18-d224-4416-b59d-02b749c3a674",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "Strange new worlds — When Christine Chapel enters, you gain life equal to the number of differently named lands you control.\nWhenever you gain life, put two +1/+1 counters on Christine Chapel.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "78",
+   "set": "trc"
+  },
+  {
+   "name": "Janice Rand, Essential Aide",
+   "oracle_id": "2130193c-3518-4a7d-9cb3-ea65aec845b4",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Whenever a commander you control enters or attacks, put a +1/+1 counter on it, then reveal cards from the top of your library until you reveal a land card. Put that card onto the battlefield tapped and the rest on the bottom of your library in a random order.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "trc"
+  },
+  {
+   "name": "Lieutenant Hikaru Sulu",
+   "oracle_id": "565cfa73-8c6b-4296-bcb8-388de8c960ff",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "Whenever Lieutenant Sulu becomes tapped, he explores. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on this creature, then put the card back or put it into your graveyard.)\n{2}{U}: Target creature can't be blocked this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "80",
+   "set": "trc"
+  },
+  {
+   "name": "Alexander, Ship's Fool",
+   "oracle_id": "d629311f-a7fc-4af5-91ce-5bf506a3cdb3",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Klingon Human",
+   "oracle_text": "Vigilance, haste\n{T}: Each player reveals the top card of their library, then draws a card. Alexander deals X damage to a random opponent, where X is the greatest mana value among cards revealed this way.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Haste"
+   ],
+   "collector_number": "81",
+   "set": "trc"
+  },
+  {
+   "name": "B'Elanna Torres, Scrapper",
+   "oracle_id": "c905227d-b5fe-42e6-a11d-5008b7a7922f",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Human Artificer",
+   "oracle_text": "Vigilance, trample\n{2}, {T}: Surveil 2, then you may reveal the top card of your library. Draw a card if it's an artifact card. If you don't draw a card this way, put two +1/+1 counters on B'Elanna Torres.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Vigilance",
+    "Trample"
+   ],
+   "collector_number": "82",
+   "set": "trc"
+  },
+  {
+   "name": "The Best of Both Worlds",
+   "oracle_id": "a53d9c36-a033-450b-a095-7645876c9ef3",
+   "layout": "saga",
+   "mana_cost": "{4}{W}{U}",
+   "cmc": 6.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Assimilate target nonartifact creature an opponent controls. (Gain control of it and put a +1/+1 counter on it. It's a Borg artifact creature and loses all other creature types.)\nII — Artifact creatures you control get +2/+2 until end of turn.\nIII — Exile the Borg assimilated with this Saga, then return it to the battlefield under its owner's control.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Assimilate"
+   ],
+   "collector_number": "83",
+   "set": "trc"
+  },
+  {
+   "name": "Captain Janeway, Endgame",
+   "oracle_id": "488ff0d9-a74c-4ba9-9c10-3aa88230c2bd",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Whenever one or more Officers you control deal combat damage to a player, you draw a card and create a 1/1 red Officer creature token.\n{2}, Tap an untapped creature you control: Captain Janeway can't be blocked this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "84",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Captain Kirk, Boldly Going",
+   "oracle_id": "5228fffe-6347-4177-bccb-b15621c7159c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Vigilance\nSpacecraft creatures you control get +3/+3.\nWhenever Captain Kirk enters or attacks, search your library and/or graveyard for a basic land card or a card named Starship Enterprise, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "85",
+   "set": "trc"
+  }
+ ]
+}

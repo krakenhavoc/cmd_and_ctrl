@@ -1,0 +1,249 @@
+{
+ "batch": 37,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Gagh Slinger",
+   "oracle_id": "b5697e53-eb2f-482b-8b4a-1dad165ac16f",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Klingon spells and Warrior spells you cast cost {1} less to cast.\nWhenever another Klingon or Warrior you control enters, this creature deals 1 damage to each opponent.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "trc"
+  },
+  {
+   "name": "Galvanizing Tenor",
+   "oracle_id": "d974fee0-7d20-465c-a7e3-bc361e241cd4",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Klingon Performer",
+   "oracle_text": "Menace\nBattlefront — Whenever this creature attacks, goad up to X target creatures, where X is the number of opponents you attacked this turn. (Until your next turn, those creatures attack each combat if able and attack a player other than you if able.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Goad",
+    "Menace",
+    "Battlefront"
+   ],
+   "collector_number": "67",
+   "set": "trc"
+  },
+  {
+   "name": "Glory to the Empire!",
+   "oracle_id": "22c53662-51b9-4a8c-8ec7-e8b456a268b7",
+   "layout": "normal",
+   "mana_cost": "{5}{R}",
+   "cmc": 6.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a number of 2/1 red Klingon Warrior creature tokens with haste equal to the number of opponents you have.\nCreatures you control have melee. (Whenever a creature with melee attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "68",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Gnarling Targ",
+   "oracle_id": "1fc59e37-0dc0-4e24-af71-6bab4a2b56ca",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Boar",
+   "oracle_text": "Trample\nWhenever you attack, Klingons and Warriors you control get +2/+0 and gain trample until end of turn.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "69",
+   "set": "trc"
+  },
+  {
+   "name": "Grilka, Widowed Warrior",
+   "oracle_id": "d8366080-dd0c-40cf-84e9-f628dfe8f45c",
+   "layout": "normal",
+   "mana_cost": "{5}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Klingon Warrior",
+   "oracle_text": "When Grilka enters, gain control of target creature an opponent controls until end of turn. Untap it. Until end of turn, it gains trample, haste, and \"Whenever this creature deals combat damage to a player, create that many tapped Treasure tokens.\"",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "70",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Kang, Suspicious Captain",
+   "oracle_id": "1ce8bc83-3cda-4ac5-ad9a-2a2a327c5193",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "When Kang enters, choose target creature an opponent controls. Kang and that creature are goaded for as long as you control Kang. (They attack each combat if able and attack a player other than you if able.)\nWhenever one or more goaded creatures attack, put a +1/+1 counter on target creature you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Goad"
+   ],
+   "collector_number": "71",
+   "set": "trc"
+  },
+  {
+   "name": "Koloth, Tribble Hunter",
+   "oracle_id": "01b7ced9-5dcb-45ce-bcda-ffdc1afefb2a",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "At the beginning of your end step, each player creates two 1/1 white Tribble creature tokens with \"This token can't block.\"\nAll Tribbles get +1/+0 and are goaded. (They attack each combat if able and attack a player other than you if able.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Goad"
+   ],
+   "collector_number": "72",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Tribble",
+     "type_line": "Token Creature — Tribble",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Own the Day",
+   "oracle_id": "4a9bfeb2-b4b3-4c69-9739-a878c2704f46",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Battlefront — This spell costs {1} less to cast for each opponent you attacked this turn.\nUntap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Battlefront"
+   ],
+   "collector_number": "73",
+   "set": "trc"
+  },
+  {
+   "name": "Qo'noS Quartermaster",
+   "oracle_id": "b7115ed6-526c-491d-828f-f60b18437361",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Menace\nWhenever this creature attacks, add one mana of any color. Until end of turn, you don't lose this mana as steps and phases end.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "74",
+   "set": "trc"
+  },
+  {
+   "name": "Ro Laren, Double Agent",
+   "oracle_id": "6f10f6bf-f889-4c3d-a6cf-04cf74f1b4bd",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Bajoran Rogue Officer",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, Ro Laren deals 2 damage to each opponent.\n{1}, {T}, Discard a card: Draw a card.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out"
+   ],
+   "collector_number": "75",
+   "set": "trc"
+  }
+ ]
+}

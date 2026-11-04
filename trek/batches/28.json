@@ -1,0 +1,226 @@
+{
+ "batch": 28,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "U.S.S. Enterprise-D, Galaxy-Class",
+   "oracle_id": "d95af032-3efd-40c7-8229-ade9d974934f",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Whenever one or more charge counters are put on U.S.S. Enterprise-D for the first time each turn, exile the top card of your library. You may play that card this turn.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 7+.)\n7+ | Flying, vigilance",
+   "power": "4",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "273",
+   "set": "trk"
+  },
+  {
+   "name": "Warp Core",
+   "oracle_id": "6a2df97a-341d-4bc4-9f5c-661b6ca78fd0",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{1}, {T}: Put two charge counters on target Spacecraft. Activate only as a sorcery.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "274",
+   "set": "trk"
+  },
+  {
+   "name": "Andoria",
+   "oracle_id": "79134f5e-94db-4a40-ba75-2569b839cf35",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {U} or {R}.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "R",
+    "U"
+   ],
+   "collector_number": "275",
+   "set": "trk"
+  },
+  {
+   "name": "Artificial Anomaly",
+   "oracle_id": "7e550295-eaf4-4962-bc52-261d7c2d71ae",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{3}{B}, {T}, Sacrifice this land: Each opponent loses 2 life and you gain 2 life. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "276",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Bajor",
+   "oracle_id": "93d7f6e7-b6b0-48f3-891a-73970826af3b",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {R} or {W}.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "R",
+    "W"
+   ],
+   "collector_number": "277",
+   "set": "trk"
+  },
+  {
+   "name": "Cardassia Prime",
+   "oracle_id": "aff720b4-b8ef-46ea-9a3d-e101999e6526",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {B}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "W"
+   ],
+   "collector_number": "280",
+   "set": "trk"
+  },
+  {
+   "name": "Earth, Sector 001",
+   "oracle_id": "c75d87b0-7de9-4c50-b781-9749d67c1e07",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {G} or {U}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G",
+    "U"
+   ],
+   "collector_number": "281",
+   "set": "trk"
+  },
+  {
+   "name": "Federation Outpost",
+   "oracle_id": "a8bcc930-3efe-4595-b164-f5985e1dc289",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control two or more other lands.\nWhen this land enters untapped, choose one —\n• You gain 2 life.\n• Surveil 1.\n{T}: Add {W}.",
+   "colors": [],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "W"
+   ],
+   "collector_number": "282",
+   "set": "trk"
+  },
+  {
+   "name": "Ferenginar",
+   "oracle_id": "2e0753ad-7f76-4d26-8e87-6f201378f333",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G"
+   ],
+   "collector_number": "283",
+   "set": "trk"
+  },
+  {
+   "name": "Gaseous Anomaly",
+   "oracle_id": "1fb736bf-c9bd-45ab-86ce-7f138f1724b2",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{5}{U}, {T}, Sacrifice this land: Draw two cards. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "284",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

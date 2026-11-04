@@ -1,0 +1,256 @@
+{
+ "batch": 39,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Chancellor Gorkon",
+   "oracle_id": "24d194d3-f83a-496b-921a-77c09c68b0e1",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Klingon Noble",
+   "oracle_text": "Vigilance\nWhen Chancellor Gorkon dies, exile up to two target creatures.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "86",
+   "set": "trc"
+  },
+  {
+   "name": "Chief Kyle, Transporter Tech",
+   "oracle_id": "02583549-b618-4d41-9f46-209a99e30cd7",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Landfall — Whenever a land you control enters, exile up to one other target creature you control. Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "87",
+   "set": "trc"
+  },
+  {
+   "name": "Chief Montgomery Scott",
+   "oracle_id": "07f9c121-8a12-4f28-ae89-ec71f073b9ba",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Strange new worlds — {6}, {T}: You may put a creature or Spacecraft card from your hand onto the battlefield. It enters with X additional +1/+1 counters on it if it's a creature and X additional charge counters on it if it's a Spacecraft, where X is the number of differently named lands you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "88",
+   "set": "trc"
+  },
+  {
+   "name": "Cmdr. Troi, Outgoing Empath",
+   "oracle_id": "9a52cb6b-b0d8-4649-b65a-5f9a9d2a7eb2",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Betazoid Human Advisor",
+   "oracle_text": "Vigilance\n{T}: Target opponent whose turn it is may cast a spell from their hand without paying its mana cost. If they do, you copy that spell. You may choose new targets for the copy. If they don't, you draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "89",
+   "set": "trc"
+  },
+  {
+   "name": "Collective Override",
+   "oracle_id": "75af4154-d873-45d0-9ff2-c977169012a3",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Create a 1/1 colorless Borg artifact creature token for each attacking creature.\n• Draw a card for each attacking creature.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "90",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Commander William Riker",
+   "oracle_id": "cef73cb5-88c2-43cd-8648-1baca085b8a4",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Vigilance, haste\n{1}, {T}: You and target opponent each draw two cards.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Haste"
+   ],
+   "collector_number": "91",
+   "set": "trc"
+  },
+  {
+   "name": "Curzon Dax, Bound by Blood",
+   "oracle_id": "035bee4c-6f79-4123-9b6c-feba190052e8",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Trill Warrior",
+   "oracle_text": "Whenever another Klingon or Warrior you control dies, Curzon Dax deals 1 damage to each opponent.\nWhen Curzon Dax dies, you may put a creature card with mana value 3 or less from your hand onto the battlefield.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "trc"
+  },
+  {
+   "name": "Deliver from Chaos",
+   "oracle_id": "edea104c-b563-4fae-9e74-82164a8e090b",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target artifact or creature. Create X 1/1 colorless Borg artifact creature tokens, where X is that permanent's mana value.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "93",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Hugh, First of Many",
+   "oracle_id": "9964f2fe-b7f4-40f5-8e71-948756d27f0a",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact Creature — Borg",
+   "oracle_text": "Artifact spells you cast have replicate {2}{U}. (Whenever you cast an artifact spell, copy it for each time you paid its replicate cost. Each copy becomes a token.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "94",
+   "set": "trc"
+  },
+  {
+   "name": "Jurati, Cordial Queen",
+   "oracle_id": "4dc4c8a3-17d6-4c2d-bcbf-9cebf261eda6",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Borg Scientist",
+   "oracle_text": "Whenever one or more artifact creatures you control deal combat damage to a player, create a token that's a copy of target artifact token you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "95",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

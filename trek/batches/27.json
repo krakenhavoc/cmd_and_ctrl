@@ -1,0 +1,180 @@
+{
+ "batch": 27,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Cybernetic Specialist",
+   "oracle_id": "9fc49a69-f80c-478f-b237-66f155c0c09a",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Human Scientist",
+   "oracle_text": "When this creature enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{1}, {T}: Put target card from your graveyard on the bottom of your library.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "262",
+   "set": "trk"
+  },
+  {
+   "name": "Deep Space 9",
+   "oracle_id": "14442f5b-0bad-4c58-b268-d775787571d8",
+   "layout": "normal",
+   "mana_cost": "{9}",
+   "cmc": 9.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When Deep Space 9 enters and at the beginning of your upkeep, exile the top four cards of your library. Put all permanent cards exiled this way onto the battlefield.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery.)\n9+ | Creatures you control get +3/+3.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "263",
+   "set": "trk"
+  },
+  {
+   "name": "The Holodeck",
+   "oracle_id": "ecf28b5d-a719-47d4-8ad9-d24b6297ebde",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "Once during each of your turns, you may play a permanent card you own from outside the game or from your graveyard.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "265",
+   "set": "trk"
+  },
+  {
+   "name": "Isolinear Processor",
+   "oracle_id": "ef5d7b38-b782-4fb0-b6cd-3da36995ab39",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: Add {C}. Spend this mana only to cast an artifact spell or activate an ability of an artifact source.\n{2}, {T}: Draw a card, then discard a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "266",
+   "set": "trk"
+  },
+  {
+   "name": "Replicator",
+   "oracle_id": "a91b8eb4-d4f7-4e24-ae49-1f51e610c7ca",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{2}, {T}: Create a tapped token that's a copy of target token you control.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "267",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Sickbay",
+   "oracle_id": "1d4163d9-ca02-4f25-9f53-01f6d7cc4b70",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever a creature you control enters, you gain 1 life.\nAt the beginning of combat on your turn, put X +1/+1 counters on target creature you control, where X is one plus the amount of life you gained this turn.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "268",
+   "set": "trk"
+  },
+  {
+   "name": "Tea, Earl Grey, Hot",
+   "oracle_id": "6f2e8083-29af-4cdb-a2cb-216b2f3f5616",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Food",
+   "oracle_text": "When this artifact enters, draw a card.\n{2}, {T}, Sacrifice this artifact: Choose one —\n• This artifact deals 2 damage to target opponent.\n• You gain 3 life.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "269",
+   "set": "trk"
+  },
+  {
+   "name": "Tricorder",
+   "oracle_id": "1385679f-bdcd-4d7e-8266-1df0e36cc2da",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +1/+1.\nWhenever equipped creature attacks, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil",
+    "Equip"
+   ],
+   "collector_number": "270",
+   "set": "trk"
+  },
+  {
+   "name": "Type-2 Phaser",
+   "oracle_id": "9d4d3682-e904-412d-b8ae-734962865dfb",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nEquipped creature gets +3/+0.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "271",
+   "set": "trk"
+  },
+  {
+   "name": "U.S.S. Cerritos, Following Up",
+   "oracle_id": "472eac8f-2b82-4fa9-a40c-af11ec40f19e",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When U.S.S. Cerritos enters, create two 1/1 red Officer creature tokens.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "272",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

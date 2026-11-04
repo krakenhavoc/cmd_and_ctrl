@@ -1,0 +1,210 @@
+{
+ "batch": 43,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "U.S.S. Enterprise-C, Time-Tossed",
+   "oracle_id": "f2768bab-a6a4-490a-a676-fbfbfefdd8b8",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When U.S.S. Enterprise-C enters or dies, you may discard your hand. If you do, draw a card for each card discarded this way.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 3+.)\n3+ | Flying",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "126",
+   "set": "trc"
+  },
+  {
+   "name": "U.S.S. Farragut, Bold Explorer",
+   "oracle_id": "3b2e3deb-1f21-4311-b8a9-4153089ac5ff",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Landfall — Whenever a land you control enters, you may put a creature card from your hand onto the battlefield. That creature gains haste. At the beginning of the next end step, put it on the bottom of your library. When you do, draw a card.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 7+.)\n7+ | Flying",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station",
+    "Landfall"
+   ],
+   "collector_number": "127",
+   "set": "trc"
+  },
+  {
+   "name": "U.S.S. Prometheus, Prototype",
+   "oracle_id": "d19ebe9f-c24d-405c-b8e8-a602274076c3",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 4+.)\n4+ | Flying\n8+ | Multivector Assault Mode — Whenever U.S.S. Prometheus deals combat damage to an opponent, it deals that much damage to each other opponent.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "128",
+   "set": "trc"
+  },
+  {
+   "name": "U.S.S. Stargazer, Here and There",
+   "oracle_id": "a5b72c5d-4c73-49cd-9fc5-855856807ff2",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying\nPicard Maneuver — Whenever U.S.S. Stargazer attacks, create a tapped and attacking 4/3 colorless Spacecraft Illusion artifact creature token with flying. Exile that token at end of combat.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station",
+    "Picard Maneuver"
+   ],
+   "collector_number": "129",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Spacecraft Illusion",
+     "type_line": "Token Artifact Creature — Spacecraft Illusion",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Shore Leave Planet",
+   "oracle_id": "b5f50ad0-a9b3-4bfc-aaf4-55199e489265",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U}.\n{4}{U}: This land becomes a copy of target creature you control until end of turn, except it isn't legendary and it's a Robot artifact in addition to its other types.",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "U"
+   ],
+   "collector_number": "130",
+   "set": "trc"
+  },
+  {
+   "name": "Evasive Maneuvers",
+   "oracle_id": "3b2f1364-56e7-461a-b03f-0e14d83b0f5e",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target blocking creature you control gets +2/+2 until end of turn.\nDraw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "132",
+   "set": "trc"
+  },
+  {
+   "name": "Head of Security",
+   "oracle_id": "fb42bade-4bbc-4119-b6cc-71695fe43dd9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Andorian Soldier",
+   "oracle_text": "First strike (This creature deals combat damage before creatures without first strike.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "133",
+   "set": "trc"
+  },
+  {
+   "name": "Shuttle Crew",
+   "oracle_id": "25855177-a416-4083-a6e4-8c9e00361d41",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Officer",
+   "oracle_text": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhen this creature enters, it deals 4 damage to target tapped creature an opponent controls.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "137",
+   "set": "trc"
+  },
+  {
+   "name": "Sickbay Orderly",
+   "oracle_id": "94688e62-f39f-41fd-9309-f16b715ef724",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Caitian Doctor",
+   "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "138",
+   "set": "trc"
+  },
+  {
+   "name": "Starfleet Crew",
+   "oracle_id": "83b31215-ea9b-4ad9-a39e-3fe6cdb9b7de",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Officer",
+   "oracle_text": "",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "139",
+   "set": "trc"
+  }
+ ]
+}

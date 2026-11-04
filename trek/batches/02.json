@@ -1,0 +1,226 @@
+{
+ "batch": 2,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Deanna Troi, Psychic Counsel",
+   "oracle_id": "cf612cbe-7af8-48fd-875e-a669e05cfb49",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Betazoid Human Advisor",
+   "oracle_text": "Other creatures you control enter with an additional +1/+1 counter on them.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "trk"
+  },
+  {
+   "name": "DOT-7 Repair Squad",
+   "oracle_id": "b860f64c-e830-49ea-a478-5dc87e8a3be1",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Flying\n{1}{W}: Untap target creature. Activate only as a sorcery and only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "12",
+   "set": "trk"
+  },
+  {
+   "name": "Dr. Beverly Crusher",
+   "oracle_id": "5fe6f4ae-3fb1-4df6-8760-88c8666068df",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "If you gaining life causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nWhenever you gain life, put a +1/+1 counter on Dr. Crusher.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "13",
+   "set": "trk"
+  },
+  {
+   "name": "Dr. McCoy, Surly Surgeon",
+   "oracle_id": "df8a0737-5841-4c17-b567-e9296541c3c9",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Doctor",
+   "oracle_text": "When Dr. McCoy enters, put a +1/+1 counter on another target creature you control.\nIf another creature you control with a +1/+1 counter on it would be destroyed, instead remove all +1/+1 counters from it and all damage already dealt to it is healed.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Heal"
+   ],
+   "collector_number": "14",
+   "set": "trk"
+  },
+  {
+   "name": "Emergency Medical Hologram",
+   "oracle_id": "8170dcbb-9879-414c-819d-ea2658ff770c",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Illusion Doctor",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature. You gain 1 life.",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "15",
+   "set": "trk"
+  },
+  {
+   "name": "Excalbian Gamemaster",
+   "oracle_id": "f409e869-ea1a-4e08-b19e-949436d01cc1",
+   "layout": "normal",
+   "mana_cost": "{5}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Excalbian",
+   "oracle_text": "Strange new worlds — When this creature enters, create X 1/1 red Officer creature tokens, where X is the number of differently named lands you control.\nWhenever this creature or another creature you control dies, put a +1/+1 counter on target creature you control.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "16",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Federation Field Medic",
+   "oracle_id": "3759f1de-eda1-4f09-b12b-ea5f5fc731d7",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Doctor",
+   "oracle_text": "Vigilance\nWhen this creature enters, choose one —\n• Put a +1/+1 counter on target creature. It gains vigilance until end of turn.\n• Draw a card if you control a permanent with a counter on it.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "17",
+   "set": "trk"
+  },
+  {
+   "name": "Federation Resupply",
+   "oracle_id": "4450d4e0-2825-4536-bb0f-f3a36f1f682c",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for an Aura, Equipment, or Spacecraft card, reveal it, put it into your hand, then shuffle.\nBeam me up {3}{W} (You may cast this card from your graveyard for {3}{W} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "trk"
+  },
+  {
+   "name": "Free Borg Revolutionaries",
+   "oracle_id": "28914782-92f4-407f-beb6-5e290a49000c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Borg Rebel",
+   "oracle_text": "When this creature enters, creatures you control get +1/+1 until end of turn.\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Landcycling",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "19",
+   "set": "trk"
+  },
+  {
+   "name": "Ghost of Illyria",
+   "oracle_id": "e705b055-14b3-4de0-b4a7-39626839dea8",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Spirit",
+   "oracle_text": "Flying\nWhen this creature enters, exile up to one other target nonland permanent you control. Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "20",
+   "set": "trk"
+  }
+ ]
+}

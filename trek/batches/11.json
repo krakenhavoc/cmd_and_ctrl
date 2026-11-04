@@ -1,0 +1,227 @@
+{
+ "batch": 11,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "D'Ghor Bloodletter",
+   "oracle_id": "ae5ee92a-5915-49ce-aa4c-611ab711b2ef",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Klingon Assassin",
+   "oracle_text": "When this creature enters, choose one —\n• All other creatures get -1/-1 until end of turn.\n• Each player sacrifices a creature of their choice.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "101",
+   "set": "trk"
+  },
+  {
+   "name": "Death Is Irrelevant",
+   "oracle_id": "aeec05f1-43ea-4012-82d8-cded5494535d",
+   "layout": "normal",
+   "mana_cost": "{6}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Artifact creatures you control have indestructible.\nAt the beginning of your end step, assimilate target creature card from a graveyard. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Assimilate"
+   ],
+   "collector_number": "102",
+   "set": "trk"
+  },
+  {
+   "name": "The Destruction of Praxis",
+   "oracle_id": "028d6812-55db-40df-9288-89c2e478c76c",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Strange new worlds — All creatures get -X/-X until end of turn, where X is the number of differently named lands you control. If X is 6 or more, create two 2/1 red Klingon Warrior creature tokens with haste.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "103",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "De-evolve",
+   "oracle_id": "663e120a-a74f-47fb-aa0a-9d1a75db626e",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets -4/-0, can't block, and is a Salamander. (It loses all other creature types.)\nThreshold — At the beginning of each upkeep, if there are seven or more cards in your graveyard, exile enchanted creature.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Enchant",
+    "Threshold"
+   ],
+   "collector_number": "104",
+   "set": "trk"
+  },
+  {
+   "name": "Eject the Warp Core",
+   "oracle_id": "c06c17c2-203c-4b4a-8564-f29bc41c9eb5",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Kicker—Sacrifice an artifact or creature. (You may sacrifice an artifact or creature in addition to any other costs as you cast this spell.)\nTarget creature gets -2/-2 until end of turn. If this spell was kicked, that creature gets -6/-6 until end of turn instead.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "105",
+   "set": "trk"
+  },
+  {
+   "name": "Elim Garak, Simple Tailor",
+   "oracle_id": "c83465bd-f95f-4c57-b9ce-925a85b45276",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Cardassian Rogue",
+   "oracle_text": "Menace\nWhenever you face a dilemma, each opponent loses 2 life and you gain 2 life. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Face a dilemma",
+    "Menace"
+   ],
+   "collector_number": "106",
+   "set": "trk"
+  },
+  {
+   "name": "Fugitive Listener",
+   "oracle_id": "e6939d1e-6ff8-4559-8526-0e4d0e749e20",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — El-Aurian Scout",
+   "oracle_text": "When this creature enters, each opponent discards a card.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "107",
+   "set": "trk"
+  },
+  {
+   "name": "Gabriel Lorca, Mirror Menace",
+   "oracle_id": "6349eecb-dabd-4dcb-a8fb-c8ee66f61461",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Rogue Officer",
+   "oracle_text": "Menace\nWhenever you face a dilemma, you may pay {B}. If you do, return this card from your graveyard to your hand. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Face a dilemma",
+    "Menace"
+   ],
+   "collector_number": "108",
+   "set": "trk"
+  },
+  {
+   "name": "General Chang, Cold Warrior",
+   "oracle_id": "72217c2e-4f6b-41da-8de1-bb6892d3c452",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "{1}, Sacrifice a creature: Put a +1/+1 counter on each Klingon you control.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "109",
+   "set": "trk"
+  },
+  {
+   "name": "Georgiou, Terran Emperor",
+   "oracle_id": "31932df4-0be8-45c4-8b22-84119d9c20ba",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Rogue Noble",
+   "oracle_text": "You don't lose the game for having 0 or less life.\nAt the beginning of your end step, you lose 3 life and draw a card. Then if your life total is 0 or less, create ten 1/1 red Officer creature tokens.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "110",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

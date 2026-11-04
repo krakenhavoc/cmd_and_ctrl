@@ -1,0 +1,97 @@
+{
+ "batch": 49,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Mutavault",
+   "oracle_id": "6b3cc59a-7ea5-4eb5-9bf9-5a9c07f80e2b",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{1}: This land becomes a 2/2 creature with all creature types until end of turn. It's still a land.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "542",
+   "set": "trc",
+   "rulings": [
+    {
+     "date": "2008-08-01",
+     "text": "A noncreature permanent that turns into a creature can attack, and its {T} abilities can be activated, only if its controller has continuously controlled that permanent since the beginning of their most recent turn. It doesn't matter how long the permanent has been a creature."
+    },
+    {
+     "date": "2008-04-01",
+     "text": "Although Mutavault has all creature types while it's animated, it does not have the changeling keyword ability."
+    }
+   ]
+  },
+  {
+   "name": "Shattered Landscape",
+   "oracle_id": "7fbad3f2-66f6-4e3a-b9e0-1ddbcd94d42a",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Mountain, Plains, or Swamp card, put it onto the battlefield tapped, then shuffle.\nCycling {R}{W}{B} ({R}{W}{B}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "557",
+   "set": "trc"
+  },
+  {
+   "name": "Tranquil Landscape",
+   "oracle_id": "d4eb65d5-99fd-4daf-b7d3-8ebf99ee9c61",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle.\nCycling {G}{W}{U} ({G}{W}{U}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "573",
+   "set": "trc"
+  },
+  {
+   "name": "Run Amok",
+   "oracle_id": "d463de75-8d3c-4077-a2cc-c304a63acc69",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target attacking creature gets +3/+3 and gains trample until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "582",
+   "set": "trc"
+  }
+ ]
+}

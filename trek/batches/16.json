@@ -1,0 +1,226 @@
+{
+ "batch": 16,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Genesis Effect",
+   "oracle_id": "ec763f36-3504-4bfe-8481-1a7d0bff8d8e",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Genesis Effect deals 6 damage to target creature. Destroy target land you control. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "151",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Horta",
+   "oracle_id": "e8ac0742-15f5-4cf0-888f-f1c2c97fc144",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Trample\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "7",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Landcycling",
+    "Trample",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "152",
+   "set": "trk"
+  },
+  {
+   "name": "Infinite Diversity",
+   "oracle_id": "c7d8ed66-d66e-42fd-9c3e-8c2d8194e009",
+   "layout": "normal",
+   "mana_cost": "{7}{R}{R}",
+   "cmc": 9.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Federation — Exile target instant or sorcery card from your graveyard. Copy that card X times, where X is the number of creature types among non-Borg creatures you control. You may cast the copies without paying their mana costs. Exile Infinite Diversity.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "153",
+   "set": "trk"
+  },
+  {
+   "name": "Khaaaaaaaaaaaannn!",
+   "oracle_id": "45b1a19b-6a0c-4534-9106-99c2e5fc30d6",
+   "layout": "normal",
+   "mana_cost": "{X}{R}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Khaaaaaaaaaaaannn! deals twice X damage to target creature. If that creature would die this turn, exile it instead.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "154",
+   "set": "trk"
+  },
+  {
+   "name": "Khan, Despot by Design",
+   "oracle_id": "b7ea2089-abcd-4e60-8201-93801eae5084",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "Trample\nWhen Khan enters, he deals 1 damage to each opponent and each creature your opponents control.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "155",
+   "set": "trk"
+  },
+  {
+   "name": "La'An Noonien-Singh, Security",
+   "oracle_id": "ed3b80eb-8915-4428-89b8-90f4278f2733",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "Whenever you attack while creatures you control have total power 8 or greater, target creature can't block this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "156",
+   "set": "trk"
+  },
+  {
+   "name": "Lwaxana Troi, Charming Guest",
+   "oracle_id": "e56472ec-6ae8-48b2-a4ce-0ed154161c06",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Betazoid Advisor",
+   "oracle_text": "You may choose not to untap Lwaxana Troi during your untap step.\n{2}, {T}: Choose another target creature you control. For as long as Lwaxana Troi remains tapped, if a triggered ability of that creature triggers, that ability triggers an additional time.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "157",
+   "set": "trk"
+  },
+  {
+   "name": "Munitions Enthusiast",
+   "oracle_id": "0013f005-2b49-48a4-8a74-9bbdadc88c9f",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Trample\nWhen this creature dies, it deals 1 damage to any target.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "158",
+   "set": "trk"
+  },
+  {
+   "name": "The Naked Time",
+   "oracle_id": "2cf79dd0-c9db-403e-969d-6c09e7aaa575",
+   "layout": "saga",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Search your library for a basic Mountain card, put it onto the battlefield tapped, then shuffle.\nII — Whenever a creature you control enters this turn, put a +1/+1 counter on it and it gains haste until end of turn.\nIII — Sacrifice a land.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "159",
+   "set": "trk"
+  },
+  {
+   "name": "Pah-Wraith",
+   "oracle_id": "e47c340d-b20b-4103-955b-3f76424c43f8",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Creature — Wraith",
+   "oracle_text": "First strike, haste\nStrange new worlds — Whenever this creature attacks, creatures you control get +X/+0 until end of turn, where X is the number of differently named lands you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike",
+    "Haste",
+    "Strange new worlds"
+   ],
+   "collector_number": "160",
+   "set": "trk"
+  }
+ ]
+}

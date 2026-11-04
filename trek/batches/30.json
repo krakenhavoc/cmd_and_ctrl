@@ -1,0 +1,98 @@
+{
+ "batch": 30,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Temporal Anomaly",
+   "oracle_id": "cf0d1859-699e-47d4-bc91-7c5ff61fabe9",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{3}{G}, {T}, Sacrifice this land: Mill four cards. You may put a permanent card from among them into your hand. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "302",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Unexplored Territory",
+   "oracle_id": "6e5d4bbd-4999-4acd-8775-25e02d901035",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "303",
+   "set": "trk"
+  },
+  {
+   "name": "The Unicomplex",
+   "oracle_id": "b38fcf9a-464a-432a-b13c-9a206d52dcd9",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control two or more other lands.\nWhen this land enters untapped, choose one —\n• Put target creature card from your graveyard on top of your library.\n• Surveil 1.\n{T}: Add {B}.",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "B"
+   ],
+   "collector_number": "304",
+   "set": "trk"
+  },
+  {
+   "name": "Vulcan",
+   "oracle_id": "c7b6bc1f-9161-415e-a097-d9c8cd81d4ae",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {U}.",
+   "colors": [],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "U",
+    "W"
+   ],
+   "collector_number": "305",
+   "set": "trk"
+  }
+ ]
+}

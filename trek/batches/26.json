@@ -1,0 +1,229 @@
+{
+ "batch": 26,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Seven of Nine",
+   "oracle_id": "3c037865-d38c-48da-aee9-308975e12638",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact Creature — Human Scientist",
+   "oracle_text": "Whenever you face a dilemma, draw a card. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Face a dilemma"
+   ],
+   "collector_number": "252",
+   "set": "trk"
+  },
+  {
+   "name": "Spock, Always Your Friend",
+   "oracle_id": "bdfe5809-17d4-4239-a9ee-6accdef99035",
+   "layout": "normal",
+   "mana_cost": "{U}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Vulcan Human Scientist",
+   "oracle_text": "When Spock enters, look at the top four cards of your library. You may reveal a noncreature, nonland card from among them and put it into your hand. Put the rest on the bottom of your library in any order.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "253",
+   "set": "trk"
+  },
+  {
+   "name": "The Traveler",
+   "oracle_id": "b61718eb-dc6a-4199-b7c7-42eccf4158e8",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Scout",
+   "oracle_text": "Reach, vigilance\nStrange new worlds — The Traveler's power is equal to the number of differently named lands you control.",
+   "power": "*",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Strange new worlds"
+   ],
+   "collector_number": "254",
+   "set": "trk"
+  },
+  {
+   "name": "Vash, Freelance Archaeologist",
+   "oracle_id": "ec5a9dde-b89d-4c54-8563-4a7170f5cefd",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rogue Scientist",
+   "oracle_text": "At the beginning of your upkeep, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\nWhenever a card leaves your graveyard, draw a card. This ability triggers only once each turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "255",
+   "set": "trk"
+  },
+  {
+   "name": "Worf, Honor-Bound Warrior",
+   "oracle_id": "2ecda53d-ac24-4b28-aed8-2a5fb1449f85",
+   "layout": "normal",
+   "mana_cost": "{R/W}{R/W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Whenever you attack while creatures you control have total power 8 or greater, double Worf's power until end of turn.\nTap two untapped artifacts and/or creatures you control: Put a +1/+1 counter on Worf. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "256",
+   "set": "trk"
+  },
+  {
+   "name": "Year of Hell",
+   "oracle_id": "83f426db-3b25-4407-afd0-0465e3900c24",
+   "layout": "saga",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II, III — Each player draws a card. This Saga deals 2 damage to each player.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "257",
+   "set": "trk"
+  },
+  {
+   "name": "Zero, Incorporeal Sensate",
+   "oracle_id": "746e494e-fdc4-415e-8a82-d35e11ebeccb",
+   "layout": "normal",
+   "mana_cost": "{1}{W/B}{W/B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Medusan Scientist",
+   "oracle_text": "Lifelink\nWhen Zero enters, look at target opponent's hand. You may exile a nonland card from it. For as long as that card remains exiled, its owner may play it. A spell cast this way costs {2} more to cast.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "258",
+   "set": "trk"
+  },
+  {
+   "name": "Class-F Shuttlecraft",
+   "oracle_id": "4ccc91f2-4d6e-4d64-b438-3d8b4361040a",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "{T}: Add one mana of any color.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying, vigilance",
+   "power": "2",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "259",
+   "set": "trk"
+  },
+  {
+   "name": "Combadge",
+   "oracle_id": "ccd0e613-17c1-4a97-b519-de0376d596f0",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Communicator Equipment",
+   "oracle_text": "When you cast this spell, copy it. (The copy becomes a token.)\nEquipped creature has \"Whenever this creature attacks while you control another creature with a Communicator attached to it, this creature can't be blocked this turn.\"\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "260",
+   "set": "trk"
+  },
+  {
+   "name": "Crystalline Entity",
+   "oracle_id": "ca6f43d8-1498-4a13-b1cc-2d135b24a8b6",
+   "layout": "normal",
+   "mana_cost": "{8}",
+   "cmc": 8.0,
+   "type_line": "Artifact Creature — Elemental",
+   "oracle_text": "Flying\nWhen this creature enters, if you cast it, destroy all nonartifact creatures.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "261",
+   "set": "trk"
+  }
+ ]
+}

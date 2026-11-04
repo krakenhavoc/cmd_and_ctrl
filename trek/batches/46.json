@@ -1,0 +1,248 @@
+{
+ "batch": 46,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Kirk, Man of Action",
+   "oracle_id": "254177f2-5a03-4a29-8b98-248f6a41a351",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Other Officers, Artificers, Doctors, Pilots, Scientists, and Spacecraft creatures you control get +2/+2.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "180",
+   "set": "trc"
+  },
+  {
+   "name": "Spock, Voice of Reason",
+   "oracle_id": "4d338db9-e968-49ec-8959-141480b17b8f",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vulcan Human Scientist",
+   "oracle_text": "{2}, {T}: Draw a card for each nontoken permanent you control that entered this turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "181",
+   "set": "trc"
+  },
+  {
+   "name": "Uhura, Xenolinguist",
+   "oracle_id": "5d5c4a17-fa04-4889-819e-408fc2ff112e",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Whenever a non-Human creature enters, you may pay {1}. If you do, draw a card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "182",
+   "set": "trc"
+  },
+  {
+   "name": "Chekov and McCoy",
+   "oracle_id": "058a5b8b-08bc-4021-8a8b-8e149941e775",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Pilot Doctor",
+   "oracle_text": "Whenever you put one or more +1/+1 counters on Chekov and McCoy, you may draw that many cards. Do this only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "183",
+   "set": "trc"
+  },
+  {
+   "name": "Scotty, Chief Engineer",
+   "oracle_id": "3bd553db-2c7d-42cd-8ded-ab2c955b8f4e",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Tap an untapped artifact you control: Target creature can't be blocked this turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "184",
+   "set": "trc"
+  },
+  {
+   "name": "Sulu, Heroic Helmsman",
+   "oracle_id": "9565feaf-252d-43c2-a28e-4291c9ff5872",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "Sulu stations Spacecraft and crews Vehicles as though his power were tripled.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Triple"
+   ],
+   "collector_number": "185",
+   "set": "trc"
+  },
+  {
+   "name": "Worf, Still Not Merry",
+   "oracle_id": "8153cd58-cb8b-461c-a2c9-aaa9e2ea1b31",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Whenever Worf attacks, for each attacking non-Faerie creature, create a tapped and attacking 1/1 blue Faerie creature token with flying.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "186",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Q, Your Illustrious Host",
+   "oracle_id": "e4e96682-1130-49cc-b1e5-04a774024f7a",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Q",
+   "oracle_text": "Tap three untapped Faeries you control: Exile cards from the top of your library until you exile a nonland card. You may cast that card without paying its mana cost.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "187",
+   "set": "trc"
+  },
+  {
+   "name": "La Forge, Thoughtful as Ever",
+   "oracle_id": "d5e2ca35-053e-4155-97e7-73f75ae87d52",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "{T}: For each permanent you control that you've put a counter on this turn, create a 1/1 blue Faerie creature token with flying.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "188",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Data, Professor of Humanities",
+   "oracle_id": "25ecd09e-d8bf-4929-96e2-e5132ea4f718",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact Creature — Android Scientist",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, create two 1/1 blue Faerie creature tokens with flying.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out"
+   ],
+   "collector_number": "189",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

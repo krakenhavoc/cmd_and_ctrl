@@ -1,0 +1,249 @@
+{
+ "batch": 24,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Daniels, Temporal Agent",
+   "oracle_id": "2e44a02f-af94-4696-b979-cdf68285c87a",
+   "layout": "normal",
+   "mana_cost": "{2}{B/G}{B/G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "When Daniels enters, return target creature card from your graveyard to your hand.\n{2}, Put this card from your graveyard on the bottom of your library: You gain 2 life.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "232",
+   "set": "trk"
+  },
+  {
+   "name": "Dathon, His Heart Open",
+   "oracle_id": "8de259a9-99d0-4f07-8dbc-f065e3af352b",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Tamarian Officer",
+   "oracle_text": "Whenever you cast an enchantment spell, draw a card. If it's a Saga spell, Dathon deals 2 damage to each opponent.\n{2}: Choose a counter on target enchantment you control. Put another counter of that kind on it. Activate only as a sorcery.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "233",
+   "set": "trk"
+  },
+  {
+   "name": "The Doctor, EMH",
+   "oracle_id": "3b04f5b9-40d9-49aa-a38d-0f946401263c",
+   "layout": "normal",
+   "mana_cost": "{3}{G/W}{G/W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact Creature — Illusion Doctor",
+   "oracle_text": "When The Doctor enters, put a +1/+1 counter on target creature. Then put a +1/+1 counter on each creature you control with a counter on it.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "234",
+   "set": "trk"
+  },
+  {
+   "name": "The Duras Sisters",
+   "oracle_id": "03973bad-1b3c-4488-a23e-232b192c95cc",
+   "layout": "normal",
+   "mana_cost": "{B/R}{B/R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Klingon Warrior",
+   "oracle_text": "When The Duras Sisters die, create a 2/1 red Klingon Warrior creature token with haste.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "235",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "D'Vana Tendi, Optimistic Ensign",
+   "oracle_id": "6bb42689-b169-43cb-b787-f0e348063cd6",
+   "layout": "normal",
+   "mana_cost": "{1}{G/U}{G/U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Orion Scientist",
+   "oracle_text": "{T}: Untap another target permanent.\n{3}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "236",
+   "set": "trk"
+  },
+  {
+   "name": "Gowron, Eager for Battle",
+   "oracle_id": "40616029-e1a8-4e7c-bc7b-e381779c57cc",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Klingon Warrior",
+   "oracle_text": "Whenever another creature dies, put a +1/+1 counter on Gowron.\nSacrifice another creature: Gowron gains trample until end of turn. If you sacrificed a Klingon this way, you draw a card and lose 1 life.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "237",
+   "set": "trk"
+  },
+  {
+   "name": "Gray and Adira, Forever Joined",
+   "oracle_id": "34a39862-c18b-4c1b-8920-207627c40934",
+   "layout": "normal",
+   "mana_cost": "{2}{U/R}{U/R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Trill Human Officer",
+   "oracle_text": "At the beginning of combat on your turn, if you've cast a noncreature spell this turn, create a token that's a copy of target creature you control, except it isn't legendary. It gains haste until end of turn. Sacrifice it at the beginning of the next end step.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "238",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Hemmer, Fixing What Is Broken",
+   "oracle_id": "83d8e98d-ab97-40b1-820a-2d193a5ed261",
+   "layout": "normal",
+   "mana_cost": "{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Aenar Artificer",
+   "oracle_text": "During your turn, Spacecraft you control have hexproof. (They can't be the targets of spells or abilities your opponents control.)\nWhenever Hemmer becomes tapped, draw a card, then discard a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "239",
+   "set": "trk"
+  },
+  {
+   "name": "Hit It!",
+   "oracle_id": "62361438-3da4-4ce9-95b8-fc361b824f58",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control have haste.\nWhen this enchantment enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "240",
+   "set": "trk"
+  },
+  {
+   "name": "The Inner Light",
+   "oracle_id": "0de3aad2-5f4c-4437-b0b3-4b867309528d",
+   "layout": "saga",
+   "mana_cost": "{3}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Return target green or white creature card from your graveyard to the battlefield.\nII — Choose target creature. Whenever it deals combat damage to a player this turn, you draw that many cards.\nIII — You gain life equal to the greatest power among creatures you control. Create a Treasure token.",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "241",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

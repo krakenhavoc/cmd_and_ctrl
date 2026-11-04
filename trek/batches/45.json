@@ -1,0 +1,207 @@
+{
+ "batch": 45,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Defense Force Aggressor",
+   "oracle_id": "8f1a39bf-7597-4655-b7af-4b1332edf529",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "161",
+   "set": "trc"
+  },
+  {
+   "name": "Direct Hit",
+   "oracle_id": "f6b0adcb-4676-4d9f-83ae-a2ff3cdfd84b",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Direct Hit deals 5 damage to target creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "162",
+   "set": "trc"
+  },
+  {
+   "name": "Gin'tak Charge",
+   "oracle_id": "286213a8-ae53-4f97-9f81-e13bed462d0a",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gin'tak Charge deals 2 damage to any target.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "163",
+   "set": "trc"
+  },
+  {
+   "name": "Kruge, Genesis Seeker",
+   "oracle_id": "61cef71a-d38b-4b6f-8401-aa4fc861bf52",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Officer",
+   "oracle_text": "Whenever Kruge attacks, attacking Klingons you control get +1/+1 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "165",
+   "set": "trc"
+  },
+  {
+   "name": "Mek'leth Berserker",
+   "oracle_id": "7063eb2b-81a4-4599-b1db-edf861e39bfb",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Klingon Berserker",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "166",
+   "set": "trc"
+  },
+  {
+   "name": "Warship Flight Crew",
+   "oracle_id": "d55977f8-1655-4d97-adbf-ef6cb979ea55",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Pilot",
+   "oracle_text": "",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "168",
+   "set": "trc"
+  },
+  {
+   "name": "Gorn Captain",
+   "oracle_id": "60ff591d-170d-410a-9710-510e811f9827",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Gorn Soldier",
+   "oracle_text": "Trample (This creature can deal excess combat damage to the player it's attacking.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "172",
+   "set": "trc"
+  },
+  {
+   "name": "Gumato",
+   "oracle_id": "67114cbb-cbf4-4250-a5e9-e1c4bc5841f6",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Ape Beast",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\n{T}: Add {G}{G}{G}.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "173",
+   "set": "trc"
+  },
+  {
+   "name": "Talarian Hook Spider",
+   "oracle_id": "369f086f-3497-496a-94a8-0faccd1d5931",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spider",
+   "oracle_text": "Reach (This creature can block creatures with flying.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "175",
+   "set": "trc"
+  },
+  {
+   "name": "Disruptor Pistol",
+   "oracle_id": "bb8c2c0f-fc63-40c6-98c6-691e42b3b8c9",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{4}, {T}, Sacrifice this artifact: It deals 5 damage to target creature.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "177",
+   "set": "trc"
+  }
+ ]
+}

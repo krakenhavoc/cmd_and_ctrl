@@ -1,0 +1,233 @@
+{
+ "batch": 47,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Jean-Luc, Mon Capitaine",
+   "oracle_id": "3855cb66-2e29-4d4b-a752-214843b647ff",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Flying\nFederation — Faeries you control enter with an additional +1/+1 counter on them for each creature type among non-Borg creatures you already control.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "190",
+   "set": "trc"
+  },
+  {
+   "name": "Troi, Winging It",
+   "oracle_id": "38561191-ecd1-4028-a0fd-4bca6a7eab58",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Betazoid Human Advisor",
+   "oracle_text": "Whenever an opponent draws a card during your turn, create a 1/1 blue Faerie creature token with flying.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "191",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Operations Officer",
+   "oracle_id": "c8ed45e6-ae4f-4c44-9f73-45793f30acd6",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Officer",
+   "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)\nWhen this creature enters, draw a card.\nWhenever this creature attacks, put a +1/+1 counter on it.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "192",
+   "set": "trc"
+  },
+  {
+   "name": "Picard, Steadfast Captain",
+   "oracle_id": "cda786aa-1259-45e8-a834-21c7ad0259a6",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Whenever Picard enters or attacks, put two +1/+1 counters on another target creature you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "193",
+   "set": "trc"
+  },
+  {
+   "name": "Spock, Logical Choice",
+   "oracle_id": "a877820f-8999-4dfe-a50d-09f63c885ce3",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Vulcan Human Scientist",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\n{T}: Draw a card.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "194",
+   "set": "trc"
+  },
+  {
+   "name": "Trelane, Squire of Gothos",
+   "oracle_id": "3c516327-00a3-4d03-87a3-73b4a90719d3",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Q",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nTrelane can't be blocked.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Ward"
+   ],
+   "collector_number": "195",
+   "set": "trc"
+  },
+  {
+   "name": "Bio-Asset Allocator",
+   "oracle_id": "1ca22ca0-eca3-4578-9746-47d443d5fb73",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have \"Whenever this creature attacks, each opponent loses 1 life and you gain 1 life.\"",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "196",
+   "set": "trc"
+  },
+  {
+   "name": "Borg Queen, Perfection Manifest",
+   "oracle_id": "f9b46a1a-474f-4fac-8d71-131c1720e4c0",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact Creature — Borg Noble",
+   "oracle_text": "Artifact creatures you control get +2/+0.\nWhen Borg Queen enters, assimilate target creature card from an opponent's graveyard. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Assimilate"
+   ],
+   "collector_number": "197",
+   "set": "trc"
+  },
+  {
+   "name": "Kirk, Enterprising Captain",
+   "oracle_id": "6a70e571-6932-45d8-9f14-ede4a561cc49",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever Kirk attacks while creatures you control have total power 8 or greater, exile the top card of your library. You may play that card this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "198",
+   "set": "trc"
+  },
+  {
+   "name": "Klingon Strike Force",
+   "oracle_id": "847efb61-5933-43c1-93ff-e8375f9469a9",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Trample (This creature can deal excess combat damage to the player it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nWhen this creature dies, it deals 2 damage to each opponent.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "199",
+   "set": "trc"
+  }
+ ]
+}

@@ -1,0 +1,217 @@
+{
+ "batch": 44,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Will Riker, Assuming Command",
+   "oracle_id": "a479b8b6-79de-4810-9165-992a6a10dc1d",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "When Will Riker enters, put a +1/+1 counter on another target creature you control.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "trc"
+  },
+  {
+   "name": "Worf, Chief Tactical Officer",
+   "oracle_id": "26e86be4-52e1-47cb-b548-c434482bd3ad",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "141",
+   "set": "trc"
+  },
+  {
+   "name": "Cryogenic Stasis",
+   "oracle_id": "846ba66c-a4eb-4d00-a0f1-d9f9524b9695",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Tap target creature and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nDraw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "142",
+   "set": "trc"
+  },
+  {
+   "name": "Exocomp",
+   "oracle_id": "fb208157-67e5-45e2-bf08-7671f65cf520",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "145",
+   "set": "trc"
+  },
+  {
+   "name": "Kolinahr Priest",
+   "oracle_id": "b03c6720-b899-4eba-b28d-54ded03e086d",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vulcan Monk",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "146",
+   "set": "trc"
+  },
+  {
+   "name": "La Forge, Perceptive Engineer",
+   "oracle_id": "338619f2-bb33-4988-bafe-7460f86acef8",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\n{T}: Add {U}. Spend this mana only to cast an artifact spell.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "produced_mana": [
+    "U"
+   ],
+   "collector_number": "147",
+   "set": "trc"
+  },
+  {
+   "name": "Pelia, Immortal Innovator",
+   "oracle_id": "4c0be0d0-766b-4c50-b1ca-cce527196666",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Lanthanite Artificer",
+   "oracle_text": "When Pelia enters, return target creature an opponent controls to its owner's hand.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "148",
+   "set": "trc"
+  },
+  {
+   "name": "T'Pol, Vulcan Representative",
+   "oracle_id": "e8a548e8-057e-4023-ac20-bac973dbce09",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Vulcan Scientist",
+   "oracle_text": "When T'Pol enters, tap target creature an opponent controls and put two stun counters on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "151",
+   "set": "trc"
+  },
+  {
+   "name": "Badgey, Malicious Glitch",
+   "oracle_id": "227fb13b-0a07-4937-9048-7cf02efbc8e3",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact Creature — Illusion Horror",
+   "oracle_text": "Whenever Badgey becomes tapped, each opponent loses 1 life and you gain 1 life.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "152",
+   "set": "trc"
+  },
+  {
+   "name": "Ceti Eel",
+   "oracle_id": "b1914241-6b2b-4b3e-8626-aeb0b8cbc12d",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Worm",
+   "oracle_text": "When this creature enters, mill two cards, then put a +1/+1 counter on this creature for each artifact and/or creature card in your graveyard. (To mill two cards, put the top two cards of your library into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "153",
+   "set": "trc"
+  }
+ ]
+}

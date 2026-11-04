@@ -1,0 +1,216 @@
+{
+ "batch": 9,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Starfleet Spanner Jockey",
+   "oracle_id": "d41ff489-7d74-4b06-b3a1-638f3e3303d1",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "Defender\nAs long as you've cast a noncreature spell this turn, this creature can attack as though it didn't have defender.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "81",
+   "set": "trk"
+  },
+  {
+   "name": "Subcommander T'Pol",
+   "oracle_id": "e6973668-4ea7-4920-82a5-73abfc1c9fd5",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vulcan Scientist",
+   "oracle_text": "Flash\nWhen Subcommander T'Pol enters, choose one —\n• Counter target activated or triggered ability.\n• Tap up to one target artifact or creature. Put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "82",
+   "set": "trk"
+  },
+  {
+   "name": "Suurok-Class Science Vessel",
+   "oracle_id": "5d2016ed-3ea0-4938-b95e-ee582307e475",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "When this Spacecraft enters, draw a card.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 5+.)\n5+ | Flying",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "83",
+   "set": "trk"
+  },
+  {
+   "name": "Suus Mahna Practitioner",
+   "oracle_id": "e7d22ef6-a926-4964-bfd6-f7345b20e74e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vulcan Officer",
+   "oracle_text": "Strange new worlds — {4}{U}, {T}: Tap target creature. This ability costs {X} less to activate, where X is the number of differently named lands you control.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "84",
+   "set": "trk"
+  },
+  {
+   "name": "Test of Priorities",
+   "oracle_id": "cd24de4f-ce88-4fbb-9e8d-93ea7c260b4c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Power to Engines — Surveil 2, then draw a card.\n• Power to Life Support — Exile target creature you control. Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Power to Engines",
+    "Power to Life Support"
+   ],
+   "collector_number": "85",
+   "set": "trk"
+  },
+  {
+   "name": "Those Old Scientists",
+   "oracle_id": "5ca4e8c4-8358-49be-bafb-85849bf9bd01",
+   "layout": "saga",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw\nstep, add a lore counter. Sacrifice after III.)\nI — Draw two cards, then discard two cards.\nII — Return up to one target artifact, instant, or sorcery card from your graveyard to your hand.\nIII — Choose up to two target cards in graveyards. The owners of those cards shuffle them into their libraries.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "trk"
+  },
+  {
+   "name": "V'Ger, the Intruder",
+   "oracle_id": "f50ec16b-13f5-4e20-ae09-9c7dee9d223b",
+   "layout": "normal",
+   "mana_cost": "{6}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Artifact Creature — Construct",
+   "oracle_text": "Flying\nWhenever V'Ger enters or attacks, choose one —\n• Look at target opponent's hand, then draw a card.\n• Creatures your opponents control get -1/-0 until your next turn.",
+   "power": "5",
+   "toughness": "7",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "87",
+   "set": "trk"
+  },
+  {
+   "name": "Vulcan Mind-Meld",
+   "oracle_id": "a6aa204a-0be9-4a38-b54c-82538adfe7f1",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent looks at the top card of your library, then exiles it face down. You look at the top two cards of their library, then exile them face down. For each card exiled this way, the player who exiled it may play it for as long as it remains exiled. Mana of any type can be spent to cast spells this way.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "88",
+   "set": "trk"
+  },
+  {
+   "name": "Wesley Crusher, Starfleet Cadet",
+   "oracle_id": "5c3cbb08-cbe1-42f5-9ac7-e558b85648bb",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Flash\nWhen Wesley Crusher enters, choose two —\n• Counter target noncreature spell unless its controller pays {2}.\n• Return target creature with mana value 2 or less to its owner's hand.\n• Target creature can't be blocked this turn.\n• Target player draws two cards, then discards two cards.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "89",
+   "set": "trk"
+  },
+  {
+   "name": "Zefram Cochrane, Warp Pioneer",
+   "oracle_id": "fea67446-f413-4a8c-b79a-49172e798fff",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "You may look at the top card of your library any time.\nOnce during each of your turns, you may cast an artifact spell from the top of your library.\nSpacecraft you control enter with two additional charge counters on them.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "90",
+   "set": "trk"
+  }
+ ]
+}

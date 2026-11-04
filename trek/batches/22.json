@@ -1,0 +1,255 @@
+{
+ "batch": 22,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Saru, Unthreatened",
+   "oracle_id": "b6a21e53-6f62-4874-b9cc-84ae177a0da6",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Kelpien Officer",
+   "oracle_text": "Flash\nWhen Saru enters, another target creature you control gains hexproof until end of turn. (It can't be the target of spells or abilities your opponents control.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "212",
+   "set": "trk"
+  },
+  {
+   "name": "Saurian Explorer",
+   "oracle_id": "00f4cab8-b135-4118-8e3a-92097178abb6",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dinosaur Scout",
+   "oracle_text": "Landfall — Whenever a land you control enters, this creature gets +2/+2 until end of turn.\n{6}: Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\" Activate only as a sorcery.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "213",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Species 8472",
+   "oracle_id": "645a5619-d0b2-4153-aae0-ca2adc6f5e3d",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Insect Beast",
+   "oracle_text": "Strange new worlds — When this creature enters, you gain life equal to the number of differently named lands you control.\nThis creature can't be blocked by artifact creatures.\nThis creature can't be the target of abilities from artifact sources your opponents control.",
+   "power": "7",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "214",
+   "set": "trk"
+  },
+  {
+   "name": "Stable Wormhole",
+   "oracle_id": "dba55309-cb21-42db-8968-8da07227a1be",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever you attack, create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "215",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Support Mission",
+   "oracle_id": "59a4c4cf-07b4-4009-bbea-7da7b31f09a1",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature you control enters, put a quest counter on this enchantment. Put a +1/+1 counter on that creature. If this enchantment has five or more quest counters on it, instead put two +1/+1 counters on that creature.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "216",
+   "set": "trk"
+  },
+  {
+   "name": "Sylvia Tilly, Joy of Discovery",
+   "oracle_id": "d4c1dbc8-23d8-49e0-bc2d-d005e9215172",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Scientist Artificer",
+   "oracle_text": "When Sylvia Tilly enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nAt the beginning of combat on your turn, you may pay {1} and exile a card from your graveyard. When you do, put a +1/+1 counter on target creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "217",
+   "set": "trk"
+  },
+  {
+   "name": "Syndicate Liquidators",
+   "oracle_id": "2f32de5c-4d85-42bc-b1bf-f762a46e5efc",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Orion Pirate",
+   "oracle_text": "Trample\nLandfall — Whenever a land you control enters, put two +1/+1 counters on target creature you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Landfall"
+   ],
+   "collector_number": "218",
+   "set": "trk"
+  },
+  {
+   "name": "Temporal Conqueror",
+   "oracle_id": "306002e6-d68d-47ad-879b-e6060efebeff",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Na'kuhl Warrior",
+   "oracle_text": "When this creature enters, mill three cards. Then return a land card from your graveyard to your hand. If you can't, create a Treasure token. (To mill three cards, put the top three cards from your library into your graveyard.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Treasure",
+    "Mill"
+   ],
+   "collector_number": "219",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Test of Courage",
+   "oracle_id": "101b2387-58a1-4ef9-8395-0024713e217b",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Alter the Past — Exile target card from a graveyard. You gain 2 life.\n• Obliterate the Transwarp Network — Destroy target artifact or enchantment with mana value 3 or less.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Obliterate the Transwarp Network",
+    "Alter the Past"
+   ],
+   "collector_number": "220",
+   "set": "trk"
+  },
+  {
+   "name": "U.S.S. Discovery, at Black Alert",
+   "oracle_id": "13dbfe3f-1e04-4c4f-953c-7c949dba9d33",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Whenever U.S.S. Discovery enters or attacks, discover 5. (Exile cards from the top of your library until you exile a nonland card with mana value 5 or less. Cast it without paying its mana cost or put it into your hand. Put the rest on the bottom in a random order.)\nStation\n6+ | Flying",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Station",
+    "Discover"
+   ],
+   "collector_number": "221",
+   "set": "trk"
+  }
+ ]
+}

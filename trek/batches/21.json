@@ -1,0 +1,267 @@
+{
+ "batch": 21,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Hologram Stalker",
+   "oracle_id": "8f91e7aa-a2d4-42ed-a959-3acd621679a5",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Hirogen Warrior",
+   "oracle_text": "When this creature enters, return target permanent card from your graveyard to your hand.\nWhenever a card leaves your graveyard, create a 3/3 colorless Illusion artifact creature token. This ability triggers only once each turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "202",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Illusion",
+     "type_line": "Token Artifact Creature — Illusion",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "I'm a Doctor, Not a . . .",
+   "oracle_id": "ad1d8eca-e3bf-479f-a442-bcd8c31bfe7f",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Put a +1/+1 counter on target creature you control. Untap it. Until end of turn, it gets +1/+1 and becomes a Doctor. (It loses all other creature types.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "203",
+   "set": "trk"
+  },
+  {
+   "name": "Jadzia Dax, Living Legacy",
+   "oracle_id": "67601646-f906-4824-9269-3cf89766d25f",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Trill Scientist",
+   "oracle_text": "At the beginning of your first main phase, put a +1/+1 counter on Jadzia Dax, then add an amount of {G} equal to the number of counters on her.\nTransfer Symbiont — {2}{G}, Discard this card: Put two +1/+1 counters on target creature.",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Transfer Symbiont"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "204",
+   "set": "trk"
+  },
+  {
+   "name": "Jake Sisko, War Correspondent",
+   "oracle_id": "f0c1c97f-b8e1-49ec-b369-3d2694c33f29",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Citizen",
+   "oracle_text": "Landfall — Whenever a land you control enters, you gain 1 life. If this is the second time this ability has resolved this turn, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Investigate",
+    "Landfall"
+   ],
+   "collector_number": "205",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "MACO Strike Team",
+   "oracle_id": "0d60cfb1-dd77-4013-b862-41e95fdb53ae",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Whenever a creature you control becomes the target of a spell or ability an opponent controls, create a tapped 1/1 red Officer creature token.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "206",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Moopsy",
+   "oracle_id": "89b9efc8-d1cd-4b2a-acf3-4f0dd1629167",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Deathtouch\n{2}: This creature gains reach until end of turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "207",
+   "set": "trk"
+  },
+  {
+   "name": "Mugato",
+   "oracle_id": "eb9a3b52-62ad-467f-b62a-0273ceee48e5",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Ape Beast",
+   "oracle_text": "Reach, vigilance, deathtouch",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Deathtouch"
+   ],
+   "collector_number": "208",
+   "set": "trk"
+  },
+  {
+   "name": "Neelix, Moral Support",
+   "oracle_id": "7fba522b-a292-4d1f-9999-f787ba2d5fd1",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Talaxian Advisor",
+   "oracle_text": "When Neelix enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you gain life, put a +1/+1 counter on Neelix.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "209",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Photosynthetic Physician",
+   "oracle_id": "08787942-456f-4c71-a821-1c90b5639ca1",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Plant Doctor",
+   "oracle_text": "Reach\n{G}, Exile this card from your graveyard: Create a 1/1 red Officer creature token. Activate only as a sorcery.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "210",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Rok-Tahk, Budding Scientist",
+   "oracle_id": "ef919269-043f-45ab-a5da-403cdaa4da23",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Brikar Scientist",
+   "oracle_text": "Creatures you control have \"{T}: Add {G}{G}.\"\nWhen Rok-Tahk enters, create Murf, a legendary 0/1 green Ooze Slug creature token with indestructible.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "211",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Murf",
+     "type_line": "Token Legendary Creature — Ooze Slug",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

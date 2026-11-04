@@ -1,0 +1,237 @@
+{
+ "batch": 29,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Ni'Var Science Academy",
+   "oracle_id": "45bf09bb-4141-4166-bdae-6dac39e7f316",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control two or more other lands.\nWhen this land enters untapped, choose one —\n• Target creature gains flying until end of turn.\n• Surveil 1.\n{T}: Add {U}.",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "U"
+   ],
+   "collector_number": "287",
+   "set": "trk"
+  },
+  {
+   "name": "Orion",
+   "oracle_id": "47e3aa22-8806-408f-b93e-0d0b800866f6",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {R} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G",
+    "R"
+   ],
+   "collector_number": "288",
+   "set": "trk"
+  },
+  {
+   "name": "Q Continuum",
+   "oracle_id": "457cf958-8129-4bf6-b4d5-211eb8c58763",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control two or more other lands.\nWhen this land enters untapped, choose one —\n• Target creature gets +1/+1 and gains vigilance until end of turn.\n• Surveil 1.\n{T}: Add {G}.",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "290",
+   "set": "trk"
+  },
+  {
+   "name": "Qo'noS",
+   "oracle_id": "cab718af-8e6f-4766-856e-3a61ba98f94d",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {R}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "R"
+   ],
+   "collector_number": "291",
+   "set": "trk"
+  },
+  {
+   "name": "Quark's Bar",
+   "oracle_id": "800d0f33-31c9-43da-a649-8860646eca1f",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control two or more other lands.\nWhen this land enters untapped, choose one —\n• This land deals 1 damage to each opponent.\n• Surveil 1.\n{T}: Add {R}.",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "collector_number": "292",
+   "set": "trk"
+  },
+  {
+   "name": "Risa",
+   "oracle_id": "365a4644-74f4-4af9-81ab-0d328ca5edce",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {G} or {W}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G",
+    "W"
+   ],
+   "collector_number": "293",
+   "set": "trk"
+  },
+  {
+   "name": "Romulus",
+   "oracle_id": "14c4ad24-7f38-409b-8ef0-341f233982da",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Planet",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {U} or {B}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "U"
+   ],
+   "collector_number": "294",
+   "set": "trk"
+  },
+  {
+   "name": "Spatial Anomaly",
+   "oracle_id": "a4f31512-a91c-42e0-9929-5069386c3c71",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{4}{R}, {T}, Sacrifice this land: It deals 2 damage to target creature. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "296",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Starfleet Academy",
+   "oracle_id": "de8ebef9-fa0e-42df-a1bc-5c4b86d1bdd1",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Legendary Land",
+   "oracle_text": "{T}: Add {C}.\nFederation — {5}, {T}: Choose a color. Add an amount of mana of that color equal to the number of creature types among non-Borg creatures you control.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "297",
+   "set": "trk"
+  },
+  {
+   "name": "Subspace Anomaly",
+   "oracle_id": "1a28a83a-de27-4aaa-b35f-1e7075fc1e43",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{4}{W}, {T}, Sacrifice this land: Create two 1/1 red Officer creature tokens. Create a tapped Planet land token named New Planet with \"{T}: Add one mana of any color.\"",
+   "colors": [],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "300",
+   "set": "trk",
+   "related": [
+    {
+     "name": "New Planet",
+     "type_line": "Token Land — Planet",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

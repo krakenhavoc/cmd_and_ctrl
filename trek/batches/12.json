@@ -1,0 +1,244 @@
+{
+ "batch": 12,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "A Good Day to Die",
+   "oracle_id": "4c4559a5-a7a4-4a40-8a8f-e7375c741748",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +2/+0 until end of turn. When that creature dies this turn, you draw a card.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "111",
+   "set": "trk"
+  },
+  {
+   "name": "Grand Nagus Zek",
+   "oracle_id": "654ce8c5-b329-4046-9728-7fa276bc8695",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Ferengi Noble",
+   "oracle_text": "Grand Nagus Zek gets +1/+1 for each Treasure you control.\nWhenever another creature dies, create a Treasure token. This ability triggers only once each turn. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "112",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Gul Dukat, Colonial Prefect",
+   "oracle_id": "f41f0290-0f9d-4c51-935e-f69d2120e4a7",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Cardassian Rogue",
+   "oracle_text": "Menace\nAt the beginning of each end step, each opponent loses life equal to the life that player lost this turn. You gain life equal to the life lost this way. (Damage causes loss of life.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "113",
+   "set": "trk"
+  },
+  {
+   "name": "He's Dead, Jim",
+   "oracle_id": "ee7150d1-8b38-4387-9b9c-a40180430170",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Destroy target creature. Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "114",
+   "set": "trk"
+  },
+  {
+   "name": "Hive Mind Coprocessor",
+   "oracle_id": "8e6ae6ed-065c-47bd-a3c6-69b2608e7ddc",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have \"Whenever this creature deals combat damage to a player, you may pay 1 life. If you do, draw a card.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "115",
+   "set": "trk"
+  },
+  {
+   "name": "Impossible Choice",
+   "oracle_id": "e277ed07-2113-4465-a45c-a64490814c1d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Surgical Separation — Destroy target creature. Its controller creates two 1/1 red Officer creature tokens.\n• Remain Fused — You draw two cards and each player loses 2 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surgical Separation",
+    "Remain Fused"
+   ],
+   "collector_number": "116",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "In the Pale Moonlight",
+   "oracle_id": "90c78f79-982f-4acd-a8ba-0c6ce115a248",
+   "layout": "saga",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Each opponent sacrifices a nontoken creature of their choice.\nII — Investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nIII — You may sacrifice an artifact or creature. If you do, create two 2/2 black Romulan creature tokens.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "117",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Romulan",
+     "type_line": "Token Creature — Romulan",
+     "component": "token"
+    },
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Kai Winn, Faithless Leader",
+   "oracle_id": "16a5ed42-ee86-4dcb-b8ea-239ac2b13d67",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Bajoran Cleric",
+   "oracle_text": "As Kai Winn enters, choose a nonland card name.\nWhenever an opponent casts a spell with the chosen name or activates an ability of a source with the chosen name, that player loses 3 life.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "118",
+   "set": "trk"
+  },
+  {
+   "name": "Khan, Vengeful Heart",
+   "oracle_id": "d2a86d0c-a4fe-434c-a45c-812cdec9169f",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "When Khan enters, you may sacrifice another creature or artifact. If you do, draw two cards.\nYou may cast this card from exile.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "119",
+   "set": "trk"
+  },
+  {
+   "name": "Obsidian Order Operative",
+   "oracle_id": "7145e1b7-b991-4651-b21d-0620cb017090",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Cardassian Officer Spy",
+   "oracle_text": "Whenever you face a dilemma, each opponent loses 1 life and you gain 1 life. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Face a dilemma"
+   ],
+   "collector_number": "120",
+   "set": "trk"
+  }
+ ]
+}

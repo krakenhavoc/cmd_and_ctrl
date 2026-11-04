@@ -1,0 +1,197 @@
+{
+ "batch": 42,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "K'Vort-Class Raider",
+   "oracle_id": "a52d7ab2-a750-4c3a-9f0c-999121aa81af",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "During your turn, this Spacecraft and creatures you control have hexproof.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 4+.)\n4+ | Flying, menace, haste",
+   "power": "5",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "116",
+   "set": "trc"
+  },
+  {
+   "name": "Planet Killer",
+   "oracle_id": "4c2c8cc6-bb90-468a-867b-db56f4eb7e59",
+   "layout": "normal",
+   "mana_cost": "{8}",
+   "cmc": 8.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Flying, indestructible\nThis creature attacks each combat if able.\nWhenever this creature deals combat damage to a player, put a +1/+1 counter on it for each land that player controls.",
+   "power": "9",
+   "toughness": "9",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flying",
+    "Indestructible"
+   ],
+   "collector_number": "117",
+   "set": "trc"
+  },
+  {
+   "name": "Queen's Diamond",
+   "oracle_id": "44837c9b-971a-44b6-8e55-301cebc3a361",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "{T}: Choose a color. Add one mana of that color for each charge counter on Queen's Diamond. Spend this mana only to cast your commander.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n8+ | Flying, vigilance, haste",
+   "power": "5",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "118",
+   "set": "trc"
+  },
+  {
+   "name": "Reconnaissance Partition",
+   "oracle_id": "c52e4704-6edb-477f-b80c-ea8146d4385f",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "This creature enters with two charge counters on it.\n{T}, Remove a counter from this creature: Choose one —\n• Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n• Draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "119",
+   "set": "trc"
+  },
+  {
+   "name": "S.S. Botany Bay",
+   "oracle_id": "8284c6ae-d86e-4f72-81da-7d3f9861fd12",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "{T}: Each opponent exiles a card from their graveyard. You may exile a card from your graveyard.\nStation\n8+ | Flying\nWhenever S.S. Botany Bay deals combat damage to a player, return each creature card you own exiled with it to the battlefield.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "120",
+   "set": "trc"
+  },
+  {
+   "name": "Starfleet Communicator",
+   "oracle_id": "d5560aaa-7459-498f-b3c5-e096d8c75b51",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Communicator Equipment",
+   "oracle_text": "When you cast this spell, copy it. (The copy becomes a token.)\nEquipped creature has \"Whenever this creature attacks, draw X cards, then you may put up to X land cards from your hand onto the battlefield tapped, where X is the number of other creatures you control with a Communicator attached to them.\"\nEquip {1}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "121",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Starship Enterprise",
+   "oracle_id": "9b627fa4-af4c-482b-b1cf-2ad15938602c",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Landfall — Whenever a land you control enters, put four charge counters on Starship Enterprise.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 16+.)\n16+ | Flying\nWhenever Starship Enterprise deals combat damage to a player, draw that many cards.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station",
+    "Landfall"
+   ],
+   "collector_number": "122",
+   "set": "trc"
+  },
+  {
+   "name": "The Sword of Kahless",
+   "oracle_id": "3e301803-49ab-4fce-82ae-945a39c458b5",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +2/+2 and has \"Whenever this creature attacks, look at the top five cards of your library. You may put a Klingon or Warrior creature card from among them onto the battlefield. Put the rest on the bottom of your library in a random order.\"\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "123",
+   "set": "trc"
+  },
+  {
+   "name": "U.S.S. Defiant, Mirror Migrant",
+   "oracle_id": "c7c529c4-08eb-480b-a699-0d783215419b",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Flash\nWhen U.S.S. Defiant enters, it and up to one target creature you control phase out. (Treat them and anything attached to them as though they don't exist until your next turn.)\nStation\n8+ | Flying",
+   "power": "5",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station",
+    "Flash"
+   ],
+   "collector_number": "124",
+   "set": "trc"
+  },
+  {
+   "name": "U.S.S. Defiant, Tough Little Ship",
+   "oracle_id": "87b8fef3-f40e-44a9-afd5-31d3917b1d59",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When U.S.S. Defiant enters, destroy up to one target artifact or enchantment.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 5+.)\n5+ | Flying, hexproof",
+   "power": "7",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "125",
+   "set": "trc"
+  }
+ ]
+}

@@ -1,0 +1,211 @@
+{
+ "batch": 3,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Hologram Janeway",
+   "oracle_id": "b572be16-ad13-4f9f-bcf6-085f81e5292c",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Illusion Officer",
+   "oracle_text": "Whenever you attack while creatures you control have total power 8 or greater, put a +1/+1 counter on target creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "21",
+   "set": "trk"
+  },
+  {
+   "name": "Malfunctioning Holodeck",
+   "oracle_id": "3f04c38b-d6bd-405f-b69c-009df87801dd",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Ward {2} (Whenever this artifact becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nWhen this artifact enters, exile target nonland permanent an opponent controls until this artifact leaves the battlefield.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "22",
+   "set": "trk"
+  },
+  {
+   "name": "The Measure of a Man",
+   "oracle_id": "727e98cc-b295-47f9-9d3d-bcf38c9f56d2",
+   "layout": "saga",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Exile up to one target nontoken artifact or creature.\nII — Investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nIII — Return the exiled card to the battlefield under its owner's control. You gain 2 life.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "23",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Miles O'Brien, Transporter Ops",
+   "oracle_id": "31e3f39f-8b18-4316-984f-4d57d2d480ca",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "When Miles O'Brien enters, return up to one other target creature or artifact you control to its owner's hand.\nAt the beginning of each end step, if a permanent was returned to your hand from the battlefield this turn, draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "24",
+   "set": "trk"
+  },
+  {
+   "name": "The Needs of the Many",
+   "oracle_id": "984e0426-10ba-4c17-b26e-ce21100ec398",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nCreatures you control gain hexproof and indestructible until end of turn. You gain hexproof until end of turn. Prevent all damage that would be dealt to you this turn. Exile The Needs of the Many.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "25",
+   "set": "trk"
+  },
+  {
+   "name": "Oberth-Class Starship",
+   "oracle_id": "fb5e53cf-e12e-469b-b9ea-9debc967e77e",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "When this Spacecraft enters, search your library for a basic Plains card, reveal it, put it into your hand, then shuffle.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "26",
+   "set": "trk"
+  },
+  {
+   "name": "Peace in Our Time",
+   "oracle_id": "b19ce6f2-7778-4779-8173-973eb7ee0b02",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of combat on each player's turn, that player may draw a card. If they do, they can't attack this turn and you put a peace counter on this enchantment.\nAt the beginning of your upkeep, if this enchantment has twelve or more peace counters on it, you win the game.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "27",
+   "set": "trk"
+  },
+  {
+   "name": "Pet Sehlat",
+   "oracle_id": "509f255f-c3ee-4836-a583-d018060d0c4d",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bear",
+   "oracle_text": "This creature can't attack alone.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "28",
+   "set": "trk"
+  },
+  {
+   "name": "Picard, Leading by Example",
+   "oracle_id": "4b36f8e2-ba7d-4bc7-890f-dd6ab73eef17",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "{1}, {T}: Another target creature gets +X/+X until end of turn, where X is Picard's power. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "29",
+   "set": "trk"
+  },
+  {
+   "name": "Primary Unimatrix Adjunct",
+   "oracle_id": "be3dd0c8-32c2-4a56-9290-1fc9e366bae2",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have double strike.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "30",
+   "set": "trk"
+  }
+ ]
+}

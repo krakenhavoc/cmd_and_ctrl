@@ -1,0 +1,235 @@
+{
+ "batch": 7,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Gwyndala, the Progeny",
+   "oracle_id": "852c38fe-8bfa-420b-b961-7b91af9b38d1",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Vau-N'Akat Advisor",
+   "oracle_text": "When Gwyndala enters, create a colorless Equipment artifact token named Neuroflux Heirloom with \"Equipped creature gets +1/+1\" and equip {2}. Attach it to Gwyndala.\n{2}: Each Equipment token you control becomes a copy of target Equipment you control until end of turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "61",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Neuroflux Heirloom",
+     "type_line": "Token Artifact — Equipment",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Highly Illogical",
+   "oracle_id": "38c43f30-0e01-4dcd-88fc-f1de318a5e29",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Kicker {1}{U} (You may pay an additional {1}{U} as you cast this spell.)\nCounter target spell with mana value 2 or less. If this spell was kicked, instead counter target spell.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "62",
+   "set": "trk"
+  },
+  {
+   "name": "H.M.S. Bounty, Unlikely Timeship",
+   "oracle_id": "eaa47a9b-79ad-4f42-a98b-dcf76138207c",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When H.M.S. Bounty enters, you may search your library for a Whale card, reveal it, put it into your hand, then shuffle.\nStation\n8+ | Flying\nWhenever H.M.S. Bounty deals combat damage to a player, draw a card. If you control a Whale and haven't begun an extra turn this game, take an extra turn after this one.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "63",
+   "set": "trk"
+  },
+  {
+   "name": "Hoshi Sato, Exolinguist",
+   "oracle_id": "39426cd1-8c0d-4ec6-8747-f0693080f8f2",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Scientist",
+   "oracle_text": "Federation — When Hoshi Sato enters, look at the top X cards of your library, where X is the number of creature types among non-Borg creatures you control. Put one of them into your hand and the rest on the bottom of your library in a random order.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "trk"
+  },
+  {
+   "name": "Humpback Whales",
+   "oracle_id": "a7285536-6cc1-448e-839a-606d585fbd9d",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Whale",
+   "oracle_text": "Vigilance, ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Landcycling",
+    "Basic landcycling",
+    "Ward",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "65",
+   "set": "trk"
+  },
+  {
+   "name": "Interstellar Effigy",
+   "oracle_id": "76f52fad-8db2-42f0-8e12-f4341e4c8680",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "When this creature enters, return target creature an opponent controls to its owner's hand.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "trk"
+  },
+  {
+   "name": "Jett Reno, Problem Solver",
+   "oracle_id": "492ba01e-c0fa-414c-95fd-df5b59212d2a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Whenever Jett Reno becomes tapped, surveil 1. If her power is 4 or greater, instead draw a card.\nWhenever you face a dilemma, put a +1/+1 counter on Jett Reno. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Face a dilemma"
+   ],
+   "collector_number": "67",
+   "set": "trk"
+  },
+  {
+   "name": "Kobayashi Maru Scenario",
+   "oracle_id": "2b7ac3e8-0a7d-4b8a-a6a6-4cacc9b4f9de",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your upkeep, choose one that hasn't been chosen —\n• Hail — Return up to one target creature an opponent controls with mana value 3 or less to its owner's hand.\n• Sensors — Draw two cards.\n• Transport — Create two 1/1 red Officer creature tokens.\n• Abandon Ship — You lose the game.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Sensors",
+    "Abandon Ship",
+    "Hail",
+    "Transport"
+   ],
+   "collector_number": "68",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Lieutenant Commander Data",
+   "oracle_id": "ebe988c1-96e0-4a99-86b5-d948837545de",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Android Scientist",
+   "oracle_text": "Whenever a player casts a noncreature spell, put a +1/+1 counter on Lieutenant Commander Data.\n{1}, Remove three counters from among creatures you control: Draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "69",
+   "set": "trk"
+  },
+  {
+   "name": "Lt. Cmdr. Geordi La Forge",
+   "oracle_id": "cb3b4cfe-fd8d-4a26-905e-8ccd30f033a3",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "If you would put one or more charge counters on an artifact you control, put twice that many charge counters on that artifact instead.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "70",
+   "set": "trk"
+  }
+ ]
+}

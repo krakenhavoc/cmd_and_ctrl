@@ -1,0 +1,212 @@
+{
+ "batch": 6,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Consider the Prime Directive",
+   "oracle_id": "9f1d416c-60de-4796-a513-097d1d9a2305",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Interfere — Counter target spell unless its controller pays {3}.\n• Observe — Tap up to one target creature and put a stun counter on it. Draw a card. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Observe",
+    "Interfere"
+   ],
+   "collector_number": "51",
+   "set": "trk"
+  },
+  {
+   "name": "Data, New Life",
+   "oracle_id": "010630c6-5d7b-43e0-90a9-3e3cef9a4e6b",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact Creature — Android Scientist",
+   "oracle_text": "Whenever you draw a card, put a +1/+1 counter on Data.",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "52",
+   "set": "trk"
+  },
+  {
+   "name": "Deep Space Scan",
+   "oracle_id": "5dabb7c1-8937-42b0-87c6-1cc7af46aaae",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Strange new worlds — Draw X cards, where X is the number of differently named lands you control. You have no maximum hand size until your next turn.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "53",
+   "set": "trk"
+  },
+  {
+   "name": "Dominion Saboteur",
+   "oracle_id": "af03149b-9307-443c-aefa-69bda52607ba",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "You may have this creature enter as a copy of any artifact or creature on the battlefield, except it isn't legendary. If you do, it enters with additional counters on it equal to the same number and kinds of counters the copied permanent has on it.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "54",
+   "set": "trk"
+  },
+  {
+   "name": "Emergency Holographic Crew",
+   "oracle_id": "0b74d7de-8b9e-4a75-870e-230536fa8d79",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Illusion Officer",
+   "oracle_text": "When this creature enters, choose one —\n• Return target Spacecraft card from your graveyard to your hand.\n• Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "55",
+   "set": "trk"
+  },
+  {
+   "name": "Energize",
+   "oracle_id": "275257ea-3c72-4ca9-b2fc-e50efa071bdb",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return target creature an opponent controls to its owner's hand.\nBeam me up {3}{U} (You may cast this card from your graveyard for {3}{U} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "56",
+   "set": "trk"
+  },
+  {
+   "name": "Ensign Pavel Chekov",
+   "oracle_id": "7d7e232f-e4f9-41db-a2d9-cfe88721b7a9",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Pilot",
+   "oracle_text": "Strange new worlds — When Ensign Chekov enters, each opponent exiles the top X cards of their library, where X is the number of differently named lands you control. For each opponent, choose a land card that player owns exiled this way. You may play the chosen cards for as long as they remain exiled.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Strange new worlds"
+   ],
+   "collector_number": "57",
+   "set": "trk"
+  },
+  {
+   "name": "Enterprise NX-01",
+   "oracle_id": "947729a8-f8b0-4e08-9a87-6602af0e3c0a",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When Enterprise NX-01 enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying, vigilance",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "58",
+   "set": "trk"
+  },
+  {
+   "name": "Federation Probe",
+   "oracle_id": "6fc7401f-66fe-4d17-be2f-afcf892be740",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Flying\nWhen this creature enters, choose one —\n• Target creature gets +1/+1 until end of turn.\n• Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "59",
+   "set": "trk"
+  },
+  {
+   "name": "Guidance Failure",
+   "oracle_id": "6c18f853-684b-42f6-8bc6-e86596131ab1",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {1} less to cast if it targets an attacking creature.\nTarget creature or Spacecraft's owner puts it on their choice of the top or bottom of their library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "60",
+   "set": "trk"
+  }
+ ]
+}

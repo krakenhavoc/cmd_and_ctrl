@@ -1,0 +1,230 @@
+{
+ "batch": 14,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Tal Shiar Operative",
+   "oracle_id": "53641cda-7093-4fed-97f1-380f771e00b0",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Romulan Officer Spy",
+   "oracle_text": "Whenever this creature attacks, choose one —\n• Target creature you control gains deathtouch until end of turn.\n• Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "131",
+   "set": "trk"
+  },
+  {
+   "name": "Tell Me What You See",
+   "oracle_id": "abfdfae5-61aa-42d6-9c8e-83fda59de233",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, target opponent may have you draw a card. If they don't, they lose 4 life and you surveil 1.\nWhenever you face a dilemma, you may return this enchantment to its owner's hand. (You face a dilemma as you choose one or more modes for a spell or ability.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil",
+    "Face a dilemma"
+   ],
+   "collector_number": "132",
+   "set": "trk"
+  },
+  {
+   "name": "Tenacious Drone",
+   "oracle_id": "af6351a9-ac01-4fed-9ea9-a352d21a8312",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "When this creature dies, create a 1/1 colorless Borg artifact creature token.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "133",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Test of Loyalty",
+   "oracle_id": "6cb1c3fb-033a-4de5-ad07-69d9ad0ca5ae",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Plain, Simple Garak — Exile target card from a graveyard. Draw a card.\n• Of the Obsidian Order — Return target creature card from your graveyard to your hand.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Of the Obsidian Order",
+    "Plain, Simple Garak"
+   ],
+   "collector_number": "134",
+   "set": "trk"
+  },
+  {
+   "name": "U.S.S. Reliant, From Hell's Heart",
+   "oracle_id": "edaa05ba-8b15-4156-b725-1e0c418a9ae5",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Whenever U.S.S. Reliant enters or deals combat damage to a player, return target creature card with mana value 4 or less from your graveyard to the battlefield with a finality counter on it.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 10+.)\n10+ | Flying",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "135",
+   "set": "trk"
+  },
+  {
+   "name": "Vengeance Mission",
+   "oracle_id": "eae07535-487b-48ac-b99e-b4b62286254c",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature dies, put a quest counter on this enchantment. Target opponent loses 1 life. That player loses 2 life instead if there are seven or more quest counters on this enchantment.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "136",
+   "set": "trk"
+  },
+  {
+   "name": "Academy Instructor",
+   "oracle_id": "8802b7f0-1ed1-4872-9939-182afb8441ca",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bolian Officer",
+   "oracle_text": "This creature gets +1/+0 for each Officer token you control.\nWhenever you cast a noncreature spell, create a 1/1 red Officer creature token.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "137",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Beckett Mariner, Impetuous Ensign",
+   "oracle_id": "1033a0cb-1a00-46c4-83d5-68a6eac85feb",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "First strike\nReckless Behavior — Whenever Beckett Mariner becomes tapped, put a promotion counter on her. Then if there are three or more promotion counters on her, remove those counters and she deals 2 damage to each opponent.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reckless Behavior",
+    "First strike"
+   ],
+   "collector_number": "138",
+   "set": "trk"
+  },
+  {
+   "name": "Boarding Action",
+   "oracle_id": "f9f70fb6-953e-40e8-a15d-ea3ee62d09e3",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 2/1 red Klingon Warrior creature token with haste.\nBeam me up {2}{R} (You may cast this card from your graveyard for {2}{R} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "139",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Brazen Bluff",
+   "oracle_id": "9ac20f38-adc4-40a9-95c9-bbdc689b928b",
+   "layout": "normal",
+   "mana_cost": "{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose target noncreature spell an opponent controls. That player may exile it. If they don't, you may cast a noncreature spell from your hand without paying its mana cost.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "trk"
+  }
+ ]
+}

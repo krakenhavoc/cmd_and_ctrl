@@ -1,0 +1,220 @@
+{
+ "batch": 36,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Assimilate the Wounded",
+   "oracle_id": "2147101f-d24a-45bb-a141-b69ef7841f53",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "For each opponent, assimilate up to one target creature card from that player's graveyard that was put there from the battlefield this turn. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Assimilate"
+   ],
+   "collector_number": "55",
+   "set": "trc"
+  },
+  {
+   "name": "Assimilation Assessor",
+   "oracle_id": "48848570-00c4-4a89-a84c-e3df47a8b0d2",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "When this creature enters, exile target opponent's graveyard.\nWhenever this creature attacks, assimilate a creature card exiled with it. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Assimilate"
+   ],
+   "collector_number": "56",
+   "set": "trc"
+  },
+  {
+   "name": "Battle of Wolf 359",
+   "oracle_id": "bb203cf5-1545-43c7-8278-3720616c22f4",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "All nonartifact creatures get -X/-X until end of turn, where X is the number of artifact creatures you control.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "57",
+   "set": "trc"
+  },
+  {
+   "name": "Blood-Sport Champion",
+   "oracle_id": "9d08cc9b-2b26-49de-80aa-962a358bfc1a",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Kicker {2} (You may pay an additional {2} as you cast this spell.)\nDeathtouch\nWhen this creature enters, if it was kicked, other creatures you control gain deathtouch until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Kicker",
+    "Deathtouch"
+   ],
+   "collector_number": "58",
+   "set": "trc"
+  },
+  {
+   "name": "Extraction Integrant",
+   "oracle_id": "24964ce8-1eec-49b3-9db1-b895bc686ec5",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have menace and \"Whenever a creature blocks this creature, that creature gets -1/-1 until end of turn.\"",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "59",
+   "set": "trc"
+  },
+  {
+   "name": "Kurn, Son of Mogh",
+   "oracle_id": "2a078705-4afe-4887-94cc-f12f4690fb01",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Deathtouch\nBattlefront — Whenever Kurn attacks, you draw X cards and lose X life, where X is the number of opponents you attacked this turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Battlefront",
+    "Deathtouch"
+   ],
+   "collector_number": "60",
+   "set": "trc"
+  },
+  {
+   "name": "The Promise of Kahless",
+   "oracle_id": "a5866d5e-ee03-4bca-9964-0d391eae9011",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You may sacrifice a Klingon or Warrior. If you do, return all other Klingon and Warrior creature cards from your graveyard to the battlefield.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "61",
+   "set": "trc"
+  },
+  {
+   "name": "Reclamation Specialist",
+   "oracle_id": "7c348d24-af26-4171-bfa7-44ce9bd36f06",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "{1}, Sacrifice an artifact creature: Draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "62",
+   "set": "trc"
+  },
+  {
+   "name": "The Beacon of Kahless",
+   "oracle_id": "66fc3c1e-acea-46eb-8af8-b0740f006add",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "{T}: Add one mana of any color.\nBattlefront — {T}: Choose a color. Add an amount of mana of that color equal to the number of opponents you attacked this turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Battlefront"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "64",
+   "set": "trc"
+  },
+  {
+   "name": "Ferocious Colonist",
+   "oracle_id": "fd549938-8919-45ac-bf52-92492d9d1d49",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Klingon Citizen",
+   "oracle_text": "Double strike\nMelee (Whenever this creature attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Melee",
+    "Double strike"
+   ],
+   "collector_number": "65",
+   "set": "trc"
+  }
+ ]
+}

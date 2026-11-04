@@ -1,0 +1,220 @@
+{
+ "batch": 13,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Organic Avulsion Unit",
+   "oracle_id": "f1e28022-b06b-4efb-9f85-c36d8302ef99",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "{2}: Artifact creatures you control gain menace until end of turn. (A creature with menace can't be blocked except by two or more creatures.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "121",
+   "set": "trk"
+  },
+  {
+   "name": "Overflow Submatrix",
+   "oracle_id": "523c244b-7292-40c7-8b12-27106fffe63f",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Once during each of your turns, you may cast an artifact creature spell from your graveyard. If you cast a spell this way, that artifact creature enters with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "122",
+   "set": "trk"
+  },
+  {
+   "name": "Pattern Buffer Preservation",
+   "oracle_id": "690d0d8f-48b9-40a6-b881-6f17ac19bf3b",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top two cards of your library. Put one of them into your hand and the other into your graveyard.\nBeam me up {1}{B} (You may cast this card from your graveyard for {1}{B} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "123",
+   "set": "trk"
+  },
+  {
+   "name": "Relentless Drednok",
+   "oracle_id": "98cbac1d-7896-4c63-a265-03bc5d670fa6",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Lifelink\n{2}{B}, Exile this card from your graveyard: You draw a card and lose 1 life.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "124",
+   "set": "trk"
+  },
+  {
+   "name": "Resistance Is Futile",
+   "oracle_id": "49975689-85f8-4221-bb11-3d3f68a1a7ac",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Destroy target nonartifact creature.\n• Return target artifact creature card with mana value 3 or less from your graveyard to the battlefield.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "125",
+   "set": "trk"
+  },
+  {
+   "name": "Rogue Artificial Intelligence",
+   "oracle_id": "4849f2f8-0c0e-470d-a4f5-76547a9570a0",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "When this creature enters, choose one —\n• You gain 3 life.\n• Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil",
+    "Landcycling",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "126",
+   "set": "trk"
+  },
+  {
+   "name": "Salt Vampire",
+   "oracle_id": "31c7453e-33b8-4eb6-abac-28cdb35fb993",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Vampire Shapeshifter",
+   "oracle_text": "Lifelink\nWhen this creature enters, look at target opponent's hand. You may choose a nonland card from it. If you do, that player exiles that card, then draws a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "127",
+   "set": "trk"
+  },
+  {
+   "name": "Sela, Tal Shiar Paradox",
+   "oracle_id": "0cbf0f7a-7f5e-4819-9a9f-f655f92fd5f1",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Romulan Human Rogue",
+   "oracle_text": "Whenever Sela attacks, exile up to one target card from a graveyard.\nWhenever one or more cards leave your graveyard, create a tapped 2/2 black Romulan creature token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "128",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Romulan",
+     "type_line": "Token Creature — Romulan",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Storied Veteran",
+   "oracle_id": "b1012ac3-77f8-4384-b947-84c094d6b59e",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Klingon Advisor",
+   "oracle_text": "This creature can't block.\nYou may cast this card from your graveyard. If you do, it enters with a finality counter on it.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "129",
+   "set": "trk"
+  },
+  {
+   "name": "Stray from History",
+   "oracle_id": "adbbb968-5721-427c-a15a-320d49ab4c3e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Rewrite the Past — Return one or two target creature and/or Spacecraft cards from your graveyard to your hand.\n• Repair the Timeline — Target opponent reveals their hand. You choose a nonland card from it. Exile that card.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Rewrite the Past",
+    "Repair the Timeline"
+   ],
+   "collector_number": "130",
+   "set": "trk"
+  }
+ ]
+}

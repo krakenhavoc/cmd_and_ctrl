@@ -1,0 +1,247 @@
+{
+ "batch": 17,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Perils of the Past",
+   "oracle_id": "f1f77fb4-2c83-4cbf-894e-624abe6cd95f",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Use the Relic — Target creature gets +3/+2 until end of turn.\n• Destroy the Relic — Destroy target artifact.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Destroy the Relic",
+    "Use the Relic"
+   ],
+   "collector_number": "161",
+   "set": "trk"
+  },
+  {
+   "name": "Planetary Bombardment",
+   "oracle_id": "2c2fdeff-a0c6-44cb-9603-4a9865f62985",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Planetary Bombardment deals 2 damage to target creature. Planetary Bombardment deals 4 damage to that creature instead if a creature died this turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "162",
+   "set": "trk"
+  },
+  {
+   "name": "Planetary Patrol",
+   "oracle_id": "fba54c2d-a664-4e4c-b9d4-e24cf2523ab9",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Scout",
+   "oracle_text": "Landfall — Whenever a land you control enters, this creature gets +1/+1 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "163",
+   "set": "trk"
+  },
+  {
+   "name": "Plasma Cascade",
+   "oracle_id": "46ce40e9-b7fb-4f40-a7ab-f8a2234d1d63",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Plasma Cascade deals 3 damage to any target. You may discard a card. If you do, draw a card.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "164",
+   "set": "trk"
+  },
+  {
+   "name": "Q, Stacking the Deck",
+   "oracle_id": "6866f0a4-5fe6-40d9-bbfc-6f116f4e415d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Q",
+   "oracle_text": "When Q enters, shuffle your library, then exile cards from the top of your library until you exile a nonland card. That nonland card gains \"Exile a card from your hand: Create a copy of this card. You may cast the copy. Activate only during your turn and only if this card is exiled.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "165",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Quark, Humble Proprietor",
+   "oracle_id": "61703e94-cb57-44d8-b37b-7b14b3cfd86d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Ferengi Rogue",
+   "oracle_text": "You can't sacrifice Treasure tokens.\nAt the beginning of each upkeep, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "166",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Ravenous Cosmozoan",
+   "oracle_id": "5cbe6066-07f8-45de-b3b4-b8590d111b0d",
+   "layout": "normal",
+   "mana_cost": "{5}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Fish",
+   "oracle_text": "This spell costs {1} less to cast for each noncreature, nonland card in your graveyard.\nFlying, haste",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Haste"
+   ],
+   "collector_number": "167",
+   "set": "trk"
+  },
+  {
+   "name": "Red Alert!",
+   "oracle_id": "4636afb5-453a-4f27-8916-1cbc32459ba6",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {2} less to cast if a creature is attacking you.\nCreatures you control get +2/+0 until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "169",
+   "set": "trk"
+  },
+  {
+   "name": "Sarcophagus, Ship of the Dead",
+   "oracle_id": "22b86863-c992-405b-949a-bdf8859884ef",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Other creatures you control get +1/+0.\nWhenever a creature dies, if Sarcophagus isn't a creature, put a charge counter on it.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 10+.)\n10+ | Flying",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "170",
+   "set": "trk"
+  },
+  {
+   "name": "Savvy Profiteer",
+   "oracle_id": "e96a9f9a-9326-4f0b-98ad-23210c97299f",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Ferengi Rogue",
+   "oracle_text": "{T}: Add {R}.\n{3}, {T}: Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "171",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

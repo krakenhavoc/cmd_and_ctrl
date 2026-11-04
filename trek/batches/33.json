@@ -1,0 +1,262 @@
+{
+ "batch": 33,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "Merciful Mandate",
+   "oracle_id": "201269a1-8f11-485a-a9be-6447b189b4df",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Untap all creatures you control. If it's a combat phase, you may end the combat phase. (Remove all attackers and blockers from combat. Exile all spells and abilities from the stack, including this spell.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "25",
+   "set": "trc"
+  },
+  {
+   "name": "M'Ress, Crew Coordinator",
+   "oracle_id": "a33f6ec8-5992-43a1-a16c-d8e83c4017fa",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Caitian Officer",
+   "oracle_text": "Landfall — Whenever a land you control enters, create two 1/1 red Officer creature tokens.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "26",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Right of Vengeance",
+   "oracle_id": "7e019f06-7e87-419e-b51d-e2cb86a6c7f1",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Until end of turn, whenever a creature deals combat damage to you, destroy that creature and create a 2/1 red Klingon Warrior creature token with haste.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "27",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Klingon Warrior",
+     "type_line": "Token Creature — Klingon Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Shuttlecraft Galileo",
+   "oracle_id": "12e4e6b6-e684-49df-9373-d1e057664272",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Landfall — Whenever a land you control enters, create a 1/1 red Officer creature token.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Flying\nWhenever Shuttlecraft Galileo attacks, up to seven target attacking creatures gain flying until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Station",
+    "Landfall"
+   ],
+   "collector_number": "28",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Spot, Felis catus",
+   "oracle_id": "25fe4df1-abf7-4f17-9e0d-57e414697400",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Cat",
+   "oracle_text": "Whenever Spot or another nontoken legendary permanent you control enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{4}, Sacrifice a Food: Destroy target artifact.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "29",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Stratagem Emulator",
+   "oracle_id": "726cd303-f034-4dbe-8139-550feb59f8f3",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "When this creature dies, create X 1/1 colorless Borg artifact creature tokens, where X is its power.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "30",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Supplementation Node",
+   "oracle_id": "24296042-2963-405b-88d7-28808280ac00",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Borg",
+   "oracle_text": "Artifact creatures you control have \"Whenever this creature deals combat damage to a player, put a +1/+1 counter on it.\"",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "31",
+   "set": "trc"
+  },
+  {
+   "name": "Tribble Cluster",
+   "oracle_id": "1c1caf0f-9ee8-4eaa-b8e7-309ba9be9282",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Tribble",
+   "oracle_text": "At the beginning of combat on your turn, put a +1/+1 counter on this creature.\nWhen this creature dies, create X 1/1 white Tribble creature tokens with \"This token can't block,\" where X is this creature's power.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "32",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Tribble",
+     "type_line": "Token Creature — Tribble",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Type-03 Borg Vessel",
+   "oracle_id": "ff2ab17e-185b-4782-a4e2-e8ace40ef1bb",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "Artifact spells you cast cost {1} less to cast.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 7+.)\n7+ | Flying\nWhenever you cast a spell, create a 1/1 colorless Borg artifact creature token.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "33",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "U.S.S. Enterprise-E, Sovereign",
+   "oracle_id": "fa667031-25cf-45c4-97ff-19a73cb30018",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "When U.S.S. Enterprise-E enters, destroy all tapped creatures.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n8+ | Flying, vigilance",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "34",
+   "set": "trc"
+  }
+ ]
+}

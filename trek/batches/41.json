@@ -1,0 +1,223 @@
+{
+ "batch": 41,
+ "set": "trc",
+ "cards": [
+  {
+   "name": "T'Pring, Never Parted",
+   "oracle_id": "29775eb6-f658-4839-a434-2fa063069f1c",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Vulcan Citizen",
+   "oracle_text": "Kal-if-fee — When T'Pring enters, choose another target creature you control and target creature an opponent controls. You may have the chosen creatures fight each other. Whenever a creature that fought this way dies this turn, you draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Fight",
+    "Kal-if-fee"
+   ],
+   "collector_number": "106",
+   "set": "trc"
+  },
+  {
+   "name": "Unification",
+   "oracle_id": "b0efb6fb-f2d1-4027-90b5-44fb3f5dd538",
+   "layout": "saga",
+   "mana_cost": "{3}{W}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — The owner of up to one target creature draws two cards, then shuffles that creature into their library.\nII — You may put a Spacecraft card from your hand or graveyard onto the battlefield.\nIII — You and target opponent each draw two cards.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "107",
+   "set": "trc"
+  },
+  {
+   "name": "Vic Fontaine, One Night Only",
+   "oracle_id": "1d6f4573-d2f6-4771-a748-291846ef14b9",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Illusion Performer",
+   "oracle_text": "Seek out — Whenever you draw your second card each turn, one or two target creatures each get +2/+0 and gain lifelink until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out"
+   ],
+   "collector_number": "108",
+   "set": "trc"
+  },
+  {
+   "name": "Worf, Son of Mogh",
+   "oracle_id": "a2249af3-2e3e-484b-a31a-26432edd13ae",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Warrior Officer",
+   "oracle_text": "Menace\nOther Officers you control get +1/+1.\nSeek out — Whenever you draw your second card each turn, create a 1/1 red Officer creature token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Seek",
+    "Seek out",
+    "Menace"
+   ],
+   "collector_number": "109",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Officer",
+     "type_line": "Token Creature — Officer",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Class-4 Tactical Cube",
+   "oracle_id": "9c14e21b-a733-4882-8e09-6dbfc85ac3aa",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "When this Spacecraft enters, create two 1/1 colorless Borg artifact creature tokens.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 7+.)\n7+ | Flying\nArtifact creatures you control get +1/+1.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "110",
+   "set": "trc",
+   "related": [
+    {
+     "name": "Borg",
+     "type_line": "Token Artifact Creature — Borg",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Command Chair",
+   "oracle_id": "7132b0ad-7bab-4379-ad82-a9af289f835e",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Artifact",
+   "oracle_text": "This artifact enters tapped.\n{T}: Add three mana of any one color.\n{T}: Add X mana of any one color, where X is the greatest mana value among commanders you control.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "111",
+   "set": "trc"
+  },
+  {
+   "name": "The Guardian of Forever",
+   "oracle_id": "5144361a-0308-49b8-96e6-c948d4beae09",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Construct",
+   "oracle_text": "Defender\n{4}, Sacrifice another nontoken creature: Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+   "power": "0",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "112",
+   "set": "trc"
+  },
+  {
+   "name": "I.K.S. Negh'Var, Imperial Flagship",
+   "oracle_id": "373e2b58-ccf0-444b-aeb2-0b6e8d4e80e7",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Klingons and Warriors you control have vigilance.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 10+.)\n10+ | Flying, vigilance",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "113",
+   "set": "trc"
+  },
+  {
+   "name": "Jefferies Tube",
+   "oracle_id": "2ca270f1-a8a2-438f-9321-2c653165f3e4",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact",
+   "oracle_text": "{2}, {T}: Put two charge counters on target artifact.\n{3}, {T}: Target creature you control can't be blocked this turn.\n{4}, {T}: Draw a card. You may put a land card from your hand onto the battlefield tapped.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "114",
+   "set": "trc"
+  },
+  {
+   "name": "K't'inga-Class Battle Cruiser",
+   "oracle_id": "8ea8ee52-30e1-415c-af52-66b209f05f0a",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "Whenever this Spacecraft enters or attacks, one or two target Klingons and/or Warriors you control gain flying until end of turn.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 4+.)\n4+ | Flying",
+   "power": "5",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "115",
+   "set": "trc"
+  }
+ ]
+}

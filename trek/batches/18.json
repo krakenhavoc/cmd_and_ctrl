@@ -1,0 +1,226 @@
+{
+ "batch": 18,
+ "set": "trk",
+ "cards": [
+  {
+   "name": "Silicate Surveyor",
+   "oracle_id": "1b248ef5-ec57-481d-b47a-357d3867054f",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Tholian Scout",
+   "oracle_text": "Reach\nWhen this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "172",
+   "set": "trk"
+  },
+  {
+   "name": "Starfleet Security",
+   "oracle_id": "896077f9-b26e-4964-9279-03ee284a3e89",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Officer",
+   "oracle_text": "Haste\nWhen this creature dies during your turn, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Investigate",
+    "Haste"
+   ],
+   "collector_number": "173",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Tal Shiar Analyst",
+   "oracle_id": "bca4d45d-cae4-46f3-b5ac-22fbac59fe56",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Romulan Scientist",
+   "oracle_text": "{T}: This creature deals 1 damage to each opponent.\nWhenever you cast a noncreature spell, untap this creature.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "174",
+   "set": "trk"
+  },
+  {
+   "name": "Targ Wrangler",
+   "oracle_id": "a066eeb1-61fc-448b-bbab-650d672652ad",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Klingon Warrior",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nAt the beginning of your end step, if this creature attacked this turn, sacrifice a nonland permanent.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "175",
+   "set": "trk"
+  },
+  {
+   "name": "Tasha Yar, Out of Time",
+   "oracle_id": "1a9607a2-58cb-4bb8-b454-4813528221f8",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "Haste\nWhen Tasha Yar dies, exile the top card of your library. Until the end of your next turn, you may play that card.\n{2}{R}, Exile this card from your graveyard: Create a token that's a copy of this card. Sacrifice it at the beginning of the next end step. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "176",
+   "set": "trk",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Test of Identity",
+   "oracle_id": "8cb700bb-daa5-4a26-bb84-e22bc11bdaff",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• I Am Klingon — Target Klingon gets +1/+1 and gains double strike until end of turn.\n• I Am Starfleet — Discard a card. If you do, draw two cards.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "I Am Klingon",
+    "I Am Starfleet"
+   ],
+   "collector_number": "177",
+   "set": "trk"
+  },
+  {
+   "name": "Transporter Malfunction",
+   "oracle_id": "6eb9865e-513c-43c6-81e1-6ad000e9c48e",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Transporter Malfunction deals 3 damage to any target.\nBeam me up {3}{R}{R}{R} (You may cast this card from your graveyard for {3}{R}{R}{R} if you also return a creature you control to its owner's hand. Then exile this spell.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "178",
+   "set": "trk"
+  },
+  {
+   "name": "Will Riker, First in the Field",
+   "oracle_id": "7c1fd7c6-2f3d-496f-9f09-660a13ef923f",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Officer",
+   "oracle_text": "At the beginning of combat on your turn, reveal cards from the top of your library until you reveal two land cards. Put those land cards onto the battlefield and the rest on the bottom of your library in a random order. Sacrifice those lands at the beginning of your next end step.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "179",
+   "set": "trk"
+  },
+  {
+   "name": "Worf, Intelligence Contractor",
+   "oracle_id": "dfff6f8f-b038-4619-8190-7a6918afab1e",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Klingon Warrior Spy",
+   "oracle_text": "When Worf enters, for each opponent, gain control of up to one target creature that player controls with mana value 3 or less until end of turn. Untap those creatures. Until end of turn, they become Warriors in addition to their other types and gain haste.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "180",
+   "set": "trk"
+  },
+  {
+   "name": "The Wrath of Khan",
+   "oracle_id": "22249955-0741-470e-bc2b-f32d4510849b",
+   "layout": "saga",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — This Saga deals 4 damage to target creature an opponent controls. At the beginning of the next combat this turn, gain control of that creature until end of turn. Untap it. It gains haste until end of turn.\nII — You may exile a card from your hand. If you do, draw a card.\nIII — Each opponent sacrifices a nontoken permanent of their choice.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "181",
+   "set": "trk"
+  }
+ ]
+}
