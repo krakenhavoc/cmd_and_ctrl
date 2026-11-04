@@ -1954,6 +1954,16 @@ type AlternativeCostView struct {
 	// the rest of the printed offer.
 	Discards bool `json:"discards,omitempty"`
 
+	// Behold marks an offer whose `pay_options` are BEHELD (#4689, CR
+	// 701.4a): Kindle the Inner Flame's "Behold three Elementals". The
+	// options are the matching cards in the caster's hand and the matching
+	// permanents they control, min and max both the count; the picks ride
+	// `alt_cost_ids`, a hand card is revealed and nothing moves or taps. The
+	// client words its prompt "Behold", and a policy charges nothing for
+	// them. Absent for every other offer. Public with the rest of the
+	// printed offer.
+	Behold bool `json:"behold,omitempty"`
+
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
 	// creature you control", Battle Screech's three white creatures,
@@ -5084,6 +5094,17 @@ type ActivatedAbilityView struct {
 	// the pick carries `divide.by_unattach`.
 	UnattachLabel   string            `json:"unattach_label,omitempty"`
 	UnattachOptions *LegalTargetsView `json:"unattach_options,omitempty"`
+	// Blight / BlightOptions describe a "Blight N" cost component
+	// (#4684, CR 701.68a) — Gristle Glutton's "{T}, Blight 1:". Blight
+	// is N, the -1/-1 counters the cost puts on; BlightOptions is the
+	// creatures the activator controls that could take them right now
+	// (game.BlightOptionsForEffect), min and max 1, in the shape a cast's
+	// blight ships. The chosen creature goes back as `blight_ids`. Absent
+	// when the cost has no blight; present with no cards means it can't
+	// be paid (CR 701.68b). Not a target list: a hexproof creature you
+	// control is on it.
+	Blight        int               `json:"blight,omitempty"`
+	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
 	// Waterbend is the CR 701.67 clause of a "Waterbend {N}:" cost
 	// (#1310) — Aang, Swift Savior, Katara, Water Tribe's Hope — in
 	// the SAME TapCostView shape a hand card's convoke / waterbend
@@ -8219,6 +8240,16 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByManaValue = true
 				v.SacrificePrices = emergePricesView(g, caster, *live, zone, ac.Key, v.SacrificeOptions)
 			}
+		} else if rc := ac.Behold; rc != nil {
+			// #4689: "behold three Elementals" — the engine's one reveal
+			// walk (matching hand cards, then matching permanents the
+			// caster controls), min and max both the count, the picks on
+			// alt_cost_ids. `behold` tells the picker and a policy that
+			// nothing is spent.
+			n := ac.CardPaymentCount()
+			castID, _ := uuid.Parse(self)
+			v.PayOptions = &LegalTargetsView{Min: n, Max: n, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, rc))}
+			v.Behold = true
 		} else if tc := ac.TapOthers; !tc.Empty() {
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.
@@ -13303,6 +13334,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if n := a.Cost.UnattachEquipment; n > 0 {
 			v.UnattachLabel = unattachCostLabel(c)
 			v.UnattachOptions = unattachCostOptions(g, c.InstanceID, n)
+		}
+		// #4684: the blight component, from the walk the engine
+		// validates against. The activator is the viewer of this row.
+		if n := a.Cost.Blight; n > 0 {
+			v.Blight = n
+			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 		}
 		// #1310: the waterbend clause, sized against the same priced
 		// cost the activation path charges. X is not announced yet,

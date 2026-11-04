@@ -61,12 +61,13 @@ var tokenTemplateDoors = map[string]bool{
 // creature type the engine reads through the granting permanent's text
 // as it derives the permission, each with where.
 var permissionFilterDerived = map[string]string{
-	"gisa_and_geralf.go":          "standing cast permission (stampStandingPermissionLocked)",
-	"conspicuous_snoop.go":        "standing play permission (stampStandingPermissionLocked)",
-	"deeproot_historian.go":       "standing retrace permission (stampStandingPermissionLocked)",
-	"granted_alternative_cost.go": "Rooftop Storm's granted alternative cost (grantedAlternativeCostsLocked)",
-	"blur_of_heroism.go":          "standing cast timing (castTimingVerdictLocked)",
-	"rivaz_of_the_claw.go":        "standing cast permission (stampStandingPermissionLocked)",
+	"gisa_and_geralf.go":              "standing cast permission (stampStandingPermissionLocked)",
+	"conspicuous_snoop.go":            "standing play permission (stampStandingPermissionLocked)",
+	"deeproot_historian.go":           "standing retrace permission (stampStandingPermissionLocked)",
+	"granted_alternative_cost.go":     "Rooftop Storm's granted alternative cost (grantedAlternativeCostsLocked)",
+	"blur_of_heroism.go":              "standing cast timing (castTimingVerdictLocked)",
+	"rivaz_of_the_claw.go":            "standing cast permission (stampStandingPermissionLocked)",
+	"mikey_and_don_party_planners.go": "standing cast permissions (stampStandingPermissionLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

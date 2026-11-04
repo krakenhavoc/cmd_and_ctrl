@@ -3092,6 +3092,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2598, ADR 0020's 2026-10-08 amendment, Decisions 58-60): `game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`), built by `effects.RevealX` / `effects.RevealN`. It embeds the either/or branch's `RevealCost`, so the candidate walk and the quality test are shared, and `RevealCost` gained a `Color`. The count is a printed N or the X announced at CR 602.2b: `AbilityCost.DemandsX` is true for it, the mana cost stays the printed one, and X may be zero. The cards are named in `reveal_ids`, shown to the table and left in the hand (CR 701.20b), so no other component's pick excludes them. `effects.Register` refuses it beside another claim on the announced X, a zero count, an unknown colour, no label and behold. The wire carries `reveal_cost_label` / `reveal_cost_n` / `reveal_cost_count_from_x` (public) and `reveal_cost_options` (controller only); the client reuses its discard picker with the verb Reveal. The enumerator offers the first 1, 2 and 3 matching cards, holds an \"up to X\" target count to each payment's X, and never the X = 0 no-op for a card that declares `XMatters`. 5 cards shipped: the Martyr cycle. **Still open:** \"Reveal this card from your hand\" (forecast, augment, Tetzimoc) and Illuminated Folio's \"two cards that share a color\".",
 	},
 	{
+		// #4684 (ADR 0020's 2026-11-03 amendment). Closed; history in
+		// Closed seams.
+		Slug: "blight-ability-cost", Name: "Blight N as part of an ability's cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Activated abilities whose cost blights, putting -1/-1 counters on a creature you control of your choice, such as Gristle Glutton's loot.",
+		Rules:       []string{"701.68a", "701.68b", "602.2b", "614.16"},
+		Issue:       4684,
+		ADR:         "0020-activated-abilities.md",
+		Probe:       declaresAbilityBlight,
+		Examples:    []string{"Gristle Glutton", "Evershrike's Gift"},
+		EngineNotes: "**Shipped** (#4684, ADR 0020's 2026-11-03 amendment, Decision 78): `game.AbilityCost.Blight` (N), built by `effects.BlightN(n)`. The activator names the creature in `blight_ids`, any creature they control that can have counters put on it (`BlightOptionsForEffect`, the cast path's walk), and the counters go on through `blightLocked` marked `CounterFromCost`: Doubling Season doesn't double them, Vizier of Remedies applies (CR 614.16). With no creature to blight the ability can't be activated (CR 701.68b). The source's zone doesn't matter, so a graveyard ability blights a creature on the battlefield. The wire carries `blight` / `blight_options` on the row; the enumerator offers one move per creature, a survivor first, and `legal.MoveCost.Blight` prices the counters for the policy. Dawnhand Dissident waits for its cast permission's counter-removal cost.",
+	},
+	{
 		// #4799 (ADR 0020's 2026-11-02 amendment). Closed; history in
 		// Closed seams.
 		Slug: "unattach-equipment-cost", Name: "Unattaching an Equipment as an ability's cost", Kind: KindSeam, Status: StatusImplemented,

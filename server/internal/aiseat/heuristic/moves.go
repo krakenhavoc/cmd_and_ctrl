@@ -187,6 +187,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		return 0, true
 	}
 	v -= poisonCostValue(st, c.Poison)
+	// #4684: "Blight N" (Gristle Glutton), priced by what the counters
+	// cost the creature the move names, as a resolving blight's pick is
+	// (blightCounterCost): a 1/1 token dies of them, a wall shrugs off a
+	// point. The enumerator offers one move per creature, so the policy
+	// takes the cheapest.
+	if b := c.Blight; b != nil {
+		v -= st.blightCounterCost(st.bf[b.CardID.String()], b.N)
+	}
 	return v, false
 }
 
@@ -771,8 +779,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// ADR 0135 §1: an offer that TAPS its permanents (Orim's Cure's
 	// creature, Battle Screech's three) spends none of them, so each is
 	// charged what tapping it costs (tapCreatureCost), not its value.
+	//
+	// #4689: an offer that BEHOLDS its cards (Kindle the Inner Flame's three
+	// Elementals) spends none of them and taps none, so they cost nothing.
 	taps := altCostTaps(card, cp.AlternativeCost)
+	beholds := altCostBeholds(card, cp.AlternativeCost)
 	for _, id := range cp.AltCostIDs {
+		if beholds {
+			break
+		}
 		if taps {
 			v -= p.tapFuelValue(st, id)
 			continue

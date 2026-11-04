@@ -532,3 +532,47 @@ Back-out: remove the `ConnivedForEffect` call from `conniveDiscarded` and `TestI
 
 Tests: `cards/effects/iron_monger_sadistic_tycoon_test.go`; the event assertions in `raffine_a_test.go`,
 `slice_296e_test.go` (Ledger Shredder) and `cyclonus_the_saboteur_test.go`.
+
+## Amendment (2026-11-03, [#4689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4689)): behold N as part of the price
+
+Kindle the Inner Flame prints "Flashback—{1}{R}, Behold three Elementals". CR 701.4a: "Behold a [quality]" means "Reveal a
+[quality] card from your hand or choose a [quality] permanent you control on the battlefield." CR 702.34a has a flashback
+cast follow the alternative-cost rules of 601.2b and 601.2f–h, so the behold is announced with the cost (601.2b) and paid
+with it (601.2h). Behold existed only as an additional cost naming one card on `reveal_ids` (ADR 0100, ADR 0073).
+
+**Decision 1 — the reveal component, with a count, as the offer's card component.** `AlternativeCost.Behold` is the
+additional cost's `RevealCost` (with `Behold` set) and `BeholdCount` is the printed N. Its candidates are
+`RevealCostOptionsForEffect`, the one walk the additional cost's behold, its view and its enumerator read: a matching card
+in the caster's hand or a matching permanent they control, through `HasSubtypeWord` (so a changeling counts), never the
+spell being cast (CR 601.2a). It sits beside `cardComponent` (`beholdComponent`) because it is paid from two zones and is
+not a `TargetSpec`, and every reader of the card component asks it first: `PaysCards`, `CardPaymentCount`,
+`AlternativeCostPayableLocked` (withholds the offer with fewer than N candidates, #695), `AltCostCandidatesLocked`, the
+validator (`validateBeholdPaymentLocked`: exactly N, no object twice, each a candidate) and the payer
+(`payBeholdLocked`: one reveal of the hand cards, with the spell on the stack; a chosen permanent is not revealed; nothing
+moves or taps). `Register` counts it as the offer's one card component (`altCostCardComponents`) and refuses a malformed
+one (`checkAltCostBehold`).
+
+**Decision 2 — the picks ride `alt_cost_ids`, not `reveal_ids`.** They pay the offer and vanish when it is declined, the
+reason #1727 gave for keeping a sacrifice price off `sacrifice_ids`; and the client's pay picker already reads
+`pay_options` with min == max == N and sends `alt_cost_ids`, from the hand, the graveyard or the battlefield. An offer and
+an additional cost therefore never share one list. The auto-tapper leaves the named objects alone like every other
+`alt_cost_ids` pick: a hand card's mana ability would move it before the reveal is paid (CR 601.2g before 601.2h), and a
+player can still tap a beheld mana creature by hand first.
+
+**Decision 3 — the view says `behold`.** `AlternativeCostView.Behold` (additive) marks `pay_options` that are beheld, so
+the picker reads "Behold" and says nothing leaves its zone, and the bot's cast pricing charges nothing for the picks. The
+enumerator names the permanents first, then the hand cards, as the additional cost's behold does.
+
+No snapshot field: the offer is catalog data, and the cast is `StackItem.AltCost` plus `PaidCost.AltCostObjects`, both
+already recorded. The constructor is `effects.FlashbackBehold(mana, n, subtype, plural)`, which keeps flashback's
+graveyard binding and `ExileOnLeavingStack`. Not this shape: #4687's "behold a … and exile it" as an additional cost,
+which spends the card; it can reuse the candidate walk and `validateBeholdPaymentLocked`, not the payer.
+
+Back-out: drop the behold branch from `validateAlternativeCostPaymentLocked` and every flashback of Kindle is refused
+(`TestKindleTheInnerFlameFlashbackBeholdsThreeElementals` fails); drop it from `AlternativeCostPayableLocked` and the offer
+is shown with two Elementals (`TestKindleTheInnerFlameNeedsThreeElementals` and
+`TestFlashbackBeholdOfferWithheldWithTwoElementals` fail).
+
+Tests: `cards/effects/kindle_the_inner_flame_test.go`, `legal/flashback_behold_test.go`,
+`protocol/flashback_behold_view_test.go`, `aiseat/heuristic/behold_alt_cost_test.go`, and the picker case in
+`client/src/lib/costSheets.render.test.ts`.

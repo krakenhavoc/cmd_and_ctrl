@@ -3331,6 +3331,12 @@ export interface AlternativeCostView {
   // picker words its prompt "Discard". A discard with a set rule (Foil's
   // "an Island card and another card") carries `pay_options.each_of`.
   discards?: boolean;
+  // #4689: the `pay_options` are BEHELD (CR 701.4a) — Kindle the Inner
+  // Flame's "Behold three Elementals": matching cards in your hand and
+  // matching permanents you control, min == max == the count. A hand card
+  // is revealed, nothing moves or taps. The picker words its prompt
+  // "Behold".
+  behold?: boolean;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you
@@ -3785,6 +3791,14 @@ export interface ActivatedAbilityView {
   // the pick carries `divide.by_unattach`.
   unattach_label?: string;
   unattach_options?: LegalTargetsView;
+  // #4684: a "Blight N" cost (Gristle Glutton's "{T}, Blight 1:"):
+  // `blight` is N, the -1/-1 counters the cost puts on one creature you
+  // control, and `blight_options` the creatures that could take them
+  // (min / max 1), in the shape a cast's blight ships. The pick rides
+  // activate_ability as `blight_ids`. An empty list means the cost
+  // cannot be paid (CR 701.68b).
+  blight?: number;
+  blight_options?: LegalTargetsView;
   // #1310: the CR 701.67 clause of a "Waterbend {N}:" cost (Aang,
   // Swift Savior; Katara, Water Tribe's Hope), in the same TapCostView
   // shape a hand card's convoke / waterbend ships as `tap_cost`, so

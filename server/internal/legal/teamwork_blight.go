@@ -78,6 +78,19 @@ func (e *enumerator) teamworkBlightPayment(mandatory *game.AdditionalCost, optio
 // the teamwork set from also being chosen. No printed card has both
 // costs, so today it is always empty.
 func (e *enumerator) blightPayment(n int, avoid []uuid.UUID) (uuid.UUID, bool) {
+	pool := e.blightCandidates(n, avoid)
+	if len(pool) == 0 {
+		return uuid.Nil, false
+	}
+	return pool[0], true
+}
+
+// blightCandidates is every creature the seat could blight N, in the
+// order blightPayment prefers them: one that survives the counters
+// first, then the least power, then the most toughness. The cast path
+// takes the first; an ability's blight cost offers each as its own row
+// (#4684, expandBlightPicks).
+func (e *enumerator) blightCandidates(n int, avoid []uuid.UUID) []uuid.UUID {
 	skip := make(map[uuid.UUID]bool, len(avoid))
 	for _, id := range avoid {
 		skip[id] = true
@@ -104,9 +117,6 @@ func (e *enumerator) blightPayment(n int, avoid []uuid.UUID) (uuid.UUID, bool) {
 			survives:  c.CurrentToughness() > n,
 		})
 	}
-	if len(pool) == 0 {
-		return uuid.Nil, false
-	}
 	sort.SliceStable(pool, func(i, j int) bool {
 		if pool[i].survives != pool[j].survives {
 			return pool[i].survives
@@ -116,5 +126,9 @@ func (e *enumerator) blightPayment(n int, avoid []uuid.UUID) (uuid.UUID, bool) {
 		}
 		return pool[i].toughness > pool[j].toughness
 	})
-	return pool[0].id, true
+	out := make([]uuid.UUID, len(pool))
+	for i, c := range pool {
+		out[i] = c.id
+	}
+	return out
 }

@@ -132,29 +132,13 @@ func b39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g 
 
 // b39CountersPlacedOnThisObject is how many counters the
 // EventCounterPlaced `ev` PUT on its target, or zero for a removal. The
-// previous total is the most recent placement of the same kind on the
-// same card, unless the card changed zones (or was created) more
-// recently than that: a new object starts with no counters (CR 400.7).
-// Any zone move of the card ends the walk, not only an arrival, so the
-// counters a returning permanent enters with are not measured against
-// the ones it had in an earlier life (its "enters with" placement is
-// logged before its own arrival).
+// previous total is the engine's read of the log
+// (Game.CounterCountBeforeForEffect, #4865): a new object starts with
+// no counters (CR 400.7), so the counters a returning permanent enters
+// with are not measured against the ones it had in an earlier life,
+// and a later placement is measured from those it entered with.
 func b39CountersPlacedOnThisObject(ev game.Event, g *game.Game) int {
-	before := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if prev.CardID == ev.Target && (prev.Kind == game.EventZoneMove || prev.Kind == game.EventETB || prev.Kind == game.EventTokenCreated) {
-			break
-		}
-		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
-			before = prev.Amount
-			break
-		}
-	}
-	return max(0, ev.Amount-before)
+	return max(0, ev.Amount-g.CounterCountBeforeForEffect(ev))
 }
 
 // --- board reads ---------------------------------------------------
@@ -369,6 +353,18 @@ var (
 			return 3
 		})
 )
+
+// discardACardIfYouDoDraw is the mandatory "Discard a card. If you do,
+// draw a card." as a whole effect (Shadow of the Goblin's trigger, Gristle
+// Glutton's ability): the discard is chosen as it resolves, and with an
+// empty hand nothing is discarded and nothing drawn.
+func discardACardIfYouDoDraw(g *game.Game, item *game.StackItem) error {
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      1,
+	}, drawOneIfDiscarded.then, nil)
+}
 
 func b39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw) func(*Context) error {
 	return func(ctx *Context) error {

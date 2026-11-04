@@ -199,32 +199,12 @@ func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattl
 }
 
 // b12CounterTotalBefore is the count of ev's counter kind on ev's
-// target before ev changed it: the most recent EventCounterPlaced for
-// the same card and kind, or zero when the card's arrival on the
-// battlefield is more recent (CR 400.7) or nothing is logged. "Enters
-// with" counters land before the entry events are emitted, so they
-// read the count from before the arrival, which is zero.
+// target before ev changed it: Game.CounterCountBeforeForEffect, which
+// starts again at zero when the card last moved to a zone other than
+// the battlefield (CR 400.7) and counts the "enters with" counters
+// logged before its arrival (#4865).
 func b12CounterTotalBefore(ev game.Event, g *game.Game) int {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if prev.CardID == ev.Target {
-			switch prev.Kind {
-			case game.EventETB, game.EventTokenCreated:
-				return 0
-			case game.EventZoneMove:
-				if prev.NewZone == game.ZoneBattlefield {
-					return 0
-				}
-			}
-		}
-		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
-			return prev.Amount
-		}
-	}
-	return 0
+	return g.CounterCountBeforeForEffect(ev)
 }
 
 // --- target clauses ----------------------------------------------

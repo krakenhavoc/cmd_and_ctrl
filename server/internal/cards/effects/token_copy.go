@@ -152,6 +152,46 @@ func TokenCopyGainsHaste(t *game.Card) {
 	t.Keywords = append(t.Keywords, "haste")
 }
 
+// TokenCopyWithHasteSacrificedAtEndStep is the whole body of "Create a
+// token that's a copy of target creature you control, except it has haste
+// and 'At the beginning of the end step, sacrifice this token.'"
+// (Electroduplicate, Kindle the Inner Flame #4689). `label` names the
+// sacrifice on the stack.
+//
+// Haste rides the token's printed Keywords (TokenCopyGainsHaste), and the
+// sacrifice is a CR 603.7 delayed trigger scheduled against the token's
+// own instance, read back off EventTokenCreated because CreateTokenCopy
+// mints the instance and returns nothing. "The end step" is the StepEnd
+// default ScheduleDelayedTrigger already uses. The target is re-read out
+// of ctx.LegalTargets(), so a creature that left in response is skipped
+// (CR 608.2b).
+func TokenCopyWithHasteSacrificedAtEndStep(label string) func(*game.StackItem, *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		id, ok := b16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		cursor := b25LastEventSeq(ctx.Game)
+		if err := (CreateTokenCopy{
+			Controller: item.Controller,
+			Copy:       id,
+			N:          1,
+			Except:     TokenCopyGainsHaste,
+		}).Apply(ctx); err != nil {
+			return err
+		}
+		tokens := b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
+		if len(tokens) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			Label: label,
+			Cards: tokens,
+			Body:  sacrificeListedCardsBody,
+		}.Apply(ctx)
+	}
+}
+
 // TokenCopyOfSingleTarget is the whole body of the "create a token
 // that's a copy of target <thing>" family — Cackling Counterpart's
 // creature, Relm's Sketching's artifact, creature or land. The target

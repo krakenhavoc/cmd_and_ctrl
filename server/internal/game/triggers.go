@@ -458,7 +458,8 @@ type TriggeredAbility struct {
 	// put is the number of occurrences: two counters are two triggers,
 	// each its own stack object and each its own "you may". A removal
 	// or another kind is zero occurrences. Counters a permanent enters
-	// with are placed after it arrives, so they count too (CR 122.6).
+	// with are placed after it arrives, so they count too (CR 122.6),
+	// and a later placement is measured from them (#4865).
 	// Empty — every other ability — is one occurrence per event. Plain
 	// data, not a func. See counterPlacedDeltaLocked.
 	PerCounter string
@@ -1288,66 +1289,79 @@ func triggerWatches(kinds []EventKind, kind EventKind) bool {
 // counterPlacedDeltaLocked is how many `kind` counters the
 // EventCounterPlaced `ev` PUT on its target, or zero for a removal, a
 // different kind or a different event. The event carries only the
-// post-change total, so the previous total is the most recent
-// EventCounterPlaced for the same card and kind, or zero when the card
-// arrived on the battlefield (or as a token) more recently than that
-// (CR 400.7: it came with no counters). The effects package's
-// b33CountersPlacedDelta is the same walk for a card's own predicate.
+// post-change total; the total before it is counterCountBeforeLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) counterPlacedDeltaLocked(ev Event, kind string) int {
 	if ev.Kind != EventCounterPlaced || ev.Label != kind {
 		return 0
 	}
-	before := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
-			break
-		}
-		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
-			before = prev.Amount
-			break
-		}
-	}
-	if ev.Amount <= before {
-		return 0
-	}
-	return ev.Amount - before
+	return max(0, ev.Amount-g.counterCountBeforeLocked(ev))
 }
 
 // counterRemovedDeltaLocked is how many `kind` counters the
 // EventCounterPlaced `ev` TOOK OFF its target, or zero for a placement,
 // a different kind or a different event — counterPlacedDeltaLocked's
-// mirror (#2466). The previous total is read the same way: the most
-// recent EventCounterPlaced for the card and kind, stopping at the
-// card's arrival (CR 400.7: a new object has no counters, so nothing
-// can have been removed from it before its first placement).
+// mirror (#2466).
 //
 // Caller must hold g.mu.
 func (g *Game) counterRemovedDeltaLocked(ev Event, kind string) int {
 	if ev.Kind != EventCounterPlaced || ev.Label != kind {
 		return 0
 	}
-	before := 0
+	return max(0, g.counterCountBeforeLocked(ev)-ev.Amount)
+}
+
+// CounterCountBeforeForEffect is counterCountBeforeLocked for the
+// catalog: how many of an EventCounterPlaced's kind its target had just
+// before that event changed the count. Caller must hold g.mu.
+func (g *Game) CounterCountBeforeForEffect(ev Event) int {
+	return g.counterCountBeforeLocked(ev)
+}
+
+// counterCountBeforeLocked is how many counters of ev's kind (Label)
+// the EventCounterPlaced `ev` found on its target (Target): the
+// post-change total of the most recent earlier EventCounterPlaced for
+// the same card and kind, or zero when there is none since the card
+// last moved to a zone other than the battlefield. It is the one walk
+// behind every "how many did this event put on / take off" (#4865).
+//
+// WHERE THE WALK STOPS. A card keeps its InstanceID across zones, but
+// one that moves is a new object with no memory of its previous
+// existence (CR 400.7), and the counters it had cease to exist without
+// being removed (CR 122.2), so the count starts again at zero. The
+// boundary is the move that ENDED the previous existence — EventLTB,
+// a cast (EventCast, to the stack) or any EventZoneMove whose
+// destination is not the battlefield — and NOT the arrival. "Enters
+// with" counters (CR 614.1c) are placed after the card lands but
+// before its entering EventZoneMove (or EventTokenCreated) and EventETB
+// are logged, so a walk that stopped at the arrival never saw them: the
+// first counter removed from a creature that entered with three +1/+1
+// counters read as two put on it and none removed.
+// Walking past the arrival to the departure sees the entry placements,
+// and stops before anything a previous object had.
+//
+// Caller must hold g.mu.
+func (g *Game) counterCountBeforeLocked(ev Event) int {
 	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
+		prev := &g.Events[i]
 		if prev.Seq >= ev.Seq {
 			continue
 		}
-		if (prev.Kind == EventETB || prev.Kind == EventTokenCreated) && prev.CardID == ev.Target {
-			break
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
+			return prev.Amount
 		}
-		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == kind {
-			before = prev.Amount
-			break
+		if prev.CardID != ev.Target {
+			continue
+		}
+		switch prev.Kind {
+		case EventLTB:
+			return 0
+		case EventZoneMove, EventCast:
+			if prev.NewZone != ZoneBattlefield {
+				return 0
+			}
 		}
 	}
-	if ev.Amount >= before {
-		return 0
-	}
-	return before - ev.Amount
+	return 0
 }

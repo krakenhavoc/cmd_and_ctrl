@@ -101,6 +101,9 @@ var activatedRowScopes = map[string]rowScope{
 	// #4799: "Unattach an Equipment from <this>" — its words, and the
 	// Equipment attached to the permanent, on the battlefield.
 	"UnattachLabel": rowPublic, "UnattachOptions": rowPublic,
+	// #4684: "Blight N" — its number, and the creatures on the
+	// battlefield the activator could blight.
+	"Blight": rowPublic, "BlightOptions": rowPublic,
 	// Target sets: an activated ability never targets a card in a
 	// hand (game.zonesOfKindLocked's hidden-zone caution).
 	"LegalTargets": rowPublic, "Clauses": rowPublic,
