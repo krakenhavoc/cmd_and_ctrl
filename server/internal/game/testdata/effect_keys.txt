@@ -282,6 +282,8 @@ body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
 body tether-technician/strike
 body the-falcon-airship-restored/return
+body the-last-ronin/attacks-alone
+body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
@@ -710,6 +712,7 @@ coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
+condition attack/a-creature-you-control-attacks-alone
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
@@ -873,6 +876,7 @@ confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
+confirm confirm/turtles-in-time-ask
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/wandering-archaic-copy
@@ -1034,6 +1038,7 @@ option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
 option option-pick/put-attacking-from-graveyard
 option option-pick/put-attacking-from-graveyard-finality
+option option-pick/put-attacking-from-library
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/rejoinder-tap-or-untap
@@ -1053,6 +1058,7 @@ option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
 option option-pick/thanos-destroy-parity
 option option-pick/the-black-gate-most-life
+option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
 option option-pick/thrull-wizard-pay
 option option-pick/tireless-provisioner-token
@@ -2045,10 +2051,12 @@ tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
 tail then/the-black-arrow-destroy-dragon
+tail then/the-cloning-of-shredder-copy
 tail then/the-falcon-when-you-do
 tail then/the-fantasticar-constructs
 tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
+tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/tibalts-trickery-exile-until
