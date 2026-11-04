@@ -38,7 +38,7 @@ tests-e2e/
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
-    ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap and show a readable loyalty pip, at 2, 3 and 4 seats and three viewports
+    ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap, show a readable loyalty pip and (#4946) sit inside their row on both sides, an across-table seat's included, at 2, 3 and 4 seats and 1920x1080, 1366x768 and 1280x720
     ├── playmat-shape-3934.spec.ts # #3934, ADR 0128 §12: a playmat is shown whole (contain, centred) over a blurred backdrop that is its seat's battlefield box, at 2, 3 and 4 seats and three viewports
     ├── outside-game-3833.spec.ts # #3833, #4054, #4109: a seated sideboard has no pile in the rail but a read-only Sideboard tab in its owner's zone browser (none for a seat without one); hovering an adventurer lists the creature and its Adventure with no ?face=1 scan
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
