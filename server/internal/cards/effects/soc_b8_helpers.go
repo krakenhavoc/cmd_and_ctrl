@@ -32,21 +32,28 @@ func socB8FractalWithCountersSteps(key string, count func(ctx *Context) int) []A
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal")), 1, game.TokenEntryOptions{})
 			return err
 		}),
-		Instruction(func(ctx *Context) error {
-			rec := ctx.StepRecord(key)
-			if len(rec.Ns) < 2 || rec.Ns[1] <= 0 {
-				return nil
-			}
-			for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
-				if !onBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
-					continue
-				}
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.asGroupMember()); err != nil {
-					return err
-				}
-			}
+		socB8PutCountersOnNewFractals(key),
+	}
+}
+
+// socB8PutCountersOnNewFractals is the second step of the Fractal steps:
+// put the N +1/+1 counters the step record under `key` carries on each
+// Fractal the creation step made (the event cursor it carries bounds them).
+func socB8PutCountersOnNewFractals(key string) Instruction {
+	return func(ctx *Context) error {
+		rec := ctx.StepRecord(key)
+		if len(rec.Ns) < 2 || rec.Ns[1] <= 0 {
 			return nil
-		}),
+		}
+		for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+			if !onBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.asGroupMember()); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
 
