@@ -14,16 +14,3 @@ const sneakAltCostKey = "sneak"
 func sneakCostWasPaid(altCost string) bool {
 	return altCost == sneakAltCostKey
 }
-
-// eachPlayerMayWheel is "each player may discard their hand and draw seven
-// cards": each player, starting with the controller and going around the
-// table, is asked for themselves, and a "yes" discards and draws through
-// Ruin Grinder's keyed answer (the same wheel, word for word).
-func eachPlayerMayWheel(ctx *Context, question string) error {
-	for _, who := range tablePlayers(ctx) {
-		if err := (MayChoice{Player: who, Question: question, Draws: 7, Then: ruinGrinderAnswer}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}

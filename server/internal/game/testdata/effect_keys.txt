@@ -848,6 +848,7 @@ confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/pygmy-hippo-lose-mana
+confirm confirm/raphaels-technique-may-wheel
 confirm confirm/ratchet-field-medic-convert
 confirm confirm/reactor-raid-sacrifice
 confirm confirm/reckless-endeavor-result

@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Each player may discard their hand and draw seven cards."
 //
 // Sneak is the shared alternative cost (sneak.go, CR 702.190). The wheel is
-// Ruin Grinder's: each player, starting with the caster, chooses for
-// themselves (eachPlayerMayWheel).
+// the shared "each player may" wheel: every player chooses in APNAP order,
+// then the players who said yes discard their hands, then each of them
+// draws seven (CR 101.4, each_player_may_wheel.go).
 //
 // No simplification.
 func init() {
@@ -22,7 +23,10 @@ func init() {
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Sneak("{2}{R}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return eachPlayerMayWheel(ctx, "Raphael's Technique — discard your hand and draw seven cards?")
+			return raphaelsTechniqueMayWheel.Start(ctx)
 		},
 	})
 }
+
+var raphaelsTechniqueMayWheel = newMayWheel("confirm/raphaels-technique-may-wheel",
+	"Raphael's Technique — discard your hand and draw seven cards?")
