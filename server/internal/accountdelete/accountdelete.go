@@ -297,7 +297,7 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	if err := exec(&res.Counts.NotifyPrefRows, `DELETE FROM notification_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
-	// The advanced-stats setting (ADR 0217 §9, migration 0029). Its
+	// The advanced-stats setting (ADR 0217 §9, migration 0030). Its
 	// share link's hash goes with it, so the link stops working in
 	// this transaction.
 	if err := exec(&res.Counts.StatsPrefRows, `DELETE FROM stats_prefs WHERE user_id = ?`, uid); err != nil {

@@ -78,7 +78,7 @@
         "Whether advanced stats are on for you, and whether you or an admin set it. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
       why: "So the Stats page shows the advanced stats only to the people who want them.",
       howLong: "Until you change it or delete your account.",
-      source: "migration 0029 stats_prefs; lobby/stats_prefs.go",
+      source: "migration 0030 stats_prefs; lobby/stats_prefs.go",
     },
     {
       what: "Your own model key for AI opponents",

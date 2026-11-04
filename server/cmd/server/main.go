@@ -1673,7 +1673,7 @@ func newGameStatsStore(database *db.DB) gamestats.Store {
 }
 
 // newStatsPrefsStore is the advanced-stats setting (ADR 0217 §2,
-// migration 0029), or nil with no database, which leaves everyone on
+// migration 0030), or nil with no database, which leaves everyone on
 // gamestats.AdvancedDefault.
 func newStatsPrefsStore(database *db.DB) gamestats.PrefsStore {
 	if database == nil {

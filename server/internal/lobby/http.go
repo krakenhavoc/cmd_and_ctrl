@@ -257,7 +257,7 @@ type Config struct {
 	Notifications notify.Store
 
 	// StatsPrefs is the advanced-stats setting (ADR 0217 §2, migration
-	// 0029): each person's switch and the server's default, behind
+	// 0030): each person's switch and the server's default, behind
 	// /me/stats/prefs and the admin routes in stats_prefs.go. Nil (no
 	// database): everyone follows gamestats.AdvancedDefault and the
 	// writes answer 503.

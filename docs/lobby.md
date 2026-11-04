@@ -2994,7 +2994,7 @@ the basic record above is served either way.
 
 The caller's advanced-stats setting
 ([ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md)
-§2 and owner answer 1; migration 0029's `stats_prefs`). Same caller rule
+§2 and owner answer 1; migration 0030's `stats_prefs`). Same caller rule
 as `GET /me/stats`: 401 with no credential, 403 for a guest, the admin
 token or anyone else who is not a signed-in person. Guests get no stats.
 

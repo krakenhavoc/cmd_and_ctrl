@@ -1,4 +1,4 @@
--- Migration 0029: the advanced-stats setting (ADR 0217 §2 and owner
+-- Migration 0030: the advanced-stats setting (ADR 0217 §2 and owner
 -- answer 1, slice 3 of #4880).
 --
 --   stats_prefs      one row per person who has a stats setting: the

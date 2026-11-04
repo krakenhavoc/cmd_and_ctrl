@@ -5,16 +5,16 @@ import (
 	"testing"
 )
 
-// Tests for migration 0029 (the advanced-stats setting, ADR 0217 §2):
+// Tests for migration 0030 (the advanced-stats setting, ADR 0217 §2):
 // a new row follows the default, the switch takes only 0, 1 or NULL
 // with a matching setter, the row needs a real user, the server
 // default has at most one row, and the hand rollback in
 // docs/environments.md.
 
 // statsPrefsVersion is this migration's number.
-const statsPrefsVersion = 29
+const statsPrefsVersion = 30
 
-func TestMigration0029AddsStatsPrefsFollowingTheDefault(t *testing.T) {
+func TestMigration0030AddsStatsPrefsFollowingTheDefault(t *testing.T) {
 	d := openAtVersion(t, statsPrefsVersion-1)
 	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)
 	if err := migrate(context.Background(), d); err != nil {
@@ -34,7 +34,7 @@ func TestMigration0029AddsStatsPrefsFollowingTheDefault(t *testing.T) {
 	assertForeignKeysOnEveryConn(t, d)
 }
 
-func TestMigration0029Constraints(t *testing.T) {
+func TestMigration0030Constraints(t *testing.T) {
 	d := openAtVersion(t, 0)
 	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)
 	mustExec(t, d, `INSERT INTO stats_prefs (user_id, advanced, advanced_set_by, updated_at) VALUES ('u1', 1, 'self', 5)`)
@@ -56,7 +56,7 @@ func TestMigration0029Constraints(t *testing.T) {
 	mustExec(t, d, `INSERT INTO stats_settings (id, advanced_default, updated_at) VALUES (1, 1, 5)`)
 }
 
-func TestMigration0029RollbackByHand(t *testing.T) {
+func TestMigration0030RollbackByHand(t *testing.T) {
 	ctx := context.Background()
 	d := openAtVersion(t, statsPrefsVersion)
 	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)

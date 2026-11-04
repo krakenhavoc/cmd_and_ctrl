@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 )
 
-// SQLPrefsStore is migration 0029's stats_prefs and stats_settings.
+// SQLPrefsStore is migration 0030's stats_prefs and stats_settings.
 // Every *_at column is Unix milliseconds.
 type SQLPrefsStore struct {
 	db *sql.DB

@@ -2,7 +2,7 @@ package gamestats
 
 // The advanced-stats setting (ADR 0217 §2, owner answer 1; slice 3 of
 // #4880). Basic stats are on for every account. Advanced stats are a
-// free per-person switch, stored in migration 0029's stats_prefs, and
+// free per-person switch, stored in migration 0030's stats_prefs, and
 // a person who never touched it follows the server's default: the
 // admin's stored default (stats_settings), or AdvancedDefault when no
 // admin has set one.
