@@ -221,6 +221,15 @@ func TestTmtB12RaphaelsTechniqueEachPlayerMayWheel(t *testing.T) {
 		oppHand[i] = p.Hand.Size()
 	}
 	passPriorityAroundTable(t, g)
+	// APNAP: I am the active player and am asked first. My yes changes
+	// nothing until every player has answered (CR 101.4).
+	if latestConfirmFor(g, me.ID) == nil {
+		t.Fatal("the active player is not asked first")
+	}
+	answerConfirmFor(t, g, me, true)
+	if !me.Hand.Contains(attacker) {
+		t.Fatal("my hand was discarded before the other players answered")
+	}
 	for i := 0; i < len(g.Seats); i++ {
 		for _, p := range g.Seats {
 			if latestConfirmFor(g, p.ID) != nil {
