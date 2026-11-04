@@ -79,6 +79,30 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 		}
 	})
 
+	// #4683: a blight's choose_cards pick puts -1/-1 counters on the
+	// named creature: a body that survives them takes them, not a 1/1
+	// they kill, and a "may" is taken when a creature can spare them.
+	t.Run("a blight's pick costs the least", func(t *testing.T) {
+		big := creature(cardID(40), 0, "Wall", 0, 6)
+		elf := creature(cardID(41), 0, "Elf", 1, 1)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withBattlefield(big, elf),
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "choose_cards", Chooser: seatID(0).String(),
+				FromPlayer: seatID(0).String(), Reason: "You may blight 1",
+				Options: []protocol.CardView{elf, big}, ChooseMin: 0, ChooseMax: 1, Count: 1,
+				ChooseDestination: "blight",
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "choose nothing", map[string]any{"card_ids": []string{}}),
+			choiceMove(t, 0, choiceID, "blight the elf", map[string]any{"card_ids": []string{cardID(41)}}),
+			choiceMove(t, 0, choiceID, "blight the wall", map[string]any{"card_ids": []string{cardID(40)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "blight the wall" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
 	t.Run("pick_target points away from us", func(t *testing.T) {
 		mine := creature(cardID(10), 0, "Mine", 3, 3)
 		theirs := creature(cardID(20), 1, "Theirs", 3, 3)

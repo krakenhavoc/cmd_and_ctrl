@@ -324,6 +324,24 @@ type AbilityCost struct {
 	// order has to be decided somewhere) reads left to right.
 	AddCounter *CounterAddCost
 
+	// Blight is "Blight N" as part of the cost (#4684, CR 701.68a):
+	// put N -1/-1 counters on a creature the ACTIVATOR controls, any
+	// one of them and not only the source — Gristle Glutton's "{T},
+	// Blight 1:", Evershrike's Gift's "{1}{W}, Blight 2:" from the
+	// graveyard. Zero means no such component.
+	//
+	// The activator names the creature in ActivateAbilityParams.BlightIDs
+	// at announce (`blight_ids`, the name the cast path's blight pick
+	// rides). It is the cast path's cost one surface over: the candidates
+	// are BlightOptionsForEffect, the validator is
+	// validateBlightCreatureLocked, and the payment is blightLocked, which
+	// marks the counters CounterFromCost so a replacement worded "if an
+	// effect would put" (Doubling Season) leaves them alone while one
+	// that names no effect (Vizier of Remedies) applies (CR 614.16). With
+	// no creature that can take the counters the ability can't be
+	// activated (CR 701.68b, CR 118.3). See blight_ability_cost.go.
+	Blight int
+
 	// MinX is the floor the printed text puts on the announced X —
 	// Helm of Obedience's "X can't be 0" is MinX: 1. Zero means the
 	// ordinary floor of zero, which is what every other {X} cost
@@ -1254,6 +1272,12 @@ type ActivateAbilityParams struct {
 	// from this list, so the client must send it with the division.
 	UnattachIDs []uuid.UUID
 
+	// BlightIDs names the creature paid to a Blight cost (#4684):
+	// exactly one, a creature the activator controls that can have
+	// counters put on it (BlightOptionsForEffect). On the wire as
+	// `blight_ids`, the name a cast's blight pick rides.
+	BlightIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -1844,6 +1868,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if !g.canPlaceCounterLocked(playerID, cardID, ab.Cost.AddCounter) {
 		return ErrCantPayCounterCost
 	}
+	// #4684, CR 701.68a: "Blight N" — the creature the activator names
+	// for it, checked with everything else so a refusal costs nothing.
+	if err := g.validateAbilityBlightLocked(playerID, ab.Cost.Blight, params.BlightIDs); err != nil {
+		return err
+	}
 	// #660: the discard components. Validated here with everything
 	// else and paid last (a discard moves the source out of hand,
 	// which invalidates `source` exactly as a sacrifice does).
@@ -2036,6 +2065,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// counter-removal component takes counters off. None of them moves
 	// or taps, and each spends an object a paused exit has taken.
 	spending := append([]uuid.UUID{cardID}, counters.cardIDs()...)
+	// #4684: and the creature a blight cost puts its counters on.
+	if ab.Cost.Blight > 0 {
+		spending = append(spending, params.BlightIDs...)
+	}
 	// #1445 / #1427 / #1474: a card an EFFECT has already paused on
 	// its way out cannot pay, or activate. See
 	// refusePausedCostCardsLocked.
@@ -2271,6 +2304,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return err
 		}
 		paid.CountersAdded = added
+	}
+	// #4684: "Blight N", beside the other counter cost and before the
+	// sacrifices, so Spiral into Solitude's "Blight 1, Sacrifice this
+	// Aura" reads left to right. A creature that dies of the counters
+	// still paid (CR 704.5f runs after the cost is paid).
+	if err := g.payAbilityBlightLocked(playerID, ab.Cost.Blight, params.BlightIDs); err != nil {
+		return err
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).

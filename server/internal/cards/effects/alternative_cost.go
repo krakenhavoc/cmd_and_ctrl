@@ -433,6 +433,27 @@ func FlashbackTap(n int, label string, preds ...CardPredicate) game.AlternativeC
 	return ac
 }
 
+// FlashbackBehold is "Flashback—<mana>, Behold <n> <plural>" (CR 702.34a,
+// CR 701.4a, #4689): Kindle the Inner Flame's
+//
+//	FlashbackBehold("{1}{R}", 3, "Elemental", "Elementals")
+//
+// Flashback's cast from the graveyard and its exile on leaving the stack,
+// with a behold of n distinct objects beside the mana: each a <subtype>
+// permanent the caster controls or a <subtype> card in their hand (a
+// changeling counts). The picks ride alt_cost_ids; the hand cards are
+// revealed with the spell on the stack, and nothing moves or taps. The
+// card file still lists ZoneGraveyard in CastableZones, as for Flashback.
+func FlashbackBehold(mana string, n int, subtype, plural string) game.AlternativeCost {
+	what := numberWord(n) + " " + plural
+	ac := Flashback(mana)
+	ac.Label = "Flashback—" + mana + ", Behold " + what
+	ac.Behold = &game.RevealCost{Subtype: subtype, Behold: true}
+	ac.BeholdCount = n
+	ac.PayLabel = what
+	return ac
+}
+
 // tapOthersPrice is the TapOthers component of a tap alternative cost: n
 // permanents matching the predicates, never the spell itself (it is not on
 // the battlefield, so there is no "another" to say).

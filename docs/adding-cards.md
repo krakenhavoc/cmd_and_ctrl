@@ -49,6 +49,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
+  - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
+  - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -3225,7 +3227,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"skulk"` | Skulk (CR 702.118b) — blocker power cannot exceed attacker power |
 | `"protection from <quality>"` | Protection (CR 702.16) — #662, all four DEBT checks. The one PARAMETERISED token; see "Protection" below before writing one |
 | `"infect"` | Infect (CR 702.90) — #748, the damage tail: -1/-1 counters on a creature, poison on a player |
-| `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature |
+| `"wither"` | Wither (CR 702.80) — #748, the damage tail: -1/-1 counters on a creature. It works from the stack (CR 702.80c), printed or given: "those spells gain wither" for a spell and the copy a trigger makes of it (Spinerock Tyrant, #4693) is `g.CopyLastKnownSpellGainingKeywordsForEffect(…, []string{game.KeywordWither}, …)` for the copy and `g.GrantKeywordsToSpellForEffect` for the original, and the damage tail reads the granted keyword like a printed one. A copy some other effect makes does not have it (CR 707.2) |
 | `"toxic N"` | Toxic (CR 702.164) — #748, N extra poison on combat damage to a player. Numbered AND cumulative: read it with `game.ToxicTotal`, never `HasKeyword`, and grant it through `game.AppendKeywordAbility` so a second instance adds up ([ADR 0056](decisions/0056-infect-wither-toxic.md)) |
 | `"prowess"` | Prowess (CR 702.108) — #706, the first TRIGGERED keyword in the table: `TriggersForCard` turns each instance on the effective ability list into one trigger (`game/prowess.go`). Cumulative like toxic, so grant it through `game.AppendKeywordAbility`. Never write a prowess trigger by hand — declare the token ([ADR 0014 amendment 2026-09-24](decisions/0014-combat-keywords.md)) |
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
@@ -4366,6 +4368,64 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+### Blight as an effect (#4683, CR 701.68)
+
+"You may blight 2. If you do, …", "blight 1" and "each opponent blights
+1" are `Blight{N, Players, May, Then}` in
+[blight_effect.go](../server/internal/cards/effects/blight_effect.go),
+called from the ability's `Effect`:
+
+```go
+Blight{N: 2, May: true, Then: sourbreadAuntieTokens}.Apply(NewContext(g, item))
+Blight{N: 1, Players: ctx.Opponents()}.Apply(ctx) // High Perfect Morcant
+```
+
+Each blighting player is asked as the ability resolves, one `choose_cards`
+prompt each in APNAP order (ADR 0175's ordered collector), over
+`Game.BlightOptionsForEffect`: the creatures they control that can have
+counters put on them. It is not a target, so hexproof does not stop it.
+A player with no such creature is not asked and does not blight (CR
+701.68b), and a mandatory blight with one candidate asks nothing. The
+counters go on through `Game.BlightKeyedForEffect`, an effect's
+placement and not a cost's: Doubling Season doubles them (CR 614.16), the
+blighting player is the placer, and two counter replacements pause on
+the CR 616 ordering prompt.
+
+Everything printed after the blight is a `Blighted`, registered once from
+a package-level var with `RegisterBlighted("blight/<card>-<what>", fn)`
+(ledgered as a run and a tail). `fn(ctx, d)` runs once every counter has
+landed, and also when nobody could blight. `d.Did()` is "if you do" (a
+creature was chosen, even if a replacement removed its counters), its
+negation is "if you don't" (Gutsplitter Gang), `d.By(player)` and
+`d.Creatures` are CR 701.68c's "blighted creature", and `d.Placed` is the
+counters that landed. "When you do" is a `WhenYouDo` reflexive trigger
+applied from `fn` when `d.Did()` (Warren Torchmaster). Never declare the
+choice as the trigger's `Targets`. A blight paid as a COST is
+`OptionalBlight` / `BlightCost` / `BlightXCost` on a spell (#1703), which
+`game.blightLocked` pays, and `BlightN` on an activated ability (next
+subsection).
+
+### Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)
+
+"Blight N" inside an activation cost is `BlightN(n)`, composed with `Plus`:
+
+```go
+Cost: Plus(TapCost(), BlightN(1)),                         // Gristle Glutton
+Cost: Plus(ManaCost("{1}{W}"), BlightN(1), SacrificeThis()), // Spiral into Solitude
+```
+
+The activator names the creature as they activate (`blight_ids`): any
+creature they control that can have counters put on it, the source
+included. It is not `AddCounterToThis`, which is "put a counter on this
+creature" (Devoted Druid). The counters are a cost's, not an effect's, so
+Doubling Season doesn't double them and Vizier of Remedies applies (CR
+614.16). With no creature to blight the ability can't be activated (CR
+701.68b). The source's zone doesn't matter: Evershrike's Gift's
+graveyard ability (`Zones: []game.ZoneKind{game.ZoneGraveyard}`) blights a
+creature on the battlefield. The card file declares nothing else; the
+view, the client's picker, the enumerator and the bot's price come with
+the component.
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
@@ -4838,7 +4898,13 @@ does not carry ("you sacrificed a *Food* this turn") ranges over
 old upkeep-bounded scans missed the untap step, which is where #1009
 finally bit. A counter the tally
 should carry and does not is a field on `PlayerTurnTally` plus one case
-in `turnTallyListener`, not a new scan.
+in `turnTallyListener`, not a new scan. Questions about the spells a
+player cast this turn read `g.CastTallyFor(player)` instead, written
+in `CastSpell` as each spell becomes cast (CR 601.2i) and read off the
+spell on the stack: `SpellColorsCast()` is "colors among spells you've
+cast this turn" (First Family) and `CardTypesCast()` is "card type
+among spells you've cast this turn" (April O'Neil, Hacktivist, #4677;
+kindred counts, a copy and a land played do not).
 
 **Never anchor a "this turn" question on `EventBeginUpkeep`.** The turn
 begins at `onTurnBeganLocked`, which resets the tally *before* the untap
@@ -5509,6 +5575,24 @@ it fires only when the spell resolves and competes with the others under
 CR 616.1. The cards it leaves behind are found by their counter
 (`c.Counters[game.CounterDream] > 0` on `g.Exile.Cards`) and cast through a
 `GrantCastPermissionToCardsForEffect` grant, as Crabomination's are.
+
+**"If you cast a creature spell this way, that creature enters with an
+additional +1/+1 counter on it" (#4679, CR 614.1c, CR 614.12):** Mikey &
+Don, Party Planners. Set `EntersWithCounterKind: game.CounterPlusOne` and
+`EntersWithCounters: 1` on the `CastPermission`, beside its other "this
+way" riders (`EntersTapped`, `GainsKeywords`). `CastSpell` reads them
+where the permission is consumed and marks the spell's item through
+`addPromisedCounterLocked` (`markPermissionEntryCountersLocked`), so it is
+the Wildgrowth Archaic read side from there: Doubling Season doubles it, a
+countered spell takes it along, and a cast from hand or through another
+permission gets none. Only a creature spell as cast is marked (every
+printed rider says "that creature"), so a noncreature spell, a
+noncreature face and a bestowed Aura spell cast this way get nothing. A
+finality counter works the same way (Leonardo, Sewer Samurai, which also
+needs a power-or-toughness filter the permission does not have yet).
+`PermissionFilter.CreatureTypesAny` holds two types and must not be
+widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
+Turtle spells" is two permissions with the same rider.
 
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
@@ -7106,6 +7190,30 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 "Sacrifice X Mountains" on a flashback, and a "Flashback—Tap N
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
+
+**A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
+2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
+Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
+true}`) with `BeholdCount`, built with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                       // Kindle the Inner Flame
+AlternativeCosts: []game.AlternativeCost{FlashbackBehold("{1}{R}", 3, "Elemental", "Elementals")},
+```
+
+It keeps flashback's graveyard binding and `ExileOnLeavingStack`. The
+caster names N distinct objects in `alt_cost_ids`, each a permanent of
+that creature type they control or a card of it in their hand (a
+changeling counts), through the reveal walk the additional cost's
+behold already reads (`RevealCostOptionsForEffect`). The hand cards are
+revealed with the spell on the stack; nothing moves or taps. With fewer
+than N candidates the offer is not stamped and the cast is refused. The
+view ships `pay_options` (min == max == N) and `behold: true`, so the
+client's pay picker reads "Behold", and the bot charges nothing for the
+picks. `Register` counts the behold as the offer's one card component
+and refuses a malformed one (a plain reveal, no type, a colour, no
+count). An additional cost of "behold a … and exile it" (#4687) is not
+this shape: that card is spent.
 
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
@@ -12091,6 +12199,23 @@ of up to `Max` cards, which `game.PutFromOutsideIntoLibraryForEffect` puts in th
 library unrevealed (the second door out of the container, beside
 `BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
 nothing was chosen or there was nothing to choose from (CR 701.24d).
+
+**Searching your library and/or outside the game** (Turtles Forever, #4681) is
+not a flag on `SearchLibrarySpec`: the database pool (ADR 0198) answers with
+card names, which no library search prompt can hold beside instance IDs. It is
+three keyed prompts in a row, in `effects/turtles_forever.go`: a `PickOption`
+for the zones (both, the library only, outside the game only; asked first, so
+the library is searched, and announced, only when chosen, as #4519 does for
+"and/or graveyard"), then the library search, then an outside pick for the
+room the library left. The library's finds wait on top of the library (`ToTop`,
+Gifts Ungiven's shape) and ride the outside pick as its `Carry`; their names
+ride as its `MatchArg`, so the registered filter leaves them out on both
+branches and after a restore. A "different names" rule over the outside picks
+themselves is the pick's set rule (`RegisterOutsidePickRule`). Both halves may
+come up short: a library search for a stated quality (CR 701.23b), and a search
+outside the game, where the player "may choose" (CR 701.23j). The cards found
+are then revealed together, `RevealForEffect` for the library's and
+`RevealOutsideForEffect` for the rest, and settled from where each card is now.
 
 **Learn** (CR 701.48a, #3525) is `Learn{}` in `effects/learn.go`, the last
 instruction of every printing:

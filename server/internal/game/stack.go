@@ -619,7 +619,12 @@ type StackItem struct {
 
 	// PromisedCounters is the "enters with an additional counter" marks
 	// a spent next-spell promise (Savage Summoning) wrote onto this
-	// SPELL as it became cast (#1852, CR 601.2i). Read by
+	// SPELL as it became cast (#1852, CR 601.2i), or that a resolving
+	// effect wrote onto it while it waited on the stack
+	// (MarkSpellEntersWithCountersForEffect, Wildgrowth Archaic's cast
+	// trigger), or that the cast permission it was cast through
+	// carried (CastPermission.EntersWithCounters, Mikey & Don, #4679).
+	// All write through addPromisedCounterLocked. Read by
 	// applyCastEntryCountersLocked, so the counters ride the entry
 	// pipeline. Object-scoped like CantBeCountered: a copy never has
 	// them, and they end with the item. Never mutated in place.

@@ -271,6 +271,17 @@ func UnattachAnEquipment() game.AbilityCost {
 	return game.AbilityCost{UnattachEquipment: 1}
 }
 
+// BlightN is "Blight N" as part of an activated ability's cost (#4684,
+// game.AbilityCost.Blight, CR 701.68a): the activator names a creature
+// they control, any one of them, and it gets N -1/-1 counters as the
+// cost is paid. Gristle Glutton's "{T}, Blight 1:" is
+// Plus(TapCost(), BlightN(1)). With no creature that can take the
+// counters the ability can't be activated (CR 701.68b). Not
+// AddCounterToThis, which puts the counter on the source only.
+func BlightN(n int) game.AbilityCost {
+	return game.AbilityCost{Blight: n}
+}
+
 // Plus merges cost components: Plus(ManaCost("{2}"), TapCost()) is
 // "{2}, {T}". Later components win for scalar fields, which only
 // matters if a caller passes two mana strings (they shouldn't).
@@ -456,6 +467,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// throw would deal damage for {3} and keep the Equipment on him.
 		if c.UnattachEquipment != 0 {
 			out.UnattachEquipment = c.UnattachEquipment
+		}
+		// #4684: and the blight component; dropped, Gristle Glutton
+		// would loot for a tap alone — stronger than printed, the #259
+		// direction.
+		if c.Blight != 0 {
+			out.Blight = c.Blight
 		}
 		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
 		// this creature" that dropped it would untap next turn — stronger

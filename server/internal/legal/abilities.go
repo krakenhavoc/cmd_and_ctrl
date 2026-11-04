@@ -66,6 +66,10 @@ type activateParams struct {
 	// <this>" cost (Captain America, First Avenger). Omitted for every
 	// ability that does not print the clause.
 	UnattachIDs []string `json:"unattach_ids,omitempty"`
+	// #4684: the creature a "Blight N" cost puts its -1/-1 counters on
+	// (Gristle Glutton). Omitted for every ability that does not print
+	// the clause.
+	BlightIDs []string `json:"blight_ids,omitempty"`
 	// #1310: the permanents tapped to pay part of a "Waterbend {N}"
 	// cost (CR 701.67a). Omitted when the payment taps none.
 	WaterbendIDs []string `json:"waterbend_ids,omitempty"`
@@ -260,8 +264,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// offers no move (CR 118.3). The move names its branch (cost_branch).
 	// #4799: and an "Unattach an Equipment from <this>" cost is one row
 	// per Equipment attached, since a divided amount may read the pick.
-	for _, er := range e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities)) {
-		row, ab, costBranch, unattach := er.row, er.ab, er.branch, er.unattach
+	// #4684: and a "Blight N" cost is one row per creature the seat
+	// could blight, since that creature is the activation's price.
+	for _, er := range e.expandBlightPicks(e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities))) {
+		row, ab, costBranch, unattach, blight := er.row, er.ab, er.branch, er.unattach, er.blight
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -1002,6 +1008,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								label += modesLabel(ab.Modes, ann.modes)
 								label += targetLabel(g, targets)
 								label += unattachLabel(g, unattach)
+								label += blightLabel(g, blight)
 								// #74: the life on the Move is what the
 								// controller pays at announce, so the
 								// Phyrexian half counts — a policy that saw
@@ -1029,6 +1036,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// #3966: and the top cards an "Exile the top N
 								// cards of your library" cost takes, likewise.
 								cost = withLibraryExile(cost, ab.Cost.ExileFromLibraryTop)
+								// #4684: and the -1/-1 counters a blight cost
+								// puts on the creature this row names.
+								cost = withBlight(cost, blight, ab.Cost.Blight)
 								if ab.Cost.RevealHand {
 									label += " revealing your hand"
 								}
@@ -1087,6 +1097,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 										ReturnIDs:         idStrings(rets),
 										ExilePermanentIDs: idStrings(perms),
 										UnattachIDs:       idStrings(unattach),
+										BlightIDs:         idStrings(blight),
 										WaterbendIDs:      idStrings(waterbendIDs),
 										TapIDs:            idStrings(taps),
 										XValue:            tapXValue,

@@ -85,29 +85,13 @@ func b11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
 // b11CountersWerePlaced reports whether ev is a PLACEMENT of `kind`
 // counters on `target`, as opposed to a removal. EventCounterPlaced
 // is emitted for both and carries only the post-change total, so the
-// previous total is read back off the log: the most recent
-// EventCounterPlaced for the same card and kind, or zero if the card
-// entered the battlefield more recently than that (CR 400.7 — it
-// arrived with no counters).
+// previous total is the engine's read of the log
+// (Game.CounterCountBeforeForEffect, #4865).
 func b11CountersWerePlaced(ev game.Event, target uuid.UUID, kind string, g *game.Game) bool {
 	if ev.Kind != game.EventCounterPlaced || ev.Target != target || ev.Label != kind {
 		return false
 	}
-	before := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		if (prev.Kind == game.EventETB || prev.Kind == game.EventTokenCreated) && prev.CardID == target {
-			break
-		}
-		if prev.Kind == game.EventCounterPlaced && prev.Target == target && prev.Label == kind {
-			before = prev.Amount
-			break
-		}
-	}
-	return ev.Amount > before
+	return ev.Amount > g.CounterCountBeforeForEffect(ev)
 }
 
 // b11CounterPlacerOf is who PUT the counters this EventCounterPlaced

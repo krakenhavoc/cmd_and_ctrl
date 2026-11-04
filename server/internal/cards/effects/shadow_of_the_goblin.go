@@ -28,13 +28,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourPrecombatMain("Shadow of the Goblin — discard a card; if you do, draw a card",
-				func(g *game.Game, item *game.StackItem) error {
-					return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-						Player: item.Controller,
-						Source: item.SourceCardID,
-						N:      1,
-					}, drawOneIfDiscarded.then, nil)
-				}),
+				discardACardIfYouDoDraw),
 			OnAny([]game.EventKind{game.EventCast, game.EventZoneMove},
 				shadowOfTheGoblinPlayedFromOutsideHand,
 				"Shadow of the Goblin — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),

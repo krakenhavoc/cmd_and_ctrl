@@ -204,9 +204,10 @@ func Register(spec Spec) {
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
 		if n := altCostCardComponents(ac); n > 1 {
-			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand and TapOthers",
+			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand, TapOthers and Behold",
 				spec.Name, ac.Key, n))
 		}
+		checkAltCostBehold(spec.Name, ac)
 		// The sacrifice component is the additional cost's clause and
 		// is held to the same shape, minus the two variable forms: no
 		// printed alternative cost sacrifices "X" or "any number", and
@@ -715,6 +716,12 @@ func Register(spec Spec) {
 		if n := ab.Cost.UnattachEquipment; n != 0 && n != 1 {
 			panic(fmt.Sprintf("effects.Register: %q ability %d unattaches %d Equipment — only \"Unattach an Equipment\" (1) is supported",
 				spec.Name, i, n))
+		}
+		// #4684: "Blight N" puts at least one counter; a negative N is a
+		// card-file mistake (zero is "no component").
+		if ab.Cost.Blight < 0 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d blights %d — blight N is at least 1 (CR 701.68a)",
+				spec.Name, i, ab.Cost.Blight))
 		}
 		// #2028: the source pays one component (CR 118.3), so a cost
 		// cannot both return it and sacrifice or exile it. No printed
@@ -1652,7 +1659,28 @@ func altCostCardComponents(ac game.AlternativeCost) int {
 	if ac.TapOthers != nil {
 		n++
 	}
+	// #4689: a behold rides the same alt_cost_ids list.
+	if ac.Behold != nil {
+		n++
+	}
 	return n
+}
+
+// checkAltCostBehold holds an alternative cost's behold (#4689) to the
+// shape the cast path reads: a behold (not a plain reveal) of one
+// creature type, no colour quality, a positive count, and no count
+// without a behold to size.
+func checkAltCostBehold(card string, ac game.AlternativeCost) {
+	rc := ac.Behold
+	if rc == nil {
+		if ac.BeholdCount != 0 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a BeholdCount and no Behold — build it with FlashbackBehold", card, ac.Key))
+		}
+		return
+	}
+	if !rc.Behold || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
+		panic(fmt.Sprintf("effects.Register: %q offers %q with a malformed behold — build it with FlashbackBehold", card, ac.Key))
+	}
 }
 
 // checkAltCostTapOthers holds a tap alternative cost (ADR 0135 §1) to the

@@ -33,6 +33,27 @@ func (e *enumerator) revealPayment(castID uuid.UUID, mandatory *game.AdditionalC
 	return []uuid.UUID{options[0]}, true
 }
 
+// beholdOrder is an alternative cost's behold candidates (#4689) with the
+// permanents first and the hand cards after, each in the engine's order:
+// a seat that can behold without revealing its hand does. The options walk
+// lists hand cards first, so this only moves the seat's hand to the back.
+func beholdOrder(g *game.Game, seat uuid.UUID, pool []uuid.UUID) []uuid.UUID {
+	p := g.PlayerByIDForEffect(seat)
+	if p == nil {
+		return pool
+	}
+	out := make([]uuid.UUID, 0, len(pool))
+	var hand []uuid.UUID
+	for _, id := range pool {
+		if p.Hand.Contains(id) {
+			hand = append(hand, id)
+			continue
+		}
+		out = append(out, id)
+	}
+	return append(out, hand...)
+}
+
 // revealCostOf is the reveal component this announcement pays: the
 // mandatory cost's, else the first announced optional cost's. Register
 // keeps a card from declaring both (checkOptionalBehold).
