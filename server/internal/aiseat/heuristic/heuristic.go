@@ -325,6 +325,14 @@ type Config struct {
 	// the creature, and a trample grant by the damage it puts over the
 	// defender's biggest blocker. Off, neither adds to the attack.
 	PriceEvasionGrants bool
+	// PriceHasteTapRows prices haste granted until end of turn to the
+	// bot's summoning-sick creature by the {T} ability it can then
+	// activate (#4324, haste_tap.go; CR 302.6, 702.10c): the best row
+	// costing only the tap and mana the bot still has after the grant,
+	// at its declared purpose or ActivateBase, less the tapped blocker,
+	// when that beats the attack the grant adds. Off, haste is worth
+	// only the attack. Read only with PriceTemporaryEffects on.
+	PriceHasteTapRows bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -894,6 +902,8 @@ func DefaultConfig() Config {
 		// blockers.
 		PriceGrantSaves:    true,
 		PriceEvasionGrants: true,
+		// #4324: haste priced by the {T} ability it unlocks.
+		PriceHasteTapRows: true,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -1066,6 +1076,7 @@ func BaselineConfig() Config {
 	c.CombatGrant = 0
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
+	c.PriceHasteTapRows = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false

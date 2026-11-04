@@ -35,6 +35,41 @@ Scryfall dump the authoring machine did not have, and the synthetic
 battle decks hold no graveyard-exile sink. The labelled position suite
 kept its agreement.
 
+## What #4312 left (#4324, S75)
+
+**Declared removal in response windows (measured, unchanged).** #4312
+took the mana-value proxy off declared removal, so Dismember is priced as
+the removal less the card. The 2026-11-04 UTC run used integration base
+`43de8af88`, `--decks tricks-battle` at all four seats (three Dismember
+each), seeds 1000–1047, rotation, lockstep and decision logs: 48 games,
+all to a winner, none stalled. Dismember was offered in 126 seat-games and
+cast in 116; 49 casts were in response windows (median price +2.53) and
+89 in the caster's own main phase. Of the 440 response windows where the
+bot passed with Dismember priced above zero but at or below
+`InstantThreshold`, the target was a 1/1 Mother of Runes (+0.32) or a
+2/2 Bear for 4 life (+1.45; the deck has no black mana, so every cast
+pays Phyrexian life) in all but two, a 3/3 in the bot's own draw step,
+and none of those targets was attacking. Those
+holds cost no combat answer, and the bot cast Dismember on Bears and
+Mothers in its own main phase instead (19 of the 89 main-phase casts). So the response bar stays as it is;
+`TestDeclaredRemovalClearsTheResponseBar` holds a 2/2 kill above it on
+an opponent's turn and leaves a 1/1 for the end step's leftover bar.
+
+**Haste for a {T} ability.** `PriceHasteTapRows` (on by default, off in
+`BaselineConfig`) is the back-out; [bot.md](bot.md#purposes-what-a-spell-or-an-ability-does)
+says what it prices. No curated or synthetic deck holds a haste grant,
+so the evidence is `heuristic/haste_tap_test.go`, and the arena is the
+check that nothing else moved. With the change, the same tricks-battle
+run and the std pool (mono-red-aggro, simic-ramp, esper-control,
+mono-black-aristocrats; seeds 1000–1047, rotation, lockstep, all four
+seats `heuristic`) were identical to the base game for game (turns, each
+seat's final life, decisions and card offers and uses in all 96 games),
+with no stalls. Std wins per deck in both: esper-control 12/48, 25.0%
+(14.9–38.8%); mono-black-aristocrats 10, 20.8% (11.7–34.3%);
+mono-red-aggro 16, 33.3% (21.7–47.5%); simic-ramp 10, 20.8%
+(11.7–34.3%). The labelled suite stayed at 42/42. Reports, decision logs
+and the scanner stayed on the authoring machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every

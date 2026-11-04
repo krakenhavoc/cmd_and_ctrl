@@ -1428,6 +1428,23 @@ anything (CR 509.1h) and only `CombatGrant` is left. +X/+X is still not
 priced before combat. The arena's `heuristic-nogrants` turns both of
 these off, and `--decks tricks-battle` deals a deck with the cards in it.
 
+**Haste is also worth the {T} ability it unlocks**
+([#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324),
+`PriceHasteTapRows`, `haste_tap.go`). A summoning-sick creature can't pay
+a {T} cost (CR 302.6), and haste lifts that as well as the attack
+(CR 702.10c). A declared haste grant on the bot's own sick, untapped
+creature without haste is worth the best of that creature's {T} rows the
+bot could then activate, less the tapped blocker, when that beats what the
+grant was already priced at (its attack, or a save). The row has to cost
+only the tap and mana the bot still has once the grant is paid for,
+counting the grant's own source when it taps a mana source (Hanweir
+Battlements). It is priced as the activation would be: its declared
+purpose, or `ActivateBase` with none. Answer rows, rows that sacrifice
+their source and mana abilities are left out. So Expedite on a fresh
+creature with "{T}: Draw a card" is cast for the draw. No curated deck
+holds a haste grant, so the evidence is the position tests
+(`heuristic/haste_tap_test.go`).
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
