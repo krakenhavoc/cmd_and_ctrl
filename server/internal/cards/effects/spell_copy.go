@@ -66,7 +66,13 @@ type CopySpell struct {
 	//
 	// It is applied to every copy independently, which is what a
 	// multi-copy card with an except clause would mean. Nil for the
-	// plain copies, which is every card in the family but one.
+	// plain copies.
+	//
+	// "The copy gains '<ability>'" is an except clause too (CR 707.9a,
+	// ADR 0218): AddKeyword for a keyword and GrantAbility for a quoted
+	// ability declared in Spec.Grants. Both are copiable values, so the
+	// token a creature copy becomes keeps them and a Clone of it copies
+	// them (Choreographed Sparks).
 	Except func(v *game.PrintedValues)
 
 	// FromLastKnown copies the spell from last-known information when
@@ -127,4 +133,21 @@ func (c CopySpell) Apply(ctx *Context) error {
 func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpec {
 	preds := append([]CardPredicate{Or(Instant(), Sorcery())}, extra...)
 	return TargetSpell(label, preds...)
+}
+
+// copyModeTargetSpellWithNewTargets is a modal bullet's "Copy target
+// spell. You may choose new targets for the copy." (See Double,
+// Choreographed Sparks): copy the bullet's targeted spell under the
+// spell's controller, with the CR 707.10c re-target prompt. The bullet's
+// own target clause decides which spells qualify.
+func copyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
+	refs := ctx.ModeTargets(occurrence)
+	if len(refs) == 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:          refs[0].ID,
+		Controller:       ctx.Controller(),
+		ChooseNewTargets: true,
+	}.Apply(ctx)
 }
