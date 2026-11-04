@@ -583,6 +583,7 @@ choose choose-cards/proliferate
 choose choose-cards/put-from-hand-on-top-in-any-order
 choose choose-cards/put-from-hand-onto-battlefield
 choose choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4
+choose choose-cards/put-from-library-michelangelos-technique-total-mana-value-6
 choose choose-cards/put-from-library-ojer-kaslem-creature-and-or-land
 choose choose-cards/put-from-library-onto-battlefield
 choose choose-cards/quintorius-history-chaser-draw-two-mill-one
