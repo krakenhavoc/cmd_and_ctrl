@@ -353,9 +353,11 @@ func TestTrekB7JettGrowsOffAModalTriggerButNotAnOpponentsDilemma(t *testing.T) {
 		t.Fatalf("an opponent's mode choice gave Jett %d counters", got)
 	}
 
-	// Your Scenario's upkeep mode choice is your dilemma.
+	// Your Scenario's upkeep mode choice is your dilemma: Jett's trigger
+	// joins the Scenario's, and you order the two.
 	advanceToUpkeepOf(t, g, seat)
 	chooseModeNow(t, g, me.ID, []int{0, 1, 2, 3}, 1)
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if got := counterOn(g, jett, game.CounterPlusOne); got != 1 {
 		t.Errorf("your modal trigger's choice: %d counters, want 1", got)
@@ -568,6 +570,7 @@ func TestTrekB7BountyTakesOneExtraTurnWithAWhale(t *testing.T) {
 	}
 
 	// In the extra turn it draws, but you have begun an extra turn.
+	advanceToMain(t, g)
 	hand = handSize(me)
 	attackWith(t, g, opp.ID, bounty)
 	passPriorityAroundTable(t, g)

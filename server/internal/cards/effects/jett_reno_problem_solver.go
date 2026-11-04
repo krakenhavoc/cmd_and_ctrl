@@ -44,7 +44,7 @@ func init() {
 // she last existed on the battlefield.
 func jettRenoTapped(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if info, ok := ctx.SourcePermanent(); ok && info.Characteristic.Power >= 4 {
+	if info, ok := ctx.SourcePermanent(); ok && info.Power >= 4 {
 		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	}
 	return Surveil{Player: item.Controller, N: 1}.Apply(ctx)
