@@ -117,6 +117,11 @@ type GameView struct {
 	// while the roll is open; a client ignores StartingSeat meanwhile
 	// (it reads 0). Public and identical for every viewer.
 	OpeningRoll *OpeningRollView `json:"opening_roll,omitempty"`
+	// Planechase is a Planechase table's planar state (CR 901, ADR 0216
+	// §9). Absent when the table is not playing Planechase. Public and
+	// identical for every viewer: the command zone is public, and the
+	// planar deck's cards are on nobody's wire, only its size.
+	Planechase *PlanechaseView `json:"planechase,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -5841,6 +5846,7 @@ func ViewOfGame(g *game.Game) GameView {
 			Settings:              viewOfTableSettings(g.Settings),
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
+			Planechase:            viewOfPlanechase(g, ids),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -11305,7 +11311,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
 		StartingSeat:   v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
-		OpeningRoll:           v.OpeningRoll,
+		OpeningRoll: v.OpeningRoll,
+		// ADR 0216 §9: the face-up planar cards are public.
+		Planechase:            filterPlanechaseFor(v.Planechase, isKnower),
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,
@@ -14090,6 +14098,55 @@ type TableSettingsView struct {
 	// seat the table waits on must be offline before the table is
 	// offered a way on. 0 is never. Changeable at any time.
 	AwayAfter int `json:"away_after"`
+	// Planechase plays the game with a communal planar deck and the
+	// planar die (ADR 0216). Fixed once the game is active.
+	Planechase bool `json:"planechase,omitempty"`
+}
+
+// PlanechaseView is GameView.planechase (ADR 0216 §9). The planar die's
+// count and cost (die_rolls, die_cost) arrive with the die in slice 2.
+type PlanechaseView struct {
+	// PlanarController is the planar controller's player ID (CR 901.6),
+	// empty until the starting player is known.
+	PlanarController string `json:"planar_controller,omitempty"`
+	// DeckCount is how many cards are in the communal planar deck,
+	// public like a library's size.
+	DeckCount int `json:"deck_count"`
+	// FaceUp is the face-up plane cards, in the order they were turned
+	// up: ordinary CardViews, with the existing layout ("planar") and
+	// type_line so a client can lay a plane out landscape. Empty until
+	// the hands are kept (CR 901.5).
+	FaceUp []CardView `json:"face_up"`
+}
+
+// viewOfPlanechase projects the planar state, nil when the table is not
+// playing Planechase.
+func viewOfPlanechase(g *game.Game, ids *idStrings) *PlanechaseView {
+	if g.Planechase == nil {
+		return nil
+	}
+	face := viewOfZone(g.PlanarFaceUp, ids).Cards
+	if face == nil {
+		face = []CardView{}
+	}
+	return &PlanechaseView{
+		PlanarController: uuidStringOrEmpty(g.Planechase.Controller),
+		DeckCount:        len(g.PlanarDeckCards()),
+		FaceUp:           face,
+	}
+}
+
+// filterPlanechaseFor is the per-viewer copy. The face-up cards are
+// known to every seat (turnUpStartingPlaneLocked), so redaction leaves
+// them as they are; it runs anyway so a card a seat could not know
+// would never be shown to it.
+func filterPlanechaseFor(v *PlanechaseView, isKnower func(CardView) bool) *PlanechaseView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.FaceUp = redactZone(ZoneView{Cards: v.FaceUp}, isKnower).Cards
+	return &out
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -14113,6 +14170,7 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 
 		FreeMulligans: s.EffectiveFreeMulligans(),
 		AwayAfter:     s.EffectiveAwayAfter(),
+		Planechase:    s.Planechase,
 	}
 }
 

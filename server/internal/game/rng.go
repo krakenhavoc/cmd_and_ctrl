@@ -61,6 +61,10 @@ const (
 	// has access to (CR 103.2d, ADR 0208 §2), apart from the library's
 	// stream for the same reason.
 	rngStreamStickerSheets = "sticker_sheets"
+	// rngStreamPlanarShuffle shuffles a Planechase table's communal
+	// planar deck before the game begins (ADR 0216 §2), apart from
+	// every library's stream so the option moves no player's shuffle.
+	rngStreamPlanarShuffle = "planar_shuffle"
 	// rngStreamTable is ADR 0121 §5's table roll. It is NOT drawn
 	// through randForLocked: its counter is Game.tableRollNext, per
 	// game and never reset, and it never touches rngCounters.

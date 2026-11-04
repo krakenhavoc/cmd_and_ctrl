@@ -324,6 +324,12 @@ type GameSnapshot struct {
 	// and on every game that never had a designation, which restores
 	// as neither day nor night.
 	DayNight *DayNightState `json:"dayNight,omitempty"`
+	// Planechase is the Planechase option's state and planar cards
+	// (CR 901, ADR 0216 §3): Game.Planechase, Game.PlanarDeck and
+	// Game.PlanarFaceUp in one object. Additive within v9: absent on
+	// every file written before it and on every table without the
+	// option, which restores with no planar state at all.
+	Planechase *planechaseSnapshot `json:"planechase,omitempty"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -1580,6 +1586,10 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.AttractionDeck)
 		walk(p.Junkyard)
 	}
+	if s.Planechase != nil {
+		walk(s.Planechase.Deck)
+		walk(s.Planechase.FaceUp)
+	}
 	return out
 }
 
@@ -2479,6 +2489,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.Stack = snapshotZone(g.Stack, cen)
 	s.Exile = snapshotZone(g.Exile, cen)
 	s.PhasedOut = snapshotZone(g.PhasedOut, cen)
+	s.Planechase = snapshotPlanechase(g, cen)
 
 	s.Seats = make([]playerSnapshot, len(g.Seats))
 	for i, p := range g.Seats {
@@ -2777,6 +2788,57 @@ func restoreCompanionZone(z *zoneSnapshot) *Zone {
 		return nil
 	}
 	return restoreZone(z, ZoneOutside)
+}
+
+// planechaseSnapshot mirrors a Planechase table's state (ADR 0216 §3):
+// PlanechaseState's plain fields and the two planar containers, written
+// and read by the attraction deck's pair (snapshotCompanionZone,
+// restoreCommandPile). Every field is omitempty, so the object is as
+// small as the table's state.
+type planechaseSnapshot struct {
+	Mode       PlanarDeckMode `json:"mode,omitempty"`
+	Controller uuid.UUID      `json:"controller,omitempty"`
+	Deck       *zoneSnapshot  `json:"deck,omitempty"`
+	FaceUp     *zoneSnapshot  `json:"faceUp,omitempty"`
+	DieTurnSeq int            `json:"dieTurnSeq,omitempty"`
+	DieRolls   int            `json:"dieRolls,omitempty"`
+}
+
+// snapshotPlanechase captures the planar state, nil for a table that
+// has none (the option off, which is every table but a Planechase one).
+func snapshotPlanechase(g *Game, cen *ContinuationCensus) *planechaseSnapshot {
+	if g.Planechase == nil && g.PlanarDeck == nil && g.PlanarFaceUp == nil {
+		return nil
+	}
+	out := &planechaseSnapshot{
+		Deck:   snapshotCompanionZone(g.PlanarDeck, cen),
+		FaceUp: snapshotCompanionZone(g.PlanarFaceUp, cen),
+	}
+	if ps := g.Planechase; ps != nil {
+		out.Mode = ps.Mode
+		out.Controller = ps.Controller
+		out.DieTurnSeq = ps.DieTurnSeq
+		out.DieRolls = ps.DieRolls
+	}
+	return out
+}
+
+// restoreInto puts the planar state back on g. A nil snapshot is a
+// table without Planechase and leaves all three fields nil. An empty
+// container restores as nil and is made again on first use
+// (planarDeckForLocked, planarFaceUpLocked).
+func (s *planechaseSnapshot) restoreInto(g *Game) {
+	if s == nil {
+		return
+	}
+	g.Planechase = &PlanechaseState{
+		Mode:       s.Mode,
+		Controller: s.Controller,
+		DieTurnSeq: s.DieTurnSeq,
+		DieRolls:   s.DieRolls,
+	}
+	g.PlanarDeck = restoreCommandPile(s.Deck)
+	g.PlanarFaceUp = restoreCommandPile(s.FaceUp)
 }
 
 // restoreCommandPile is restoreZone for Player.AttractionDeck and
@@ -3663,6 +3725,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Stack = restoreZone(s.Stack, ZoneStack)
 	g.Exile = restoreZone(s.Exile, ZoneExile)
 	g.PhasedOut = restoreZone(s.PhasedOut, ZonePhasedOut)
+	s.Planechase.restoreInto(g)
 
 	g.Seats = make([]*Player, len(s.Seats))
 	for i := range s.Seats {

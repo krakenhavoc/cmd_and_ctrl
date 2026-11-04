@@ -629,6 +629,13 @@ func (s *GameSnapshot) cardNameOf(id uuid.UUID) string {
 			}
 		}
 	}
+	if s.Planechase != nil {
+		for _, z := range []*zoneSnapshot{s.Planechase.Deck, s.Planechase.FaceUp} {
+			if n, ok := find(z); ok {
+				return n
+			}
+		}
+	}
 	return ""
 }
 

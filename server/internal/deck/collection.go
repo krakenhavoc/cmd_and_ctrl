@@ -22,6 +22,10 @@ import (
 // the game is built by toGameCard, the function a deck import uses, so a
 // card taken from the collection is the card a deck list would have
 // seated: same oracle ID (the catalog's key), same printing, same faces.
+//
+// It is also game.PlanarCardSource (ADR 0216 §2, amending ADR 0198):
+// PlanarCards reads the planar rows the pool excludes, for a Planechase
+// table's communal planar deck. The two readers never share a result.
 
 // Collection implements game.OutsideCollectionSource over a card index.
 type Collection struct {
@@ -162,4 +166,50 @@ func (col *Collection) suggestionOrder() []uuid.UUID {
 	col.order = order
 	col.builtAt = loaded
 	return order
+}
+
+// PlanarCards is game.PlanarCardSource over the card database (ADR 0216
+// §2): one game card per planar oracle ID of the asked kinds, built by
+// toGameCard, in oracle-ID order so that minting, and so the game's
+// object ordinals, are the same on every run of a seeded game.
+//
+// It is a second, separate reader of the index that selects exactly
+// the planar rows collectible excludes (ADR 0198 §2, amended by ADR
+// 0216): a printing is kept when it is Playable, its Scryfall layout is
+// "planar", and its type line is a plane's ("Plane — …") or, when asked
+// for, a phenomenon's. The outside-the-game pool never sees these
+// cards, and this never sees any other.
+func (col *Collection) PlanarCards(kinds game.PlanarKinds) []game.Card {
+	if col == nil || col.idx == nil {
+		return nil
+	}
+	var rows []cards.Card
+	col.idx.EachOracle(func(c cards.Card, _ int) {
+		if planarKindOf(c)&kinds != 0 {
+			rows = append(rows, c)
+		}
+	})
+	sort.Slice(rows, func(a, b int) bool { return rows[a].OracleID.String() < rows[b].OracleID.String() })
+	out := make([]game.Card, len(rows))
+	for i, c := range rows {
+		out[i] = toGameCard(c, false)
+	}
+	return out
+}
+
+var _ game.PlanarCardSource = (*Collection)(nil)
+
+// planarKindOf is the planar kind of a printing, or 0 for a card that
+// is not a playable plane or phenomenon.
+func planarKindOf(c cards.Card) game.PlanarKinds {
+	if !c.Playable() || c.Name == "" || c.Layout != "planar" {
+		return 0
+	}
+	switch {
+	case strings.HasPrefix(c.TypeLine, "Plane —"), strings.HasPrefix(c.TypeLine, "Plane "):
+		return game.PlanarPlanes
+	case strings.HasPrefix(c.TypeLine, "Phenomenon"):
+		return game.PlanarPhenomena
+	}
+	return 0
 }

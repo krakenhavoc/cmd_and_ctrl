@@ -90,6 +90,7 @@ const (
 	SettingAllowSpawn      = "allow_spawn"
 	SettingFreeMulligans   = "free_mulligans"
 	SettingAwayAfter       = "away_after"
+	SettingPlanechase      = "planechase"
 )
 
 // TableSettings is one table's configuration (ADR 0075 §2.2). The JSON
@@ -133,6 +134,11 @@ type TableSettings struct {
 	// minutes), awayAfterNever is "never offer", and 1..MaxAwayAfter
 	// is that many minutes. Changeable at any time.
 	AwayAfter int `json:"awayAfter,omitempty"`
+	// Planechase plays the game with a communal planar deck and the
+	// planar die (CR 901, ADR 0216). Fixed once the game is active:
+	// Start builds the planar deck. omitempty keeps every snapshot of a
+	// table without it byte-identical.
+	Planechase bool `json:"planechase,omitempty"`
 }
 
 // EffectiveAwayAfter is the away time in minutes, 0 for never.
@@ -180,6 +186,8 @@ type SettingsPatch struct {
 	// AwayAfter is the away time in minutes, 0 for never (ADR 0177
 	// §7).
 	AwayAfter *int `json:"away_after,omitempty"`
+	// Planechase is refused after Start (ErrPlanechaseLocked).
+	Planechase *bool `json:"planechase,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -229,8 +237,9 @@ func (p SettingsPatch) Validate() error {
 //
 // The whole patch is validated before anything is applied, so a patch
 // with one bad field changes nothing. A StartingLife change after
-// Start is refused with ErrStartingLifeLocked, and a FreeMulligans
-// change with ErrFreeMulliganLocked; a StartingLife in the
+// Start is refused with ErrStartingLifeLocked, a FreeMulligans
+// change with ErrFreeMulliganLocked and a Planechase change with
+// ErrPlanechaseLocked; a StartingLife in the
 // lobby also resets every already-seated player's life, because that
 // is the value Start would otherwise have stamped.
 //
@@ -261,6 +270,9 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	if patch.FreeMulligans != nil && *patch.FreeMulligans != g.Settings.EffectiveFreeMulligans() && g.State != StateLobby {
 		return ErrFreeMulliganLocked
 	}
+	if patch.Planechase != nil && *patch.Planechase != g.Settings.Planechase && g.State != StateLobby {
+		return ErrPlanechaseLocked
+	}
 	old := g.Settings
 	next := old
 	if patch.UndoLimit != nil {
@@ -284,6 +296,9 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	if patch.FreeMulligans != nil {
 		next.FreeMulligans = *patch.FreeMulligans
 		next.LegacyFreeFirstMulligan = false
+	}
+	if patch.Planechase != nil {
+		next.Planechase = *patch.Planechase
 	}
 	if patch.AwayAfter != nil {
 		next.AwayAfter = *patch.AwayAfter
@@ -328,6 +343,7 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	emit(SettingAllowSpawn, strconv.FormatBool(old.AllowSpawn), strconv.FormatBool(next.AllowSpawn))
 	emit(SettingFreeMulligans, strconv.Itoa(old.EffectiveFreeMulligans()), strconv.Itoa(next.EffectiveFreeMulligans()))
 	emit(SettingAwayAfter, strconv.Itoa(old.EffectiveAwayAfter()), strconv.Itoa(next.EffectiveAwayAfter()))
+	emit(SettingPlanechase, strconv.FormatBool(old.Planechase), strconv.FormatBool(next.Planechase))
 	return nil
 }
 

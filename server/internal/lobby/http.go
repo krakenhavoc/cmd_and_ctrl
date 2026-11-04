@@ -1116,6 +1116,11 @@ type createGameRequest struct {
 	// when the server has no results channel: the client only shows the
 	// box when it does.
 	Results bool `json:"results,omitempty"`
+	// Planechase makes the table a Planechase table (ADR 0216 §1),
+	// applied through the engine's UpdateSettings exactly as PATCH
+	// /games/{id}/settings would apply it. The host can still change it
+	// there while the table is in the lobby.
+	Planechase bool `json:"planechase,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1326,6 +1331,19 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			// in seat 1 at once, as themselves, before the last setup's
 			// bots and before an #lfg post counts the seats.
 			out.Seat = seatCreator(c, w, r, p, meta)
+		}
+		if body.Planechase {
+			// ADR 0216 §1. The actor is the creator's new seat when
+			// they sat down, so the log names them; the admin token
+			// names nobody.
+			actor := uuid.Nil
+			if out.Seat != nil {
+				actor = out.Seat.PlayerID
+			}
+			on := true
+			if _, perr := c.Lobby.UpdateSettings(meta.ID, actor, game.SettingsPatch{Planechase: &on}); perr != nil && c.Log != nil {
+				c.Log.Warn("planechase on create failed", "game_id", meta.ID.String(), "err", perr)
+			}
 		}
 		if body.VoiceRoom {
 			// ADR 0159 §1. The creator is the table's manager until a
@@ -4626,6 +4644,11 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		errors.Is(err, ErrAlreadySeated),
 		errors.Is(err, ErrDeckNotUploaded),
 		errors.Is(err, game.ErrNotEnoughPlayers),
+		// ADR 0216 §2: a Planechase table whose communal planar deck
+		// the server cannot build does not start.
+		errors.Is(err, game.ErrNoPlanarCards),
+		errors.Is(err, game.ErrPlanarDeckTooSmall),
+		errors.Is(err, game.ErrPlanarDeckIllegal),
 		errors.Is(err, game.ErrGameAlreadyStarted),
 		errors.Is(err, game.ErrGameNotInLobby):
 		status = http.StatusConflict
@@ -4663,7 +4686,8 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// disabling the control.
 	case errors.Is(err, game.ErrInvalidSetting):
 		status = http.StatusBadRequest
-	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked):
+	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
+		errors.Is(err, game.ErrPlanechaseLocked):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict

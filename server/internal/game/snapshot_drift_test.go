@@ -108,6 +108,12 @@ var gameFields = plan(
 	// ADR 0121 §1: the open opening roll. Plain data; a restored game
 	// mid-roll continues where it stopped.
 	"OpeningRoll", carried, "",
+	// ADR 0216 §3: the Planechase option's planar controller and die
+	// count, and the two planar containers, in the snapshot's
+	// `planechase` object.
+	"Planechase", carried, "",
+	"PlanarDeck", carried, "",
+	"PlanarFaceUp", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
 	// ADR 0132: the day/night designation and the previous turn's spell

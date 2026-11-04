@@ -322,6 +322,8 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// also drops any added phase the old turn never reached.
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	// CR 901.6: the planar controller is whoever the active player is.
+	g.followActivePlayerAsPlanarControllerLocked()
 	g.sweepUnreachableBoundTriggersLocked()
 	// ADR 0167 §2: a turn-long player control waiting for this player's
 	// turn begins with it, before any step entry hook asks them

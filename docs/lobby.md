@@ -768,6 +768,13 @@ would, and the response carries what that did under `setup`. A caller with no
 saved setup still gets the table, with a `setup` that says so. Any other value
 is a 400 and creates nothing.
 
+`planechase` is optional. `true` makes the table a Planechase table, with a
+communal planar deck and (from ADR 0216's slice 2) the planar die
+([ADR 0216](decisions/0216-planechase-as-a-table-option.md) §1). It is applied
+through the engine's settings exactly as `PATCH /games/{id}/settings` with
+`{"planechase": true}` would, and the host can change it there until the game
+starts.
+
 **Response 201**
 
 ```json
@@ -1129,6 +1136,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
 | `free_mulligans` | `-1`, or 0..7 | How many of each seat's mulligans are free (#3387; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendments). `0`, the default, is the rules: one free in a game of three or more (CR 103.5c), none at two players. `N` gives N at any table, never fewer than the rules. `-1` makes every mulligan free. Omitted from the response when 0. **Rejected once the game is active.** |
+| `planechase` | bool | Plays the game with a communal planar deck of every plane in the card database, one card per oracle ID, shuffled per game ([ADR 0216](decisions/0216-planechase-as-a-table-option.md)). Default off, and omitted from the response when off. **Rejected once the game is active** (422, "planechase cannot change once the game has started"). A Planechase table refuses `POST /games/{id}/start` with 409 when the server has no card database or the deck breaks CR 901.15a. |
 | `away_after` | 0..30 | Minutes a seat the table is waiting on must be offline before the table is offered a way on without it ([ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md) §7). Default 3; `0` never offers. Changeable at any time, and a change applies to the clocks already running. Practice tables never offer. |
 
 The **whole patch is validated first**, so a patch with one bad field changes
@@ -1488,7 +1496,7 @@ and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 |---|---|
 | 403 | not a seat in this game |
 | 404 | game not found |
-| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
+| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum) |
 
 ### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
 
