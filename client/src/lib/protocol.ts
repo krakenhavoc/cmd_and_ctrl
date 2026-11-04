@@ -1183,6 +1183,10 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0216 §5 (CR 901.11): a player planeswalked. `choice` is "from"
+  // for each plane they left and "to" for the plane they arrived at;
+  // `label` is the plane's name and `card_id` the plane.
+  | "planeswalk"
   // ADR 0172 §5: a seat revealed its companion as the game began
   // ("Alice revealed Jegantha, the Wellspring as their companion").
   // `card_id` is the companion, public from then on.
