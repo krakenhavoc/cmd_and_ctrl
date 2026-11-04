@@ -282,8 +282,8 @@ Each slice is one mergeable PR with its own tests, in this order.
 - **A curated, catalogued-only planar deck.** Rejected by owner decision 2 ("every plane card in the card pool"). It would also make the deck's contents depend on catalog progress.
 - **The planeswalking ability written into each plane's card file.** Rejected: it is inherent, and a hundred copies of it would be a hundred chances to get it wrong. One keyed body, one listener.
 
-## Questions for the owner
+## Owner answers (Ian, 2026-11-04)
 
-1. **The pinned CR text.** This session could not download `MagicCompRules 20260925.txt` (network policy). Before merge, should someone check the numbers against it, or should the next session allow `media.wizards.com`?
-2. **The closure-census ceiling.** Do you approve `census:IntrinsicAbilityCards` going from 74 to 76 for `PlanechaseState.Deck` and `PlanechaseState.FaceUp` (slice 1)?
-3. **When prod shows the toggle.** Slice 3 ships the switch. Should prod offer it as soon as slice 3 lands, with most planes `manual`, or only after the first plane batch of slice 4 (cmd-dev first, either way)?
+1. **The pinned CR text.** Checked before merge against `MagicCompRules 20260925.txt` on the owner's machine. All 33 rule numbers this ADR cites exist in the pinned text, and the ones it paraphrases (901.9, 901.11, 901.15a, 311.7, 800.4p, 116) match the rules' wording.
+2. **The closure-census ceiling.** Approved: `census:IntrinsicAbilityCards` may go from 74 to 76 for `PlanechaseState.Deck` and `PlanechaseState.FaceUp` (slice 1).
+3. **When prod shows the toggle.** Prod waits until Planechase is implemented: the toggle ships to cmd-dev with slice 3, and prod offers it only once slice 4's plane batches have landed, so a prod table never meets a mostly manual planar deck.
