@@ -118,6 +118,7 @@
     EFFECT_CUE_CAP,
     SACRIFICE_KNIFE_SOUND,
     counterBurst,
+    crackPlan,
     cueSound,
     cueTiming,
     effectLate,
@@ -137,6 +138,7 @@
     PILE_SWEEP_MIN,
     RIFFLE_CARDS,
     type CounterTone,
+    type CrackKind,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
@@ -242,6 +244,9 @@
     // is the face it turns to). The game becoming day or night: which.
     from?: string;
     sky?: "day" | "night";
+    // A permanent sacrificed for its own ability (#4427): what it was,
+    // for the colour of the dust off its crack.
+    crack?: CrackKind;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -453,6 +458,9 @@
     // and the log says both.
     transform: null,
     day_night: null,
+    // And a permanent sacrificed for its own ability (#4427): it plays
+    // several times a game, the log says it, and the mana is in the pool.
+    crack: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -556,6 +564,14 @@
     }
     if (cue.kind === "attach_equip" || cue.kind === "attach_aura") {
       placeAttach(cue, base, motion, b);
+      return;
+    }
+    // #4427: a permanent sacrificed for its own ability snaps where it
+    // stood, drawn from its last tile. Still, it draws nothing (no badge:
+    // it plays several times a game, and the log says it); its sound plays.
+    if (cue.kind === "crack") {
+      if (motion === "still") return;
+      place(cue, { ...base, crack: cue.crackOf ?? "other" }, motion, b);
       return;
     }
     // A planeswalker that just entered is still in its entrance pop (the
@@ -1284,6 +1300,10 @@
       isPlaneswalker: isPW,
       combatMotion: strikes,
       isCommander: isCommanderNow,
+      // #4427: a permanent sacrificed for its own ability has just left,
+      // so its type line is the one it had before it went.
+      typeLineOf: (id) =>
+        (lastViews.get(id) ?? view.battlefield.cards.find((c) => c.instance_id === id))?.type_line,
     });
     // Signatures take the batches they name, once their scene has loaded.
     const found = planSignatures(r.fresh, { sceneOf: sceneOfCard });
@@ -1317,8 +1337,9 @@
       delay: number,
       volume: number,
       batch: number | null,
+      soundKey?: string,
     ) => {
-      const fire = () => play(name, { volume, batch: soundBatch(gameID, batch) });
+      const fire = () => play(name, { volume, batch: soundBatch(gameID, batch, soundKey) });
       if (delay <= 0) fire();
       else
         later(() => {
@@ -1356,7 +1377,7 @@
         cueTiming(cue, motion, speed);
       const snd = cueSound(cue);
       if (snd && !sp.silencedCues.has(cue.id)) {
-        sound(snd.name, t.delayMs, snd.volume, cue.batch);
+        sound(snd.name, t.delayMs, snd.volume, cue.batch, cue.soundKey);
         // A sacrifice's knife has a sound of its own, as it lands.
         if (cue.kind === "sacrifice") {
           const knife =
@@ -1689,6 +1710,10 @@
       rot: f.rot,
       light: f.light || f.kind === "exile",
     });
+  }
+  // A permanent sacrificed for its own ability: its crack and its halves (#4427).
+  function crackOf(f: Fx) {
+    return crackPlan(f.cardID || f.seed, f.width, f.height, f.rot);
   }
   function motesOf(f: Fx) {
     return voidMotes(f.seed, f.width, f.height, f.light);
@@ -2227,6 +2252,50 @@
           style:height={`${f.height + 10}px`}
         ></div>
       </div>
+    {:else if f.kind === "crack"}
+      <!-- #4427: snapped along a crack like a dry branch, and fallen away; no altar. -->
+      {@const ck = crackOf(f)}
+      <div
+        class="fx m"
+        data-effect="crack"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-crack={f.crack ?? "other"}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#each ck.halves as h, i (i)}
+          <div
+            class="copy crack-half"
+            data-dx={h.dx}
+            data-dy={h.dy}
+            data-rot={h.rot}
+            style:transform-origin={`${h.ox}px ${h.oy}px`}
+          >
+            <div
+              class="face"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+              style:--fx-rot={`${f.rot}deg`}
+              style:clip-path={h.clip}
+            >
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        {/each}
+        <svg
+          class="crack-line"
+          viewBox={`0 0 ${f.width} ${f.height}`}
+          width={f.width}
+          height={f.height}
+          style:--fx-rot={`${f.rot}deg`}
+        >
+          <path class="under" d={ck.path} pathLength="1" />
+          <path class="over" d={ck.path} pathLength="1" />
+        </svg>
+        <div class="crack-puff" style:width={`${Math.max(f.width, f.height) * 0.9}px`}></div>
+      </div>
     {:else}
       {@const broken = breaks(f.kind) || (f.kind === "exile" && f.fromDestroy)}
       {@const sh = broken ? shatterOf(f) : null}
@@ -2552,6 +2621,78 @@
   }
   .crk path.rim.over {
     stroke-width: 0.9;
+  }
+
+  /* #4427, a permanent sacrificed for its own ability: two halves of its
+     art either side of a crack, which fall away. A dry, pale split with a
+     dark edge, not the shatter's ember: nothing died. */
+  .crack-half .face {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+  }
+  .crack-line {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg));
+  }
+  .crack-line path {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .crack-line path.under {
+    stroke: rgba(14, 10, 6, 0.85);
+    stroke-width: 3;
+  }
+  .crack-line path.over {
+    stroke: #f4ead2;
+    stroke-width: 1.1;
+    filter: drop-shadow(0 0 2px rgba(255, 236, 200, 0.8));
+  }
+  .crack-puff {
+    position: absolute;
+    left: 0;
+    top: 0;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle,
+      rgba(206, 186, 150, 0.7) 0%,
+      rgba(150, 128, 96, 0.35) 40%,
+      rgba(120, 100, 70, 0) 70%
+    );
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* The dust off the crack is what was spent: a Treasure's gold, a
+     Clue's paper, a Food's crumbs; a land's is earth. */
+  .fx[data-crack="treasure"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(255, 226, 140, 0.8) 0%,
+      rgba(214, 170, 60, 0.4) 40%,
+      rgba(180, 130, 30, 0) 70%
+    );
+  }
+  .fx[data-crack="clue"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(240, 240, 232, 0.75) 0%,
+      rgba(190, 196, 206, 0.35) 40%,
+      rgba(160, 168, 180, 0) 70%
+    );
+  }
+  .fx[data-crack="food"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(232, 176, 110, 0.75) 0%,
+      rgba(184, 120, 60, 0.35) 40%,
+      rgba(150, 90, 40, 0) 70%
+    );
   }
   .flare {
     position: absolute;

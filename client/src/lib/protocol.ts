@@ -1466,7 +1466,10 @@ export interface LogEvent {
   // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
   // It is the instruction, not the destination: a destruction replaced by
   // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
-  // On a `discard` entry (#4445) it is `effect`, `cleanup` or `cost`.
+  // On a `discard` entry (#4445) it is `effect`, `cleanup` or `cost`. On
+  // a `sacrifice` entry (#4427) it is `cost` when the permanent was
+  // sacrificed to pay a cost, and absent for an effect's or a sandbox
+  // sacrifice.
   cause?: string;
   // #4395, ADR 0209 §3: the run of events the rules treat as one
   // occurrence (CR 603.2c). Two entries with equal `batch` happened at
@@ -1478,7 +1481,10 @@ export interface LogEvent {
   // resolution the `batch` is). Empty when nothing resolving is behind
   // it (combat damage, a cost, a sandbox move), and absent for a viewer
   // who may not identify the card. Three or more exits in one `batch`
-  // from one `source` are a board wipe.
+  // from one `source` are a board wipe. A `sacrifice` entry with `cause`
+  // `cost` whose `source` is its own `card_id` was paid for that
+  // permanent's own ability (#4427): a fetch land cracked, a Treasure
+  // sacrificed for its mana, a Clue for its card.
   source?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room

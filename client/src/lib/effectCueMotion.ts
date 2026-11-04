@@ -13,6 +13,7 @@
 
 import { EASE, run, type Run } from "./motion";
 import {
+  CRACK_SNAP,
   PILE_LAND,
   PILE_STAGGER,
   SHATTER_BREAK,
@@ -165,6 +166,9 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "day_night":
       skyWash(node, f);
+      return;
+    case "crack":
+      crackSplit(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -1604,6 +1608,69 @@ function cardFlip(node: HTMLElement, f: CueMotion): void {
         { offset: 1, opacity: 0, scale: "1.08" },
       ],
       span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+}
+
+// ---- A permanent sacrificed for its own ability (#4427) ----
+
+/**
+ * crackSplit is a fetch land cracked, or a Treasure, Clue or Food spent: no
+ * altar and no knife, just the card snapping like a dry branch. A jagged
+ * line runs down its length (to CRACK_SNAP) while the card gives a small
+ * knock, a puff of dust comes off the crack as it snaps, and the two
+ * halves fall away from each other and down the screen, turning outward
+ * and fading, gravity taking them faster as they go. About 0.6 s: it
+ * plays several times a game.
+ */
+function crackSplit(node: HTMLElement, f: CueMotion): void {
+  const snap = CRACK_SNAP;
+  for (const line of all<SVGPathElement>(node, ".crack-line path")) {
+    run(
+      line,
+      [
+        { offset: 0, strokeDashoffset: 1, opacity: 1 },
+        { offset: snap, strokeDashoffset: 0, opacity: 1 },
+        { offset: Math.min(1, snap + 0.25), strokeDashoffset: 0, opacity: 0 },
+        { offset: 1, strokeDashoffset: 0, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
+  for (const half of all<HTMLElement>(node, ".crack-half")) {
+    const dx = num(half, "dx");
+    const dy = num(half, "dy");
+    const rot = num(half, "rot");
+    const side = Math.sign(rot) || 1;
+    run(
+      half,
+      [
+        { offset: 0, translate: "0px 0px", rotate: "0deg", opacity: 1 },
+        { offset: snap * 0.4, translate: `${side * 1.5}px -1px`, rotate: "0deg", opacity: 1 },
+        { offset: snap, translate: "0px 0px", rotate: `${rot * 0.08}deg`, opacity: 1 },
+        {
+          offset: snap + (1 - snap) * 0.35,
+          translate: `${dx * 0.4}px ${dy * 0.12}px`,
+          rotate: `${rot * 0.45}deg`,
+          opacity: 1,
+          easing: EASE.power1In,
+        },
+        { offset: 1, translate: `${dx}px ${dy}px`, rotate: `${rot}deg`, opacity: 0 },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  const puff = node.querySelector<HTMLElement>(".crack-puff");
+  if (puff) {
+    run(
+      puff,
+      [
+        { offset: 0, opacity: 0, scale: "0.4" },
+        { offset: snap * 0.8, opacity: 0, scale: "0.5" },
+        { offset: snap + 0.08, opacity: 0.85, scale: "1" },
+        { offset: 1, opacity: 0, scale: "1.6" },
+      ],
+      span(f, 0, 1, EASE.power2Out),
     );
   }
 }

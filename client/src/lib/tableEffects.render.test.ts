@@ -2189,6 +2189,113 @@ describe("a double-faced card transforms, or day and night changes (#4448)", () 
   });
 });
 
+describe("a permanent is sacrificed for its own ability (#4427)", () => {
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const self = (id: string, batch = 4): LogEvent => ({
+    seq: ++seq,
+    kind: "sacrifice",
+    seat: 1,
+    card_id: id,
+    cause: "cost",
+    source: id,
+    batch,
+    text: "",
+  });
+  // a is a fetch land, b and c Treasures, d a creature.
+  const types: Partial<CardView>[] = [
+    { type_line: "Land" },
+    { type_line: "Token Artifact — Treasure" },
+    { type_line: "Token Artifact — Treasure" },
+    { type_line: "Creature — Snake Shaman" },
+  ];
+  const crackSounds = () =>
+    vi.mocked(playSound).mock.calls.filter((c) => String(c[0]).endsWith("_crack"));
+
+  it("a fetch land splits along a crack where it stood and falls away, with no altar and its own sound", () => {
+    deliver([self("a")], ["a"], types);
+    const [cue] = effects("crack");
+    expect(cue).toBeTruthy();
+    expect(effects("sacrifice")).toHaveLength(0);
+    expect(cue.getAttribute("data-effect-card")).toBe("a");
+    expect(cue.getAttribute("data-crack")).toBe("land");
+    // a's tile centre: left 100 + 40, top 300 + 56.
+    expect(cue.style.left).toBe("140px");
+    expect(cue.style.top).toBe("356px");
+    // Two halves of its art, either side of one crack.
+    const halves = [...cue.querySelectorAll<HTMLElement>(".crack-half")];
+    expect(halves).toHaveLength(2);
+    for (const h of halves) {
+      expect(h.querySelector("img")?.getAttribute("src")).toBe("/a.jpg");
+      expect(h.querySelector<HTMLElement>(".face")!.style.clipPath).toMatch(/^polygon\(/);
+      expect(runsOn(h)).toHaveLength(1);
+    }
+    expect(cue.querySelectorAll(".crack-line path")).toHaveLength(2);
+    expect(cue.querySelector(".crack-puff")).toBeTruthy();
+    expect(cue.querySelector(".altar")).toBeNull();
+    expect(cue.querySelector(".knife")).toBeNull();
+    expect(cue.querySelector(".shatter")).toBeNull();
+    // Its sound, a little quieter, capped on its payment; never the
+    // sacrifice's or its knife's.
+    expect(playSound).toHaveBeenCalledTimes(1);
+    const [name, opts] = vi.mocked(playSound).mock.calls[0];
+    expect(name).toBe("fetch_crack");
+    expect(opts?.volume).toBeLessThan(1);
+    expect(String(opts?.batch)).toMatch(/^g1:4:crack:/);
+    advance(EFFECT_CAP_MS + 200);
+    expect(playSound).not.toHaveBeenCalledWith("sacrifice", expect.anything());
+    expect(playSound).not.toHaveBeenCalledWith("sacrifice_knife", expect.anything());
+    // About 0.6 s, and gone by itself.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.crack + 1e-6);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("two Treasures spent on one spell each crack, with one sound", () => {
+    const cast: LogEvent = { seq: 0, kind: "cast", seat: 1, card_id: "spell", batch: 6, text: "" };
+    const pay = [self("b", 6), self("c", 6)];
+    cast.seq = ++seq;
+    deliver([...pay, cast], ["b", "c"], types);
+    const cues = effects("crack");
+    expect(cues.map((c) => c.getAttribute("data-effect-card"))).toEqual(["b", "c"]);
+    expect(cues.map((c) => c.getAttribute("data-crack"))).toEqual(["treasure", "treasure"]);
+    expect(crackSounds().map((c) => c[0])).toEqual(["treasure_crack"]);
+  });
+
+  it("a creature sacrificed for its own ability keeps the altar and the knife", () => {
+    deliver([self("d")], ["d"], types);
+    expect(effects("crack")).toHaveLength(0);
+    const [cue] = effects("sacrifice");
+    expect(cue.querySelector(".altar")).toBeTruthy();
+    expect(playSound).toHaveBeenCalledWith("sacrifice", expect.anything());
+    expect(crackSounds()).toHaveLength(0);
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    deliver([self("a")], ["a"], types);
+    expect(effects("crack")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.crack + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(run).mockClear();
+      vi.mocked(playSound).mockClear();
+      still();
+      deliver([self("b", 7), self("c", 7)], ["b", "c"], types);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(crackSounds().map((c) => c[0])).toEqual(["treasure_crack"]);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
 describe("reduced motion and the Off setting", () => {
   // Each way, the same thing: a badge says what happened, no motion
   // starts, and the sound still plays.

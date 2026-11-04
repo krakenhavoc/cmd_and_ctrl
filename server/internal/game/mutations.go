@@ -3131,7 +3131,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			// #1397: nil answers — the auto-tapper asks nobody, and a
 			// commander whose own mana ability sacrifices it is not a
 			// source it plans with.
-			if err := g.payCostSacrificesLocked(sacrifices, nil); err != nil {
+			if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, nil); err != nil {
 				continue
 			}
 		}
@@ -8293,7 +8293,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
-		if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
+		if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below

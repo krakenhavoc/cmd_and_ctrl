@@ -620,7 +620,7 @@ func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card) error {
 			// CR 701.17a's announcement is not part of the move, and a
 			// "whenever you sacrifice" payoff reads characteristics
 			// that are gone a line later (sacrifice.go).
-			if err := g.announceSacrificeLocked(id, r.Source, r.leaveMoveCause()); err != nil {
+			if err := g.announceSacrificeLocked(id, r.Source, r.leaveMoveCause(), r.CostOf); err != nil {
 				return err
 			}
 		}
