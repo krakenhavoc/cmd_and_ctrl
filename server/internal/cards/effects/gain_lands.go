@@ -57,6 +57,9 @@ func init() {
 		{"52401cb4-1bce-4191-9220-0d93ea4108b8", "Stark Industries", "U", "R"},
 		// Teenage Mutant Ninja Turtles (#4457): the same three lines again.
 		{"f6059731-2e10-4f72-a214-b257f1677e9e", "Mutant Town", "G", "U"},
+		{"01ee70d4-6527-45ae-9600-bd3d16b3037d", "Illegitimate Business", "B", "G"},
+		{"063dd25b-d4b4-4e09-acae-8c52dcb40803", "Foot Headquarters", "W", "B"},
+		{"8683341a-e836-41e5-9034-4da09eb0ab42", "Dimension X", "R", "W"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

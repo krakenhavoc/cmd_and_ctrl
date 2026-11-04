@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"slices"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -24,7 +22,8 @@ import (
 //	Grave Servitude    {1}{B}  Enchanted creature gets +3/-1 and is black.
 //	Mystic Veil        {1}{U}  Enchanted creature has shroud.
 //	Relic Ward         {1}{W}  Enchant artifact; it has shroud.
-//	Ward of Lights     {W}{W}  As this Aura enters, choose a color; protection from it.
+//	Ward of Lights     {W}{W}  As this Aura enters, choose a color; protection from it
+//	                           that doesn't remove this Aura (CR 702.16n).
 //	Parapet            {1}{W}  Creatures you control get +0/+1 (not an Aura).
 //
 // Shroud and protection are the engine's own keywords and tokens, so
@@ -60,18 +59,9 @@ func init() {
 		TargetPermanent("enchant artifact", Artifact()),
 		GrantToAttached("shroud")))
 
+	// CR 702.16n: "This effect doesn't remove Ward of Lights." (#4843)
 	ward := aura("edc05b33-2bfa-4692-bb3b-26b7cf111ce8", "Ward of Lights", EnchantCreature(),
-		game.StaticAbility{
-			Layer:     game.Layer6Ability,
-			Label:     "Enchanted creature has protection from the chosen color.",
-			AppliesTo: AttachedToSource,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-				tok := game.ProtectionFromColor(source.ChosenColor)
-				if tok != "" && !slices.Contains(c.Abilities, tok) {
-					c.Abilities = append(c.Abilities, tok)
-				}
-			},
-		})
+		ProtectionFromChosenColorSparingThisAura())
 	ward.AsEnters = ChooseColorAsEnters(game.ColorForProtection, "Ward of Lights")
 	Register(ward)
 
