@@ -761,6 +761,7 @@ confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
 confirm confirm/arc-of-fortune-embark
+confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
@@ -852,6 +853,7 @@ confirm confirm/reactor-raid-sacrifice
 confirm confirm/reckless-endeavor-result
 confirm confirm/requiem-monolith-ping
 confirm confirm/rhystic-study-draw
+confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/sail-into-the-west-embark
@@ -1392,6 +1394,7 @@ steps then-steps/cyclonus-connive-draw-and-discard
 steps then-steps/cyclonus-connive-rest
 steps then-steps/damocles-base-lose-and-draw
 steps then-steps/dawn-of-a-new-age-draw
+steps then-steps/each-player-may-wheel
 steps then-steps/emissary-green-rewards
 steps then-steps/forgotten-ancient-move
 steps then-steps/gain-then-draw-sacrificed-power

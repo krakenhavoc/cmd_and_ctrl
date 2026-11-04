@@ -9,9 +9,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 draw seven cards.
 //	 Mountaincycling {2}"
 //
-// The dies trigger is Variable Chaser's wheel: each player, starting
-// with the controller, chooses for themselves. Mountaincycling is the
-// shared Typecycling constructor (any land with the Mountain type).
+// The dies trigger is the shared "each player may" wheel: every player
+// chooses in APNAP order, then the players who said yes discard their
+// hands, then each of them draws seven (CR 101.4, each_player_may_wheel.go).
+// Mountaincycling is the shared Typecycling constructor (any land with the
+// Mountain type).
 //
 // No simplification.
 func init() {
@@ -23,19 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Ruin Grinder — each player may discard their hand and draw seven cards",
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, who := range tablePlayers(ctx) {
-						player := who
-						if err := (MayChoice{
-							Player:   player,
-							Question: "Ruin Grinder — discard your hand and draw seven cards?",
-							Draws:    7,
-							Then:     ruinGrinderAnswer,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
+					return ruinGrinderMayWheel.Start(NewContext(g, item))
 				}),
 		},
 		Activated: []ActivatedAbility{
@@ -44,10 +34,17 @@ func init() {
 	})
 }
 
+var ruinGrinderMayWheel = newMayWheel("confirm/ruin-grinder-may-wheel",
+	"Ruin Grinder — discard your hand and draw seven cards?")
+
+// ruinGrinderWheel and ruinGrinderAnswer are the trigger's old shape, every
+// player's question open at once and each yes wheeling at once. Kept, with
+// their keys, for a restore point taken while one of those was open.
+//
 // ruinGrinderWheel is one player's "discard your hand and draw seven cards".
-// Every player's question is open at once, so the steps find their player
-// from the seat RunAt was given (ctx.Occurrence()). The draw waits for a
-// prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+// The steps find their player from the seat RunAt was given
+// (ctx.Occurrence()). The draw waits for a prompt a discard asks (a
+// replacement offer such as Library of Leng's; CR 608.2c, #4155).
 var ruinGrinderWheel = RegisterThenSteps("then-steps/ruin-grinder-wheel",
 	Instruction(func(ctx *Context) error {
 		_, err := discardWholeHand(ctx.Game, seatAtOccurrence(ctx))
