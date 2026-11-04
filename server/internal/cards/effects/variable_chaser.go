@@ -39,7 +39,7 @@ func init() {
 var arcOfFortuneMayWheel = newMayWheel("confirm/arc-of-fortune-may-wheel",
 	"Arc of Fortune — discard your hand and draw seven cards?")
 
-// arcOfFortuneEmbark and arcOfFortuneAnswer are the spell's old shape, every
+// arcOfFortuneEmbark and its answer below are the spell's old shape, every
 // player's question open at once and each yes wheeling at once. Kept, with
 // their keys, for a restore point taken while one of those was open.
 //
@@ -56,8 +56,8 @@ var arcOfFortuneEmbark = RegisterThenSteps("then-steps/arc-of-fortune-embark",
 	}),
 )
 
-// arcOfFortuneAnswer is a player's "yes": they discard their hand and draw
+// The old answer is a player's "yes": they discard their hand and draw
 // seven. Keyed (#4291).
-var arcOfFortuneAnswer = MayYes("confirm/arc-of-fortune-embark", func(ctx *Context, r game.ConfirmAnswer) error {
+var _ = MayYes("confirm/arc-of-fortune-embark", func(ctx *Context, r game.ConfirmAnswer) error {
 	return arcOfFortuneEmbark.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
 })

@@ -37,7 +37,7 @@ func init() {
 var ruinGrinderMayWheel = newMayWheel("confirm/ruin-grinder-may-wheel",
 	"Ruin Grinder — discard your hand and draw seven cards?")
 
-// ruinGrinderWheel and ruinGrinderAnswer are the trigger's old shape, every
+// ruinGrinderWheel and its answer below are the trigger's old shape, every
 // player's question open at once and each yes wheeling at once. Kept, with
 // their keys, for a restore point taken while one of those was open.
 //
@@ -53,8 +53,8 @@ var ruinGrinderWheel = RegisterThenSteps("then-steps/ruin-grinder-wheel",
 	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(seatAtOccurrence(ctx), 7) }),
 )
 
-// ruinGrinderAnswer is a player's "yes": they discard their hand and draw
+// The old answer is a player's "yes": they discard their hand and draw
 // seven. Keyed (#4291).
-var ruinGrinderAnswer = MayYes("confirm/ruin-grinder-wheel", func(ctx *Context, r game.ConfirmAnswer) error {
+var _ = MayYes("confirm/ruin-grinder-wheel", func(ctx *Context, r game.ConfirmAnswer) error {
 	return ruinGrinderWheel.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
 })
