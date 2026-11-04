@@ -417,7 +417,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// one atomic add and still produces exactly one recompute at
 		// the next read, so the overlap is free; a missed bump is a
 		// card that lies about its own power.
-		if lifeTotalStaticIsLiveLocked(g) {
+		//
+		// DependsOnEvents may also name EventChangeLife: "as long as you
+		// gained life this turn" (Tenured Concocter) reads the turn's
+		// life-gained tally, which turnTallyListener updates ahead of this
+		// listener on the same event.
+		if lifeTotalStaticIsLiveLocked(g) || eventStaticIsLiveLocked(g, EventChangeLife) {
 			g.layerVersion.Add(1)
 		}
 	case EventAttack:

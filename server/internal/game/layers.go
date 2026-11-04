@@ -404,10 +404,13 @@ type StaticAbility struct {
 	// EventBlock also covers the other exit of a block, combat ending or
 	// a blocker leaving combat (invalidateLayersForAttackChangeLocked).
 	//
+	// "As long as you gained life this turn" (Tenured Concocter) lists
+	// EventChangeLife, which the tally reads.
+	//
 	// Same contract and same reason as the flags above; the list keeps
-	// a third and fourth card from needing a flag each. Only these four
-	// kinds are read by the listener (its EventScry arm), so any other
-	// kind here would do nothing.
+	// a third and fourth card from needing a flag each. Only these five
+	// kinds are read by the listener (its EventScry and EventChangeLife
+	// arms), so any other kind here would do nothing.
 	DependsOnEvents []EventKind
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
