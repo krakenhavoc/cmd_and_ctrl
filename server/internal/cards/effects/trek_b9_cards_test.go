@@ -90,18 +90,6 @@ func trekB9Settle(t *testing.T, g *game.Game, p uuid.UUID) int {
 	return discards
 }
 
-// trekB9Card is the live (layered) view of a card in any zone.
-func trekB9Card(t *testing.T, g *game.Game, id uuid.UUID) game.Card {
-	t.Helper()
-	var out game.Card
-	var ok bool
-	g.ReadSnapshot(func() { out, ok = g.LookupCardForEffect(id) })
-	if !ok {
-		t.Fatalf("card %s not found", id)
-	}
-	return out
-}
-
 // --- Starfleet Spanner Jockey -------------------------------------------------
 
 func TestTrekB9JockeyAttacksOnlyAfterANoncreatureSpell(t *testing.T) {
