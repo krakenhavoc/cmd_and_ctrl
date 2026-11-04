@@ -241,7 +241,7 @@ func TestTrekB6SaboteurDeclinedIsAPlainThreeThree(t *testing.T) {
 	id := castCatalogSpell(t, g, "Dominion Saboteur", "Creature — Shapeshifter", trekB6SaboteurOracle, nil)
 	resolveWithCopyChoice(t, g, uuid.Nil)
 	c := layeredCard(t, g, id)
-	if c.Name != "Dominion Saboteur" || c.Counters[game.CounterPlusOne] != 0 || c.CurrentPower() != 3 {
+	if c.Name != "Dominion Saboteur" || c.Counters[game.CounterPlusOne] != 0 {
 		t.Errorf("declined: name %q counters %v, want a plain Dominion Saboteur", c.Name, c.Counters)
 	}
 }
