@@ -1012,6 +1012,7 @@ option option-pick/orvar-the-all-form-copy
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
+option option-pick/practiced-offense-keyword
 option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
 option option-pick/put-attacking-from-graveyard
@@ -1271,6 +1272,7 @@ run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/planar-engineering-search
 run prompt-run/plunge-into-darkness-sacrifice
+run prompt-run/pox-plague-sacrifice
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
