@@ -41,14 +41,14 @@ export function collectionRows(
 
 /**
  * Whether the same name may be picked more than once. A player may own two
- * copies of a card, so an "any number" pick (Spawnsire of Ulamog's cast,
- * #3955, whose ceiling is 100) takes a name as often as it is clicked. No
- * prompt with a set rule asks for more than two cards ("exactly two with
- * different names"), so a ceiling above two is the "any number" shape and
- * a ceiling of two or less keeps the toggle.
+ * copies of a card, so a pick of several cards (Research's "up to four",
+ * Spawnsire of Ulamog's "any number", #3955) takes a name as often as it is
+ * clicked. A pick "with different names" says so (`distinct_names`, #4947:
+ * Turtles Forever's four, Extrapolate the Impossible's pair) and keeps the
+ * toggle whatever its ceiling, as a ceiling of two or less does.
  */
-export function allowsRepeatedNames(max: number): boolean {
-  return max > 2;
+export function allowsRepeatedNames(max: number, distinctNames = false): boolean {
+  return !distinctNames && max > 2;
 }
 
 /** How many times `name` is picked. */
@@ -63,14 +63,21 @@ export function unpickOneCollection(picked: string[], name: string): string[] {
 }
 
 /**
- * Click a row: where names repeat (an "any number" pick) the click adds
+ * Click a row: where names repeat (allowsRepeatedNames) the click adds
  * another copy while there is room, and a row's own "-" takes one back
  * (unpickOneCollection); otherwise a picked name is unpicked, with a
  * ceiling of one the click replaces the pick, and a name is added while
  * there is room.
  */
-export function toggleCollectionPick(picked: string[], name: string, max: number): string[] {
-  if (allowsRepeatedNames(max)) return picked.length >= max ? picked : [...picked, name];
+export function toggleCollectionPick(
+  picked: string[],
+  name: string,
+  max: number,
+  distinctNames = false,
+): string[] {
+  if (allowsRepeatedNames(max, distinctNames)) {
+    return picked.length >= max ? picked : [...picked, name];
+  }
   if (picked.includes(name)) return picked.filter((n) => n !== name);
   if (max <= 1) return [name];
   if (picked.length >= max) return picked;

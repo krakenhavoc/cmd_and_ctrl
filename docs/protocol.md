@@ -703,8 +703,13 @@ even once it is empty.
 - `collection_options[]` are suggested cards (each a `CardView` with **no**
   `instance_id`, since no card exists yet), the ones the effect's filter
   accepts, cards the engine automates first. `choose_min`, `choose_max` and
-  `choose_destination: "outside"` carry the bounds. All of it is sent to the
-  chooser only; every other seat sees the open prompt and whose it is.
+  `choose_destination: "outside"` carry the bounds. `distinct_names: true`
+  (#4947) marks a pick whose cards must have different names (Turtles
+  Forever's up to four legendary creature cards, Extrapolate the Impossible's
+  pair): the picker takes each name once. It is derived from the effect's own
+  rule, and absent where a name may repeat (Research's "up to four cards",
+  Spawnsire of Ulamog), since a player may own two copies. All of it is sent to
+  the chooser only; every other seat sees the open prompt and whose it is.
 - The chooser may search the whole database for any card the effect would
   accept: `GET /games/{id}/outside/cards?choice=<choice_id>&q=<text>`
   ([lobby.md](lobby.md)).
@@ -728,7 +733,8 @@ with the picked cards: `choose_destination: "cast_free_outside"` is Spawnsire
 of Ulamog's "cast any number of Eldrazi cards you own from outside the game
 without paying their mana costs" (`choose_min` 0, `choose_max` up to 100; an
 `outside_collection` pick with a ceiling above two may name the same card more
-than once, since a player may own two copies), and `"play_outside"` is the
+than once, since a player may own two copies, unless it carries
+`distinct_names`), and `"play_outside"` is the
 pick Wish's right opens (below). The answer is the usual one for the kind. A
 Spawnsire pick leaves a **cast permission on each picked card in the
 sideboard**, and the effect asks for nothing more.

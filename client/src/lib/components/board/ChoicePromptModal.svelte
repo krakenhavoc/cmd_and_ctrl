@@ -870,8 +870,10 @@
   });
   const collectionMax = $derived(Math.max(active?.choose_max ?? 1, 1));
   const collectionMin = $derived(active?.choose_min ?? 0);
-  // #3955: an "any number" pick takes the same name more than once.
-  const collectionRepeats = $derived(allowsRepeatedNames(collectionMax));
+  // #3955: a pick of several cards takes the same name more than once;
+  // #4947: one "with different names" takes each name once (a toggle).
+  const collectionDistinct = $derived(active?.distinct_names === true);
+  const collectionRepeats = $derived(allowsRepeatedNames(collectionMax, collectionDistinct));
   const collectionList = $derived(
     collectionRows(active?.collection_options ?? [], collectionResults, collectionQuery),
   );
@@ -903,7 +905,12 @@
   });
 
   function toggleCollection(name: string): void {
-    collectionPicked = toggleCollectionPick(collectionPicked, name, collectionMax);
+    collectionPicked = toggleCollectionPick(
+      collectionPicked,
+      name,
+      collectionMax,
+      collectionDistinct,
+    );
   }
 
   function takeCollection(): void {

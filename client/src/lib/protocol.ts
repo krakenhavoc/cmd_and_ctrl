@@ -1924,6 +1924,11 @@ export interface PendingChoiceView {
   // instance_id (no card exists until one is taken). Sent to the chooser
   // only, with choose_min / choose_max.
   collection_options?: CardView[];
+  // #4947: on an "outside_collection" pick, true when the cards must have
+  // different names (Turtles Forever, Extrapolate the Impossible), so the
+  // picker takes each name once whatever the ceiling. Absent where a name
+  // may repeat (Research, Spawnsire of Ulamog). The chooser's only.
+  distinct_names?: boolean;
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the

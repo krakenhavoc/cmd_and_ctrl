@@ -558,6 +558,15 @@ type PendingChoiceView struct {
 	// answer with any card the search returns, by name. ChooseMin /
 	// ChooseMax carry the bounds. Sent to the chooser only.
 	CollectionOptions []CardView `json:"collection_options,omitempty"`
+	// DistinctNames marks an "outside_collection" pick whose cards must
+	// have different names (#4947: Turtles Forever's outside half,
+	// Extrapolate the Impossible's pair), so the picker takes each name
+	// once. Derived from the pick's registered rule
+	// (game.OutsidePickNamesDiffer); the server refuses a repeated name
+	// either way. Absent on a pick where a name may repeat (Research,
+	// Spawnsire of Ulamog: a player may own two copies) and on every
+	// other kind. Sent to the chooser only, with the bounds.
+	DistinctNames bool `json:"distinct_names,omitempty"`
 
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
@@ -10289,6 +10298,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
 			for _, card := range game.CollectionCardsLocked(c.CollectionSuggestions) {
 				cv := viewOfCard(card)
 				cv.InstanceID = ""
@@ -11487,6 +11497,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			out[i].ChooseDestination = ""
+			out[i].DistinctNames = false
 			continue
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
