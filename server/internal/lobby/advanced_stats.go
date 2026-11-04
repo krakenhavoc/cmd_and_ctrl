@@ -292,11 +292,7 @@ func (c Config) advancedLibraryOf(decks []decklibrary.Deck, seats []gamestats.Se
 			games[seats[i].DeckID]++
 		}
 	}
-	type acc struct {
-		card  libraryCard
-		decks int
-	}
-	byOracle := map[uuid.UUID]*acc{}
+	byOracle := map[uuid.UUID]*libraryCard{}
 	var mvSum float64
 	for _, d := range decks {
 		f, ok := deckFactsFor(c.Cards, d)
@@ -310,10 +306,10 @@ func (c Config) advancedLibraryOf(decks []decklibrary.Deck, seats []gamestats.Se
 		for _, lc := range f.cards {
 			a := byOracle[lc.oracle]
 			if a == nil {
-				a = &acc{card: libraryCard{Name: lc.name, ScryfallID: lc.scryfallID}}
+				a = &libraryCard{Name: lc.name, ScryfallID: lc.scryfallID}
 				byOracle[lc.oracle] = a
 			}
-			a.card.Decks++
+			a.Decks++
 		}
 	}
 	if out.AvgManaValueGames > 0 {
@@ -321,8 +317,8 @@ func (c Config) advancedLibraryOf(decks []decklibrary.Deck, seats []gamestats.Se
 		out.AvgManaValue = &v
 	}
 	for _, a := range byOracle {
-		if a.card.Decks >= 2 {
-			out.CardsInMostDecks = append(out.CardsInMostDecks, a.card)
+		if a.Decks >= 2 {
+			out.CardsInMostDecks = append(out.CardsInMostDecks, *a)
 		}
 	}
 	sort.Slice(out.CardsInMostDecks, func(i, j int) bool {

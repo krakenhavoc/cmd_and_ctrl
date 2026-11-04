@@ -241,13 +241,14 @@ func putV2(t *testing.T, s *SQLStore, d *db.DB, at int64, userID, deckID, hash s
 		StartingSeat: ip(0), ComputedAt: time.UnixMilli(at), FramesComplete: true, WinKind: KindCombat}
 	for seat := range 4 {
 		st := Seat{Seat: seat, Result: ResultLoss, Place: ip(seat + 2), Commanders: []string{"Cmdr"}, TurnPosition: ip(seat + 1)}
-		if seat == 0 {
+		switch seat {
+		case 0:
 			st.Result, st.Place, st.DeckHash = result, ip(place), hash
 			st.Cards = []Card{{Name: "Sol Ring", Casts: 1, FirstCastTurn: 1}}
 			st.Targets = []TargetStat{{TargetSeat: 1, Damage: 4}, {TargetSeat: 2, Damage: 4}, {TargetSeat: 3}}
 			st.Play = &Play{OwnTurns: 1, Turns: []TurnStat{{OwnTurn: 1, Turn: 1, LandPlayed: 1, LandDrops: 1, Attackers: 1}},
 				Seen: []SeenCard{{Name: "Bolt", Copies: 1}}}
-		} else if seat == 3 {
+		case 3:
 			st.Cards = []Card{{Name: "Not Mine", Casts: 9}}
 		}
 		g.Seats = append(g.Seats, st)
