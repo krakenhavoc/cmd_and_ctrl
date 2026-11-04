@@ -14,6 +14,7 @@ cmd_and_ctrl/
 │   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
 │   │   ├── mcpseat/     # local MCP seat: an MCP client plays a guest seat, badged as an AI agent (ADR 0122) — see docs/mcp-seat.md
 │   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
+│   │   ├── cardroles/   # weekly: Scryfall's Oracle Tags bulk file to data/scryfall/card-roles.json, each card's roles for the advanced stats (ADR 0217 §7)
 │   │   ├── playrate/    # catalog coverage by EDHREC rank (top-N) and the missing top-1,000 list, read from the Scryfall dump (#3352)
 │   │   ├── restorecheck/ # restore rehearsal and real-restore step: verify a restored tree, re-apply the account-deletion ledger (#3340)
 │   │   └── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
@@ -30,7 +31,7 @@ cmd_and_ctrl/
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
-│   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
+│   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes; card roles (roles.go, roles_overrides.go, ADR 0217 §7)
 │   │   │   ├── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   │   └── oracletext/ # reads printed Oracle text: the comparison form coverage's drift guards use, and the catalog row → printed ability map behind a stack item's ability_text (#3830)
 │   │   ├── catalog/     # /catalog routes (public) — what the engine automates + how completely (ADR 0042)
