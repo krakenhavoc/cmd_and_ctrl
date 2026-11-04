@@ -1331,6 +1331,9 @@ func NewGame() *Game {
 	// abilities have no source either, so they ride the registry for
 	// the monarch's reason and right after it. See initiative.go.
 	g.Listeners = append(g.Listeners, initiativeTriggers{})
+	// ADR 0216 §5: CR 901.8's planeswalking ability. A table without
+	// Planechase returns at the listener's first line.
+	g.Listeners = append(g.Listeners, planechaseTriggers{})
 	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.

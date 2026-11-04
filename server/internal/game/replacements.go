@@ -2652,7 +2652,7 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 		// CatalogAbilityKey: nothing can name an emblem to remove its
 		// abilities. Its owner orders it against every other effect
 		// like any permanent's (CR 616.1).
-		g.forEachEmblemLocked(func(card *Card) bool {
+		g.forEachCommandSourceLocked(func(card *Card) bool {
 			if key := CatalogKey(*card); key != "" {
 				gatherFrom(card, key)
 			}

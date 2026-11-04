@@ -178,7 +178,7 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 	// Ring's "your Ring-bearer can't be blocked by creatures with
 	// greater power". CatalogKey, not CatalogAbilityKey: nothing can
 	// name an emblem to remove its abilities.
-	g.forEachEmblemLocked(func(src *Card) bool {
+	g.forEachCommandSourceLocked(func(src *Card) bool {
 		key := CatalogKey(*src)
 		if key == "" {
 			return true

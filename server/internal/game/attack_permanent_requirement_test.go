@@ -168,8 +168,9 @@ func TestAttackPermanentShapesRefuseMalformedValues(t *testing.T) {
 	if (Duration{Kind: UntilEndOfTurn, AfterTurn: 2}).Problem() == "" {
 		t.Error("a next-turn stamp on another kind is unknown")
 	}
-	if !UntilEndOfItsControllersNextTurn.Known() || (UntilEndOfItsControllersNextTurn + 1).Known() {
-		t.Error("the new kind is the last known kind")
+	// ADR 0216 appended UntilPlaneswalkAway after it.
+	if !UntilEndOfItsControllersNextTurn.Known() || UntilEndOfItsControllersNextTurn+1 != UntilPlaneswalkAway {
+		t.Error("the kind keeps its persisted int, with UntilPlaneswalkAway next")
 	}
 	if blockRequirementModProblem(AttackPermanentIfAbleMod(ObjectRef{ID: uuid.New()}, 0)) != "" {
 		t.Error("the requirement's Objects are refused as a block requirement's")
