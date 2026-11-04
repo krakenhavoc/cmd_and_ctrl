@@ -41,7 +41,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{6}{U}: Seven of Nine's base power and toughness become 7/9. Activate only if you control seven or more differently named lands.",
-			Cost:  ManaCost("{6}{U}"),
+			// Instant speed, so it can answer a burn spell or a block.
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{6}{U}"),
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
 				return trekB8DifferentlyNamedLands(g, controller) >= 7
 			},
