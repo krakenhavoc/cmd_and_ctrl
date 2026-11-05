@@ -204,8 +204,10 @@ four Thopters after combat trade two for a card and keep two; three
 Thopters, Thopters before they attack, nontoken artifacts and a copy
 with a counter are kept; with it off the bot passes.
 
-The curated deck was not run: it needs a Scryfall dump, and the
-authoring sandbox could not reach Scryfall. The 2026-11-05 UTC runs used
+The first runs used a synthetic deck: the curated deck needs a Scryfall
+dump, and the authoring sandbox could not reach Scryfall. The curated
+deck's run is in [its own section](#the-curated-deck-mono-blue-artifacts-4991).
+The 2026-11-05 UTC runs used
 develop `a2035a940` plus #4991 and the synthetic `--decks thopter-battle`
 at all four seats (Sai, eight Ornithopters, six Memnites, four Hangarback
 Walkers, four Burnished Harts, four Mind Stones and vanilla blue
@@ -249,11 +251,65 @@ independent and the intervals are conservative. At every keep the seats
 that cashed in Thopters did no better, and at the default keep of two
 they did worse. On this deck the draws are vanilla creatures and lands,
 and the Thopters are its evasion, so the board price was right. The
-curated deck draws better cards, and is the run to make before turning
-the switch on. The labelled position suite, the gated heuristic games
+curated deck draws better cards, so it was the run to make before
+turning the switch on (below). The labelled position suite, the gated heuristic games
 (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
 package tests passed. Reports and decision logs stayed on the authoring
 machine.
+
+### The curated deck: mono-blue-artifacts (#4991)
+
+The 2026-11-05 UTC runs used develop `ee606a09b` (the switch off in
+`DefaultConfig`), Scryfall's default-cards dump of that day, and the
+curated `mono-blue-artifacts` deck (Thopter Swarm, #5000), with rotation
+and lockstep. Sai is its commander, so it is on offer in every game.
+
+First, curated-arena.sh's shape: the nightly's four decks
+(`mono-blue-artifacts,izzet-spellslinger,orzhov-aristocrats,gruul-counters`),
+16 games, seeds 1000–1015, all four seats on one policy, and decision
+logs. Every game ended with a winner and none stalled.
+
+| Policy | Sai activations (windows offered) | Seat-games used (of offered) | Thopter Swarm wins / 16 |
+|---|---|---|---|
+| price on (`heuristic-sparetokens`) | 20 (1,170) | 5 of 13 | 1, 6.2% (1.1–28.3%) |
+| price off (today's `heuristic`) | 0 (1,090), `never` | 0 of 13 | 2, 12.5% (3.5–36.0%) |
+
+With the price on, the decision logs show 18 activations after combat
+on the bot's own turn, one before combat (paid with a Thopter and a Myr,
+with five Thopters out) and one in declare blockers with two Thopters
+that were dying anyway. Nineteen were paid with two Thopters. Sai was
+never activated with exactly three Thopters (313 windows) and was
+activated in 19 of 346 windows with four or more. With it off, Sai's
+draw was the `never` card it was in the issue's run. The other three
+decks' wins moved by one at most (gruul-counters 3 and 3,
+izzet-spellslinger 5 and 5, orzhov-aristocrats 7 and 6, on and off).
+
+Then head-to-head: `mono-blue-artifacts` at all four seats, two seats
+with the price on against two without
+(`heuristic-sparetokens,heuristic,heuristic-sparetokens,heuristic`),
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 92 decided seat-games | Sai activations (windows offered) | Seat-games used (of offered) |
+|---|---|---|---|
+| price on | 22, 23.9% (16.4–33.6%) | 162 (12,819) | 50 of 90 |
+| price off | 24, 26.1% (18.2–35.9%) | 14 (13,246) | 8 of 86 |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. Two wins in 92 is well
+inside the noise: on the curated deck the trade neither wins nor loses
+measurably, and it did not win, so **the switch stays off**. The bot now
+takes Sai's draw with spare Thopters when the switch is on, which is
+the issue's behaviour; whether to ship a price that does not move the
+win rate, or to try a different one, is the owner's call on #4991.
+
+Two of the 48 head-to-head games stalled (seeds 2001 and 2007), both in
+the end step of a two-player endgame. In each, the stalled seat was an
+off seat (today's heuristic), the server logged "automatic passing is
+suspended by the loop breaker (CR 732)" for it just before, and it held
+priority with Sai's draw, its mana and other abilities on offer. Neither
+stall involves the switch; they are reported here rather than fixed.
+The 46 decided games are the ones counted above. Reports and decision
+logs stayed on the authoring machine.
 
 ## Spare mana rocks for Mind Stone's draw (#5085, S75)
 
