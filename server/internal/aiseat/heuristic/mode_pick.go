@@ -84,6 +84,7 @@ func (p *Policy) modeBulletValue(st *state, b *protocol.ModeOptionView) float64 
 	if p.purposePriced(ps) {
 		v += p.purposeValue(st, ps, 0, nil, false)
 	}
+	v += p.unpricedRiderValue(st, ps, nil)
 	clauses := b.Clauses
 	if len(clauses) == 0 && b.LegalTargets != nil {
 		clauses = []protocol.LegalTargetsView{*b.LegalTargets}

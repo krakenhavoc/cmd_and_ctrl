@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Divide by Zero — Instant {2}{U} (EDHREC rank 17095):
 //
 //	"Return target spell or permanent with mana value 1 or greater to
@@ -19,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7b1c1a0c-f443-4eb5-a430-9eea886361ca",
 		Name:         "Divide by Zero",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Targets: TargetSpellOrPermanent("target spell or permanent with mana value 1 or greater",
 			ManaValueGE(1), ManaValueGE(1)),

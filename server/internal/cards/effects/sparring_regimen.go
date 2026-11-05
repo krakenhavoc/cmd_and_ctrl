@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2aac3575-4a06-452c-bb0f-68dc34086226",
 		Name:         "Sparring Regimen",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Sparring Regimen — learn", Do(Learn{})),

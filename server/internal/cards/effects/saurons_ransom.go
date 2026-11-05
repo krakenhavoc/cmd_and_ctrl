@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fe04a81b-413c-4bc8-bb83-29978da9a43d",
 		Name:         "Sauron's Ransom",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Keyed (#4253 slice 10b): the opponent named, the split and the

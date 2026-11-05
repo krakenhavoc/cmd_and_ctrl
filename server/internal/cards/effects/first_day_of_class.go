@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e0b5c772-e029-4b8d-be67-b1584700e377",
 		Name:         "First Day of Class",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {

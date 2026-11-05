@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "14291205-1ac2-4804-b365-4f65377d5803",
 		Name:            "Grey Havens Navigator",
+		Purpose:         game.Purpose{Scry: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{

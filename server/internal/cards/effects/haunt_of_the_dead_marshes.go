@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "0b683611-e46f-4105-b336-014d1556c8de",
 		Name:         "Haunt of the Dead Marshes",
+		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Haunt of the Dead Marshes — scry 1", Do(Scry{N: 1})),

@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5a3336f1-614a-4b3f-8752-522a34d0417a",
 		Name:         "Sam's Desperate Rescue",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

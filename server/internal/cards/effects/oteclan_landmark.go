@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     oteclanLandmarkOracleID,
 		Name:         "Oteclan Landmark",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Oteclan Landmark — scry 2", Do(Scry{N: 2})),

@@ -24,7 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2f9a5e7c-f463-4773-bf67-a07339ce9b5d",
 		Name:         "Orcish Medicine",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0)),
+		Purpose:      WithRiders(ForTargets(BenefitUntilEOT(0, 0, 0)), game.Purpose{Amass: 1}),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

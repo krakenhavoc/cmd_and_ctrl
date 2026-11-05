@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "100d1c9e-15aa-4bab-9fb3-76c2cd6abc2f",
 		Name:         "Horses of the Bruinen",
+		Purpose:      game.Purpose{Scry: 1, RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("up to two target creatures").WithCount(0, 2),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -234,6 +234,7 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 			// cards.
 			v += p.purposeValue(st, ps, x, c, spent)
 		}
+		v += p.unpricedRiderValue(st, ps, c)
 	default:
 		// An instant or sorcery: no body, so its value is a mana-value
 		// proxy for whatever it does that the wire does not describe.
@@ -246,6 +247,9 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 			v = p.purposeValue(st, ps, x, c, spent)
 		} else {
 			v = p.cfg.SpellPerMana * float64(manaValue(c.ManaCost, x))
+			// #4978: a declared rider is added to the proxy, never
+			// in place of it (riders.go).
+			v += p.unpricedRiderValue(st, ps, c)
 		}
 		// ADR 0126 §5: an untargeted spell the engine runs is worth at
 		// least a card that replaces itself and does a little more. The

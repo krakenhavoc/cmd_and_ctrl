@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Arcane Subtraction — Instant {1}{U} (EDHREC rank 25602):
 //
@@ -17,7 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4b5806fa-430f-4b78-b874-63d01a8a9de5",
 		Name:         "Arcane Subtraction",
-		Purpose:      ForTargets(HarmUntilEOT(0, -4, 0)),
+		Purpose:      WithRiders(ForTargets(HarmUntilEOT(0, -4, 0)), game.Purpose{Learn: 1}),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

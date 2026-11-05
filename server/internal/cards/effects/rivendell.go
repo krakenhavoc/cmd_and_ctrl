@@ -31,7 +31,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}{U}, {T}: Scry 2. Activate only if you control a legendary creature.",
-			Purpose:   game.Purpose{Answers: game.AnswerValue},
+			Purpose:   game.Purpose{Answers: game.AnswerValue, Scry: 2},
 			Cost:      Plus(ManaCost("{1}{U}"), TapCost()),
 			Condition: ControlsAtLeast(1, MatchLegendaryCreature),
 			Effect: func(g *game.Game, item *game.StackItem) error {

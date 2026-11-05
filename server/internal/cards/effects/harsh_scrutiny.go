@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Harsh Scrutiny — Sorcery {B}:
 //
 //	"Target opponent reveals their hand. You choose a creature card
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "31338e24-a437-4587-acab-cec46be021e7",
 		Name:         "Harsh Scrutiny",
+		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// The scry waits for the choice from the revealed hand (CR 608.2c, #4155).

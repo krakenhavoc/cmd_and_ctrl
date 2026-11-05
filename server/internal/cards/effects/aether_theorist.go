@@ -23,7 +23,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay {E}: Scry 1.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 1},
 			Cost:    Plus(TapCost(), PayEnergy(1)),
 			Effect:  Do(Scry{N: 1}),
 		}},

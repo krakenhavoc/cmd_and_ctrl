@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e08b19ca-f9d7-4c33-b37a-a77b37aabf1b",
 		Name:         "Hamato Guardian Stance",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 3, "flying")),
+		Purpose:      WithRiders(ForTargets(BenefitUntilEOT(0, 1, 3, "flying")), game.Purpose{Scry: 1}),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

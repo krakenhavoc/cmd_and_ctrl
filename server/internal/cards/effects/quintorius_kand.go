@@ -40,9 +40,10 @@ func init() {
 				Effect: Do(CreateToken{Template: TokenCard("3/2 red and white Spirit"), N: 1}),
 			},
 			{
-				Label:  "−3: Discover 4.",
-				Cost:   LoyaltyCost(-3),
-				Effect: DiscoverN(4),
+				Label:   "−3: Discover 4.",
+				Purpose: game.Purpose{Discover: 4},
+				Cost:    LoyaltyCost(-3),
+				Effect:  DiscoverN(4),
 			},
 			{
 				Label:   "−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",

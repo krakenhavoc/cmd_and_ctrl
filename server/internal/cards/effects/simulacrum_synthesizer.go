@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "eb7a1f21-a66d-415b-8520-710b44890bb6",
 		Name:         "Simulacrum Synthesizer",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Simulacrum Synthesizer — scry 2", Do(Scry{N: 2})),

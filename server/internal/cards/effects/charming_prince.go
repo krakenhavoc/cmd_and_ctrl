@@ -31,9 +31,9 @@ func init() {
 	prince := WhenThisEnters("Charming Prince — choose one",
 		func(*game.Game, *game.StackItem) error { return nil })
 	prince.Modes = ChooseOne(
-		ModeDoing("Scry 2.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
+		ModeWithPurpose(ModeDoing("Scry 2.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return Scry{Player: item.Controller, N: 2}.Apply(ctx)
-		}),
+		}), game.Purpose{Scry: 2}),
 		ModeDoing("You gain 3 life.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
 		}),

@@ -2962,3 +2962,47 @@ On the four curated decks #4302 measured (mono-white-weenie, boros-voltron, mono
 - +X/+X before combat, and a grant whose amount is decided at resolution.
 - Heliod's lifegain trigger, which turns lifelink into +1/+1 counters; haste letting a creature use its {T} abilities (CR 702.10c); Soulbright Seeker's third activation.
 - Scry, learn, discover and the other riders a purpose cannot say.
+
+## Amendment 2026-11-05: riders — scry, learn, discover, amass and the Ring
+
+**Status:** Proposed in the PR that adds this section; the weights are the owner's to accept. One `Config` switch, `PriceRiders`, with its weights `ScryWeight` (0.25), `ScryCap` (3), `LearnWeight` (0.30), `DiscoverPerMana` (0.30) and `RingTempt` (0.80), on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noriders` is `DefaultConfig()` with it off.
+**Issue:** [#4978](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4978), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) item 4 (and the last "Not priced" line of the amendment above). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (the purpose amounts and `purposeValue`).
+
+### The problem
+
+None of five keyword actions was a purpose amount, so a spell or an ability that did one beside its main effect was priced as though it did not: Preordain (`draws: 1`) was Opt's draw, Read the Bones was Night's Whisper, Claim the Precious was Murder, and Charming Prince's "Scry 2." bullet was worth nothing. The five are scry (CR 701.22a), learn (CR 701.48a), discover (CR 701.57a), amass (CR 701.47a) and "the Ring tempts you" (CR 701.54a).
+
+### Decision
+
+1. **Five new amounts.** `Purpose.Scry` (cards scried), `Learn` (times it learns), `Discover` (the N of its discover), `Amass` (the N of "amass [subtype] N") and `RingTempts` (times the Ring tempts its controller), on the wire as `scry`, `learn`, `discover`, `amass` and `ring_tempts`. Printed amounts, like every amount: "scry X" and "discover X, where X is ..." are not declared, nor is a rider the text makes conditional ("if this spell was bargained, ... you scry 1"). `effects.Register` refuses a negative one and one on a triggered row, which nothing prices by them: a permanent's enters trigger declares its rider on the card, as Mulldrifter's draws are, and a modal trigger's bullet on the bullet. `effects.WithRiders` adds them to a purpose a constructor builds (`ForTargets(...)`).
+2. **Priced beside the main effect, never in its place** (`aiseat/heuristic/riders.go`):
+
+   ```
+   riderValue = Hand × ScryWeight × min(scry, ScryCap)
+              + Hand × LearnWeight × learn
+              + Σ per discover (Hand + DiscoverPerMana × N)
+              + the Army an amass grows (the counters' CreatureValue on the bot's best Army),
+                or makes (a summoning-sick N/N token) when it has none
+              + RingTempt per tempting, halved when the bot controls no creature
+                and the card being cast is not one
+   ```
+
+   Inside `purposeValue` when the slot declares anything else the Config prices; otherwise added to what the slot is worth without it, the mana-value proxy, the body or `ActivateBase`. A rider is deliberately not one of the amounts that make a slot "priced" (`purposePriced`): Claim the Precious declares only its tempting, and pricing the spell by that alone would drop the proxy a removal spell is priced by. An activated row that sacrifices its own source and declares a rider pays for the source as a priced row does, so a Hidden Cave's discover does not come with a free land.
+3. **The catalog declares them, held to the text.** 118 declarations in 117 card files (the five Hidden caves share one row) declare a rider: the spells, the enters effects, two Adventure halves, the activated rows (Crystal Ball, Castle Vantress, the Strixhaven Campuses, the Hidden caves, Quintorius Kand's −3) and Charming Prince's bullet. 101 printed riders are left undeclared, each with its reason. `TestRiderPurposesMatchThePrintedCard` (`cards/coverage`) reads the oracle fixture, reminder text removed: every declared rider is printed with that amount, a counted one (learn, the Ring) no more times than it is printed, and every catalog card that prints a fixed rider and declares none is on `testdata/undeclared_riders.txt` with its reason. The list may only shrink.
+
+### Measured
+
+`boteval arena --rotate --lockstep --seed 2000 --games 48` on the standard pool, two seats of `heuristic` and two of `heuristic-noriders`, run twice with the policies swapped between the chairs so each played each deck 48 times (`docs/bot-testing.md`): 47/192, 24.5% (18.9–31.0%) against 49/192, 25.5% (19.9–32.1%), the same wins on mono-red-aggro and simic-ramp and one fewer on esper-control and mono-black-aristocrats. No stalls. The curated riders are small, and the price neither helps nor costs there; it changes when they are cast (Read the Bones taken in 7 of 21 offered windows instead of 7 of 48, Preordain in 10 of 44 instead of 11 of 58). The position tests are the evidence for the price itself.
+
+### Left undeclared (the list's reasons)
+
+- A rider on a triggered row that is not the card's enters effect (an attack, an upkeep, a death, a cast trigger, a saga chapter): nothing prices a triggered row by what it does.
+- A land's enters effect (the Temples, Crystal Grotto): a land play is not priced by its purpose.
+- A sacrifice outlet's rider (Viscera Seer, Woe Strider, Hidden Stockpile), and a row that saves (Boromir, Warden of the Tower): a rider on a row whose purpose declares only its answer makes the row more than an answer (`PurposeView.Priced`), so the bot would spend it with nothing to answer. Left to a measured follow-up.
+- A modal trigger whose other bullets declare nothing (Lita, Galadriel, Light of Valinor): the declared bullet would always be chosen.
+- A rider the text makes conditional or optional ("if you cast it", "you may pay {4}. If you do, discover 4").
+
+### Not priced
+
+What a scry finds, whether the library still holds a nonland card a discover can find, a Lesson outside the game, and how far along its levels the Ring already is (CR 701.54c): the fifth tempting is priced as the first.

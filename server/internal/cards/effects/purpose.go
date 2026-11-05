@@ -66,6 +66,7 @@ import (
 //     the card, on a card with no single kicker / no face-down cast
 //     offer, or whose inner purpose is empty, nests another, or
 //     declares what only the card's own slot may (checkConditionalPurposes).
+//   - a negative rider, or one on a triggered row (checkRiders, #4978).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
 type purposeSlot int
@@ -185,8 +186,24 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		checkLandfallPayoff(&l, fail)
 	}
 	checkSweep(p.Sweep, fail)
+	checkRiders(p, slot, fail)
 	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
+	}
+}
+
+// checkRiders is the guard for the riders (#4978, ADR 0126's amendment
+// of 2026-11-05): scry, learn, discover, amass and the Ring tempting
+// its controller. None may be negative, and none is declared on a
+// triggered row, which nothing prices by them: a permanent's enters
+// trigger declares its rider on the card, as Mulldrifter's draws are,
+// and a modal trigger's bullet on that bullet.
+func checkRiders(p game.Purpose, slot purposeSlot, fail func(string)) {
+	if p.Scry < 0 || p.Learn < 0 || p.Discover < 0 || p.Amass < 0 || p.RingTempts < 0 {
+		fail("has a negative rider (#4978)")
+	}
+	if slot == purposeOnTriggered && (p.Scry != 0 || p.Learn != 0 || p.Discover != 0 || p.Amass != 0 || p.RingTempts != 0) {
+		fail("declares a rider (scry, learn, discover, amass, the Ring tempting) on a triggered row, which nothing reads — an enters trigger's rider is the card's own purpose (#4978)")
 	}
 }
 
@@ -701,6 +718,22 @@ func ExilesFromGraveyard(slot int, grows string) game.TargetPurpose {
 func ModeWithPurpose(o game.ModeOption, p game.Purpose) game.ModeOption {
 	o.Purpose = p
 	return o
+}
+
+// WithRiders is p with the riders r declares added (#4978): scry,
+// learn, discover, amass and the Ring tempting its controller, for a
+// purpose a constructor builds. Only r's riders are read.
+//
+//	Purpose: WithRiders(ForTargets(DamageToTarget(0, 4)), game.Purpose{Scry: 1}),
+func WithRiders(p, r game.Purpose) game.Purpose {
+	p.Scry += r.Scry
+	p.Learn += r.Learn
+	p.Amass += r.Amass
+	p.RingTempts += r.RingTempts
+	if r.Discover != 0 {
+		p.Discover = r.Discover
+	}
+	return p
 }
 
 // CostWithPurpose is an alternative cost with what the spell does when

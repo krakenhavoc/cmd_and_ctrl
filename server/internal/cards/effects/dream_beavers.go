@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "a1cec8e8-cf3c-42a4-b625-ca0cd148664e",
 		Name:            "Dream Beavers",
+		Purpose:         game.Purpose{Scry: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

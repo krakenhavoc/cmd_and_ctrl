@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Rage into the Valley — Sorcery {2}{B} (The Hobbit, HOB):
 //
 //	"You draw a card and lose 1 life.
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8c7641b6-3a6c-4441-a98c-3b5d61d91f76",
 		Name:         "Rage into the Valley",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			DrawCards{N: 1},

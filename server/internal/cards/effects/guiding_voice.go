@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5c7e7c9e-00d1-497e-bee7-278bbd82e234",
 		Name:         "Guiding Voice",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

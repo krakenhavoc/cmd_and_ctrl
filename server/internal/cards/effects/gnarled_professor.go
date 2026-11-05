@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "e66083f0-62a9-4ff7-8bb0-3eafc6d2e95d",
 		Name:            "Gnarled Professor",
+		Purpose:         game.Purpose{Learn: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{

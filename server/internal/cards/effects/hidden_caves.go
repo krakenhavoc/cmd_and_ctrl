@@ -37,6 +37,7 @@ func init() {
 			}},
 			Activated: []ActivatedAbility{{
 				Label:        "{4}" + mana + ", {T}, Sacrifice this land: Discover 4",
+				Purpose:      game.Purpose{Discover: 4},
 				Cost:         Plus(ManaCost("{4}"+mana), TapCost(), SacrificeThis()),
 				SorcerySpeed: true,
 				Effect:       DiscoverN(4),

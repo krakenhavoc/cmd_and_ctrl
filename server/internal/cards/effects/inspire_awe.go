@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9ca539cd-9876-4c13-b220-d553c17f2378",
 		Name:         "Inspire Awe",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			shield := PreventDamageFromSource{CombatOnly: true, Protect: ShieldAnything, Filter: game.DamageSourceFilter{

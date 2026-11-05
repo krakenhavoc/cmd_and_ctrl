@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "0e353a41-b523-4c22-9bda-d10460ba99c7",
 		Name:         "Uruk-hai Berserker",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Uruk-hai Berserker — the Ring tempts you", Do(TheRingTemptsYou{})),

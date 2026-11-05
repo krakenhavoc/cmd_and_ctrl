@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Scry 2.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 2},
 			Cost:    game.AbilityCost{Mana: "{1}", Tap: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 2}.Apply(NewContext(g, item))

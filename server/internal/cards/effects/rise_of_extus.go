@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "810f2b50-59c7-490a-8e6a-00f982cd16a0",
 		Name:         "Rise of Extus",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetCreature("target creature"),

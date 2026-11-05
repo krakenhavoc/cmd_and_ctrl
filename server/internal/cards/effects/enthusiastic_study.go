@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Enthusiastic Study — Instant {2}{R} (EDHREC rank 20291):
 //
@@ -17,7 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4233334d-bb19-41e4-a203-2b7bb0c48f52",
 		Name:         "Enthusiastic Study",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 1, "trample")),
+		Purpose:      WithRiders(ForTargets(BenefitUntilEOT(0, 3, 1, "trample")), game.Purpose{Learn: 1}),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(
