@@ -1766,6 +1766,7 @@ tail living-death/return-exiled
 tail living-death/sacrifice-creatures
 tail loafing-giant/after-mill
 tail london-mulligan/cards-down
+tail lrell-fierce-visionary/sacrifice-at-end
 tail makeshift-mannequin/grant-while-counter
 tail malcolm/draw-after-counter
 tail manaform-hellkite/exile-the-token

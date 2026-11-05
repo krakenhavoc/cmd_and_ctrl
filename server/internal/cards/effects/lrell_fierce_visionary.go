@@ -28,9 +28,12 @@ func init() {
 				trekKlingonWarriorSacrificedAtNextEndStep(lrellFierceVisionarySacrificeAtEnd)),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, Sacrifice another creature or artifact: Surveil 1.",
-			Cost:   Plus(ManaCost("{2}"), SacrificeAnotherN(1, "another creature or artifact", Or(Creature(), Artifact()))),
-			Effect: Do(Surveil{N: 1}),
+			Label: "{2}, Sacrifice another creature or artifact: Surveil 1.",
+			// A sacrifice outlet (ADR 0142): it answers removal aimed at
+			// the permanent it sacrifices.
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{2}"), SacrificeAnotherN(1, "another creature or artifact", Or(Creature(), Artifact()))),
+			Effect:  Do(Surveil{N: 1}),
 		}},
 	})
 }
