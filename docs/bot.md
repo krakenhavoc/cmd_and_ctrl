@@ -3290,7 +3290,12 @@ itself:
   filtered with too. One move per entry, so a flashed-back Faithless
   Looting and a
   hard-cast one are separate moves at separate prices — the same rule
-  the optional costs follow.
+  the optional costs follow. The enumerator walks it as
+  `game.CastOfferGrantsForLocked` (#5081), which pairs each entry with
+  the permission a cast claiming it is made under, and prices, times and
+  holds each move to a per-type budget under that one: beside Muldrotha,
+  Green Goblin's granted mayhem is cast under Goblin Formula and spends
+  none of Muldrotha's types, whichever of the two came first.
 
 A third question the same walk answers, and the reason an adventure
 needed no code here: WHICH FACE. `Card.CastableFaces` offers both
