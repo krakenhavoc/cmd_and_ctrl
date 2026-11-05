@@ -9,6 +9,65 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Burnished Hart's land search by the turn (#5084, S75)
+
+Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library for
+up to two basic land cards" priced its two lands (2.00) plus a ramp
+premium from the hand's deficit alone, against the Hart's board value
+(about 3.30) and, a second time, the flat 0.30 for an untapped creature.
+`PriceRampCurve` ([bot.md](bot.md#a-land-search-that-sacrifices-its-source-by-the-turn-5084))
+prices such a row's lands up to the mana a deck on curve wants two turns
+ahead while the round is below seven, and drops the double charge. It
+**ships off**: the arena below found no gain. `heuristic-rampcurve` seats
+today's heuristic with it on. The position tests
+(`heuristic/ramp_curve_test.go`) and the real-engine regression
+(`aiseat/ramp_curve_bot_test.go`) hold both sides: with the curve on, the
+Hart is cracked in rounds 3 to 5 on curve and in round 6 a land behind,
+with a castable hand (+1.10 against −0.20 to −1.20 off; the real card
++0.70), and two basic Islands enter tapped; it is kept from round 7, on
+a stalled board facing two 7/7s, and a land or more behind. The default
+keeps the Hart in every one of those positions. Ramp spells, rows that
+declare no lands and a hand that already asks for the mana are priced as
+before.
+
+The 2026-11-05 UTC runs used develop `f01023882` plus #5084 and the
+synthetic `--decks thopter-battle` at all four seats, rotation and
+lockstep. Every game ended with a winner and none stalled. First,
+curated-arena.sh's shape (16 games, seeds 1000–1015) with all four seats
+on one policy:
+
+| Policy | Hart activations (seat-games) | Hart windows offered | Wins |
+|---|---|---|---|
+| curve on | 10 (9 of 43) | 3,872 | 16 / 64 |
+| curve off (today) | 9 (8 of 44) | 3,941 | 16 / 64 |
+
+Fifteen of the sixteen games had the same length either way. Decision
+logs of four of those games with the curve on show why: in 108 windows
+of the Hart's controller's own main phase with an empty stack, 96 were
+from round 7 on, when the curve has closed, and in the 12 earlier ones
+the bot cast what it held, played a land or passed in round 6 with six
+sources, where the curve adds one mana and the Hart prices −0.30.
+
+Then head-to-head: two seats with the curve against two without, seeds
+2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games | Hart activations (seat-games) |
+|---|---|---|
+| curve on | 21, 21.9% (14.8–31.1%) | 10 (10 of 65) |
+| curve off | 27, 28.1% (20.1–37.8%) | 14 (14 of 66) |
+
+Two seats of one policy share a game, so the intervals are conservative.
+The intervals overlap and the curve seats made fewer Hart activations,
+not more, so the gap is the games the change re-dealt, not the curve. On
+this deck the Hart arrives late and its {3} competes with Drakes and
+Ogres the turn plan prices higher, so the price is not what keeps it on
+the battlefield. A ramp deck with big spells in hand, or the curated
+decks, is the run to make before turning the switch on. The labelled
+position suite (42/42), the heuristic, suite, botarena, boteval and
+aiseat package tests and docsguard passed. With the switch off,
+`DefaultConfig` plays exactly as before. Reports stayed on the authoring
+machine.
+
 ## Mana sinks and graveyard exiles (#4559, S75)
 
 `heuristic-nomanasink` is today's heuristic with `SinkManaLast` and
@@ -34,6 +93,129 @@ No arena comparison was run with the change: the curated decks need a
 Scryfall dump the authoring machine did not have, and the synthetic
 battle decks hold no graveyard-exile sink. The labelled position suite
 kept its agreement.
+
+## Spare tokens for Sai's draw (#4991, S75)
+
+Sai, Master Thopterist's "{1}{U}, Sacrifice two artifacts: Draw a card"
+was never taken in the issue's 16 arena games of the curated
+`mono-blue-artifacts` deck. Its row declared no draw, so it was priced
+at the flat `ActivateBase` (0.50), and each sacrificed Thopter cost its
+board value (2.95 for a 1/1 flier): about −5.70 against a pass. The row
+now declares `draws: 1` (1.20). `PriceSpareTokens` prices a spare token
+at the blocker it is ([bot.md](bot.md#sacrifices)), and it **ships off**:
+the arena below found the trade a loss. `heuristic-sparetokens` seats
+today's heuristic with it on. The position tests
+(`heuristic/spare_token_test.go`) and the real-engine regression
+(`aiseat/spare_token_bot_test.go`) hold both sides: with the price on,
+four Thopters after combat trade two for a card and keep two; three
+Thopters, Thopters before they attack, nontoken artifacts and a copy
+with a counter are kept; with it off the bot passes.
+
+The curated deck was not run: it needs a Scryfall dump, and the
+authoring sandbox could not reach Scryfall. The 2026-11-05 UTC runs used
+develop `a2035a940` plus #4991 and the synthetic `--decks thopter-battle`
+at all four seats (Sai, eight Ornithopters, six Memnites, four Hangarback
+Walkers, four Burnished Harts, four Mind Stones and vanilla blue
+creatures), rotation and lockstep. Every game ended with a winner and
+none stalled. They were played while the price was still on by default,
+with the off seats named `heuristic-nosparetokens`; those seats play
+exactly as today's `heuristic`, and the on seats as `heuristic-sparetokens`.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy, and decision logs:
+
+| Policy | Sai activations (seat-games) | When | Paid with |
+|---|---|---|---|
+| price on | 42 (21 of 64) | 30 after combat, 3 before it, 9 after blockers | two Thopters 34, a Thopter or Memnite with an Ornithopter or Memnite 8 |
+| price off | 5 (5 of 64) | all 5 after blockers | two Thopters 1, the other 4 a Memnite or Thopter with an Ornithopter |
+
+With the price on, Sai was never activated outside combat while its
+controller held three Thopters (1,908 windows) and was activated in 24 of
+242 windows with four. Hangarback Walker's "{1}, {T}" was used 83 and 67
+times and Burnished Hart's sacrifice 8 and 9 times, so neither is never
+used on this deck. Mind Stone's draw was never taken in either run.
+
+Then head-to-head: two seats with the price on against two without,
+seeds 2000–2047, 3000–3047 and 4000–4047 (48 games each). The four-seat
+null rate is 25%. `SpareTokenKeep` was varied in temporary builds.
+
+| Keep | Seeds | Price on: wins / 96 | Price off: wins / 96 |
+|---|---|---|---|
+| 2 | 2000 | 16, 16.7% (10.5–25.4%) | 32, 33.3% (24.7–43.2%) |
+| 2 | 3000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+| 2 | 4000 | 25, 26.0% (18.3–35.6%) | 23, 24.0% (16.5–33.4%) |
+| 2 | all | 58 / 288, 20.1% (15.9–25.1%) | 86 / 288, 29.9% (24.9–35.4%) |
+| 3 | 2000 | 24, 25.0% (17.4–34.5%) | 24, 25.0% (17.4–34.5%) |
+| 3 | 3000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+| 3 | 4000 | 23, 24.0% (16.5–33.4%) | 25, 26.0% (18.3–35.6%) |
+| 3 | all | 64 / 288, 22.2% (17.8–27.4%) | 80 / 288, 27.8% (22.9–33.2%) |
+| 4 | 2000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. At every keep the seats
+that cashed in Thopters did no better, and at the default keep of two
+they did worse. On this deck the draws are vanilla creatures and lands,
+and the Thopters are its evasion, so the board price was right. The
+curated deck draws better cards, and is the run to make before turning
+the switch on. The labelled position suite, the gated heuristic games
+(`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
+package tests passed. Reports and decision logs stayed on the authoring
+machine.
+
+## Spare mana rocks for Mind Stone's draw (#5085, S75)
+
+Mind Stone's "{1}, {T}, Sacrifice Mind Stone: Draw a card" was offered
+about 6,000 times in #4991's 16 games and never taken. Its row already
+declared `draws: 1`; the price was the cause. The card is
+`Weights.Hand` (1.20) and the stone its board value as an untapped mana
+source (`ManaSource`, 1.00), so the activation netted 0.20, under
+`PassThreshold` (0.25) in every window. `PriceSpareManaSources` prices a
+spare rock at `SpareManaSourceCost` (0.50; [bot.md](bot.md#sacrifices)),
+and it **ships on**. `heuristic-nosparemana` seats today's heuristic
+with it off. The position tests (`heuristic/spare_mana_test.go`) and the
+real-engine regression (`aiseat/mind_stone_bot_test.go`) hold both
+sides: with seven lands and an empty hand the stone is cashed in (0.70);
+with three or four lands, or a hand card that still wants the stone's
+mana, it is kept; a mana creature is never spare; with the price off the
+bot passes.
+
+The 2026-11-05 UTC runs used develop `f01023882` plus #5085 and the
+synthetic `--decks thopter-battle` at all four seats, rotation and
+lockstep. Every game ended with a winner and none stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all
+four seats on one policy:
+
+| Policy | Mind Stone activations | Offered windows | Seat-games used |
+|---|---|---|---|
+| price on (`heuristic`) | 44 | 1,168 | 32 of 41 |
+| price off (`heuristic-nosparemana`) | 0 | 5,771 | 0 of 41 |
+
+With the price on, the decision logs put every activation at +0.70 in
+the bot's own main phase (31 before combat, 13 after), from game turn 5
+to 18 (median 8), with six to eleven mana sources counting the stone and
+at most three cards in hand. Hangarback Walker's activation (56 against
+67) and Burnished Hart's (5 against 9) moved little; Sai's went from 5
+to 8.
+
+Then head-to-head: two seats with the price on against two without,
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 | Mind Stone activations |
+|---|---|---|
+| price on | 23, 24.0% (16.5–33.4%) | 95 |
+| price off | 25, 26.0% (18.3–35.6%) | 0 |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. Two wins in 96 is well
+inside the noise: the trade neither wins nor loses measurably on a deck
+whose draws are vanilla creatures and lands, and it ships on because a
+deck that draws better cards gets more for each stone. Back it out with
+`PriceSpareManaSources` if a curated-deck run says otherwise. The
+labelled position suite (42 positions, 100% agreement), the gated
+heuristic games (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic
+tests) and the package tests passed. Reports and decision logs stayed on
+the authoring machine.
 
 ## Modal trigger bullets (#4674, S79)
 

@@ -34,6 +34,9 @@
 //   - The first frame (and a reconnect or replay toggle) PRIMES: what is
 //     already in the log happened before this client was watching, and
 //     is never animated.
+//   - Each entry plays one sound as its tumble starts (#4450): a coin's
+//     ring for a flip, a rattle for a die, at once with motion off, and
+//     none for a primed entry or one first seen long after it started.
 //
 // The queue takes `DiceRoll`s, not log entries, so the opening roll
 // (ADR 0121 PR 5) and table rolls (PR 6) feed the same schedule: each
@@ -41,6 +44,7 @@
 
 import { isOpeningDieLog } from "./openingRoll";
 import type { LogEvent } from "./protocol";
+import type { SoundName } from "./sounds";
 
 /** The tumble at speed 1. Scaled by `animations.speed`. */
 export const DICE_TUMBLE_MS = 900;
@@ -352,6 +356,43 @@ export function nextDiceChange(state: Pick<DiceState, "plays">, now: number): nu
 export function isReleased(state: Pick<DiceState, "released">, seq: number, now: number): boolean {
   const at = state.released.get(seq);
   return at !== undefined && at <= now;
+}
+
+// ---------------------------------------------------------------- //
+// The sound (#4450, ADR 0209 §3's amendment): a dice rattle or a coin
+// ring as each entry's tumble starts.
+
+/** A play whose tumble started longer ago than this when it is first seen plays no sound. */
+export const DICE_SOUND_LATE_MS = 1000;
+
+/** The sound an entry plays: a coin's ring for a flip, a rattle for any die. */
+export function diceSound(r: Pick<DiceRoll, "kind">): SoundName {
+  return r.kind === "coin" ? "coin_flip" : "dice_roll";
+}
+
+/**
+ * diceSoundsDue is every play whose tumble has started by `now` and that
+ * has not sounded yet (`sounded`, by roll key), in schedule order. One
+ * entry is one sound however many dice it rolls ("2d12" is one rattle),
+ * and a burst's entries sound one by one, as each starts. With motion
+ * off the play starts at once, and so does its sound: only the motion is
+ * gated. A play first seen more than DICE_SOUND_LATE_MS after it started
+ * (a tab that was asleep) is due with no sound (`name` null), so the
+ * caller marks it and stays quiet, as a late effect cue does. A primed
+ * window has no plays, so nothing already on the wire sounds.
+ */
+export function diceSoundsDue(
+  plays: readonly DicePlay[],
+  now: number,
+  sounded: ReadonlySet<string>,
+): { key: string; name: SoundName | null }[] {
+  return plays
+    .filter((p) => p.startAt <= now && !sounded.has(p.roll.key))
+    .sort((a, b) => a.startAt - b.startAt)
+    .map((p) => ({
+      key: p.roll.key,
+      name: now - p.startAt > DICE_SOUND_LATE_MS ? null : diceSound(p.roll),
+    }));
 }
 
 export type DicePhase = "tumble" | "hold" | "fade";

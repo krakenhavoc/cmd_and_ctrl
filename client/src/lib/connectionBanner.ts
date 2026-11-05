@@ -21,6 +21,7 @@
 // offlineSendMessage from HERE, so turning this into a value import
 // would close a genuine runtime cycle. It stays `import type`.
 import { SIGNED_IN_RETURN_LINK } from "./joinRecovery";
+import { L } from "./labels";
 import { SERVER_FULL_MESSAGE } from "./serverFull";
 import type { ConnectionStatus } from "./ws";
 
@@ -87,8 +88,8 @@ export function offlineSendMessage(what: string): string {
 // A banner's tone. "retrying" is the client still working the backoff
 // ladder; "lost" is a connection that will not come back on its own
 // but might, later, with no action from the player; "ended" (#1475)
-// is the one banner that will NEVER clear itself — the session is
-// gone and only signing in again fixes it.
+// is the banner that will NEVER clear itself — the session is gone
+// and only signing in again fixes it, or (#5082) the table was closed.
 export type BannerTone = "retrying" | "lost" | "ended";
 
 export interface ConnectionBannerState {
@@ -115,7 +116,12 @@ export interface ConnectionBannerState {
 // its own "waiting for snapshot…" state for that. Marking it stale
 // would put a scary banner on every normal page load.
 export function boardIsStale(status: ConnectionStatus): boolean {
-  return status === "reconnecting" || status === "disconnected" || status === "session_ended";
+  return (
+    status === "reconnecting" ||
+    status === "disconnected" ||
+    status === "session_ended" ||
+    status === "table_closed"
+  );
 }
 
 // actionsDisabled reports whether action affordances should be shown
@@ -175,6 +181,18 @@ export function connectionBanner(
       retryLabel: "Try now",
     };
   }
+  // #5082, ADR 0211 §4: the table was archived and refuses this socket.
+  // Dialling again cannot help, so the banner sends the player back to
+  // Tables, which is where every way on from here starts.
+  if (status === "table_closed") {
+    return {
+      tone: "ended",
+      headline: L.gameClosed,
+      detail: `${STALE_BOARD_SENTENCE} Head to Tables to find another game.`,
+      retryLabel: "",
+      link: SIGNED_IN_RETURN_LINK,
+    };
+  }
   if (status === "session_ended") {
     return {
       tone: "ended",
@@ -196,7 +214,7 @@ export function connectionBanner(
 
 // connectionAnnouncement is the line read into the aria-live region on
 // a status change. Separate from the banner copy because it covers all
-// five states, not just the three that render a banner: a screen-reader
+// six states, not just the four that render a banner: a screen-reader
 // user needs to be told the table came BACK at least as much as they
 // need to be told it went away, and the banner says that by vanishing
 // silently.
@@ -212,5 +230,7 @@ export function connectionAnnouncement(status: ConnectionStatus, attempt: number
       return "Disconnected from the table. The board is not live.";
     case "session_ended":
       return "Your session ended. Sign in again to get back to the table.";
+    case "table_closed":
+      return `${L.gameClosed} The board is not live.`;
   }
 }

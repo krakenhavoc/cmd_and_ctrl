@@ -149,7 +149,8 @@ describe("Settings → Gameplay: Advanced (ADR 0143 §3.1)", () => {
       L.respondValueInstantsToggle,
       "Targeted and protective abilities",
       "Value abilities (Mind Stone, fetch lands, cycling)",
-      "Special actions (foretell, suspend, face-up)",
+      L.respondTurnFaceUpToggle,
+      L.respondOtherSpecialActionsToggle,
       "Pass my own spells and triggers straight away",
       "Bluffing",
       "Represent a counterspell",
@@ -257,6 +258,41 @@ describe("Settings → Gameplay: value instants (#2877)", () => {
     expect(text).toContain(
       "A value instant, like Opt or Brainstorm, counts in combat and at an opponent's end step, and on an opponent's spell only when you tick it above.",
     );
+  });
+});
+
+// #2861 (owner, 2026-10-30): the special actions, split. Turning a
+// face-down creature face up stops you by default; the rest don't.
+describe("Settings → Gameplay: special actions (#2861)", () => {
+  const box = (root: HTMLElement, name: string) => {
+    const label = [...advanced(root).querySelectorAll("label")].find((l) =>
+      l.textContent?.includes(name),
+    );
+    const input = label?.querySelector<HTMLInputElement>("input[type=checkbox]");
+    if (!input) throw new Error(`no ${name} checkbox`);
+    return input;
+  };
+
+  it("has turning face up on and the others off by default", () => {
+    const root = openGameplay();
+    expect(box(root, L.respondTurnFaceUpToggle).checked).toBe(true);
+    expect(box(root, L.respondOtherSpecialActionsToggle).checked).toBe(false);
+  });
+
+  it("each checkbox sets its own setting", () => {
+    const root = openGameplay();
+    box(root, L.respondTurnFaceUpToggle).click();
+    flushSync();
+    box(root, L.respondOtherSpecialActionsToggle).click();
+    flushSync();
+    let up = true;
+    let other = false;
+    settings.subscribe((s) => {
+      up = s.gameplay.respondTurnFaceUp;
+      other = s.gameplay.respondOtherSpecialActions;
+    })();
+    expect(up).toBe(false);
+    expect(other).toBe(true);
   });
 });
 
