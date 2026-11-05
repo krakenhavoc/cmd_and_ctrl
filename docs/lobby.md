@@ -303,7 +303,7 @@ agent seat:
 | 401 | invite token did not match |
 | 403 | the table removed and blocked this person (`code: "blocked_from_table"`, see [Moderation](#moderation-2984)) |
 | 404 | game not found |
-| 409 | game already started, game full, or the signed-in person already holds a seat at this table |
+| 409 | game already started, game full, or the signed-in person already holds a seat at this table; or the table has been archived (`code: "game_closed"`) |
 | 503 | the connection cap is full: `code: "server_full"`, nothing was seated (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ---
@@ -1496,7 +1496,7 @@ and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 |---|---|
 | 403 | not a seat in this game |
 | 404 | game not found |
-| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum) |
+| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum); or the table has been archived (`code: "game_closed"`) |
 
 ### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
 
@@ -1626,7 +1626,7 @@ validator now refuses, or no free seat left.
 | 403 | not a signed-in person (a guest, the admin token), or not the table's host, creator or an admin |
 | 400 | `from` is not `"last"` |
 | 404 | game not found, or the caller has no saved setup |
-| 409 | the table has started |
+| 409 | the table has started; or it has been archived (`code: "game_closed"`) |
 
 ### `POST /games/{id}/decks`
 
@@ -1722,6 +1722,7 @@ and MTGO's text exports end.
 |---|---|
 | 400 | malformed request (neither `deck` nor `source`, both of them, missing player_id, unknown format) |
 | 403 | not your seat (RolePlayer with mismatched player_id) |
+| 409 | the game has started; or the table has been archived (`code: "game_closed"`) |
 | 413 | body exceeds the 2 MiB deck-source cap |
 | 422 | validation failed — body carries `{"error", "violations": [...]}`; may also carry `warnings` |
 | 422 | unknown pre-built `deck` id — body names the ids this build offers |
@@ -1900,6 +1901,7 @@ give, rather than silently installing something that changed.
 | 400 | invalid `deck_id` in the path |
 | 403 | caller is not a `player` session seated in this game, or the deck belongs to someone else |
 | 404 | game not found, or no such deck id |
+| 409 | the game has started; or the table has been archived (`code: "game_closed"`) |
 | 422 | the stored deck no longer validates against the current catalog — same violation shape as an upload |
 | 429 | too many requests — shares `/decks`' rate bucket |
 | 503 | card index not loaded, or no deck library configured on this deployment |
@@ -2168,7 +2170,7 @@ is to name it, not to refuse the deck.
 | 400 | neither `deck` nor `source`, both of them, bad JSON, unknown `format` |
 | 403 | caller is neither admin nor a **seated player** at this game (a spectator's session carries the game ID and is refused here) |
 | 404 | game not found |
-| 409 | game already started, or the table is full |
+| 409 | game already started, or the table is full; or the table has been archived (`code: "game_closed"`) |
 | 422 | unknown or unavailable `tier`, unknown `deck` ID, or the deck failed validation (violation list, as for `/decks`) |
 | 503 | card index not loaded, no deck catalog configured (for a `deck` request), or bot seats are not enabled on this server |
 
@@ -2497,6 +2499,26 @@ re-listed and its bots are not relaunched).
 
 This is the action for clearing old games off the lobby screen.
 `DELETE /games/{id}` is the irreversible one.
+
+**An archived table is closed** (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md)
+§4). Every way in refuses it with **409** and `code: "game_closed"`:
+`POST /games/{id}/join` (after the invite is checked, so a wrong invite
+is still a 401), `POST /games/{id}/spectate`, `POST /games/{id}/start`,
+`POST /games/{id}/decks`, `POST /games/{id}/decks/{deck_id}`,
+`POST /games/{id}/seats/bot` and `POST /games/{id}/setup`, as well as
+the seat-reclaim routes. A seat or spectator session that outlived the
+archive cannot reconnect: its `GET /ws` upgrade is refused with 409
+([protocol.md](protocol.md#connection-lifecycle-s04)). An admin's
+socket is still admitted, so an operator can look at the table.
+`POST /join` by code reads an archived table as an unknown code (401).
+Unarchiving opens every path again.
+
+`GET /games/{id}` keeps answering such a session, with `archived_at`
+set. A browser sees a refused upgrade only as a close 1006, so the
+client asks this route after a failed dial (and after the 1000 an
+archive closes sockets with) and, when `archived_at` is set, stops
+redialling and says "This table was closed." (#5082). The client shows
+the same sentence for every `game_closed` refusal above.
 
 **Response 200** — the updated `GameMeta`, carrying `archived_at`.
 Invite tokens are stripped.

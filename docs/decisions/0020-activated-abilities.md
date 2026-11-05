@@ -1723,8 +1723,8 @@ it is four keywords' worth of variation over one dimension:
 | keyword | CR | zone | cost | effect |
 |---|---|---|---|---|
 | cycling | 702.29a | hand | discard this | draw |
-| unearth | 702.82a | graveyard | mana only | return it, haste, exile it later |
-| scavenge | 702.96a | graveyard | **exile this** | counters equal to its power |
+| unearth | 702.84a | graveyard | mana only | return it, haste, exile it later |
+| scavenge | 702.97a | graveyard | **exile this** | counters equal to its power |
 | embalm / eternalize | 702.128a / 702.129a | graveyard | **exile this** | a token copy with changes |
 
 Four keywords, one activation path, one zone field. Nothing here is a

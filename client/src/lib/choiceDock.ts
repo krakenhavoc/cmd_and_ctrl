@@ -10,8 +10,8 @@
 // optional_replacement, commander_return, confirm, may_cast, entry_pay_life,
 // entry_riot), pay_amount's single number (ADR 0129 §3), pay_unless
 // without card or tap picks, coin_call, loop_shortcut, mana_pick,
-// choose_color, option_pick, entry_controller and entry_read_ahead when
-// every option is a short label, and an open vote. Everything else is a sheet (PR 6)
+// choose_color, option_pick, entry_controller, entry_read_ahead and
+// entry_attack_target when every option is a short label, and an open vote. Everything else is a sheet (PR 6)
 // and stays in ChoicePromptModal until then.
 //
 // An inline prompt is not a modal: it blurs and blocks nothing, so the
@@ -105,6 +105,7 @@ export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean
     case "option_pick":
     case "entry_controller":
     case "entry_read_ahead":
+    case "entry_attack_target":
       return shortOptions(c);
     default:
       return false;
@@ -367,6 +368,12 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         tag: "read ahead",
         hint: "It hasn't entered yet: it enters with that many lore counters, and the chapters before it never happen.",
       };
+    case "entry_attack_target":
+      return {
+        title: reason || "Choose what it attacks",
+        tag: "attack",
+        hint: "It hasn't entered yet: it enters tapped and attacking the player, planeswalker or battle you choose.",
+      };
     case "entry_controller":
       return {
         title: reason || "Choose an opponent",
@@ -534,6 +541,7 @@ function answersFor(
     case "option_pick":
     case "entry_controller":
     case "entry_read_ahead":
+    case "entry_attack_target":
       // No bar: a click on an option is the answer.
       return {
         primary: null,
