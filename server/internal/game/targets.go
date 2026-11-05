@@ -117,7 +117,21 @@ type TargetSource struct {
 	// excludesSource, which every announce check and legal-target list
 	// shares.
 	casting bool
+
+	// spell says the walk's source is a SPELL — a card being cast, a
+	// spell on the stack or a copy of one — and not an ability. Set by
+	// SourceCast, by stackItemSourceLocked for a spell item and by
+	// copyTargetSourceLocked for a spell copy; every other source is an
+	// ability's (or no source at all). Read through IsSpell by a clause
+	// that refuses abilities and not spells: "can't be the target of
+	// abilities from artifact sources your opponents control" (Species
+	// 8472, #4973), where CR 702.16b's protection reads both.
+	spell bool
 }
+
+// IsSpell reports whether the source is a spell (a card being cast, a
+// spell on the stack or a copy of one) rather than an ability.
+func (s TargetSource) IsSpell() bool { return s.spell }
 
 // WithTrigger is this source judging a clause for the triggered ability
 // the event `tc` fired. A zero context (one that did not Fire) leaves
@@ -249,7 +263,7 @@ func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 // announces them (#4869). The cast gate, the view's cast stamps and the
 // bot's enumerator all build their source here, so they agree.
 func SourceCast(controller uuid.UUID, obj *Card) TargetSource {
-	return TargetSource{Controller: controller, Object: obj, casting: true}
+	return TargetSource{Controller: controller, Object: obj, casting: true, spell: true}
 }
 
 // SourceSnapshot is the value-copy case (spell_copy.go, an LKI read).
@@ -341,9 +355,11 @@ func (g *Game) stackItemSourceBaseLocked(item *StackItem) TargetSource {
 			if item.Kind == StackItemSpell && item.XValue > 0 {
 				// CR 202.3e: a spell's {X} counts as the value it was cast
 				// with, which "protection from mana value N or less" reads.
-				return TargetSource{Controller: item.Controller, Object: &c, X: item.XValue}
+				return TargetSource{Controller: item.Controller, Object: &c, X: item.XValue, spell: true}
 			}
-			return SourceObject(item.Controller, &c)
+			src := SourceObject(item.Controller, &c)
+			src.spell = item.Kind == StackItemSpell
+			return src
 		}
 	}
 	return SourceChooser(item.Controller)
