@@ -49,7 +49,8 @@ import (
 // sacrificeCost prices sacrificing the permanents `ids` to pay a cost,
 // as a positive number. Under BaselineConfig it is the sum of their
 // board values, the pre-S66 price. A spare creature token (#4991,
-// Config.PriceSpareTokens) costs spareTokenCost instead.
+// Config.PriceSpareTokens) costs spareTokenCost instead, and a spare
+// mana rock (#5085, Config.PriceSpareManaSources) spareManaCost.
 func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 	var v float64
 	payoffs := -1
@@ -68,6 +69,9 @@ func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 		if p.spareToken(st, c, ids) {
 			lost = min(lost, p.spareTokenCost(st, c))
 		}
+		// #5085: a spare mana rock costs what is left of it
+		// (spare_mana.go).
+		lost = p.spareManaCost(st, c, ids, lost)
 		v += keep * lost
 		if p.cfg.DeathPayoff != 0 && isCreature(c) {
 			if payoffs < 0 {
