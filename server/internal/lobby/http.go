@@ -433,6 +433,7 @@ type GameEvictor interface {
 //	PUT  /me/stats/prefs    — signed in: switch advanced stats on or off
 //	GET  /me/stats/advanced — signed in, advanced stats on: the overview (ADR 0217 slice 5)
 //	GET  /me/stats/decks/{deck_id} — signed in, advanced stats on: one deck's stats
+//	GET  /stats/shared/{token}/decks/{deck_id} — public: one deck page of a shared view (ADR 0217 §6)
 //	GET  /me/notifications  — signed in: the caller's Discord DM notification switches (ADR 0162)
 //	PUT  /me/notifications  — signed in: change them
 //	GET  /me/model-key      — signed in: the caller's own model key for AI seats, never the key itself (ADR 0182)
@@ -825,6 +826,9 @@ func Handler(c Config) http.Handler {
 	mux.Handle("DELETE /me/stats/share-link", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, deleteMyStatsShareLink))))
 	sharedStatsLimit := newLimiter(1, 10)
 	mux.Handle("GET /stats/shared/{token}", sharedStatsLimit.Middleware(handlerFunc(c, sharedStats)))
+	// One of the owner's deck pages, read-only (ADR 0217 §6, slice 6
+	// part 2), on the same per-address bucket.
+	mux.Handle("GET /stats/shared/{token}/decks/{deck_id}", sharedStatsLimit.Middleware(handlerFunc(c, sharedDeckStats)))
 	// The cards an ended game's opponents cast, for the shop links
 	// after a game (ADR 0179 §7). Under /me/, so already in the proxies.
 	mux.Handle("GET /me/games/{id}/cards", auth.Middleware(c.Auth)(handlerFunc(c, myGameCards)))

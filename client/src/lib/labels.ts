@@ -1219,6 +1219,27 @@ export const LABEL_SPECS = {
     owners: ["lib/components/stats/ShareStatsDialog.svelte"],
     doc: "the share dialog: the link answers not found from now on (DELETE /me/stats/share-link)",
   }),
+  deckStats: label({
+    name: "Deck stats",
+    kind: "text",
+    role: "link",
+    owners: ["lib/components/decks/DeckCard.svelte"],
+    doc: "a deck's card on #/decks: opens that deck's advanced stats page, #/stats/deck/<deck_id> (ADR 0217 §8)",
+  }),
+  statsVersionPicker: label({
+    name: "Deck version",
+    kind: "text",
+    role: "combobox",
+    owners: ["routes/StatsDeck.svelte"],
+    doc: "a deck's stats page: picks which list's games to show, since the last edit, all time or one earlier version (ADR 0217 §5)",
+  }),
+  statsAllDeckGames: label({
+    name: "Show all time",
+    kind: "text",
+    role: "button",
+    owners: ["routes/StatsDeck.svelte"],
+    doc: "a deck's stats page after an edit with no games yet: switches to every game with the deck",
+  }),
   liveNow: label({
     name: "live now",
     kind: "aria",
