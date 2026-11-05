@@ -605,7 +605,17 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			// #2016: the cheapest N in the seat's own opinion (Options.OrderCostFuel);
 			// hand order when it has none.
-			discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
+			if dc.DifferentNames {
+				// #4896: "with different names" — the cheapest N whose
+				// names differ, or no move when the hand holds fewer
+				// than N names (CR 118.3, #544).
+				discardIDs = g.DiscardDifferentNamesPaymentForEffect(e.seat, dc, e.cheapestFuelFirst(opts))
+				if discardIDs == nil {
+					continue
+				}
+			} else {
+				discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
+			}
 		} else if game.DiscardCountFromX(ab.Cost.DiscardCards) {
 			discardSets = e.variableDiscardPayments(g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.DiscardCards),
 				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()))
