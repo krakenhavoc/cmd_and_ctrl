@@ -153,6 +153,11 @@ battlefield.cards[].encodedOn.id	custom(uuid.UUID)
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].exertOnAttack	bool
+battlefield.cards[].exileGrants	array
+battlefield.cards[].exileGrants[]	object
+battlefield.cards[].exileGrants[].activator	custom(uuid.UUID)
+battlefield.cards[].exileGrants[].key	string
+battlefield.cards[].exileGrants[].source	custom(uuid.UUID)
 battlefield.cards[].exiledWith	object
 battlefield.cards[].exiledWith.epoch	number:int
 battlefield.cards[].exiledWith.id	custom(uuid.UUID)
@@ -556,6 +561,8 @@ delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
 delayedTriggers[].untilLeaves.epoch	number:int
 delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
+dilemmasFacedThisTurn	map:array
+dilemmasFacedThisTurn{}	number:int
 discardPending	map:array
 discardPending{}	number:int
 drawnThisStep	map:array
@@ -682,6 +689,11 @@ enteringTokens[].encodedOn.id	custom(uuid.UUID)
 enteringTokens[].enteredBattlefieldAt	number:int64
 enteringTokens[].entryOrdinal	number:int64
 enteringTokens[].exertOnAttack	bool
+enteringTokens[].exileGrants	array
+enteringTokens[].exileGrants[]	object
+enteringTokens[].exileGrants[].activator	custom(uuid.UUID)
+enteringTokens[].exileGrants[].key	string
+enteringTokens[].exileGrants[].source	custom(uuid.UUID)
 enteringTokens[].exiledWith	object
 enteringTokens[].exiledWith.epoch	number:int
 enteringTokens[].exiledWith.id	custom(uuid.UUID)
@@ -1170,6 +1182,11 @@ exile.cards[].encodedOn.id	custom(uuid.UUID)
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
 exile.cards[].exertOnAttack	bool
+exile.cards[].exileGrants	array
+exile.cards[].exileGrants[]	object
+exile.cards[].exileGrants[].activator	custom(uuid.UUID)
+exile.cards[].exileGrants[].key	string
+exile.cards[].exileGrants[].source	custom(uuid.UUID)
 exile.cards[].exiledWith	object
 exile.cards[].exiledWith.epoch	number:int
 exile.cards[].exiledWith.id	custom(uuid.UUID)
@@ -1915,6 +1932,7 @@ followUpParks[].then.permission.condition.objectID	custom(uuid.UUID)
 followUpParks[].then.permission.condition.subtype	string
 followUpParks[].then.permission.cost	string
 followUpParks[].then.permission.costLess	number:int
+followUpParks[].then.permission.costMore	number:int
 followUpParks[].then.permission.discardCard	bool
 followUpParks[].then.permission.discardLandCard	bool
 followUpParks[].then.permission.discover	object
@@ -2524,6 +2542,7 @@ frozenEntries[].event.counterTail.then.permission.condition.objectID	custom(uuid
 frozenEntries[].event.counterTail.then.permission.condition.subtype	string
 frozenEntries[].event.counterTail.then.permission.cost	string
 frozenEntries[].event.counterTail.then.permission.costLess	number:int
+frozenEntries[].event.counterTail.then.permission.costMore	number:int
 frozenEntries[].event.counterTail.then.permission.discardCard	bool
 frozenEntries[].event.counterTail.then.permission.discardLandCard	bool
 frozenEntries[].event.counterTail.then.permission.discover	object
@@ -3112,6 +3131,7 @@ frozenEntries[].event.damageTail.each.each.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.each.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.each.permission.cost	string
 frozenEntries[].event.damageTail.each.each.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.each.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.each.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discover	object
@@ -3691,6 +3711,7 @@ frozenEntries[].event.damageTail.each.then.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.then.permission.cost	string
 frozenEntries[].event.damageTail.each.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discover	object
@@ -4439,6 +4460,7 @@ frozenEntries[].event.damageTail.then.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.damageTail.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.then.permission.cost	string
 frozenEntries[].event.damageTail.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.then.permission.discover	object
@@ -4807,6 +4829,8 @@ frozenEntries[].event.entersAs.addTypes[]	string
 frozenEntries[].event.entersAs.basePT	object
 frozenEntries[].event.entersAs.basePT.power	number:int
 frozenEntries[].event.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entersAs.creatureTypes	array
+frozenEntries[].event.entersAs.creatureTypes[]	string
 frozenEntries[].event.entersAs.grants	array
 frozenEntries[].event.entersAs.grants[]	string
 frozenEntries[].event.entersAs.keywords	array
@@ -5133,6 +5157,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.obj
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -5518,6 +5543,8 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.addTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT	object
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.power	number:int
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.grants	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.grants[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords	array
@@ -5784,6 +5811,7 @@ frozenEntries[].event.entryTail.batch.then.permission.condition.objectID	custom(
 frozenEntries[].event.entryTail.batch.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discover	object
@@ -6363,6 +6391,7 @@ frozenEntries[].event.entryTail.keyed.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.entryTail.keyed.permission.condition.subtype	string
 frozenEntries[].event.entryTail.keyed.permission.cost	string
 frozenEntries[].event.entryTail.keyed.permission.costLess	number:int
+frozenEntries[].event.entryTail.keyed.permission.costMore	number:int
 frozenEntries[].event.entryTail.keyed.permission.discardCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discover	object
@@ -6974,6 +7003,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costLess	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMore	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discover	object
@@ -7573,6 +7603,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.condition.objectID	custom
 frozenEntries[].event.entryTail.tokens.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.cost	string
 frozenEntries[].event.entryTail.tokens.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discover	object
@@ -8053,6 +8084,11 @@ frozenEntries[].event.keywordActionTail.armyToken.encodedOn.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.enteredBattlefieldAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.entryOrdinal	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.exertOnAttack	bool
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants	array
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[]	object
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].key	string
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith	object
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -8560,6 +8596,7 @@ frozenEntries[].event.keywordActionTail.then.permission.condition.objectID	custo
 frozenEntries[].event.keywordActionTail.then.permission.condition.subtype	string
 frozenEntries[].event.keywordActionTail.then.permission.cost	string
 frozenEntries[].event.keywordActionTail.then.permission.costLess	number:int
+frozenEntries[].event.keywordActionTail.then.permission.costMore	number:int
 frozenEntries[].event.keywordActionTail.then.permission.discardCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardLandCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discover	object
@@ -9161,6 +9198,7 @@ frozenEntries[].event.lifeTail.each.then.permission.condition.objectID	custom(uu
 frozenEntries[].event.lifeTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.each.then.permission.cost	string
 frozenEntries[].event.lifeTail.each.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.each.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.each.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discover	object
@@ -9743,6 +9781,7 @@ frozenEntries[].event.lifeTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.lifeTail.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.then.permission.cost	string
 frozenEntries[].event.lifeTail.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.then.permission.discover	object
@@ -10211,6 +10250,11 @@ frozenEntries[].event.millTail.run.planned[].encodedOn.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.millTail.run.planned[].entryOrdinal	number:int64
 frozenEntries[].event.millTail.run.planned[].exertOnAttack	bool
+frozenEntries[].event.millTail.run.planned[].exileGrants	array
+frozenEntries[].event.millTail.run.planned[].exileGrants[]	object
+frozenEntries[].event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].exileGrants[].key	string
+frozenEntries[].event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].exiledWith	object
 frozenEntries[].event.millTail.run.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -10596,6 +10640,11 @@ frozenEntries[].event.millTail.run.seen[].encodedOn.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.millTail.run.seen[].entryOrdinal	number:int64
 frozenEntries[].event.millTail.run.seen[].exertOnAttack	bool
+frozenEntries[].event.millTail.run.seen[].exileGrants	array
+frozenEntries[].event.millTail.run.seen[].exileGrants[]	object
+frozenEntries[].event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].exileGrants[].key	string
+frozenEntries[].event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].exiledWith	object
 frozenEntries[].event.millTail.run.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -11096,6 +11145,7 @@ frozenEntries[].event.millTail.run.then.permission.condition.objectID	custom(uui
 frozenEntries[].event.millTail.run.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.run.then.permission.cost	string
 frozenEntries[].event.millTail.run.then.permission.costLess	number:int
+frozenEntries[].event.millTail.run.then.permission.costMore	number:int
 frozenEntries[].event.millTail.run.then.permission.discardCard	bool
 frozenEntries[].event.millTail.run.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.run.then.permission.discover	object
@@ -11673,6 +11723,7 @@ frozenEntries[].event.millTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.millTail.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.then.permission.cost	string
 frozenEntries[].event.millTail.then.permission.costLess	number:int
+frozenEntries[].event.millTail.then.permission.costMore	number:int
 frozenEntries[].event.millTail.then.permission.discardCard	bool
 frozenEntries[].event.millTail.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.then.permission.discover	object
@@ -12662,6 +12713,11 @@ frozenEntries[].event.tokenGroups[].template.encodedOn.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.enteredBattlefieldAt	number:int64
 frozenEntries[].event.tokenGroups[].template.entryOrdinal	number:int64
 frozenEntries[].event.tokenGroups[].template.exertOnAttack	bool
+frozenEntries[].event.tokenGroups[].template.exileGrants	array
+frozenEntries[].event.tokenGroups[].template.exileGrants[]	object
+frozenEntries[].event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.exileGrants[].key	string
+frozenEntries[].event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.exiledWith	object
 frozenEntries[].event.tokenGroups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -13163,6 +13219,7 @@ frozenEntries[].event.tokenTail.then.permission.condition.objectID	custom(uuid.U
 frozenEntries[].event.tokenTail.then.permission.condition.subtype	string
 frozenEntries[].event.tokenTail.then.permission.cost	string
 frozenEntries[].event.tokenTail.then.permission.costLess	number:int
+frozenEntries[].event.tokenTail.then.permission.costMore	number:int
 frozenEntries[].event.tokenTail.then.permission.discardCard	bool
 frozenEntries[].event.tokenTail.then.permission.discardLandCard	bool
 frozenEntries[].event.tokenTail.then.permission.discover	object
@@ -13635,6 +13692,11 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].encodedOn.id	custom(uui
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exertOnAttack	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -14020,6 +14082,11 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].encodedOn.id	custom(uuid.U
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exertOnAttack	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -14520,6 +14587,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.objectI
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -15131,6 +15199,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.o
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -15708,6 +15777,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.objectID	cus
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discover	object
@@ -16305,6 +16375,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.objectID	c
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discover	object
@@ -16967,6 +17038,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.objectID	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -17430,6 +17502,11 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].encodedOn.id	custom(uuid.UUID
 frozenEntries[].event.zoneRoute.simultaneousExit[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].exertOnAttack	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[]	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].key	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -18416,6 +18493,11 @@ lastKnownStack[].card.encodedOn.id	custom(uuid.UUID)
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.exertOnAttack	bool
+lastKnownStack[].card.exileGrants	array
+lastKnownStack[].card.exileGrants[]	object
+lastKnownStack[].card.exileGrants[].activator	custom(uuid.UUID)
+lastKnownStack[].card.exileGrants[].key	string
+lastKnownStack[].card.exileGrants[].source	custom(uuid.UUID)
 lastKnownStack[].card.exiledWith	object
 lastKnownStack[].card.exiledWith.epoch	number:int
 lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
@@ -19004,6 +19086,7 @@ lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
 lastKnownTriggerIdentity{}.attachedTo.epoch	number:int
 lastKnownTriggerIdentity{}.attachedTo.splice	number:int
+lastKnownTriggerIdentity{}.faceDown	string
 lastKnownTriggerIdentity{}.oracleID	string
 lastKnownTriggerIdentity{}.textBox	object
 lastKnownTriggerIdentity{}.textBox.from	string
@@ -20580,6 +20663,11 @@ pendingChoices[].attackSplit.settled.chosen[].template.encodedOn.id	custom(uuid.
 pendingChoices[].attackSplit.settled.chosen[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.exertOnAttack	bool
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants	array
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[]	object
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].key	string
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.id	custom(uuid.UUID)
@@ -20984,6 +21072,11 @@ pendingChoices[].attackSplit.settled.groups[].template.encodedOn.id	custom(uuid.
 pendingChoices[].attackSplit.settled.groups[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.exertOnAttack	bool
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants	array
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[]	object
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].key	string
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -21489,6 +21582,7 @@ pendingChoices[].attackSplit.tail.permission.condition.objectID	custom(uuid.UUID
 pendingChoices[].attackSplit.tail.permission.condition.subtype	string
 pendingChoices[].attackSplit.tail.permission.cost	string
 pendingChoices[].attackSplit.tail.permission.costLess	number:int
+pendingChoices[].attackSplit.tail.permission.costMore	number:int
 pendingChoices[].attackSplit.tail.permission.discardCard	bool
 pendingChoices[].attackSplit.tail.permission.discardLandCard	bool
 pendingChoices[].attackSplit.tail.permission.discover	object
@@ -21948,6 +22042,11 @@ pendingChoices[].attackSplit.template.encodedOn.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.template.exertOnAttack	bool
+pendingChoices[].attackSplit.template.exileGrants	array
+pendingChoices[].attackSplit.template.exileGrants[]	object
+pendingChoices[].attackSplit.template.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.exileGrants[].key	string
+pendingChoices[].attackSplit.template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exiledWith	object
 pendingChoices[].attackSplit.template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.template.exiledWith.id	custom(uuid.UUID)
@@ -22695,6 +22794,11 @@ pendingChoices[].copyWalk.src.encodedOn.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.enteredBattlefieldAt	number:int64
 pendingChoices[].copyWalk.src.entryOrdinal	number:int64
 pendingChoices[].copyWalk.src.exertOnAttack	bool
+pendingChoices[].copyWalk.src.exileGrants	array
+pendingChoices[].copyWalk.src.exileGrants[]	object
+pendingChoices[].copyWalk.src.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.exileGrants[].key	string
+pendingChoices[].copyWalk.src.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exiledWith	object
 pendingChoices[].copyWalk.src.exiledWith.epoch	number:int
 pendingChoices[].copyWalk.src.exiledWith.id	custom(uuid.UUID)
@@ -23433,6 +23537,7 @@ pendingChoices[].diceRoll.then.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.condition.subtype	string
 pendingChoices[].diceRoll.then.permission.cost	string
 pendingChoices[].diceRoll.then.permission.costLess	number:int
+pendingChoices[].diceRoll.then.permission.costMore	number:int
 pendingChoices[].diceRoll.then.permission.discardCard	bool
 pendingChoices[].diceRoll.then.permission.discardLandCard	bool
 pendingChoices[].diceRoll.then.permission.discover	object
@@ -24385,6 +24490,7 @@ pendingChoices[].divideShield.walk.each.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.each.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.each.permission.cost	string
 pendingChoices[].divideShield.walk.each.permission.costLess	number:int
+pendingChoices[].divideShield.walk.each.permission.costMore	number:int
 pendingChoices[].divideShield.walk.each.permission.discardCard	bool
 pendingChoices[].divideShield.walk.each.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.each.permission.discover	object
@@ -24964,6 +25070,7 @@ pendingChoices[].divideShield.walk.then.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.then.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.then.permission.cost	string
 pendingChoices[].divideShield.walk.then.permission.costLess	number:int
+pendingChoices[].divideShield.walk.then.permission.costMore	number:int
 pendingChoices[].divideShield.walk.then.permission.discardCard	bool
 pendingChoices[].divideShield.walk.then.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.then.permission.discover	object
@@ -25549,6 +25656,7 @@ pendingChoices[].libraryOrder.then.permission.condition.objectID	custom(uuid.UUI
 pendingChoices[].libraryOrder.then.permission.condition.subtype	string
 pendingChoices[].libraryOrder.then.permission.cost	string
 pendingChoices[].libraryOrder.then.permission.costLess	number:int
+pendingChoices[].libraryOrder.then.permission.costMore	number:int
 pendingChoices[].libraryOrder.then.permission.discardCard	bool
 pendingChoices[].libraryOrder.then.permission.discardLandCard	bool
 pendingChoices[].libraryOrder.then.permission.discover	object
@@ -26184,6 +26292,7 @@ pendingChoices[].nameThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.condition.subtype	string
 pendingChoices[].nameThen.permission.cost	string
 pendingChoices[].nameThen.permission.costLess	number:int
+pendingChoices[].nameThen.permission.costMore	number:int
 pendingChoices[].nameThen.permission.discardCard	bool
 pendingChoices[].nameThen.permission.discardLandCard	bool
 pendingChoices[].nameThen.permission.discover	object
@@ -27222,6 +27331,7 @@ pendingChoices[].pickTail.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.condition.subtype	string
 pendingChoices[].pickTail.permission.cost	string
 pendingChoices[].pickTail.permission.costLess	number:int
+pendingChoices[].pickTail.permission.costMore	number:int
 pendingChoices[].pickTail.permission.discardCard	bool
 pendingChoices[].pickTail.permission.discardLandCard	bool
 pendingChoices[].pickTail.permission.discover	object
@@ -27845,6 +27955,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.condition.o
 pendingChoices[].replacementResume.event.counterTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discover	object
@@ -28433,6 +28544,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discover	object
@@ -29012,6 +29124,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discover	object
@@ -29760,6 +29873,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.condition.ob
 pendingChoices[].replacementResume.event.damageTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discover	object
@@ -30128,6 +30242,8 @@ pendingChoices[].replacementResume.event.entersAs.addTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entersAs.creatureTypes	array
+pendingChoices[].replacementResume.event.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.grants	array
 pendingChoices[].replacementResume.event.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entersAs.keywords	array
@@ -30454,6 +30570,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -30839,6 +30956,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.addTypes[
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords	array
@@ -31105,6 +31224,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.conditi
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discover	object
@@ -31684,6 +31804,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.ob
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discover	object
@@ -32295,6 +32416,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discover	object
@@ -32894,6 +33016,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condit
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discover	object
@@ -33374,6 +33497,11 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.encodedOn.i
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exertOnAttack	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[]	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].key	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -33881,6 +34009,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condi
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discover	object
@@ -34482,6 +34611,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discover	object
@@ -35064,6 +35194,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discover	object
@@ -35532,6 +35663,11 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].encodedOn.id	cus
 pendingChoices[].replacementResume.event.millTail.run.planned[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].exertOnAttack	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[]	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].key	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -35917,6 +36053,11 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].encodedOn.id	custom
 pendingChoices[].replacementResume.event.millTail.run.seen[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].exertOnAttack	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[]	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].key	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -36417,6 +36558,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.
 pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discover	object
@@ -36994,6 +37136,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.millTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discover	object
@@ -37983,6 +38126,11 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.encodedOn.id	cus
 pendingChoices[].replacementResume.event.tokenGroups[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.exertOnAttack	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[]	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].key	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -38484,6 +38632,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.obj
 pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discover	object
@@ -38956,6 +39105,11 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].enco
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exertOnAttack	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -39341,6 +39495,11 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].encoded
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exertOnAttack	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -39841,6 +40000,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -40452,6 +40612,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -41029,6 +41190,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.con
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discover	object
@@ -41626,6 +41788,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.c
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discover	object
@@ -42288,6 +42451,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -42751,6 +42915,11 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].encodedOn.
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exertOnAttack	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[]	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].key	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -43281,6 +43450,7 @@ pendingChoices[].scryThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.condition.subtype	string
 pendingChoices[].scryThen.permission.cost	string
 pendingChoices[].scryThen.permission.costLess	number:int
+pendingChoices[].scryThen.permission.costMore	number:int
 pendingChoices[].scryThen.permission.discardCard	bool
 pendingChoices[].scryThen.permission.discardLandCard	bool
 pendingChoices[].scryThen.permission.discover	object
@@ -43905,6 +44075,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.condition.objectID	custom
 pendingChoices[].searchPrompt.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.cost	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.costLess	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.costMore	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discover	object
@@ -44774,6 +44945,11 @@ pendingChoices[].targetWalk.frame.source.encodedOn.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.enteredBattlefieldAt	number:int64
 pendingChoices[].targetWalk.frame.source.entryOrdinal	number:int64
 pendingChoices[].targetWalk.frame.source.exertOnAttack	bool
+pendingChoices[].targetWalk.frame.source.exileGrants	array
+pendingChoices[].targetWalk.frame.source.exileGrants[]	object
+pendingChoices[].targetWalk.frame.source.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.exileGrants[].key	string
+pendingChoices[].targetWalk.frame.source.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.exiledWith	object
 pendingChoices[].targetWalk.frame.source.exiledWith.epoch	number:int
 pendingChoices[].targetWalk.frame.source.exiledWith.id	custom(uuid.UUID)
@@ -45454,6 +45630,11 @@ pendingChoices[].triggerFrame.source.encodedOn.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.enteredBattlefieldAt	number:int64
 pendingChoices[].triggerFrame.source.entryOrdinal	number:int64
 pendingChoices[].triggerFrame.source.exertOnAttack	bool
+pendingChoices[].triggerFrame.source.exileGrants	array
+pendingChoices[].triggerFrame.source.exileGrants[]	object
+pendingChoices[].triggerFrame.source.exileGrants[].activator	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.exileGrants[].key	string
+pendingChoices[].triggerFrame.source.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exiledWith	object
 pendingChoices[].triggerFrame.source.exiledWith.epoch	number:int
 pendingChoices[].triggerFrame.source.exiledWith.id	custom(uuid.UUID)
@@ -46287,6 +46468,11 @@ phasedOut.cards[].encodedOn.id	custom(uuid.UUID)
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].exertOnAttack	bool
+phasedOut.cards[].exileGrants	array
+phasedOut.cards[].exileGrants[]	object
+phasedOut.cards[].exileGrants[].activator	custom(uuid.UUID)
+phasedOut.cards[].exileGrants[].key	string
+phasedOut.cards[].exileGrants[].source	custom(uuid.UUID)
 phasedOut.cards[].exiledWith	object
 phasedOut.cards[].exiledWith.epoch	number:int
 phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
@@ -46675,6 +46861,11 @@ planechase.deck.cards[].encodedOn.id	custom(uuid.UUID)
 planechase.deck.cards[].enteredBattlefieldAt	number:int64
 planechase.deck.cards[].entryOrdinal	number:int64
 planechase.deck.cards[].exertOnAttack	bool
+planechase.deck.cards[].exileGrants	array
+planechase.deck.cards[].exileGrants[]	object
+planechase.deck.cards[].exileGrants[].activator	custom(uuid.UUID)
+planechase.deck.cards[].exileGrants[].key	string
+planechase.deck.cards[].exileGrants[].source	custom(uuid.UUID)
 planechase.deck.cards[].exiledWith	object
 planechase.deck.cards[].exiledWith.epoch	number:int
 planechase.deck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -47063,6 +47254,11 @@ planechase.faceUp.cards[].encodedOn.id	custom(uuid.UUID)
 planechase.faceUp.cards[].enteredBattlefieldAt	number:int64
 planechase.faceUp.cards[].entryOrdinal	number:int64
 planechase.faceUp.cards[].exertOnAttack	bool
+planechase.faceUp.cards[].exileGrants	array
+planechase.faceUp.cards[].exileGrants[]	object
+planechase.faceUp.cards[].exileGrants[].activator	custom(uuid.UUID)
+planechase.faceUp.cards[].exileGrants[].key	string
+planechase.faceUp.cards[].exileGrants[].source	custom(uuid.UUID)
 planechase.faceUp.cards[].exiledWith	object
 planechase.faceUp.cards[].exiledWith.epoch	number:int
 planechase.faceUp.cards[].exiledWith.id	custom(uuid.UUID)
@@ -47679,6 +47875,11 @@ resolving.card.encodedOn.id	custom(uuid.UUID)
 resolving.card.enteredBattlefieldAt	number:int64
 resolving.card.entryOrdinal	number:int64
 resolving.card.exertOnAttack	bool
+resolving.card.exileGrants	array
+resolving.card.exileGrants[]	object
+resolving.card.exileGrants[].activator	custom(uuid.UUID)
+resolving.card.exileGrants[].key	string
+resolving.card.exileGrants[].source	custom(uuid.UUID)
 resolving.card.exiledWith	object
 resolving.card.exiledWith.epoch	number:int
 resolving.card.exiledWith.id	custom(uuid.UUID)
@@ -48630,6 +48831,11 @@ seats[].attractionDeck.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].enteredBattlefieldAt	number:int64
 seats[].attractionDeck.cards[].entryOrdinal	number:int64
 seats[].attractionDeck.cards[].exertOnAttack	bool
+seats[].attractionDeck.cards[].exileGrants	array
+seats[].attractionDeck.cards[].exileGrants[]	object
+seats[].attractionDeck.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].attractionDeck.cards[].exileGrants[].key	string
+seats[].attractionDeck.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exiledWith	object
 seats[].attractionDeck.cards[].exiledWith.epoch	number:int
 seats[].attractionDeck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -48922,6 +49128,7 @@ seats[].castPermissions[].condition.objectID	custom(uuid.UUID)
 seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].costLess	number:int
+seats[].castPermissions[].costMore	number:int
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
@@ -49147,6 +49354,11 @@ seats[].command.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].exertOnAttack	bool
+seats[].command.cards[].exileGrants	array
+seats[].command.cards[].exileGrants[]	object
+seats[].command.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].command.cards[].exileGrants[].key	string
+seats[].command.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].command.cards[].exiledWith	object
 seats[].command.cards[].exiledWith.epoch	number:int
 seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
@@ -49537,6 +49749,11 @@ seats[].companion.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].companion.cards[].enteredBattlefieldAt	number:int64
 seats[].companion.cards[].entryOrdinal	number:int64
 seats[].companion.cards[].exertOnAttack	bool
+seats[].companion.cards[].exileGrants	array
+seats[].companion.cards[].exileGrants[]	object
+seats[].companion.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].companion.cards[].exileGrants[].key	string
+seats[].companion.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].companion.cards[].exiledWith	object
 seats[].companion.cards[].exiledWith.epoch	number:int
 seats[].companion.cards[].exiledWith.id	custom(uuid.UUID)
@@ -49936,6 +50153,11 @@ seats[].emblems.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].exertOnAttack	bool
+seats[].emblems.cards[].exileGrants	array
+seats[].emblems.cards[].exileGrants[]	object
+seats[].emblems.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].emblems.cards[].exileGrants[].key	string
+seats[].emblems.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].emblems.cards[].exiledWith	object
 seats[].emblems.cards[].exiledWith.epoch	number:int
 seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
@@ -50326,6 +50548,11 @@ seats[].graveyard.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].exertOnAttack	bool
+seats[].graveyard.cards[].exileGrants	array
+seats[].graveyard.cards[].exileGrants[]	object
+seats[].graveyard.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].graveyard.cards[].exileGrants[].key	string
+seats[].graveyard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].graveyard.cards[].exiledWith	object
 seats[].graveyard.cards[].exiledWith.epoch	number:int
 seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -50712,6 +50939,11 @@ seats[].hand.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].exertOnAttack	bool
+seats[].hand.cards[].exileGrants	array
+seats[].hand.cards[].exileGrants[]	object
+seats[].hand.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].hand.cards[].exileGrants[].key	string
+seats[].hand.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].hand.cards[].exiledWith	object
 seats[].hand.cards[].exiledWith.epoch	number:int
 seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
@@ -51103,6 +51335,11 @@ seats[].junkyard.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].junkyard.cards[].enteredBattlefieldAt	number:int64
 seats[].junkyard.cards[].entryOrdinal	number:int64
 seats[].junkyard.cards[].exertOnAttack	bool
+seats[].junkyard.cards[].exileGrants	array
+seats[].junkyard.cards[].exileGrants[]	object
+seats[].junkyard.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].junkyard.cards[].exileGrants[].key	string
+seats[].junkyard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].junkyard.cards[].exiledWith	object
 seats[].junkyard.cards[].exiledWith.epoch	number:int
 seats[].junkyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -51498,6 +51735,11 @@ seats[].library.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].exertOnAttack	bool
+seats[].library.cards[].exileGrants	array
+seats[].library.cards[].exileGrants[]	object
+seats[].library.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].library.cards[].exileGrants[].key	string
+seats[].library.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].library.cards[].exiledWith	object
 seats[].library.cards[].exiledWith.epoch	number:int
 seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
@@ -51925,6 +52167,11 @@ seats[].sideboard.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].sideboard.cards[].enteredBattlefieldAt	number:int64
 seats[].sideboard.cards[].entryOrdinal	number:int64
 seats[].sideboard.cards[].exertOnAttack	bool
+seats[].sideboard.cards[].exileGrants	array
+seats[].sideboard.cards[].exileGrants[]	object
+seats[].sideboard.cards[].exileGrants[].activator	custom(uuid.UUID)
+seats[].sideboard.cards[].exileGrants[].key	string
+seats[].sideboard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].sideboard.cards[].exiledWith	object
 seats[].sideboard.cards[].exiledWith.epoch	number:int
 seats[].sideboard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -52616,6 +52863,11 @@ stack.cards[].encodedOn.id	custom(uuid.UUID)
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
 stack.cards[].exertOnAttack	bool
+stack.cards[].exileGrants	array
+stack.cards[].exileGrants[]	object
+stack.cards[].exileGrants[].activator	custom(uuid.UUID)
+stack.cards[].exileGrants[].key	string
+stack.cards[].exileGrants[].source	custom(uuid.UUID)
 stack.cards[].exiledWith	object
 stack.cards[].exiledWith.epoch	number:int
 stack.cards[].exiledWith.id	custom(uuid.UUID)

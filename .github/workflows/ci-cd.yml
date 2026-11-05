@@ -289,11 +289,39 @@ jobs:
           restore-keys: |
             golangci-lint-${{ runner.os }}-${{ hashFiles('server/Makefile', 'server/.golangci.yml') }}-
 
+      # The built golangci-lint and govulncheck binaries (#4958). Their
+      # modules are not in go.mod, so setup-go's cache never held them
+      # and every hosted run downloaded and compiled both with `go run`
+      # before lint could start. TOOLS_DIR makes `make lint` and `make
+      # vulncheck` run them from this directory, installing one only
+      # when it is missing (see server/Makefile). The key is the Go
+      # release and server/Makefile's pins, so a bump of either misses
+      # and builds afresh; no restore-keys, since an older entry holds
+      # only binaries the new key's paths never use. Hosted only, like
+      # the Go cache above: a self-hosted runner's build cache keeps
+      # `go run` warm on its own.
+      - name: Compute Go tool cache key
+        id: tools-cache-key
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: |
+          pins=$(make -s tool-pins | sha256sum | cut -c1-16)
+          echo "key=go-tools-${RUNNER_OS}-${RUNNER_ARCH}-$(go env GOVERSION)-${pins}" >> "$GITHUB_OUTPUT"
+          echo "TOOLS_DIR=$RUNNER_TEMP/go-tools" >> "$GITHUB_ENV"
+
+      - name: Cache the Go tool binaries
+        if: runner.environment == 'github-hosted'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/go-tools
+          key: ${{ steps.tools-cache-key.outputs.key }}
+
       - name: Server — lint
         working-directory: server
-        # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
-        # repo's .golangci.yml, with errcheck and unparam excluded in
-        # test files. Wired in by #582 once the tree was clean under it.
+        # golangci-lint at server/Makefile's pin (the cached binary on a
+        # hosted runner, `go run` otherwise): the repo's .golangci.yml,
+        # with errcheck and unparam excluded in test files. Wired in by
+        # #582 once the tree was clean under it.
         # It runs on the job's own Go 1.27 (its floor is 1.26), so the
         # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
         # and lint, vet, test and build all use one toolchain.
@@ -305,7 +333,8 @@ jobs:
       # finding usually means a patch release came out after the
       # runner's cached toolchain did, and a re-run fixes it. A module
       # finding needs a `go get` of the fixed version.
-      # server/Makefile pins the version.
+      # server/Makefile pins the version; on a hosted runner the binary
+      # comes from the tool cache above.
       - name: Server — govulncheck
         working-directory: server
         run: make vulncheck

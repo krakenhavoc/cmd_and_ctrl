@@ -1772,6 +1772,28 @@ sacrifices it (a Treasure) costs `TokenWeight` (0.50) when it is given
 up to pay a cost, rather than its board value as a mana source (1.00).
 It makes its mana once, and 0.50 is what the bot prices making one at.
 
+With `PriceSpareTokens` on (#4991, `spare_token.go`; off by default,
+see below), a creature token
+given up to pay a cost is *spare* when, after the payment, the bot still
+controls `SpareTokenKeep` (2) other creature tokens with the same body:
+the same name, power, toughness and keywords. A spare token costs what
+tapping it would (`tapCreatureCost`: a blocker, 0.30, and before combat
+on the bot's own turn the attack it gives up), never less than the
+blocker, rather than its board value (2.95 for a 1/1 flying Thopter).
+So Sai, Master Thopterist, whose row declares its draw, trades two of
+four Thopters for a card after combat (1.20 less 0.30 for Sai and 0.30
+for each Thopter, against `PassThreshold` 0.25) and keeps two. With
+three Thopters, or before the Thopters attack, it passes. A nontoken
+creature, a commander, a token in combat, one with counters and one with
+something attached are never spare. The switch ships off: in the arena
+the seats that made this trade lost to the seats that kept their
+Thopters ([bot-testing.md](bot-testing.md#spare-tokens-for-sais-draw-4991-s75)),
+so the board price stands and Sai's draw is still made only with
+Thopters that are dying anyway. `heuristic-sparetokens` turns it on in
+the arena; `BaselineConfig` leaves it off too. Sai's row now declares
+its draw (`draws: 1`), so it is priced by the card rather than the flat
+`ActivateBase`.
+
 The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
 needs the mana, as it always did.
@@ -2605,8 +2627,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants` or `heuristic-nomanasink`. `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink` or `heuristic-sparetokens`. `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |

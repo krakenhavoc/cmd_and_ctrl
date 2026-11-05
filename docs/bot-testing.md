@@ -35,6 +35,74 @@ Scryfall dump the authoring machine did not have, and the synthetic
 battle decks hold no graveyard-exile sink. The labelled position suite
 kept its agreement.
 
+## Spare tokens for Sai's draw (#4991, S75)
+
+Sai, Master Thopterist's "{1}{U}, Sacrifice two artifacts: Draw a card"
+was never taken in the issue's 16 arena games of the curated
+`mono-blue-artifacts` deck. Its row declared no draw, so it was priced
+at the flat `ActivateBase` (0.50), and each sacrificed Thopter cost its
+board value (2.95 for a 1/1 flier): about −5.70 against a pass. The row
+now declares `draws: 1` (1.20). `PriceSpareTokens` prices a spare token
+at the blocker it is ([bot.md](bot.md#sacrifices)), and it **ships off**:
+the arena below found the trade a loss. `heuristic-sparetokens` seats
+today's heuristic with it on. The position tests
+(`heuristic/spare_token_test.go`) and the real-engine regression
+(`aiseat/spare_token_bot_test.go`) hold both sides: with the price on,
+four Thopters after combat trade two for a card and keep two; three
+Thopters, Thopters before they attack, nontoken artifacts and a copy
+with a counter are kept; with it off the bot passes.
+
+The curated deck was not run: it needs a Scryfall dump, and the
+authoring sandbox could not reach Scryfall. The 2026-11-05 UTC runs used
+develop `a2035a940` plus #4991 and the synthetic `--decks thopter-battle`
+at all four seats (Sai, eight Ornithopters, six Memnites, four Hangarback
+Walkers, four Burnished Harts, four Mind Stones and vanilla blue
+creatures), rotation and lockstep. Every game ended with a winner and
+none stalled. They were played while the price was still on by default,
+with the off seats named `heuristic-nosparetokens`; those seats play
+exactly as today's `heuristic`, and the on seats as `heuristic-sparetokens`.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy, and decision logs:
+
+| Policy | Sai activations (seat-games) | When | Paid with |
+|---|---|---|---|
+| price on | 42 (21 of 64) | 30 after combat, 3 before it, 9 after blockers | two Thopters 34, a Thopter or Memnite with an Ornithopter or Memnite 8 |
+| price off | 5 (5 of 64) | all 5 after blockers | two Thopters 1, the other 4 a Memnite or Thopter with an Ornithopter |
+
+With the price on, Sai was never activated outside combat while its
+controller held three Thopters (1,908 windows) and was activated in 24 of
+242 windows with four. Hangarback Walker's "{1}, {T}" was used 83 and 67
+times and Burnished Hart's sacrifice 8 and 9 times, so neither is never
+used on this deck. Mind Stone's draw was never taken in either run.
+
+Then head-to-head: two seats with the price on against two without,
+seeds 2000–2047, 3000–3047 and 4000–4047 (48 games each). The four-seat
+null rate is 25%. `SpareTokenKeep` was varied in temporary builds.
+
+| Keep | Seeds | Price on: wins / 96 | Price off: wins / 96 |
+|---|---|---|---|
+| 2 | 2000 | 16, 16.7% (10.5–25.4%) | 32, 33.3% (24.7–43.2%) |
+| 2 | 3000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+| 2 | 4000 | 25, 26.0% (18.3–35.6%) | 23, 24.0% (16.5–33.4%) |
+| 2 | all | 58 / 288, 20.1% (15.9–25.1%) | 86 / 288, 29.9% (24.9–35.4%) |
+| 3 | 2000 | 24, 25.0% (17.4–34.5%) | 24, 25.0% (17.4–34.5%) |
+| 3 | 3000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+| 3 | 4000 | 23, 24.0% (16.5–33.4%) | 25, 26.0% (18.3–35.6%) |
+| 3 | all | 64 / 288, 22.2% (17.8–27.4%) | 80 / 288, 27.8% (22.9–33.2%) |
+| 4 | 2000 | 17, 17.7% (11.4–26.5%) | 31, 32.3% (23.8–42.2%) |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. At every keep the seats
+that cashed in Thopters did no better, and at the default keep of two
+they did worse. On this deck the draws are vanilla creatures and lands,
+and the Thopters are its evasion, so the board price was right. The
+curated deck draws better cards, and is the run to make before turning
+the switch on. The labelled position suite, the gated heuristic games
+(`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
+package tests passed. Reports and decision logs stayed on the authoring
+machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every

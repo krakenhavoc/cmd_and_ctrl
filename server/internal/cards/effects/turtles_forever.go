@@ -159,10 +159,11 @@ func turtlesForeverAskOutside(g *game.Game, player, source uuid.UUID, fromLibrar
 
 // turtlesForeverOutside is the outside half, keyed: legendary creature
 // cards whose names are not among the library's finds (the word), with
-// different names from each other (the set rule). Its continuation is
+// different names from each other (a distinct-names pick, so the
+// database picker offers each name once, #4947). Its continuation is
 // handed the library's finds as the carry. An on-disk key.
-var turtlesForeverOutside = game.RegisterOutsidePickRule("choose-cards/turtles-forever-outside",
-	turtlesForeverOutsideMatch, DifferentNames, func(g *game.Game, r game.CardsChosen) error {
+var turtlesForeverOutside = game.RegisterOutsidePickDistinctNames("choose-cards/turtles-forever-outside",
+	turtlesForeverOutsideMatch, nil, func(g *game.Game, r game.CardsChosen) error {
 		if !r.Answered {
 			// The caster left the game with the prompt open.
 			return nil
