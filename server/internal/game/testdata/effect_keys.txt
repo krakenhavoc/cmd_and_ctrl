@@ -103,6 +103,7 @@ body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
 body draw/controller-one
 body draw/one-card
+body draw/the-inner-light-that-many
 body eagles-are-coming/birds
 body earthbend/return-tapped
 body eden/return-from-graveyard
@@ -1001,6 +1002,7 @@ option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
+option option-pick/dathon-his-heart-open-counter-kind
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1
