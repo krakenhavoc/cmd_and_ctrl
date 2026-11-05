@@ -110,8 +110,10 @@ func goadAllCreaturesYourOpponentsControl(_ *game.StackItem, ctx *Context) error
 // attack on its player). Only the active player declares attackers
 // (CR 508.1), so off your own turn the count is zero.
 func OpponentsYouAttackedThisTurn(g *game.Game, you uuid.UUID) int {
-	active := g.ActivePlayer()
-	if active == nil || active.ID != you {
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return 0
+	}
+	if active := g.Seats[g.Turn.ActiveSeat]; active == nil || active.ID != you {
 		return 0
 	}
 	seen := map[uuid.UUID]bool{}
