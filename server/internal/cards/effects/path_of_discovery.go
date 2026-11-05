@@ -22,14 +22,7 @@ func init() {
 		Name:         "Path of Discovery",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, CreatureEnteredUnderYourControl, "Path of Discovery — it explores",
-				func(g *game.Game, item *game.StackItem) error {
-					if o := item.Trigger.Object; o != nil {
-						// The object that entered, not a later one (CR 400.7).
-						return g.ExploreForEffect(item.SourceCardID, game.ObjectRef{ID: o.ID, Epoch: o.Epoch}, item.Controller)
-					}
-					return Explores{Explorer: item.Trigger.Event.CardID}.Apply(NewContext(g, item))
-				}),
+			On(game.EventETB, CreatureEnteredUnderYourControl, "Path of Discovery — it explores", thatCreatureExplores),
 		},
 	})
 }

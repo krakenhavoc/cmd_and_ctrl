@@ -109,6 +109,7 @@ const only = (k: keyof ResponseCategories): ResponseCategories => ({
   valueInstant: false,
   ability: false,
   untargeted: false,
+  faceUp: false,
   special: false,
   [k]: true,
 });
@@ -159,9 +160,28 @@ describe("classifyMove", () => {
     expect(classifyMove(move("cast", { targets_stack: undefined }), false)).toBe("instant");
   });
 
-  it("a special action is special in any window", () => {
+  // #2861 (owner decision 2026-10-30): turning a face-down creature face
+  // up is its own class; every other special action is `special`.
+  it("turning a face-down creature face up is faceUp outside the sorcery window", () => {
+    const up = move("special_action", { params: { kind: "turn_face_up", card_id: "c" } });
+    expect(classifyMove(up, false)).toBe("faceUp");
+    expect(classifyMove(up, false, undefined, null, true, true, true)).toBe("faceUp");
+  });
+
+  it("every other special action is special outside the sorcery window", () => {
+    for (const kind of ["foretell", "suspend", "plot", "unlock", "ignore_effect", "new_kind"]) {
+      const m = move("special_action", { params: { kind } });
+      expect(classifyMove(m, false), kind).toBe("special");
+    }
+    // No kind at all reads as one of the others.
     expect(classifyMove(move("special_action"), false)).toBe("special");
-    expect(classifyMove(move("special_action"), true)).toBe("special");
+  });
+
+  it("a special action in the sorcery window is a play, whatever its kind", () => {
+    for (const kind of ["turn_face_up", "foretell", "plot", "companion", "planar_die"]) {
+      const m = move("special_action", { params: { kind } });
+      expect(classifyMove(m, true), kind).toBe("play");
+    }
   });
 
   it("attacks and blocks are declarations", () => {
@@ -207,7 +227,8 @@ describe("hasResponse", () => {
       [move("cast"), "instant"],
       [move("activate", { has_targets: true }), "ability"],
       [move("activate"), "untargeted"],
-      [move("special_action"), "special"],
+      [move("special_action", { params: { kind: "turn_face_up" } }), "faceUp"],
+      [move("special_action", { params: { kind: "foretell" } }), "special"],
     ];
     for (const [m, k] of rows) {
       const s = opp([pass, m]);
@@ -311,6 +332,51 @@ describe("hasResponse — #2853's default categories on an opponent's stack item
   });
 });
 
+// #2861 (owner decision 2026-10-30): of the special actions, only turning
+// a face-down creature face up stops you on an opponent's spell by
+// default. Foretell, suspend, plot and unlock answer nothing.
+describe("hasResponse — #2861's special actions on an opponent's stack item", () => {
+  const onOppStack = (moves: LegalMoveView[]) =>
+    snap({ step: "precombat_main", active: 1, holder: 0, moves, stackItems: [stackItem("p1")] });
+  const sa = (kind: string, source = `c-${kind}`) =>
+    move("special_action", { source, label: kind, params: { kind, card_id: source } });
+
+  it("a face-down creature you can turn face up holds by default", () => {
+    expect(hasResponse(onOppStack([pass, sa("turn_face_up")]), "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("foretell, suspend, plot and unlock do not hold by default", () => {
+    for (const kind of ["foretell", "suspend", "plot", "unlock"]) {
+      expect(hasResponse(onOppStack([pass, sa(kind)]), "p0", DEFAULT_RESPONSES), kind).toBe(false);
+    }
+  });
+
+  it("each half follows its own setting", () => {
+    const up = onOppStack([pass, sa("turn_face_up")]);
+    const foretell = onOppStack([pass, sa("foretell")]);
+    expect(hasResponse(up, "p0", { ...DEFAULT_RESPONSES, faceUp: false })).toBe(false);
+    expect(hasResponse(foretell, "p0", { ...DEFAULT_RESPONSES, special: true })).toBe(true);
+    expect(hasResponse(up, "p0", { ...DEFAULT_RESPONSES, special: true, faceUp: false })).toBe(
+      false,
+    );
+  });
+
+  it("a foretell beside a face-up still holds, for the face-up", () => {
+    const s = onOppStack([pass, sa("foretell"), sa("turn_face_up")]);
+    expect(hasResponse(s, "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("a foretell on your own upkeep is nothing to do there by default", () => {
+    const s = snap({ step: "upkeep", moves: [pass, sa("foretell")] });
+    expect(hasPlay(s, "p0", DEFAULT_RESPONSES)).toBe(false);
+    expect(hasPlay(s, "p0", { ...DEFAULT_RESPONSES, special: true })).toBe(true);
+  });
+
+  it("a foretell on your own main phase is still something to do", () => {
+    expect(hasPlay(snap({ moves: [pass, sa("foretell")] }), "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+});
+
 describe("hasPlay", () => {
   it("a land is a play in the viewer's own main phase", () => {
     expect(hasPlay(snap({ moves: [pass, move("land")] }), "p0", ALL_RESPONSES)).toBe(true);
@@ -323,9 +389,13 @@ describe("hasPlay", () => {
       valueInstant: false,
       ability: false,
       untargeted: false,
+      faceUp: false,
       special: false,
     };
     expect(hasPlay(snap({ moves: [pass, move("cast")] }), "p0", none)).toBe(true);
+    // #2861: so is any special action there (foretell, plot).
+    const plot = move("special_action", { params: { kind: "plot" } });
+    expect(hasPlay(snap({ moves: [pass, plot] }), "p0", none)).toBe(true);
   });
 
   it("an instant off-window follows its category", () => {

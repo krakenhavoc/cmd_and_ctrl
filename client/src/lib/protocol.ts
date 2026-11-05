@@ -1732,6 +1732,14 @@ export interface PendingChoiceView {
     // answer is {option_index: N}, chapter N+1. source is the entering
     // Saga; entry_keyword is "read ahead".
     | "entry_read_ahead"
+    // CR 508.4: what a creature put onto the battlefield attacking
+    // attacks, asked before it enters (CR 614.12a) — Kira Nerys,
+    // Firebrand's "instead it enters tapped and attacking". The defenders
+    // ride pick_options in order, the one already attacked first: a
+    // player's option has `player` set, a planeswalker's or battle's has
+    // its card in `cards`. The answer is {option_index: N}. source is
+    // the replacement's source.
+    | "entry_attack_target"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1928,6 +1936,13 @@ export interface PendingChoiceView {
   // instance_id (no card exists until one is taken). Sent to the chooser
   // only, with choose_min / choose_max.
   collection_options?: CardView[];
+  // #4947: on an "outside_collection" pick, true when the cards must have
+  // different names (Turtles Forever, Extrapolate the Impossible), so the
+  // picker takes each name once whatever the ceiling. #4962: the same on a
+  // "choose_cards" pick over the chooser's sideboard, where a second card
+  // with a picked name is disabled. Absent where a name may repeat
+  // (Research, Spawnsire of Ulamog). The chooser's only.
+  distinct_names?: boolean;
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -3842,7 +3857,7 @@ export interface ActivatedAbilityView {
   // nothing to ask and the client skips its picker.
   discard_self?: boolean;
   // #1221: scavenge's and embalm's "Exile this card from your
-  // graveyard" (CR 702.96a / CR 702.128a) — `discard_self` one zone
+  // graveyard" (CR 702.97a / CR 702.128a) — `discard_self` one zone
   // over, advisory for the same reason and sending nothing for the
   // same reason: the source IS the payment.
   exile_self?: boolean;
