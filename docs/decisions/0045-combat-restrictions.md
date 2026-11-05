@@ -4965,3 +4965,18 @@ withheld); `aiseat/attack_this_permanent_test.go` (both policies attack Gideon w
 Back-out: make `obeyedBy` accept any target for the new shape and the enumerator and attacking-his-controller tests fail;
 drop the `AfterTurn` filter and the held-back test fails; widen the scope to `ScopeOpponentsCreatures` and the four-seat test
 fails at the opponent in between; end the new duration at any cleanup after `AfterTurn` and the new-controller test fails.
+
+## Amendment (2026-11-05, [#4956](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4956)): a blocking token can make its attacker "become blocked"
+
+The #3172 amendment's "Blocking tokens" paragraph cited CR 509.5, which the pinned edition does not have, and said the
+attacker is marked blocked without an `EventBecomesBlocked`. CR 509.3c says the opposite for one case: a "becomes
+blocked" ability triggers when a creature put onto the battlefield as a blocker blocks an attacker that was unblocked at
+that time. `stampEntryBlockerLocked` now asks `UnblockedAttackerForEffect` before the stamp and, when it holds, emits the
+lock-in's `EventBecomesBlocked` (attacker in Source / CardID / Target, the blocker's controller as Actor). An attacker
+already blocked (Brimaz's) or not yet blocked or unblocked (its defender has not declared) is still marked blocked
+silently. The token still gets no `EventBlock` (CR 509.4: it was never declared as a blocker). The cite is now
+CR 506.3d, 509.3c, 509.4.
+
+Back-out: drop the `becomesBlocked` emission; `TestEntryBlockerOnAnUnblockedAttackerMakesItBecomeBlocked` fails.
+
+Tests: `game/put_blocking_test.go`, `cards/effects/put_blocking_becomes_blocked_test.go`.

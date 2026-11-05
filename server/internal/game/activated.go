@@ -457,7 +457,7 @@ type AbilityCost struct {
 
 	// ExileSelf exiles the SOURCE CARD from the zone the ability was
 	// activated from, as part of the cost — scavenge's "Exile this
-	// card from your graveyard" (CR 702.96a), embalm's and
+	// card from your graveyard" (CR 702.97a), embalm's and
 	// eternalize's (CR 702.128a / CR 702.129a). #1221.
 	//
 	// DiscardSelf's sibling, one zone over, and written as a second

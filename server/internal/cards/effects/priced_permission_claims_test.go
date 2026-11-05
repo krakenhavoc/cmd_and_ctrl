@@ -114,3 +114,42 @@ func TestFlatPricedPermissionRefusesTheCardsOwnOverload(t *testing.T) {
 		t.Fatalf("the {0} cast itself: %v", err)
 	}
 }
+
+// #4971: Green Goblin and Muldrotha both open a graveyard Mulldrifter.
+// Goblin's permission names a price (its mayhem) and refuses any claim
+// but its own; Muldrotha's is at the printed cost and lets the card's
+// own evoke through. A claim that names neither permission's key is
+// cast under the printed-cost one, so evoke is castable whichever of
+// the two came under its controller's control first.
+func TestGreenGoblinBesideMuldrothaLetsAGraveyardCardBeEvokedInEitherOrder(t *testing.T) {
+	for _, goblinFirst := range []bool{true, false} {
+		name := "Muldrotha first"
+		if goblinFirst {
+			name = "Green Goblin first"
+		}
+		t.Run(name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			advanceToMain(t, g)
+			me := g.Seats[0]
+			goblin := func() { pushBattlefieldCardWithTimestamp(g, spmB18NormanCard(me.ID, 1)) }
+			muldrotha := func() {
+				pushCatalogPermanent(g, me.ID, "Muldrotha, the Gravetide", "Legendary Creature — Elemental Avatar", muldrothaOracle, false)
+			}
+			if goblinFirst {
+				goblin()
+				muldrotha()
+			} else {
+				muldrotha()
+				goblin()
+			}
+			drifter := spmB18Graveyard(g, me, mulldrifterCard(me))
+
+			// Evoke {2}{U}, less Green Goblin's {2}: {U}.
+			g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+			floatForTest(g, me, "U")
+			if err := g.CastSpell(me.ID, drifter, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "evoke"}); err != nil {
+				t.Fatalf("evoke from the graveyard under Muldrotha beside Green Goblin: %v", err)
+			}
+		})
+	}
+}

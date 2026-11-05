@@ -4,11 +4,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// scavenge.go — #1221: scavenge (CR 702.96).
+// scavenge.go — #1221: scavenge (CR 702.97).
 //
 // "Scavenge {5}{G}" is an ACTIVATED ABILITY that functions only from
 // its owner's GRAVEYARD, and whose cost exiles the card that has it
-// (CR 702.96a):
+// (CR 702.97a):
 //
 //	"{5}{G}, Exile this card from your graveyard: Put a number of
 //	 +1/+1 counters equal to this card's power on target creature.
@@ -24,7 +24,7 @@ import (
 // on permanents) — so reading it late is reading it right, and no
 // snapshot on the stack item is needed to get there.
 
-// Scavenge is "Scavenge <cost>" — CR 702.96a. `cost` is the printed
+// Scavenge is "Scavenge <cost>" — CR 702.97a. `cost` is the printed
 // mana component, "{5}{G}"; the exile, the graveyard zone, the target
 // clause and the sorcery-speed restriction come with the keyword.
 //

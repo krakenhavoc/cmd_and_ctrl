@@ -710,7 +710,9 @@
       valueInstant: gp.respondValueInstants,
       ability: gp.respondAbilities,
       untargeted: gp.respondUntargetedAbilities,
-      special: gp.respondSpecialActions,
+      // #2861: turning a creature face up, and the other special actions.
+      faceUp: gp.respondTurnFaceUp,
+      special: gp.respondOtherSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
     const respond = hasResponse(view, viewerID, cats);
