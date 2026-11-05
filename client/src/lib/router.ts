@@ -74,6 +74,10 @@ export type Route =
   // Your own game statistics (ADR 0165 §7, #3366): record, average
   // place, by deck and by commander, recent games. Signed-in only.
   | { name: "stats" }
+  // A person's shared stats (ADR 0217 §6): #/stats/shared/<token>, a
+  // read-only copy of their stats pages. Public: the link is the
+  // credential, and it is made to be posted in Discord.
+  | { name: "statsShared"; token: string }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
@@ -174,6 +178,7 @@ export function parseHash(hash: string): Route {
         ? { name: "lobby", show: "history" }
         : { name: "lobby" };
     case "stats":
+      if (parts[1] === "shared" && parts[2]) return { name: "statsShared", token: parts[2] };
       return { name: "stats" };
     case "practice":
       return { name: "practice" };
