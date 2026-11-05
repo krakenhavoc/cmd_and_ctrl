@@ -311,13 +311,16 @@ func replacementResumeKeyFor(kind ReplacementEventKind) string {
 // the prompt's own written fields: ResolveOptionalReplacement,
 // ResolveReplacementOrder, ResolveEntryRiot, ResolveCopyTarget,
 // ResolveEntryController, ResolveEntryCardChoice, ResolveAuraHost,
-// ResolveEntryReadAhead and ResolveEntryPayLife.
+// ResolveEntryReadAhead, ResolveEntryPayLife and
+// ResolveEntryAttackTarget.
 func keyedReplacementPromptKind(k PendingChoiceKind) bool {
 	switch k {
 	case PendingChoiceOptionalReplacement, PendingChoiceReplacementOrder, PendingChoiceEntryRiot,
 		// #4253 slice 2: the entry questions that share the frame.
 		PendingChoiceCopyTarget, PendingChoiceEntryController, PendingChoiceAuraHost,
-		PendingChoiceEntryReadAhead, PendingChoiceEntryPayLife:
+		PendingChoiceEntryReadAhead, PendingChoiceEntryPayLife,
+		// Kira Nerys, Firebrand: CR 508.4's defender (entry_attack.go).
+		PendingChoiceEntryAttackTarget:
 		return true
 	}
 	return isEntryCardChoiceKind(k)

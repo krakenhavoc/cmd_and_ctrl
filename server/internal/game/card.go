@@ -900,6 +900,19 @@ type Card struct {
 	// Game.ChosenPermanentOf.
 	ChosenPermanent ObjectRef
 
+	// LinkedPermanent is the permanent one of this object's abilities
+	// affected, which a linked ability of the same object later names
+	// (CR 607.1, CR 607.2e): The Best of Both Worlds' chapter I assimilates
+	// a creature and chapter III exiles "the Borg assimilated with this
+	// Saga". An OBJECT, not a card: a linked permanent that leaves the
+	// battlefield and returns is a new object the ability never affected
+	// (CR 400.7). ChosenPermanent's lifecycle: per INSTANCE, carried by the
+	// snapshot and by clone, cleared when this permanent leaves the
+	// battlefield, and NOT a copiable value (CR 707.2). Written by
+	// Game.SetLinkedPermanentForEffect and read with
+	// Game.LinkedPermanentForEffect (linked_permanent.go).
+	LinkedPermanent ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

@@ -356,6 +356,12 @@ var tokenTable = map[string]game.Card{
 	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker) is the
 	// "3/3 colorless Illusion artifact" row above.
+
+
+	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker).
+
+	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker) uses the
+	// "3/3 colorless Illusion artifact" row batch 19 added above.
 	// #4973 batch 21: Star Trek's Murf (Rok-Tahk, Budding Scientist).
 	"0/1 green Legendary Ooze Slug named Murf with indestructible": {Name: "Murf", TypeLine: "Token Legendary Creature — Ooze Slug", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"indestructible"}},
 }

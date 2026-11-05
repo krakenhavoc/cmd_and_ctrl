@@ -100,6 +100,12 @@ var familyLabelSets = map[string]map[string]labelSet{
 	"cmdctrl_capacity_refusals_total": {
 		"reason": oneOf(refusalReasons...),
 	},
+	"cmdctrl_capacity_idle_after_seconds": {
+		"kind": oneOf(idleKindLabels...),
+	},
+	"cmdctrl_capacity_idle_closed_total": {
+		"kind": oneOf(idleKindLabels...),
+	},
 	"cmdctrl_trigger_order_prompts_total": {
 		"reason": oneOf(triggerOrderReasonLabels...),
 	},
@@ -154,6 +160,12 @@ var nameExemptions = map[string]string{
 	"cmdctrl_users":               "a count of users rows (ADR 0123 §3)",
 	"cmdctrl_users_played":        "a count of accounts that played in a window (ADR 0123 §3)",
 	"cmdctrl_users_created_total": "a count of new users rows (ADR 0123 §3)",
+	// ADR 0211 §6 names these. The "id" is the one in "idle": each is a
+	// threshold or a count of tables, and none carries one.
+	"cmdctrl_capacity_idle_after_seconds":  "the idle cleanup's configured thresholds (ADR 0211 §6)",
+	"cmdctrl_capacity_idle_closed_total":   "a count of tables the idle sweep closed (ADR 0211 §6)",
+	"cmdctrl_capacity_idle_warned_total":   "a count of games the idle sweep warned (ADR 0211 §6)",
+	"cmdctrl_capacity_idle_unloaded_total": "a count of idle-closed tables unloaded (ADR 0211 §6)",
 }
 
 func isStandard(family string) bool {

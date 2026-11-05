@@ -1,5 +1,6 @@
 import { get, type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
+import { GAME_CLOSED_MESSAGE, isGameClosedBody } from "./gameClosed";
 import { signedInUserID } from "./myGames";
 import { navigate, route } from "./router";
 
@@ -525,7 +526,8 @@ export function currentSession(): Session | null {
 //
 // On 401, it clears the session so the router re-renders to the
 // login page. On every other non-2xx it throws a LobbyApiError with
-// the server's error message.
+// the server's error message, or, for a `game_closed` refusal,
+// gameClosed.ts's sentence (#5082).
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   // Only when one is in flight: an idle tab's request goes out at once.
   if (sessionBusy()) await sessionSettled();
@@ -562,6 +564,9 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
       };
       parsed = body;
       if (body.error) message = body.error;
+      // #5082, ADR 0211 §4: a closed table reads the same on every
+      // surface, whatever the server's sentence was.
+      if (isGameClosedBody(body)) message = GAME_CLOSED_MESSAGE;
       if (Array.isArray(body.violations)) violations = body.violations;
       if (Array.isArray(body.warnings)) warnings = body.warnings;
     } catch {

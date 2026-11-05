@@ -44,12 +44,16 @@ func TestFromEnvReadsEveryVariable(t *testing.T) {
 		EnvAccountEvery: "45s",
 		EnvIPBurst:      "8",
 		EnvIPEvery:      "1m",
+		EnvIdleLobby:    "12h",
+		EnvIdleGame:     "72h",
+		EnvIdleBots:     "30m",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := Limits{MaxLoad: 90, TableWeight: 3, HumanSeatWeight: 2, BotSeatWeight: 5, MaxConns: 250,
-		AccountBurst: 4, AccountEvery: 45 * time.Second, IPBurst: 8, IPEvery: time.Minute}
+		AccountBurst: 4, AccountEvery: 45 * time.Second, IPBurst: 8, IPEvery: time.Minute,
+		IdleLobbyAfter: 12 * time.Hour, IdleGameAfter: 72 * time.Hour, IdleBotsAfter: 30 * time.Minute}
 	if l != want {
 		t.Errorf("got %+v\nwant %+v", l, want)
 	}
@@ -80,6 +84,9 @@ func TestAMalformedValueFailsNamingTheVariable(t *testing.T) {
 		EnvIPBurst:      "0",
 		EnvAccountEvery: "soon",
 		EnvIPEvery:      "0s",
+		EnvIdleLobby:    "a day",
+		EnvIdleGame:     "-48h",
+		EnvIdleBots:     "60", // a bare number has no unit
 	} {
 		_, err := FromEnv(env(map[string]string{k: v}))
 		if err == nil {
@@ -120,5 +127,27 @@ func TestTheRefusalIsAStableCodeAndAFriendlySentence(t *testing.T) {
 		if strings.Contains(strings.ToLower(Message), bad) {
 			t.Errorf("the message %q must not read like a raw error (%q)", Message, bad)
 		}
+	}
+}
+
+// ADR 0211 §7: the owner's thresholds are the defaults, and "0" (or a
+// zero duration) switches each cleanup off on its own.
+func TestIdleCleanupDefaultsAndOff(t *testing.T) {
+	d := Defaults()
+	if d.IdleLobbyAfter != 24*time.Hour || d.IdleGameAfter != 48*time.Hour || d.IdleBotsAfter != time.Hour {
+		t.Errorf("idle defaults %v / %v / %v, want 24h / 48h / 1h", d.IdleLobbyAfter, d.IdleGameAfter, d.IdleBotsAfter)
+	}
+	l, err := FromEnv(env(map[string]string{EnvIdleLobby: "0", EnvIdleGame: "0s", EnvIdleBots: ""}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.IdleLobbyAfter != 0 || l.IdleGameAfter != 0 {
+		t.Errorf("0 must switch the cleanup off: lobby %v, game %v", l.IdleLobbyAfter, l.IdleGameAfter)
+	}
+	if l.IdleBotsAfter != time.Hour {
+		t.Errorf("an empty value is the default: bots %v", l.IdleBotsAfter)
+	}
+	if (Limits{}).IdleLobbyAfter != 0 {
+		t.Error("the zero Limits must have every cleanup off")
 	}
 }

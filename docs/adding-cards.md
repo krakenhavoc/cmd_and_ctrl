@@ -1598,6 +1598,15 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   nothing else stays a plain `Landfall`. The bot prices every land it
   puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
   by what these rows pay.
+- **`SourceCounters`** goes on an activated row of the controller's own
+  that puts +1/+1 counters on its own source, to stay: Hangarback
+  Walker's "{1}, {T}: Put a +1/+1 counter on this creature." is
+  `game.Purpose{Answers: game.AnswerPump, SourceCounters: 1}`
+  ([#5083](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5083)).
+  Under `PriceSourceCounters` (off by default, [bot.md](bot.md#a-counter-on-its-own-source-5083))
+  the bot prices each counter as a point of power and toughness. A
+  counter on a target, an X amount, and an any-player row (Feral Hydra)
+  declare none; `effects.Register` refuses it off an activated row.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that

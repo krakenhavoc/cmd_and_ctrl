@@ -603,6 +603,15 @@ func main() {
 	n := l.RestoreFromDisk(log)
 	metrics.BootPhase(metrics.BootPhaseRestore, time.Since(restoreStart))
 	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
+	// ADR 0211: the idle sweep closes unstarted tables, abandoned games
+	// and games left to their bots. After the restore, so every table it
+	// may close is resident and has its residency grace.
+	metrics.SetIdleAfter(cfg.Capacity.IdleLobbyAfter.Seconds(), cfg.Capacity.IdleGameAfter.Seconds(), cfg.Capacity.IdleBotsAfter.Seconds())
+	log.Info("idle cleanup",
+		"lobby_table_after", cfg.Capacity.IdleLobbyAfter.String(),
+		"game_after", cfg.Capacity.IdleGameAfter.String(),
+		"bots_after", cfg.Capacity.IdleBotsAfter.String())
+	go l.RunIdle(ctx)
 	if voiceRooms != nil {
 		voiceRooms.Start(ctx)
 	}

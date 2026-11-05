@@ -11,6 +11,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 
 import ConnectionBanner from "./components/ConnectionBanner.svelte";
 import { STALE_BOARD_SENTENCE } from "./connectionBanner";
+import { L } from "./labels";
 import { click, cleanup, render } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -72,6 +73,16 @@ describe("the connection banner", () => {
     expect(el).not.toBeNull();
     expect(el?.classList.contains("tone-ended")).toBe(true);
     expect(el?.textContent).toContain("session ended");
+  });
+
+  // #5082: an archived table, its own words and no retry button.
+  it("says the table was closed and links to Tables", () => {
+    const { container } = mount({ status: "table_closed", onRetry: vi.fn() });
+    const el = banner(container);
+    expect(el?.classList.contains("tone-ended")).toBe(true);
+    expect(el?.textContent).toContain(L.gameClosed);
+    expect(container.querySelector("button.retry")).toBeNull();
+    expect(container.querySelector("a.retry")?.getAttribute("href")).toBe("#/lobby");
   });
 
   // The whole point: it goes away on its own when the table comes
