@@ -528,6 +528,7 @@ choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-something-worth-saving-pick
+choose choose-cards/mill-then-take-temporal-anomaly-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/minas-tirith-garrison-tap-humans
 choose choose-cards/mind-extraction-discard-b
@@ -1806,6 +1807,7 @@ tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
 tail mill-then-take/something-worth-saving
+tail mill-then-take/temporal-anomaly
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
