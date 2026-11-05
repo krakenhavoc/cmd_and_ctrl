@@ -310,6 +310,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undying/return
 body until/return-to-battlefield
+body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body villainous-syndication/return
 body vronos/phase-out-the-objects
@@ -930,6 +931,7 @@ confirm confirm/transcendent-archaic-draw
 confirm confirm/turtles-in-time-ask
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
+confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/wandering-archaic-copy
 confirm confirm/ward-discard
 confirm confirm/ward-get-poison
@@ -1539,6 +1541,7 @@ tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
+tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail augusta-order-returned/after-exile
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
@@ -2225,6 +2228,8 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail uss-farragut/haste-then-bottom-at-end-step
+tail uss-farragut/when-you-do-draw
 tail valgavoths-onslaught/manifest-again
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight

@@ -362,4 +362,6 @@ var tokenTable = map[string]game.Card{
 	// "3/3 colorless Illusion artifact" row batch 19 added above.
 	// #4973 batch 21: Star Trek's Murf (Rok-Tahk, Budding Scientist).
 	"0/1 green Legendary Ooze Slug named Murf with indestructible": {Name: "Murf", TypeLine: "Token Legendary Creature — Ooze Slug", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"indestructible"}},
+	// #4974 batch 43: Star Trek Commander's Spacecraft Illusion (U.S.S. Stargazer, Here and There).
+	"4/3 colorless Spacecraft Illusion artifact with flying": {Name: "Spacecraft Illusion", TypeLine: "Token Artifact Creature — Spacecraft Illusion", Power: 4, Toughness: 3, Keywords: []string{"flying"}},
 }
