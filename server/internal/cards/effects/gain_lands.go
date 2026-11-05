@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // gain_lands.go — the Khans of Tarkir "gain lands":
 //
 //	"This land enters tapped.
@@ -22,6 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // identical three lines, so its members join this table as their
 // batches reach them rather than opening a second file for the same
 // card.
+//
+// Star Trek (#4973) prints the same three lines on five Planets; each
+// has its own file and registers through the same registerGainLand
+// (trek_b28_helpers.go) this table calls.
 //
 // No simplification.
 func init() {
@@ -61,19 +63,9 @@ func init() {
 		{"01ee70d4-6527-45ae-9600-bd3d16b3037d", "Illegitimate Business", "B", "G"},
 		{"063dd25b-d4b4-4e09-acae-8c52dcb40803", "Foot Headquarters", "W", "B"},
 		{"8683341a-e836-41e5-9034-4da09eb0ab42", "Dimension X", "R", "W"},
+		// Star Trek (#4973): the same three lines on a Planet.
+		{"c7b6bc1f-9161-415e-a097-d9c8cd81d4ae", "Vulcan", "W", "U"},
 	} {
-		Register(Spec{
-			OracleID:      land.oracleID,
-			Name:          land.name,
-			Completeness:  CompletenessFull,
-			Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-			ManaAbilities: []ManaAbility{dualManaAbility(land.a, land.b)},
-			Triggered: []game.TriggeredAbility{{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Key:       land.name + " — you gain 1 life",
-				Effect:    Do(GainLife{Amount: 1}),
-			}},
-		})
+		registerGainLand(land.oracleID, land.name, land.a, land.b)
 	}
 }

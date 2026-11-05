@@ -514,6 +514,34 @@ type Config struct {
 	// zero value) prices a token by TokenWeight alone, and Krenko's
 	// activation at the flat ActivateBase.
 	PriceTokenPayoffs bool
+	// PriceSpareTokens prices a spare creature token sacrificed to pay a
+	// cost at the blocker it is rather than its body (#4991,
+	// spare_token.go): a token is spare when the bot still controls
+	// SpareTokenKeep other tokens with the same body after the payment.
+	// So Sai, Master Thopterist trades two of its Thopters for a card
+	// once it has four. Off (the zero value, DefaultConfig and
+	// BaselineConfig) prices every sacrificed token at its board value:
+	// in #4991's arena the price lost head-to-head, so it ships off and
+	// the arena's `heuristic-sparetokens` turns it on (docs/bot-testing.md).
+	PriceSpareTokens bool
+	// SpareTokenKeep is how many copies of a token body the bot keeps
+	// at their full price under PriceSpareTokens.
+	SpareTokenKeep int
+	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
+	// cost at SpareManaSourceCost rather than its board value as a mana
+	// source (#5085, spare_mana.go): a rock is spare when the bot's other
+	// sources still make the mana its hand and commander want, and at
+	// least SpareManaKeep. So Mind Stone's "{1}, {T}, Sacrifice: Draw a
+	// card" is cashed in late, with mana to spare, and kept early. Off
+	// (the zero value, BaselineConfig and the arena's
+	// `heuristic-nosparemana`) charges the rock's whole board value (1.00
+	// untapped), and a card (1.20) never cleared PassThreshold beside it.
+	PriceSpareManaSources bool
+	// SpareManaKeep is the least mana a turn the bot's other sources must
+	// still make for a rock to be spare under PriceSpareManaSources.
+	SpareManaKeep int
+	// SpareManaSourceCost is what a spare rock costs when it is given up.
+	SpareManaSourceCost float64
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -939,6 +967,14 @@ func DefaultConfig() Config {
 		PriceLandfallCasts:     true,
 		PriceFetchLandfall:     true,
 		PriceTokenPayoffs:      true,
+		// #4991: spare tokens stay at their board value (the price lost
+		// in the arena); two copies kept when it is turned on.
+		SpareTokenKeep: 2,
+		// #5085: a spare mana rock costs what is left of it, so Mind
+		// Stone is cashed in for a card late and kept early.
+		PriceSpareManaSources: true,
+		SpareManaKeep:         5,
+		SpareManaSourceCost:   0.50,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -1164,6 +1200,13 @@ func BaselineConfig() Config {
 	c.PriceFetchLandfall = false
 	// #3165: creature-enter payoffs on tokens.
 	c.PriceTokenPayoffs = false
+	// #4991: every sacrificed token cost its board value.
+	c.PriceSpareTokens = false
+	c.SpareTokenKeep = 0
+	// #5085: every sacrificed mana rock cost its board value.
+	c.PriceSpareManaSources = false
+	c.SpareManaKeep = 0
+	c.SpareManaSourceCost = 0
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

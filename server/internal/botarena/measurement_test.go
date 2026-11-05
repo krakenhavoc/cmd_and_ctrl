@@ -29,6 +29,8 @@ func TestParseContestant(t *testing.T) {
 		"heuristic-nooutnumber":     {Tier: tiers.Heuristic, Variant: botarena.VariantNoOutnumber},
 		"heuristic-nogrants":        {Tier: tiers.Heuristic, Variant: botarena.VariantNoGrants},
 		"heuristic-nomanasink":      {Tier: tiers.Heuristic, Variant: botarena.VariantNoManaSink},
+		"heuristic-sparetokens":     {Tier: tiers.Heuristic, Variant: botarena.VariantSpareTokens},
+		"heuristic-nosparemana":     {Tier: tiers.Heuristic, Variant: botarena.VariantNoSpareMana},
 	} {
 		got, err := botarena.ParseContestant(in)
 		if err != nil {
@@ -50,7 +52,7 @@ func TestParseContestant(t *testing.T) {
 // heuristic-baseline is an ARENA name, not a tier: tiers.Parse, which
 // the lobby and GET /bot/options read, must not know it.
 func TestBaselineIsNotATier(t *testing.T) {
-	for _, name := range []string{botarena.BaselineContestant, botarena.NoPlanContestant, botarena.NoTemporaryContestant, botarena.NoGrantsContestant, botarena.NoIdleAnswersContestant, botarena.NoReconfigureContestant, botarena.NoOutnumberContestant, botarena.NoLandOrderContestant, botarena.NoEntryCountersContestant, botarena.NoModePicksContestant} {
+	for _, name := range []string{botarena.BaselineContestant, botarena.NoPlanContestant, botarena.NoTemporaryContestant, botarena.NoGrantsContestant, botarena.NoIdleAnswersContestant, botarena.NoReconfigureContestant, botarena.NoOutnumberContestant, botarena.NoLandOrderContestant, botarena.NoEntryCountersContestant, botarena.NoModePicksContestant, botarena.SpareTokensContestant} {
 		if _, err := tiers.Parse(name); err == nil {
 			t.Fatalf("tiers.Parse accepts %q; it would be offered in the lobby", name)
 		}

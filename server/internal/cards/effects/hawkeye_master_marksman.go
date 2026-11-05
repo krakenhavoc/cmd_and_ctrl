@@ -107,13 +107,7 @@ func hawkeyeTrickArrowsModes(_ uuid.UUID, p game.EffectParams) *game.ModeSpec {
 					Label: "Hawkeye, Master Marksman — Net: can't block this turn"}.Apply(ctx)
 			}),
 		ModeDoing("Explosive — Hawkeye deals 2 damage to target player.", TargetPlayer("target player"),
-			func(item *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetPlayer {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
-			}),
+			modeSourceDealsDamageToTargetPlayer(2)),
 		discardThenDrawBullet("Boomerang — Discard a card, then draw a card."),
 	)
 }
