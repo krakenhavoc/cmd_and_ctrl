@@ -152,7 +152,12 @@ describe("isInlineChoice", () => {
 
   it("an option pick is inline only when short: six options, no cards, short labels", () => {
     const opts = (n: number, label = "Draw a card") => Array.from({ length: n }, () => ({ label }));
-    for (const kind of ["option_pick", "entry_controller", "entry_read_ahead"]) {
+    for (const kind of [
+      "option_pick",
+      "entry_controller",
+      "entry_read_ahead",
+      "entry_attack_target",
+    ]) {
       expect(isInlineChoice(choice({ kind, pick_options: opts(INLINE_OPTION_MAX) }))).toBe(true);
       expect(isInlineChoice(choice({ kind, pick_options: opts(INLINE_OPTION_MAX + 1) }))).toBe(
         false,
@@ -194,6 +199,27 @@ describe("choiceRequest", () => {
     expect(r.row?.map((a) => a.label)).toEqual(["Chapter I", "Chapter II", "Chapter III"]);
     r.row?.[2].onPress();
     expect(h.onOption).toHaveBeenCalledWith(2);
+  });
+
+  it("an entering attacker offers one button per defender and answers with its index (CR 508.4)", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({
+        kind: "entry_attack_target",
+        reason: "Kira Nerys, Firebrand — what does it attack?",
+        pick_options: [
+          { label: "Attack Bob", player: "p1" },
+          { label: "Attack Cara", player: "p2" },
+        ],
+      } as Partial<PendingChoiceView>),
+      { sourceName: "Kira Nerys, Firebrand" },
+      h,
+    );
+    expect(r.label).toBe("Kira Nerys, Firebrand — what does it attack?");
+    expect(r.primary).toBeNull();
+    expect(r.row?.map((a) => a.label)).toEqual(["Attack Bob", "Attack Cara"]);
+    r.row?.[1].onPress();
+    expect(h.onOption).toHaveBeenCalledWith(1);
   });
 
   it("shows the mana an option costs when its label does not (#2854)", () => {
