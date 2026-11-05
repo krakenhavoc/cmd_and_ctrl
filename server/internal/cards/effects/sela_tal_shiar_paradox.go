@@ -36,13 +36,10 @@ func init() {
 				TargetCardInGraveyard("up to one target card from a graveyard").WithCount(0, 1)),
 			OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
 				"Sela, Tal Shiar Paradox — create a tapped 2/2 black Romulan",
-				func(g *game.Game, item *game.StackItem) error {
-					return CreateTokenAdvanced{
-						Controller: item.Controller,
-						Spec:       Token(TokenCard("2/2 black Romulan")).EntersTapped(),
-						N:          1,
-					}.Apply(NewContext(g, item))
-				})),
+				Do(CreateTokenAdvanced{
+					Spec: Token(TokenCard("2/2 black Romulan")).EntersTapped(),
+					N:    1,
+				}))),
 		},
 	})
 }
