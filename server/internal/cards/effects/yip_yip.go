@@ -23,7 +23,7 @@ func init() {
 		Name:         "Yip Yip!",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		Purpose:      game.Purpose{Answers: game.AnswerPump},
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			target := FirstLegalBattlefieldTarget(ctx)
 			if target == uuid.Nil {
