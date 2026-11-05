@@ -380,6 +380,8 @@ choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
+choose choose-cards/crashing-wave-stun-among
+choose choose-cards/crashing-wave-stun-two
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
