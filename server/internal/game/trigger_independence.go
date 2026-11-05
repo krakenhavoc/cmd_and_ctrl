@@ -101,6 +101,15 @@ const (
 	// FootprintCondCreatureDied: a creature died under the item's
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
+	// FootprintCondEquipmentOrSpacecraftEntered: an Equipment or
+	// Spacecraft entered the battlefield under the item's controller's
+	// control this turn (Sulu, Space Swashbuckler). The turn's entry
+	// tally only rises.
+	FootprintCondEquipmentOrSpacecraftEntered FootprintCond = "equipment_or_spacecraft_entered"
+	// FootprintCondPermanentReturned: a permanent was put into the item's
+	// controller's hand from the battlefield this turn (Miles O'Brien,
+	// Transporter Ops). The turn's tally only rises.
+	FootprintCondPermanentReturned FootprintCond = "permanent_returned"
 	// FootprintCondCitysBlessing: the item's controller has the city's
 	// blessing, which is never lost once had (CR 702.131c).
 	FootprintCondCitysBlessing FootprintCond = "citys_blessing"
@@ -699,7 +708,7 @@ func boardConditionSees(a *triggerAccess, statics func() layerStatics) bool {
 // that the check cannot say (#3033). Each condition is argued here:
 //
 //   - A tally that only rises this turn (life gained, life lost, a
-//     creature died) and a designation that is never lost (the city's
+//     creature died, a permanent returned to hand) and a designation that is never lost (the city's
 //     blessing) cannot be made false: once it holds, it holds until the
 //     batch has resolved, since a turn cannot end with the batch still on
 //     the stack. So a condition that holds now reads nothing the batch
@@ -728,6 +737,10 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.CardsDrawn >= atLeast
 	case FootprintCondCreatureDied:
 		return tally.CreaturesDied > 0
+	case FootprintCondEquipmentOrSpacecraftEntered:
+		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
+	case FootprintCondPermanentReturned:
+		return tally.PermanentsReturnedToHand > 0
 	case FootprintCondCitysBlessing:
 		return g.CitysBlessingForEffect(you)
 	case FootprintCondNoSpellsCast:

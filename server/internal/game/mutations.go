@@ -868,7 +868,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// so is every other way a card gets cast out of exile in this
 	// engine: impulse exile, airbend, warp, cascade, a defeated
 	// Siege's back face. No catalog card ever declared ZoneExile, so
-	// nothing shipped through the hole.
+	// nothing shipped through the hole. A card whose OWN text says "You
+	// may cast this card from exile" (ADR 0066, 2026-11-05) reaches here
+	// holding the permission castPermissionLocked derives for its owner
+	// while it is face up, so this gate is unchanged.
 	//
 	// The graveyard and the library reach the same question through
 	// validateCastPathLocked below, which is handed `grant`; exile
@@ -2458,6 +2461,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)
+	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
+	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
+	// came before the cast finished.
+	if modeSpec != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,

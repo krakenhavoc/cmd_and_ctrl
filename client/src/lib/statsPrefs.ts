@@ -28,6 +28,11 @@ export interface StatsPrefs {
   set_by?: StatsSetBy;
   /** The server's default, which "default" follows. */
   default: boolean;
+  /**
+   * When the person's share link was made, Unix ms (ADR 0217 §6); absent
+   * while they have none. The link itself is shown once, when made.
+   */
+  share_link_at?: number;
 }
 
 /** What every surface shows until the server answers: off, nothing to switch. */
@@ -56,6 +61,8 @@ export function normalizeStatsPrefs(raw: unknown): StatsPrefs {
   };
   const by = normalizeSetBy(r.set_by);
   if (by && out.choice !== "default") out.set_by = by;
+  if (typeof r.share_link_at === "number" && r.share_link_at > 0)
+    out.share_link_at = r.share_link_at;
   return out;
 }
 
@@ -216,4 +223,14 @@ export function accountStatsText(a: AdminAccountStats): string {
   if (a.choice === "default") return `Default (${a.advanced ? "on" : "off"})`;
   const state = a.choice === "on" ? "On" : "Off";
   return a.set_by === "admin" ? `${state}, set by an admin` : `${state}, set by them`;
+}
+
+/** shareLinkChanged keeps the store in step after the link is made or revoked. */
+export function shareLinkChanged(at: number | null): void {
+  statsPrefs.update((p) => {
+    const next: StatsPrefs = { ...p };
+    if (at && at > 0) next.share_link_at = at;
+    else delete next.share_link_at;
+    return next;
+  });
 }
