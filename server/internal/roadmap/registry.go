@@ -2651,6 +2651,15 @@ var items = []Item{
 		Examples: []string{"Reiterating Bolt"},
 	},
 	{
+		Slug: "squad", Name: "Squad", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Pay a creature spell's squad cost any number of times as you cast it, and create a token copy of the creature for each payment when it enters.",
+		Rules:    []string{"702.157"},
+		Issue:    5011,
+		Mechanic: "squad",
+		Printed:  printedKeyword("squad"),
+		Examples: []string{"Roadkill Rodney"},
+	},
+	{
 		Slug: "energy-paid-or-lost", Name: "Getting energy, and energy paid or lost this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Cards that trigger whenever you get energy, or count the energy you've paid or lost this turn, such as Aether Revolt, Territorial Gorger and Izzet Generatorium.",
 		Rules:       []string{"107.14", "122.1", "603.2c"},
