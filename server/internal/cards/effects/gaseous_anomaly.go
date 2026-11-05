@@ -26,7 +26,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{U}, {T}, Sacrifice this land: Draw two cards. Create a tapped New Planet.",
-			Purpose: game.Purpose{Draws: 2, Tokens: 1},
+			Purpose: game.Purpose{Draws: 2, Tokens: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{5}{U}"), TapCost(), SacrificeThis()),
 			Effect:  Do(DrawCards{N: 2}, trekB28TappedNewPlanet()),
 		}},
