@@ -106,6 +106,15 @@ type GameRecord struct {
 	// Results is whether the host opted the table in to the Discord
 	// results feed (ADR 0174 §1, migration 0024). Mutable.
 	Results bool
+	// LastActiveAt is when the table was last used, as the idle sweep
+	// last saw it (ADR 0211 §1, migration 0031); nil (NULL) until the
+	// sweep first writes it. Written by SetLastActive, and carried
+	// through UpdateGame so a rewrite of the row keeps it.
+	LastActiveAt *time.Time
+	// ClosedReason is why the server closed the table for being idle
+	// (ADR 0211 §4): ClosedIdleLobby, ClosedIdleGame or ClosedIdleBots,
+	// "" (NULL) for an open table and an admin's archive. Mutable.
+	ClosedReason string
 }
 
 // SeatRecord is one seats row.
@@ -187,6 +196,10 @@ type Store interface {
 	// started_at, ended_at, archived_at, winner_seat, outcome, host_player_id,
 	// host_discord_id.
 	UpdateGame(ctx context.Context, g GameRecord) error
+	// SetLastActive writes games.last_active_at alone (ADR 0211 §1):
+	// the idle sweep's write, which must not touch the columns other
+	// paths own. ErrStoreNotFound if there is no such game.
+	SetLastActive(ctx context.Context, id uuid.UUID, at time.Time) error
 	// ReplaceSeats makes seats the game's complete seat list.
 	ReplaceSeats(ctx context.Context, gameID uuid.UUID, seats []SeatRecord) error
 	// DeleteGame removes a game with its seats and invites. Deleting
@@ -323,7 +336,25 @@ func (s *memoryStore) UpdateGame(_ context.Context, g GameRecord) error {
 	}
 	// created_by and created_at are immutable, as in SQLStore.
 	g.CreatedBy, g.CreatedAt = cur.CreatedBy, cur.CreatedAt
+	// A nil last_active_at keeps the stored one, as in SQLStore: only
+	// the idle sweep moves it.
+	if g.LastActiveAt == nil {
+		g.LastActiveAt = cur.LastActiveAt
+	}
 	s.games[g.ID] = g
+	return nil
+}
+
+func (s *memoryStore) SetLastActive(_ context.Context, id uuid.UUID, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cur, ok := s.games[id]
+	if !ok {
+		return ErrStoreNotFound
+	}
+	at = at.UTC()
+	cur.LastActiveAt = &at
+	s.games[id] = cur
 	return nil
 }
 

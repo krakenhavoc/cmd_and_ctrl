@@ -150,6 +150,8 @@ func (l *Lobby) setArchivedUnresidentLocked(id uuid.UUID, archived bool) (GameMe
 		rec.ArchivedAt = &now
 	case !archived && rec.ArchivedAt != nil:
 		rec.ArchivedAt = nil
+		// ADR 0211 §4: unarchiving clears an idle close's reason.
+		rec.ClosedReason = ""
 	default:
 		return metaFromRecords(rec, seats), nil
 	}

@@ -130,6 +130,7 @@ func (l *Lobby) TransferHost(id, target uuid.UUID) (GameMeta, error) {
 	entry.meta.HostDiscordID = ""
 	l.syncHostLocked(entry)
 	l.persistGameLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1
 	return copyMeta(entry.meta), nil
 }
 
