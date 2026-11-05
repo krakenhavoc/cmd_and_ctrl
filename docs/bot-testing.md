@@ -35,6 +35,43 @@ Scryfall dump the authoring machine did not have, and the synthetic
 battle decks hold no graveyard-exile sink. The labelled position suite
 kept its agreement.
 
+## Spare tokens for a sacrifice cost (#4991, S75)
+
+`heuristic-nosparetokens` is today's heuristic with `PriceSpareTokens`
+off: every creature token sacrificed to pay a cost costs its whole board
+value again. Sai, Master Thopterist's row now also declares its draw
+(`draws: 1`); without it the card was priced at the flat `ActivateBase`.
+With the declaration alone the bot still never drew with a pile of
+Thopters, because two of them cost 5.90 against the card's 1.20
+([bot.md](bot.md#sacrifices)).
+
+The position tests (`heuristic/spare_tokens_test.go`) draw with five
+tapped Thopters after combat and pass with the price off, keep a pile of
+three, wait for the Thopters to attack before combat (and draw at once
+with summoning-sick ones), and do not count a Thopter with a counter on
+it as spare. The real-engine test (`aiseat/sai_spare_thopters_bot_test.go`)
+gives the bot the real Sai, five tapped Thopter tokens and two Islands
+after combat: it draws once and keeps three Thopters, and backed out it
+does not activate.
+
+The curated `mono-blue-artifacts` deck (#554) was not on `develop` when
+this was measured, and the authoring machine had no Scryfall dump, so the
+arena runs used the synthetic `thopters-battle` deck in all four seats,
+with `curated-arena.sh`'s flags (16 games, seed 1000, rotation, lockstep,
+turn budget 60). Develop is develop `9b11a31c` with neither change.
+
+| Run | Sai activations taken (seat-games) | Hangarback Walker | Burnished Hart | Stalls |
+|---|---:|---:|---:|---:|
+| develop | 4 of 8,249 windows (4 of 64) | 42 (24) | 7 (7) | 0 |
+| `heuristic-nosparetokens` | 4 of 8,249 windows (4 of 64) | 42 (24) | 7 (7) | 0 |
+| `heuristic` | 26 of 8,405 windows (14 of 64) | 45 (24) | 6 (6) | 0 |
+
+A mixed table, two chairs of each policy at seed 2000 for 32 rotated
+games, won 16 of 64 seat-games each (25.0%, 16.0%–36.8%); the
+`heuristic` chairs drew with Sai 27 times in 14 seat-games, the backed-out
+chairs once. The price makes the card used; these intervals do not
+establish a strength change. Reports are local (gitignored).
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every

@@ -18,6 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // plus a sacrifice cost with a count of two (#747, SacrificeN). Sai is
 // not an artifact, so she is never one of the two.
 //
+// The row declares its draw (ADR 0126 §6, #4991): without it the bot
+// priced the card it buys at the flat ActivateBase.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -38,7 +41,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, Sacrifice two artifacts: Draw a card.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Cost:    Plus(ManaCost("{1}{U}"), SacrificeN(2, "two artifacts", Artifact())),
 			Effect:  Do(DrawCards{N: 1}),
 		}},

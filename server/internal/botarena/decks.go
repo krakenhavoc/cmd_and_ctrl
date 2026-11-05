@@ -200,9 +200,9 @@ const TricksDeckID = "tricks-battle"
 
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
-// monolith-battle, answers-battle and tricks-battle.
+// monolith-battle, answers-battle, tricks-battle and thopters-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID || id == ThoptersDeckID
 }
 
 // TricksBattleDeck is BattleDeck with the changes until end of turn #4312
@@ -344,6 +344,53 @@ func MonolithBattleDeck(owner uuid.UUID) []game.Card {
 const (
 	oracleBasaltMonolith = "6b8cf2a0-b045-4d91-9d91-c602d40c6237"
 	oracleGrimMonolith   = "229d6627-1292-4ae1-8849-b0f956fa6540"
+)
+
+// ThoptersDeckID is the arena deck id of ThoptersBattleDeck: `--decks
+// thopters-battle`. Synthetic, so it needs no Scryfall dump.
+const ThoptersDeckID = "thopters-battle"
+
+// ThoptersBattleDeck is a blue artifact deck around Sai, Master
+// Thopterist, for #4991's arena measurement: Sai is its commander, so
+// every artifact spell makes a Thopter and the Thopters feed Sai's draw;
+// four Hangarback Walkers and four Burnished Harts ride with it. The rest
+// is vanilla artifact creatures on BattleDeck's curve, with blue fliers
+// for reach. mono-blue-artifacts, the curated Sai deck (#554), needs a
+// Scryfall dump; this one does not. Sai, the Walker and the Hart are
+// dealt by oracle ID so the catalog gives each its abilities; their
+// printed costs and stats are the cards' own.
+func ThoptersBattleDeck(owner uuid.UUID) []game.Card {
+	cmdr := game.NewCommander("Sai, Master Thopterist", owner)
+	cmdr.OracleID = oracleSaiMasterThopterist
+	cmdr.TypeLine, cmdr.ManaCost = "Legendary Creature — Human Artificer", "{2}{U}"
+	cmdr.Power, cmdr.Toughness = 1, 4
+	cmdr.Colors = []string{"U"}
+	deck := []game.Card{cmdr}
+	add := func(n int, name, oracle, typeLine, cost string, power, toughness int, kw ...string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Power, c.Toughness = power, toughness
+			c.Keywords = kw
+			deck = append(deck, c)
+		}
+	}
+	add(27, "Island", "", "Basic Land — Island", "", 0, 0)
+	add(4, "Hangarback Walker", oracleHangarbackWalker, "Artifact Creature — Construct", "{X}{X}", 0, 0)
+	add(4, "Burnished Hart", oracleBurnishedHart, "Artifact Creature — Elk", "{3}", 2, 2)
+	add(6, "Brass Bird", "", "Artifact Creature — Bird", "{1}", 1, 1, "flying")
+	add(10, "Construct", "", "Artifact Creature — Construct", "{2}", 2, 2)
+	add(6, "Golem", "", "Artifact Creature — Golem", "{4}", 4, 4)
+	add(3, "Colossus", "", "Artifact Creature — Golem", "{6}", 6, 6, "trample")
+	add(6, "Drake", "", "Creature — Drake", "{2}{U}", 2, 3, "flying")
+	return deck
+}
+
+// The Thopters deck's catalog keys.
+const (
+	oracleSaiMasterThopterist = "52241b9c-7a69-4176-9234-8bdab09d8e64"
+	oracleHangarbackWalker    = "dde55256-5259-44e7-a267-fca45a7f0d04"
+	oracleBurnishedHart       = "893fed41-c144-433f-af88-bc7d419b7fb3"
 )
 
 // CuratedDeck deals one of the pre-built decks (docs/bot.md,

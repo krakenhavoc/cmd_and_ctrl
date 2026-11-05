@@ -48,10 +48,12 @@ import (
 
 // sacrificeCost prices sacrificing the permanents `ids` to pay a cost,
 // as a positive number. Under BaselineConfig it is the sum of their
-// board values, the pre-S66 price.
+// board values, the pre-S66 price. A spare token (spare_tokens.go,
+// #4991) costs Config.SpareTokenShare of its value.
 func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 	var v float64
 	payoffs := -1
+	spare := p.spareTokens(st, ids)
 	for _, id := range ids {
 		c := st.bf[id]
 		if c == nil {
@@ -61,7 +63,13 @@ func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 		if p.cfg.SacrificeDyingAnyway {
 			keep -= p.dyingAnyway(st, c)
 		}
-		v += keep * p.sacrificedValue(st, c)
+		value := p.sacrificedValue(st, c)
+		if spare[id] {
+			// #4991 (spare_tokens.go): one of a pile of identical tokens
+			// the payment leaves SpareTokenKeep of.
+			value *= p.cfg.SpareTokenShare
+		}
+		v += keep * value
 		if p.cfg.DeathPayoff != 0 && isCreature(c) {
 			if payoffs < 0 {
 				payoffs = st.deathPayoffRows(ids)

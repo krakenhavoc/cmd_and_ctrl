@@ -389,6 +389,19 @@ type Config struct {
 	// mana source's board value (#2480, impulse.go). Off (the zero
 	// value) charges its board value.
 	OneShotManaAsToken bool
+	// PriceSpareTokens prices a creature token sacrificed to pay a cost
+	// at SpareTokenShare of its board value when the payment leaves the
+	// bot SpareTokenKeep or more creature tokens with its name (#4991,
+	// spare_tokens.go): Sai, Master Thopterist's two Thopters for a card
+	// out of a pile of five. Off (the zero value) charges every token its
+	// whole board value, as before.
+	PriceSpareTokens bool
+	// SpareTokenKeep is how many creature tokens with one name the bot
+	// keeps at full price under PriceSpareTokens.
+	SpareTokenKeep int
+	// SpareTokenShare is the share of a spare token's board value its
+	// sacrifice costs under PriceSpareTokens.
+	SpareTokenShare float64
 	// PriceExert turns on ADR 0130 §9 (owner decision 4): the twin
 	// attack move that exerts its attacker is priced by what the
 	// exert's rows declare against what the creature gives up by
@@ -902,6 +915,11 @@ func DefaultConfig() Config {
 		PriceImpulse:       true,
 		OneShotManaAsToken: true,
 
+		// #4991: a token out of a pile of identical ones is fodder.
+		PriceSpareTokens: true,
+		SpareTokenKeep:   3,
+		SpareTokenShare:  0.10,
+
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
 
@@ -1104,6 +1122,10 @@ func BaselineConfig() Config {
 	// #2480: an impulse priced, and a Treasure given up priced as a token.
 	c.PriceImpulse = false
 	c.OneShotManaAsToken = false
+	// #4991: a spare token sacrificed at its whole board value.
+	c.PriceSpareTokens = false
+	c.SpareTokenKeep = 0
+	c.SpareTokenShare = 0
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0
