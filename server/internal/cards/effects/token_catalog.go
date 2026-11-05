@@ -320,6 +320,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
 	printedPestAttackToken,
+	// Genesis Effect's New Planet (Star Trek, #4973).
+	printedTrekB16NewPlanetToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

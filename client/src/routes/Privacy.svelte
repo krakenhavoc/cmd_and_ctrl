@@ -75,10 +75,10 @@
     {
       what: "Stats settings",
       details:
-        "Whether advanced stats are on for you, and whether you or an admin set it. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
+        "Whether advanced stats are on for you, and whether you or an admin set it. If you make a share link, a fingerprint of it (never the link itself) and when you made it, kept until you revoke it, make a new one or delete your account. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
       why: "So the Stats page shows the advanced stats only to the people who want them.",
       howLong: "Until you change it or delete your account.",
-      source: "migration 0030 stats_prefs; lobby/stats_prefs.go",
+      source: "migration 0030 stats_prefs; lobby/stats_prefs.go, lobby/stats_share.go",
     },
     {
       what: "Your own model key for AI opponents",
@@ -193,6 +193,12 @@
     {
       who: "The other people at your table",
       what: "Your seat name and avatar, your playmat, the deck name and its commanders, and everything that happens in the game. A spectator link shows the same, and the table’s creator sees the same seats on the Tables page. Anyone else signed in, or seated as a guest at another table, can list the open tables there, with each seat’s name and avatar, its deck’s name and the deck’s power level once rated, but not its commanders. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one. Anyone signed in who has sat at a table with you also sees your display name and avatar in their invite picker, and can have the bot send you the invite link to a table they are at as a Discord direct message. You stop appearing there when you delete your account.",
+    },
+    {
+      // ADR 0217 §6 and §9, slice 6: lobby/stats_share.go,
+      // routes/SharedStats.svelte.
+      who: "Sharing your stats",
+      what: "If you make a share link, anyone with the link can see your stats pages under your display name, including your deck names, commanders and the cards you cast or held. They never show the other players’ names. You can revoke the link at any time.",
     },
     {
       who: "Discord",

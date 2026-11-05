@@ -749,7 +749,11 @@ never contains that string. The restriction is in `restrictions` as
 - Tromokratis's "can't be blocked unless all creatures defending player
   controls block it". This is a set rule that counts non-blockers, and
   it follows the requirements slot.
-- "Can't attack or block alone". No attributed card.
+- "Can't attack or block alone". No attributed card. *(The attack half,
+  "can't attack alone", built by
+  [#4973](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4973) for Pet
+  Sehlat: the attack-limit scope `AttackLimitNotAlone`, judged on the whole
+  declaration at its checkpoint; see `game/attack_not_alone.go`.)*
 - Blocking an additional creature (Brave the Sands, whose caveat stays),
   since `BlockingTarget` is a single ID. *(Built by
   [#1706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1706): Decisions 60–63.)*

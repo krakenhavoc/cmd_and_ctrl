@@ -114,6 +114,9 @@ describe("service worker routing", () => {
     // server's own Cache-Control lets the browser keep it five minutes;
     // the worker keeping it longer would outlive a changed invite.
     "/community",
+    // A stats share link's read (ADR 0217 §6): no-store on the server,
+    // and a revoked link must answer 404 at once, never from a cache.
+    "/stats/shared/AAAAAAAAAAAAAAAAAAAAAA",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {
