@@ -12449,6 +12449,15 @@ declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.
 
+The one card that wants exactly that prints it on itself: *"You may
+cast this card from exile."* (Khan, Vengeful Heart). Declare it as
+`CastableZones: []game.ZoneKind{game.ZoneExile}` beside
+`CastsItselfFromExile: true`; `Register` refuses either half alone
+([ADR 0066, amendment of 2026-11-05](decisions/0066-granted-cast-and-play-permissions.md)).
+The engine opens any face-up copy in exile for its owner, however it got
+there, and never a face-down one (CR 406.3a). Rebound's reminder text is
+not this clause.
+
 ### Opening-hand actions (ADR 0133, #2190, CR 103.6a)
 
 "If this card is in your opening hand, you may begin the game with it on

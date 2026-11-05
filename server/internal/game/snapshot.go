@@ -834,6 +834,10 @@ type playerSnapshot struct {
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
 	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// ExtraTurnsBegun is Player.ExtraTurnsBegun (#4973). Additive within
+	// v9: a file written before it restores with 0, which reads as "has
+	// begun no extra turn this game".
+	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -3108,6 +3112,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
+		ExtraTurnsBegun:       p.ExtraTurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -4256,6 +4261,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
+		ExtraTurnsBegun:    p.ExtraTurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),

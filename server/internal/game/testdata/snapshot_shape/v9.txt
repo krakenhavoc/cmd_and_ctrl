@@ -4822,6 +4822,8 @@ frozenEntries[].event.entersAs.addTypes[]	string
 frozenEntries[].event.entersAs.basePT	object
 frozenEntries[].event.entersAs.basePT.power	number:int
 frozenEntries[].event.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entersAs.creatureTypes	array
+frozenEntries[].event.entersAs.creatureTypes[]	string
 frozenEntries[].event.entersAs.grants	array
 frozenEntries[].event.entersAs.grants[]	string
 frozenEntries[].event.entersAs.keywords	array
@@ -5533,6 +5535,8 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.addTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT	object
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.power	number:int
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.grants	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.grants[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords	array
@@ -30203,6 +30207,8 @@ pendingChoices[].replacementResume.event.entersAs.addTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entersAs.creatureTypes	array
+pendingChoices[].replacementResume.event.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.grants	array
 pendingChoices[].replacementResume.event.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entersAs.keywords	array
@@ -30914,6 +30920,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.addTypes[
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords	array
@@ -50365,6 +50373,7 @@ seats[].emblems.owner	custom(uuid.UUID)
 seats[].endStepTurn	number:int
 seats[].enduringStory	bool
 seats[].energy	number:int
+seats[].extraTurnsBegun	number:int
 seats[].graveyard	object
 seats[].graveyard.cards	array
 seats[].graveyard.cards[]	object
@@ -53539,6 +53548,7 @@ turnTally.players{}.modifiedCreaturesDied	number:int
 turnTally.players{}.nontokenCreaturesEntered	number:int
 turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int
+turnTally.players{}.permanentsReturnedToHand	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.powerUpActivations	number:int
