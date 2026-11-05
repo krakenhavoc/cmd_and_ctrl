@@ -45,21 +45,6 @@ func avengersDisassembledLand(_ *game.StackItem, ctx *Context, occurrence int) e
 	if !ok || target.Kind != game.TargetCard {
 		return nil
 	}
-	victim, ok := controllerOfTarget(ctx, target.ID)
-	if !ok {
-		return nil
-	}
-	if err := (DestroyTarget{Target: target.ID}).Apply(ctx); err != nil {
-		return err
-	}
-	return SearchLibrary{
-		Player:        victim,
-		Predicate:     IsBasicLand,
-		Dest:          game.ZoneBattlefield,
-		Limit:         1,
-		Shuffle:       true,
-		TappedOnEntry: true,
-		Optional:      true,
-		Reason:        "Avengers Disassembled — you may search for a basic land",
-	}.Apply(ctx)
+	return destroyThenItsControllerMaySearchForATappedBasic(ctx, target.ID,
+		"Avengers Disassembled — you may search for a basic land")
 }
