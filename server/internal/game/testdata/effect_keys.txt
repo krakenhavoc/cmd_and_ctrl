@@ -336,6 +336,7 @@ choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
+choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/breeches-the-blastmaker-sacrifice
 choose choose-cards/burning-wish-take
@@ -756,6 +757,7 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
+confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
 confirm confirm/ajanis-chosen-attach
@@ -1483,6 +1485,7 @@ tail batch21-helpers/after-mill
 tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
+tail beckett-mariner/promotion-check
 tail beseech-the-mirror/cast-or-to-hand
 tail bind-to-life/after-mill
 tail blessed-reincarnation/after-exile
@@ -2109,6 +2112,7 @@ tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
 tail valgavoths-onslaught/manifest-again
+tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
