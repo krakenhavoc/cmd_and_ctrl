@@ -641,6 +641,17 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
+	// Incorporeal Sensate, #4973): generic mana added to the price of a
+	// spell cast through this permission. CostLess's twin, an INCREASE
+	// (CR 601.2f): it composes with whatever the cast would otherwise pay
+	// and is added with the board's increases, before any reduction comes
+	// off. A land has no cost to raise. Read by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the permission
+	// it holds, as CostLess is. Zero is no increase, which is every
+	// permission written before this.
+	CostMore int `json:"costMore,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -1371,6 +1382,15 @@ func (p *CastPermission) NamesPrice() bool {
 	return p != nil && (p.Cost != "" || p.WaterbendManaValue)
 }
 
+// atPrintedCost reports whether the permission opens its zone at the
+// card's printed cost (Yawgmoth's Will, Muldrotha, an impulse exile): no
+// claimable offer of its own and no price. Such a permission lets the
+// card be cast for any alternative cost it prints (permissionClaimOK).
+// Nil-safe: nil is false.
+func (p *CastPermission) atPrintedCost() bool {
+	return p != nil && p.AltCostKey == "" && !p.NamesPrice()
+}
+
 // AlternativeCostFor synthesises the CR 118.9 offer this permission
 // prices the cast under, or nil when the permission charges the
 // printed cost (impulse exile) or its own flat Cost (airbend,
@@ -1976,13 +1996,28 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 			// handing it this one refused a cast Muldrotha or Yawgmoth's
 			// Will beside it allows, whenever it happened to come first.
 			if perm := g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
-				return perm.AltCostKey == "" && !perm.NamesPrice() && acceptsPermission(accept, perm)
+				return perm.atPrintedCost() && acceptsPermission(accept, perm)
 			}); perm != nil {
 				return perm
 			}
 		}
 	}
 	return g.castPermissionLocked(playerID, card, zone, accept)
+}
+
+// printedCostPermissionForOffersLocked is the first live permission at
+// the printed cost (atPrintedCost) that opens `card` out of `zone` for
+// playerID, or nil: the one castPermissionForClaimMatchingLocked hands a
+// cast claiming an offer no permission names (#4971), so
+// CastOffersForLocked can list those offers under it. `card` is the card
+// with the face being cast already materialised, and a multi-face card's
+// permission must open that face, as CastPermissionForFaceLocked's must.
+//
+// Caller must hold g.mu.
+func (g *Game) printedCostPermissionForOffersLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
+	return g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+		return perm.atPrintedCost() && (!card.IsMultiFace() || perm.opensFace(g.lendPTLocked(perm, card), playerID))
+	})
 }
 
 // acceptsPermission is castPermissionForClaimMatchingLocked's test: nil
@@ -3106,4 +3141,19 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 		return 0
 	}
 	return grant.CostLess
+}
+
+// grantIncreaseLocked is CostQuery.GrantIncrease for one announcement: the
+// CostMore of the permission the cast claims, or 0 for a cast that uses
+// none. grantReductionLocked's twin, asking the same claim. Caller must
+// hold g.mu.
+func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
+	if from == ZoneHand || from == ZoneCommand {
+		return 0
+	}
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
+	if grant == nil || grant.CostMore <= 0 {
+		return 0
+	}
+	return grant.CostMore
 }

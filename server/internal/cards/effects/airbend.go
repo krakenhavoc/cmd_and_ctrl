@@ -72,6 +72,11 @@ type ExileWithPermission struct {
 	// one, in Scryfall brace notation. Empty means the printed cost.
 	CostOverride string
 
+	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
+	// Incorporeal Sensate): generic mana added to the price of a spell
+	// cast through the grant (game.CastPermission.CostMore).
+	CostMore int
+
 	// Linked stamps CR 607.2a's "exiled with this" link on the card as
 	// it lands (ExileTarget.Linked's contract): the resolving item's
 	// source object and, since #2651, its ability row, for a card whose
@@ -102,6 +107,7 @@ func (e ExileWithPermission) permission() game.CastPermission {
 		AnyColor: e.AnyColor || e.AnyType,
 		AnyType:  e.AnyType,
 		Cost:     e.CostOverride,
+		CostMore: e.CostMore,
 	}
 	if e.WhileExiled {
 		// CR 611.2b, "while it's exiled". Left zero the permission

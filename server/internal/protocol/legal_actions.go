@@ -203,7 +203,7 @@ func legalCutView(c legal.Cut, withSource bool) LegalCutView {
 // (ADR 0122 §6.2). Only a card the digest already lists gets them: an
 // entry is a highlight, so a cut never invents one, and a prompt's cut
 // (whose answers the digest does not fold) rides the full-list reply
-// alone.
+// and GameView.legal_prompt_cuts (#4765).
 func fileDigestCuts(d *LegalActionsView, cuts []legal.Cut) {
 	if d == nil {
 		return
@@ -218,6 +218,20 @@ func fileDigestCuts(d *LegalActionsView, cuts []legal.Cut) {
 		}
 		e.Truncated = append(e.Truncated, legalCutView(c, false))
 	}
+}
+
+// promptCutViews is the cut report's prompt cuts in wire form (#4765):
+// every cut with a Choice, keeping the card that raised the prompt.
+// fileDigestCuts leaves them out of the digest, which has no entry for
+// a prompt, so GameView.legal_prompt_cuts carries them.
+func promptCutViews(cuts []legal.Cut) []LegalCutView {
+	var out []LegalCutView
+	for _, c := range cuts {
+		if c.Choice != "" {
+			out = append(out, legalCutView(c, true))
+		}
+	}
+	return out
 }
 
 // idleTally is digestLegalMoves' per-card count behind CastIdleHint.
@@ -413,6 +427,15 @@ func appendUniqueNonEmpty(s []string, v string) []string {
 // map, under exactly legalMovesFor's rule: the admin (""), a spectator
 // (SpectatorViewerID) and any viewer who is not a seat get nothing.
 func legalActionsFor(bySeat map[string]*LegalActionsView, viewerID string) *LegalActionsView {
+	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
+		return nil
+	}
+	return bySeat[viewerID]
+}
+
+// legalPromptCutsFor picks the viewer's own prompt cuts (#4765) under
+// legalActionsFor's rule.
+func legalPromptCutsFor(bySeat map[string][]LegalCutView, viewerID string) []LegalCutView {
 	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
 		return nil
 	}

@@ -55,7 +55,7 @@ var AllCreatureTypes = []string{
 	"Dragon", "Drake", "Dreadnought", "Drix", "Drone", "Druid",
 	"Dryad", "Dwarf", "Echidna", "Efreet", "Egg", "Elder",
 	"Eldrazi", "Elemental", "Elephant", "Elf", "Elk", "Employee",
-	"Eternal", "Eye", "Faerie", "Ferret", "Fish", "Flagbearer",
+	"Eternal", "Eye", "Faerie", "Ferengi", "Ferret", "Fish", "Flagbearer",
 	"Fox", "Fractal", "Frog", "Fungus", "Gamer", "Gamma",
 	"Gargoyle", "Germ", "Giant", "Giraffe", "Gith", "Glimmer",
 	"Gnoll", "Gnome", "Goat", "Goblin", "God", "Golem", "Gorgon",

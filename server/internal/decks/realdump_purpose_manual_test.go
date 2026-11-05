@@ -133,6 +133,7 @@ var reviewedNotAWipe = map[string]string{
 	"Living Death":                             "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
 	"Living End":                               "Living Death with suspend: a symmetric mass reanimation",
 	"Mandate of Peace":                         "ends combat and exiles the stack",
+	"Merciful Mandate":                         "untaps your creatures and may end combat, exiling the stack",
 	"Obeka, Brute Chronologist":                "ends the turn",
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",
 	"Rest in Peace":                            "exiles graveyards",

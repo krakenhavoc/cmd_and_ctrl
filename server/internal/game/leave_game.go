@@ -690,6 +690,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// reason: the departed player's own entering Saga leaves the game
 	// with them (CR 800.4a), and the frame rides replacementResume.
 	PendingChoiceEntryReadAhead: {},
+	// entry_attack_target (Kira Nerys, Firebrand) is entry_read_ahead's
+	// row for its reason: the chooser is the entering creature's
+	// would-be controller, whose own creature leaves the game with them
+	// (CR 800.4a), and the frame rides replacementResume.
+	PendingChoiceEntryAttackTarget: {},
 	// ADR 0098's two siblings take the same row for the same reason:
 	// the discard or the sacrifice is the "unless" of the departed
 	// player's own entering permanent, and the hand or the permanents
