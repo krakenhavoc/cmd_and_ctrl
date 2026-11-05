@@ -51,7 +51,8 @@ func newTestHTTPStackWithAuth(t *testing.T, idx *cards.Index, a auth.Authenticat
 	l.SetCardIndex(idx)
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+	// Wired as cmd/server/main.go wires it.
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a, Archived: l.IsArchived})
 
 	cfg := Config{
 		Lobby:      l,

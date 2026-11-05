@@ -50,6 +50,7 @@ completes:
 | 401 | missing or invalid credential |
 | 403 | session not valid for the requested game / player |
 | 404 | unknown game |
+| 409 | the table has been archived and the session is not an admin's (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md) §4); the body is `game_closed: this table was closed` |
 | 503 | server shutting down |
 
 ### Per-connection visibility (S04)
