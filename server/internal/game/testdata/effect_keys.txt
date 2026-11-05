@@ -782,6 +782,7 @@ confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
+confirm confirm/bebop-skull-and-crossbones-draw-lose
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
