@@ -1287,6 +1287,7 @@ resume replacement-resume/move-exchange
 resume replacement-resume/move-reflexive
 resume replacement-resume/move-tail
 resume replacement-resume/move-token-batch
+resume replacement-resume/move-tokens
 run blight/blighted-blackthorn-draw
 run blight/boggart-mischief-tokens
 run blight/dream-seizer-discard
@@ -1676,6 +1677,7 @@ tail engine/manifest-dread-entered
 tail engine/manifest-dread-finished
 tail engine/meld-entered
 tail engine/meld-exiled
+tail engine/move-tokens-created
 tail engine/opening-hand-entered
 tail engine/ordered-picks-sacrificed
 tail engine/paid-cast-or-else-exiled
