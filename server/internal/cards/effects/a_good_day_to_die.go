@@ -20,6 +20,7 @@ func init() {
 		Name:         "A Good Day to Die",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 0)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
 			if !ok || !onBattlefield(ctx.Game, t.ID) {
