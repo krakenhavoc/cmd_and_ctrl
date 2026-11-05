@@ -336,7 +336,6 @@ var tokenTable = map[string]game.Card{
 	// #4457 batch 3: Foot Mystic's Ninja.
 	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	// #4973: Star Trek's Officer (Excalbian Gamemaster).
-	"1/1 red Officer": {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
 
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
 	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
