@@ -87,9 +87,12 @@ const WUBRG = ["W", "U", "B", "R", "G"] as const;
 /**
  * deckIdentity is the deck's colour identity for the aura: WUBRG
  * letters, [] for a colourless deck, or null when no commander resolved
- * (the aura then stays neutral rather than guessing).
+ * (the aura then stays neutral rather than guessing). A lobby seat
+ * carries the same two fields, so it is read the same way.
  */
-export function deckIdentity(d: MyDeckInfo): string[] | null {
+export function deckIdentity(
+  d: Pick<MyDeckInfo, "commander_cards" | "color_identity">,
+): string[] | null {
   const cmds = d.commander_cards ?? [];
   if (!cmds.some((c) => Array.isArray(c.color_identity))) return null;
   const have = new Set(d.color_identity ?? []);

@@ -56,7 +56,17 @@ type WSAuthorizer struct {
 	Admins *Admins
 	// Log receives the admin-binding audit lines. Nil: none.
 	Log *slog.Logger
+	// Archived reports whether a table is archived (Lobby.IsArchived).
+	// A non-admin's upgrade to an archived table is refused with 409:
+	// an archived table is closed, so a seat or spectator session that
+	// outlived the archive cannot reconnect and keep playing (#4564,
+	// ADR 0211 §4). An admin is still admitted. Nil: no check.
+	Archived func(gameID uuid.UUID) bool
 }
+
+// ClosedTableMessage is the body of a refused upgrade to an archived
+// table. A browser never sees it; a CLI or agent client does.
+const ClosedTableMessage = "game_closed: this table was closed"
 
 // AuthorizeUpgrade implements ws.UpgradeAuthorizer.
 func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
@@ -99,7 +109,14 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		}
 		return a.adminBinding(p, requestedGame, requestedPlayer)
 	}
-	return bindingFor(p, requestedGame)
+	b, err := bindingFor(p, requestedGame)
+	if err != nil {
+		return ws.Binding{}, err
+	}
+	if a.Archived != nil && a.Archived(b.GameID) {
+		return ws.Binding{}, ws.StatusError(http.StatusConflict, ClosedTableMessage)
+	}
+	return b, nil
 }
 
 // ownBinding reports whether a signed-in admin's request is just their

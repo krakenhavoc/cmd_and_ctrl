@@ -383,9 +383,17 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 		out.AltCostObjects = append([]ObjectRef(nil), card.Provenance.AltCostObjects...)
 	}
 	ch, ok := g.lastKnownBattlefield[cardID]
+	// A face-down permanent has no name (CR 708.2), so its empty name is
+	// the answer, not a gap to fill from the card: the card is the real
+	// one, turned face up in its new zone (CR 708.9) or hidden under the
+	// face-down state on the battlefield (#4845).
+	nameless := card.faceDownPermanent()
 	if !ok {
 		ch = card.Effective()
-	} else if recs := g.lastKnownPermanents[cardID]; len(recs) > 0 {
+	} else {
+		nameless = g.lastKnownTriggerIdentity[cardID].FaceDown.IsPermanentState()
+	}
+	if recs := g.lastKnownPermanents[cardID]; ok && len(recs) > 0 {
 		// The event is about the object that LEFT, written down in the
 		// same beat as lastKnownBattlefield; the card has moved on to a
 		// new epoch since (#1379).
@@ -403,7 +411,7 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 	out.Subtypes = copyStrings(ch.Subtypes)
 	out.Supertypes = copyStrings(ch.Supertypes)
 	out.Colors = copyStrings(ch.Colors)
-	if ch.Name != "" {
+	if ch.Name != "" || nameless {
 		out.Name = ch.Name
 	}
 	if ch.Controller != uuid.Nil {

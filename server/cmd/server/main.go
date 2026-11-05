@@ -418,7 +418,7 @@ func main() {
 	default:
 		log.Info("admin allowlist loaded", "var", lobby.AdminUserIDsEnv, "count", n)
 	}
-	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: admins, Log: log})
+	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator, Admins: admins, Log: log, Archived: l.IsArchived})
 	// Admin mode lapses 12 hours after it is switched on. HTTP sees the
 	// lapse at the next request; this sweep, once a minute, clears the
 	// row and closes the person's admin sockets with 4001 so the admin

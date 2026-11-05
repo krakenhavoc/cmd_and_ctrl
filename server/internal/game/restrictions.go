@@ -136,6 +136,19 @@ const (
 	// "loses all abilities" leaves it. It stops the suspect action
 	// only: a creature that is already suspected stays suspected.
 	CantBecomeSuspected
+
+	// PermanentsCantPhaseIn is "Permanents can't phase in." (The City
+	// on the Edge of Forever's Human token, Star Trek #4973). Unlike the
+	// bits above it restricts no one permanent: it is a world rule the
+	// SOURCE carries on itself (RestrictSelf), and phaseInLocked refuses
+	// every phase-in while any permanent on the battlefield has it
+	// (CR 702.26a's untap-step phase-in and a "phases out until ~
+	// leaves" return alike; CR 101.2, "can't" beats the rule that says
+	// they phase in). The phased-out permanents stay out and phase in at
+	// a later untap step of the player they phased out under, once no
+	// such source remains. Deliberately absent from Names: it is no
+	// badge on the permanent that carries it, so it is not on the wire.
+	PermanentsCantPhaseIn
 )
 
 // CantAttackOrBlock is the pair every "can't attack or block" card

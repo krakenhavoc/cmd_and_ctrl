@@ -1795,10 +1795,13 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // could never be reached by asking it.
 //
 // So a claim picks: a live stored permission whose AltCostKey is
-// `claim` is the one the cast uses. Every other claim, and no claim,
-// gets CastPermissionForLocked's answer. The cast path, its price and
-// its preview all ask this with the claim they were handed, so all
-// three judge the cast under the same permission; CastOffersForLocked
+// `claim` is the one the cast uses. Any other claim out of a zone a
+// stored or standing permission opens is cast under the first such
+// permission at the printed cost, if there is one (#4971), and
+// otherwise, like no claim, gets CastPermissionForLocked's answer. The
+// cast path, its price and its preview all ask this with the claim
+// they were handed, so all three judge the cast under the same
+// permission; CastOffersForLocked
 // lists the other permission's offer so a caster can make the claim.
 //
 // Caller must hold g.mu (read or write).
@@ -1964,6 +1967,18 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 					}
 					return &out
 				}
+			}
+			// #4971: a claim no permission's key answers (the card's own
+			// evoke, overload, bestow) is cast under a permission at the
+			// printed cost if one opens the card. One that names a price
+			// (Green Goblin's mayhem, Underworld Breach's escape, a {0}
+			// exile) accepts no claim but its own (permissionClaimOK), so
+			// handing it this one refused a cast Muldrotha or Yawgmoth's
+			// Will beside it allows, whenever it happened to come first.
+			if perm := g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+				return perm.AltCostKey == "" && !perm.NamesPrice() && acceptsPermission(accept, perm)
+			}); perm != nil {
+				return perm
 			}
 		}
 	}
