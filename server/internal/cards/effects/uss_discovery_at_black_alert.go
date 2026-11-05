@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "13dbfe3f-1e04-4c4f-953c-7c949dba9d33",
 		Name:         "U.S.S. Discovery, at Black Alert",
+		Purpose:      game.Purpose{Discover: 5},
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
