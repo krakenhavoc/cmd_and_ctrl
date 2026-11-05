@@ -164,6 +164,7 @@ var silentEventKinds = map[string]string{
 	"EventBecameSaddled":   silentBoardStateIsVisible,
 	"EventCrewedVehicle":   silentImpliedByAnotherLine, // #3545: the activation line and the taps already say it
 	"EventSaddledMount":    silentImpliedByAnotherLine, // #3545
+	"EventFacedDilemma":    silentImpliedByAnotherLine, // #4973: the cast, activation or mode-choice line already names the modes
 	"EventBecameRenowned":  silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,

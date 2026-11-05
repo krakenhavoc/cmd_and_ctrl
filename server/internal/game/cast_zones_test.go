@@ -288,39 +288,60 @@ func TestExileCastStillNeedsAGrantWithoutADeclaration(t *testing.T) {
 	}
 }
 
-// …and the other half, RETIRED on #659. This used to be
-// TestExileCastAllowedByCardLevelDeclaration, and it pinned the shape
-// S29 said "suspend and foretell will use". They do not use it and
-// could not: a CARD-level declaration opens exile for every copy of
-// the card, at any time, however the copy got there — so a Path to
-// Exile'd Rift Bolt would be castable for free and a milled Saw It
-// Coming for its foretell cost. Both keywords ride a per-INSTANCE
-// CastPermission (ADR 0066), like impulse exile, airbend, warp,
-// cascade and a defeated Siege before them.
+// …and the other half, RETIRED on #659 and narrowed on 2026-11-05.
+// This used to be TestExileCastAllowedByCardLevelDeclaration, and it
+// pinned the shape S29 said "suspend and foretell will use". They do
+// not use it and could not: a CARD-level declaration opens exile for
+// every copy of the card, at any time, however the copy got there — so
+// a Path to Exile'd Rift Bolt would be castable for free and a milled
+// Saw It Coming for its foretell cost. Both keywords ride a
+// per-INSTANCE CastPermission (ADR 0066), like impulse exile, airbend,
+// warp, cascade and a defeated Siege before them.
 //
-// What replaces it is the rule that is actually true: the declaration
-// buys nothing in exile, and a permission is the only way in.
-// effects.Register refuses the declaration outright now, so the only
-// place it can still be built is a test's own catalog stub — which is
-// exactly what this one does, to prove the engine ignores it.
-func TestExileCastIgnoresACardLevelDeclaration(t *testing.T) {
+// effects.Register refuses the declaration for every such card. It
+// admits it only for a card whose OWN printed text says "You may cast
+// this card from exile" (Khan, Vengeful Heart; ADR 0066, amendment of
+// 2026-11-05), where every face-up copy, however it got there, is the
+// text. This test's catalog stub is that card, and pins what the engine
+// does with it: the owner may cast a face-up copy at its printed cost,
+// an opponent may not (CR 109.5), and a face-down copy has no text
+// (CR 406.3a) and is not opened.
+func TestExileCastByACardLevelDeclarationIsTheOwnersFaceUpCopyOnly(t *testing.T) {
 	const oracle = "test-exile-castable"
 	g := newActiveGame(t)
-	me := g.Seats[0]
+	me, opp := g.Seats[0], g.Seats[1]
 	withCatalogCastableZones(t, castableZonesFor(oracle, ZoneExile))
 	advanceTo(t, g, StepPrecombatMain)
-	c := NewCard("Test Exile Castable", me.ID)
-	c.TypeLine = "Sorcery"
-	c.ManaCost = "{R}"
-	c.OracleID = oracle
-	g.Exile.PushTop(c)
-	me.ManaPool.AddMana(ManaToken{Color: "R"})
-
-	if err := g.CastSpell(me.ID, c.InstanceID, CastSpellParams{Strict: true, FromZone: "exile"}); !errors.Is(err, ErrNoPlayPermission) {
-		t.Fatalf("declared exile cast: got %v, want ErrNoPlayPermission", err)
+	seed := func(faceDown bool) uuid.UUID {
+		c := NewCard("Test Exile Castable", me.ID)
+		c.TypeLine = "Sorcery"
+		c.ManaCost = "{R}"
+		c.OracleID = oracle
+		if faceDown {
+			c.SetFaceDown(FaceDownExiled)
+		}
+		g.Exile.PushTop(c)
+		return c.InstanceID
 	}
-	if g.Stack.Contains(c.InstanceID) {
-		t.Error("a card-level ZoneExile declaration still opened an exile cast")
+	hidden := seed(true)
+	open := seed(false)
+	me.ManaPool.AddMana(ManaToken{Color: "R"})
+	opp.ManaPool.AddMana(ManaToken{Color: "R"})
+
+	if err := g.CastSpell(me.ID, hidden, CastSpellParams{Strict: true, FromZone: "exile"}); !errors.Is(err, ErrNoPlayPermission) {
+		t.Fatalf("face-down declared exile cast: got %v, want ErrNoPlayPermission", err)
+	}
+	if err := g.CastSpell(opp.ID, open, CastSpellParams{Strict: true, FromZone: "exile"}); !errors.Is(err, ErrNoPlayPermission) {
+		t.Fatalf("an opponent's declared exile cast: got %v, want ErrNoPlayPermission", err)
+	}
+	if err := g.CastSpell(me.ID, open, CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Fatalf("the owner's face-up declared exile cast: %v", err)
+	}
+	if !g.Stack.Contains(open) || g.Stack.Contains(hidden) {
+		t.Error("the face-up copy, and only it, is on the stack")
+	}
+	if len(me.CastPermissions) != 0 {
+		t.Errorf("the card's own text stored a permission: %v", me.CastPermissions)
 	}
 }
 

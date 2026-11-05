@@ -399,7 +399,10 @@ func attackRequirementOwed(g *game.Game, seat uuid.UUID) bool {
 	if g.Turn.Step != game.StepDeclareAttackers || !isActiveSeat(g, seat) {
 		return false
 	}
-	return g.AttackRequirementsUnmetForEffect() != nil
+	// #4973: and a declaration that is one creature that can't attack
+	// alone while a free companion could join it (CR 506.5), which the
+	// same checkpoint refuses.
+	return g.AttackRequirementsUnmetForEffect() != nil || g.AttackAloneUnmetForEffect() != nil
 }
 
 // blockRequirementOwed reports whether `seat` is a defending player in

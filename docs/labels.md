@@ -135,10 +135,26 @@ registered, or when this file is stale.
 | `adminAccountsTab` | `Accounts` | link | text | `routes/Admin.svelte` | the admin views' tab for every account |
 | `adminReportsTab` | `Reports` | link | text | `routes/Admin.svelte` | the admin views' tab for what players have reported at their tables (#2984) |
 | `adminStatsTab` | `Stats` | link | text | `routes/Admin.svelte` | the admin views' tab for game statistics (ADR 0165 §8, #3425) |
-| `advancedStatsSwitch` | `Advanced stats` | checkbox | text | `lib/components/StatsSettings.svelte` | Settings → Stats: the person's own advanced-stats switch (PUT /me/stats/prefs); off unless they, an admin or the server default turned it on |
+| `advancedStatsSwitch` | `Advanced stats` | checkbox | text | `lib/components/StatsSettings.svelte`<br>`routes/Stats.svelte` | Settings → Stats and the head of #/stats: the person's own advanced-stats switch (PUT /me/stats/prefs); off unless they, an admin or the server default turned it on |
 | `advancedStatsOptIn` | `Turn on advanced stats` | button | text | `lib/components/AdvancedStatsOptIn.svelte` | the opt-in card on #/stats while advanced stats are off for the person |
 | `advancedStatsDefault` | `Advanced stats for everyone who hasn't chosen` | checkbox | text | `lib/components/admin/AdvancedStatsDefault.svelte` | admin Accounts: the server's advanced-stats default (PUT /admin/stats/advanced-default); anyone who chose for themselves keeps their answer |
 | `accountAdvancedStats` | `advanced stats for <name>` (starts with `advanced stats for `) | checkbox | aria | `lib/components/admin/AccountAdvancedStats.svelte` | admin Accounts and one account: an admin's advanced-stats switch for that person (PUT /admin/users/{id}/advanced-stats) |
+| `statsMakeupFilter` | `Table makeup` | group | text | `lib/components/stats/StatsFilters.svelte` | #/stats and a shared view: the radio group that filters by who else sat at the table |
+| `statsRangeFilter` | `Date range` | group | text | `lib/components/stats/StatsFilters.svelte` | #/stats and a shared view: the radio group that filters by when the game ended |
+| `statsMakeupAll` | `All tables` | radio | text | `lib/advancedStats.ts` | the table makeup filter: every counted game (the default) |
+| `statsMakeupPeople` | `People only` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games where every other seat was a person |
+| `statsMakeupWithBots` | `With bots` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games with at least one bot and one person among the other seats |
+| `statsMakeupBots` | `Bots only` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games where every other seat was a bot |
+| `statsRangeAll` | `All time` | radio | text | `lib/advancedStats.ts` | the date range filter: every game (the default) |
+| `statsRange90` | `90 days` | radio | text | `lib/advancedStats.ts` | the date range filter: games that ended in the last 90 days |
+| `statsRange30` | `30 days` | radio | text | `lib/advancedStats.ts` | the date range filter: games that ended in the last 30 days |
+| `showAsTable` | `Show as table` | disclosure | text | `lib/components/stats/ChartFigure.svelte` | under every stats chart: the same numbers as a table with headers (ADR 0217 §8) |
+| `shareStats` | `Share my stats` | button | text | `routes/Stats.svelte` | #/stats: opens the share dialog (ADR 0217 §6) |
+| `shareStatsDialog` | `share your stats` | dialog | aria | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: make, copy and revoke the link to a read-only copy of your stats |
+| `makeShareLink` | `Make a link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with no link yet: mints one (POST /me/stats/share-link) |
+| `makeNewShareLink` | `Make a new link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with a link: mints a new one, and the old one stops working |
+| `copyShareLink` | `Copy link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: copies the link just made; it is shown only once |
+| `revokeShareLink` | `Revoke link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: the link answers not found from now on (DELETE /me/stats/share-link) |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |
