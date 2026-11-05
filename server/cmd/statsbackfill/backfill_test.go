@@ -195,7 +195,7 @@ func (e env) writeReplay(t *testing.T, id uuid.UUID, body string) {
 func (e env) run(t *testing.T, dry bool) (summary, string) {
 	t.Helper()
 	var out bytes.Buffer
-	sum, err := run(context.Background(), e.d, e.dir, dry, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC), &out)
+	sum, err := run(context.Background(), e.d, e.dir, nil, dry, time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC), &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,5 +302,42 @@ func TestBackfillIncompleteLogAndFailures(t *testing.T) {
 	}
 	if _, err := gamestats.NewSQLStore(e.d).Get(context.Background(), other); err != gamestats.ErrNotFound {
 		t.Errorf("a failed game stored a record: %v", err)
+	}
+}
+
+// ADR 0217 §1: the backfill passes the replay's frames to Compute, so a
+// replay that ends with the ended game gives every seat its turn samples.
+func TestBackfillPassesTheFrames(t *testing.T) {
+	e := newEnv(t)
+	e.addGame(t, gameID, "ended")
+	turn := func(seq uint64, n int, step string, state string) protocol.SnapshotPayload {
+		f := frame(seq, ev(seq, protocol.LogStep, n, 0))
+		f.Game.State = state
+		f.Game.Turn = protocol.TurnView{Seq: n, ActiveSeat: 0, Step: step}
+		return f
+	}
+	e.writeReplay(t, gameID, jsonl(t,
+		turn(1, 1, "precombat_main", "active"),
+		turn(2, 1, "end", "active"),
+		turn(3, 2, "precombat_main", "ended"),
+	))
+	sum, out := e.run(t, false)
+	if sum.Computed != 1 || strings.Contains(out, "frames incomplete") {
+		t.Fatalf("%v\n%s", sum, out)
+	}
+	rec, err := gamestats.NewSQLStore(e.d).Get(context.Background(), gameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rec.FramesComplete || rec.Seats[0].Play == nil || rec.Seats[0].Play.OwnTurns != 2 || len(rec.Seats[0].Play.Turns) != 2 {
+		t.Errorf("frames complete %v, Ana's play %+v; want both turns sampled", rec.FramesComplete, rec.Seats[0].Play)
+	}
+
+	// The standard replay never reaches the ended game: not whole.
+	other := uuid.New()
+	e.addGame(t, other, "ended")
+	e.writeReplay(t, other, strings.ReplaceAll(standardReplay(t), gameID.String(), other.String()))
+	if _, out = e.run(t, false); !strings.Contains(out, other.String()+" (frames incomplete)") {
+		t.Errorf("a replay that never ends is reported whole:\n%s", out)
 	}
 }

@@ -60,7 +60,9 @@ func endedGames(ctx context.Context, d *db.DB) ([]endedGame, error) {
 
 // run computes a record for every ended game that needs one and writes a
 // line per game and a summary to out.
-func run(ctx context.Context, d *db.DB, dataDir string, dryRun bool, now time.Time, out io.Writer) (summary, error) {
+// idx is the card index for the deck hash and mana sources; nil is
+// allowed (ADR 0217 §1).
+func run(ctx context.Context, d *db.DB, dataDir string, idx gamestats.CardIndex, dryRun bool, now time.Time, out io.Writer) (summary, error) {
 	games, err := endedGames(ctx, d)
 	if err != nil {
 		return summary{}, err
@@ -71,7 +73,7 @@ func run(ctx context.Context, d *db.DB, dataDir string, dryRun bool, now time.Ti
 		if err := ctx.Err(); err != nil {
 			return sum, err
 		}
-		res, err := backfillOne(ctx, store, dataDir, g, dryRun, now)
+		res, err := backfillOne(ctx, store, dataDir, idx, g, dryRun, now)
 		switch {
 		case err != nil:
 			sum.Failed++
@@ -89,6 +91,9 @@ func run(ctx context.Context, d *db.DB, dataDir string, dryRun bool, now time.Ti
 			if !res.complete {
 				note = " (log incomplete)"
 			}
+			if !res.frames {
+				note += " (frames incomplete)"
+			}
 			_, _ = fmt.Fprintf(out, "%s %s%s\n", verb, g.id, note)
 		}
 	}
@@ -103,9 +108,10 @@ func run(ctx context.Context, d *db.DB, dataDir string, dryRun bool, now time.Ti
 type result struct {
 	skip     string // why the game was skipped; "" if it was computed
 	complete bool
+	frames   bool // the replay's frames were read whole
 }
 
-func backfillOne(ctx context.Context, store gamestats.Store, dataDir string, g endedGame, dryRun bool, now time.Time) (result, error) {
+func backfillOne(ctx context.Context, store gamestats.Store, dataDir string, idx gamestats.CardIndex, g endedGame, dryRun bool, now time.Time) (result, error) {
 	if rec, err := store.Get(ctx, g.id); err == nil {
 		if rec.Version >= gamestats.Version {
 			return result{skip: fmt.Sprintf("already has a version %d record", rec.Version)}, nil
@@ -114,7 +120,8 @@ func backfillOne(ctx context.Context, store gamestats.Store, dataDir string, g e
 		return result{}, err
 	}
 
-	f, err := os.Open(filepath.Join(dataDir, "replays", g.id.String()+".jsonl"))
+	path := filepath.Join(dataDir, "replays", g.id.String()+".jsonl")
+	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return result{skip: "no replay"}, nil
 	}
@@ -133,6 +140,8 @@ func backfillOne(ctx context.Context, store gamestats.Store, dataDir string, g e
 		return result{}, fmt.Errorf("replay holds game %q", m.view.ID)
 	}
 
+	// A second pass over the same file gives Compute the frames (ADR
+	// 0217 §1); the merge above only kept the log and the last view.
 	rec := gamestats.Compute(gamestats.Input{
 		GameID:      g.id,
 		View:        m.view,
@@ -142,13 +151,15 @@ func backfillOne(ctx context.Context, store gamestats.Store, dataDir string, g e
 		Source:      gamestats.SourceReplay,
 		LogComplete: m.complete,
 		Now:         now,
+		Frames:      gamestats.ReplayFile(path, g.id.String()),
+		Cards:       idx,
 	})
 	if !dryRun {
 		if err := store.Put(ctx, rec); err != nil {
 			return result{}, err
 		}
 	}
-	return result{complete: m.complete}, nil
+	return result{complete: m.complete, frames: rec.FramesComplete}, nil
 }
 
 // merged is a replay folded into what gamestats.Compute reads.

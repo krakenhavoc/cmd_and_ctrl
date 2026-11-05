@@ -267,6 +267,60 @@ export interface AdminStatsTally {
   avg_place: number | null;
 }
 
+/** How a game was won (ADR 0217 §3), in the order the server sends them. */
+export type AdminStatsWinKind =
+  | "combo"
+  | "concession"
+  | "win_effect"
+  | "poison"
+  | "commander_damage"
+  | "combat"
+  | "noncombat"
+  | "decking";
+
+/** The rule a combo win fired (ADR 0217 §3). */
+export type AdminStatsComboRule = "loop" | "repeats" | "actions" | "combats";
+
+/** Readable names for the win kinds the Stats tab lists. */
+export const WIN_KIND_NAMES: Record<AdminStatsWinKind, string> = {
+  combo: "Combo",
+  concession: "Concession",
+  win_effect: "Win-the-game effect",
+  poison: "Poison",
+  commander_damage: "Commander damage",
+  combat: "Combat damage",
+  noncombat: "Noncombat damage",
+  decking: "Decking",
+};
+
+/** Readable names for the combo rules the Stats tab lists. */
+export const COMBO_RULE_NAMES: Record<AdminStatsComboRule, string> = {
+  loop: "Loop",
+  repeats: "Repeats",
+  actions: "Actions",
+  combats: "Combats",
+};
+
+/** A kind's readable name; a kind a newer server adds shows as sent. */
+export function statsKindName(names: Record<string, string>, kind: string): string {
+  return Object.hasOwn(names, kind) ? names[kind] : kind.replace(/_/g, " ");
+}
+
+/** One `stats_version` in use and how many of its records read the replay whole. */
+export interface AdminStatsCoverage {
+  version: number;
+  games: number;
+  frames_complete: number;
+  frames_incomplete: number;
+}
+
+/** Games by their seats (ADR 0217 §9). */
+export interface AdminStatsMakeup {
+  people_only: number;
+  with_bots: number;
+  bots_only: number;
+}
+
 /** `GET /admin/stats` (ADR 0165 §8): every list holds at most 25 rows. */
 export interface AdminStatsResponse {
   totals: {
@@ -279,6 +333,14 @@ export interface AdminStatsResponse {
     /** ended games with no record: what the backfill would fill in */
     unrecorded: number;
   };
+  /** Stats record v2 (ADR 0217 slice 2); absent from an older server. */
+  coverage?: AdminStatsCoverage[];
+  /** Games per win kind, kinds with no games left out; absent from an older server. */
+  win_kinds?: { kind: AdminStatsWinKind | (string & {}); games: number }[];
+  /** Combo wins per rule; absent from an older server. */
+  combo_rules?: { kind: AdminStatsComboRule | (string & {}); games: number }[];
+  /** Recorded games by their seats; absent from an older server. */
+  makeup?: AdminStatsMakeup;
   recent: {
     game_id: string;
     name: string;
