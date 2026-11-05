@@ -19,6 +19,7 @@ func init() {
 		OracleID:     "6ef464bd-2ed0-4f99-af4a-ebf276f55384",
 		Name:         "Compassionate Healer",
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Scry: 1},
 		Triggered: []game.TriggeredAbility{
 			OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, ThisBecameTapped,
 				"Compassionate Healer — you gain 1 life and scry 1",
