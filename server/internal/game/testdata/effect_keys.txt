@@ -357,6 +357,7 @@ choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-legacy-of-fire-remove
 choose choose-cards/charming-scoundrel-draw
+choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
@@ -707,6 +708,7 @@ choose grasping-tentacles/take-pick
 choose hama/exile-pick
 choose manifest-dread/pick
 choose resolution-cast/abstract-performance-rest-to-hand
+choose resolution-cast/cmdr-troi-copy-or-draw
 choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
@@ -1579,6 +1581,7 @@ tail dark-tutor/after-hand
 tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
+tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail dice/ancient-copper-dragon-treasures
