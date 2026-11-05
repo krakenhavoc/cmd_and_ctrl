@@ -22,19 +22,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(
-				Targeting(
-					WhenThisEnters("The Wasp — she deals 4 damage to target tapped creature an opponent controls",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := NewContext(g, item)
-							ts := ctx.LegalTargets()
-							if len(ts) == 0 {
-								return nil
-							}
-							return DealDamage{Source: ctx.Source(), Target: ts[0].ID, Amount: 4}.Apply(ctx)
-						}),
-					TargetCreature("target tapped creature an opponent controls", OpponentControls(), b751Tapped())),
-				ForTargets(DamageToTarget(0, 4))),
+			whenThisEntersFourDamageToTappedOpponentCreature("The Wasp — she deals 4 damage to target tapped creature an opponent controls"),
 		},
 	})
 }
