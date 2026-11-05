@@ -1419,6 +1419,12 @@ type cardSnapshot struct {
 	// shows the card as automated again, which is cosmetic, not a
 	// rules change.
 	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+
+	// ExileGrants is Card.ExileGrants (ADR 0219, #4973): abilities a
+	// resolved effect gave an exiled card. Additive within the version:
+	// absent from every earlier file, which restores as "has only its
+	// printed abilities", the state before the field existed.
+	ExileGrants []ExileGrantSnapshot `json:"exileGrants,omitempty"`
 }
 
 // AbilityCounts is how many catalog abilities of each kind a card
@@ -3004,6 +3010,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4120,6 +4127,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,

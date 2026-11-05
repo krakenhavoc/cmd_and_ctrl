@@ -100,7 +100,7 @@ type PlayerTurnTally struct {
 	ArtifactsOrCreaturesSacrificed int `json:"artifactsOrCreaturesSacrificed,omitempty"`
 	// PermanentsLeft counts the permanents this player controlled that
 	// left the battlefield, by any route and to any zone (revolt,
-	// CR 702.136; #2148): a sacrifice, a bounce, an exile, a death, a
+	// CR 207.2c; #2148): a sacrifice, a bounce, an exile, a death, a
 	// token that ceased to exist, a permanent that left and came back.
 	// "As it left" is the controller the exit stamped on the event
 	// (CR 603.10a), not the card's field afterwards. Read through
@@ -2165,7 +2165,7 @@ func (g *Game) VoidThisTurn() bool {
 	return g.TurnTally.NonlandPermanentsLeft > 0 || g.TurnTally.SpellsWarped > 0
 }
 
-// PermanentLeftThisTurn reports revolt (CR 702.136): whether a
+// PermanentLeftThisTurn reports revolt (CR 207.2c): whether a
 // permanent `playerID` controlled left the battlefield this turn.
 //
 // Caller must hold g.mu.

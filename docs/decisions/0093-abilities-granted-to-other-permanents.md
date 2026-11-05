@@ -11,6 +11,7 @@
 "Amendment 2026-10-15 — a granted static in layer 6".
 2026-10-15 — a bundle can carry game-end gates (#3862); see "Amendment 2026-10-15 — a bundle can
 carry 'you can't lose the game'".
+2026-11-05 — a RESOLVED effect's grant to an exiled card (#4973) is [ADR 0219](0219-an-ability-a-resolved-effect-gives-an-exiled-card.md), which reuses the 2026-10-13 bundle and refs.
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every

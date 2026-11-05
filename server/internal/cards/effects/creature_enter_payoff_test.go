@@ -21,6 +21,7 @@ func TestCreatureEnterPayoffDeclarations(t *testing.T) {
 		{"34edbf1b-0826-49f1-a04d-15cc8c543b22", "Witty Roastmaster", game.CreatureEnterPayoff{DamageEachOpponent: 1}},
 		{"90fdfba8-f29e-44f9-91d2-7bf3c458a9c1", "Molten Gatekeeper", game.CreatureEnterPayoff{DamageEachOpponent: 1}},
 		{"e1a2bd31-b800-47cd-8866-1b849a601b09", "Agate Instigator", game.CreatureEnterPayoff{DamageEachOpponent: 1}},
+		{"a4d33e21-d3fe-4d5b-903c-b75e859d6f7f", "Elas il-Kor, Sadistic Pilgrim", game.CreatureEnterPayoff{LifeGain: 1}},
 	}
 	for _, c := range cases {
 		spec, ok := Lookup(c.oracle)
