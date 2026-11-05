@@ -7,7 +7,7 @@ import (
 )
 
 // turn_tally_revolt_test.go — #2148. PlayerTurnTally.PermanentsLeft is
-// revolt (CR 702.136): any permanent the player controlled leaving the
+// revolt (CR 207.2c): any permanent the player controlled leaving the
 // battlefield, by any route, to any zone.
 
 func revoltPush(g *Game, owner uuid.UUID, name, typeLine string) uuid.UUID {

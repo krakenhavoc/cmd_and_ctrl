@@ -327,6 +327,7 @@ choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/archon-of-cruelty-payout
@@ -342,6 +343,7 @@ choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
+choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/breeches-the-blastmaker-sacrifice
 choose choose-cards/burning-wish-take
@@ -768,6 +770,7 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
+confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
 confirm confirm/ajanis-chosen-attach
@@ -946,6 +949,7 @@ drawthen teferi-akosa-discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
+maycast may-cast/free-play-back-land-or-hand
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
@@ -1235,6 +1239,7 @@ pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
+pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
@@ -1396,6 +1401,7 @@ run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
+run the-city-on-the-edge-of-forever/gain-five
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
@@ -1502,6 +1508,7 @@ tail batch21-helpers/after-mill
 tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
+tail beckett-mariner/promotion-check
 tail beseech-the-mirror/cast-or-to-hand
 tail bind-to-life/after-mill
 tail blessed-reincarnation/after-exile
@@ -1706,6 +1713,7 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail gandalf-shadows-foe/return-lands-tapped
 tail gemstone-mine/sacrifice-if-empty
+tail georgiou-terran-emperor/draw-then-officers
 tail ghostly-flicker/return-under-your-control
 tail ghouls-night-out/black-zombies
 tail gifts-ungiven/choose
@@ -1860,6 +1868,7 @@ tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/songbirds-blessing-hand-or-bottom
+tail q-stacking-the-deck/gains-copy-ability
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
@@ -1908,6 +1917,7 @@ tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
+tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saruman-of-many-colors/after-mill
@@ -1935,6 +1945,8 @@ tail spelunking/gain-life-for-a-cave
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail strago-and-relm/after-mill
+tail study-the-classics/double
+tail study-the-classics/gain
 tail summoners-sending/after-exile
 tail summoners-sending/counter-if-big
 tail sunder-the-gateway/choose-an-incubator-and-transform
@@ -2138,6 +2150,7 @@ tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
+tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
 tail ugin-eye-of-the-storms/free-cast-permission
@@ -2148,6 +2161,7 @@ tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
 tail valgavoths-onslaught/manifest-again
+tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step

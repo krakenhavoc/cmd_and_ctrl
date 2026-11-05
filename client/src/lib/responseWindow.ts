@@ -12,11 +12,12 @@
 // Two questions now, over the same server-enumerated move list:
 //
 //   hasResponse — could the viewer answer what is happening? Counters,
-//     instants, targeted abilities, untargeted abilities and special
-//     actions, each one a category the player can switch off. Mana and
-//     land never count, and untargeted abilities are off by default
-//     (#2853). So is a value instant (Opt, Brainstorm) on an
-//     opponent's stack item (#2877).
+//     instants, targeted abilities, untargeted abilities, turning a
+//     face-down creature face up and the other special actions, each
+//     one a category the player can switch off. Mana and land never
+//     count, and untargeted abilities are off by default (#2853). So is
+//     a value instant (Opt, Brainstorm) on an opponent's stack item
+//     (#2877), and so are foretell, suspend, plot and unlock (#2861).
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
 //
@@ -72,7 +73,17 @@ import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 //                 like Mind Stone, a fetch land, a Clue, cycling. Its
 //                 own class so it does not count as a response by
 //                 default.
-//   special     — a CR 116.2 special action (foretell, suspend, …).
+//   faceUp      — #2861: turning a face-down permanent face up (the
+//                 special action of CR 116.2b; params.kind
+//                 "turn_face_up"), outside the sorcery window. It can
+//                 answer a spell, so it counts by default.
+//   special     — any other CR 116.2 special action outside the sorcery
+//                 window: foretell, suspend, plot, unlock, a Damping
+//                 Engine's ignore, and a kind this client does not
+//                 know. Off by default (#2861, owner decision
+//                 2026-10-30): taking one answers nothing. In the
+//                 viewer's own sorcery window every special action is
+//                 a `play`, like a cast there.
 //   declaration — an attack or a block.
 //   other       — a choice answer, a mulligan, a kind this client
 //                 does not know. Counts as a play, never a response.
@@ -84,11 +95,12 @@ export type MoveClass =
   | "valueInstant"
   | "ability"
   | "untargeted"
+  | "faceUp"
   | "special"
   | "declaration"
   | "other";
 
-// ResponseCategories are the six gameplay.respond* toggles.
+// ResponseCategories are the seven gameplay.respond* toggles.
 export interface ResponseCategories {
   counter: boolean;
   instant: boolean;
@@ -97,6 +109,11 @@ export interface ResponseCategories {
   valueInstant: boolean;
   ability: boolean;
   untargeted: boolean;
+  // #2861: turning a face-down creature face up
+  // (gameplay.respondTurnFaceUp, on by default).
+  faceUp: boolean;
+  // #2861: every other special action
+  // (gameplay.respondOtherSpecialActions, off by default).
   special: boolean;
 }
 
@@ -106,6 +123,7 @@ export const ALL_RESPONSES: ResponseCategories = {
   valueInstant: true,
   ability: true,
   untargeted: true,
+  faceUp: true,
   special: true,
 };
 
@@ -114,12 +132,18 @@ export const ALL_RESPONSES: ResponseCategories = {
 // for an instant, a counter, or an ability that targets or protects
 // (owner answer 2). A pure value ability is not interaction, and nor
 // is a value instant on the stack (#2877, owner decision 2026-10-30:
-// option (a)).
+// option (a)). Of the special actions only turning a face-down creature
+// face up stops you (#2861, owner decision 2026-10-30).
 export const DEFAULT_RESPONSES: ResponseCategories = {
   ...ALL_RESPONSES,
   valueInstant: false,
   untargeted: false,
+  special: false,
 };
+
+// TURN_FACE_UP is the special_action move's params.kind for turning a
+// face-down permanent face up (game.SpecialActionTurnFaceUp).
+const TURN_FACE_UP = "turn_face_up";
 
 // classifyMove sorts one enumerated move. `sorceryWindow` is "the
 // viewer's own main phase with an empty stack" — the one window where
@@ -229,7 +253,11 @@ function classifyWith(
       }
       return "untargeted";
     case "special_action":
-      return "special";
+      // #2861: in the viewer's own sorcery window a special action is a
+      // play they came to make (foretell, plot, a companion, the planar
+      // die), as a cast is there, whatever the categories say.
+      if (sorceryWindow) return "play";
+      return m.params?.kind === TURN_FACE_UP ? "faceUp" : "special";
     // #1501: finishing a block declaration is part of the declaration.
     case "attack":
     case "block":
@@ -315,6 +343,8 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
       return cats.ability;
     case "untargeted":
       return cats.untargeted;
+    case "faceUp":
+      return cats.faceUp;
     case "special":
       return cats.special;
     default:

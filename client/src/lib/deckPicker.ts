@@ -259,7 +259,13 @@ export function tilePreview(t: DeckTile): DeckPreview {
         : "";
   return {
     name: t.name,
-    text: { what: t.commander || t.name, second, colors: t.colors, ready: false },
+    text: {
+      what: t.commander || t.name,
+      second,
+      colors: t.colors,
+      colorless: t.identity?.length === 0,
+      ready: false,
+    },
     art: t.art,
   };
 }
