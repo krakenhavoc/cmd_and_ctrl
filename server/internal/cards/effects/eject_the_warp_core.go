@@ -22,6 +22,8 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{KickerSacrifice("an artifact or creature", Or(Artifact(), Creature()))},
 		Targets:       TargetCreature("target creature"),
+		// The unkicked -2/-2 (#4312); kicked, the same harm is -6/-6.
+		Purpose: ForTargets(HarmUntilEOT(0, -2, -2)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			n := 2
 			if ctx.WasKicked() {
