@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // trek_b26_cards_test.go — Star Trek, batch 26 (#4973). Each test plays
@@ -431,7 +430,6 @@ func TestTrekB26ZeroExilesANonlandCardItsOwnerMayCastForTwoMore(t *testing.T) {
 	if err := g.CastSpell(opp.ID, spark, game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
 		t.Fatalf("the owner could not cast it for {2}{R}: %v", err)
 	}
-	_ = legal.TypeCastSpell
 }
 
 func TestTrekB26ZeroMayExileNothing(t *testing.T) {
@@ -544,10 +542,11 @@ func TestTrekB26CombadgeMakesTheWearerUnblockableWithAnotherCommunicatorOut(t *t
 	badgeA := pushCatalogPermanent(g, me.ID, "Combadge", "Artifact — Communicator Equipment", trekB26CombadgeOracle, false)
 	equipTo(t, g, me.ID, badgeA, a)
 
-	// Alone, the Communicator on A does nothing.
-	trekB26Attack(t, g, opp.ID, a)
-	if trekB26CantBeBlocked(t, g, a) {
-		t.Fatal("A is unblockable with no other creature wearing a Communicator")
+	// Alone, the Communicator on A does nothing, even with B (wearing none)
+	// attacking beside it.
+	trekB26Attack(t, g, opp.ID, a, b)
+	if trekB26CantBeBlocked(t, g, a) || trekB26CantBeBlocked(t, g, b) {
+		t.Fatal("unblockable with no other creature wearing a Communicator")
 	}
 
 	g2 := newCatalogGame(t)
