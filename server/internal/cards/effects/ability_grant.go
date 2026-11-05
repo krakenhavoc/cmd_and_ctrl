@@ -123,6 +123,18 @@ type AbilityGrant struct {
 	// creatures are two additional triggers (CR 603.2d: doublers add).
 	TriggerDoublers []game.TriggerDoubler
 
+	// AdditionalLandPlays and CastPermissions are a granted "you may play
+	// an additional land on each of your turns" and a granted standing
+	// permission such as "you may play lands from your graveyard" — the
+	// abilities Nog, Ambitious Cadet gains as an Officer (#4973). Each is
+	// exactly the Spec field of the same name, for the recipient: not a
+	// layer effect, the land-drop count and the standing-permission walk
+	// read them live under the recipient's composite key, so "you" is
+	// the recipient's controller, a recipient that loses its abilities
+	// loses them, and they end the pass the grant does.
+	AdditionalLandPlays int
+	CastPermissions     []game.CastPermission
+
 	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
 	// as for every bundle before #3233. A hand, graveyard or exile bundle
 	// ("each creature card in your hand has ninjutsu {2}{U}{B}") is given
@@ -190,6 +202,9 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		GameEndGates: gr.GameEndGates,
 
 		TriggerDoublers: gr.TriggerDoublers,
+
+		AdditionalLandPlays: gr.AdditionalLandPlays,
+		CastPermissions:     standingCastPermissions(gr.CastPermissions),
 	}
 }
 
@@ -269,7 +284,8 @@ func checkGrants(name string, grants []AbilityGrant) {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
-			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 {
+			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

@@ -216,6 +216,10 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// naming attack targets and attackers by ID, every one of them a
 	// card or player a zone or seat above has already numbered.
 	out.LegalActions = n.legalActions(v.LegalActions)
+	// ADR 0122 §6.2 (#4765): the prompt cuts. Source is a card the walk
+	// above has numbered; Choice is a pending-choice ID, which passes
+	// through as PendingChoices does.
+	out.LegalPromptCuts = n.legalPromptCuts(v.LegalPromptCuts)
 	// ADR 0167: the same digest per controlled seat, keyed by its ID.
 	if len(v.ControlledLegalActions) > 0 {
 		out.ControlledLegalActions = make(map[string]*protocol.LegalActionsView, len(v.ControlledLegalActions))
@@ -253,6 +257,21 @@ func (n *normalizer) legalActions(in *protocol.LegalActionsView) *protocol.Legal
 		src.AttackTargets = n.idList(src.AttackTargets)
 		src.Blocks = n.idList(src.Blocks)
 		out.Sources[n.id(k)] = &src
+	}
+	return out
+}
+
+// legalPromptCuts normalizes each prompt cut's Source card ID.
+func (n *normalizer) legalPromptCuts(in []protocol.LegalCutView) []protocol.LegalCutView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]protocol.LegalCutView, len(in))
+	for i, c := range in {
+		if c.Source != "" {
+			c.Source = n.id(c.Source)
+		}
+		out[i] = c
 	}
 	return out
 }
@@ -705,6 +724,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 		LegalMoves:          []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
 		LegalMovesTruncated: true,
+		LegalPromptCuts:     []protocol.LegalCutView{{Source: cardID, Choice: "choice-1", Cap: "per_source", Omitted: 24}},
 		LegalActions: &protocol.LegalActionsView{Pass: true, Sources: map[string]*protocol.LegalSourceView{
 			cardID: {Kinds: []legal.Kind{legal.KindAttack}, Moves: 1, AttackTargets: []string{oppID}},
 		}},

@@ -66,6 +66,8 @@ var Inventory = join(
 		"lfg", "lfg_message_id"),
 	cols("games", NotPersonal, "the host's choice of a results post in the Discord #game-results channel (ADR 0174); the column names no one. The post itself is in Discord, outside this database (see the privacy notice)",
 		"results"),
+	cols("games", NotPersonal, "when the table was last used and why the server closed it for being idle (ADR 0211); neither names a person",
+		"last_active_at", "closed_reason"),
 
 	cols("seats", Kept, "the seat keeps its place in the game",
 		"game_id", "seat", "player_id", "bot_tier", "agent_client", "deck_name"),

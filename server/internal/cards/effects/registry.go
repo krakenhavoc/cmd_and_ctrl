@@ -785,7 +785,7 @@ func Register(spec Spec) {
 		}
 		// #1221 / #1404: the same rule one zone over. ExileSelf
 		// follows the ability's zone — scavenge's and embalm's
-		// "Exile this card from YOUR GRAVEYARD" (CR 702.96a,
+		// "Exile this card from YOUR GRAVEYARD" (CR 702.97a,
 		// CR 702.128a) from the graveyard, Perpetual Timepiece's
 		// "Exile this artifact" from the battlefield (the default
 		// when Zones is nil). Every zone the ability functions from

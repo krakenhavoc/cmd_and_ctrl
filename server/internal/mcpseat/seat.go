@@ -551,7 +551,8 @@ func (s *Seat) step(ctx context.Context) {
 		s.lastCounted = key
 		s.stats.windows++
 		// #4737: a list is cut when the wire degraded it OR the enumerator
-		// cut a card's moves; only the first raises legal_moves_truncated.
+		// cut a card's moves or a prompt's answers (#4765); only the first
+		// raises legal_moves_truncated.
 		if s.truncated || len(w.cuts) > 0 {
 			s.stats.truncatedWindows++
 		}
@@ -596,6 +597,11 @@ func (s *Seat) step(ctx context.Context) {
 			}
 			s.mu.Unlock()
 		}
+	} else if !noReq && hasPromptCut(w.cuts) {
+		// #4765: the frame names a cut prompt on a list the wire did not
+		// cut, so no full-list reply brings the cut; a capped search is
+		// fetched in full all the same.
+		s.expandSearches(ctx, w)
 	}
 
 	s.mu.Lock()
@@ -693,13 +699,25 @@ func (s *Seat) expandSearches(ctx context.Context, w *window) {
 	}
 }
 
+// hasPromptCut reports whether any cut is in answering a prompt.
+func hasPromptCut(cuts []protocol.LegalCutView) bool {
+	for _, c := range cuts {
+		if c.Choice != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // digestCuts is the enumerator's cut report as a snapshot carries it
 // (ADR 0122 §6.2): each card's entry in the seat's own legal_actions, and
 // in the digest of each seat it plays for (ADR 0167 §7), names the count
 // caps that left some of that card's moves out. legal_moves_truncated says
 // only whether the 48-move wire cap degraded the list, so a list under it
-// whose cards were cut carries the news here alone (#4737). The cuts come
-// in the order their cards' moves do.
+// whose cards were cut carries the news here alone (#4737). A prompt's
+// cuts (a search, a discard) ride legal_prompt_cuts, with the card that
+// raised the prompt when one did (#4765). The cuts come in the order
+// their cards' moves do, and a prompt no card raised comes last.
 func digestCuts(v *protocol.GameView, moves []legal.Move) []protocol.LegalCutView {
 	if v == nil {
 		return nil
@@ -720,6 +738,14 @@ func digestCuts(v *protocol.GameView, moves []legal.Move) []protocol.LegalCutVie
 			}
 		}
 	}
+	var sourceless []protocol.LegalCutView
+	for _, c := range v.LegalPromptCuts {
+		if c.Source == "" {
+			sourceless = append(sourceless, c)
+			continue
+		}
+		bySource[c.Source] = append(bySource[c.Source], c)
+	}
 	var out []protocol.LegalCutView
 	for _, m := range moves {
 		id := m.Source.String()
@@ -737,7 +763,7 @@ func digestCuts(v *protocol.GameView, moves []legal.Move) []protocol.LegalCutVie
 	for _, id := range rest {
 		out = append(out, bySource[id]...)
 	}
-	return out
+	return append(out, sourceless...)
 }
 
 // Bounds on what the binary fetches for one window on its own (#4737).

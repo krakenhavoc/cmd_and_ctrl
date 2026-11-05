@@ -51,7 +51,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 				Cost:    ManaCost("{W/B}{W/B}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !frodoSauronsBaneIs(g, item, "Citizen") {
+					if !sourceIsStillThisPermanentWithTextSubtype(g, item, "Citizen") {
 						return nil
 					}
 					self := item.SourceCardID
@@ -75,7 +75,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    ManaCost("{B}{B}{B}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !frodoSauronsBaneIs(g, item, "Scout") {
+					if !sourceIsStillThisPermanentWithTextSubtype(g, item, "Scout") {
 						return nil
 					}
 					self := item.SourceCardID
@@ -93,18 +93,6 @@ func init() {
 }
 
 const frodoSauronsBaneRogueGrant = "frodo-saurons-bane/rogue"
-
-// frodoSauronsBaneIs is the abilities' "if Frodo is a <type>", read as
-// the ability resolves: Frodo must still be the permanent that
-// activated it (CR 400.7) and have that creature type now.
-func frodoSauronsBaneIs(g *game.Game, item *game.StackItem, subtype string) bool {
-	if !sourceIsStillThisPermanent(g, item) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	// "Citizen", "Scout": words of Frodo's text (CR 612.2, #3984).
-	return ok && c.HasSubtype(g.TextReaderForEffect(item).TextSubtype(subtype))
-}
 
 // frodoSauronsBaneRogueHits is the granted trigger's resolution: the
 // damaged player loses if the Ring has tempted the trigger's controller

@@ -400,6 +400,12 @@ type ManaSpendContext struct {
 	// alternative cost. False for every payment that is not a cast.
 	ManaCostHasX bool
 
+	// YourCommander is set when the spell being cast is a commander its
+	// caster owns (CR 903.3d): what ManaRestrictYourCommander reads.
+	// Set by ManaSpendForCast; false for every payment that is not a
+	// cast.
+	YourCommander bool
+
 	// ManaValue is the mana value of the spell being cast as it is on
 	// the stack, and ManaValueKnown whether the engine could read its
 	// cost: what ManaRestrictManaValueAtLeast reads (#4694, CR 202.3).
@@ -584,6 +590,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
+		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
 }
@@ -661,6 +668,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
+	case ManaRestrictYourCommander:
+		return ctx.Purpose == SpendPurposeCast && ctx.YourCommander
 	case ManaRestrictSpellXCost:
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
 	case ManaRestrictUnlock:

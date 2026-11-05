@@ -17,21 +17,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // line is a triggered ability that exists only while the Spacecraft has
 // three or more charge counters (CR 721.2a, TriggeredAbility.ActiveWhen).
 // The token is created through the keyed creation door and the sacrifice
-// is Determined Iteration's: a CR 603.7 delayed trigger over exactly the
+// is Determined Iteration's (trekKlingonWarriorSacrificedAtNextEndStep, shared
+// with L'Rell, Fierce Visionary): a CR 603.7 delayed trigger over exactly the
 // tokens this trigger made, so a replacement that makes more (or none)
 // is followed.
 //
 // No simplification.
 func init() {
 	combat := AtBeginningOfYourCombat("D-7 Battle Cruiser — create a 2/1 Klingon Warrior with haste; sacrifice it at the next end step",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			return g.CreateTokensKeyedForEffect(game.TokenCreation{
-				Controller: item.Controller,
-				Source:     item.SourceCardID,
-				Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("2/1 red Klingon Warrior with haste")), Count: 1}},
-			}, ctx.ItemTail(d7BattleCruiserSacrificeAtEnd))
-		})
+		trekKlingonWarriorSacrificedAtNextEndStep(d7BattleCruiserSacrificeAtEnd))
 	combat.ActiveWhen = AtChargeCounters(3)
 	Register(Spec{
 		OracleID:     "5e696f9a-425c-470a-870e-10d2ba3bb27d",
@@ -48,13 +42,5 @@ func init() {
 
 // d7BattleCruiserSacrificeAtEnd schedules the sacrifice of the token(s) the
 // trigger made (the tail's IDs). An on-disk key.
-var d7BattleCruiserSacrificeAtEnd = CardTail("d-7-battle-cruiser/sacrifice-at-end", func(ctx *Context, o game.TailOutcome) error {
-	if len(o.IDs) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: "D-7 Battle Cruiser — sacrifice the Klingon Warrior",
-		Cards: o.IDs,
-		Body:  sacrificeListedCardsBody,
-	}.Apply(ctx)
-})
+var d7BattleCruiserSacrificeAtEnd = CardTail("d-7-battle-cruiser/sacrifice-at-end",
+	trekSacrificeTokensAtNextEndStep("D-7 Battle Cruiser — sacrifice the Klingon Warrior"))

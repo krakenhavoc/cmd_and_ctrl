@@ -214,6 +214,9 @@ battlefield.cards[].keywords[]	string
 battlefield.cards[].knownBy	map:array
 battlefield.cards[].knownBy{}	bool
 battlefield.cards[].layout	string
+battlefield.cards[].linkedPermanent	object
+battlefield.cards[].linkedPermanent.epoch	number:int
+battlefield.cards[].linkedPermanent.id	custom(uuid.UUID)
 battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
 battlefield.cards[].manaAbilityText	number:uint8
@@ -561,6 +564,8 @@ delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
 delayedTriggers[].untilLeaves.epoch	number:int
 delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
+dilemmasFacedThisTurn	map:array
+dilemmasFacedThisTurn{}	number:int
 discardPending	map:array
 discardPending{}	number:int
 drawnThisStep	map:array
@@ -748,6 +753,9 @@ enteringTokens[].keywords[]	string
 enteringTokens[].knownBy	map:array
 enteringTokens[].knownBy{}	bool
 enteringTokens[].layout	string
+enteringTokens[].linkedPermanent	object
+enteringTokens[].linkedPermanent.epoch	number:int
+enteringTokens[].linkedPermanent.id	custom(uuid.UUID)
 enteringTokens[].lostLastCounter	bool
 enteringTokens[].manaAbilityCount	number:int
 enteringTokens[].manaAbilityText	number:uint8
@@ -1241,6 +1249,9 @@ exile.cards[].keywords[]	string
 exile.cards[].knownBy	map:array
 exile.cards[].knownBy{}	bool
 exile.cards[].layout	string
+exile.cards[].linkedPermanent	object
+exile.cards[].linkedPermanent.epoch	number:int
+exile.cards[].linkedPermanent.id	custom(uuid.UUID)
 exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
 exile.cards[].manaAbilityText	number:uint8
@@ -1930,6 +1941,7 @@ followUpParks[].then.permission.condition.objectID	custom(uuid.UUID)
 followUpParks[].then.permission.condition.subtype	string
 followUpParks[].then.permission.cost	string
 followUpParks[].then.permission.costLess	number:int
+followUpParks[].then.permission.costMore	number:int
 followUpParks[].then.permission.discardCard	bool
 followUpParks[].then.permission.discardLandCard	bool
 followUpParks[].then.permission.discover	object
@@ -2539,6 +2551,7 @@ frozenEntries[].event.counterTail.then.permission.condition.objectID	custom(uuid
 frozenEntries[].event.counterTail.then.permission.condition.subtype	string
 frozenEntries[].event.counterTail.then.permission.cost	string
 frozenEntries[].event.counterTail.then.permission.costLess	number:int
+frozenEntries[].event.counterTail.then.permission.costMore	number:int
 frozenEntries[].event.counterTail.then.permission.discardCard	bool
 frozenEntries[].event.counterTail.then.permission.discardLandCard	bool
 frozenEntries[].event.counterTail.then.permission.discover	object
@@ -3127,6 +3140,7 @@ frozenEntries[].event.damageTail.each.each.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.each.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.each.permission.cost	string
 frozenEntries[].event.damageTail.each.each.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.each.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.each.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discover	object
@@ -3706,6 +3720,7 @@ frozenEntries[].event.damageTail.each.then.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.then.permission.cost	string
 frozenEntries[].event.damageTail.each.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discover	object
@@ -4183,6 +4198,7 @@ frozenEntries[].event.damageTail.sourceLki.Controller	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.CostPower	array
 frozenEntries[].event.damageTail.sourceLki.CostPower[]	object
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Bonus	number:int
+frozenEntries[].event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
@@ -4454,6 +4470,7 @@ frozenEntries[].event.damageTail.then.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.damageTail.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.then.permission.cost	string
 frozenEntries[].event.damageTail.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.then.permission.discover	object
@@ -5150,6 +5167,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.obj
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -5803,6 +5821,7 @@ frozenEntries[].event.entryTail.batch.then.permission.condition.objectID	custom(
 frozenEntries[].event.entryTail.batch.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discover	object
@@ -6382,6 +6401,7 @@ frozenEntries[].event.entryTail.keyed.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.entryTail.keyed.permission.condition.subtype	string
 frozenEntries[].event.entryTail.keyed.permission.cost	string
 frozenEntries[].event.entryTail.keyed.permission.costLess	number:int
+frozenEntries[].event.entryTail.keyed.permission.costMore	number:int
 frozenEntries[].event.entryTail.keyed.permission.discardCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discover	object
@@ -6993,6 +7013,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costLess	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMore	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discover	object
@@ -7592,6 +7613,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.condition.objectID	custom
 frozenEntries[].event.entryTail.tokens.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.cost	string
 frozenEntries[].event.entryTail.tokens.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discover	object
@@ -8133,6 +8155,9 @@ frozenEntries[].event.keywordActionTail.armyToken.keywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.knownBy	map:array
 frozenEntries[].event.keywordActionTail.armyToken.knownBy{}	bool
 frozenEntries[].event.keywordActionTail.armyToken.layout	string
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent	object
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.lostLastCounter	bool
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityCount	number:int
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -8584,6 +8609,7 @@ frozenEntries[].event.keywordActionTail.then.permission.condition.objectID	custo
 frozenEntries[].event.keywordActionTail.then.permission.condition.subtype	string
 frozenEntries[].event.keywordActionTail.then.permission.cost	string
 frozenEntries[].event.keywordActionTail.then.permission.costLess	number:int
+frozenEntries[].event.keywordActionTail.then.permission.costMore	number:int
 frozenEntries[].event.keywordActionTail.then.permission.discardCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardLandCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discover	object
@@ -9185,6 +9211,7 @@ frozenEntries[].event.lifeTail.each.then.permission.condition.objectID	custom(uu
 frozenEntries[].event.lifeTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.each.then.permission.cost	string
 frozenEntries[].event.lifeTail.each.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.each.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.each.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discover	object
@@ -9767,6 +9794,7 @@ frozenEntries[].event.lifeTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.lifeTail.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.then.permission.cost	string
 frozenEntries[].event.lifeTail.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.then.permission.discover	object
@@ -10296,6 +10324,9 @@ frozenEntries[].event.millTail.run.planned[].keywords[]	string
 frozenEntries[].event.millTail.run.planned[].knownBy	map:array
 frozenEntries[].event.millTail.run.planned[].knownBy{}	bool
 frozenEntries[].event.millTail.run.planned[].layout	string
+frozenEntries[].event.millTail.run.planned[].linkedPermanent	object
+frozenEntries[].event.millTail.run.planned[].linkedPermanent.epoch	number:int
+frozenEntries[].event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.planned[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -10686,6 +10717,9 @@ frozenEntries[].event.millTail.run.seen[].keywords[]	string
 frozenEntries[].event.millTail.run.seen[].knownBy	map:array
 frozenEntries[].event.millTail.run.seen[].knownBy{}	bool
 frozenEntries[].event.millTail.run.seen[].layout	string
+frozenEntries[].event.millTail.run.seen[].linkedPermanent	object
+frozenEntries[].event.millTail.run.seen[].linkedPermanent.epoch	number:int
+frozenEntries[].event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.seen[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -11130,6 +11164,7 @@ frozenEntries[].event.millTail.run.then.permission.condition.objectID	custom(uui
 frozenEntries[].event.millTail.run.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.run.then.permission.cost	string
 frozenEntries[].event.millTail.run.then.permission.costLess	number:int
+frozenEntries[].event.millTail.run.then.permission.costMore	number:int
 frozenEntries[].event.millTail.run.then.permission.discardCard	bool
 frozenEntries[].event.millTail.run.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.run.then.permission.discover	object
@@ -11707,6 +11742,7 @@ frozenEntries[].event.millTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.millTail.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.then.permission.cost	string
 frozenEntries[].event.millTail.then.permission.costLess	number:int
+frozenEntries[].event.millTail.then.permission.costMore	number:int
 frozenEntries[].event.millTail.then.permission.discardCard	bool
 frozenEntries[].event.millTail.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.then.permission.discover	object
@@ -12203,6 +12239,7 @@ frozenEntries[].event.sourceLki.Controller	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.CostPower	array
 frozenEntries[].event.sourceLki.CostPower[]	object
 frozenEntries[].event.sourceLki.CostPower[].Bonus	number:int
+frozenEntries[].event.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
@@ -12355,6 +12392,7 @@ frozenEntries[].event.stackItem.paid.tappedOthers[].epoch	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.tappedOthers[].left	bool
 frozenEntries[].event.stackItem.paid.tappedOthers[].power	number:int
+frozenEntries[].event.stackItem.paid.tappedOthers[].stationPower	number:int
 frozenEntries[].event.stackItem.params	object
 frozenEntries[].event.stackItem.params.ability	object
 frozenEntries[].event.stackItem.params.ability.key	string
@@ -12757,6 +12795,9 @@ frozenEntries[].event.tokenGroups[].template.keywords[]	string
 frozenEntries[].event.tokenGroups[].template.knownBy	map:array
 frozenEntries[].event.tokenGroups[].template.knownBy{}	bool
 frozenEntries[].event.tokenGroups[].template.layout	string
+frozenEntries[].event.tokenGroups[].template.linkedPermanent	object
+frozenEntries[].event.tokenGroups[].template.linkedPermanent.epoch	number:int
+frozenEntries[].event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.lostLastCounter	bool
 frozenEntries[].event.tokenGroups[].template.manaAbilityCount	number:int
 frozenEntries[].event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -13202,6 +13243,7 @@ frozenEntries[].event.tokenTail.then.permission.condition.objectID	custom(uuid.U
 frozenEntries[].event.tokenTail.then.permission.condition.subtype	string
 frozenEntries[].event.tokenTail.then.permission.cost	string
 frozenEntries[].event.tokenTail.then.permission.costLess	number:int
+frozenEntries[].event.tokenTail.then.permission.costMore	number:int
 frozenEntries[].event.tokenTail.then.permission.discardCard	bool
 frozenEntries[].event.tokenTail.then.permission.discardLandCard	bool
 frozenEntries[].event.tokenTail.then.permission.discover	object
@@ -13735,6 +13777,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].knownBy	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -14125,6 +14170,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].knownBy	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -14569,6 +14617,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.objectI
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -15180,6 +15229,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.o
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -15757,6 +15807,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.objectID	cus
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discover	object
@@ -16354,6 +16405,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.objectID	c
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discover	object
@@ -17016,6 +17068,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.objectID	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -17540,6 +17593,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].keywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].knownBy	map:array
 frozenEntries[].event.zoneRoute.simultaneousExit[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].layout	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -17890,6 +17946,7 @@ heldCombatDamage.answers[].frame.SourceLKI.Controller	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.CostPower	array
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[]	object
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Bonus	number:int
+heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Multiplier	number:int
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughness	bool
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
@@ -18065,6 +18122,7 @@ lastKnownBattlefield{}.Controller	custom(uuid.UUID)
 lastKnownBattlefield{}.CostPower	array
 lastKnownBattlefield{}.CostPower[]	object
 lastKnownBattlefield{}.CostPower[].Bonus	number:int
+lastKnownBattlefield{}.CostPower[].Multiplier	number:int
 lastKnownBattlefield{}.CostPower[].UseToughness	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
@@ -18244,6 +18302,7 @@ lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.CostPower	array
 lastKnownPermanents{}[].characteristic.CostPower[]	object
 lastKnownPermanents{}[].characteristic.CostPower[].Bonus	number:int
+lastKnownPermanents{}[].characteristic.CostPower[].Multiplier	number:int
 lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
@@ -18337,6 +18396,9 @@ lastKnownPermanents{}[].delved[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].enchanted	bool
 lastKnownPermanents{}[].epoch	number:int
 lastKnownPermanents{}[].left	bool
+lastKnownPermanents{}[].linkedPermanent	object
+lastKnownPermanents{}[].linkedPermanent.epoch	number:int
+lastKnownPermanents{}[].linkedPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
@@ -18531,6 +18593,9 @@ lastKnownStack[].card.keywords[]	string
 lastKnownStack[].card.knownBy	map:array
 lastKnownStack[].card.knownBy{}	bool
 lastKnownStack[].card.layout	string
+lastKnownStack[].card.linkedPermanent	object
+lastKnownStack[].card.linkedPermanent.epoch	number:int
+lastKnownStack[].card.linkedPermanent.id	custom(uuid.UUID)
 lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
 lastKnownStack[].card.manaAbilityText	number:uint8
@@ -18857,6 +18922,7 @@ lastKnownStack[].item.paid.tappedOthers[].epoch	number:int
 lastKnownStack[].item.paid.tappedOthers[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.tappedOthers[].left	bool
 lastKnownStack[].item.paid.tappedOthers[].power	number:int
+lastKnownStack[].item.paid.tappedOthers[].stationPower	number:int
 lastKnownStack[].item.params	object
 lastKnownStack[].item.params.ability	object
 lastKnownStack[].item.params.ability.key	string
@@ -19329,6 +19395,7 @@ pausedModeWalk.item.paid.tappedOthers[].epoch	number:int
 pausedModeWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.tappedOthers[].left	bool
 pausedModeWalk.item.paid.tappedOthers[].power	number:int
+pausedModeWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedModeWalk.item.params	object
 pausedModeWalk.item.params.ability	object
 pausedModeWalk.item.params.ability.key	string
@@ -19650,6 +19717,7 @@ pausedResolutionTail.item.paid.tappedOthers[].epoch	number:int
 pausedResolutionTail.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.tappedOthers[].left	bool
 pausedResolutionTail.item.paid.tappedOthers[].power	number:int
+pausedResolutionTail.item.paid.tappedOthers[].stationPower	number:int
 pausedResolutionTail.item.params	object
 pausedResolutionTail.item.params.ability	object
 pausedResolutionTail.item.params.ability.key	string
@@ -19965,6 +20033,7 @@ pausedStepWalk.item.paid.tappedOthers[].epoch	number:int
 pausedStepWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.tappedOthers[].left	bool
 pausedStepWalk.item.paid.tappedOthers[].power	number:int
+pausedStepWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedStepWalk.item.params	object
 pausedStepWalk.item.params.ability	object
 pausedStepWalk.item.params.ability.key	string
@@ -20494,6 +20563,7 @@ pendingChoices[].assist.spend.Supertypes	array
 pendingChoices[].assist.spend.Supertypes[]	string
 pendingChoices[].assist.spend.Types	array
 pendingChoices[].assist.spend.Types[]	string
+pendingChoices[].assist.spend.YourCommander	bool
 pendingChoices[].attackSplit	object
 pendingChoices[].attackSplit.controller	custom(uuid.UUID)
 pendingChoices[].attackSplit.count	number:int
@@ -20701,6 +20771,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.keywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.knownBy	map:array
 pendingChoices[].attackSplit.settled.chosen[].template.knownBy{}	bool
 pendingChoices[].attackSplit.settled.chosen[].template.layout	string
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent	object
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityText	number:uint8
@@ -21110,6 +21183,9 @@ pendingChoices[].attackSplit.settled.groups[].template.keywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.knownBy	map:array
 pendingChoices[].attackSplit.settled.groups[].template.knownBy{}	bool
 pendingChoices[].attackSplit.settled.groups[].template.layout	string
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent	object
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityText	number:uint8
@@ -21559,6 +21635,7 @@ pendingChoices[].attackSplit.tail.permission.condition.objectID	custom(uuid.UUID
 pendingChoices[].attackSplit.tail.permission.condition.subtype	string
 pendingChoices[].attackSplit.tail.permission.cost	string
 pendingChoices[].attackSplit.tail.permission.costLess	number:int
+pendingChoices[].attackSplit.tail.permission.costMore	number:int
 pendingChoices[].attackSplit.tail.permission.discardCard	bool
 pendingChoices[].attackSplit.tail.permission.discardLandCard	bool
 pendingChoices[].attackSplit.tail.permission.discover	object
@@ -22079,6 +22156,9 @@ pendingChoices[].attackSplit.template.keywords[]	string
 pendingChoices[].attackSplit.template.knownBy	map:array
 pendingChoices[].attackSplit.template.knownBy{}	bool
 pendingChoices[].attackSplit.template.layout	string
+pendingChoices[].attackSplit.template.linkedPermanent	object
+pendingChoices[].attackSplit.template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.lostLastCounter	bool
 pendingChoices[].attackSplit.template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.template.manaAbilityText	number:uint8
@@ -22440,6 +22520,7 @@ pendingChoices[].copyWalk.item.paid.tappedOthers[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.tappedOthers[].left	bool
 pendingChoices[].copyWalk.item.paid.tappedOthers[].power	number:int
+pendingChoices[].copyWalk.item.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].copyWalk.item.params	object
 pendingChoices[].copyWalk.item.params.ability	object
 pendingChoices[].copyWalk.item.params.ability.key	string
@@ -22831,6 +22912,9 @@ pendingChoices[].copyWalk.src.keywords[]	string
 pendingChoices[].copyWalk.src.knownBy	map:array
 pendingChoices[].copyWalk.src.knownBy{}	bool
 pendingChoices[].copyWalk.src.layout	string
+pendingChoices[].copyWalk.src.linkedPermanent	object
+pendingChoices[].copyWalk.src.linkedPermanent.epoch	number:int
+pendingChoices[].copyWalk.src.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.lostLastCounter	bool
 pendingChoices[].copyWalk.src.manaAbilityCount	number:int
 pendingChoices[].copyWalk.src.manaAbilityText	number:uint8
@@ -23219,6 +23303,7 @@ pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.CostPower	array
 pendingChoices[].damageAssignment.SourceLKI.CostPower[]	object
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Bonus	number:int
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].Multiplier	number:int
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
@@ -23513,6 +23598,7 @@ pendingChoices[].diceRoll.then.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.condition.subtype	string
 pendingChoices[].diceRoll.then.permission.cost	string
 pendingChoices[].diceRoll.then.permission.costLess	number:int
+pendingChoices[].diceRoll.then.permission.costMore	number:int
 pendingChoices[].diceRoll.then.permission.discardCard	bool
 pendingChoices[].diceRoll.then.permission.discardLandCard	bool
 pendingChoices[].diceRoll.then.permission.discover	object
@@ -24025,6 +24111,7 @@ pendingChoices[].divideShield.staged[].lki.Controller	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.CostPower	array
 pendingChoices[].divideShield.staged[].lki.CostPower[]	object
 pendingChoices[].divideShield.staged[].lki.CostPower[].Bonus	number:int
+pendingChoices[].divideShield.staged[].lki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
@@ -24189,6 +24276,7 @@ pendingChoices[].divideShield.staged[].sourceLki.Controller	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.CostPower	array
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[]	object
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
@@ -24465,6 +24553,7 @@ pendingChoices[].divideShield.walk.each.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.each.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.each.permission.cost	string
 pendingChoices[].divideShield.walk.each.permission.costLess	number:int
+pendingChoices[].divideShield.walk.each.permission.costMore	number:int
 pendingChoices[].divideShield.walk.each.permission.discardCard	bool
 pendingChoices[].divideShield.walk.each.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.each.permission.discover	object
@@ -25044,6 +25133,7 @@ pendingChoices[].divideShield.walk.then.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.then.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.then.permission.cost	string
 pendingChoices[].divideShield.walk.then.permission.costLess	number:int
+pendingChoices[].divideShield.walk.then.permission.costMore	number:int
 pendingChoices[].divideShield.walk.then.permission.discardCard	bool
 pendingChoices[].divideShield.walk.then.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.then.permission.discover	object
@@ -25629,6 +25719,7 @@ pendingChoices[].libraryOrder.then.permission.condition.objectID	custom(uuid.UUI
 pendingChoices[].libraryOrder.then.permission.condition.subtype	string
 pendingChoices[].libraryOrder.then.permission.cost	string
 pendingChoices[].libraryOrder.then.permission.costLess	number:int
+pendingChoices[].libraryOrder.then.permission.costMore	number:int
 pendingChoices[].libraryOrder.then.permission.discardCard	bool
 pendingChoices[].libraryOrder.then.permission.discardLandCard	bool
 pendingChoices[].libraryOrder.then.permission.discover	object
@@ -26264,6 +26355,7 @@ pendingChoices[].nameThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.condition.subtype	string
 pendingChoices[].nameThen.permission.cost	string
 pendingChoices[].nameThen.permission.costLess	number:int
+pendingChoices[].nameThen.permission.costMore	number:int
 pendingChoices[].nameThen.permission.discardCard	bool
 pendingChoices[].nameThen.permission.discardLandCard	bool
 pendingChoices[].nameThen.permission.discover	object
@@ -27302,6 +27394,7 @@ pendingChoices[].pickTail.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.condition.subtype	string
 pendingChoices[].pickTail.permission.cost	string
 pendingChoices[].pickTail.permission.costLess	number:int
+pendingChoices[].pickTail.permission.costMore	number:int
 pendingChoices[].pickTail.permission.discardCard	bool
 pendingChoices[].pickTail.permission.discardLandCard	bool
 pendingChoices[].pickTail.permission.discover	object
@@ -27925,6 +28018,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.condition.o
 pendingChoices[].replacementResume.event.counterTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discover	object
@@ -28513,6 +28607,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discover	object
@@ -29092,6 +29187,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discover	object
@@ -29569,6 +29665,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Controller	custom(
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
@@ -29840,6 +29937,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.condition.ob
 pendingChoices[].replacementResume.event.damageTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discover	object
@@ -30536,6 +30634,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -31189,6 +31288,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.conditi
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discover	object
@@ -31768,6 +31868,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.ob
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discover	object
@@ -32379,6 +32480,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discover	object
@@ -32978,6 +33080,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condit
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discover	object
@@ -33519,6 +33622,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.keywords[]	
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.knownBy	map:array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.knownBy{}	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.layout	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.lostLastCounter	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -33970,6 +34076,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condi
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discover	object
@@ -34571,6 +34678,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discover	object
@@ -35153,6 +35261,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discover	object
@@ -35682,6 +35791,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].keywords[]	strin
 pendingChoices[].replacementResume.event.millTail.run.planned[].knownBy	map:array
 pendingChoices[].replacementResume.event.millTail.run.planned[].knownBy{}	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].layout	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -36072,6 +36184,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].knownBy	map:array
 pendingChoices[].replacementResume.event.millTail.run.seen[].knownBy{}	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].layout	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -36516,6 +36631,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.
 pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discover	object
@@ -37093,6 +37209,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.millTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discover	object
@@ -37589,6 +37706,7 @@ pendingChoices[].replacementResume.event.sourceLki.Controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.CostPower	array
 pendingChoices[].replacementResume.event.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].replacementResume.event.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
@@ -37741,6 +37859,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].epoch	num
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].left	bool
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].power	number:int
+pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].replacementResume.event.stackItem.params	object
 pendingChoices[].replacementResume.event.stackItem.params.ability	object
 pendingChoices[].replacementResume.event.stackItem.params.ability.key	string
@@ -38143,6 +38262,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.keywords[]	strin
 pendingChoices[].replacementResume.event.tokenGroups[].template.knownBy	map:array
 pendingChoices[].replacementResume.event.tokenGroups[].template.knownBy{}	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.layout	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.lostLastCounter	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -38588,6 +38710,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.obj
 pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discover	object
@@ -39121,6 +39244,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].keyw
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -39511,6 +39637,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].keyword
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -39955,6 +40084,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -40566,6 +40696,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -41143,6 +41274,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.con
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discover	object
@@ -41740,6 +41872,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.c
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discover	object
@@ -42402,6 +42535,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -42926,6 +43060,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].keywords[]
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -43400,6 +43537,7 @@ pendingChoices[].scryThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.condition.subtype	string
 pendingChoices[].scryThen.permission.cost	string
 pendingChoices[].scryThen.permission.costLess	number:int
+pendingChoices[].scryThen.permission.costMore	number:int
 pendingChoices[].scryThen.permission.discardCard	bool
 pendingChoices[].scryThen.permission.discardLandCard	bool
 pendingChoices[].scryThen.permission.discover	object
@@ -44024,6 +44162,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.condition.objectID	custom
 pendingChoices[].searchPrompt.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.cost	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.costLess	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.costMore	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discover	object
@@ -44741,6 +44880,7 @@ pendingChoices[].targetWalk.frame.lki.Controller	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.CostPower	array
 pendingChoices[].targetWalk.frame.lki.CostPower[]	object
 pendingChoices[].targetWalk.frame.lki.CostPower[].Bonus	number:int
+pendingChoices[].targetWalk.frame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughness	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
@@ -44954,6 +45094,9 @@ pendingChoices[].targetWalk.frame.source.keywords[]	string
 pendingChoices[].targetWalk.frame.source.knownBy	map:array
 pendingChoices[].targetWalk.frame.source.knownBy{}	bool
 pendingChoices[].targetWalk.frame.source.layout	string
+pendingChoices[].targetWalk.frame.source.linkedPermanent	object
+pendingChoices[].targetWalk.frame.source.linkedPermanent.epoch	number:int
+pendingChoices[].targetWalk.frame.source.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.lostLastCounter	bool
 pendingChoices[].targetWalk.frame.source.manaAbilityCount	number:int
 pendingChoices[].targetWalk.frame.source.manaAbilityText	number:uint8
@@ -45426,6 +45569,7 @@ pendingChoices[].triggerFrame.lki.Controller	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.CostPower	array
 pendingChoices[].triggerFrame.lki.CostPower[]	object
 pendingChoices[].triggerFrame.lki.CostPower[].Bonus	number:int
+pendingChoices[].triggerFrame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].triggerFrame.lki.CostPower[].UseToughness	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
@@ -45639,6 +45783,9 @@ pendingChoices[].triggerFrame.source.keywords[]	string
 pendingChoices[].triggerFrame.source.knownBy	map:array
 pendingChoices[].triggerFrame.source.knownBy{}	bool
 pendingChoices[].triggerFrame.source.layout	string
+pendingChoices[].triggerFrame.source.linkedPermanent	object
+pendingChoices[].triggerFrame.source.linkedPermanent.epoch	number:int
+pendingChoices[].triggerFrame.source.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.lostLastCounter	bool
 pendingChoices[].triggerFrame.source.manaAbilityCount	number:int
 pendingChoices[].triggerFrame.source.manaAbilityText	number:uint8
@@ -46100,6 +46247,7 @@ pendingTriggers[].paid.tappedOthers[].epoch	number:int
 pendingTriggers[].paid.tappedOthers[].id	custom(uuid.UUID)
 pendingTriggers[].paid.tappedOthers[].left	bool
 pendingTriggers[].paid.tappedOthers[].power	number:int
+pendingTriggers[].paid.tappedOthers[].stationPower	number:int
 pendingTriggers[].params	object
 pendingTriggers[].params.ability	object
 pendingTriggers[].params.ability.key	string
@@ -46477,6 +46625,9 @@ phasedOut.cards[].keywords[]	string
 phasedOut.cards[].knownBy	map:array
 phasedOut.cards[].knownBy{}	bool
 phasedOut.cards[].layout	string
+phasedOut.cards[].linkedPermanent	object
+phasedOut.cards[].linkedPermanent.epoch	number:int
+phasedOut.cards[].linkedPermanent.id	custom(uuid.UUID)
 phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
 phasedOut.cards[].manaAbilityText	number:uint8
@@ -46870,6 +47021,9 @@ planechase.deck.cards[].keywords[]	string
 planechase.deck.cards[].knownBy	map:array
 planechase.deck.cards[].knownBy{}	bool
 planechase.deck.cards[].layout	string
+planechase.deck.cards[].linkedPermanent	object
+planechase.deck.cards[].linkedPermanent.epoch	number:int
+planechase.deck.cards[].linkedPermanent.id	custom(uuid.UUID)
 planechase.deck.cards[].lostLastCounter	bool
 planechase.deck.cards[].manaAbilityCount	number:int
 planechase.deck.cards[].manaAbilityText	number:uint8
@@ -47263,6 +47417,9 @@ planechase.faceUp.cards[].keywords[]	string
 planechase.faceUp.cards[].knownBy	map:array
 planechase.faceUp.cards[].knownBy{}	bool
 planechase.faceUp.cards[].layout	string
+planechase.faceUp.cards[].linkedPermanent	object
+planechase.faceUp.cards[].linkedPermanent.epoch	number:int
+planechase.faceUp.cards[].linkedPermanent.id	custom(uuid.UUID)
 planechase.faceUp.cards[].lostLastCounter	bool
 planechase.faceUp.cards[].manaAbilityCount	number:int
 planechase.faceUp.cards[].manaAbilityText	number:uint8
@@ -47884,6 +48041,9 @@ resolving.card.keywords[]	string
 resolving.card.knownBy	map:array
 resolving.card.knownBy{}	bool
 resolving.card.layout	string
+resolving.card.linkedPermanent	object
+resolving.card.linkedPermanent.epoch	number:int
+resolving.card.linkedPermanent.id	custom(uuid.UUID)
 resolving.card.lostLastCounter	bool
 resolving.card.manaAbilityCount	number:int
 resolving.card.manaAbilityText	number:uint8
@@ -48210,6 +48370,7 @@ resolving.item.paid.tappedOthers[].epoch	number:int
 resolving.item.paid.tappedOthers[].id	custom(uuid.UUID)
 resolving.item.paid.tappedOthers[].left	bool
 resolving.item.paid.tappedOthers[].power	number:int
+resolving.item.paid.tappedOthers[].stationPower	number:int
 resolving.item.params	object
 resolving.item.params.ability	object
 resolving.item.params.ability.key	string
@@ -48840,6 +49001,9 @@ seats[].attractionDeck.cards[].keywords[]	string
 seats[].attractionDeck.cards[].knownBy	map:array
 seats[].attractionDeck.cards[].knownBy{}	bool
 seats[].attractionDeck.cards[].layout	string
+seats[].attractionDeck.cards[].linkedPermanent	object
+seats[].attractionDeck.cards[].linkedPermanent.epoch	number:int
+seats[].attractionDeck.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].lostLastCounter	bool
 seats[].attractionDeck.cards[].manaAbilityCount	number:int
 seats[].attractionDeck.cards[].manaAbilityText	number:uint8
@@ -49076,6 +49240,7 @@ seats[].castPermissions[].condition.objectID	custom(uuid.UUID)
 seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].costLess	number:int
+seats[].castPermissions[].costMore	number:int
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object
@@ -49362,6 +49527,9 @@ seats[].command.cards[].keywords[]	string
 seats[].command.cards[].knownBy	map:array
 seats[].command.cards[].knownBy{}	bool
 seats[].command.cards[].layout	string
+seats[].command.cards[].linkedPermanent	object
+seats[].command.cards[].linkedPermanent.epoch	number:int
+seats[].command.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
 seats[].command.cards[].manaAbilityText	number:uint8
@@ -49757,6 +49925,9 @@ seats[].companion.cards[].keywords[]	string
 seats[].companion.cards[].knownBy	map:array
 seats[].companion.cards[].knownBy{}	bool
 seats[].companion.cards[].layout	string
+seats[].companion.cards[].linkedPermanent	object
+seats[].companion.cards[].linkedPermanent.epoch	number:int
+seats[].companion.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].companion.cards[].lostLastCounter	bool
 seats[].companion.cards[].manaAbilityCount	number:int
 seats[].companion.cards[].manaAbilityText	number:uint8
@@ -50161,6 +50332,9 @@ seats[].emblems.cards[].keywords[]	string
 seats[].emblems.cards[].knownBy	map:array
 seats[].emblems.cards[].knownBy{}	bool
 seats[].emblems.cards[].layout	string
+seats[].emblems.cards[].linkedPermanent	object
+seats[].emblems.cards[].linkedPermanent.epoch	number:int
+seats[].emblems.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
 seats[].emblems.cards[].manaAbilityText	number:uint8
@@ -50556,6 +50730,9 @@ seats[].graveyard.cards[].keywords[]	string
 seats[].graveyard.cards[].knownBy	map:array
 seats[].graveyard.cards[].knownBy{}	bool
 seats[].graveyard.cards[].layout	string
+seats[].graveyard.cards[].linkedPermanent	object
+seats[].graveyard.cards[].linkedPermanent.epoch	number:int
+seats[].graveyard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
 seats[].graveyard.cards[].manaAbilityText	number:uint8
@@ -50947,6 +51124,9 @@ seats[].hand.cards[].keywords[]	string
 seats[].hand.cards[].knownBy	map:array
 seats[].hand.cards[].knownBy{}	bool
 seats[].hand.cards[].layout	string
+seats[].hand.cards[].linkedPermanent	object
+seats[].hand.cards[].linkedPermanent.epoch	number:int
+seats[].hand.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
 seats[].hand.cards[].manaAbilityText	number:uint8
@@ -51343,6 +51523,9 @@ seats[].junkyard.cards[].keywords[]	string
 seats[].junkyard.cards[].knownBy	map:array
 seats[].junkyard.cards[].knownBy{}	bool
 seats[].junkyard.cards[].layout	string
+seats[].junkyard.cards[].linkedPermanent	object
+seats[].junkyard.cards[].linkedPermanent.epoch	number:int
+seats[].junkyard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].junkyard.cards[].lostLastCounter	bool
 seats[].junkyard.cards[].manaAbilityCount	number:int
 seats[].junkyard.cards[].manaAbilityText	number:uint8
@@ -51743,6 +51926,9 @@ seats[].library.cards[].keywords[]	string
 seats[].library.cards[].knownBy	map:array
 seats[].library.cards[].knownBy{}	bool
 seats[].library.cards[].layout	string
+seats[].library.cards[].linkedPermanent	object
+seats[].library.cards[].linkedPermanent.epoch	number:int
+seats[].library.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
 seats[].library.cards[].manaAbilityText	number:uint8
@@ -52175,6 +52361,9 @@ seats[].sideboard.cards[].keywords[]	string
 seats[].sideboard.cards[].knownBy	map:array
 seats[].sideboard.cards[].knownBy{}	bool
 seats[].sideboard.cards[].layout	string
+seats[].sideboard.cards[].linkedPermanent	object
+seats[].sideboard.cards[].linkedPermanent.epoch	number:int
+seats[].sideboard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].sideboard.cards[].lostLastCounter	bool
 seats[].sideboard.cards[].manaAbilityCount	number:int
 seats[].sideboard.cards[].manaAbilityText	number:uint8
@@ -52871,6 +53060,9 @@ stack.cards[].keywords[]	string
 stack.cards[].knownBy	map:array
 stack.cards[].knownBy{}	bool
 stack.cards[].layout	string
+stack.cards[].linkedPermanent	object
+stack.cards[].linkedPermanent.epoch	number:int
+stack.cards[].linkedPermanent.id	custom(uuid.UUID)
 stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
 stack.cards[].manaAbilityText	number:uint8
@@ -53200,6 +53392,7 @@ stackMeta[].paid.tappedOthers[].epoch	number:int
 stackMeta[].paid.tappedOthers[].id	custom(uuid.UUID)
 stackMeta[].paid.tappedOthers[].left	bool
 stackMeta[].paid.tappedOthers[].power	number:int
+stackMeta[].paid.tappedOthers[].stationPower	number:int
 stackMeta[].params	object
 stackMeta[].params.ability	object
 stackMeta[].params.ability.key	string
