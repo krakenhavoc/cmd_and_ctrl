@@ -1266,6 +1266,7 @@ run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/ascent-of-the-worthy-redirect
 run prompt-run/augusta-order-returned-exile
+run prompt-run/automated-warfare-system-draw
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -1864,6 +1865,7 @@ tail rootborn-defenses/grant-indestructible
 tail rottenmouth-viper/punish
 tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
+tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
@@ -1945,6 +1947,8 @@ tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
+tail then/blastoneuron-copy
+tail then/blastoneuron-haste-and-sacrifice
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
 tail then/boseiju-who-endures-search
