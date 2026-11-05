@@ -558,6 +558,18 @@ type PendingChoiceView struct {
 	// answer with any card the search returns, by name. ChooseMin /
 	// ChooseMax carry the bounds. Sent to the chooser only.
 	CollectionOptions []CardView `json:"collection_options,omitempty"`
+	// DistinctNames marks an outside-the-game pick whose cards must
+	// have different names (#4947: Turtles Forever's outside half,
+	// Extrapolate the Impossible's pair), so the picker takes each name
+	// once: an "outside_collection" pick from the card database, or
+	// (#4962) a "choose_cards" pick over the chooser's sideboard.
+	// Derived from the pick's registered rule
+	// (game.OutsidePickNamesDiffer, by the prompt's PickThen key, so
+	// nothing new is persisted); the server refuses a repeated name
+	// either way. Absent on a pick where a name may repeat (Research,
+	// Spawnsire of Ulamog: a player may own two copies) and on every
+	// other kind. Sent to the chooser only, with the bounds.
+	DistinctNames bool `json:"distinct_names,omitempty"`
 
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
@@ -3594,7 +3606,7 @@ type CardView struct {
 	// ZoneAbilities are the CR 602 activated abilities this card
 	// offers from the NON-BATTLEFIELD zone it is sitting in — the
 	// hand (cycling and typecycling, CR 702.29a/e), a graveyard
-	// (unearth CR 702.82a, scavenge CR 702.96a, embalm CR 702.128a),
+	// (unearth CR 702.84a, scavenge CR 702.97a, embalm CR 702.128a),
 	// exile, the command zone. Whatever `ActivatedAbilityShape.Zones`
 	// names. Absent for every card that prints none, which is nearly
 	// all of them.
@@ -4902,7 +4914,7 @@ type ActivatedAbilityView struct {
 	// payment, so no `discard_ids` is sent for it.
 	DiscardSelf bool `json:"discard_self,omitempty"`
 	// ExileSelf is scavenge's and embalm's "Exile this card from your
-	// graveyard" cost component (CR 702.96a / CR 702.128a, #1221).
+	// graveyard" cost component (CR 702.97a / CR 702.128a, #1221).
 	// DiscardSelf's sibling one zone over, and advisory for exactly
 	// the same reason: the source IS the payment, so there is nothing
 	// to collect and nothing on the payload. The keyword's own label
@@ -8850,7 +8862,7 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 // stampZoneAbilities fills CardView.ZoneAbilities for every card in
 // every NON-BATTLEFIELD zone an ability can function from (CR 113.6):
 // a seat's own hand (cycling and typecycling, CR 702.29), their own
-// graveyard (unearth CR 702.82a, scavenge CR 702.96a, embalm
+// graveyard (unearth CR 702.84a, scavenge CR 702.97a, embalm
 // CR 702.128a), their command zone, and their cards in exile.
 // #660 / ADR 0062 Decision 5, widened by #1221.
 //
@@ -10089,6 +10101,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			// #4962: with a sideboard seated, an outside pick "with
+			// different names" (Turtles Forever's outside half) is a
+			// choose_cards over the sideboard keyed by the same
+			// registered pick as the database prompt below, so it says
+			// so the same way. False for every other key.
+			if c.Kind == game.PendingChoiceChooseCards {
+				v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
+			}
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
 				card, ok := g.LookupCardForEffect(id)
@@ -10289,6 +10309,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
 			for _, card := range game.CollectionCardsLocked(c.CollectionSuggestions) {
 				cv := viewOfCard(card)
 				cv.InstanceID = ""
@@ -11487,6 +11508,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			out[i].ChooseDestination = ""
+			out[i].DistinctNames = false
 			continue
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
@@ -11529,6 +11551,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 				out[i].ChooseMax = 0
 				out[i].ChooseDestination = ""
 				out[i].ChooseSuggested = nil
+				out[i].DistinctNames = false
 			}
 			continue
 		}
@@ -11558,6 +11581,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// rest of the pick. The offer and the earlier choices
 			// stay: they are the table's public record (CR 101.4b).
 			out[i].ChooseSuggested = nil
+			// #4962: so does a sideboard pick's "different names".
+			out[i].DistinctNames = false
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's

@@ -164,18 +164,29 @@ func myAdvancedStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	since := rng.Since(c.now())
 	ctx, cancel := context.WithTimeout(r.Context(), statsTimeout)
 	defer cancel()
+	out, err := c.advancedOverview(ctx, user, makeup, rng)
+	if err != nil {
+		return advancedStatsFailed(c, err)
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// advancedOverview is user's overview in a makeup and range: the body
+// of GET /me/stats/advanced, and of a share link (stats_share.go).
+func (c Config) advancedOverview(ctx context.Context, user uuid.UUID, makeup gamestats.MakeupFilter, rng gamestats.Range) (advancedOverviewResponse, error) {
+	since := rng.Since(c.now())
 	seats, err := c.AdvancedStats.AdvancedSeats(ctx, user.String(), func(s *gamestats.SeatRow) bool {
 		return s.EndedAt >= since && makeup.Matches(s)
 	})
 	if err != nil {
-		return advancedStatsFailed(c, err)
+		return advancedOverviewResponse{}, err
 	}
 	decks, err := c.libraryStore().List(ctx, user)
 	if err != nil {
-		return advancedStatsFailed(c, err)
+		return advancedOverviewResponse{}, err
 	}
 	out := advancedOverviewResponse{Makeup: makeup, Range: rng, Summary: gamestats.Summarise(seats),
 		Decks: advancedDeckRows(seats)}
@@ -186,8 +197,22 @@ func myAdvancedStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	out.Colours = gameColours(c.Cards, seats)
 	out.Library = c.advancedLibraryOf(decks, seats)
-	w.Header().Set("Cache-Control", "no-store")
-	return writeJSON(w, http.StatusOK, out)
+	out.MostCast = withPrintings(c.Cards, out.MostCast)
+	return out, nil
+}
+
+// withPrintings names a printing for each card, so the page can draw
+// it (ADR 0217 §8: most-cast with card images).
+func withPrintings(idx *cards.Index, list []gamestats.CastCard) []gamestats.CastCard {
+	if idx == nil {
+		return list
+	}
+	for i := range list {
+		if card, ok := idx.FindByName(list[i].Name); ok {
+			list[i].ScryfallID = card.ID.String()
+		}
+	}
+	return list
 }
 
 // advancedDeckRows groups seats by deck as GET /me/stats does: the

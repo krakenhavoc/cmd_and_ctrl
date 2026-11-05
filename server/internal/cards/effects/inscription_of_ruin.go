@@ -37,13 +37,7 @@ func init() {
 			ModeDoing("Return target creature card with mana value 2 or less from your graveyard to the battlefield.",
 				TargetCardInGraveyard("target creature card with mana value 2 or less from your graveyard",
 					YouOwn(), Creature(), ManaValueLE(2)),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-				}),
+				ReturnTheModesTargetToBattlefield),
 			ModeDoing("Destroy target creature with mana value 3 or less.",
 				TargetCreature("target creature with mana value 3 or less", ManaValueLE(3)),
 				DestroyTheModesTarget),

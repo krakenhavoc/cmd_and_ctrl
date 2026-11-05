@@ -688,7 +688,36 @@ func corpusBoards() []corpusBoard {
 		{"crypt_incursion_exile_leg", corpusCryptIncursionExileLeg},
 		{"mind_rot_discard_leg", corpusMindRotDiscardLeg},
 		{"obstinate_baloth_discard_entry", corpusObstinateBalothDiscardEntry},
+		// v9, added by #4691 as a new file: the loseAllCreatureTypes kind
+		// (layer 4, CR 613.1d), made by the card that writes it. Two
+		// resolved Nameless Inversions, each one record until end of turn
+		// holding modifyPT +3/-3 and loseAllCreatureTypes: one on a Goblin
+		// and one on a changeling (CR 702.73a), whose every-creature-type
+		// marking goes too while it keeps the keyword. A new vocabulary
+		// value an older binary must refuse rather than read as nothing.
+		{"lose_all_creature_types", corpusLoseAllCreatureTypes},
 	}
+}
+
+// corpusLoseAllCreatureTypes is #4691's loseAllCreatureTypes kind, made
+// by the card that writes it: Nameless Inversion on a Goblin and on a
+// changeling, both still on the battlefield with their records live.
+func corpusLoseAllCreatureTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	goblin := pushTribalCreature(g, opp, "Goblin Brute", "Creature — Goblin", 2, 4)
+	shifter := pushTribalCreature(g, opp, "Woodland Changeling", "Creature — Shapeshifter", 2, 4, game.KeywordChangeling)
+	castNamelessInversion(t, g, goblin)
+	castNamelessInversion(t, g, shifter)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: two Nameless Inversions registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	for _, id := range []uuid.UUID{goblin, shifter} {
+		if c := layeredCard(t, g, id); len(effectiveSubtypes(t, g, id)) != 0 || game.HasAllCreatureTypes(&c) {
+			t.Fatalf("setup: %s still has a creature type", c.Name)
+		}
+	}
+	return g
 }
 
 // corpusCryptIncursionExileLeg is Crypt Incursion's exile of two creature

@@ -16,7 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "{1}{U}, Sacrifice two artifacts: Draw a card." is a mana component
 // plus a sacrifice cost with a count of two (#747, SacrificeN). Sai is
-// not an artifact, so she is never one of the two.
+// not an artifact, so she is never one of the two. Its purpose declares
+// the card it draws (ADR 0126 §6), so the bot prices the row by the card
+// against the two artifacts (#4991).
 //
 // No simplification.
 func init() {
@@ -38,7 +40,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, Sacrifice two artifacts: Draw a card.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Cost:    Plus(ManaCost("{1}{U}"), SacrificeN(2, "two artifacts", Artifact())),
 			Effect:  Do(DrawCards{N: 1}),
 		}},
