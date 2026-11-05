@@ -802,6 +802,17 @@ func Register(spec Spec) {
 				}
 			}
 		}
+		// The put-this-on-the-bottom twin of the check above: the
+		// component is paid from the battlefield or the graveyard
+		// (game.BottomSelfZoneSupported), and from nowhere else.
+		if ab.Cost.BottomSelf {
+			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
+				if !game.BottomSelfZoneSupported(z) {
+					panic(fmt.Sprintf("effects.Register: %q ability %d declares a put-this-on-the-bottom cost but functions from the %s — the component is paid from the battlefield or the graveyard",
+						spec.Name, i, z))
+				}
+			}
+		}
 		// #1310, CR 701.67b: a waterbend clause names part of the
 		// mana component — the part its taps may cover — so the mana
 		// component must contain it. A clause with no key or no pool

@@ -111,11 +111,14 @@ func TestABottomSelfCostLeavesTheEffectTheMovedPermanentsLKI(t *testing.T) {
 	}
 }
 
-// Only a permanent can be put on the bottom; the source pays one
-// component (CR 118.3).
+// Only a permanent or a graveyard card can be put on the bottom; the
+// source pays one component (CR 118.3).
 func TestABottomSelfCostValidation(t *testing.T) {
 	src := uuid.New()
-	for _, z := range []ZoneKind{ZoneHand, ZoneGraveyard, ZoneExile, ZoneCommand} {
+	if err := validateBottomSelfCostLocked(src, ZoneGraveyard, AbilityCost{BottomSelf: true}); err != nil {
+		t.Errorf("validate from the graveyard: err = %v, want nil", err)
+	}
+	for _, z := range []ZoneKind{ZoneHand, ZoneExile, ZoneCommand} {
 		if err := validateBottomSelfCostLocked(src, z, AbilityCost{BottomSelf: true}); !errors.Is(err, ErrActivationZoneNotAllowed) {
 			t.Errorf("validate from %s: err = %v, want ErrActivationZoneNotAllowed", z, err)
 		}
@@ -130,8 +133,10 @@ func TestABottomSelfCostValidation(t *testing.T) {
 	if err := validateBottomSelfCostLocked(src, ZoneBattlefield, AbilityCost{BottomSelf: true}, []uuid.UUID{src}); !errors.Is(err, ErrInvalidParam) {
 		t.Errorf("source named by another component: err = %v, want ErrInvalidParam", err)
 	}
-	if AbilityNeedsPermanentSource(AbilityCost{BottomSelf: true}) == "" {
-		t.Error("AbilityNeedsPermanentSource does not name the bottom-of-library cost")
+	for z, want := range map[ZoneKind]bool{ZoneBattlefield: true, ZoneGraveyard: true, ZoneHand: false, ZoneExile: false, ZoneLibrary: false, ZoneCommand: false} {
+		if got := BottomSelfZoneSupported(z); got != want {
+			t.Errorf("BottomSelfZoneSupported(%s) = %v, want %v", z, got, want)
+		}
 	}
 	if !AbilityAutoTapExclusions(src, AbilityCost{BottomSelf: true, Mana: "{1}"}, nil, nil, nil, nil)[src] {
 		t.Error("the source is not excluded from the auto-tap plan")
