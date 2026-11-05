@@ -277,6 +277,9 @@ type CastCard struct {
 	Name  string `json:"name"`
 	Games int    `json:"games"`
 	Casts int    `json:"casts"`
+	// ScryfallID is a printing to draw the card with, filled in by the
+	// read route from the card index; empty when the name is unknown.
+	ScryfallID string `json:"scryfall_id,omitempty"`
 }
 
 // Summary is what both read routes show for a set of seats.
