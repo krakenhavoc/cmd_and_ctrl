@@ -1336,6 +1336,20 @@ type Card struct {
 	// change, because a grant to a card ends with the object (CR 400.7).
 	zoneGranted []GrantedAbility
 
+	// ExileGrants is the ability bundles a RESOLVED effect gave this card
+	// while it is in exile (CR 113.10, ADR 0219, #4973): Q, Stacking the
+	// Deck's "That nonland card gains '…Activate only … if this card is
+	// exiled.'" Plain data (bundle key, grantor, activator), never a
+	// closure, read by activatedAbilityRows beside zoneGranted
+	// (abilityGrantsOf). Written only by GrantAbilityToExiledCardForEffect
+	// (exile_effect_grants.go), always as a fresh slice.
+	//
+	// Per object (CR 400.7): cleared in MoveCard on every zone change, so
+	// the grant ends the moment the card leaves exile. Not a copiable value
+	// (CR 707.2), so a copy of the card never has it. Carried by the
+	// snapshot, because no source on the battlefield rebuilds it.
+	ExileGrants []GrantedAbility
+
 	// zoneLayered is this object's characteristic after layers 4 and 5
 	// while it is NOT on the battlefield (#3862, ADR 0039 amendment
 	// 2026-10-15): Mycosynth Lattice's colourless card in a hand,

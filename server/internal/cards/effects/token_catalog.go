@@ -324,6 +324,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// can't block, and The City on the Edge of Forever's Human.
 	printedTrekB23CantBlockWormToken,
 	printedTrekB23CantPhaseInHumanToken,
+
+	// Genesis Effect's New Planet (Star Trek, #4973).
+	printedTrekB16NewPlanetToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
