@@ -3,7 +3,10 @@
   // operators who have no shell on the database. Totals first (and, when
   // finished games have no record yet, a note that the backfill fills
   // them in), then recent games, per-person records, the top commanders
-  // by games and by wins, and the most-cast cards. Every list is capped
+  // by games and by wins, and the most-cast cards. Stats record v2 (ADR
+  // 0217 slice 2, #4880) adds the record coverage, how games were won,
+  // combo wins by rule and the table makeup; an older server sends none
+  // of them, and a missing one reads as empty. Every list is capped
   // by the server (25 rows). Only a win, a loss or a draw counts toward
   // a record; average place is over the games that have a place.
   //
@@ -11,7 +14,14 @@
   // admin status is stale (onforbidden), never a request to retry.
   import { onMount } from "svelte";
   import { fetchAdminStats } from "../../api";
-  import { gameHash, type AdminStatsResponse, type AdminStatsTally } from "../../adminViews";
+  import {
+    COMBO_RULE_NAMES,
+    WIN_KIND_NAMES,
+    gameHash,
+    statsKindName,
+    type AdminStatsResponse,
+    type AdminStatsTally,
+  } from "../../adminViews";
   import { avgPlaceText, recordText, winRateText } from "../../myStats";
   import { LobbyApiError } from "../../session";
   import RelTime from "./RelTime.svelte";
@@ -47,6 +57,13 @@
 
   const now = $derived(Date.now());
   const empty = $derived(data !== null && data.totals.games === 0 && data.totals.unrecorded === 0);
+  const coverage = $derived(data?.coverage ?? []);
+  const winKinds = $derived(data?.win_kinds ?? []);
+  const comboRules = $derived(data?.combo_rules ?? []);
+  const makeup = $derived(data?.makeup);
+  const makeupTotal = $derived(
+    makeup ? makeup.people_only + makeup.with_bots + makeup.bots_only : 0,
+  );
 </script>
 
 {#snippet tallyCells(t: AdminStatsTally)}
@@ -119,6 +136,99 @@
     {#if empty}
       <p class="empty">No game statistics yet. A record is made when a game ends.</p>
     {:else}
+      <h3>Record coverage</h3>
+      {#if coverage.length === 0}
+        <p class="empty">No coverage reported.</p>
+      {:else}
+        <div class="scroll">
+          <table aria-label="record coverage">
+            <thead>
+              <tr>
+                <th class="num">Version</th>
+                <th class="num">Games</th>
+                <th class="num">Replay read whole</th>
+                <th class="num">Replay not read whole</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each coverage as c (c.version)}
+                <tr>
+                  <td class="num">v{c.version}</td>
+                  <td class="num">{c.games}</td>
+                  <td class="num">{c.frames_complete}</td>
+                  <td class="num">{c.frames_incomplete}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+        <p class="note">A version-1 record does not read the replay, so it counts in neither.</p>
+      {/if}
+
+      <h3>How games were won</h3>
+      {#if winKinds.length === 0}
+        <p class="empty">No wins recorded.</p>
+      {:else}
+        <div class="scroll">
+          <table aria-label="how games were won">
+            <thead>
+              <tr><th>How</th><th class="num">Games</th></tr>
+            </thead>
+            <tbody>
+              {#each winKinds as w (w.kind)}
+                <tr>
+                  <td>{statsKindName(WIN_KIND_NAMES, w.kind)}</td>
+                  <td class="num">{w.games}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+
+      <h3>Combo wins by rule</h3>
+      {#if comboRules.length === 0}
+        <p class="empty">No combo wins recorded.</p>
+      {:else}
+        <div class="scroll">
+          <table aria-label="combo wins by rule">
+            <thead>
+              <tr><th>Rule</th><th class="num">Games</th></tr>
+            </thead>
+            <tbody>
+              {#each comboRules as r (r.kind)}
+                <tr>
+                  <td>{statsKindName(COMBO_RULE_NAMES, r.kind)}</td>
+                  <td class="num">{r.games}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+
+      <h3>Table makeup</h3>
+      {#if !makeup || makeupTotal === 0}
+        <p class="empty">No table makeup recorded.</p>
+      {:else}
+        <section class="card" aria-label="table makeup">
+          <dl class="facts">
+            <div>
+              <dt>People only</dt>
+              <dd>{makeup.people_only}</dd>
+            </div>
+            <div>
+              <dt>People and bots</dt>
+              <dd>{makeup.with_bots}</dd>
+            </div>
+            <div>
+              <dt>Bots only</dt>
+              <dd>{makeup.bots_only}</dd>
+            </div>
+          </dl>
+        </section>
+      {/if}
+
       <h3>Recent games</h3>
       {#if data.recent.length === 0}
         <p class="empty">No games with a record.</p>
@@ -249,6 +359,11 @@
   h3 {
     margin: 8px 0 0;
     font-size: 14px;
+  }
+  .note {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
   }
   .backfill {
     margin-top: 12px;

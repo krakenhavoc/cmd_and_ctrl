@@ -750,6 +750,9 @@ var playerFields = plan(
 	// every such effect's clock, and a departed seat's skipped turns
 	// are not derivable from the board.
 	"TurnsBegun", carried, "",
+	// #4973: the extra turns this player has begun this game (H.M.S.
+	// Bounty). Carried: not derivable from the board.
+	"ExtraTurnsBegun", carried, "",
 	// ADR 0108 §5: the upkeep counter Card.ControlledSinceUpkeep is
 	// compared against. Carried, for TurnsBegun's reason.
 	"UpkeepsBegun", carried, "",
