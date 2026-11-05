@@ -175,6 +175,34 @@ func (m *RoomManager) Delete(id uuid.UUID) {
 	}
 }
 
+// Unload is Delete that keeps the replay (ADR 0211 §4): the room leaves
+// memory, its pending restore point is cancelled, and its restore point
+// and crash snapshot are removed, so no boot brings it back, but the
+// replay log stays for whoever opens the table's history. The lobby
+// unloads an idle-closed table this way once its keep window ends.
+func (m *RoomManager) Unload(id uuid.UUID) {
+	m.mu.Lock()
+	r := m.rooms[id]
+	delete(m.rooms, id)
+	dumpDir := m.dumpDir
+	m.mu.Unlock()
+
+	if r != nil {
+		r.closeRestorePoints()
+	}
+	if dumpDir == "" {
+		return
+	}
+	for _, path := range []string{
+		snapshotPath(dumpDir, id),
+		restorePointPath(dumpDir, id),
+	} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			m.log.Warn("unload game artifact failed", "path", path, "err", err)
+		}
+	}
+}
+
 // DumpDir returns the data root this manager writes artifacts under,
 // or "" when disk persistence is disabled. Exposed so the lobby can
 // store its own metadata beside the engine snapshots without a second

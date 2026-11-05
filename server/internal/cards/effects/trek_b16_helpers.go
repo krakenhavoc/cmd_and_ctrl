@@ -59,19 +59,7 @@ func twiceXAmount() func(*game.StackItem, *Context) int {
 // it is a Borg and counts nothing. "Borg" is read through the spell's text
 // (CR 612.2).
 func trekB16CreatureTypesAmongNonBorg(ctx *Context) int {
-	borg := ctx.TextSubtype("Borg")
-	seen := map[string]bool{}
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if c.Controller != ctx.Controller() || !c.IsCreature() || c.HasSubtype(borg) {
-			continue
-		}
-		for _, st := range c.Effective().Subtypes {
-			if canon, ok := game.CanonicalCreatureType(st); ok {
-				seen[canon] = true
-			}
-		}
-	}
-	return len(seen)
+	return trekCreatureTypesAmongNonBorg(ctx.Game, ctx.Controller(), ctx.TextSubtype("Borg"))
 }
 
 // trekB16InfiniteDiversityTail runs once the targeted card's exile has

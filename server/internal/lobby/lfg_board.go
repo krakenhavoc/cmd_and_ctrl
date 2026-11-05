@@ -110,6 +110,7 @@ func (l *Lobby) SetLFG(id uuid.UUID, enabled bool) (GameMeta, error) {
 		// again after an unavailable post.
 		l.lfg.toggled(id)
 		l.persistGameLocked(entry)
+		l.touchLocked(entry) // ADR 0211 §1
 	}
 	return copyMeta(entry.meta), nil
 }
