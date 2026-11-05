@@ -2461,6 +2461,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)
+	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
+	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
+	// came before the cast finished.
+	if modeSpec != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,

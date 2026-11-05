@@ -2570,6 +2570,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
 	g.recordModesChosenLocked(ab.Modes, modeAbility, params.Modes)
+	// #4973: and the activator faced a dilemma (CR 700.2a).
+	if ab.Modes != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	// CardID is set here and on no trigger's EventTrigger, and the
 	// public log reads it that way (ADR 0119 §5): this breadcrumb is an
 	// activation, which EventActivateAbility below tells, so it gets no
