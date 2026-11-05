@@ -45,9 +45,10 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{1}: Put a fire counter on this Vehicle.",
-				Cost:   ManaCost("{1}"),
-				Effect: Do(CounterOnThis{Kind: "fire", N: 1}),
+				Label:   "{1}: Put a fire counter on this Vehicle.",
+				Cost:    ManaCost("{1}"),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  Do(CounterOnThis{Kind: "fire", N: 1}),
 			},
 			{
 				Label:   "Crew 3",
