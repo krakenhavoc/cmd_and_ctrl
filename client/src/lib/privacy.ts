@@ -102,8 +102,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * names it, and account deletion removes the row. It also adds
  * stats_settings, the server's advanced-stats default, which names no
  * one.
+ *
+ * 31 (#4562, ADR 0211) adds games.last_active_at and games.closed_reason:
+ * when a table was last used, and why the server closed it for being
+ * idle. Both are about the table and name no one, and nothing on the
+ * notice changes.
  */
-export const PRIVACY_SCHEMA_VERSION = 30;
+export const PRIVACY_SCHEMA_VERSION = 31;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

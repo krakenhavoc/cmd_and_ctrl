@@ -13,6 +13,14 @@ import "github.com/prometheus/client_golang/prometheus"
 //	                                       cap was full: set at boot, and by the hot
 //	                                       restore to those still waiting
 //
+// And the idle cleanup's (ADR 0211 §6), which keeps abandoned tables
+// from holding the cap:
+//
+//	cmdctrl_capacity_idle_after_seconds{kind}  the configured threshold; 0 is off
+//	cmdctrl_capacity_idle_closed_total{kind}   tables the sweep closed
+//	cmdctrl_capacity_idle_warned_total         started games warned before a close
+//	cmdctrl_capacity_idle_unloaded_total       closed tables unloaded after the keep window
+//
 // The two gauges are a collector read at scrape time, like the tables
 // collector; the counter and the boot gauge are event metrics.
 
@@ -51,6 +59,53 @@ var refusalReasons = []string{
 	RefuseCreateAccount, RefuseCreateIP,
 }
 
+// Kinds of the idle cleanup's metrics (ADR 0211 §6): an unstarted
+// table, a started game nobody moved in, and a game left to its bots.
+const (
+	IdleKindLobby = "lobby"
+	IdleKindGame  = "game"
+	IdleKindBots  = "bots"
+)
+
+var idleKindLabels = []string{IdleKindLobby, IdleKindGame, IdleKindBots}
+
+var (
+	idleAfterSeconds = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "cmdctrl_capacity_idle_after_seconds",
+		Help: "The idle cleanup's threshold, by kind: how long an unstarted table (lobby), a started game with no human move (game) or a game left to its bots (bots) may stay idle before the server closes it. 0 means that cleanup is off.",
+	}, []string{"kind"})
+	idleClosed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "cmdctrl_capacity_idle_closed_total",
+		Help: "Tables the idle sweep closed, by kind.",
+	}, []string{"kind"})
+	idleWarned = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cmdctrl_capacity_idle_warned_total",
+		Help: "Started games the idle sweep warned before closing them.",
+	})
+	idleUnloaded = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cmdctrl_capacity_idle_unloaded_total",
+		Help: "Idle-closed tables unloaded from memory and disk after the keep window (the replay is kept).",
+	})
+)
+
+// SetIdleAfter records the idle cleanup's configured thresholds; a
+// zero duration is that cleanup off. Called once at boot.
+func SetIdleAfter(lobby, game, bots float64) {
+	idleAfterSeconds.WithLabelValues(IdleKindLobby).Set(lobby)
+	idleAfterSeconds.WithLabelValues(IdleKindGame).Set(game)
+	idleAfterSeconds.WithLabelValues(IdleKindBots).Set(bots)
+}
+
+// IdleClosed counts one table the idle sweep closed, by kind.
+func IdleClosed(kind string) { idleClosed.WithLabelValues(kind).Inc() }
+
+// IdleWarned counts one started game warned before an idle close.
+func IdleWarned() { idleWarned.Inc() }
+
+// IdleUnloaded counts one idle-closed table unloaded after its keep
+// window.
+func IdleUnloaded() { idleUnloaded.Inc() }
+
 var (
 	capacityRefusals = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "cmdctrl_capacity_refusals_total",
@@ -73,6 +128,10 @@ var (
 func init() {
 	for _, r := range refusalReasons {
 		capacityRefusals.WithLabelValues(r)
+	}
+	for _, k := range idleKindLabels {
+		idleAfterSeconds.WithLabelValues(k)
+		idleClosed.WithLabelValues(k)
 	}
 }
 
