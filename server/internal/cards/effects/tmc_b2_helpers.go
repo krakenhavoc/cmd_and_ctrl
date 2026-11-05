@@ -45,24 +45,6 @@ func tmcB2LeftCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	return c, true
 }
 
-// tmcB2CountersAmongPermanentsYouControl sums every counter of every
-// kind on the permanents `controller` controls — "the number of counters
-// among permanents you control" (Dimension X Pizzasaur).
-func tmcB2CountersAmongPermanentsYouControl(g *game.Game, controller uuid.UUID) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller {
-			continue
-		}
-		for _, v := range c.Counters {
-			if v > 0 {
-				n += v
-			}
-		}
-	}
-	return n
-}
-
 // tmcB2AnotherCreatureDied is the delayed condition "whenever another
 // creature dies" for a delayed trigger whose "this creature" is its
 // source object (Electric Seaweed): a creature died, and it was not that

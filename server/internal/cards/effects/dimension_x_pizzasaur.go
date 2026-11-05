@@ -37,9 +37,10 @@ func init() {
 				TargetCreature("target creature")),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}, Sacrifice this creature: You gain 3 life and each opponent loses 3 life.",
-			Cost:   game.AbilityCost{Mana: "{2}", Tap: true, SacrificeSelf: true},
-			Effect: Do(GainLife{Amount: 3}, EachOpponentLosesLife{N: 3}),
+			Label:   "{2}, {T}, Sacrifice this creature: You gain 3 life and each opponent loses 3 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue}, // a drain answers nothing (ADR 0142)
+			Cost:    game.AbilityCost{Mana: "{2}", Tap: true, SacrificeSelf: true},
+			Effect:  Do(GainLife{Amount: 3}, EachOpponentLosesLife{N: 3}),
 		}},
 	})
 }
@@ -79,6 +80,6 @@ var pizzasaurDestroyBody = game.ReflexiveBody("dimension-x-pizzasaur/destroy", s
 		return TargetCreature("up to one target creature with mana value less than or equal to the number of counters among permanents you control",
 			func(g *game.Game, you uuid.UUID, c game.Card) bool {
 				mv, ok := g.ManaValueForEffect(c)
-				return ok && mv <= tmcB2CountersAmongPermanentsYouControl(g, you)
+				return ok && mv <= countersOnPermanentsControlledBy(g, you)
 			}).WithCount(0, 1)
 	}))

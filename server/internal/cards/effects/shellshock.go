@@ -29,6 +29,7 @@ func init() {
 		OracleID:     "f406630b-d9f1-4fc5-b3f3-5327384b2901",
 		Name:         "Shellshock",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Targets:      perOpponentClauses(game.MaxPlayers-1, "creature", Creature()),
 		Purpose:      game.Purpose{Targets: game.ForTargets(DamageXToTarget(0), DamageXToTarget(1), DamageXToTarget(2)), Answers: game.AnswerRemove},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
