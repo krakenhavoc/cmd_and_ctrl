@@ -11,11 +11,10 @@ import {
   commanderLine,
   commanderNames,
   eliminatedSeats,
-  rememberCommanders,
-  resetCommanderMemory,
+  finalBoardCommanders,
   tombstoneCommanders,
 } from "./elimination";
-import type { CardView, GameView, LogEvent, PlayerView } from "./protocol";
+import type { CardView, FinalCardView, GameView, LogEvent, PlayerView } from "./protocol";
 
 const out = (seq: number, seat: number, cause = "life"): LogEvent =>
   ({ seq, kind: "eliminated", seat, cause, text: "" }) as LogEvent;
@@ -63,6 +62,12 @@ const card = (name: string, extra: Partial<CardView> = {}): CardView =>
 
 const zone = (cards: CardView[] = []) => ({ kind: "z", count: cards.length, cards });
 
+const fcard = (name: string, extra: Partial<FinalCardView> = {}): FinalCardView => ({
+  instance_id: name,
+  name,
+  ...extra,
+});
+
 const seat = (over: Partial<PlayerView> = {}): PlayerView =>
   ({
     id: "p1",
@@ -85,7 +90,7 @@ const gameView = (over: Partial<GameView> = {}): GameView =>
   }) as unknown as GameView;
 
 describe("commanders on a tombstone", () => {
-  beforeEach(() => resetCommanderMemory());
+  beforeEach(() => sessionStorage.clear());
 
   it("reads the commander from the command zone", () => {
     const s = seat({ command: zone([card("Atraxa, Praetors' Voice", { is_commander: true })]) });
@@ -111,51 +116,70 @@ describe("commanders on a tombstone", () => {
     expect(commanderLine(["Tymna", "Kraum"])).toBe("Tymna & Kraum");
   });
 
-  it("does not take another seat's commander", () => {
+  it("does not take another seat's commander, nor one the seat had stolen", () => {
     const view = gameView({
-      battlefield: zone([card("Kraum", { is_commander: true, owner: "p2", controller: "p2" })]),
+      battlefield: zone([
+        card("Kraum", { is_commander: true, owner: "p2", controller: "p2" }),
+        card("Tymna", { is_commander: true, owner: "p2", controller: "p1" }),
+      ]),
     });
     expect(commanderNames(view, seat())).toEqual([]);
   });
 
-  it("remembers the commander after it has left with the player", () => {
-    const here = gameView();
-    rememberCommanders(here, seat({ command: zone([card("Atraxa", { is_commander: true })]) }));
-    // The frame that eliminates the seat shows no commander.
-    expect(tombstoneCommanders(here, seat({ eliminated: true }))).toEqual(["Atraxa"]);
-    // And a frame that shows none does not make it forget.
-    rememberCommanders(here, seat({ eliminated: true }));
-    expect(tombstoneCommanders(here, seat({ eliminated: true }))).toEqual(["Atraxa"]);
+  it("names a commander a fresh client never saw, from the final board (#4547)", () => {
+    // A spectator, or a player on a new device, opens the game after Pia
+    // left: no earlier frame, nothing remembered, and her zones are empty
+    // (CR 800.4a). The seat's final board names her commanders.
+    const fresh = gameView();
+    const out = seat({
+      eliminated: true,
+      final_board: {
+        command: [fcard("Tymna", { is_commander: true })],
+        commanders: ["Tymna", "Kraum"],
+      },
+    });
+    expect(commanderNames(fresh, out)).toEqual([]);
+    expect(tombstoneCommanders(fresh, out)).toEqual(["Tymna", "Kraum"]);
+    expect(sessionStorage.length).toBe(0);
   });
 
-  it("keeps each game and each seat apart", () => {
-    rememberCommanders(
-      gameView(),
-      seat({ command: zone([card("Atraxa", { is_commander: true })]) }),
-    );
-    expect(tombstoneCommanders(gameView({ id: "g2" }), seat())).toEqual([]);
-    expect(tombstoneCommanders(gameView(), seat({ id: "p2" }))).toEqual([]);
+  it("prefers the final board's names to what the frame shows", () => {
+    // The departure that ends the game leaves the board in place: the
+    // record still decides, so the line is the same on every frame.
+    const view = gameView({
+      battlefield: zone([card("Kraum", { is_commander: true })]),
+    });
+    const out = seat({
+      eliminated: true,
+      command: zone([card("Tymna", { is_commander: true })]),
+      final_board: { commanders: ["Tymna", "Kraum"] },
+    });
+    expect(tombstoneCommanders(view, out)).toEqual(["Tymna", "Kraum"]);
   });
 
-  it("prefers what the frame shows to what it remembered", () => {
-    rememberCommanders(
-      gameView(),
-      seat({ command: zone([card("Atraxa", { is_commander: true })]) }),
-    );
-    const s = seat({ command: zone([card("Kenrith", { is_commander: true })]) });
+  it("reads an older record's command zone when it names no commanders", () => {
+    expect(
+      finalBoardCommanders({
+        command: [
+          fcard("Tomb of Annihilation", { type_line: "Dungeon" }),
+          fcard("Atraxa", { is_commander: true }),
+        ],
+        battlefield: [fcard("Stolen Kraum", { is_commander: true })],
+      }),
+    ).toEqual(["Atraxa"]);
+    expect(finalBoardCommanders({ commanders: ["Atraxa", "Atraxa"] })).toEqual(["Atraxa"]);
+    expect(finalBoardCommanders(undefined)).toEqual([]);
+    expect(finalBoardCommanders({})).toEqual([]);
+  });
+
+  it("falls back to what the frame shows for a seat with no record", () => {
+    // A seat restored from a snapshot older than the record, whose
+    // departure ended the game and so left its board in place.
+    const s = seat({
+      eliminated: true,
+      command: zone([card("Kenrith", { is_commander: true })]),
+    });
     expect(tombstoneCommanders(gameView(), s)).toEqual(["Kenrith"]);
-  });
-
-  it("survives a reload of the page", () => {
-    rememberCommanders(
-      gameView(),
-      seat({ command: zone([card("Atraxa", { is_commander: true })]) }),
-    );
-    // A reload keeps sessionStorage but not the module's memory.
-    const kept = sessionStorage.getItem("cmdctrl.commanders");
-    expect(kept).toContain("Atraxa");
-    resetCommanderMemory();
-    sessionStorage.setItem("cmdctrl.commanders", kept ?? "");
-    expect(tombstoneCommanders(gameView(), seat())).toEqual(["Atraxa"]);
+    expect(tombstoneCommanders(gameView(), seat({ eliminated: true }))).toEqual([]);
   });
 });

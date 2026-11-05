@@ -44,7 +44,6 @@
     TOMBSTONE_DROP_MS,
     TOMBSTONE_FADE_MS,
     commanderLine,
-    rememberCommanders,
     tombstoneCommanders,
   } from "../../elimination";
   import {
@@ -69,11 +68,8 @@
   const name = $derived(seat.display_name ?? seat.name);
   const finalBoard = $derived(hasFinalBoard(seat));
 
-  // Remember the commander while it can be seen: the frame that eliminates
-  // the seat no longer shows it.
-  $effect(() => {
-    rememberCommanders(view, seat);
-  });
+  // The commander line reads the seat's final board (#4547), so a stone
+  // seen for the first time after the player left still names it.
   const commander = $derived(eliminated ? commanderLine(tombstoneCommanders(view, seat)) : "");
 
   // The parts of a seat's identity that stand apart from its box: the name
