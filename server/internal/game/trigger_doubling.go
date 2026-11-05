@@ -96,6 +96,18 @@ type triggerIdentityLKI struct {
 	// PermanentInfo.TextWords carries it: "when this creature dies"
 	// reads its own words as they last were (CR 603.10a, #3872).
 	TextWords []TextWordChange `json:"textWords,omitempty"`
+	// FaceDown is the CR 708.2 permanent state it left in, or empty for
+	// a permanent that was face up (#4845). The card is turned face up
+	// as it leaves (CR 708.9), so its new zone has its printed text
+	// back, but a face-down permanent had no text (CR 708.2) and a
+	// leaves-the-battlefield ability looks back at the permanent as it
+	// last existed (CR 603.10a): a manifested Doomed Traveler that dies
+	// has no dies trigger. Restoring the state makes CatalogKey answer
+	// "no text" for that look-back, and keeps its real name out of the
+	// trigger's object snapshot. Additive within the snapshot version
+	// (#522): a record written before it reads back as face up, which
+	// is what every record was then taken to be.
+	FaceDown FaceDownKind `json:"faceDown,omitempty"`
 }
 
 // harvestPass is the event-local, immutable view shared by every matching
@@ -356,6 +368,12 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 	c.AttachedTo = identity.AttachedTo
 	c.TextBox = identity.TextBox
 	c.TextWords = textWordsFromEntries(identity.TextWords)
+	// #4845: the face-down permanent it was, not the card face up in its
+	// new zone. Only the state is put back: the body the permanent had
+	// is the last-known characteristic below.
+	if identity.FaceDown.IsPermanentState() {
+		c.SetFaceDown(identity.FaceDown)
+	}
 	if lki, ok := g.lastKnownBattlefield[c.InstanceID]; ok {
 		c.Name = lki.Name
 		c.Controller = lki.Controller
