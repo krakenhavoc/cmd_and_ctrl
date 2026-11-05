@@ -15,6 +15,7 @@ func init() {
 		OracleID:     "6fec368d-374d-4318-861b-ff478ba51a3c",
 		Name:         "Octopus Form",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")),
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
