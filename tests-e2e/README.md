@@ -27,6 +27,7 @@ tests-e2e/
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
     ├── final-board-4912.spec.ts # #4912: a departed seat's tombstone carries a Final board button, on screen and not covered, that opens the read-only final board (battlefield, hand, graveyard, command zone) at 2, 3 and 4 seats and 1280x720, 1366x768 and 1920x1080, and again after a reload
+    ├── friends-3313.spec.ts   # ADR 0213 slice 3: the header's Friends drawer (Requests, Friends, Played with; Accept and Add friend), #/friends (a block asks first, a setting saves on change), History's With people and With friends; no sideways scroll at 1440 and 820 px
     ├── free-cast-hand-3270.spec.ts # #3270: "cast a spell from your hand without paying its mana cost" (Surtland Elementalist): the pick starts the cast at once, a sorcery in the declare attackers step included; none casts nothing
     ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
     ├── game.spec.ts           # game route WS handshake

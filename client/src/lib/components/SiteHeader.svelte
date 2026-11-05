@@ -70,7 +70,8 @@
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
 
-  // The Played with drawer (ADR 0213 §9, slice 2): a person's own list,
+  // The friends drawer (ADR 0213 §9; Played with in slice 2, Requests and
+  // Friends from slice 3): a person's own list,
   // so not for a guest seat or the admin token, which are credentials.
   // It fetches when it opens and never polls. Closing it hands focus back
   // to the button.
@@ -389,10 +390,10 @@
           type="button"
           class="people-btn"
           bind:this={playedBtnEl}
-          aria-label={L.playedWithButton}
+          aria-label={L.friendsButton}
           aria-haspopup="dialog"
           aria-expanded={playedOpen}
-          title="People you've played with"
+          title="Friends and people you've played with"
           onclick={() => (playedOpen = true)}
         >
           <Icon name="people" size={18} />
