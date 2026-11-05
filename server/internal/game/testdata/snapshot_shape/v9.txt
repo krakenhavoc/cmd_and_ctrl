@@ -4084,6 +4084,7 @@ frozenEntries[].event.damageTail.sourceLki.Abilities[]	string
 frozenEntries[].event.damageTail.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
@@ -12125,6 +12126,7 @@ frozenEntries[].event.sourceLki.Abilities[]	string
 frozenEntries[].event.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
@@ -18248,6 +18250,7 @@ heldCombatDamage.answers[].frame.SourceLKI.Abilities[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AdditionalBlocks	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
 heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackBlockNeedsOtherPower	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
@@ -18424,6 +18427,7 @@ lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
+lastKnownBattlefield{}.AttackBlockNeedsOtherPower	number:int
 lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
@@ -18604,6 +18608,7 @@ lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
+lastKnownPermanents{}[].characteristic.AttackBlockNeedsOtherPower	number:int
 lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
@@ -21449,6 +21454,7 @@ movesAwaitingTokens[].damageTail.sourceLki.Abilities[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
@@ -29490,6 +29496,7 @@ movesAwaitingTokens[].sourceLki.Abilities[]	string
 movesAwaitingTokens[].sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
@@ -39542,6 +39549,7 @@ pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
@@ -40350,6 +40358,7 @@ pendingChoices[].divideShield.staged[].lki.Abilities[]	string
 pendingChoices[].divideShield.staged[].lki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
@@ -40515,6 +40524,7 @@ pendingChoices[].divideShield.staged[].sourceLki.Abilities[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
@@ -45904,6 +45914,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
@@ -53945,6 +53956,7 @@ pendingChoices[].replacementResume.event.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
@@ -61535,6 +61547,7 @@ pendingChoices[].targetWalk.frame.lki.Abilities[]	string
 pendingChoices[].targetWalk.frame.lki.AdditionalBlocks	number:int
 pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
 pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].targetWalk.frame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
@@ -62224,6 +62237,7 @@ pendingChoices[].triggerFrame.lki.Abilities[]	string
 pendingChoices[].triggerFrame.lki.AdditionalBlocks	number:int
 pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
 pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].triggerFrame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
