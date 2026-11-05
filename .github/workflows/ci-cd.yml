@@ -167,8 +167,8 @@ jobs:
 
       # The cache is on for a GitHub-hosted runner only (#1433). A
       # hosted runner starts cold, so restoring the module and build
-      # cache (keyed on server/go.sum) saves the download and most of
-      # the compile. A self-hosted runner is the opposite: $HOME
+      # cache (keyed on server/go.mod and go.sum) saves the download and
+      # most of the compile. A self-hosted runner is the opposite: $HOME
       # survives between jobs and ~/go/pkg/mod is already warm --
       # there is nothing for a cache to restore that is not already
       # there. Worse, Go marks the module cache read-only (files 0444,
@@ -178,13 +178,37 @@ jobs:
       # on every run, then silently re-downloads the whole module set.
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
+      #
+      # One key serves every Go job here and in e2e-nightly.yml, and
+      # setup-go saves it only on a miss, from whichever job finishes
+      # first. So what the entry holds is that job's module cache, and
+      # the "Download the server's modules" step below makes it the
+      # whole server's, whichever job it is (#4948). go.mod joined the
+      # key to retire the entry a subset job had already saved: on a
+      # hit setup-go never saves, so that entry would otherwise stay
+      # until go.sum or the Go patch release changed.
       - &setup-go
         name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: |
+            server/go.mod
+            server/go.sum
+
+      # Every module go.mod requires, before any job builds a subset of
+      # them (#4948). Without it a job that tested only packages like
+      # internal/game or internal/decks saved the shared entry first,
+      # holding only the handful those need, and every later job, build
+      # included, downloaded sqlite, libc, websocket and discordgo
+      # again. A no-op once the entry has them. Hosted only, like the
+      # cache: a self-hosted runner's module cache is already warm.
+      - &go-mod-download
+        name: Download the server's modules
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: go mod download
 
       # One self-hosted runner, no job-level cleanup: the Go build cache
       # under $HOME and orphaned /tmp/go-build* trees left by cancelled
@@ -382,6 +406,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
       - *free-disk
 
       # This shard's `go test` arguments: a -run or -skip filter for a
@@ -527,6 +552,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -574,6 +600,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -658,6 +685,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
       - *free-disk
       - *setup-node
 
@@ -891,12 +919,8 @@ jobs:
           # checkout to leave wired into the local credential helper.
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # One step, in numbered sections, for the same reason "Ensure
       # off-site backup" below (in the shared CD steps) is one step: the

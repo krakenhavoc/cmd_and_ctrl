@@ -403,8 +403,9 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"Library": true, "Hand": true, "Graveyard": true, "Command": true, "Emblems": true,
 		"CommanderDamage": true, "LifeHistory": true, "TurnsBegun": true, "UpkeepsBegun": true, "ExtraTurnsBegun": true,
 		"EndStepTurn": true, "LastTurnAttacks": true, "LastTurnCastOrPut": true, "Eliminated": true, "Removed": true,
-		"LossCause": true, // #4879: why they left goes with Eliminated.
-		"HandKept":  true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
+		"LossCause":  true, // #4879: why they left goes with Eliminated.
+		"FinalBoard": true, // #4912: what they had when they left, too.
+		"HandKept":   true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,
 		"LandDropsPerTurn": true, "ManaPool": true, "CastPermissions": true, "Statics": true,

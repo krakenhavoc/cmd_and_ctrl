@@ -195,6 +195,34 @@ func TestAGrantSurvivesOnACardWithNoCatalogEntry(t *testing.T) {
 	}
 }
 
+// TestAGrantSurvivesOnAnObjectWithNoOracleID — #4950. A token copy of a
+// vanilla token (a 4/4 Angel) has neither an oracle ID nor a token key,
+// and its copy effect's grant is still its ability (CR 707.9a): the key is
+// the grant-only composite and the trigger is found. Face-down still wins.
+func TestAGrantSurvivesOnAnObjectWithNoOracleID(t *testing.T) {
+	grant := stubGrantCatalog(t)
+
+	c := Card{Name: "Angel", TypeLine: "Token Creature — Angel", GrantedAbilities: []string{GrantKey(grant)}}
+	key := CatalogKey(c)
+	if key != "|"+GrantKey(grant) {
+		t.Fatalf("CatalogKey = %q, want the grant-only composite", key)
+	}
+	if got := CatalogTriggers(key); len(got) != 1 || got[0].Watches[0] != EventBecomesTarget {
+		t.Fatalf("triggers = %v, want just the granted one", got)
+	}
+	if BaseCatalogKey(key) != "" {
+		t.Errorf("BaseCatalogKey(%q) = %q, want no card identity", key, BaseCatalogKey(key))
+	}
+	if got := CatalogKey(Card{Name: "Angel"}); got != "" {
+		t.Errorf("an object with no oracle ID and no grant keys as %q, want none", got)
+	}
+	down := c
+	down.FaceDown, down.FaceDownKind = true, FaceDownManifested
+	if down.FaceDownIsPermanent() && CatalogKey(down) != "" {
+		t.Errorf("a face-down copy keys as %q, want the CR 708.2a silence", CatalogKey(down))
+	}
+}
+
 // TestMergingAGrantDoesNotMutateTheCatalog is the long-fuse bug the
 // concat helpers exist to prevent: the base *CardDef is shared by
 // every card with that oracle ID.

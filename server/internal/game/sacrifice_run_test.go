@@ -202,7 +202,7 @@ func TestAPromptedSacrificeRunWaitsForAPausedLeg(t *testing.T) {
 	}
 	if !run.got.Sacrificed(me.ID) {
 		t.Errorf("the commander took the command zone and the run reports nothing sacrificed: "+
-			"CR 701.17a's sacrifice is the move OFF the battlefield, and only where the card "+
+			"CR 701.21a's sacrifice is the move OFF the battlefield, and only where the card "+
 			"went was replaced (%v)", run.got)
 	}
 	if !me.Command.Contains(commander) {
@@ -446,7 +446,7 @@ func TestAFireAndForgetSacrificePromptStillSacrifices(t *testing.T) {
 		t.Error("a prompted sacrifice with no continuation still puts the permanent in the graveyard")
 	}
 	if !hasEvent(g, EventSacrifice, bear) {
-		t.Error("the announcement still fires (CR 701.17a)")
+		t.Error("the announcement still fires (CR 701.21a)")
 	}
 	if g.promptRuns != nil {
 		t.Errorf("a prompt nobody is waiting on left %d runs behind", len(g.promptRuns))

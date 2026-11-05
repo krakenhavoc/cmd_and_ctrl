@@ -2707,7 +2707,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 }
 
 // spendStrategyForCast asks the catalog whether this spell reads the
-// colours that paid for it (#761). Converge (CR 702.86) and sunburst
+// colours that paid for it (#761). Converge (CR 207.2c) and sunburst
 // (CR 702.44) do; everything else keeps the default order.
 //
 // A DECLARATION on the spec rather than something inferred from the
@@ -3162,7 +3162,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			// #1397: nil answers — the auto-tapper asks nobody, and a
 			// commander whose own mana ability sacrifices it is not a
 			// source it plans with.
-			if err := g.payCostSacrificesLocked(sacrifices, nil); err != nil {
+			if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, nil); err != nil {
 				continue
 			}
 		}
@@ -5912,6 +5912,10 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	p.Eliminated = true
 	p.LossCause = cause
 	p.AttemptedEmptyDraw = false
+	// #4912: what they had, before anything below takes it away. Their
+	// face-down exiled cards are revealed on the way out only when the
+	// departure does not end the game (the same test as below).
+	g.recordFinalBoardLocked(p, g.survivingSeatsLocked() > 1)
 	// #2450: a player leaving the game is loop progress (ADR 0055's
 	// 2026-10-07 amendment, option B, owner decision 3a).
 	g.noteLoopProgressLocked()
@@ -8336,7 +8340,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
-		if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
+		if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below

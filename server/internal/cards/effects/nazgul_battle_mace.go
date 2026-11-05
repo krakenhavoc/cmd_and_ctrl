@@ -96,7 +96,7 @@ var nazgulBattleMaceAnswer = OptionPickThen("option-pick/nazgul-battle-mace-pay-
 // wherever the sacrifice left it (#3859): the graveyard in the ordinary
 // case, exile under Rest in Peace, the library under a shuffle-in
 // replacement, the command zone for a commander (CR 903.9). The card was
-// sacrificed all the same (CR 701.17a); a replacement only rewrote where
+// sacrificed all the same (CR 701.21a); a replacement only rewrote where
 // it went, and "that card" is the card in that zone. A card that is
 // somewhere a sacrifice cannot have sent it, or no longer exists, is left
 // alone.

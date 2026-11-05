@@ -230,3 +230,21 @@ func TestLandfallPayoffOnTheWire(t *testing.T) {
 		t.Errorf("wire = %s, want %s", raw, want)
 	}
 }
+
+// #4979: a lifegain payoff rides the wire under life_gain_payoff.
+func TestLifeGainPayoffOnTheWire(t *testing.T) {
+	v := viewOfPurpose(game.Purpose{LifeGainPayoff: &game.LifeGainPayoff{Counters: 1}})
+	if v == nil || v.LifeGainPayoff == nil || *v.LifeGainPayoff != (LifeGainPayoffView{Counters: 1}) {
+		t.Fatalf("projected %+v, want a lifegain payoff of a counter", v)
+	}
+	if !v.Priced() {
+		t.Error("a lifegain payoff is not Priced")
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"life_gain_payoff":{"counters":1}}`; string(raw) != want {
+		t.Errorf("wire = %s, want %s", raw, want)
+	}
+}

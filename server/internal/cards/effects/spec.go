@@ -1442,7 +1442,7 @@ type Spec struct {
 	GameEndGates []game.GameEndGate
 
 	// WantsDistinctColors declares a spell that READS the colours of
-	// the mana that paid for it: converge (CR 702.86 — Painful
+	// the mana that paid for it: converge (CR 207.2c — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
 	// Oracle). Nothing else in the game does (#761).
 	//

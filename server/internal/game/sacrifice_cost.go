@@ -231,6 +231,18 @@ func (g *Game) sacrificeRefsLocked(ids []uuid.UUID) []ObjectRef {
 // Caller must hold g.mu in write mode, and must have validated the
 // payment with validateSacrificeCostLocked.
 func (g *Game) payCostSacrificesLocked(ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+	return g.payAbilityCostSacrificesLocked(uuid.Nil, ids, answers)
+}
+
+// payAbilityCostSacrificesLocked is payCostSacrificesLocked for an
+// activated ability's cost (a mana ability's included), whose source is
+// `source` (#4427). Each sacrifice's announcement names that source, so
+// the log can tell a permanent sacrificed for its own ability (a fetch
+// land, a Treasure, a Clue: CR 111.10a, 111.10f) from one sacrificed to
+// another permanent's (Viscera Seer's creature).
+//
+// Caller must hold g.mu in write mode, as for payCostSacrificesLocked.
+func (g *Game) payAbilityCostSacrificesLocked(source uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -239,7 +251,7 @@ func (g *Game) payCostSacrificesLocked(ids []uuid.UUID, answers map[uuid.UUID]bo
 		// #1397: `answers` are the CR 903.9 answers the commanders'
 		// owners gave before the payment began; nil for a payer that
 		// asks nobody (the auto-tapper), which is "unasked".
-		if err := g.sacrificeAnsweredLocked(id, commanderAnswerFor(answers, id)); err != nil {
+		if err := g.sacrificeAnsweredLocked(id, commanderAnswerFor(answers, id), source); err != nil {
 			return err
 		}
 	}

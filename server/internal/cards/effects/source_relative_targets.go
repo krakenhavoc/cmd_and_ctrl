@@ -69,7 +69,7 @@ func GreaterToughness() game.SourceComparison {
 	return game.SourceComparison{Stat: game.SourceToughness, Cmp: game.CmpGreater}
 }
 
-// Mentor is CR 702.136's keyword ability: "Whenever this creature
+// Mentor is CR 702.134's keyword ability: "Whenever this creature
 // attacks, put a +1/+1 counter on target attacking creature with
 // lesser power." The clause is relative to the mentor, so it is
 // re-judged at resolution against the mentor's power then (or its

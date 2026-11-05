@@ -217,7 +217,7 @@ func TestLeaveSacrificeAnnouncementNamesTheResolvingCardUnlessItIsACost(t *testi
 		if err := g.sacrificePermanentLocked(effect); err != nil {
 			t.Fatal(err)
 		}
-		if err := g.sacrificeAnsweredLocked(cost, commanderZoneUnasked); err != nil {
+		if err := g.sacrificeAnsweredLocked(cost, commanderZoneUnasked, uuid.Nil); err != nil {
 			t.Fatal(err)
 		}
 	})

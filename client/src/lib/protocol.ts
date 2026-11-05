@@ -1103,14 +1103,25 @@ export type LogKind =
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
-  // text names no card for anyone.
+  // text names no card for anyone. #4447: a reveal a library search made
+  // (a fetch land's "fetched", a "reveal it" tutor) also tells the search,
+  // whose own `search` line is then not written: it carries `library_seat`.
   | "reveal"
   // A player milled cards from their library (CR 701.17a). The milled cards
   // are named in `text`; no card_id, and `amount` is the card count.
+  // `card_ids` (#4445) is the cards the text names, in milled order.
   | "mill"
+  // #4445: a player discarded a card (CR 701.9a), one entry per card.
+  // `card_id` is the card, `seat` the player, `old_zone` "hand",
+  // `new_zone` where it went (the graveyard, or exile for madness),
+  // `cause` why ("effect", "cleanup" for the hand-size discard, "cost")
+  // and `source` the card behind it. A cycling's discard is its `cycle`
+  // entry instead, which carries the same `old_zone` and `new_zone`.
+  | "discard"
   // A player searched a library, or shuffled one. `label` "shuffle" is a plain
   // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
-  // `target_seat` is set when the library was another player's.
+  // `target_seat` is whose library it was. #4447: a search (not a plain
+  // shuffle) also carries `library_seat`, the same seat.
   | "search"
   // S30 random effects: the server-rendered public outcome of a die
   // roll or coin flip. The event text is already redacted and ready
@@ -1388,10 +1399,18 @@ export interface LogEvent {
   // Seat index of the player the entry acts on (who was attacked, who
   // took the damage). Absent when the entry targets a card or nothing.
   target_seat?: number;
+  // #4447: the seat whose library was searched (CR 701.23a), on the one
+  // entry that tells a library search: a `search` that is not a plain
+  // shuffle, or the `reveal` a search made. It says nothing about what was
+  // found, or whether anything was. Absent on every other entry.
+  library_seat?: number;
   // Instance ID of the card the entry is about. Absent when the entry
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // #4445: on a `mill` entry, the milled cards the text names (at most
+  // five, in milled order; `amount` is still the count).
+  card_ids?: string[];
   // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
   // entry is about, for spells and abilities alike. For a spell it
   // equals its card's ID; an ability's item has an ID no other field
@@ -1460,6 +1479,10 @@ export interface LogEvent {
   // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
   // It is the instruction, not the destination: a destruction replaced by
   // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
+  // On a `discard` entry (#4445) it is `effect`, `cleanup` or `cost`. On
+  // a `sacrifice` entry (#4427) it is `cost` when the permanent was
+  // sacrificed to pay a cost, and absent for an effect's or a sandbox
+  // sacrifice.
   cause?: string;
   // #4395, ADR 0209 §3: the run of events the rules treat as one
   // occurrence (CR 603.2c). Two entries with equal `batch` happened at
@@ -1471,7 +1494,10 @@ export interface LogEvent {
   // resolution the `batch` is). Empty when nothing resolving is behind
   // it (combat damage, a cost, a sandbox move), and absent for a viewer
   // who may not identify the card. Three or more exits in one `batch`
-  // from one `source` are a board wipe.
+  // from one `source` are a board wipe. A `sacrifice` entry with `cause`
+  // `cost` whose `source` is its own `card_id` was paid for that
+  // permanent's own ability (#4427): a fetch land cracked, a Treasure
+  // sacrificed for its mana, a Clue for its card.
   source?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
@@ -2689,6 +2715,12 @@ export interface PlayerView {
   // "commander_damage", "effect", "concede"). Absent while they play,
   // and on a seat restored from a snapshot that predates it.
   loss_cause?: string;
+  // #4912: what the player had at the moment they left the game,
+  // recorded before CR 800.4a took their objects out of it. Public and
+  // the same for every viewer, the hand included (owner decision,
+  // 2026-11-04); never the library. Absent while they play, and on a
+  // seat restored from a snapshot that predates it.
+  final_board?: FinalBoardView;
   // True once the player has committed to their opening hand during
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
@@ -4184,6 +4216,9 @@ export interface PurposeView {
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
+  // #4979: on a "whenever you gain life" row, what it pays for each
+  // life-gain event of its controller's (never life_gain).
+  life_gain_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
@@ -4757,6 +4792,42 @@ export interface StickerSheetView {
   name: string;
   scryfall_id?: string;
   stickers: StickerView[];
+}
+
+/**
+ * #4912: an eliminated seat's final board, PlayerView.final_board. Each
+ * zone is absent when it was empty.
+ */
+export interface FinalBoardView {
+  battlefield?: FinalCardView[];
+  hand?: FinalCardView[];
+  graveyard?: FinalCardView[];
+  exile?: FinalCardView[];
+  command?: FinalCardView[];
+}
+
+/**
+ * #4912: one card of a final board, with CardView's keys and nothing that
+ * acts. `attached_to` / `attached_to_name` name what an Aura or Equipment
+ * was on (a card, or a player for a Curse). `face_down` with no name is a
+ * face-down exiled card nothing revealed.
+ */
+export interface FinalCardView {
+  instance_id: string;
+  name?: string;
+  scryfall_id?: string;
+  layout?: string;
+  active_face?: number;
+  type_line?: string;
+  power?: number;
+  toughness?: number;
+  tapped?: boolean;
+  face_down?: boolean;
+  is_token?: boolean;
+  is_commander?: boolean;
+  counters?: Record<string, number>;
+  attached_to?: string;
+  attached_to_name?: string;
 }
 
 export interface CardView extends CastSurfaceView {

@@ -22,7 +22,7 @@ import (
 // has answered AND the permanents they named have finished moving — so
 // a sacrificed commander's CR 903.9 prompt holds the payout too, and a
 // commander that takes the command zone still counts, because CR
-// 701.17a's sacrifice is the move off the battlefield.
+// 701.21a's sacrifice is the move off the battlefield.
 //
 // "YOU MAY RETURN ANOTHER PERMANENT CARD" is chosen then, on
 // resolution, from the graveyard as it is after the sacrifices (#2863,
