@@ -70,6 +70,18 @@ func trekB4EquipmentOrSpacecraftEnteredUnderYou(g *game.Game, controller uuid.UU
 		g.EnteredWithSubtypeThisTurn(controller, "Spacecraft") > 0
 }
 
+// condEquipmentOrSpacecraftEntered is the same "if" as an If condition,
+// re-checked as Sulu's trigger resolves (CR 603.4).
+type condEquipmentOrSpacecraftEntered struct{}
+
+func (condEquipmentOrSpacecraftEntered) Holds(ctx *Context) bool {
+	return trekB4EquipmentOrSpacecraftEnteredUnderYou(ctx.Game, ctx.Controller())
+}
+
+func (condEquipmentOrSpacecraftEntered) condition() (game.FootprintStep, bool) {
+	return condStep(game.FootprintCondEquipmentOrSpacecraftEntered, 0), true
+}
+
 // youDrawIfMode is a modal spell's "you draw N cards" step, guarded by
 // its mode: Abzan Charm's second mode, Test of Conviction's Begin
 // Negotiations. One step, so a later step waits for a prompt the draw

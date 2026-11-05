@@ -21,18 +21,14 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventTapCard, game.EventAttack},
-				func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return ThisBecameTapped(ev, source, lki, g) &&
-						trekB4EquipmentOrSpacecraftEnteredUnderYou(g, source.Controller)
-				},
-				"Sulu — draw a card",
-				func(g *game.Game, item *game.StackItem) error {
-					if !trekB4EquipmentOrSpacecraftEnteredUnderYou(g, item.Controller) {
-						return nil
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}),
+			InterveningIf(condEquipmentOrSpacecraftEntered{},
+				OnAny([]game.EventKind{game.EventTapCard, game.EventAttack},
+					func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+						return ThisBecameTapped(ev, source, lki, g) &&
+							trekB4EquipmentOrSpacecraftEnteredUnderYou(g, source.Controller)
+					},
+					"Sulu — draw a card",
+					Do(DrawCards{N: 1}))),
 		},
 	})
 }
