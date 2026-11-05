@@ -637,6 +637,7 @@ choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
+choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
@@ -1362,6 +1363,7 @@ run prompt-run/smallpox-sacrifice-lands
 run prompt-run/social-snub-drain
 run prompt-run/sorin-imperious-bloodlord-sacrifice
 run prompt-run/springbloom-druid-search
+run prompt-run/ss-botany-bay-opponents-exile
 run prompt-run/summon-valefor-sonic-wings
 run prompt-run/sunder-the-gateway-transform
 run prompt-run/suppression-ray-stun
@@ -1452,6 +1454,7 @@ steps then-steps/seize-the-spotlight-fortune
 steps then-steps/shadow-mysterious-assassin-drain
 steps then-steps/snort-wheel
 steps then-steps/soul-shackled-zombie-drain
+steps then-steps/starfleet-communicator-draw
 steps then-steps/starving-revenant-card
 steps then-steps/summon-kujata-fire
 steps then-steps/sycorax-commander-wheel
@@ -1940,6 +1943,7 @@ tail sorin-vengeful-bloodlord/vampires
 tail soul-shackled-zombie/drain-if-creature
 tail speak-secrets/after-mill
 tail spelunking/gain-life-for-a-cave
+tail ss-botany-bay/then-you
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail strago-and-relm/after-mill
