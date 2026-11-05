@@ -896,7 +896,7 @@ type ManaAbilityShape struct {
 }
 
 // CatalogWantsDistinctColors reports whether a spell READS the
-// colours of the mana that paid for it — converge (CR 702.86),
+// colours of the mana that paid for it — converge (CR 207.2c),
 // sunburst (CR 702.44), and nothing else today. It is the switch that
 // picks the colour-maximising payment strategy at the cast gate
 // (#761, ADR 0068 §5).

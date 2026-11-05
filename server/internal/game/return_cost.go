@@ -20,7 +20,7 @@ import "github.com/google/uuid"
 //
 //   - **Not AbilityCost.SacrificeOther with a destination.** A
 //     sacrifice goes through sacrificePermanentLocked: EventSacrifice,
-//     a dies-trigger, CR 701.17a. A return is an ordinary battlefield
+//     a dies-trigger, CR 701.21a. A return is an ordinary battlefield
 //     exit to a hand, and Blood Artist must not fire on one.
 //
 //   - **Not BounceToHandForEffect.** That is the EFFECT verb (Azorius

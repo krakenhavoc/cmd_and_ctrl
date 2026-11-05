@@ -775,6 +775,9 @@ var playerFields = plan(
 	// #4879: why the player left (a LossCause), for the seat view's
 	// loss_cause. Carried, additive within v9.
 	"LossCause", carried, "",
+	// #4912: what the player had when they left, for the seat view's
+	// final_board. Carried, additive within v9.
+	"FinalBoard", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
 	// it would let the removed player straight back in.

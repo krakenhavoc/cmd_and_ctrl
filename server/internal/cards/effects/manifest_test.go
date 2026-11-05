@@ -17,7 +17,7 @@ const (
 	forumFamiliarOracle = "7ea0012b-b90b-43d6-bb5b-e4e92452bea7"
 )
 
-// TestSoulSummonsManifestsTheTopCard is CR 701.34a end to end: the top
+// TestSoulSummonsManifestsTheTopCard is CR 701.40a end to end: the top
 // card of the library arrives face down as a 2/2 its controller alone
 // may look at, with no ETB trigger and no text (CR 708.2a).
 func TestSoulSummonsManifestsTheTopCard(t *testing.T) {
@@ -89,7 +89,7 @@ func TestAManifestedNoncreatureStaysFaceDown(t *testing.T) {
 
 	c := findCardAnywhere(t, g, top)
 	if !c.FaceDownIsPermanent() {
-		t.Fatal("the land did not manifest — CR 701.34a manifests ANY card")
+		t.Fatal("the land did not manifest — CR 701.40a manifests ANY card")
 	}
 	if !c.IsCreature() {
 		t.Error("a manifested land is not a creature; CR 708.2 makes the object a 2/2 creature")

@@ -7,7 +7,7 @@ import (
 )
 
 // mana_spent.go — the catalog-side vocabulary for #761's record of
-// what mana paid for a spell: converge (CR 702.86), sunburst (CR
+// what mana paid for a spell: converge (CR 207.2c), sunburst (CR
 // 702.44), adamant (CR 207.2c) and "if no mana was spent to cast it".
 //
 // Each of these is one read of game.PaidCost through effects.Context,

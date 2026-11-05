@@ -1714,6 +1714,7 @@ tail engine/revealed-pick-done
 tail engine/revealed-pick-then
 tail engine/sacrifice-leg-settled
 tail engine/spell-copy-token
+tail engine/spell-copy-token-alt-cost
 tail engine/spell-copy-token-control
 tail engine/surveil-routed
 tail engine/suspend-exiled
@@ -2223,6 +2224,7 @@ tail tuck/each-owner-orders
 tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
+tail twinflame/exile-copies
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
 tail ultra-magnus-tactician/convert-at-end-of-combat

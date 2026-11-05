@@ -5,7 +5,7 @@ package effects
 // control." Back: Land (mdfc_lands.go).
 //
 // Two target clauses, one per slot. The fight is the shared one
-// (b10Fight, CR 701.12): each deals damage equal to its power to the
+// (b10Fight, CR 701.14): each deals damage equal to its power to the
 // other as one damage instance, and nothing happens if either has left
 // the battlefield or either target became illegal. No simplification.
 func init() {

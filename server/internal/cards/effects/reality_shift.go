@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // was legal at resolution: nothing in the printed text conditions it
 // on "if you do".
 //
-// No simplification. Manifest is CR 701.34a, carried since ADR 0069;
+// No simplification. Manifest is CR 701.40a, carried since ADR 0069;
 // this is the first catalog card to call it off a target rather than
 // off a fixed number of library cards.
 func init() {

@@ -635,7 +635,7 @@ type ReplacementEvent struct {
 	EntersAttacking uuid.UUID
 
 	// FaceDown is the CR 708.2 state the permanent ENTERS in —
-	// FaceDownManifested for a manifest (CR 701.34a), FaceDownMorphed
+	// FaceDownManifested for a manifest (CR 701.40a), FaceDownMorphed
 	// or FaceDownDisguised for a spell that was cast face down
 	// (CR 708.4). The zero value is an ordinary face-up entry, which
 	// is every other entry in the game.

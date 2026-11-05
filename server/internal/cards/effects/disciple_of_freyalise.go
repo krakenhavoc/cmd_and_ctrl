@@ -23,7 +23,7 @@ import (
 // the choice and hexproof is no obstacle. The life and cards are the
 // sacrificed creature's last-known power (CR 608.2h), and they follow
 // only a sacrifice that really happened — a sacrificed commander still
-// pays out (CR 701.17a).
+// pays out (CR 701.21a).
 func init() {
 	Register(Spec{
 		OracleID:     "2699005b-a471-429f-a9d8-fbf2077ee2fd",
