@@ -4190,6 +4190,9 @@ export interface PurposeView {
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
+  // #4979: on a "whenever you gain life" row, what it pays for each
+  // life-gain event of its controller's (never life_gain).
+  life_gain_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
