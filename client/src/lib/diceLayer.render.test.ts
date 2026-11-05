@@ -8,7 +8,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushSync } from "svelte";
 
+vi.mock("./sounds", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./sounds")>();
+  return { ...real, play: vi.fn() };
+});
+
 import DiceLayer from "./components/board/DiceLayer.svelte";
+import { play as playSound } from "./sounds";
 import RevealBanner from "./components/board/RevealBanner.svelte";
 import { DICE_FADE_MS, DICE_HOLD_MS, DICE_TUMBLE_MS } from "./dice";
 import { DiceQueue } from "./diceQueue.svelte";
@@ -70,6 +76,7 @@ beforeEach(() => {
   updateSettings("animations", "speed", 1);
   updateSettings("accessibility", "reduceMotion", false);
   queue = new DiceQueue();
+  vi.mocked(playSound).mockClear();
 });
 
 afterEach(() => {
@@ -338,6 +345,59 @@ function tableRoll(seq: number, rollID: number, result = 14): LogEvent {
     roll_id: rollID,
   };
 }
+
+describe("the sound (#4450)", () => {
+  const sounds = () => vi.mocked(playSound).mock.calls.map((c) => c[0]);
+
+  it("rattles once as a die starts to tumble, and rings once for a coin", () => {
+    const r = mountLayer([]);
+    r.setProps({ view: viewWith([roll(5, 1, [3, 9], 12), flip(6, 0, ["heads", "tails"])]) });
+    expect(sounds()).toEqual(["dice_roll", "coin_flip"]);
+    advance(DICE_TUMBLE_MS + DICE_HOLD_MS + DICE_FADE_MS);
+    r.setProps({
+      view: viewWith([
+        roll(5, 1, [3, 9], 12),
+        flip(6, 0, ["heads", "tails"]),
+        { seq: 7, kind: "step", seat: -1, text: "x" },
+      ]),
+    });
+    advance(1);
+    expect(sounds()).toEqual(["dice_roll", "coin_flip"]);
+  });
+
+  it("sounds nothing for what was already in the log when it mounted", () => {
+    mountLayer([roll(1, 1, [14]), flip(2, 0, ["tails"])]);
+    advance(DICE_TUMBLE_MS);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it("a seat's second roll sounds when its own tumble starts, not before", () => {
+    const r = mountLayer([]);
+    r.setProps({ view: viewWith([roll(5, 1, [3]), roll(6, 1, [11])]) });
+    expect(sounds()).toEqual(["dice_roll"]);
+    // A burst of two: each gets max(400 ms, 2.5 s / 2) on screen, then
+    // its fade, and the next starts when it is gone.
+    advance(1250 + DICE_FADE_MS - 1);
+    expect(sounds()).toEqual(["dice_roll"]);
+    advance(1);
+    expect(sounds()).toEqual(["dice_roll", "dice_roll"]);
+  });
+
+  it("with motion off it still sounds, at once", () => {
+    updateSettings("animations", "dice", false);
+    const r = mountLayer([]);
+    r.setProps({ view: viewWith([flip(5, 1, ["heads"])]) });
+    expect(sounds()).toEqual(["coin_flip"]);
+  });
+
+  it("a table roll sounds once, even when an undo moves its line", () => {
+    const r = mountLayer([]);
+    r.setProps({ view: viewWith([tableRoll(5, 1)]) });
+    r.setProps({ view: viewWith([tableRoll(4, 1)]) });
+    advance(DICE_TUMBLE_MS);
+    expect(sounds()).toEqual(["dice_roll"]);
+  });
+});
 
 describe("a table roll", () => {
   it("tumbles at the roller's seat and is read out once, even when an undo moves its line", () => {
