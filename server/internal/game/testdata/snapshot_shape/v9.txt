@@ -4155,6 +4155,7 @@ frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].Slot	string
 frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].SpendFrom	string
 frozenEntries[].event.damageTail.sourceLki.CantBeAttacked	bool
+frozenEntries[].event.damageTail.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.damageTail.sourceLki.CantBeSacrificed	bool
 frozenEntries[].event.damageTail.sourceLki.CantHave	array
 frozenEntries[].event.damageTail.sourceLki.CantHaveCounters	bool
@@ -12155,6 +12156,7 @@ frozenEntries[].event.sourceLki.BorrowedAbilities[].Slot	string
 frozenEntries[].event.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.BorrowedAbilities[].SpendFrom	string
 frozenEntries[].event.sourceLki.CantBeAttacked	bool
+frozenEntries[].event.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.sourceLki.CantBeSacrificed	bool
 frozenEntries[].event.sourceLki.CantHave	array
 frozenEntries[].event.sourceLki.CantHaveCounters	bool
@@ -17821,6 +17823,7 @@ heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].Slot	string
 heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].SpendFrom	string
 heldCombatDamage.answers[].frame.SourceLKI.CantBeAttacked	bool
+heldCombatDamage.answers[].frame.SourceLKI.CantBeBeamedUp	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantBeSacrificed	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantHave	array
 heldCombatDamage.answers[].frame.SourceLKI.CantHaveCounters	bool
@@ -17995,6 +17998,7 @@ lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
 lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.BorrowedAbilities[].SpendFrom	string
 lastKnownBattlefield{}.CantBeAttacked	bool
+lastKnownBattlefield{}.CantBeBeamedUp	bool
 lastKnownBattlefield{}.CantBeSacrificed	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHaveCounters	bool
@@ -18173,6 +18177,7 @@ lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].SpendFrom	string
 lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
+lastKnownPermanents{}[].characteristic.CantBeBeamedUp	bool
 lastKnownPermanents{}[].characteristic.CantBeSacrificed	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHaveCounters	bool
@@ -23121,6 +23126,7 @@ pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
+pendingChoices[].damageAssignment.SourceLKI.CantBeBeamedUp	bool
 pendingChoices[].damageAssignment.SourceLKI.CantBeSacrificed	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHaveCounters	bool
@@ -23926,6 +23932,7 @@ pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].Slot	string
 pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].divideShield.staged[].lki.CantBeAttacked	bool
+pendingChoices[].divideShield.staged[].lki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].lki.CantBeSacrificed	bool
 pendingChoices[].divideShield.staged[].lki.CantHave	array
 pendingChoices[].divideShield.staged[].lki.CantHaveCounters	bool
@@ -24089,6 +24096,7 @@ pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].Slot	string
 pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].divideShield.staged[].sourceLki.CantBeAttacked	bool
+pendingChoices[].divideShield.staged[].sourceLki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantBeSacrificed	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantHave	array
 pendingChoices[].divideShield.staged[].sourceLki.CantHaveCounters	bool
@@ -29468,6 +29476,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeAttacked	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeBeamedUp	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeSacrificed	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHave	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHaveCounters	bool
@@ -37468,6 +37477,7 @@ pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].Slot	stri
 pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].replacementResume.event.sourceLki.CantBeAttacked	bool
+pendingChoices[].replacementResume.event.sourceLki.CantBeBeamedUp	bool
 pendingChoices[].replacementResume.event.sourceLki.CantBeSacrificed	bool
 pendingChoices[].replacementResume.event.sourceLki.CantHave	array
 pendingChoices[].replacementResume.event.sourceLki.CantHaveCounters	bool
@@ -44599,6 +44609,7 @@ pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].Slot	string
 pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].targetWalk.frame.lki.CantBeAttacked	bool
+pendingChoices[].targetWalk.frame.lki.CantBeBeamedUp	bool
 pendingChoices[].targetWalk.frame.lki.CantBeSacrificed	bool
 pendingChoices[].targetWalk.frame.lki.CantHave	array
 pendingChoices[].targetWalk.frame.lki.CantHaveCounters	bool
@@ -45278,6 +45289,7 @@ pendingChoices[].triggerFrame.lki.BorrowedAbilities[].Slot	string
 pendingChoices[].triggerFrame.lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].triggerFrame.lki.CantBeAttacked	bool
+pendingChoices[].triggerFrame.lki.CantBeBeamedUp	bool
 pendingChoices[].triggerFrame.lki.CantBeSacrificed	bool
 pendingChoices[].triggerFrame.lki.CantHave	array
 pendingChoices[].triggerFrame.lki.CantHaveCounters	bool

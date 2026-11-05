@@ -241,7 +241,9 @@ const (
 	// CMDCTRL_DATA_DIR. Matches scripts/scryfall-refresh.sh.
 	scryfallSubdir      = "scryfall"
 	scryfallDefaultFile = "default-cards.json"
-	imagesSubdir        = "images"
+	// scryfallRolesFile is cmd/cardroles' output beside the dump.
+	scryfallRolesFile = "card-roles.json"
+	imagesSubdir      = "images"
 )
 
 func main() {
@@ -890,6 +892,8 @@ func main() {
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
+		StatsPrefs:        newStatsPrefsStore(database),
+		AdvancedStats:     newAdvancedStatsStore(database),
 		Log:               log,
 		Bots:              bots,
 		BotBudget:         botBudget,
@@ -1671,6 +1675,26 @@ func newGameStatsStore(database *db.DB) gamestats.Store {
 	return gamestats.NewSQLStore(database)
 }
 
+// newAdvancedStatsStore reads a person's version-2 stats record for
+// the advanced-stats read routes (ADR 0217 slice 5), or nil with no
+// database.
+func newAdvancedStatsStore(database *db.DB) gamestats.AdvancedStore {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
+// newStatsPrefsStore is the advanced-stats setting (ADR 0217 §2,
+// migration 0030), or nil with no database, which leaves everyone on
+// gamestats.AdvancedDefault.
+func newStatsPrefsStore(database *db.DB) gamestats.PrefsStore {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLPrefsStore(database)
+}
+
 func newTableSetupStore(database *db.DB) tablesetups.Store {
 	if database == nil {
 		return tablesetups.NoStore{}
@@ -1926,6 +1950,19 @@ func loadCardAssets(log *slog.Logger, dataDir string) (*cards.Index, *cards.Imag
 		}
 	} else {
 		log.Info("scryfall index loaded", "cards", n, "path", dumpPath)
+	}
+	// Card roles for the advanced stats (ADR 0217 §7), written weekly by
+	// cmd/cardroles. A missing file is normal until its first run: roles
+	// then fall back to the catalog Purpose and card types.
+	rolesPath := filepath.Join(dataDir, scryfallSubdir, scryfallRolesFile)
+	if n, err := idx.LoadRoles(rolesPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("card roles not found; run cmd/cardroles", "path", rolesPath)
+		} else {
+			log.Error("card roles load failed", "path", rolesPath, "err", err)
+		}
+	} else {
+		log.Info("card roles loaded", "cards", n, "path", rolesPath)
 	}
 
 	cache, err := cards.NewImageCache(filepath.Join(dataDir, imagesSubdir))

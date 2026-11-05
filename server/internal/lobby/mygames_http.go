@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
@@ -72,8 +73,23 @@ func myStats(c Config, w http.ResponseWriter, r *http.Request) error {
 		c.logger().Error("reading a user's game statistics failed", "err", err)
 		return httpError(http.StatusInternalServerError, "could not load your statistics; try again")
 	}
+	// Whether advanced stats are on for the caller (ADR 0217 §2). A
+	// failure to read the setting reads as off: basic stats still show.
+	advanced := false
+	if prefs, def, err := c.advancedStatsFor(r.Context(), p.UserID); err != nil {
+		c.logger().Warn("reading a user's stats setting failed", "err", err)
+	} else {
+		advanced = prefs.Effective(def.Advanced)
+	}
 	metrics.StatsPageLoaded()
-	return writeJSON(w, http.StatusOK, stats)
+	return writeJSON(w, http.StatusOK, myStatsResponse{UserStats: stats, Advanced: advanced})
+}
+
+// myStatsResponse is GET /me/stats' body: ADR 0165's record and
+// whether advanced stats are on for the caller (ADR 0217 §2).
+type myStatsResponse struct {
+	gamestats.UserStats
+	Advanced bool `json:"advanced"`
 }
 
 // myGameCards is GET /me/games/{id}/cards: the commanders and cards the

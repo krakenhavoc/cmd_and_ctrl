@@ -25,6 +25,12 @@
   import { LobbyApiError, session } from "../../session";
   import Icon from "../Icon.svelte";
   import RelTime from "./RelTime.svelte";
+  import AccountAdvancedStats from "./AccountAdvancedStats.svelte";
+  import {
+    accountStatsOf,
+    fetchAdminAdvancedStats,
+    type AdminAccountStats,
+  } from "../../statsPrefs";
 
   interface Props {
     id: string;
@@ -41,6 +47,18 @@
   // The slot waiting on its Remove confirmation (ADR 0128 §11), or null.
   let confirmingMat = $state<number | null>(null);
   let matDone = $state("");
+  // This person's advanced-stats switch (ADR 0217 §2), or null when this
+  // server keeps no setting (no database) or it has not loaded.
+  let adv = $state<AdminAccountStats | null>(null);
+
+  async function loadAdvanced(): Promise<void> {
+    try {
+      adv = accountStatsOf(await fetchAdminAdvancedStats(), id);
+    } catch (err) {
+      if (err instanceof LobbyApiError && err.status === 403) onforbidden();
+      adv = null;
+    }
+  }
 
   async function load(): Promise<void> {
     loading = true;
@@ -65,6 +83,7 @@
 
   onMount(() => {
     void load();
+    void loadAdvanced();
   });
 
   async function revoke(): Promise<void> {
@@ -205,6 +224,22 @@
         <p class="notice ok" role="status">{done}</p>
       {/if}
     </div>
+
+    {#if adv}
+      <div class="card" data-testid="account-advanced-stats">
+        <h3>Advanced stats</h3>
+        <AccountAdvancedStats
+          name={a.name || "this account"}
+          row={adv}
+          onchange={(r) => (adv = r)}
+          {onforbidden}
+        />
+        <p class="help">
+          Switching it here is recorded as set by an admin. They can still switch it off in their
+          own Settings. It shows no stats.
+        </p>
+      </div>
+    {/if}
 
     <div class="card">
       <h3>Playmats · {mats.length}</h3>
