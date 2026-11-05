@@ -236,3 +236,59 @@ func TestHornOfTheMarkTriggersOncePerDeclaration(t *testing.T) {
 		t.Errorf("three attackers raised %d Horn prompts, want 1", n)
 	}
 }
+
+// hornAttackCases are #4864's three declarations for "two or more
+// creatures you control attack a player": each names where the two
+// attackers go, given the player, their planeswalker and a battle they
+// protect, and whether the ability triggers. Only creatures whose attack
+// target is the player itself count (CR 508.3a).
+var hornAttackCases = []struct {
+	name string
+	at   func(player, walker, battle uuid.UUID) [2]uuid.UUID
+	want bool
+}{
+	{"two at the player trigger", func(p, _, _ uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{p, p} }, true},
+	{"one at the player and one at their planeswalker do not", func(p, w, _ uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{p, w} }, false},
+	{"two at their battle do not", func(_, _, b uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{b, b} }, false},
+}
+
+// hornAttackTargets gives `opp` a planeswalker and makes them the
+// protector of a battle `other` controls, and returns both.
+func hornAttackTargets(g *game.Game, opp, other uuid.UUID) (walker, battle uuid.UUID) {
+	walker = p1g2Planeswalker(g, opp, 5)
+	battle = pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Test Siege", TypeLine: "Battle — Siege",
+		Owner: other, Controller: other, ProtectorPlayerID: opp,
+		Counters: map[string]int{game.CounterDefense: 5},
+	})
+	return walker, battle
+}
+
+// #4864: an attack on a player's planeswalker or on a battle they protect
+// is not an attack on that player, so it does not make up the two.
+func TestHornOfTheMarkCountsOnlyAttackersAtThePlayer(t *testing.T) {
+	for _, tc := range hornAttackCases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+			other := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+			hornTopFive(me, hornFive)
+			pushCatalogPermanent(g, me.ID, "Horn of the Mark", "Legendary Artifact", hornOfTheMarkOracle, false)
+			walker, battle := hornAttackTargets(g, opp.ID, other.ID)
+			at := tc.at(opp.ID, walker, battle)
+			advanceTo(t, g, game.StepDeclareAttackers)
+			for i := range at {
+				id := acPermanent(g, me.ID, "Rider", "Creature — Human Knight", 2, 2)
+				if err := g.DeclareAttacker(id, at[i]); err != nil {
+					t.Fatalf("DeclareAttacker %d: %v", i, err)
+				}
+			}
+			lockInAttacks(t, g)
+			passPriorityAroundTable(t, g)
+			if got := latestChooseCards(g, me.ID) != nil; got != tc.want {
+				t.Errorf("Horn of the Mark triggered = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

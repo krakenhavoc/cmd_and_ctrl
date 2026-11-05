@@ -1392,6 +1392,21 @@ matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
 and Zack Fair are exempt, each for a reason the test names). The arena's
 `heuristic-notemporary` is today's heuristic with the switch off.
 
+**A lifelink grant is worth the counters its life makes**
+([#4979](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4979),
+`PriceLifeGainPayoffs`, `lifegain_payoff.go`). A "whenever you gain life"
+row declares a `life_gain_payoff` (landfall's fields, per life-gain
+event): Heliod, Sun-Crowned's and Ajani's Pridemate's +1/+1 counter. Such
+a trigger fires once per event, not per point (CR 119.9), and one lifelink
+source's damage is one event (CR 702.15b, 702.15e). A grant that passes
+`spareCombatGrant` and gives lifelink to a creature of the bot's that
+lacks it and has power is worth one event of the bot's own payoffs more
+per such creature, a counter at `Power` + `Toughness`. Before attacks, and
+with mana a later cast needs, the grant keeps #4302's price, so it still
+waits for combat and for spare mana. The attack of a creature that
+already has lifelink, and life a spell or a trigger gains, are not
+repriced.
+
 **Spells declare it too**
 ([#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)).
 Giant Growth's "+3/+3 until end of turn", Dismember's -5/-5, Blossoming
@@ -1447,6 +1462,23 @@ biggest blocker (CR 702.19b). After blockers are declared neither changes
 anything (CR 509.1h) and only `CombatGrant` is left. +X/+X is still not
 priced before combat. The arena's `heuristic-nogrants` turns both of
 these off, and `--decks tricks-battle` deals a deck with the cards in it.
+
+**Haste is also worth the {T} ability it unlocks**
+([#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324),
+`PriceHasteTapRows`, `haste_tap.go`). A summoning-sick creature can't pay
+a {T} cost (CR 302.6), and haste lifts that as well as the attack
+(CR 702.10c). A declared haste grant on the bot's own sick, untapped
+creature without haste is worth the best of that creature's {T} rows the
+bot could then activate, less the tapped blocker, when that beats what the
+grant was already priced at (its attack, or a save). The row has to cost
+only the tap and mana the bot still has once the grant is paid for,
+counting the grant's own source when it taps a mana source (Hanweir
+Battlements). It is priced as the activation would be: its declared
+purpose, or `ActivateBase` with none. Answer rows, rows that sacrifice
+their source and mana abilities are left out. So Expedite on a fresh
+creature with "{T}: Draw a card" is cast for the draw. No curated deck
+holds a haste grant, so the evidence is the position tests
+(`heuristic/haste_tap_test.go`).
 
 ### Board wipes
 
@@ -2314,6 +2346,10 @@ time a spec was refactored.
 | `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
 | `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
 | `wubrg-dragons` | Dragon Hoard | The Ur-Dragon | Tribal (WUBRG) — nineteen Dragons that The Ur-Dragon makes cheaper and turns into cards and free permanents. The one built-in deck with a companion: Jegantha, the Wellspring waits outside the game ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md) decision 8) |
+| `mono-blue-artifacts` | Thopter Swarm | Sai, Master Thopterist | Artifacts (U) — cheap artifacts and mana rocks; every artifact spell is a flying Thopter from Sai, and spare Thopters become cards |
+| `izzet-spellslinger` | Spell Echo | Veyran, Voice of Duality | Spellslinger (UR) — burn, card draw and counterspells behind creatures that reward each spell; Veyran makes every one of those rewards trigger twice |
+| `orzhov-aristocrats` | Grave Dividends | Teysa Karlov | Aristocrats (WB) — tokens to sacrifice and drains on every death; Teysa makes each death trigger fire twice and gives the tokens lifelink |
+| `gruul-counters` | Growing Pains | Grumgully, the Generous | Counters (RG) — +1/+1 counters: Grumgully and the counter doublers make every creature enter bigger, and the Hydras keep growing |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -2343,10 +2379,18 @@ cost) shaped the list, so there is no Wrath of God or Sun Titan in it.
 it through the same pipeline a pasted list runs, and the heuristic is
 offered the `companion` special action like any seat with one.
 
+The last four (Thopter Swarm, Spell Echo, Grave Dividends, Growing
+Pains) are #554's second round, for the gaps it still listed: no
+mono-blue deck, no second aristocrats or control option, and no
+precon-style theme such as spellslinger. Each is in a colour or colour
+pair no other deck uses, and each is held to the same bar: every
+non-basic card graded `full` (72, 79, 78 and 80 cards), and every
+instant declaring what it answers.
+
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-All seven are in the picker. The `placeholder-mono-red` stand-in that
+All twelve are in the picker. The `placeholder-mono-red` stand-in that
 sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
 from it.
 

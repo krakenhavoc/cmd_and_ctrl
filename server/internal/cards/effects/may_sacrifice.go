@@ -82,7 +82,7 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 			// "if you do" is about the permanent that REALLY left: a
 			// CR 614 window that keeps it on the battlefield cancels the
 			// sacrifice, and a commander that goes to the command zone
-			// afterwards was still sacrificed (CR 701.17a, ADR 0115).
+			// afterwards was still sacrificed (CR 701.21a, ADR 0115).
 			tail := game.KeyedTail{Ref: sacrificed, Player: ctx.Controller(), Source: r.Source,
 				Carry: append([]uuid.UUID(nil), r.Carry...), Asked: game.NewAskedItem(ctx.Item)}
 			switch {

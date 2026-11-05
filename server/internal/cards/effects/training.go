@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// training.go — training (CR 702.138): "Whenever this creature attacks
+// training.go — training (CR 702.149): "Whenever this creature attacks
 // with another creature with greater power, put a +1/+1 counter on this
 // creature." Hopeful Initiate (#3172).
 //
@@ -28,7 +28,7 @@ func Training(label string) game.TriggeredAbility {
 
 // attacksWithGreaterPower is training's condition: another creature the
 // source's controller has declared as an attacker has greater power than
-// the source (CR 702.138a).
+// the source (CR 702.149a).
 func attacksWithGreaterPower(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if g == nil {
 		return false

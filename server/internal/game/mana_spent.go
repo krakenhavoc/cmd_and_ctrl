@@ -123,7 +123,7 @@ func (m ManaSpent) Count(symbol string) int {
 
 // Colors is the distinct COLOURS spent, in WUBRG order. Colourless is
 // not a colour (CR 105.1), so `{C}` never appears here — which is
-// exactly what converge (CR 702.86) and sunburst (CR 702.44) count,
+// exactly what converge (CR 207.2c) and sunburst (CR 702.44) count,
 // and why an Etched Oracle paid for entirely out of Sol Rings enters
 // as a 0/0.
 //

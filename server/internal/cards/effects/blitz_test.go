@@ -221,7 +221,7 @@ func TestBlitzedCreatureDyingEarlyDrawsOnce(t *testing.T) {
 
 // A blitzed creature an opponent has taken is not sacrificed: the
 // delayed trigger is the caster's, and a player can sacrifice only a
-// permanent they control (CR 701.17a). It keeps its haste and its draw,
+// permanent they control (CR 701.21a). It keeps its haste and its draw,
 // which is now the thief's.
 func TestBlitzedCreatureStolenIsNotSacrificed(t *testing.T) {
 	g := newCatalogGame(t)

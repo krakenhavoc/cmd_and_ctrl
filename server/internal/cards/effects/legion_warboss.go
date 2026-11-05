@@ -24,7 +24,7 @@ import (
 // temporary attacker" cards, not this one) — Legion Warboss's tokens
 // stick around.
 //
-// Mentor (CR 702.136) is the shared Mentor() trigger: a clause
+// Mentor (CR 702.134) is the shared Mentor() trigger: a clause
 // relative to the mentoring creature (#2146, game.TargetSpec.SourceOK),
 // offering only attacking creatures with strictly lesser power — which
 // excludes Legion Warboss itself without an explicit "other" clause,

@@ -409,7 +409,7 @@ func (c *Context) ManaSpentToCastThis() game.ManaSpent {
 }
 
 // ColorsSpent is the distinct COLOURS of mana spent to cast this
-// spell, in WUBRG order — converge's X (CR 702.86) and sunburst's
+// spell, in WUBRG order — converge's X (CR 207.2c) and sunburst's
 // counter count (CR 702.44). Colourless is not a colour, so {C} never
 // appears. Empty when the payment was not recorded, which is the
 // weaker-than-printed answer. Added in #761.

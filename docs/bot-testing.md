@@ -310,6 +310,41 @@ heuristic games (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic
 tests) and the package tests passed. Reports and decision logs stayed on
 the authoring machine.
 
+## What #4312 left (#4324, S75)
+
+**Declared removal in response windows (measured, unchanged).** #4312
+took the mana-value proxy off declared removal, so Dismember is priced as
+the removal less the card. The 2026-11-04 UTC run used integration base
+`43de8af88`, `--decks tricks-battle` at all four seats (three Dismember
+each), seeds 1000–1047, rotation, lockstep and decision logs: 48 games,
+all to a winner, none stalled. Dismember was offered in 126 seat-games and
+cast in 116; 49 casts were in response windows (median price +2.53) and
+89 in the caster's own main phase. Of the 440 response windows where the
+bot passed with Dismember priced above zero but at or below
+`InstantThreshold`, the target was a 1/1 Mother of Runes (+0.32) or a
+2/2 Bear for 4 life (+1.45; the deck has no black mana, so every cast
+pays Phyrexian life) in all but two, a 3/3 in the bot's own draw step,
+and none of those targets was attacking. Those
+holds cost no combat answer, and the bot cast Dismember on Bears and
+Mothers in its own main phase instead (19 of the 89 main-phase casts). So the response bar stays as it is;
+`TestDeclaredRemovalClearsTheResponseBar` holds a 2/2 kill above it on
+an opponent's turn and leaves a 1/1 for the end step's leftover bar.
+
+**Haste for a {T} ability.** `PriceHasteTapRows` (on by default, off in
+`BaselineConfig`) is the back-out; [bot.md](bot.md#purposes-what-a-spell-or-an-ability-does)
+says what it prices. No curated or synthetic deck holds a haste grant,
+so the evidence is `heuristic/haste_tap_test.go`, and the arena is the
+check that nothing else moved. With the change, the same tricks-battle
+run and the std pool (mono-red-aggro, simic-ramp, esper-control,
+mono-black-aristocrats; seeds 1000–1047, rotation, lockstep, all four
+seats `heuristic`) were identical to the base game for game (turns, each
+seat's final life, decisions and card offers and uses in all 96 games),
+with no stalls. Std wins per deck in both: esper-control 12/48, 25.0%
+(14.9–38.8%); mono-black-aristocrats 10, 20.8% (11.7–34.3%);
+mono-red-aggro 16, 33.3% (21.7–47.5%); simic-ramp 10, 20.8%
+(11.7–34.3%). The labelled suite stayed at 42/42. Reports, decision logs
+and the scanner stayed on the authoring machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every
@@ -683,6 +718,29 @@ The four-seat null rate is 25%. These runs establish that the repeated
 attachment stops; their wide intervals do not establish a strength gain.
 Local reports, the streaming counter and decision logs are under
 `data/arena-4321/` (gitignored). Full decision logs stay local.
+
+## Lifegain payoffs on a lifelink grant (#4979, S75)
+
+`PriceLifeGainPayoffs` adds Heliod's and Ajani's Pridemate's declared
+`life_gain_payoff` to a lifelink grant on the bot's creature in combat
+made with spare mana ([bot.md](bot.md#purposes-what-a-spell-or-an-ability-does)). There is no
+arena variant: compare one tree built twice, with the switch on and off
+in `DefaultConfig()`. The position tests
+(`heuristic/lifegain_payoff_test.go`) hold the price (a counter over a
+plain grant, two with a Pridemate out, nothing for an opponent's payoff
+or before attacks) and one decision: Heliod's lifelink beats a +1/+0 on
+the same attacker only with the payoff. The whole-engine tests in
+`aiseat/heliod_grant_bot_test.go` still hold the grant for combat and for
+the second main phase's cast, and make it once.
+
+The 2026-11-05 runs used develop `f01023882` plus #4979, rotation and
+lockstep, every seat `heuristic`: 48 four-seat games on
+mono-white-weenie, boros-voltron, mono-green-stompy and simic-ramp, and
+96 two-seat games of the mono-white-weenie mirror, both at `--seed 4979`.
+Every game ended on the same turn with the same winner with the switch on
+and off, and Heliod's activation was taken in the same windows (3 of 140,
+and 17 of 582): on these decks the change reprices the grant and changes
+no decision. The mirror's one stall is the same game in both builds.
 
 ## Test knobs
 

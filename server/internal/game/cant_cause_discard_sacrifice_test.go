@@ -116,7 +116,7 @@ func TestSacrificeGateOnlyOnEffectEntryPoints(t *testing.T) {
 
 	// Cost path: not blocked, even with a stale opponent item parked in
 	// the resolving slot.
-	if err := g.sacrificeAnsweredLocked(perm, commanderZoneUnasked); err != nil {
+	if err := g.sacrificeAnsweredLocked(perm, commanderZoneUnasked, uuid.Nil); err != nil {
 		t.Fatal(err)
 	}
 	if g.Battlefield.Contains(perm) {

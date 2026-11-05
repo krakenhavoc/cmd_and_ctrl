@@ -4,7 +4,10 @@
 // exit, a counterspell, a planeswalker, a created token (#4441), counters
 // put on a permanent (#4442), a commander cast from the command zone or
 // going home (#4443), an Equipment attached or an Aura enchanting a
-// permanent (#4444) and a board wipe each draw their cue
+// permanent (#4444), cards milled or discarded into a graveyard (#4445),
+// a card returned from a graveyard (#4446), a library searched (#4447), a
+// double-faced card transforming or day and night changing (#4448) and
+// a board wipe each draw their cue
 // over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
@@ -40,10 +43,13 @@ import {
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
   EFFECT_STILL_HOLD_MS,
+  DAY_NIGHT_FLIP_DELAY_MS,
   FIZZLE_MOTES,
   TOKEN_STAGGER_MS,
   WIPE_FIRST_CARD_MS,
+  REANIMATE_HAND_VOLUME,
   busyScale,
+  pileBaseMs,
   shatterPlan,
 } from "./tableEffects";
 
@@ -1302,6 +1308,1062 @@ describe("an Equipment is attached, or an Aura enchants a permanent (#4444)", ()
       expect(badges()).toHaveLength(0);
       expect(sounds("attach_equip")).toHaveLength(1);
       expect(sounds("attach_aura")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("cards are milled or discarded into a graveyard (#4445)", () => {
+  // The opponent's library and graveyard piles (each a button with its top
+  // card's thumbnail) and their hand, where the board draws them.
+  const LIB = { left: 1000, top: 560, width: 40, height: 56 };
+  const GY = { left: 1060, top: 560, width: 40, height: 56 };
+  const HAND = { left: 500, top: 20, width: 200, height: 60 };
+  const centre = (r: typeof LIB) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  const card = (id: string, owner = "opp") => permanent(id, owner, { type_line: "Sorcery" });
+
+  function pile(board: HTMLElement, zone: string, owner: string, r: typeof LIB) {
+    const button = rectEl("data-pile", zone, r);
+    button.setAttribute("data-pile-owner", owner);
+    const thumb = rectEl("class", "thumb", r);
+    button.appendChild(thumb);
+    board.appendChild(button);
+  }
+
+  function tableView(
+    log: LogEvent[],
+    graveyards: { me?: CardView[]; opp?: CardView[] },
+    battlefield: CardView[] = [],
+  ): GameView {
+    const v = viewWith(log, battlefield);
+    for (const [i, id] of ["me", "opp"].entries()) {
+      const cards = graveyards[id as "me" | "opp"] ?? [];
+      v.seats[i].graveyard = { kind: "graveyard", owner: id, count: cards.length, cards };
+    }
+    return v;
+  }
+
+  // The piles and the hand are on the board; then `log` lands, with the
+  // cards it names in their graveyards.
+  function frame(log: LogEvent[], graveyards: { me?: CardView[]; opp?: CardView[] }) {
+    const board = makeBoard([]);
+    pile(board, "library", "opp", LIB);
+    pile(board, "graveyard", "opp", GY);
+    board.appendChild(rectEl("data-hand-owner", "opp", HAND));
+    const r = render(TableEffects as never, { view: tableView([], {}), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: tableView(log, graveyards) } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const mill = (ids: string[], extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "mill",
+    turn: 3,
+    seat: 1,
+    amount: ids.length,
+    card_ids: ids,
+    batch: 4,
+    text: "",
+    ...extra,
+  });
+  const discard = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "discard",
+    turn: 3,
+    seat: 1,
+    card_id: id,
+    old_zone: "hand",
+    new_zone: "graveyard",
+    cause: "effect",
+    batch: 6,
+    text: "",
+    ...extra,
+  });
+
+  it("a mill slides each card off the library onto the graveyard pile, face up, a stagger apart, with one sound", () => {
+    const milled = ["m1", "m2", "m3"];
+    frame([mill(milled)], { opp: milled.map((id) => card(id)) });
+    const cues = effects("mill");
+    expect(cues).toHaveLength(1);
+    const from = centre(LIB);
+    const to = centre(GY);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("3");
+    expect(cues[0].hasAttribute("data-effect-sweep")).toBe(false);
+    const dust = cues[0].querySelector<HTMLElement>(".pile-dust")!;
+    expect(dust.style.left).toBe(`${to.x - from.x}px`);
+    expect(dust.style.top).toBe(`${to.y - from.y}px`);
+    // Each card is its own art, at the graveyard's top card's size, and
+    // turns over on the way.
+    const copies = [...cues[0].querySelectorAll<HTMLElement>(".pile-card")];
+    expect(copies).toHaveLength(3);
+    for (const c of copies) {
+      expect(c.querySelector(".flip .face img")?.getAttribute("src")).toBeTruthy();
+      expect(c.querySelector(".face.back")).toBeTruthy();
+      expect(c.querySelector<HTMLElement>(".face")!.style.width).toBe(`${GY.width}px`);
+      expect(runsOn(c.querySelector(".flip")!)).toHaveLength(1);
+    }
+    // One after another: each copy sets off later than the one before.
+    const starts = copies.map((c) => runsOn(c)[0][2].delay as number);
+    expect(starts[0]).toBe(0);
+    expect(starts[1]).toBeGreaterThan(starts[0]);
+    expect(starts[2]).toBeGreaterThan(starts[1]);
+    // The whole run fits its length, and nothing waits on it.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(pileBaseMs("mill", 3) + 1e-6);
+    expect(sounds("mill")).toEqual([["mill", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("mill")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a mill of five or more is one sweep of a handful, with a streak", () => {
+    const milled = ["a", "b", "c", "d", "e"];
+    frame([mill(milled, { amount: 8 })], { opp: milled.map((id) => card(id)) });
+    const cues = effects("mill");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].hasAttribute("data-effect-sweep")).toBe(true);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("8");
+    expect(cues[0].querySelectorAll(".pile-card")).toHaveLength(3);
+    expect(runsOn(cues[0].querySelector(".pile-streak")!)).toHaveLength(1);
+    // The handful moves as one.
+    const starts = [...cues[0].querySelectorAll(".pile-card")].map(
+      (c) => runsOn(c)[0][2].delay as number,
+    );
+    expect(new Set(starts).size).toBe(1);
+    expect(sounds("mill")).toHaveLength(1);
+  });
+
+  it("a discard tosses each card from the hand onto the graveyard pile, with one sound for the batch", () => {
+    frame([discard("d1"), discard("d2")], { opp: [card("d1"), card("d2")] });
+    const cues = effects("discard");
+    expect(cues).toHaveLength(1);
+    const from = centre(HAND);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    const copies = [...cues[0].querySelectorAll<HTMLElement>(".pile-card")];
+    expect(copies).toHaveLength(2);
+    // Face up the whole way: a discarded card is shown as it goes.
+    for (const c of copies) {
+      expect(c.querySelector(".flip")).toBeNull();
+      expect(c.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    }
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(pileBaseMs("discard", 2) + 1e-6);
+    expect(sounds("discard")).toEqual([["discard", { volume: 1, batch: "g1:6" }]]);
+  });
+
+  it("a discard from the viewer's own hand starts at its card there, not at the pile's thumbnail of it", () => {
+    const board = makeBoard([]);
+    pile(board, "graveyard", "me", GY);
+    // The pile's top card is the discarded card: the board draws it there too.
+    board
+      .querySelector('[data-pile="graveyard"] .thumb')!
+      .appendChild(rectEl("data-instance-id", "mine", GY));
+    const hand = rectEl("data-hand-owner", "me", HAND);
+    const inHand = { left: 520, top: 600, width: 60, height: 84 };
+    hand.appendChild(rectEl("data-instance-id", "mine", inHand));
+    board.appendChild(hand);
+    const r = render(TableEffects as never, { view: tableView([], {}), boardEl: board } as never);
+    advance(50);
+    r.setProps({
+      view: tableView([discard("mine", { seat: 0, cause: "cleanup" })], {
+        me: [card("mine", "me")],
+      }),
+    } as never);
+    flushSync();
+    const cues = effects("discard");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].style.left).toBe(`${centre(inHand).x}px`);
+    expect(cues[0].style.top).toBe(`${centre(inHand).y}px`);
+  });
+
+  it("each player milling at once is one sound, each into their own graveyard", () => {
+    const board = makeBoard([]);
+    pile(board, "graveyard", "opp", GY);
+    pile(board, "graveyard", "me", { ...GY, left: 100 });
+    const r = render(TableEffects as never, { view: tableView([], {}), boardEl: board } as never);
+    advance(50);
+    r.setProps({
+      view: tableView([mill(["o1"], { seat: 1 }), mill(["m1"], { seat: 0 })], {
+        opp: [card("o1")],
+        me: [card("m1", "me")],
+      }),
+    } as never);
+    flushSync();
+    const cues = effects("mill");
+    expect(cues).toHaveLength(2);
+    // No library pile on this board: each drops onto its pile from above.
+    const dropX = cues.map((c) => c.style.left);
+    expect(dropX).toEqual([`${centre(GY).x}px`, `${100 + GY.width / 2}px`]);
+    expect(sounds("mill")).toHaveLength(1);
+  });
+
+  it("a creature dying in the same frame keeps its own cue, and is not a card going to the graveyard without dying", () => {
+    const board = makeBoard(IDS);
+    pile(board, "library", "opp", LIB);
+    pile(board, "graveyard", "opp", GY);
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], {}, cardsAll), boardEl: board } as never,
+    );
+    advance(50);
+    board.querySelector('[data-instance-id="a"]')?.remove();
+    r.setProps({
+      view: tableView(
+        [zone("a", "graveyard", { cause: "sba", batch: 4 }), mill(["m1"])],
+        { opp: [permanent("a", "opp"), card("m1")] },
+        cardsAll.slice(1),
+      ),
+    } as never);
+    flushSync();
+    expect(effects("dies")).toHaveLength(1);
+    expect(effects("mill")).toHaveLength(1);
+    expect(effects("mill")[0].getAttribute("data-effect-card")).toBe("m1");
+    expect(effects("discard")).toHaveLength(0);
+  });
+
+  it("a milled commander its owner sends home plays both cues: into the graveyard, then home", () => {
+    const cmdr = permanent("cmdr", "opp", { is_commander: true, type_line: "Legendary Creature" });
+    const board = makeBoard([]);
+    pile(board, "library", "opp", LIB);
+    pile(board, "graveyard", "opp", GY);
+    const r = render(TableEffects as never, { view: tableView([], {}), boardEl: board } as never);
+    advance(50);
+    const v = tableView(
+      [mill(["cmdr"]), zone("cmdr", "command", { seat: 1, batch: 4 }, "graveyard")],
+      {},
+    );
+    v.seats[1].command = { kind: "command", owner: "opp", count: 1, cards: [cmdr] };
+    board.appendChild(
+      rectEl("data-instance-id", "cmdr", { left: 900, top: 650, width: 50, height: 70 }),
+    );
+    r.setProps({ view: v } as never);
+    flushSync();
+    expect(effects("mill")).toHaveLength(1);
+    expect(effects("commander_return")).toHaveLength(1);
+    expect(sounds("mill")).toHaveLength(1);
+    expect(sounds("commander_return")).toHaveLength(1);
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    frame([mill(["m1", "m2"])], { opp: [card("m1"), card("m2")] });
+    expect(effects("mill")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(pileBaseMs("mill", 2) + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame([mill(["m1"]), discard("d1", { batch: 4 })], { opp: [card("m1"), card("d1")] });
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("mill")).toHaveLength(1);
+      expect(sounds("discard")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a card returns from a graveyard to the battlefield or a hand (#4446)", () => {
+  // Each seat's graveyard pile (a button with its top card's thumbnail)
+  // and the opponent's hand, where the board draws them.
+  const GY = { left: 1060, top: 560, width: 40, height: 56 };
+  const MY_GY = { left: 100, top: 700, width: 40, height: 56 };
+  const HAND = { left: 500, top: 20, width: 200, height: 60 };
+  const centre = (r: typeof GY) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  // makeBoard's tiles: the i-th at left 100 + i * 100, top 300.
+  const tileCentre = (i: number) => ({
+    x: 100 + i * 100 + TILE.width / 2,
+    y: 300 + TILE.height / 2,
+  });
+
+  function pile(board: HTMLElement, owner: string, r: typeof GY) {
+    const button = rectEl("data-pile", "graveyard", r);
+    button.setAttribute("data-pile-owner", owner);
+    button.appendChild(rectEl("class", "thumb", r));
+    board.appendChild(button);
+  }
+
+  function tableView(
+    log: LogEvent[],
+    graveyards: { me?: CardView[]; opp?: CardView[] },
+    battlefield: CardView[] = [],
+    hands: { me?: CardView[] } = {},
+  ): GameView {
+    const v = viewWith(log, battlefield);
+    for (const [i, id] of ["me", "opp"].entries()) {
+      const cards = graveyards[id as "me" | "opp"] ?? [];
+      v.seats[i].graveyard = { kind: "graveyard", owner: id, count: cards.length, cards };
+    }
+    if (hands.me)
+      v.seats[0].hand = { kind: "hand", owner: "me", count: hands.me.length, cards: hands.me };
+    return v;
+  }
+
+  // The board as it stands after the frame (`ids` the battlefield tiles),
+  // a first frame with `before` in the graveyards, then `log`.
+  function frame(
+    ids: string[],
+    before: { me?: CardView[]; opp?: CardView[] },
+    log: LogEvent[],
+    after: {
+      battlefield?: CardView[];
+      graveyards?: { me?: CardView[]; opp?: CardView[] };
+      hands?: { me?: CardView[] };
+    } = {},
+  ) {
+    const board = makeBoard(ids);
+    pile(board, "opp", GY);
+    pile(board, "me", MY_GY);
+    board.appendChild(rectEl("data-hand-owner", "opp", HAND));
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], before), boardEl: board } as never,
+    );
+    advance(50);
+    r.setProps({
+      view: tableView(log, after.graveyards ?? {}, after.battlefield ?? [], after.hands ?? {}),
+    } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const back = (id: string, to: string, extra: Partial<LogEvent> = {}): LogEvent =>
+    zone(id, to, { seat: 1, batch: 7, ...extra }, "graveyard");
+  const card = (id: string, owner = "opp", extra: Partial<CardView> = {}) =>
+    permanent(id, owner, extra);
+
+  it("a reanimated creature rises out of its graveyard pile to its tile, which waits for it, with one sound", () => {
+    const { board } = frame(["z"], { opp: [card("z")] }, [back("z", "battlefield")], {
+      battlefield: [card("z")],
+    });
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    const from = centre(GY);
+    const to = tileCentre(0);
+    expect(cues[0].style.left).toBe(`${from.x}px`);
+    expect(cues[0].style.top).toBe(`${from.y}px`);
+    expect(cues[0].getAttribute("data-effect-to")).toBe("battlefield");
+    expect(cues[0].getAttribute("data-effect-count")).toBe("1");
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    expect(copy.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    expect(copy.querySelector(".rise-aura")).toBeTruthy();
+    expect(cues[0].querySelectorAll(".rise-glow")).toHaveLength(1);
+    // It goes from the pile to the tile, growing to the tile's size.
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+    expect(path.at(-1)?.scale).toBe(String(TILE.width / GY.width));
+    // Up out of the pile first.
+    expect(path[1].translate).toMatch(/^0px -\d+px$/);
+    // The tile is held hidden until the copy lands, then shown.
+    const tile = board.querySelector('[data-instance-id="z"]')!;
+    const held = runsOn(tile);
+    expect(held).toHaveLength(1);
+    expect((held[0][1] as Keyframe[])[0].opacity).toBe(0);
+    expect(held[0][2].fill).toBe("backwards");
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(pileBaseMs("reanimate", 1) + 1e-6);
+    expect(sounds("reanimate")).toEqual([["reanimate", { volume: 1, batch: "g1:7" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("reanimate")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("one effect's cards from two graveyards are one cue, each from its own pile, a stagger apart, one sound", () => {
+    // Living Death: the opponent's two creatures and the viewer's one.
+    // `seat` on each line is who returned it; the pile is its owner's.
+    const ids = ["o1", "o2", "m1"];
+    frame(
+      ids,
+      { opp: [card("o1"), card("o2")], me: [card("m1", "me")] },
+      [back("o1", "battlefield"), back("o2", "battlefield"), back("m1", "battlefield")],
+      { battlefield: [card("o1"), card("o2"), card("m1", "me")] },
+    );
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("3");
+    const copies = [...cues[0].querySelectorAll<HTMLElement>(".pile-card")];
+    expect(copies).toHaveLength(3);
+    // The first two rise from the opponent's pile, the third from the viewer's.
+    const o = centre(GY);
+    const m = centre(MY_GY);
+    expect(copies.map((c) => [c.style.left, c.style.top])).toEqual([
+      ["0px", "0px"],
+      ["0px", "0px"],
+      [`${m.x - o.x}px`, `${m.y - o.y}px`],
+    ]);
+    const starts = copies.map((c) => runsOn(c)[0][2].delay as number);
+    expect(starts[1]).toBeGreaterThan(starts[0]);
+    expect(starts[2]).toBeGreaterThan(starts[1]);
+    expect(sounds("reanimate")).toHaveLength(1);
+  });
+
+  it("a creature reanimated under another player's control rises from its owner's graveyard", () => {
+    // Reanimate on the opponent's creature: the viewer controls it now.
+    frame(["theirs"], { opp: [card("theirs")] }, [back("theirs", "battlefield", { seat: 0 })], {
+      battlefield: [card("theirs", "opp", { controller: "me" })],
+    });
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].style.left).toBe(`${centre(GY).x}px`);
+    expect(cues[0].style.top).toBe(`${centre(GY).y}px`);
+  });
+
+  it("five or more rise as one sweep of three", () => {
+    const ids = ["a", "b", "c", "d", "e"];
+    frame(
+      ids,
+      { opp: ids.map((id) => card(id)) },
+      ids.map((id) => back(id, "battlefield")),
+      { battlefield: ids.map((id) => card(id)) },
+    );
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].hasAttribute("data-effect-sweep")).toBe(true);
+    expect(cues[0].getAttribute("data-effect-count")).toBe("5");
+    const copies = [...cues[0].querySelectorAll(".pile-card")];
+    expect(copies).toHaveLength(3);
+    expect(new Set(copies.map((c) => runsOn(c)[0][2].delay as number)).size).toBe(1);
+    expect(sounds("reanimate")).toHaveLength(1);
+  });
+
+  it("a card regrown into an opponent's hand rises with its face from the graveyard, turns over, and is quieter", () => {
+    frame([], { opp: [card("g", "opp", { type_line: "Sorcery" })] }, [back("g", "hand")]);
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-to")).toBe("hand");
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    const flip = copy.querySelector<HTMLElement>('.flip[data-flip="down"]')!;
+    expect(flip.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    expect(flip.querySelector(".face.back")).toBeTruthy();
+    expect(runsOn(flip)).toHaveLength(1);
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    const from = centre(GY);
+    const to = centre(HAND);
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+    expect(sounds("reanimate")).toEqual([
+      ["reanimate", { volume: REANIMATE_HAND_VOLUME, batch: "g1:7" }],
+    ]);
+  });
+
+  it("a card regrown into the viewer's own hand lands on its card there, face up", () => {
+    const board = makeBoard([]);
+    pile(board, "me", MY_GY);
+    const hand = rectEl("data-hand-owner", "me", HAND);
+    const inHand = { left: 520, top: 600, width: 60, height: 84 };
+    hand.appendChild(rectEl("data-instance-id", "mine", inHand));
+    board.appendChild(hand);
+    const mine = card("mine", "me", { type_line: "Sorcery" });
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], { me: [mine] }), boardEl: board } as never,
+    );
+    advance(50);
+    r.setProps({
+      view: tableView([back("mine", "hand", { seat: 0 })], {}, [], { me: [mine] }),
+    } as never);
+    flushSync();
+    const cues = effects("reanimate");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].style.left).toBe(`${centre(MY_GY).x}px`);
+    const copy = cues[0].querySelector<HTMLElement>(".pile-card")!;
+    expect(copy.querySelector(".flip")).toBeNull();
+    expect(copy.querySelector(".face img")?.getAttribute("src")).toBeTruthy();
+    const path = runsOn(copy)[0][1] as Keyframe[];
+    const from = centre(MY_GY);
+    const to = centre(inHand);
+    expect(path.at(-1)?.translate).toBe(`${to.x - from.x}px ${to.y - from.y}px`);
+  });
+
+  it("a reanimated planeswalker rises with the sound, and its arrival follows silently", async () => {
+    const pw = card("z", "opp", { type_line: "Legendary Planeswalker — Liliana" });
+    frame(["z"], { opp: [pw] }, [back("z", "battlefield")], { battlefield: [pw] });
+    expect(effects("reanimate")).toHaveLength(1);
+    // Its arrival waits for the rise to mount, then for its tile to settle.
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+    expect(effects("pw_enter")).toHaveLength(1);
+    expect(sounds("reanimate")).toHaveLength(1);
+    expect(sounds("pw_enter")).toHaveLength(0);
+  });
+
+  it("a token copy of a card in a graveyard is a token, not a reanimation", () => {
+    const token: LogEvent = {
+      seq: ++seq,
+      kind: "token",
+      turn: 3,
+      seat: 1,
+      card_id: "copy",
+      batch: 7,
+      text: "",
+    };
+    frame(["copy"], { opp: [card("orig")] }, [token], {
+      battlefield: [card("copy", "opp", { is_token: true })],
+      graveyards: { opp: [card("orig")] },
+    });
+    expect(effects("reanimate")).toHaveLength(0);
+    expect(sounds("reanimate")).toHaveLength(0);
+    expect(effects("token_create")).toHaveLength(1);
+  });
+
+  it("a commander going home from its graveyard is commander_return only", () => {
+    const cmdr = card("cmdr", "opp", { is_commander: true, type_line: "Legendary Creature" });
+    const board = makeBoard([]);
+    pile(board, "opp", GY);
+    board.appendChild(
+      rectEl("data-instance-id", "cmdr", { left: 900, top: 650, width: 50, height: 70 }),
+    );
+    const r = render(
+      TableEffects as never,
+      { view: tableView([], { opp: [cmdr] }), boardEl: board } as never,
+    );
+    advance(50);
+    const v = tableView([back("cmdr", "command")], {});
+    v.seats[1].command = { kind: "command", owner: "opp", count: 1, cards: [cmdr] };
+    r.setProps({ view: v } as never);
+    flushSync();
+    expect(effects("commander_return")).toHaveLength(1);
+    expect(effects("reanimate")).toHaveLength(0);
+    expect(sounds("reanimate")).toHaveLength(0);
+  });
+
+  it("Short plays within its cap, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    const ids = ["a", "b", "c", "d"];
+    frame(
+      ids,
+      { opp: ids.map((id) => card(id)) },
+      ids.map((id) => back(id, "battlefield")),
+      {
+        battlefield: ids.map((id) => card(id)),
+      },
+    );
+    expect(effects("reanimate")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame(["z"], { opp: [card("z")] }, [back("z", "battlefield")], { battlefield: [card("z")] });
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("reanimate")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a player searches a library (#4447)", () => {
+  // Each seat's library pile (a button with its top card's back).
+  const LIB = { left: 1000, top: 560, width: 40, height: 56 };
+  const MY_LIB = { left: 100, top: 700, width: 40, height: 56 };
+  const centre = (r: typeof LIB) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+
+  function pile(board: HTMLElement, owner: string, r: typeof LIB) {
+    const button = rectEl("data-pile", "library", r);
+    button.setAttribute("data-pile-owner", owner);
+    button.appendChild(rectEl("class", "thumb", r));
+    board.appendChild(button);
+  }
+
+  // Both library piles are on the board; then `log` lands.
+  function frame(log: LogEvent[], cards: CardView[] = []) {
+    const board = makeBoard([]);
+    pile(board, "opp", LIB);
+    pile(board, "me", MY_LIB);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: viewWith(log, cards) } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const search = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "search",
+    turn: 3,
+    seat: 1,
+    target_seat: 1,
+    library_seat: 1,
+    label: "search_shuffled",
+    batch: 4,
+    text: "P2 searched their library and shuffled it",
+    ...extra,
+  });
+
+  it("a search riffles card backs off the searched library's pile, one after another, with one sound", () => {
+    frame([search()]);
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    const at = centre(LIB);
+    expect(cues[0].style.left).toBe(`${at.x}px`);
+    expect(cues[0].style.top).toBe(`${at.y}px`);
+    expect(cues[0].getAttribute("data-effect-library")).toBe("opp");
+    const backs = [...cues[0].querySelectorAll<HTMLElement>(".riffle-card")];
+    expect(backs.length).toBeGreaterThanOrEqual(3);
+    for (const c of backs) {
+      // Backs only, at the pile's top card's size: no face, no art.
+      const face = c.querySelector<HTMLElement>(".face")!;
+      expect(face.classList.contains("back-only")).toBe(true);
+      expect(c.querySelector("img")).toBeNull();
+      expect(face.style.width).toBe(`${LIB.width}px`);
+      expect(face.style.height).toBe(`${LIB.height}px`);
+    }
+    // One after another: each sets off later than the one before.
+    const starts = backs.map((c) => runsOn(c)[0][2].delay as number);
+    expect(starts[0]).toBe(0);
+    for (let i = 1; i < starts.length; i++) expect(starts[i]).toBeGreaterThan(starts[i - 1]);
+    expect(runsOn(cues[0].querySelector(".riffle-glow")!)).toHaveLength(1);
+    // About half a second, and nothing waits on it.
+    for (const ms of runEnds())
+      expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.library_search + 1e-6);
+    expect(sounds("library_search")).toEqual([["library_search", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("library_search")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a fetch land's reveal riffles the searcher's library, and the found land's arrival is its own", () => {
+    // "P1 fetched Forest from their library onto the battlefield".
+    const fetched: LogEvent = {
+      seq: ++seq,
+      kind: "reveal",
+      turn: 3,
+      seat: 0,
+      library_seat: 0,
+      old_zone: "library",
+      amount: 1,
+      batch: 7,
+      text: "P1 fetched Forest from their library onto the battlefield",
+    };
+    frame([fetched, zone("forest", "battlefield", { seat: 0, batch: 7 }, "library")]);
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-library")).toBe("me");
+    expect(cues[0].style.left).toBe(`${centre(MY_LIB).x}px`);
+    expect(sounds("library_search")).toEqual([["library_search", { volume: 1, batch: "g1:7" }]]);
+  });
+
+  it("another player's library riffles that pile; each library searched at once is one sound", () => {
+    frame([
+      search({ seat: 0, library_seat: 1, batch: 9 }),
+      search({ seat: 0, target_seat: 0, library_seat: 0, batch: 9 }),
+    ]);
+    const cues = effects("library_search");
+    expect(cues.map((c) => c.getAttribute("data-effect-library"))).toEqual(["opp", "me"]);
+    expect(sounds("library_search")).toHaveLength(1);
+  });
+
+  it("a plain shuffle, or a reveal no search made, riffles nothing and plays nothing", () => {
+    frame([
+      search({ label: "shuffle", library_seat: undefined, batch: 11 }),
+      {
+        seq: ++seq,
+        kind: "reveal",
+        turn: 3,
+        seat: 1,
+        old_zone: "library",
+        amount: 1,
+        batch: 12,
+        text: "",
+      },
+    ]);
+    expect(effects()).toHaveLength(0);
+    expect(sounds("library_search")).toHaveLength(0);
+  });
+
+  it("with no library pile on the board it riffles over the owner's seat at a card's size", () => {
+    const board = makeBoard([]);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    r.setProps({ view: viewWith([search()], []) } as never);
+    flushSync();
+    const cues = effects("library_search");
+    expect(cues).toHaveLength(1);
+    // makeBoard's opponent avatar: 60 x 60 at (560, 20).
+    expect(cues[0].style.left).toBe("590px");
+    expect(cues[0].style.top).toBe("50px");
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    frame([search()]);
+    expect(effects("library_search")).toHaveLength(1);
+    for (const ms of runEnds())
+      expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.library_search + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame([search({ batch: 20 })]);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("library_search")).toHaveLength(1);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a double-faced card transforms, or day and night changes (#4448)", () => {
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  // The art a tile shows: cardImage.ts's URL, face 0 with no face.
+  const art = (id: string, face: number) =>
+    `/cards/sf-${id}/image?size=art_crop${face > 0 ? `&face=${face}` : ""}`;
+  const dfc = (id: string, face: number, extra: Partial<CardView> = {}) =>
+    permanent(id, "opp", {
+      layout: "transform",
+      active_face: face,
+      faces: [
+        { name: `${id} front`, image: `/cards/sf-${id}/image?face=0` },
+        { name: `${id} back`, image: `/cards/sf-${id}/image?face=1` },
+      ],
+      ...extra,
+    } as Partial<CardView>);
+  const transform = (id: string, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "transform",
+    turn: 3,
+    seat: 1,
+    card_id: id,
+    label: `${id} front`,
+    batch: 4,
+    text: `${id} front transformed into ${id} back`,
+    ...extra,
+  });
+  const night = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "day_night",
+    turn: 4,
+    seat: -1,
+    label: "night",
+    batch: 9,
+    text: "It becomes night",
+    ...extra,
+  });
+  const tileOf = (board: HTMLElement, id: string) =>
+    board.querySelector<HTMLElement>(`[data-instance-id="${id}"]`)!;
+  const showFace = (board: HTMLElement, id: string, face: number) =>
+    tileOf(board, id).querySelector("img")!.setAttribute("src", art(id, face));
+
+  // `ids` are on the board front face up; then `log` lands with each card
+  // in `flipped` back face up, its tile showing that face.
+  function frame(ids: string[], flipped: string[], log: LogEvent[], tapped: string[] = []) {
+    const board = makeBoard(ids);
+    for (const id of ids) showFace(board, id, 0);
+    for (const id of tapped) {
+      const el = tileOf(board, id);
+      const r = el.getBoundingClientRect();
+      el.dataset.tapped = "true";
+      el.getBoundingClientRect = () => new DOMRect(r.left, r.top, r.height, r.width);
+    }
+    const before = ids.map((id) => dfc(id, 0));
+    const r = render(
+      TableEffects as never,
+      { view: viewWith([], before), boardEl: board } as never,
+    );
+    advance(50);
+    for (const id of flipped) showFace(board, id, 1);
+    const after = ids.map((id) => dfc(id, flipped.includes(id) ? 1 : 0));
+    r.setProps({ view: viewWith(log, after) } as never);
+    flushSync();
+    return { board, r };
+  }
+
+  it("a transform flips the card over its tile from the face it was to the face it is, with one sound", () => {
+    const { board } = frame(["a", "b"], ["a"], [transform("a")]);
+    const cues = effects("transform");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].getAttribute("data-effect-card")).toBe("a");
+    // Centred on its tile, at its size.
+    expect(cues[0].style.left).toBe(`${100 + TILE.width / 2}px`);
+    expect(cues[0].style.top).toBe(`${300 + TILE.height / 2}px`);
+    const from = cues[0].querySelector<HTMLElement>(".turn-from")!;
+    const to = cues[0].querySelector<HTMLElement>(".turn-to")!;
+    expect(from.querySelector("img")?.getAttribute("src")).toBe(art("a", 0));
+    expect(to.querySelector("img")?.getAttribute("src")).toBe(art("a", 1));
+    expect(from.style.width).toBe(`${TILE.width}px`);
+    expect(from.style.height).toBe(`${TILE.height}px`);
+    // It turns about its vertical axis, half a turn, edge-on midway.
+    const turn = runsOn(cues[0].querySelector(".turn-card")!);
+    expect(turn).toHaveLength(1);
+    const frames = turn[0][1] as Keyframe[];
+    expect(frames[0].transform).toMatch(/rotateY\(0deg\)/);
+    expect(frames.find((k) => /rotateY\(90deg\)/.test(String(k.transform)))).toBeTruthy();
+    expect(frames.at(-1)?.transform).toMatch(/rotateY\(180deg\)/);
+    expect(runsOn(cues[0].querySelector(".turn-rim")!)).toHaveLength(1);
+    // Its tile waits hidden under the copy, and only its tile.
+    const held = runsOn(tileOf(board, "a"));
+    expect(held).toHaveLength(1);
+    expect((held[0][1] as Keyframe[])[0].opacity).toBe(0);
+    expect((held[0][1] as Keyframe[]).at(-1)?.opacity).toBe(1);
+    expect(held[0][2].fill).toBe("backwards");
+    expect(runsOn(tileOf(board, "b"))).toHaveLength(0);
+    // About 0.6 s, and nothing waits on it.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.transform + 1e-6);
+    expect(sounds("transform")).toEqual([["transform", { volume: 1, batch: "g1:4" }]]);
+    advance(EFFECT_CAP_MS + 200);
+    expect(sounds("transform")).toHaveLength(1);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("a tapped card flips about its own long axis, at its unturned size", () => {
+    frame(["a"], ["a"], [transform("a")], ["a"]);
+    const cue = effects("transform")[0];
+    expect(cue.querySelector<HTMLElement>(".turn")!.style.rotate).toBe("90deg");
+    const from = cue.querySelector<HTMLElement>(".turn-from")!;
+    expect(from.style.width).toBe(`${TILE.width}px`);
+    expect(from.style.height).toBe(`${TILE.height}px`);
+  });
+
+  it("night falling washes the table and turns every werewolf a beat later, as one sound, the bell", () => {
+    frame(
+      ["a", "b", "c"],
+      ["a", "b"],
+      [night(), transform("a", { batch: 9 }), transform("b", { batch: 9 })],
+    );
+    const sky = effects("day_night");
+    expect(sky).toHaveLength(1);
+    expect(sky[0].getAttribute("data-sky")).toBe("night");
+    for (const part of [".sky-tint", ".sky-band", ".sky-orb"]) {
+      expect(runsOn(sky[0].querySelector(part)!)).toHaveLength(1);
+    }
+    const flips = effects("transform");
+    expect(flips.map((c) => c.getAttribute("data-effect-card"))).toEqual(["a", "b"]);
+    for (const c of flips) {
+      const turn = runsOn(c.querySelector(".turn-card")!)[0];
+      expect(turn[2].delay).toBe(DAY_NIGHT_FLIP_DELAY_MS);
+    }
+    // One moment: the bell once, and the flips play nothing of their own.
+    expect(sounds("day_night")).toEqual([["day_night", { volume: 1, batch: "g1:9" }]]);
+    expect(sounds("transform")).toHaveLength(0);
+    // Inside the cap.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS);
+    advance(EFFECT_CAP_MS + 200);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("day breaking with no werewolf out is the wash alone, in the day's colours", () => {
+    frame(["a"], [], [night({ label: "day", text: "It becomes day", batch: 10 })]);
+    const sky = effects("day_night");
+    expect(sky).toHaveLength(1);
+    expect(sky[0].getAttribute("data-sky")).toBe("day");
+    expect(effects("transform")).toHaveLength(0);
+    expect(sounds("day_night")).toHaveLength(1);
+  });
+
+  it("a melded permanent flips from its first card's front to the melded face", () => {
+    const board = makeBoard(["host"]);
+    const r = render(TableEffects as never, { view: viewWith([], []), boardEl: board } as never);
+    advance(50);
+    showFace(board, "host", 0);
+    const host = permanent("host", "opp", {
+      layout: "meld",
+      melded_from: [
+        { name: "Midnight Scavengers", image: "/cards/sf-scav/image" },
+        { name: "Graf Rats", image: "/cards/sf-rats/image" },
+      ],
+    } as Partial<CardView>);
+    const meld: LogEvent = {
+      seq: ++seq,
+      kind: "meld",
+      turn: 3,
+      seat: 1,
+      card_id: "host",
+      label: "Midnight Scavengers and Graf Rats",
+      batch: 12,
+      text: "Midnight Scavengers and Graf Rats melded into Chittering Host",
+    };
+    r.setProps({
+      view: viewWith([zone("host", "battlefield", { batch: 12 }, "exile"), meld], [host]),
+    } as never);
+    flushSync();
+    const cues = effects("transform");
+    expect(cues).toHaveLength(1);
+    expect(cues[0].querySelector(".turn-from img")?.getAttribute("src")).toBe(
+      "/cards/sf-scav/image?size=art_crop",
+    );
+    expect(cues[0].querySelector(".turn-to img")?.getAttribute("src")).toBe(art("host", 0));
+    expect(sounds("transform")).toHaveLength(1);
+  });
+
+  it("a card no longer on the board, or one with no other face, draws nothing and still plays the sound", () => {
+    frame(["a"], [], [transform("gone", { batch: 14 })]);
+    expect(effects()).toHaveLength(0);
+    expect(sounds("transform")).toHaveLength(1);
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing, holds no tile and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    frame(["a"], ["a"], [night(), transform("a", { batch: 9 })]);
+    expect(effects("transform")).toHaveLength(1);
+    expect(effects("day_night")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_SHORT_CAP_MS + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(playSound).mockClear();
+      vi.mocked(run).mockClear();
+      still();
+      frame(["a"], ["a"], [night({ batch: 20 }), transform("a", { batch: 20 })]);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(sounds("day_night")).toHaveLength(1);
+      expect(sounds("transform")).toHaveLength(0);
+      cleanup();
+      document.body.innerHTML = "";
+    }
+  });
+});
+
+describe("a permanent is sacrificed for its own ability (#4427)", () => {
+  const runsOn = (el: Element) => vi.mocked(run).mock.calls.filter((c) => c[0] === el);
+  const self = (id: string, batch = 4): LogEvent => ({
+    seq: ++seq,
+    kind: "sacrifice",
+    seat: 1,
+    card_id: id,
+    cause: "cost",
+    source: id,
+    batch,
+    text: "",
+  });
+  // a is a fetch land, b and c Treasures, d a creature.
+  const types: Partial<CardView>[] = [
+    { type_line: "Land" },
+    { type_line: "Token Artifact — Treasure" },
+    { type_line: "Token Artifact — Treasure" },
+    { type_line: "Creature — Snake Shaman" },
+  ];
+  const crackSounds = () =>
+    vi.mocked(playSound).mock.calls.filter((c) => String(c[0]).endsWith("_crack"));
+
+  it("a fetch land splits along a crack where it stood and falls away, with no altar and its own sound", () => {
+    deliver([self("a")], ["a"], types);
+    const [cue] = effects("crack");
+    expect(cue).toBeTruthy();
+    expect(effects("sacrifice")).toHaveLength(0);
+    expect(cue.getAttribute("data-effect-card")).toBe("a");
+    expect(cue.getAttribute("data-crack")).toBe("land");
+    // a's tile centre: left 100 + 40, top 300 + 56.
+    expect(cue.style.left).toBe("140px");
+    expect(cue.style.top).toBe("356px");
+    // Two halves of its art, either side of one crack.
+    const halves = [...cue.querySelectorAll<HTMLElement>(".crack-half")];
+    expect(halves).toHaveLength(2);
+    for (const h of halves) {
+      expect(h.querySelector("img")?.getAttribute("src")).toBe("/a.jpg");
+      expect(h.querySelector<HTMLElement>(".face")!.style.clipPath).toMatch(/^polygon\(/);
+      expect(runsOn(h)).toHaveLength(1);
+    }
+    expect(cue.querySelectorAll(".crack-line path")).toHaveLength(2);
+    expect(cue.querySelector(".crack-puff")).toBeTruthy();
+    expect(cue.querySelector(".altar")).toBeNull();
+    expect(cue.querySelector(".knife")).toBeNull();
+    expect(cue.querySelector(".shatter")).toBeNull();
+    // Its sound, a little quieter, capped on its payment; never the
+    // sacrifice's or its knife's.
+    expect(playSound).toHaveBeenCalledTimes(1);
+    const [name, opts] = vi.mocked(playSound).mock.calls[0];
+    expect(name).toBe("fetch_crack");
+    expect(opts?.volume).toBeLessThan(1);
+    expect(String(opts?.batch)).toMatch(/^g1:4:crack:/);
+    advance(EFFECT_CAP_MS + 200);
+    expect(playSound).not.toHaveBeenCalledWith("sacrifice", expect.anything());
+    expect(playSound).not.toHaveBeenCalledWith("sacrifice_knife", expect.anything());
+    // About 0.6 s, and gone by itself.
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.crack + 1e-6);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("two Treasures spent on one spell each crack, with one sound", () => {
+    const cast: LogEvent = { seq: 0, kind: "cast", seat: 1, card_id: "spell", batch: 6, text: "" };
+    const pay = [self("b", 6), self("c", 6)];
+    cast.seq = ++seq;
+    deliver([...pay, cast], ["b", "c"], types);
+    const cues = effects("crack");
+    expect(cues.map((c) => c.getAttribute("data-effect-card"))).toEqual(["b", "c"]);
+    expect(cues.map((c) => c.getAttribute("data-crack"))).toEqual(["treasure", "treasure"]);
+    expect(crackSounds().map((c) => c[0])).toEqual(["treasure_crack"]);
+  });
+
+  it("a creature sacrificed for its own ability keeps the altar and the knife", () => {
+    deliver([self("d")], ["d"], types);
+    expect(effects("crack")).toHaveLength(0);
+    const [cue] = effects("sacrifice");
+    expect(cue.querySelector(".altar")).toBeTruthy();
+    expect(playSound).toHaveBeenCalledWith("sacrifice", expect.anything());
+    expect(crackSounds()).toHaveLength(0);
+  });
+
+  it("Short plays the same, and still (reduced motion, Off) draws nothing and plays the sound once", () => {
+    updateSettings("animations", "effects", "short");
+    deliver([self("a")], ["a"], types);
+    expect(effects("crack")).toHaveLength(1);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.crack + 1e-6);
+    cleanup();
+    document.body.innerHTML = "";
+    for (const still of [
+      () => updateSettings("accessibility", "reduceMotion", true),
+      () => updateSettings("animations", "effects", "off"),
+    ]) {
+      resetSettings();
+      updateSettings("animations", "enabled", true);
+      vi.mocked(run).mockClear();
+      vi.mocked(playSound).mockClear();
+      still();
+      deliver([self("b", 7), self("c", 7)], ["b", "c"], types);
+      expect(run).not.toHaveBeenCalled();
+      expect(effects()).toHaveLength(0);
+      expect(badges()).toHaveLength(0);
+      expect(crackSounds().map((c) => c[0])).toEqual(["treasure_crack"]);
       cleanup();
       document.body.innerHTML = "";
     }

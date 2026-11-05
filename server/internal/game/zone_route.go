@@ -259,7 +259,7 @@ type zoneRoute struct {
 	// shares and so none of them has to name.
 	Cause MoveCause
 
-	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.17a)
+	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.21a)
 	// rather than a destruction, so the leg announces EventSacrifice
 	// while the permanent is still on the battlefield, before the
 	// window opens over its move. Only meaningful with
@@ -271,9 +271,20 @@ type zoneRoute struct {
 	//
 	// It is deliberately NOT a flavour of Destruction below, and the
 	// template says so by building on battlefieldExitRoute: a sacrifice
-	// is not a destruction (CR 701.17a), so the CR 701.19 regeneration
+	// is not a destruction (CR 701.21a), so the CR 701.19 regeneration
 	// built-in must never see one.
 	Sacrifice bool
+
+	// CostOf is, on a sacrifice paid as an activated ability's cost, the
+	// permanent whose ability it is (#4427): the announcement names it
+	// as the cost's source (Event.CauseSource), so the log can tell a
+	// permanent sacrificed for its own ability (a fetch land, a
+	// Treasure) from one sacrificed to another's. uuid.Nil on every
+	// other route, a spell's cost included. Read only by that
+	// announcement, before the move's CR 614 window opens, so a paused
+	// frame's mirror does not carry it (and a cost settles without
+	// pausing, MustSettleNow).
+	CostOf uuid.UUID
 
 	// ViaBattlefieldLeave says the physical move belongs to
 	// executeBattlefieldLeaveLocked rather than to

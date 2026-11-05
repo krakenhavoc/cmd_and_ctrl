@@ -50,6 +50,9 @@ func init() {
 			Targets:   TargetPermanent("target creature or enchantment you control", Or(Creature(), Enchantment()), YouControl()),
 			Key:       "Heliod, Sun-Crowned — a +1/+1 counter on target creature or enchantment",
 			Effect:    heliodCounterOnChosenTarget,
+			// #4979: one counter per life-gain event (CR 119.9), which the
+			// bot reads when it prices a lifelink attack.
+			Purpose: game.Purpose{LifeGainPayoff: &game.LifeGainPayoff{Counters: 1}},
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}: Another target creature gains lifelink until end of turn.",

@@ -340,6 +340,14 @@ type Config struct {
 	// the creature, and a trample grant by the damage it puts over the
 	// defender's biggest blocker. Off, neither adds to the attack.
 	PriceEvasionGrants bool
+	// PriceHasteTapRows prices haste granted until end of turn to the
+	// bot's summoning-sick creature by the {T} ability it can then
+	// activate (#4324, haste_tap.go; CR 302.6, 702.10c): the best row
+	// costing only the tap and mana the bot still has after the grant,
+	// at its declared purpose or ActivateBase, less the tapped blocker,
+	// when that beats the attack the grant adds. Off, haste is worth
+	// only the attack. Read only with PriceTemporaryEffects on.
+	PriceHasteTapRows bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -529,6 +537,13 @@ type Config struct {
 	// zero value) prices a token by TokenWeight alone, and Krenko's
 	// activation at the flat ActivateBase.
 	PriceTokenPayoffs bool
+	// PriceLifeGainPayoffs adds, to a lifelink grant on the bot's
+	// creature in combat made with spare mana, what its own declared
+	// lifegain payoffs pay for the life-gain event that creature's damage
+	// makes (#4979, lifegain_payoff.go): Heliod, Sun-Crowned's and Ajani's
+	// Pridemate's +1/+1 counter. Off (the zero value) prices the grant by
+	// its life alone.
+	PriceLifeGainPayoffs bool
 	// PriceSpareTokens prices a spare creature token sacrificed to pay a
 	// cost at the blocker it is rather than its body (#4991,
 	// spare_token.go): a token is spare when the bot still controls
@@ -971,6 +986,8 @@ func DefaultConfig() Config {
 		// blockers.
 		PriceGrantSaves:    true,
 		PriceEvasionGrants: true,
+		// #4324: haste priced by the {T} ability it unlocks.
+		PriceHasteTapRows: true,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -1016,6 +1033,7 @@ func DefaultConfig() Config {
 		PriceLandfallCasts:     true,
 		PriceFetchLandfall:     true,
 		PriceTokenPayoffs:      true,
+		PriceLifeGainPayoffs:   true,
 		// #4991: spare tokens stay at their board value (the price lost
 		// in the arena); two copies kept when it is turned on.
 		SpareTokenKeep: 2,
@@ -1163,6 +1181,7 @@ func BaselineConfig() Config {
 	c.CombatGrant = 0
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
+	c.PriceHasteTapRows = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1261,6 +1280,8 @@ func BaselineConfig() Config {
 	c.PriceFetchLandfall = false
 	// #3165: creature-enter payoffs on tokens.
 	c.PriceTokenPayoffs = false
+	// #4979: lifegain payoffs on a lifelink attack.
+	c.PriceLifeGainPayoffs = false
 	// #4991: every sacrificed token cost its board value.
 	c.PriceSpareTokens = false
 	c.SpareTokenKeep = 0

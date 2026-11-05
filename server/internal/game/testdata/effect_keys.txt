@@ -153,6 +153,7 @@ body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
 body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
+body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
 body grim-reaper-lethal-legionnaire/return
 body guide-of-souls/angel
@@ -269,6 +270,7 @@ body sakashima/return-listed-to-hand
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
 body seasoned-cryomancer/tap-and-stun
+body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shriek-treblemaker/cant-block
@@ -309,6 +311,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undying/return
 body until/return-to-battlefield
+body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body villainous-syndication/return
 body vronos/phase-out-the-objects
@@ -636,6 +639,7 @@ choose choose-cards/run-leg
 choose choose-cards/sacrifice-choice
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
+choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
@@ -693,6 +697,7 @@ choose choose-cards/ultra-magnus-tactician-put
 choose choose-cards/under-the-skin-return
 choose choose-cards/undercity-plague-sacrifice
 choose choose-cards/underrealm-lich-take
+choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
@@ -731,6 +736,7 @@ choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/kefka-life-loss
+choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -927,6 +933,7 @@ confirm confirm/transcendent-archaic-draw
 confirm confirm/turtles-in-time-ask
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
+confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/wandering-archaic-copy
 confirm confirm/ward-discard
 confirm confirm/ward-get-poison
@@ -970,6 +977,7 @@ drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen seasoned-cryomancer/discard-two
+drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
 drawthen the-theorist/counters-equal-to-hand
@@ -1536,6 +1544,7 @@ tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
+tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail augusta-order-returned/after-exile
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
@@ -1706,6 +1715,7 @@ tail engine/revealed-pick-done
 tail engine/revealed-pick-then
 tail engine/sacrifice-leg-settled
 tail engine/spell-copy-token
+tail engine/spell-copy-token-alt-cost
 tail engine/spell-copy-token-control
 tail engine/surveil-routed
 tail engine/suspend-exiled
@@ -1818,6 +1828,7 @@ tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10
+tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
@@ -2201,6 +2212,7 @@ tail thunderbolts-conspiracy/hero
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
+tail transwarp-hub/after-mill
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail trek-b27/deep-space-9-put-permanents
 tail trek-b31/artifact-creatures-protection-from-chosen-color
@@ -2213,6 +2225,7 @@ tail tuck/each-owner-orders
 tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
+tail twinflame/exile-copies
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
 tail ultra-magnus-tactician/convert-at-end-of-combat
@@ -2220,6 +2233,8 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail uss-farragut/haste-then-bottom-at-end-step
+tail uss-farragut/when-you-do-draw
 tail valgavoths-onslaught/manifest-again
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight

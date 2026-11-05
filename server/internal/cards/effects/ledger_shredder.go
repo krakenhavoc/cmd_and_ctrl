@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // condition, any seat's second spell, Ledger Shredder's own
 // controller included.
 //
-// Connive (CR 702.146) has no shared primitive yet — the catalog's
+// Connive (CR 701.50) has no shared primitive yet — the catalog's
 // one other user (Lethal Scheme) declared it uncomposable because it
 // has to connive an unbounded, dynamically-discovered SET of
 // convoking creatures. This card connives exactly one fixed

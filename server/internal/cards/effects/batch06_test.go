@@ -1111,7 +1111,7 @@ func TestB06SpringbloomDruidWithNoLandSearchesForNothing(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	if sacrificeChoiceFor(g, me.ID) != nil {
-		t.Error("a seat with no land is asked nothing (CR 701.17a's 'if you can')")
+		t.Error("a seat with no land is asked nothing (CR 701.21a's 'if you can')")
 	}
 	if searchChoiceFor(g, me.ID) != nil {
 		t.Error("'if you do' — nothing was sacrificed, so there is no search")

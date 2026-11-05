@@ -12,7 +12,15 @@
 // Nothing here touches game state, and nothing waits on it.
 
 import { EASE, run, type Run } from "./motion";
-import { SHATTER_BREAK, SHATTER_BREAK_LIGHT, sacrificeBeats } from "./tableEffects";
+import {
+  CRACK_SNAP,
+  PILE_LAND,
+  PILE_STAGGER,
+  SHATTER_BREAK,
+  SHATTER_BREAK_LIGHT,
+  TRANSFORM_TURN,
+  sacrificeBeats,
+} from "./tableEffects";
 import type { CounterTone, EffectKind, WipeTone } from "./tableEffects";
 
 export interface CueMotion {
@@ -48,6 +56,28 @@ export interface CueMotion {
    * meets the host, from the cue's centre (the host's), in board px.
    */
   seam?: { x: number; y: number };
+  /**
+   * Cards milled or discarded (#4445): `fly` is the graveyard pile, from
+   * where the cards start; `sweep` moves them as one handful.
+   */
+  sweep?: boolean;
+  /**
+   * Cards returned from a graveyard (#4446), each on its own way: from
+   * the cue's origin, where it starts (x, y: its graveyard pile, where
+   * the layer draws it), how far it travels from there (dx, dy) and its
+   * scale where it lands (s). Absent: every card goes `fly`, at scale 1.
+   */
+  paths?: readonly PilePath[];
+  /** The game became day or night (#4448): which sky washes the table. */
+  sky?: "day" | "night";
+}
+
+export interface PilePath {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  s: number;
 }
 
 type Timing = KeyframeAnimationOptions;
@@ -125,6 +155,23 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
       return;
     case "attach_aura":
       attachShimmer(node, f);
+      return;
+    case "mill":
+    case "discard":
+    case "reanimate":
+      pileSlide(node, f);
+      return;
+    case "library_search":
+      libraryRiffle(node, f);
+      return;
+    case "transform":
+      cardFlip(node, f);
+      return;
+    case "day_night":
+      skyWash(node, f);
+      return;
+    case "crack":
+      crackSplit(node, f);
       return;
     case "wipe":
       if (f.tone === "cold") vortex(node, f);
@@ -1246,6 +1293,512 @@ function attachShimmer(node: HTMLElement, f: CueMotion): void {
       span(f, a, Math.min(1, a + 0.45), EASE.power1Out),
     );
   });
+}
+
+// ---- Cards milled or discarded into a graveyard (#4445), or returned
+// from one (#4446) ----
+
+/**
+ * pileWindows is when each of `n` cards slides, as shares of the cue: each
+ * slide is the same length, and the next sets off PILE_STAGGER into the
+ * one before, so the last lands as the cue ends. A sweep's cards all go
+ * at once.
+ */
+export function pileWindows(n: number, sweep = false): { a: number; b: number }[] {
+  const k = Math.max(1, n);
+  if (sweep) return Array.from({ length: k }, () => ({ a: 0, b: 1 }));
+  const len = 1 / (1 + PILE_STAGGER * (k - 1));
+  return Array.from({ length: k }, (_, i) => {
+    const a = i * PILE_STAGGER * len;
+    return { a, b: a + len };
+  });
+}
+
+/**
+ * pileLandAt is the share of a cue of `n` cards at which card `i` lands
+ * (PILE_LAND into its own slide): when a returned card's tile, held
+ * hidden until then, takes over from its copy (#4446).
+ */
+export function pileLandAt(n: number, i: number, sweep = false): number {
+  const w = pileWindows(n, sweep)[i] ?? { a: 0, b: 1 };
+  return w.a + (w.b - w.a) * PILE_LAND;
+}
+
+/** How far a returned card rises straight up out of the graveyard pile before it travels, px. */
+export const REANIMATE_RISE_PX = 26;
+
+/**
+ * pileSlide moves cards into their owner's graveyard pile, or out of it.
+ * A mill slides each card off the library on a low arc, turning it face
+ * up on the way; a discard tosses it from the hand on a higher arc with
+ * a little spin. Each lands a touch past the pile and settles back, and
+ * fades as it lands, since the pile's own top card is already the last
+ * of them. A puff of dust rises from the pile as the last card lands. A
+ * sweep (five cards or more) moves a fanned handful as one, which closes
+ * up on the way, with a faint streak behind it.
+ *
+ * A reanimate (#4446) is the mirror image: each card rises straight up
+ * out of its graveyard pile in a dark-green glow, which blooms from the
+ * pile as it leaves, then travels on its own path (`paths`) to where it
+ * went (its tile on the battlefield, growing to the tile's size, or a
+ * hand, turning face down on the way into a hand the viewer cannot see),
+ * lands a touch past and settles, and fades as its tile takes over.
+ */
+function pileSlide(node: HTMLElement, f: CueMotion): void {
+  const cards = all<HTMLElement>(node, ".pile-card");
+  const toss = f.kind === "discard";
+  const rise = f.kind === "reanimate";
+  const sweep = f.sweep === true;
+  const wins = pileWindows(cards.length, sweep);
+  cards.forEach((card, i) => {
+    const w = wins[i];
+    const p = f.paths?.[i];
+    const dx = p?.dx ?? f.fly.x;
+    const dy = p?.dy ?? f.fly.y;
+    const s = p?.s ?? 1;
+    const len = Math.hypot(dx, dy) || 1;
+    // A hop even between two piles side by side, so the slide reads.
+    const lift = rise
+      ? Math.min(60, 20 + len * 0.12)
+      : toss
+        ? Math.min(70, 24 + len * 0.18)
+        : Math.min(40, 18 + len * 0.08);
+    // Past where it lands, along the way in, then back.
+    const ox = (dx / len) * 3;
+    const oy = (dy / len) * 3;
+    // A sweep's handful is fanned at the start and closes on the way.
+    const fan = sweep ? i - (cards.length - 1) / 2 : 0;
+    const sx = fan * 7;
+    const sy = -Math.abs(fan) * 3;
+    const spin = toss ? (i % 2 === 0 ? 10 : -8) : 2;
+    const tilt = sweep ? fan * 7 : toss ? -8 : rise ? 0 : -3;
+    const start: Keyframe = {
+      offset: 0,
+      translate: `${sx}px ${sy}px`,
+      rotate: `${tilt}deg`,
+      scale: "1",
+      easing: rise ? EASE.power2Out : EASE.power1Out,
+    };
+    const land: Keyframe = {
+      offset: PILE_LAND,
+      translate: `${dx + ox}px ${dy + oy}px`,
+      rotate: "0deg",
+      scale: String(s),
+      easing: EASE.sineInOut,
+    };
+    const end: Keyframe = {
+      offset: 1,
+      translate: `${dx}px ${dy}px`,
+      rotate: "0deg",
+      scale: String(s),
+    };
+    const way: Keyframe[] = rise
+      ? [
+          // Up out of the pile first, a little larger, then on its way.
+          {
+            offset: 0.26,
+            translate: `${sx}px ${sy - REANIMATE_RISE_PX}px`,
+            rotate: "0deg",
+            scale: "1.08",
+            easing: EASE.sineInOut,
+          },
+          {
+            offset: 0.56,
+            translate: `${dx * 0.5 + sx * 0.5}px ${dy * 0.5 - lift + sy * 0.5}px`,
+            rotate: `${spin}deg`,
+            scale: String((1.08 + s) / 2),
+            easing: EASE.power2In,
+          },
+        ]
+      : [
+          {
+            offset: 0.48,
+            translate: `${dx / 2 + sx * 0.5}px ${dy / 2 - lift + sy * 0.5}px`,
+            rotate: `${spin}deg`,
+            scale: toss ? "1.06" : "1.02",
+            easing: EASE.power2In,
+          },
+        ];
+    run(card, [start, ...way, land, end], span(f, w.a, w.b));
+    run(
+      card,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.06, opacity: 1 },
+        { offset: PILE_LAND + 0.04, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, w.a, w.b),
+    );
+    // A milled card leaves the library face down and lands face up; a
+    // card returned to a hand the viewer cannot see leaves the graveyard
+    // face up and goes into the hand face down (#4446).
+    const flip = card.querySelector<HTMLElement>(".flip");
+    if (flip) {
+      const down = flip.dataset.flip === "down";
+      run(
+        flip,
+        [
+          { transform: `perspective(600px) rotateX(${down ? 0 : 180}deg)` },
+          { transform: `perspective(600px) rotateX(${down ? 180 : 360}deg)` },
+        ],
+        down
+          ? span(f, w.a + (w.b - w.a) * 0.4, w.a + (w.b - w.a) * 0.8, EASE.power2InOut)
+          : span(f, w.a + (w.b - w.a) * 0.12, w.a + (w.b - w.a) * 0.62, EASE.power2InOut),
+      );
+    }
+    // A returned card's glow, about it as it rises, fading as it lands.
+    const aura = card.querySelector<HTMLElement>(".rise-aura");
+    if (aura) {
+      run(
+        aura,
+        [
+          { offset: 0, opacity: 0 },
+          { offset: 0.22, opacity: 0.95 },
+          { offset: 0.6, opacity: 0.7 },
+          { offset: PILE_LAND, opacity: 0.35 },
+          { offset: 1, opacity: 0 },
+        ],
+        span(f, w.a, w.b, EASE.sineInOut),
+      );
+    }
+  });
+  // And the glow a returned card leaves behind: a bloom from its pile as
+  // it rises out of it.
+  all<HTMLElement>(node, ".rise-glow").forEach((glow, i) => {
+    const w = wins[i] ?? { a: 0, b: 1 };
+    run(
+      glow,
+      [
+        { offset: 0, scale: "0.5", opacity: 0 },
+        { offset: 0.35, scale: "1", opacity: 0.9 },
+        { offset: 1, scale: "1.35", opacity: 0 },
+      ],
+      span(f, w.a, w.a + (w.b - w.a) * 0.6, EASE.power2Out),
+    );
+  });
+  const streak = node.querySelector<HTMLElement>(".pile-streak");
+  if (streak) {
+    run(
+      streak,
+      [
+        { offset: 0, scale: "1 0", opacity: 0 },
+        { offset: 0.25, opacity: 0.6 },
+        { offset: 0.75, scale: "1 1", opacity: 0.4 },
+        { offset: 1, scale: "1 1", opacity: 0 },
+      ],
+      span(f, 0.05, 0.95, EASE.sineInOut),
+    );
+  }
+  const dust = node.querySelector<HTMLElement>(".pile-dust");
+  if (dust) {
+    const last = wins[wins.length - 1] ?? { a: 0, b: 1 };
+    const at = last.a + (last.b - last.a) * PILE_LAND;
+    run(
+      dust,
+      [
+        { offset: 0, scale: "0.5", opacity: 0 },
+        { offset: 0.3, scale: "1", opacity: 0.85 },
+        { offset: 1, scale: "1.25", opacity: 0 },
+      ],
+      span(f, at - 0.04, 1, EASE.power2Out),
+    );
+  }
+}
+
+// ---- A library searched (#4447) ----
+
+/** How high a riffled card lifts off its library pile, as a share of the card's height. */
+export const RIFFLE_LIFT = 0.36;
+
+/**
+ * libraryRiffle thumbs through the top of a library pile while it is
+ * searched: a few card backs, drawn on the pile, flick up off it one
+ * after another, each tipping back a little by its bottom edge and
+ * fanned to alternate sides, and drop back onto it, the next setting off
+ * PILE_STAGGER into the one before (pileWindows), so the last settles as
+ * the cue ends. A cool light comes up under the pile while it is looked
+ * through and fades as the last card settles. Every card is a back: the
+ * cue shows nothing of what the library holds, or of what the search
+ * found (CR 401.2, 701.23b).
+ */
+function libraryRiffle(node: HTMLElement, f: CueMotion): void {
+  const cards = all<HTMLElement>(node, ".riffle-card");
+  const wins = pileWindows(cards.length);
+  const lift = Math.max(6, f.height * RIFFLE_LIFT);
+  cards.forEach((card, i) => {
+    const w = wins[i];
+    const side = i % 2 === 0 ? 1 : -1;
+    run(
+      card,
+      [
+        {
+          offset: 0,
+          transform: "perspective(420px) translate(0px, 0px) rotateX(0deg) rotate(0deg)",
+          easing: EASE.power2Out,
+        },
+        {
+          offset: 0.42,
+          transform: `perspective(420px) translate(${side * 4}px, ${-lift}px) rotateX(14deg) rotate(${side * 8}deg)`,
+          easing: EASE.power2In,
+        },
+        {
+          offset: 0.86,
+          transform: `perspective(420px) translate(0px, 1px) rotateX(-3deg) rotate(${side * -1}deg)`,
+          easing: EASE.sineInOut,
+        },
+        {
+          offset: 1,
+          transform: "perspective(420px) translate(0px, 0px) rotateX(0deg) rotate(0deg)",
+        },
+      ],
+      span(f, w.a, w.b),
+    );
+    // On the pile, a back over a back: seen only while it moves, and
+    // gone once it settles, so the pile's own top card is what stays.
+    run(
+      card,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.08, opacity: 1 },
+        { offset: 0.9, opacity: 1 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, w.a, w.b),
+    );
+  });
+  const glow = node.querySelector<HTMLElement>(".riffle-glow");
+  if (glow) {
+    run(
+      glow,
+      [
+        { offset: 0, scale: "0.7", opacity: 0 },
+        { offset: 0.25, scale: "1", opacity: 1 },
+        { offset: 0.75, scale: "1.05", opacity: 0.7 },
+        { offset: 1, scale: "1.15", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+}
+
+/**
+ * riseArrive holds a returned card's own tile on the battlefield hidden
+ * until its copy lands there (share `at` of the cue), then shows it, so
+ * the copy is the one card on screen on its way out of the graveyard
+ * (#4446), as commandArrive does for a commander going home. `fill:
+ * "backwards"` hides it from the frame on, and once the run is over the
+ * tile is its own style again. The caller cancels the returned run when
+ * the cue is removed or skipped, which shows the tile at once.
+ */
+export function riseArrive(tile: HTMLElement, f: CueMotion, at: number): Run {
+  const land = clamp01(at);
+  return run(
+    tile,
+    [
+      { offset: 0, opacity: 0 },
+      { offset: land, opacity: 0 },
+      { offset: Math.min(1, land + 0.08), opacity: 1 },
+      { offset: 1, opacity: 1 },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+// ---- A double-faced card transforms, or day and night (#4448) ----
+
+/** How far a flipping card lifts toward the viewer at its edge-on moment. */
+export const FLIP_LIFT = 1.08;
+
+/**
+ * cardFlip turns a double-faced permanent over to its other face, on its
+ * own vertical axis (the copy is turned with a tapped card, so the axis
+ * is the card's): the face it was eases away, is edge-on at
+ * TRANSFORM_TURN lifted a touch toward the table, and the face it is now
+ * comes round, a few degrees past, and settles. A pale light rims the
+ * card as it turns edge-on, the moment it changes, and is gone as it
+ * settles. Both faces are copies drawn over the tile, which waits hidden
+ * under them (flipHold).
+ */
+function cardFlip(node: HTMLElement, f: CueMotion): void {
+  const card = node.querySelector<HTMLElement>(".turn-card");
+  if (card) {
+    const turn = TRANSFORM_TURN;
+    run(
+      card,
+      [
+        {
+          offset: 0,
+          transform: "perspective(900px) rotateY(0deg) scale(1)",
+          easing: EASE.power2In,
+        },
+        {
+          offset: turn,
+          transform: `perspective(900px) rotateY(90deg) scale(${FLIP_LIFT})`,
+          easing: EASE.power2Out,
+        },
+        {
+          offset: turn + (1 - turn) * 0.7,
+          transform: "perspective(900px) rotateY(188deg) scale(1.02)",
+          easing: EASE.sineInOut,
+        },
+        { offset: 1, transform: "perspective(900px) rotateY(180deg) scale(1)" },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  const rim = node.querySelector<HTMLElement>(".turn-rim");
+  if (rim) {
+    run(
+      rim,
+      [
+        { offset: 0, opacity: 0, scale: "0.96" },
+        { offset: TRANSFORM_TURN * 0.6, opacity: 0.35, scale: "1" },
+        { offset: TRANSFORM_TURN, opacity: 1, scale: "1.04" },
+        { offset: 0.85, opacity: 0.25, scale: "1.06" },
+        { offset: 1, opacity: 0, scale: "1.08" },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+}
+
+// ---- A permanent sacrificed for its own ability (#4427) ----
+
+/**
+ * crackSplit is a fetch land cracked, or a Treasure, Clue or Food spent: no
+ * altar and no knife, just the card snapping like a dry branch. A jagged
+ * line runs down its length (to CRACK_SNAP) while the card gives a small
+ * knock, a puff of dust comes off the crack as it snaps, and the two
+ * halves fall away from each other and down the screen, turning outward
+ * and fading, gravity taking them faster as they go. About 0.6 s: it
+ * plays several times a game.
+ */
+function crackSplit(node: HTMLElement, f: CueMotion): void {
+  const snap = CRACK_SNAP;
+  for (const line of all<SVGPathElement>(node, ".crack-line path")) {
+    run(
+      line,
+      [
+        { offset: 0, strokeDashoffset: 1, opacity: 1 },
+        { offset: snap, strokeDashoffset: 0, opacity: 1 },
+        { offset: Math.min(1, snap + 0.25), strokeDashoffset: 0, opacity: 0 },
+        { offset: 1, strokeDashoffset: 0, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
+  for (const half of all<HTMLElement>(node, ".crack-half")) {
+    const dx = num(half, "dx");
+    const dy = num(half, "dy");
+    const rot = num(half, "rot");
+    const side = Math.sign(rot) || 1;
+    run(
+      half,
+      [
+        { offset: 0, translate: "0px 0px", rotate: "0deg", opacity: 1 },
+        { offset: snap * 0.4, translate: `${side * 1.5}px -1px`, rotate: "0deg", opacity: 1 },
+        { offset: snap, translate: "0px 0px", rotate: `${rot * 0.08}deg`, opacity: 1 },
+        {
+          offset: snap + (1 - snap) * 0.35,
+          translate: `${dx * 0.4}px ${dy * 0.12}px`,
+          rotate: `${rot * 0.45}deg`,
+          opacity: 1,
+          easing: EASE.power1In,
+        },
+        { offset: 1, translate: `${dx}px ${dy}px`, rotate: `${rot}deg`, opacity: 0 },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  const puff = node.querySelector<HTMLElement>(".crack-puff");
+  if (puff) {
+    run(
+      puff,
+      [
+        { offset: 0, opacity: 0, scale: "0.4" },
+        { offset: snap * 0.8, opacity: 0, scale: "0.5" },
+        { offset: snap + 0.08, opacity: 0.85, scale: "1" },
+        { offset: 1, opacity: 0, scale: "1.6" },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
+}
+
+/**
+ * flipHold holds a flipping permanent's own tile hidden while its copy
+ * turns over (#4448), then shows it as the copy settles on the same face:
+ * the copy is the one card on screen. `fill: "backwards"` hides it from
+ * the frame on, through a flip's delay (the copy shows the face it was
+ * meanwhile), and once the run is over the tile is its own style again.
+ * The caller cancels the returned run when the cue is removed or skipped,
+ * which shows the tile at once.
+ */
+export function flipHold(tile: HTMLElement, f: CueMotion): Run {
+  return run(
+    tile,
+    [
+      { offset: 0, opacity: 0 },
+      { offset: 0.96, opacity: 0 },
+      { offset: 1, opacity: 1 },
+    ],
+    { delay: f.delay, duration: Math.max(1, f.ms), easing: EASE.linear, fill: "backwards" },
+  );
+}
+
+/**
+ * skyWash is the game becoming day or night: the table takes the sky's
+ * tint (a deep, cool blue for night, a warm gold for day) while a soft
+ * band of that light crosses it, the way dusk or dawn moves (night from
+ * the right, day from the left), and the moon or the sun rises a little
+ * at the top and fades. It is over in about a second, and the permanents
+ * it turns over flip inside it.
+ */
+function skyWash(node: HTMLElement, f: CueMotion): void {
+  const night = f.sky !== "day";
+  const tint = node.querySelector<HTMLElement>(".sky-tint");
+  if (tint) {
+    run(
+      tint,
+      [
+        { offset: 0, opacity: 0 },
+        { offset: 0.3, opacity: 1 },
+        { offset: 0.65, opacity: 0.85 },
+        { offset: 1, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+  const band = node.querySelector<HTMLElement>(".sky-band");
+  if (band) {
+    const w = Math.max(160, f.board.w * 0.45);
+    const from = night ? f.board.w : -w;
+    const to = night ? -w : f.board.w;
+    run(
+      band,
+      [
+        { offset: 0, translate: `${from}px 0px`, opacity: 0 },
+        { offset: 0.15, translate: `${from + (to - from) * 0.15}px 0px`, opacity: 1 },
+        { offset: 0.85, translate: `${from + (to - from) * 0.85}px 0px`, opacity: 1 },
+        { offset: 1, translate: `${to}px 0px`, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power1Out),
+    );
+  }
+  const orb = node.querySelector<HTMLElement>(".sky-orb");
+  if (orb) {
+    run(
+      orb,
+      [
+        { offset: 0, translate: "0px 18px", opacity: 0 },
+        { offset: 0.35, translate: "0px 0px", opacity: 1 },
+        { offset: 0.7, translate: "0px -4px", opacity: 0.9 },
+        { offset: 1, translate: "0px -8px", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power2Out),
+    );
+  }
 }
 
 // ---- Board wipes ----

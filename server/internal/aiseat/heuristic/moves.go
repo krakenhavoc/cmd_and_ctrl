@@ -55,6 +55,8 @@ const suicideValue = eliminatedStrength
 // arithmetic and a fifth one forgotten.
 func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	v, reason := p.payoffOf(st, m)
+	// #4979: a lifelink grant's counters (lifegain_payoff.go).
+	v += p.lifelinkGrantPayoff(st, m)
 	if m.Cost == nil {
 		return v, reason
 	}
@@ -324,7 +326,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		return p.landDropValue(st, m)
 
 	case legal.KindCast:
-		return p.valueOfCast(st, m)
+		v, reason := p.valueOfCast(st, m)
+		// #4324: haste that lets a fresh creature use its {T} ability
+		// (haste_tap.go).
+		if g := p.hasteTapGain(st, m); g > 0 {
+			v += g
+			reason += " (haste for a {T} ability)"
+		}
+		return v, reason
 
 	case legal.KindActivate:
 		cp := decode[activateParams](m.Params)
@@ -634,6 +643,12 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			if st.myTurn && st.step == "precombat_main" && !c.SummoningSick && c.Power > 0 {
 				v -= st.w.Power * float64(c.Power)
 			}
+		}
+		// #4324: haste that lets a fresh creature use its {T} ability
+		// (haste_tap.go).
+		if g := p.hasteTapGain(st, m); g > 0 {
+			v += g
+			reason += " (haste for a {T} ability)"
 		}
 		return v, reason
 

@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Nosh — {2}, {T}, Sacrifice this artifact: You gain 3 life and draw a
 //	 card."
 //
-// Two Food abilities (CR 701.25 names Food's sacrifice; the card prints
+// Two Food abilities (CR 111.10b names Food's sacrifice; the card prints
 // both). The target of Share is "up to one": chosen or not, the draw
 // happens, and a target that has gone by resolution only loses the counter
 // (CR 608.2b).

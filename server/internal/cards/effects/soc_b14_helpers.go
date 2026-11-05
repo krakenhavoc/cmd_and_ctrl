@@ -69,29 +69,6 @@ func socB14ThatOpponentLoses3(ctx *Context) error {
 	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), who, -3)
 }
 
-// socB14HastyCopiesExiledAtEnd is "for each of them, create a token that's a
-// copy of that creature, except it has haste. Exile those tokens at the
-// beginning of the next end step" over `originals`, in order (Twinflame, and
-// Kindred Charge's body). The exile is a CR 603.7 delayed trigger over exactly
-// the tokens the copies made; no copies, no trigger.
-func socB14HastyCopiesExiledAtEnd(ctx *Context, controller uuid.UUID, originals []uuid.UUID, label string) error {
-	cursor := b25LastEventSeq(ctx.Game)
-	for _, id := range originals {
-		if err := (CreateTokenCopy{Controller: controller, Copy: id, N: 1, Except: TokenCopyGainsHaste}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	tokens := b27TokensCreatedByAfter(ctx.Game, controller, cursor)
-	if len(tokens) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: label,
-		Cards: tokens,
-		Body:  exileListedCardsBody,
-	}.Apply(ctx)
-}
-
 // socB14CopyPerCommanderCastBody is Thunderclap Drake's delayed body: copy the
 // spell the event named once for each time the trigger's controller has cast a
 // commander from the command zone this game, new targets allowed. With none

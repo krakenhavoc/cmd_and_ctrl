@@ -89,6 +89,8 @@ const LOG_TONE: Record<LogKind, string> = {
   reveal: "tone-cast",
   // A mill moves cards out of a library into a graveyard: a zone change.
   mill: "tone-zone",
+  // #4445: a discard moves a card to the graveyard, like a mill.
+  discard: "tone-zone",
   // A search or shuffle is bookkeeping, like a draw.
   search: "tone-quiet",
   roll: "tone-cast",

@@ -49,7 +49,7 @@ import (
 //
 // # What it is not
 //
-//   - A surveil's graveyard leg is not a mill (CR 701.14a is its own
+//   - A surveil's graveyard leg is not a mill (CR 701.25a is its own
 //     keyword action). ResolveSurveil routes those cards with
 //     millRoute so that the per-card graveyard window and the mill
 //     PAYOFFS see them — a "whenever a card is put into your graveyard
