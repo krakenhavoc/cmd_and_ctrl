@@ -54,3 +54,7 @@ Run, from server/, each as its own command: `go vet ./internal/cards/... ./inter
 - Before adding a token row to `tokens_table.go`, check origin/develop and the other open `feat/avatar-batch-*` branches for the same token and reuse its key.
 - The footprint test skips a card whose oracle fixture is missing, so in the cloud it will pass even when your trigger is wrong. Check the rule yourself: every one-sentence trigger uses `effects.Do` primitives with a footprint (see `CreateTokenAdvanced`, `CounterOnThis` and the `FootprintCond*` list in `game/trigger_independence.go` for precedent).
 - Before writing any shared helper (a keyword, a token, a bending action), grep origin/develop and the open `feat/avatar-batch-*` branches for an existing one and reuse it. Two batches defining the same helper name breaks the build when the second lands.
+
+## Added 2026-11-05: declare fixed-amount riders
+
+`TestRiderPurposesMatchThePrintedCard` (server/internal/cards/coverage/rider_purpose_test.go, #4978) fails a card that prints a rider with a fixed amount (scry N, surveil N, discover N, amass N, learn, the Ring tempts you, and the others it lists) without declaring it. Declare it with `Purpose: game.Purpose{Scry: 1}` (or the matching field in server/internal/game/purpose.go) on the slot that does it: the Spec for a spell or an enters effect, otherwise the row. Grep develop for a card with the same rider (e.g. `Purpose: game.Purpose{Scry:`) and copy it. The test only sees a card once its oracle fixture exists, so check your cards against the printed text yourself.
