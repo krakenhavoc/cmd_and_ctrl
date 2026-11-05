@@ -1091,6 +1091,14 @@ func sameAnswerProbes() []sameAnswerProbe {
 		}},
 		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
 		{"GET /admin/stats", []string{"route:GET /admin/stats"}, true, httpProbe("GET", "/admin/stats", nil)},
+		// The advanced-stats setting (ADR 0217 owner answer 1).
+		{"GET /admin/stats/advanced", []string{"route:GET /admin/stats/advanced"}, true, httpProbe("GET", "/admin/stats/advanced", nil)},
+		{"PUT /admin/stats/advanced-default", []string{"route:PUT /admin/stats/advanced-default"}, true, httpProbe("PUT", "/admin/stats/advanced-default", func(*probeFixture) any {
+			return map[string]any{"on": true}
+		})},
+		{"PUT /admin/users/{id}/advanced-stats", []string{"route:PUT /admin/users/{id}/advanced-stats"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "PUT", "/admin/users/"+fx.user.String()+"/advanced-stats", map[string]any{"on": true})
+		}},
 		// The hot restore of deferred tables (ADR 0148, #3103).
 		{"POST /admin/capacity/restore-deferred", []string{"route:POST /admin/capacity/restore-deferred"}, true, httpProbe("POST", "/admin/capacity/restore-deferred", nil)},
 		// Player reports (#2984).

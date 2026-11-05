@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Run Behind — Instant {3}{U} (Secrets of Strixhaven, #4456):
 //
@@ -30,24 +26,7 @@ func init() {
 				And(Creature(), attackingCreature())),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			var id uuid.UUID
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					id = t.ID
-					break
-				}
-			}
-			c, ok := ctx.Game.LookupCardForEffect(id)
-			if !ok || c.Owner == uuid.Nil {
-				return nil
-			}
-			return PutInLibraryInAnyOrder{
-				Chooser:   c.Owner,
-				Cards:     []uuid.UUID{id},
-				From:      game.ZoneBattlefield,
-				Placement: game.LibraryPlaceTopOrBottom,
-				Label:     "Run Behind — put it on your choice of the top or bottom of your library",
-			}.Apply(ctx)
+			return ownerTucksFirstTargetTopOrBottom(ctx, "Run Behind — put it on your choice of the top or bottom of your library")
 		},
 	})
 }
