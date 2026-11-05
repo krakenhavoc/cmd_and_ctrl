@@ -1,0 +1,264 @@
+{
+ "batch": 2,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Dimension X Pizzasaur",
+   "oracle_id": "29a9aff7-184c-459d-8002-e0287d978764",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Food Alien Mutant",
+   "oracle_text": "When this creature enters, put two +1/+1 counters on target creature. When you do, destroy up to one target creature with mana value less than or equal to the number of counters among permanents you control.\n{2}, {T}, Sacrifice this creature: You gain 3 life and each opponent loses 3 life.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "16",
+   "set": "tmc",
+   "rulings": [
+    "You don't choose a second target for Dimension X Pizzasaur's first ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you put two +1/+1 counters on the target creature this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Pizza Face (a Legendary Artifact Creature — Food Mutant) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Whatever you do, don't eat the cards. (Also, don't make the pizzas pictured on the cards. You don't have the digestive system of a Ninja Turtle.)"
+   ]
+  },
+  {
+   "name": "Foot Chopper",
+   "oracle_id": "1eed017a-342a-47a8-9395-890ef0bd1eb2",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, create a 1/1 black Ninja creature token, then attach this Equipment to it.\nEquipped creature has flying.\nWhenever equipped creature deals combat damage to a player, you may sacrifice it. If you do, draw cards equal to its power.\nEquip {2}",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "17",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Ninja",
+     "type_line": "Token Creature — Ninja",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Use the sacrificed creature's power as it last existed on the battlefield to determine how many cards to draw with Foot Chopper's third ability."
+   ]
+  },
+  {
+   "name": "Game Over",
+   "oracle_id": "e326b5a1-f8ce-471b-8663-ec1ba649b24f",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "This spell costs {2} less to cast if a player's life total is less than or equal to half their starting life total.\nDestroy all creatures.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "tmc"
+  },
+  {
+   "name": "Rat King, Pale Piper",
+   "oracle_id": "da359f85-7a11-4575-848d-642d1ae0ddbb",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Rat Avatar",
+   "oracle_text": "Menace\nWhenever Rat King or another nontoken creature you control leaves the battlefield, create a 1/1 black Rat creature token.\n{2}, Sacrifice a token: Draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "19",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Shredder, Shadow Master",
+   "oracle_id": "ee82947d-1cf0-4c53-84d4-81f81c6201ee",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Ninja",
+   "oracle_text": "Whenever Shredder attacks a player, for each other opponent, create a token that's a copy of Shredder tapped and attacking that player, except it isn't legendary. Sacrifice those tokens at end of combat.\nWhenever Shredder deals combat damage to a player, that player loses half their life, rounded up.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "20",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The tokens don't copy whether Shredder is tapped or untapped, whether he has any counters on him or Auras attached to him, or any non-copy effects that have changed his types, color, and so on.",
+    "If Shredder leaves the battlefield before his last ability resolves, the tokens will still enter as a copy of Shredder, using Shredder's copiable values from when he was last on the battlefield.",
+    "Although the token copies created by Shredder's first ability enter attacking, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won't trigger when those tokens enter attacking.",
+    "The token copies will have Shredder's abilities.",
+    "In the unusual case where Shredder becomes a copy of something else while his last ability is on the stack but before it resolves, the tokens will enter as a copy of whatever Shredder is copying."
+   ]
+  },
+  {
+   "name": "Swift Demise",
+   "oracle_id": "7eaf3fd0-e141-42c2-874d-b471f4a94ad2",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Swift Demise deals 1 damage to target creature. Then destroy each creature you don't control that was dealt damage this turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "21",
+   "set": "tmc"
+  },
+  {
+   "name": "Casey Jones, Back Alley Brute",
+   "oracle_id": "ab9ff8e9-0ffa-4ccf-a4bf-8505079616f6",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Berserker",
+   "oracle_text": "Menace\nWhenever Casey Jones attacks, put a +1/+1 counter on target attacking creature.\nWhenever you put one or more +1/+1 counters on a creature you control, Casey Jones deals that much damage to target opponent.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "22",
+   "set": "tmc"
+  },
+  {
+   "name": "Electric Seaweed",
+   "oracle_id": "a4374baa-a846-4b34-afbf-6bb7feb4648c",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Plant Wall",
+   "oracle_text": "Defender, haste\nWhen this creature enters, until end of turn, whenever another creature dies, this creature deals 1 damage to each non-Wall creature.\n{T}: This creature deals 1 damage to any target.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste",
+    "Defender"
+   ],
+   "collector_number": "23",
+   "set": "tmc"
+  },
+  {
+   "name": "Fast Forward",
+   "oracle_id": "c92f78c4-c8ec-4bdb-85f4-3a206b709f0f",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "This spell costs {1} less to cast for each opponent you attacked this turn.\nGoad all creatures your opponents control. (Until your next turn, those creatures attack each combat if able and attack a player other than you if able.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Goad"
+   ],
+   "collector_number": "24",
+   "set": "tmc",
+   "rulings": [
+    "If the creature doesn't meet any of the above exceptions and can attack, it must attack a player other than the controller of the spell or ability that goaded it if able. If the creature can't attack any of those players but could otherwise attack, it must attack a planeswalker an opponent controls, a battle an opponent protects, or the player that goaded it.",
+    "If a creature you control has been goaded by multiple opponents, it must attack one of your opponents that hasn't goaded it, as that fulfills the maximum number of goad requirements. If a creature you control has been goaded by each of your opponents, the creature must attack an opponent (rather than a planeswalker or battle), but you choose which opponent it attacks.",
+    "Attacking with a goaded creature doesn't cause it to stop being goaded. If there is an additional combat phase that turn, or if another player gains control of it before it stops being goaded, it must attack again if able.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Fast Forward's first ability). The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "Being goaded isn't an ability the creature has. Once it's been goaded, it must attack as detailed above even if it loses all abilities.",
+    "If, during a player's declare attackers step, a creature that player controls that's been goaded is tapped, is affected by a spell or ability that says it can't attack, or hasn't been under that player's control continuously since the turn began (and doesn't have haste), then it doesn't attack. If there's a cost associated with having a creature attack a player, its controller isn't forced to pay that cost, so it doesn't have to attack that player."
+   ]
+  },
+  {
+   "name": "Shellshock",
+   "oracle_id": "f406630b-d9f1-4fc5-b3f3-5327384b2901",
+   "layout": "normal",
+   "mana_cost": "{X}{R}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "For each opponent, choose up to one target creature that player controls. Shellshock deals X damage to each of those creatures. You create a Mutagen token for each creature dealt damage this way. (They're artifacts with \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\")",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "25",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created."
+   ]
+  }
+ ]
+}

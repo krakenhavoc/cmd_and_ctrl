@@ -1,0 +1,243 @@
+{
+ "batch": 7,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Splinter & Leo, Father & Son",
+   "oracle_id": "c01095ba-b9c9-44e0-97d1-35cc47c4ed04",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Mutant Ninja Rat Turtle",
+   "oracle_text": "When Splinter & Leo enter, choose one or both. Each mode must target a different player.\n• Target player creates a 2/2 red Mutant creature token.\n• Put a +1/+1 counter on each other creature target player controls.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "103",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutant",
+     "type_line": "Token Creature — Mutant",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Splinter, Aging Champion",
+   "oracle_id": "45a87131-ae8a-4e6d-9ac0-e52b4795691b",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Mutant Ninja Rat",
+   "oracle_text": "When Splinter enters, destroy up to one target tapped creature.\nWhen Splinter leaves the battlefield, you and another target player each draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "104",
+   "set": "tmc",
+   "rulings": [
+    "If the target player is an illegal target when Splinter's last ability tries to resolve, it won't resolve and none of its effects will happen. You won't draw a card."
+   ]
+  },
+  {
+   "name": "Triceraton Regenta",
+   "oracle_id": "2650d2d5-576e-4b9a-95ac-0f5307f1580f",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dinosaur Noble",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\nWhenever this creature attacks, untap up to one other target creature.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "105",
+   "set": "tmc"
+  },
+  {
+   "name": "Wooden Cane",
+   "oracle_id": "d41eec6c-de14-4809-abae-b94355674a33",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, create a 2/2 red Mutant creature token, then attach this Equipment to it.\nEquipped creature gets +2/+1.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "106",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutant",
+     "type_line": "Token Creature — Mutant",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "April O'Neil, Human Element",
+   "oracle_id": "020963ef-24c0-48cc-8776-bc257df684bc",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Detective",
+   "oracle_text": "Whenever a player casts an artifact, instant, or sorcery spell, you create a Mutagen token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\")",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "107",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "April's ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created."
+   ]
+  },
+  {
+   "name": "Containment Protocol",
+   "oracle_id": "d33c7ea2-4d17-4cdb-aa58-c25c57836297",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "108",
+   "set": "tmc"
+  },
+  {
+   "name": "Donatello, Rad Scientist",
+   "oracle_id": "671209d5-8b56-4ce7-94a0-d770d698c0df",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\nWhen Donatello enters, tap up to three target creatures your opponents control. Put a stun counter on each of them. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "109",
+   "set": "tmc"
+  },
+  {
+   "name": "Donatello's Science Lesson",
+   "oracle_id": "cd61a01c-dfe1-4c1e-8063-7f90fcd0c452",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Tap up to two target creatures. Up to two target players each draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "110",
+   "set": "tmc"
+  },
+  {
+   "name": "Donnie & April, Adorkable Duo",
+   "oracle_id": "7b33368f-0668-4233-8bbf-725c66c771cb",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mutant Ninja Human Turtle",
+   "oracle_text": "When Donnie & April enter, choose one or both. Each mode must target a different player.\n• Target player draws two cards.\n• Target player returns an artifact, instant, or sorcery card from their graveyard to their hand.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "111",
+   "set": "tmc"
+  },
+  {
+   "name": "Utrom Monitor",
+   "oracle_id": "976e1fe6-ac32-4ea9-9828-acd3c4791e01",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Utrom Scientist",
+   "oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nFlying (This creature can't be blocked except by creatures with flying or reach.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Affinity"
+   ],
+   "collector_number": "113",
+   "set": "tmc",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as affinity for artifacts). The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  }
+ ]
+}

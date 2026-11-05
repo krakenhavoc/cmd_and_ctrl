@@ -1,0 +1,234 @@
+{
+ "batch": 5,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Sodden Verdure",
+   "oracle_id": "0070db93-142b-4d04-afd3-836792dc134b",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Forest Island",
+   "oracle_text": "({T}: Add {G} or {U}.)\nThis land enters tapped unless you control two or more basic lands.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "74",
+   "set": "tmc",
+   "rulings": [
+    "This land has two basic land types. It's not basic, so cards such as Tend the Sprigs can't find it, but it does have the appropriate land types for effects such as that of Kishla Village (from the Tarkir: Dragonstorm release)."
+   ]
+  },
+  {
+   "name": "Spire Garden",
+   "oracle_id": "45fe016e-1a09-410c-bbe3-4663ba06c5b7",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you have two or more opponents.\n{T}: Add {R} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "75",
+   "set": "tmc",
+   "rulings": [
+    "If you began the game with two or more opponents but now only have one opponent left, these lands enter the battlefield tapped."
+   ]
+  },
+  {
+   "name": "Sunken Hollow",
+   "oracle_id": "cd2c90ac-2b04-461c-92f3-939871b6b6a3",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Island Swamp",
+   "oracle_text": "({T}: Add {U} or {B}.)\nThis land enters tapped unless you control two or more basic lands.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "76",
+   "set": "tmc",
+   "rulings": [
+    "Even though these lands have basic land types, they are not basic lands because \"basic\" doesn't appear on their type line. Notably, controlling two or more of them won't allow others to enter the battlefield untapped.",
+    "If one of these lands enters the battlefield at the same time as any number of basic lands, those other lands are not counted when determining if this land enters the battlefield tapped or untapped.",
+    "However, because these cards have basic land types, effects that specify a basic land type without also specifying that the land be basic can affect them. For example, a spell or ability that reads \"Destroy target Forest\" can target Canopy Vista, while one that reads \"Destroy target basic Forest\" cannot."
+   ]
+  },
+  {
+   "name": "Thriving Grove",
+   "oracle_id": "a8052556-8962-4130-86a8-6fb7b6a324f7",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped. As it enters, choose a color other than green.\n{T}: Add {G} or one mana of the chosen color.",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "77",
+   "set": "tmc"
+  },
+  {
+   "name": "Thriving Isle",
+   "oracle_id": "69fc70b8-b143-4662-ac95-e2743037239d",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped. As it enters, choose a color other than blue.\n{T}: Add {U} or one mana of the chosen color.",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "78",
+   "set": "tmc"
+  },
+  {
+   "name": "Thriving Moor",
+   "oracle_id": "bff416bb-d193-4c45-b2c1-7c297dbfad08",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped. As it enters, choose a color other than black.\n{T}: Add {B} or one mana of the chosen color.",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "tmc"
+  },
+  {
+   "name": "Undergrowth Stadium",
+   "oracle_id": "7c69f718-acc8-4851-8e5d-0cbaaa86192c",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you have two or more opponents.\n{T}: Add {B} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "80",
+   "set": "tmc",
+   "rulings": [
+    "Count the number of opponents you currently have, not how many you started with. If your four-player game is down to you and a single opponent, the land enters the battlefield tapped.",
+    "If an effect puts the land onto the battlefield tapped, having two or more opponents won't untap it."
+   ]
+  },
+  {
+   "name": "Vernal Fen",
+   "oracle_id": "40544d12-0391-4a61-af95-9b8ec01ed8fc",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Swamp Forest",
+   "oracle_text": "({T}: Add {B} or {G}.)\nThis land enters tapped unless you control two or more basic lands.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "81",
+   "set": "tmc",
+   "rulings": [
+    "Unlike some other dual lands, Vernal Fen has two basic land types. It’s not basic, so effects that search for basic lands (such as the ability of a Lander token) can’t find it, but it does have the appropriate land types for effects such as that of Wastewood Verge (from the Aetherdrift release)."
+   ]
+  },
+  {
+   "name": "Leonardo, the Balance",
+   "oracle_id": "46ea8d02-b087-44f7-8403-93ffc1d3a8ad",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Whenever a token you control enters, you may put a +1/+1 counter on each creature you control. Do this only once each turn.\n{W}{U}{B}{R}{G}: Creatures you control gain menace, trample, and lifelink until end of turn.\nPartner—Character select (You can have two commanders if both have this ability.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Partner"
+   ],
+   "collector_number": "83",
+   "set": "tmc",
+   "rulings": [
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens."
+   ]
+  },
+  {
+   "name": "Donatello, the Brains",
+   "oracle_id": "1ba2f763-5895-4663-b38f-95591ebb2ef4",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "If one or more tokens would be created under your control, those tokens plus a Mutagen token are created instead.\nPartner—Character select (You can have two commanders if both have this ability.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Partner"
+   ],
+   "collector_number": "85",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "The additional Mutagen token won't have any abilities the other tokens were created with. Anything else specified in the effect creating the token (such as tapped or \"Exile that token at end of combat\") applies to both the original tokens and the Mutagen token.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "You don't need to control the spell or ability that creates the tokens, but you do have to be the one creating the tokens for Donatello's first ability to apply.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined."
+   ]
+  }
+ ]
+}

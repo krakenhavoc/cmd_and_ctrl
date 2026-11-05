@@ -1,0 +1,113 @@
+{
+ "batch": 9,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Prehistoric Turtlesaurus",
+   "oracle_id": "e00aa7d7-3c11-463d-a7f5-8d001ea5c021",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Mutant Ninja Turtle Dinosaur",
+   "oracle_text": "This spell costs {1} less to cast if you control a creature with a +1/+1 counter on it.\nVigilance (Attacking doesn't cause this creature to tap.)",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "127",
+   "set": "tmc",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Prehistoric Turtlesaurus's first ability). The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Study the Classics",
+   "oracle_id": "bfff503e-3d16-436c-afe5-ec6a03794725",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Put a +1/+1 counter on target creature, then double the number of +1/+1 counters on it. You gain life equal to the number of +1/+1 counters on that creature.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "128",
+   "set": "tmc",
+   "rulings": [
+    "To double the number of +1/+1 counters on a creature, put a number of +1/+1 counters on it equal to the number it already has. Other cards that interact with putting counters on it will interact with this effect accordingly."
+   ]
+  },
+  {
+   "name": "Turtle Tracks",
+   "oracle_id": "4921dac2-4adf-4ac4-b1f4-d53385afd802",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Any number of target players may each search their library for a basic land card, put it onto the battlefield under their control, then shuffle.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "129",
+   "set": "tmc"
+  },
+  {
+   "name": "Manhole Cover",
+   "oracle_id": "38f7ff90-4cdf-4403-ad10-1400e05c32e9",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nWhen this artifact enters, target creature gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)\n{2}, Sacrifice this artifact: Target player draws a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "130",
+   "set": "tmc"
+  },
+  {
+   "name": "Waste Not",
+   "oracle_id": "00fdcc19-88ed-46c3-91f0-095806228105",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever an opponent discards a creature card, create a 2/2 black Zombie creature token.\nWhenever an opponent discards a land card, add {B}{B}.\nWhenever an opponent discards a noncreature, nonland card, draw a card.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "132",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Zombie",
+     "type_line": "Token Creature — Zombie",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

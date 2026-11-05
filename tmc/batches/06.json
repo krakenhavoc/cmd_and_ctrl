@@ -1,0 +1,301 @@
+{
+ "batch": 6,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Raphael, the Muscle",
+   "oracle_id": "22008c3b-6e15-41cc-a15c-7871495191aa",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Double all damage that creatures you control with counters on them would deal.\nWhen Raphael enters, create a Mutagen token.\nPartner—Character select (You can have two commanders if both have this ability.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Partner",
+    "Double"
+   ],
+   "collector_number": "91",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "If other effects modify how much damage a creature you control with counters on it would deal—by preventing some of it, for example—the player being dealt damage or the controller of the permanent being dealt damage chooses the order in which any such effects (including Raphael's) apply. If all of the damage is prevented, Raphael's effect no longer applies.",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "If damage dealt by a creature you control with counters on it is being divided or assigned among multiple permanents and/or players, that damage is divided or assigned before doubling. For example, if you attack with a 5/5 creature with trample and it's blocked by a 2/2 creature, you can assign 2 damage to the blocker and 3 damage to the defending player. Those amounts are then doubled to 4 and 6, respectively.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "The damage is dealt by the same source as the original source of damage. The doubled damage isn't dealt by Raphael unless he was the original source of damage.",
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library."
+   ]
+  },
+  {
+   "name": "Michelangelo, the Heart",
+   "oracle_id": "f11e914c-16bc-4836-bc14-bc1b5de9cd87",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Trample\nRaid (the Fridge) — At the beginning of your second main phase, if you attacked this turn, put a +1/+1 counter on target creature and create a Food token.\nPartner—Character select (You can have two commanders if both have this ability.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food",
+    "Partner",
+    "Trample"
+   ],
+   "collector_number": "92",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Whatever you do, don't eat the cards. (Also, don't make the pizzas pictured on the cards. You don't have the digestive system of a Ninja Turtle.)",
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Pizza Face (a Legendary Artifact Creature — Food Mutant) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders."
+   ]
+  },
+  {
+   "name": "Ninja Pizza",
+   "oracle_id": "58c615f3-8c3b-47bf-8032-809fc4232ccb",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Foods you control have \"{T}, Sacrifice this artifact: Add one mana of any color.\"\nAt the beginning of your second main phase, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "93",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Whatever you do, don't eat the cards. (Also, don't make the pizzas pictured on the cards. You don't have the digestive system of a Ninja Turtle.)",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Pizza Face (a Legendary Artifact Creature — Food Mutant) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability."
+   ]
+  },
+  {
+   "name": "Rocksteady, Mutant Marauder",
+   "oracle_id": "506a972d-d226-44dc-95b7-a6e7a63d76cd",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Rhino Mutant",
+   "oracle_text": "Partner with Bebop, Skull & Crossbones (When this creature enters, target player may put Bebop into their hand from their library, then shuffle.)\nTrample\nWhenever another nontoken creature you control enters, put a +1/+1 counter on target creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Partner with",
+    "Partner",
+    "Trample"
+   ],
+   "collector_number": "94",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Bebop, Skull & Crossbones",
+     "type_line": "Legendary Creature — Boar Mutant",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Both commanders start in the command zone, and the remaining 98 cards your deck are shuffled to become your library.",
+    "Note that the target player searches their library (which may be affected by effects such as that of Stranglehold) and that the card they find is revealed, even though these words aren't included in the ability's reminder text.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "The triggered ability of the \"partner with\" keyword still triggers in a Commander game. If your other commander has somehow ended up in your library, you can find it. You can also target another player, whether or not they have that card in their library.",
+    "\"Partner with [name]\" represents two abilities. The first is a triggered ability: \"When this permanent enters, target player may search their library for a card named [name], reveal it, put it into their hand, then shuffle.\"",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Bebop, Skull and Crossbones and Rocksteady, Mutant Marauder are your commanders, your deck may contain cards with black and/or green in their color identities, but not white, blue, or red.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from one of them, not from both of them combined. Command Beacon's effect puts one into your hand from the command zone, not both.",
+    "The second ability represented by the \"partner with [name]\" keyword modifies the rules for deck construction in the Commander variant and has no function outside of that variant. If a legendary creature card with \"partner with [name]\" is designated as your commander, the named legendary creature card can also be designated as your commander.",
+    "To have two commanders, both must have the partner ability or corresponding \"partner with\" abilities as the game begins. A creature with a \"partner with\" ability can't partner with any creature other than its designated partner. Losing a partner ability during the game doesn't cause either to cease to be your commander."
+   ]
+  },
+  {
+   "name": "Super Combo",
+   "oracle_id": "68555673-2833-459a-b415-e2805f837778",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Replicate {2} (When you cast this spell, copy it for each time you paid its replicate cost. You may choose new targets for the copies.)\nTarget creature you control deals damage equal to its power to target creature an opponent controls.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Replicate"
+   ],
+   "collector_number": "95",
+   "set": "tmc",
+   "rulings": [
+    "A copy of a spell can be countered like any other spell, but it must be countered individually. Countering a spell with replicate won't affect the copies.",
+    "If either target is an illegal target as Super Combo resolves, the creature you control won't deal damage due to the effect of that copy of Super Combo."
+   ]
+  },
+  {
+   "name": "Big Mother Mouser",
+   "oracle_id": "94751968-e006-45d0-970b-0ed45d28e6cc",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "This creature enters with two +1/+1 counters on it.\nWhenever this creature attacks, double the number of +1/+1 counters on it.\nWhen this creature dies, create a number of 1/1 colorless Robot artifact creature tokens equal to the number of +1/+1 counters on this creature.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "97",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Robot",
+     "type_line": "Token Artifact Creature — Robot",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To double the number of +1/+1 counters on a creature, put a number of +1/+1 counters on it equal to the number it already has. Other cards that interact with putting counters on it will interact with this effect accordingly.",
+    "If enough -1/-1 counters are put on Big Mother Mouser at the same time to make its toughness 0 or less (or the damage marked on it to be lethal), the number of +1/+1 counters on it before it got any -1/-1 counters will be used to determine how many Robot tokens you get. For example, if there are three +1/+1 counters on Big Mother Mouser and it gets four -1/-1 counters, you'll get three Robot tokens. That's because Big Mother Mouser's last ability checks Big Mother Mouser's existence just before it leaves the battlefield, and it still has all those counters on it at that point."
+   ]
+  },
+  {
+   "name": "Definitely Not a Turtle",
+   "oracle_id": "3d8dfd57-7d26-4a3b-a9c3-33077c85b3db",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Creature — Mutant Ninja Turtle",
+   "oracle_text": "When this creature dies, look at the top six cards of your library. You may reveal a land or legendary Turtle card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "tmc"
+  },
+  {
+   "name": "Hamato Ninpō",
+   "oracle_id": "0587fe46-1bed-4ef3-b087-04d4cc6a334d",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Hamato Ninpō deals 4 damage to target attacking or blocking creature.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "100",
+   "set": "tmc"
+  },
+  {
+   "name": "Leonardo, Worldly Warrior",
+   "oracle_id": "94dcbcc0-6941-4e8c-8741-4b47ae231eba",
+   "layout": "normal",
+   "mana_cost": "{7}{W}",
+   "cmc": 8.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Affinity for creatures (This spell costs {1} less to cast for each creature you control.)\nDouble strike (This creature deals both first-strike and regular combat damage.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Affinity",
+    "Double strike"
+   ],
+   "collector_number": "101",
+   "set": "tmc",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Leonardo's first ability). The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "This card has received an update to its Oracle text. Specifically, its first ability is now affinity for creatures, as written above."
+   ]
+  },
+  {
+   "name": "Leo's Guidance",
+   "oracle_id": "f386bca6-a08e-462b-b1d9-c3b03929c68d",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Put a +1/+1 counter on each of up to three target creatures. Untap them.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "102",
+   "set": "tmc"
+  }
+ ]
+}

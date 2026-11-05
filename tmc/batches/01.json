@@ -1,0 +1,323 @@
+{
+ "batch": 1,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Splinter, the Mentor",
+   "oracle_id": "fdcb016e-36e7-46b3-9dff-20b9b9cc421d",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Mutant Ninja Rat",
+   "oracle_text": "Menace\nWhenever Splinter or another nontoken creature you control leaves the battlefield, create a Mutagen token.\nPartner—Character select (You can have two commanders if both have this ability.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Partner",
+    "Menace"
+   ],
+   "collector_number": "3",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens."
+   ]
+  },
+  {
+   "name": "Heroes in a Half Shell",
+   "oracle_id": "9f2f12cc-0adb-482d-bbce-05e4ce8850c4",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Vigilance, menace, trample, haste\nWhenever one or more Mutants, Ninjas, and/or Turtles you control deal combat damage to a player, put a +1/+1 counter on each of those creatures and draw a card.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Haste",
+    "Trample",
+    "Menace"
+   ],
+   "collector_number": "6",
+   "set": "tmc",
+   "rulings": [
+    "If creatures you control deal combat damage to multiple players at the same time, Heroes in a Half Shell's last ability will trigger for each of those players. When one of those abilities resolves, it will put counters only on Mutants, Ninjas, and/or Turtles that dealt combat damage to the appropriate player."
+   ]
+  },
+  {
+   "name": "Continue?",
+   "oracle_id": "175c76c8-f36c-4948-aaa8-0208eac5f0d3",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose up to four target creature cards in your graveyard that were put there from the battlefield this turn. Return them to the battlefield.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "7",
+   "set": "tmc"
+  },
+  {
+   "name": "Endless Foot Assault",
+   "oracle_id": "77ccafd9-6d76-4658-81ab-bde0454fcc15",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Squad {1}{W} (As an additional cost to cast this spell, you may pay {1}{W} any number of times. When this enchantment enters, create that many tokens that are copies of it.)\nWhenever you attack, for each opponent, create a 1/1 black Ninja creature token that's tapped and attacking that player.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Squad"
+   ],
+   "collector_number": "8",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Ninja",
+     "type_line": "Token Creature — Ninja",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If, for some reason, the permanent doesn't have the squad ability when it's on the battlefield, the ability won't trigger, even if you've paid the squad cost one or more times.",
+    "The tokens created by the squad ability aren't \"cast,\" so any abilities that trigger when a spell is cast won't trigger for the copies.",
+    "If the spell is countered, the squad ability will not trigger, and no tokens will be created.",
+    "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously.",
+    "Tokens will be created for each of your opponents, not just opponents that you attacked.",
+    "If the spell resolves but the permanent with squad leaves the battlefield before its squad ability resolves, you'll still create the token copies.",
+    "Although the tokens created by the last ability are attacking, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won't trigger when those tokens enter attacking."
+   ]
+  },
+  {
+   "name": "April O'Neil, Live on the Scene",
+   "oracle_id": "4900c157-8d9f-4f92-aaca-5246b6e2832e",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Detective",
+   "oracle_text": "Whenever a Mutant, Ninja, or Turtle you control enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nPartner—Character select",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Investigate",
+    "Partner"
+   ],
+   "collector_number": "9",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "You can have two commanders if each one has \"Partner—Character select.\" You can't mix and match them with cards that have other partner abilities.",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Donatello, the Brains and Splinter, the Mentor are your commanders, your deck may contain cards with blue and/or black in their color identity, but not cards with red, green, or white. (If Leonardo, the Balance is one of your commanders, your deck may contain cards with any color or combination of colors in their color identity, regardless of who your other commander is.)",
+    "To have two commanders, both must have appropriate partner abilities as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander."
+   ]
+  },
+  {
+   "name": "Baxter, Fly in the Ointment",
+   "oracle_id": "94551fbd-a72c-4a1f-be01-7ba1c7c03eed",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Insect Mutant Scientist",
+   "oracle_text": "Whenever Baxter enters or attacks, each creature you control with a counter on it gains flying until end of turn.\nWhenever you draw a card, put a +1/+1 counter on Baxter.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "10",
+   "set": "tmc"
+  },
+  {
+   "name": "Here Comes a New Hero!",
+   "oracle_id": "c4fb12cb-05e1-4df2-b62e-3391621a601b",
+   "layout": "normal",
+   "mana_cost": "{X}{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target player draws X cards. Create a token that's a copy of up to one target creature with mana value X or less.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the creature copied by the token had any \"when [this creature] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this creature] enters\" or \"[this creature] enters with\" abilities that the token has copied will also work.",
+    "If the copied creature has {X} in its mana cost, X is 0. This is also true when calculating the mana value of a creature on the battlefield in order to determine whether or not the creature is a legal target for this spell.",
+    "The token copies exactly what was printed on the original creature (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or any Auras or Equipment attached to it, or any non-copy effects that have changed its types, color, power and toughness, and so on.",
+    "If the copied creature is a token, the new token that's created copies the original characteristics of that token as stated by the effect that created the token.",
+    "If the copied creature is copying something else, then the token enters as whatever that creature copied."
+   ]
+  },
+  {
+   "name": "Irma, Part-Time Mutant",
+   "oracle_id": "deda54da-4fcc-4da3-9337-7768a2db3283",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Mutant Shapeshifter",
+   "oracle_text": "At the beginning of combat on your turn, Irma becomes a copy of up to one other target creature you control, except her name is Irma, Part-Time Mutant and she has this ability. Then put a +1/+1 counter on her.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "12",
+   "set": "tmc",
+   "rulings": [
+    "You don't have to choose a target for Irma's ability. However, if you do and the target creature is an illegal target as Irma's ability tries to resolve, it won't resolve and none of its effects will happen. Irma won't become a copy of anything else, and you won't put a +1/+1 counter on her.",
+    "Irma copies exactly what was printed on the original creature and nothing else, with the listed exceptions (unless that creature is copying something else; see below). She doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, and so on.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If the copied creature is copying something else, then Irma becomes a copy of whatever that creature copied (with the listed exceptions).",
+    "Because Irma isn't entering the battlefield when she becomes a copy of another creature, any \"When [this creature] enters\" or \"[This creature] enters with\" abilities of the copied creature won't apply."
+   ]
+  },
+  {
+   "name": "Krang, the All-Powerful",
+   "oracle_id": "466d5226-f4c7-4d69-9f56-4f893010127f",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Artifact Creature — Utrom Robot",
+   "oracle_text": "If a player drawing a card causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nWhenever a player draws their second card each turn, put a +1/+1 counter on Krang.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "13",
+   "set": "tmc",
+   "rulings": [
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text.",
+    "Krang's first ability doesn't copy the triggered ability; it just causes the ability to trigger an additional time. Any choices made as you put the ability onto the stack, such as modes and targets, are made separately for each instance of the ability. Any choices made on resolution, such as whether to put counters on a permanent, are also made individually.",
+    "If a triggered ability is linked to a second ability, additional instances of that triggered ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by instances of the triggered ability."
+   ]
+  },
+  {
+   "name": "Bebop, Skull & Crossbones",
+   "oracle_id": "59a405d7-2f28-41b8-a5bb-011f45a5fdf2",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Boar Mutant",
+   "oracle_text": "Partner with Rocksteady, Mutant Marauder (When this creature enters, target player may put Rocksteady into their hand from their library, then shuffle.)\nDeathtouch\nWhenever Bebop deals combat damage to a player, you may draw X cards, where X is the number of counters on Bebop. If you do, you lose X life.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Partner with",
+    "Partner",
+    "Deathtouch"
+   ],
+   "collector_number": "15",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Rocksteady, Mutant Marauder",
+     "type_line": "Legendary Creature — Rhino Mutant",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The triggered ability of the \"partner with\" keyword still triggers in a Commander game. If your other commander has somehow ended up in your library, you can find it. You can also target another player, whether or not they have that card in their library.",
+    "The value of X is calculated only once, as Bebop's last ability resolves.",
+    "The second ability represented by the \"partner with [name]\" keyword modifies the rules for deck construction in the Commander variant and has no function outside of that variant. If a legendary creature card with \"partner with [name]\" is designated as your commander, the named legendary creature card can also be designated as your commander.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Bebop, Skull and Crossbones and Rocksteady, Mutant Marauder are your commanders, your deck may contain cards with black and/or green in their color identities, but not white, blue, or red.",
+    "Both commanders start in the command zone, and the remaining 98 cards of your deck are shuffled to become your library.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from one of them, not from both of them combined. Command Beacon's effect puts one into your hand from the command zone, not both.",
+    "\"Partner with [name]\" represents two abilities. The first is a triggered ability: \"When this permanent enters, target player may search their library for a card named [name], reveal it, put it into their hand, then shuffle.\"",
+    "Note that the target player searches their library (which may be affected by effects such as that of Stranglehold) and that the card they find is revealed, even though these words aren't included in the ability's reminder text.",
+    "To have two commanders, both must have the partner ability or corresponding \"partner with\" abilities as the game begins. A creature with a \"partner with\" ability can't partner with any creature other than its designated partner. Losing a partner ability during the game doesn't cause either to cease to be your commander."
+   ]
+  }
+ ]
+}

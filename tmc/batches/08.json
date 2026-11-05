@@ -1,0 +1,233 @@
+{
+ "batch": 8,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Casey & Raph, Hotheads",
+   "oracle_id": "f20a5297-31ba-4bbd-810e-be23175a116f",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mutant Ninja Human Turtle",
+   "oracle_text": "When Casey & Raph enter, choose one or both. Each mode must target a different player.\n• Target player exiles the top card of their library. Until that player's next end step, they may play that card without paying its mana cost.\n• Target player creates two Treasure tokens.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "114",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the spell has any mandatory additional costs, those must be paid to cast the spell.",
+    "The target of the first mode must follow all timing rules for cards played this way. For example, if the exiled card is a land card, they may play it only during their main phase while the stack is empty and only if they have an available land play remaining.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when playing it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Monster Mashup",
+   "oracle_id": "485e1d84-2867-4c66-a399-cdc2a22f6fc9",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Werewolf Fish Zombie Vampire",
+   "oracle_text": "Reach (This creature can block creatures with flying.)\nMenace (This creature can't be blocked except by two or more creatures.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach",
+    "Menace"
+   ],
+   "collector_number": "117",
+   "set": "tmc"
+  },
+  {
+   "name": "Raphael, Tag Team Tough",
+   "oracle_id": "5a7f09d3-e4a8-4987-a731-a68fc748277d",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever Raphael deals combat damage to a player for the first time each turn, untap all attacking creatures. After this combat phase, there is an additional combat phase.",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "118",
+   "set": "tmc"
+  },
+  {
+   "name": "Raph's Bravado",
+   "oracle_id": "7991aff6-0b85-41a3-bc31-09811d6fa353",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "During your turn, attacking creatures get +1/+0.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "119",
+   "set": "tmc"
+  },
+  {
+   "name": "Storm of Steel",
+   "oracle_id": "d5021db4-64d3-4a0f-9167-499ccbe16e1e",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Storm of Steel deals 2 damage to each of one or two targets.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "120",
+   "set": "tmc"
+  },
+  {
+   "name": "Ticked Off",
+   "oracle_id": "91b89c21-5f35-4aa5-925b-c756ec6969b4",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target creature gains double strike until end of turn. (It deals both first-strike and regular combat damage.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "121",
+   "set": "tmc"
+  },
+  {
+   "name": "Foe-liage",
+   "oracle_id": "017cadd8-55ee-497a-84d4-6535173bc1eb",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Plant Mutant",
+   "oracle_text": "Whenever a land enters during your turn, put a +1/+1 counter on this creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "122",
+   "set": "tmc"
+  },
+  {
+   "name": "Michelangelo, On the Scene",
+   "oracle_id": "e0e3feb8-2add-41c9-839c-587af6ca8f93",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle",
+   "oracle_text": "Trample (This creature can deal excess combat damage to the player it's attacking.)\nMichelangelo enters with a +1/+1 counter on him for each land you control.\nWhen Michelangelo dies, return this card to your hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "124",
+   "set": "tmc"
+  },
+  {
+   "name": "Mikey & Mona, Mutant Sitters",
+   "oracle_id": "15e14a91-a596-465f-becc-cef2e7fbbd30",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Mutant Ninja Turtle Lizard",
+   "oracle_text": "When Mikey & Mona enter, choose one or both. Each mode must target a different player.\n• Target player chooses a creature they control and puts two +1/+1 counters on it.\n• Target player returns a creature or land card from their graveyard to their hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "125",
+   "set": "tmc"
+  },
+  {
+   "name": "Mona Lisa, Ever Adaptable",
+   "oracle_id": "9fa38462-57b6-4f2f-a73c-f14a66f56946",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Lizard Mutant",
+   "oracle_text": "Whenever a player casts a creature spell, you create a Mutagen token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\")",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "126",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created.",
+    "Mona Lisa's ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\""
+   ]
+  }
+ ]
+}

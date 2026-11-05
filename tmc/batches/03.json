@@ -1,0 +1,250 @@
+{
+ "batch": 3,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Special Move",
+   "oracle_id": "7564afbb-b29e-4234-a3b2-3354c6f5c90a",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose two —\n• Jump Kick — Destroy target artifact.\n• Dash Attack — Put two +1/+1 counters on target attacking or blocking creature you control.\n• Foot Toss — Target creature you control deals damage equal to its power to any other target. Then sacrifice it.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Foot Toss",
+    "Dash Attack",
+    "Jump Kick"
+   ],
+   "collector_number": "26",
+   "set": "tmc"
+  },
+  {
+   "name": "Tempestra, Dame of Games",
+   "oracle_id": "12401ad1-b5c9-43dc-9389-04aaf5db8b26",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Elemental Illusion",
+   "oracle_text": "{2}{R}, {T}, Sacrifice an artifact: Create a token that's a copy of another target creature you control, except it isn't legendary. It gains haste. Sacrifice it at the beginning of the next end step.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "27",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If the copied creature is copying something else, then the token enters as whatever that creature copied (with the listed exception).",
+    "The token copies exactly what was printed on the original creature, with the listed exception (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or any Auras or Equipment attached to it, or any non-copy effects that have changed its types, color, power and toughness, and so on.",
+    "If the creature copied by the token had any \"when [this creature] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this creature] enters\" or \"[this creature] enters with\" abilities that the token has copied will also work.",
+    "If the copied creature is a token, the new token that's created copies the original characteristics of that token as stated by the effect that created the token."
+   ]
+  },
+  {
+   "name": "Tokka & Rahzar, Unsupervised",
+   "oracle_id": "8d857d79-bdb2-4ca3-abd6-7db8f6b3bcfa",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Turtle Wolf Mutant",
+   "oracle_text": "First strike\nWhenever another nontoken creature you control leaves the battlefield, put a +1/+1 counter on Tokka & Rahzar and create a Treasure token. This ability triggers only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike",
+    "Treasure"
+   ],
+   "collector_number": "28",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "High Score",
+   "oracle_id": "d81fc181-ecb0-43a5-88e8-c61aca3428d8",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.\nAt the beginning of your end step, draw a card if you control a creature with the greatest power among creatures on the battlefield.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "29",
+   "set": "tmc",
+   "rulings": [
+    "In the case where you control more than one High Score, each one you control will increase the number of +1/+1 counters placed on a creature you control by one. (Leave some room on the leaderboard for the rest of us!)",
+    "If a creature you control would enter the battlefield with a number of +1/+1 counters on it, it enters with that many plus one instead.",
+    "If two or more effects attempt to modify how many counters would be put on a creature you control, you choose the order to apply those effects, no matter who controls the sources of those effects."
+   ]
+  },
+  {
+   "name": "Leatherhead, Iron Gator",
+   "oracle_id": "1e9679e8-bef1-495c-8251-0d87d971e32a",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Crocodile Mutant Rogue",
+   "oracle_text": "Trample, haste\nWhenever Leatherhead attacks, put two +1/+1 counters on each creature you control.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "30",
+   "set": "tmc"
+  },
+  {
+   "name": "Level Up",
+   "oracle_id": "88cd43ce-b168-45a4-8d29-6cac5ab42857",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, put a +1/+1 counter on enchanted creature.\nEnchanted creature has \"Whenever this creature attacks, double the number of +1/+1 counters on it. Then if it has power 10 or greater, draw a card.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant",
+    "Double"
+   ],
+   "collector_number": "31",
+   "set": "tmc",
+   "rulings": [
+    "To double the number of +1/+1 counters on a creature, put a number of +1/+1 counters on it equal to the number it already has. Other cards that interact with putting counters on it will interact with this effect accordingly."
+   ]
+  },
+  {
+   "name": "Double Jump // Flying Kick",
+   "oracle_id": "cb3072c7-393c-43d9-a2c9-f918bd0fd7be",
+   "layout": "split",
+   "mana_cost": "{1}{U} // {1}{R}",
+   "cmc": 4.0,
+   "type_line": "Instant // Instant",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Fuse"
+   ],
+   "collector_number": "35",
+   "set": "tmc",
+   "card_faces": [
+    {
+     "name": "Double Jump",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant",
+     "oracle_text": "Put a flying counter on target creature you control. Until end of turn, it has base power and toughness 5/5.\nFuse (You may cast one or both halves of this card from your hand.)"
+    },
+    {
+     "name": "Flying Kick",
+     "mana_cost": "{1}{R}",
+     "type_line": "Instant",
+     "oracle_text": "Target creature you control deals damage equal to its power to target creature an opponent controls.\nFuse (You may cast one or both halves of this card from your hand.)"
+    }
+   ]
+  },
+  {
+   "name": "Arcade Cabinet",
+   "oracle_id": "a8e55287-f0df-46f2-a41d-27bea90216cc",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, put a +1/+1 counter on each of up to four target creatures.\n{2}, {T}, Sacrifice a token: Double the number of each kind of counter on target creature.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "36",
+   "set": "tmc",
+   "rulings": [
+    "To double the number of a kind of counters on a permanent, put a number of that kind of counters on it equal to the number it already has. Other cards that interact with putting counters on it will interact with this effect accordingly."
+   ]
+  },
+  {
+   "name": "Exploding Barrel",
+   "oracle_id": "82800275-1edf-4aa0-af9e-59dea82d7c6a",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: Add one mana of any color. Put a pressure counter on this artifact.\n{8}, {T}, Sacrifice this artifact: It deals 20 damage to target creature. This ability costs {1} less to activate for each pressure counter on this artifact. Activate only as a sorcery.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "39",
+   "set": "tmc"
+  },
+  {
+   "name": "Mole Module",
+   "oracle_id": "ba64d3a9-08b4-4b12-b011-e41b00815277",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Menace\nWhenever this Vehicle deals combat damage to a player, mill four cards. You may put a permanent card from among them onto the battlefield.\nCrew 2",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Crew",
+    "Menace",
+    "Mill"
+   ],
+   "collector_number": "40",
+   "set": "tmc"
+  }
+ ]
+}

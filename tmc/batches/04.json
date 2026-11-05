@@ -1,0 +1,231 @@
+{
+ "batch": 4,
+ "set": "tmc",
+ "cards": [
+  {
+   "name": "Roadkill Rodney",
+   "oracle_id": "cd8761ef-b57b-456b-aa12-374ac825087e",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Squad {3} (As an additional cost to cast this spell, you may pay {3} any number of times. When this creature enters, create that many tokens that are copies of it.)\nDeathtouch\nWhenever this creature deals combat damage to a player, create a Mutagen token.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Squad",
+    "Deathtouch"
+   ],
+   "collector_number": "41",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Mutagen",
+     "type_line": "Token Artifact — Mutagen",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You may pay the squad cost any number of times. You will create a token that is a copy of that permanent for each time you paid the squad cost. If you paid the squad cost multiple times, the tokens will all enter the battlefield simultaneously.",
+    "Mutagen tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Mutagen and the ability \"{1}, {T}, Sacrifice this token: Put a +1/+1 counter on target creature. Activate only as a sorcery.\"",
+    "The tokens created by the squad ability aren't \"cast,\" so any abilities that trigger when a spell is cast won't trigger for the copies.",
+    "If the spell resolves but the permanent with squad leaves the battlefield before its squad ability resolves, you'll still create the token copies.",
+    "Some spells and abilities that create Mutagen tokens require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. The Mutagen token won't be created.",
+    "If the spell is countered, the squad ability will not trigger, and no tokens will be created.",
+    "If, for some reason, the permanent doesn't have the squad ability when it's on the battlefield, the ability won't trigger, even if you've paid the squad cost one or more times."
+   ]
+  },
+  {
+   "name": "Big Apple, 3 a.m.",
+   "oracle_id": "dd01ef1f-f6be-498f-82e0-dc04833e685f",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.\n{5}, {T}: Create a 1/1 black Rat creature token for each opponent you have.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "42",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Hidden Hideout",
+   "oracle_id": "b639e1fe-d099-4cab-a0d0-a1b33c7f31dd",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add one mana of any color in your commander's color identity.\n{2}, {T}: Target creature you control with a counter on it gains lifelink until end of turn.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "43",
+   "set": "tmc",
+   "rulings": [
+    "If you have two commanders, Hidden Hideout's first ability adds one mana of any color in their combined color identities.",
+    "If your commander is a card that has no colors in its color identity, Hidden Hideout's first ability produces no mana. It doesn't produce {C}.",
+    "If you don't have a commander, Hidden Hideout's first ability produces no mana."
+   ]
+  },
+  {
+   "name": "Biogenic Ooze",
+   "oracle_id": "d2d84ba5-0d20-4ce3-8f1f-93cd9ef94f5f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Ooze",
+   "oracle_text": "When this creature enters, create a 2/2 green Ooze creature token.\nAt the beginning of your end step, put a +1/+1 counter on each Ooze you control.\n{1}{G}{G}{G}: Create a 2/2 green Ooze creature token.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "49",
+   "set": "tmc",
+   "related": [
+    {
+     "name": "Ooze",
+     "type_line": "Token Creature — Ooze",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Steelbane Hydra",
+   "oracle_id": "e38e3723-05f5-4a51-8364-1cda19f9cc49",
+   "layout": "normal",
+   "mana_cost": "{X}{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Turtle Hydra",
+   "oracle_text": "This creature enters with X +1/+1 counters on it.\n{2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "52",
+   "set": "tmc"
+  },
+  {
+   "name": "Cinder Glade",
+   "oracle_id": "dfac0258-e148-4d7d-8ded-fc2466d9caa6",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Mountain Forest",
+   "oracle_text": "({T}: Add {R} or {G}.)\nThis land enters tapped unless you control two or more basic lands.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "61",
+   "set": "tmc",
+   "rulings": [
+    "If one of these lands enters the battlefield at the same time as any number of basic lands, those other lands are not counted when determining if this land enters the battlefield tapped or untapped.",
+    "Even though these lands have basic land types, they are not basic lands because \"basic\" doesn't appear on their type line. Notably, controlling two or more of them won't allow others to enter the battlefield untapped.",
+    "However, because these cards have basic land types, effects that specify a basic land type without also specifying that the land be basic can affect them. For example, a spell or ability that reads \"Destroy target Forest\" can target Canopy Vista, while one that reads \"Destroy target basic Forest\" cannot."
+   ]
+  },
+  {
+   "name": "Dragonskull Summit",
+   "oracle_id": "63398c02-6fb1-481d-9d9f-81063532fbc0",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a Swamp or a Mountain.\n{T}: Add {B} or {R}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "tmc",
+   "rulings": [
+    "This checks for lands you control with the land type Swamp or Mountain, not for lands named Swamp or Mountain. The lands it checks for don't have to be basic lands. For example, if you control Stomping Ground (a nonbasic land with the land types Mountain and Forest), Dragonskull Summit will enter untapped.",
+    "As this is entering, it checks for lands that are already on the battlefield. It won't see lands that are entering at the same time (due to Warp World, for example)."
+   ]
+  },
+  {
+   "name": "Hinterland Harbor",
+   "oracle_id": "fb5a3403-7f0b-406c-8c4f-d693be010ca6",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a Forest or an Island.\n{T}: Add {G} or {U}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "69",
+   "set": "tmc"
+  },
+  {
+   "name": "Rootbound Crag",
+   "oracle_id": "9516c4c1-d72d-434f-97e1-6a862434a169",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a Mountain or a Forest.\n{T}: Add {R} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "72",
+   "set": "tmc",
+   "rulings": [
+    "This checks for lands you control with the land type Mountain or Forest, not for lands named Mountain or Forest. The lands it checks for don't have to be basic lands. For example, if you control Temple Garden (a nonbasic land with the land types Forest and Plains), Rootbound Crag will enter untapped.",
+    "As this is entering, it checks for lands that are already on the battlefield. It won't see lands that are entering at the same time (due to Warp World, for example)."
+   ]
+  },
+  {
+   "name": "Smoldering Marsh",
+   "oracle_id": "390f1b56-264e-4336-83be-dc1fe79bfdcf",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Swamp Mountain",
+   "oracle_text": "({T}: Add {B} or {R}.)\nThis land enters tapped unless you control two or more basic lands.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "73",
+   "set": "tmc",
+   "rulings": [
+    "If one of these lands enters the battlefield at the same time as any number of basic lands, those other lands are not counted when determining if this land enters the battlefield tapped or untapped.",
+    "Even though these lands have basic land types, they are not basic lands because \"basic\" doesn't appear on their type line. Notably, controlling two or more of them won't allow others to enter the battlefield untapped.",
+    "However, because these cards have basic land types, effects that specify a basic land type without also specifying that the land be basic can affect them. For example, a spell or ability that reads \"Destroy target Forest\" can target Canopy Vista, while one that reads \"Destroy target basic Forest\" cannot."
+   ]
+  }
+ ]
+}
