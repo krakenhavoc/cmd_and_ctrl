@@ -23,6 +23,7 @@ func init() {
 		OracleID:        "12d91743-1ccb-4f2b-b2a9-1c2b34f7c8eb",
 		Name:            "Benevolent River Spirit",
 		Completeness:    CompletenessFull,
+		Purpose:         game.Purpose{Scry: 2},
 		TapCost:         Waterbend("{5}"),
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

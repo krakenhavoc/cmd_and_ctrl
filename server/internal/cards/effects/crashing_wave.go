@@ -168,7 +168,7 @@ func crashingWaveStun(ctx *Context, shares map[uuid.UUID]int) error {
 		if n <= 0 {
 			continue
 		}
-		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterStun, N: n}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterStun, N: n}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}
