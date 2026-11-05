@@ -684,6 +684,29 @@ attachment stops; their wide intervals do not establish a strength gain.
 Local reports, the streaming counter and decision logs are under
 `data/arena-4321/` (gitignored). Full decision logs stay local.
 
+## Lifegain payoffs on a lifelink grant (#4979, S75)
+
+`PriceLifeGainPayoffs` adds Heliod's and Ajani's Pridemate's declared
+`life_gain_payoff` to a lifelink grant on the bot's creature in combat
+made with spare mana ([bot.md](bot.md#purposes-what-a-spell-or-an-ability-does)). There is no
+arena variant: compare one tree built twice, with the switch on and off
+in `DefaultConfig()`. The position tests
+(`heuristic/lifegain_payoff_test.go`) hold the price (a counter over a
+plain grant, two with a Pridemate out, nothing for an opponent's payoff
+or before attacks) and one decision: Heliod's lifelink beats a +1/+0 on
+the same attacker only with the payoff. The whole-engine tests in
+`aiseat/heliod_grant_bot_test.go` still hold the grant for combat and for
+the second main phase's cast, and make it once.
+
+The 2026-11-05 runs used develop `f01023882` plus #4979, rotation and
+lockstep, every seat `heuristic`: 48 four-seat games on
+mono-white-weenie, boros-voltron, mono-green-stompy and simic-ramp, and
+96 two-seat games of the mono-white-weenie mirror, both at `--seed 4979`.
+Every game ended on the same turn with the same winner with the switch on
+and off, and Heliod's activation was taken in the same windows (3 of 140,
+and 17 of 582): on these decks the change reprices the grant and changes
+no decision. The mirror's one stall is the same game in both builds.
+
 ## Test knobs
 
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them; `server-test` is sharded across five runners by `scripts/ci-test-shard.sh`, the same flags on each, and `aiseat` is in the `rest` shard, #2766):
