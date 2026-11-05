@@ -1,4 +1,4 @@
-.PHONY: docker-test docker-lint vulncheck all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint vulncheck tool-pins all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
@@ -80,14 +80,13 @@ fmt-check:
 # Pinned golangci-lint, run via `go run` so no locally-installed
 # binary is needed and the version can't drift from the v2-format
 # config in .golangci.yml. v2.14.0 supports and runs on Go 1.27, the
-# version go.mod declares (ADR 0122 §1.1); keep it in step with
-# scripts/go-docker.sh's LINT_PKG. First invocation downloads + builds
-# the tool; later runs hit the Go build cache. Unlike the old target,
-# this can never silently skip linting.
-GOLANGCI_LINT := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
-
-lint:
-	go run $(GOLANGCI_LINT) run $(PKGS)
+# version go.mod declares (ADR 0122 §1.1). This line is the one pin:
+# scripts/go-docker.sh reads GOLANGCI_LINT_VERSION from it, and CI's
+# tool cache is keyed on `make tool-pins` (#4958). First invocation
+# downloads + builds the tool; later runs hit the Go build cache.
+# Unlike the old target, this can never silently skip linting.
+GOLANGCI_LINT_VERSION := v2.14.0
+GOLANGCI_LINT := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 # Pinned govulncheck (#3335): known vulnerabilities that the code can
 # actually reach, in the Go standard library of the toolchain running it
@@ -97,8 +96,44 @@ lint:
 # golang:1.27). A module finding is fixed with `go get <module>@<fixed>`.
 GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
+# Prebuilt tools (#4958). Neither tool is in go.mod, so on a cold
+# hosted runner `go run` downloaded and compiled both before lint could
+# start. With TOOLS_DIR set, each is `go install`ed once into a
+# directory named for the Go release and the pin, and run from there:
+# CI caches TOOLS_DIR, and a pin or Go bump lands in a new directory
+# rather than reusing a stale binary. The install runs on that Go
+# release (GOTOOLCHAIN): `go install pkg@version`, like `go run`, would
+# otherwise pick the toolchain from the tool's go.mod and the local Go,
+# not from ours. Unset (the default), both targets are plain `go run`
+# as before.
+ifdef TOOLS_DIR
+TOOLS_GO := $(shell go env GOVERSION)
+LINT_BIN := $(abspath $(TOOLS_DIR))/$(TOOLS_GO)/$(notdir $(GOLANGCI_LINT))/golangci-lint
+VULN_BIN := $(abspath $(TOOLS_DIR))/$(TOOLS_GO)/$(notdir $(GOVULNCHECK))/govulncheck
+
+$(LINT_BIN):
+	GOBIN=$(@D) GOTOOLCHAIN=$(TOOLS_GO)+auto go install $(GOLANGCI_LINT)
+
+$(VULN_BIN):
+	GOBIN=$(@D) GOTOOLCHAIN=$(TOOLS_GO)+auto go install $(GOVULNCHECK)
+
+lint: $(LINT_BIN)
+	$(LINT_BIN) run $(PKGS)
+
+vulncheck: $(VULN_BIN)
+	$(VULN_BIN) $(PKGS)
+else
+lint:
+	go run $(GOLANGCI_LINT) run $(PKGS)
+
 vulncheck:
 	go run $(GOVULNCHECK) $(PKGS)
+endif
+
+# The pins, one per line, for CI's tool cache key (#4958).
+tool-pins:
+	@echo $(GOLANGCI_LINT)
+	@echo $(GOVULNCHECK)
 
 # No local Go? The same checks through the shared-cache Docker wrapper (#2035).
 docker-test:

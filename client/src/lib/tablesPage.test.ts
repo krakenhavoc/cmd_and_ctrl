@@ -155,6 +155,7 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Krenko, Mob Boss",
       second: "Goblin storm",
       colors: ["R"],
+      colorless: false,
       ready: true,
     });
     // A deck named for its commander says it once.
@@ -177,9 +178,11 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Tymna the Weaver · Kraum, Ludevic's Opus",
       second: "Tymna / Kraum",
       colors: ["W", "U", "B", "R"],
+      colorless: false,
       ready: true,
     });
-    // A colourless commander has no pips; an unresolved one keeps its name.
+    // A colourless commander has no colours, and says so: its pips draw
+    // {C} (#4847). One that did not resolve is not called colourless.
     expect(
       seatTileText(
         seat(2, {
@@ -188,7 +191,16 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
         }),
         undefined,
       ),
-    ).toMatchObject({ what: "Kozilek", second: "Eldrazi", colors: [] });
+    ).toMatchObject({ what: "Kozilek", second: "Eldrazi", colors: [], colorless: true });
+    expect(
+      seatTileText(
+        seat(2, {
+          deck_name: "Eldrazi",
+          commander_cards: [{ name: "Kozilek", color_identity: null }],
+        }),
+        undefined,
+      ),
+    ).toMatchObject({ what: "Kozilek", colors: [], colorless: false });
     // No deck in yet: the commanders, if any were left, are not read.
     expect(seatTileText(seat(0, { ...krenko, deck_uploaded: false }), undefined)).toMatchObject({
       what: "No deck yet",
@@ -224,6 +236,7 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Krenko, Mob Boss",
       second: "Goblins",
       colors: ["R"],
+      colorless: false,
       ready: true,
     });
     const deck = {
@@ -255,8 +268,16 @@ describe("a lobby table's seat tiles (ADR 0212 §1)", () => {
       what: "Marwyn, the Nurturer",
       second: "Pre-built · Elf ball",
       colors: ["G"],
+      colorless: false,
       ready: true,
     });
+    // A colourless pre-built deck draws {C}; one whose colours did not
+    // come says nothing (#4847).
+    expect(seatTileText(bot, { ...deck, colors: [] })).toMatchObject({
+      colors: [],
+      colorless: true,
+    });
+    expect(seatTileText(bot, { ...deck, colors: undefined })).toMatchObject({ colorless: false });
     // A bot is ready even before GET /bot/options has answered.
     expect(seatTileText({ ...bot, deck_name: "Elf ball" }, undefined)).toMatchObject({
       what: "Elf ball",
