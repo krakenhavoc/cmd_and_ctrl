@@ -88,6 +88,7 @@ body decayed/sacrifice
 body decayed/schedule
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
+body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
 body destroy/the-payload-permanent
@@ -746,6 +747,7 @@ condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
 condition combat/your-creature-hit-the-player
+condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
@@ -842,6 +844,7 @@ confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
+confirm confirm/merciful-mandate-end-combat
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/msh-a6-nick-fury-transform
