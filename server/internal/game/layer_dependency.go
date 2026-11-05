@@ -587,6 +587,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.Controller == b.Controller &&
 		a.Restrictions == b.Restrictions &&
 		a.CantHaveCounters == b.CantHaveCounters &&
+		a.CantBeBeamedUp == b.CantBeBeamedUp &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&
