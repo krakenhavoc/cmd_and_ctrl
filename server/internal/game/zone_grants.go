@@ -207,11 +207,22 @@ func zoneGrantStaticIsLiveLocked(g *Game, zone ZoneKind) bool {
 
 // abilityGrantsOf is the grants an object's ability rows are built
 // from: a permanent's layer-6 grants, or, off the battlefield, the zone
-// grants the last pass stamped on the card. A permanent has no zone
-// grants and a card has no layered ones, so the two never mix.
+// grants the last pass stamped on the card followed by the ones a
+// resolved effect gave it in exile (Card.ExileGrants, ADR 0219). A
+// permanent has no zone grants and a card has no layered ones, so the
+// two never mix. The order only numbers a repeated bundle's refs
+// (grantOccurrence); a static and an effect never name the same bundle.
 func abilityGrantsOf(c *Card) []GrantedAbility {
 	if c.effective != nil {
 		return c.effective.GrantedAbilities
 	}
-	return c.zoneGranted
+	if len(c.ExileGrants) == 0 {
+		return c.zoneGranted
+	}
+	if len(c.zoneGranted) == 0 {
+		return c.ExileGrants
+	}
+	out := make([]GrantedAbility, 0, len(c.zoneGranted)+len(c.ExileGrants))
+	out = append(out, c.zoneGranted...)
+	return append(out, c.ExileGrants...)
 }
