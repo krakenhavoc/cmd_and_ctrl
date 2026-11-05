@@ -1181,6 +1181,11 @@
   // 702.155b). The chapter buttons and the {option_index} answer of
   // option_pick. Answered inline in the dock; this is its sheet.
   const isEntryReadAhead = $derived(active?.kind === "entry_read_ahead");
+  // CR 508.4 entry_attack_target — what a creature entering tapped and
+  // attacking attacks (Kira Nerys, Firebrand). The defender buttons and
+  // the {option_index} answer of option_pick. Answered inline in the
+  // dock when the labels are short; this is its sheet.
+  const isEntryAttackTarget = $derived(active?.kind === "entry_attack_target");
   const entryControllerHint = $derived(
     active?.control_purpose === "benefit"
       ? "Whoever you choose will control it and get what it does."
@@ -1998,6 +2003,15 @@
         secondary: [],
       };
     }
+    if (isEntryAttackTarget) {
+      return {
+        label: c.reason || "Choose what it attacks",
+        src: "enters attacking · CR 508.4",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
     if (isEntryReadAhead) {
       return {
         label: c.reason || "Read ahead — choose the starting chapter",
@@ -2670,6 +2684,20 @@
                   {/each}
                 </span>
               {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else if isEntryAttackTarget}
+      <p class="prompt-hint">
+        It hasn't entered yet: it enters tapped and attacking the player, planeswalker or battle you
+        choose.
+      </p>
+      <ul class="pick-options">
+        {#each pickOptions as opt, i (i)}
+          <li>
+            <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+              <span class="pick-label">{opt.label}</span>
             </button>
           </li>
         {/each}

@@ -10133,9 +10133,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// them.
 		//
 		// So does read ahead's entry_read_ahead (#2123): one option per
-		// chapter, option N being chapter N+1.
+		// chapter, option N being chapter N+1. And entry_attack_target
+		// (CR 508.4): one option per defender, a player's with Player
+		// set and a planeswalker's or battle's with its card inlined.
 		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController ||
-			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
+			c.Kind == game.PendingChoiceEntryReadAhead || c.Kind == game.PendingChoiceEntryAttackTarget) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost, Harm: opt.Harm, Dungeon: opt.Dungeon, Room: opt.Room}

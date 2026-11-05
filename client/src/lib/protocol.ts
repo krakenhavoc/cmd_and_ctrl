@@ -1732,6 +1732,14 @@ export interface PendingChoiceView {
     // answer is {option_index: N}, chapter N+1. source is the entering
     // Saga; entry_keyword is "read ahead".
     | "entry_read_ahead"
+    // CR 508.4: what a creature put onto the battlefield attacking
+    // attacks, asked before it enters (CR 614.12a) — Kira Nerys,
+    // Firebrand's "instead it enters tapped and attacking". The defenders
+    // ride pick_options in order, the one already attacked first: a
+    // player's option has `player` set, a planeswalker's or battle's has
+    // its card in `cards`. The answer is {option_index: N}. source is
+    // the replacement's source.
+    | "entry_attack_target"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
