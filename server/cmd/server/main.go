@@ -243,7 +243,11 @@ const (
 	scryfallDefaultFile = "default-cards.json"
 	// scryfallRolesFile is cmd/cardroles' output beside the dump.
 	scryfallRolesFile = "card-roles.json"
-	imagesSubdir      = "images"
+	// scryfallSetsFile is Scryfall's set list, written beside the dump
+	// by scripts/scryfall-refresh.sh; the catalogue's set picker folds
+	// subsets into their parent with it (#4790).
+	scryfallSetsFile = "sets.json"
+	imagesSubdir     = "images"
 )
 
 func main() {
@@ -1959,6 +1963,19 @@ func loadCardAssets(log *slog.Logger, dataDir string) (*cards.Index, *cards.Imag
 		}
 	} else {
 		log.Info("scryfall index loaded", "cards", n, "path", dumpPath)
+	}
+	// Scryfall's set list for the catalogue's set picker (#4790). A
+	// missing file is normal until the next scryfall-refresh: the picker
+	// then lists every set as its own entry, as before.
+	setsPath := filepath.Join(dataDir, scryfallSubdir, scryfallSetsFile)
+	if n, err := idx.LoadSets(setsPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("scryfall sets list not found; run scripts/scryfall-refresh.sh", "path", setsPath)
+		} else {
+			log.Error("scryfall sets list load failed", "path", setsPath, "err", err)
+		}
+	} else {
+		log.Info("scryfall sets list loaded", "sets", n, "path", setsPath)
 	}
 	// Card roles for the advanced stats (ADR 0217 §7), written weekly by
 	// cmd/cardroles. A missing file is normal until its first run: roles
