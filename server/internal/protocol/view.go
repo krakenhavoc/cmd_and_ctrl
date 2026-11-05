@@ -8514,10 +8514,12 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			}
 		}
 		// #4092: a replicate cost that taps — each payment taps Count of
-		// the options, so the stepper stops at what they cover.
+		// the options, so the stepper stops at what they cover. #4690:
+		// conspire's creatures share a colour with the spell, so the walk
+		// is asked with the spell as the cost's source.
 		if tc := oc.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
-			v.TapOthersOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
 			if tc.Count > 0 {
 				if affordable := len(v.TapOthersOptions.Cards) / tc.Count; affordable < v.MaxTimes {
 					v.MaxTimes = max(affordable, 1)
