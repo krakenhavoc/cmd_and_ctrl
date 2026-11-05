@@ -26,10 +26,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attacker, so without it a five-creature alpha strike would draw
 // four extra cards.
 //
-// "Attacks YOU" is the defending player, not merely "attacks", which
-// is what separates this from Firemane Commando — an opponent who
-// swings the whole team at somebody else gives you nothing. An attack
-// at your planeswalker or battle counts as an attack at you.
+// "Attacks YOU", not merely "attacks", is what separates this from
+// Firemane Commando — an opponent who swings the whole team at
+// somebody else gives you nothing. It is CR 508.3e: only creatures
+// attacking you yourself count, so a creature attacking your
+// planeswalker or a battle you protect does not (#4864).
 //
 // "If an opponent would begin an extra turn, that player skips that
 // turn instead" is SkipOpponentsExtraTurns (#2529): a CR 614 replacement

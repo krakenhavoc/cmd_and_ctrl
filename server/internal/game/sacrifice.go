@@ -41,7 +41,7 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
-	return g.sacrificeWithAnswerLocked(cardID, commanderZoneUnasked, false)
+	return g.sacrificeWithAnswerLocked(cardID, commanderZoneUnasked, false, uuid.Nil)
 }
 
 // sacrificeAnsweredLocked is sacrificePermanentLocked for a sacrifice
@@ -54,8 +54,13 @@ func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
 // one indivisible step, so it cannot stop on any replacement prompt.
 //
 // Caller must hold g.mu.
-func (g *Game) sacrificeAnsweredLocked(cardID uuid.UUID, answer commanderZoneAnswer) error {
-	return g.sacrificeWithAnswerLocked(cardID, answer, true)
+//
+// costOf is the permanent whose activated ability the cost is for
+// (#4427), or uuid.Nil for a spell's cost or a pay-unless: the
+// announcement names it, so a permanent sacrificed for its own ability
+// is told apart from one sacrificed to another's.
+func (g *Game) sacrificeAnsweredLocked(cardID uuid.UUID, answer commanderZoneAnswer, costOf uuid.UUID) error {
+	return g.sacrificeWithAnswerLocked(cardID, answer, true, costOf)
 }
 
 // sacrificeWithAnswerLocked is the shared sacrifice body. Cost callers
@@ -63,7 +68,7 @@ func (g *Game) sacrificeAnsweredLocked(cardID uuid.UUID, answer commanderZoneAns
 // 614/616 window is allowed to ask the affected player a question.
 //
 // Caller must hold g.mu.
-func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneAnswer, mustSettleNow bool) error {
+func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneAnswer, mustSettleNow bool, costOf uuid.UUID) error {
 	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
 		return ErrCardNotFound
 	}
@@ -77,6 +82,7 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
 	r.MustSettleNow = mustSettleNow
+	r.CostOf = costOf
 	return g.routeLegLocked(r, cardID, nil)
 }
 
@@ -91,11 +97,18 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 // window then does with the destination — a sacrifice whose card an
 // "exile it instead" replacement takes is still a sacrifice.
 //
-// `cause` says whether the sacrifice is a cost; it only decides whether
-// the event names the resolving card as its LeaveSource (#4395).
+// `cause` says whether the sacrifice is a cost. It decides whether the
+// event names the resolving card as its LeaveSource (#4395), and a cost
+// is stamped on the event (Cause; the payer is its Actor), with
+// `costOf`, the permanent whose activated ability the cost is for, as
+// CauseSource (#4427). The log reads the two to tell a permanent
+// sacrificed for its own ability (a fetch land, a Treasure's mana, a
+// Clue) from any other sacrifice. Every reader of those fields checks
+// the event's kind first (ExiledBySpellOrAbilityOf, entry provenance),
+// so none of them reads this one.
 //
 // Caller must hold g.mu.
-func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID, cause MoveCause) error {
+func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID, cause MoveCause, costOf uuid.UUID) error {
 	controller := g.controllerOfBattlefieldCardLocked(cardID)
 	if controller == uuid.Nil {
 		return ErrCardNotFound
@@ -110,6 +123,17 @@ func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID, cause MoveCause
 		CardID: cardID,
 	}
 	ev.LeaveSource = g.leaveSourceLocked(cause)
+	if cause.Kind == MoveCauseCost {
+		// Not CauseController: a uuid.UUID is never omitted, so a restore
+		// point written before this has the zero ID there, and the payer
+		// is the event's Actor already.
+		ev.Cause = MoveCauseCost
+		if costOf != uuid.Nil {
+			if src := g.findCardByIDLocked(costOf); src != nil {
+				ev.CauseSource = &ObjectRef{ID: src.InstanceID, Epoch: src.ObjectEpoch}
+			}
+		}
+	}
 	g.EmitEvent(ev)
 	return nil
 }
