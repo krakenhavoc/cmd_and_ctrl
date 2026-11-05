@@ -236,6 +236,8 @@
   const onAdminRoute = $derived($route.name === "adminViews" || $route.name === "adminLogin");
 
   function current(name: string): boolean {
+    // A deck's stats page (ADR 0217 §8) is part of Stats.
+    if (name === "stats") return $route.name === "stats" || $route.name === "statsDeck";
     return $route.name === name;
   }
 
