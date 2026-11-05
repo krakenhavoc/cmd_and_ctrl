@@ -12,6 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackYouEachCombat(2)}, // Crawlspace
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackThisEachCombat(1)}, // The Eternal Wanderer
 //	AttackLimits: []game.AttackLimit{CanOnlyAttackAlone()},                  // Master of Cruelties
+//	AttackLimits: []game.AttackLimit{CantAttackAlone()},                     // Pet Sehlat
 //	AttackLimits: []game.AttackLimit{AsLongAs(ThisIsTapped,                  // Mirri, Weatherlight Duelist
 //	    NoMoreThanNCanAttackYouEachCombat(1))},
 //
@@ -54,6 +55,15 @@ func NoMoreThanNCanAttackThisEachCombat(n int) game.AttackLimit {
 // stays home.
 func CanOnlyAttackAlone() game.AttackLimit {
 	return game.AttackLimit{Scope: game.AttackLimitOnlyAlone, Max: 1}
+}
+
+// CantAttackAlone — "This creature can't attack alone" (Pet Sehlat,
+// #4973; CR 506.5, 508.1c). A restriction on the creature itself: a
+// declaration whose only attacker it is, is illegal. Another creature
+// (one that can't attack alone too) may attack beside it. Judged on the
+// whole declaration at its checkpoint; see game.AttackLimitNotAlone.
+func CantAttackAlone() game.AttackLimit {
+	return game.AttackLimit{Scope: game.AttackLimitNotAlone, Max: 1}
 }
 
 // AsLongAs gates a limit on a condition of its source — "As long as

@@ -37,3 +37,19 @@ describe("myStats", () => {
     expect(routeRedirect({ name: "stats" }, null)).toBe("#/login");
   });
 });
+
+describe("the shared stats route (ADR 0217 §6)", () => {
+  it("parses #/stats/shared/<token>, and #/stats stays the overview", () => {
+    expect(parseHash("#/stats/shared/AbC_-123")).toEqual({
+      name: "statsShared",
+      token: "AbC_-123",
+    });
+    expect(parseHash("#/stats/shared")).toEqual({ name: "stats" });
+    expect(parseHash("#/stats")).toEqual({ name: "stats" });
+  });
+
+  it("is public: a signed-out visitor is not sent to sign in", () => {
+    expect(routeRedirect({ name: "statsShared", token: "t" }, null)).toBeNull();
+    expect(routeRedirect({ name: "stats" }, null)).toBe("#/login");
+  });
+});
