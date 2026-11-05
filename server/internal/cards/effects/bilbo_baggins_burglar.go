@@ -28,6 +28,7 @@ func init() {
 	Register(Spec{
 		OracleID:     bilboBagginsBurglarOracleID + "#1",
 		Name:         "Take a Glance",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Scry{N: 2}.Apply(ctx)

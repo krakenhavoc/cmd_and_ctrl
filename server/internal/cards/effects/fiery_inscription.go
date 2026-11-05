@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "111889d4-bcca-4b1f-ad48-3077e2f5136f",
 		Name:         "Fiery Inscription",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Fiery Inscription — the Ring tempts you", Do(TheRingTemptsYou{})),

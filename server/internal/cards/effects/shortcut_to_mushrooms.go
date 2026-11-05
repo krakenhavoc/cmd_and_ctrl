@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2dc6637a-0b51-462b-9f18-571146bb4558",
 		Name:         "Shortcut to Mushrooms",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Shortcut to Mushrooms — the Ring tempts you", Do(TheRingTemptsYou{})),

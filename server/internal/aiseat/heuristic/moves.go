@@ -462,12 +462,18 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				}
 				v += cv
 			}
+			// #4978: a rider on a row that declares nothing else priced
+			// is added to ActivateBase (riders.go), and such a row pays
+			// for its source like a priced one: a Hidden Cave's discover
+			// does not come with a free land.
+			rider := p.unpricedRiderValue(st, ps, nil)
+			v += rider
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
 			// Strip Mine targeting itself would otherwise beat passing.
 			// #4318: purely defensive rows pay this cost in response too;
 			// other untargeted rows without a priced purpose retain their proxy.
-			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly) {
+			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly || rider > 0) {
 				v -= p.selfSacrificeCost(st, src)
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`
@@ -1403,6 +1409,7 @@ func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionPara
 		if p.purposePriced(ps) {
 			v += p.purposeValue(st, ps, 0, c, false)
 		}
+		v += p.unpricedRiderValue(st, ps, c)
 		// #3776: and the pump it gives the creature for this turn's attack
 		// (face_up_pump.go).
 		if pv, note := p.faceUpPumpValue(st, c, c.Purpose.TurnedFaceUp.Pump); note != "" {

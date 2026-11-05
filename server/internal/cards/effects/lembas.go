@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f71fcdc3-5e96-416e-a49d-37019806e2e2",
 		Name:         "Lembas",
+		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Lembas — scry 1, then draw a card", lembasScryThenDraw),

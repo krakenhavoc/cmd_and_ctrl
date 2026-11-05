@@ -40,6 +40,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3a06f4c1-2af1-495f-914f-1ac4e26f87d4",
 		Name:         "Widespread Brutality",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Amass{Subtype: "Zombie", N: 2, ThenTail: widespreadBrutalitySweepTail}.Apply(ctx)

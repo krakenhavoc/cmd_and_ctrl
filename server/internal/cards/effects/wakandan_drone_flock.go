@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "282d6e61-3240-4f1e-9c2d-8ddb59b03af4",
 		Name:            "Wakandan Drone Flock",
+		Purpose:         game.Purpose{Scry: 2},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "eddab60f-2eac-4f20-934c-3d9307f885c3",
 		Name:         "Nobody",
+		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Nobody — return up to one other target artifact you control to its owner's hand; scry 1",

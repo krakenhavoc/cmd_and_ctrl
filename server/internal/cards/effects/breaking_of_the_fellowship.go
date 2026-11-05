@@ -28,6 +28,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "96e081d2-ec72-41fc-ad81-2e31ab823ae0",
 		Name:         "Breaking of the Fellowship",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetCreature("target creature an opponent controls", OpponentControls()),

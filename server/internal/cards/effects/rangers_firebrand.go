@@ -19,7 +19,7 @@ func init() {
 		Name:         "Ranger's Firebrand",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
-		Purpose:      ForTargets(DamageToTarget(0, 2)),
+		Purpose:      WithRiders(ForTargets(DamageToTarget(0, 2)), game.Purpose{RingTempts: 1}),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			// The tempt is a keyed tail (#4253), the item riding it, so a
 			// prompt the damage pauses on is a restore point.

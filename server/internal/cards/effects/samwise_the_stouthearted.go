@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "0e26b429-0469-474a-818a-2d4696c38a05",
 		Name:            "Samwise the Stouthearted",
+		Purpose:         game.Purpose{RingTempts: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered:       []game.TriggeredAbility{enters},

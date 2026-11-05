@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2e7e3be5-04dd-4ff4-b121-3e65b3e00699",
 		Name:         "Bilbo, Retired Burglar",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrLeaves("Bilbo, Retired Burglar — the Ring tempts you", Do(TheRingTemptsYou{})),

@@ -18,14 +18,14 @@ func init() {
 		OracleID:     "0fbe0610-8565-4910-bf35-2c10e38b633a",
 		Name:         "Glassblower's Puzzleknot",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Energy: 2},
+		Purpose:      game.Purpose{Energy: 2, Scry: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Glassblower's Puzzleknot — scry 2, then you get {E}{E}", scryThenGetEnergy(2, 2)),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}, Sacrifice this artifact: Scry 2, then you get {E}{E}.",
 			Cost:    Plus(ManaCost("{2}{U}"), SacrificeThis()),
-			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2, Scry: 2},
 			Effect:  scryThenGetEnergy(2, 2),
 		}},
 	})

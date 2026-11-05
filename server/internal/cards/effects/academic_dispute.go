@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b22de128-6dad-4e15-a547-1c9ca08df5ff",
 		Name:         "Academic Dispute",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

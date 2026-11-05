@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9204de14-cbb6-40e5-9dcc-44cce3723e8e",
 		Name:         "Galadhrim Guide",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Galadhrim Guide — scry 2", Do(Scry{N: 2})),

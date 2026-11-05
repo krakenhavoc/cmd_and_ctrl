@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "80433c2c-5196-42e0-b9fa-d7b12783f5fd",
 		Name:         "Giant's Boulder",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Giant's Boulder — scry 2", Do(Scry{N: 2})),

@@ -4150,6 +4150,14 @@ export interface PurposeView {
   awaken_land?: number;
   // #2480: cards it exiles that its controller may play this turn.
   impulse?: number;
+  // #4978: riders beside the main effect: cards scried (CR 701.22a),
+  // learns (CR 701.48a), a discover's N (CR 701.57a), an amass's N
+  // (CR 701.47a) and temptings by the Ring (CR 701.54a). Bot data.
+  scry?: number;
+  learn?: number;
+  discover?: number;
+  amass?: number;
+  ring_tempts?: number;
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;

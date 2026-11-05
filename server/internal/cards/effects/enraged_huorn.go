@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "8a7dbf4e-f121-40c5-a688-3398e04c1311",
 		Name:            "Enraged Huorn",
+		Purpose:         game.Purpose{RingTempts: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{

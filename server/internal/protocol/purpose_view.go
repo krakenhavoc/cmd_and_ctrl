@@ -128,6 +128,16 @@ type PurposeView struct {
 	// controller's own puts on its own source, to stay (#5083):
 	// Hangarback Walker's {1}, {T} row 1.
 	SourceCounters int `json:"source_counters,omitempty"`
+	// The riders (#4978, ADR 0126's amendment of 2026-11-05): keyword
+	// actions it does for its controller beside its main effect, as
+	// printed amounts. Scry is the cards it scries (Preordain 2), Learn
+	// the times it learns, Discover the N of its discover, Amass the N
+	// of its amass, RingTempts the times the Ring tempts its controller.
+	Scry       int `json:"scry,omitempty"`
+	Learn      int `json:"learn,omitempty"`
+	Discover   int `json:"discover,omitempty"`
+	Amass      int `json:"amass,omitempty"`
+	RingTempts int `json:"ring_tempts,omitempty"`
 	// Targets is what happens to each target the statement names, one
 	// entry per target clause, keyed by the clause's slot: the slot a
 	// move's `targets[].slot` names, within the statement this purpose
@@ -400,6 +410,11 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse,
 		SourceCounters:            p.SourceCounters,
+		Scry:                      p.Scry,
+		Learn:                     p.Learn,
+		Discover:                  p.Discover,
+		Amass:                     p.Amass,
+		RingTempts:                p.RingTempts,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}

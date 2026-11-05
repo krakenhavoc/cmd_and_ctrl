@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "65d8b481-ebe9-4029-98a8-dd4693340bff",
 		Name:         "Cloudspire Coordinator",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Cloudspire Coordinator — scry 2", Do(Scry{N: 2})),

@@ -23,7 +23,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Targets:         EnchantCreature(),
-		Purpose:         game.Purpose{Aura: game.AuraBenefit},
+		Purpose:         game.Purpose{Aura: game.AuraBenefit, Scry: 2},
 		Static:          []game.StaticAbility{PumpAttached(3, 3)},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gift of Strands — scry 2", Do(Scry{N: 2})),

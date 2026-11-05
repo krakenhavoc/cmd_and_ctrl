@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "48a62778-7c11-486f-a0e1-020c283a7ef9",
 		Name:            "Nazgûl",
+		Purpose:         game.Purpose{RingTempts: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{

@@ -22,7 +22,7 @@ func init() {
 		ManaAbilities: []ManaAbility{dualManaAbility("W", "B")},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: Scry 1.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 1},
 			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Effect:  Do(Scry{N: 1}),
 		}},

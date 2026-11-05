@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "080f504f-20c8-4975-837c-d704e879d7f5",
 		Name:         "Great Goblin, Foul-Hearted",
+		Purpose:      game.Purpose{Amass: 3},
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			TribalKeywordGrant(TribeFilter{Tribes: []string{game.ArmySubtype}, YoursOnly: true}, "trample"),
