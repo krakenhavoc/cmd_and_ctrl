@@ -156,7 +156,7 @@ describe("settings", () => {
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION, applySyncedCopy } =
       await freshModule();
-    expect(SETTINGS_VERSION).toBe(31);
+    expect(SETTINGS_VERSION).toBe(32);
     expect(defaultSettings().animations.stackArrival).toBe(true);
     const s = get(settings);
     expect(s.animations.stackArrival).toBe(true);
@@ -185,10 +185,10 @@ describe("settings", () => {
       JSON.stringify({ __version: 29, animations: { enabled: true, combat: false } }),
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
-    expect(SETTINGS_VERSION).toBe(31);
+    expect(SETTINGS_VERSION).toBe(32);
     expect(defaultSettings().animations.effects).toBe("full");
     const s = get(settings);
-    expect(s.__version).toBe(31);
+    expect(s.__version).toBe(32);
     expect(s.animations.effects).toBe("full");
     expect(s.animations.combat).toBe(false);
     expect(SYNCED_FIELDS.animations.effects).toBe("synced");
@@ -243,10 +243,10 @@ describe("settings", () => {
       JSON.stringify({ __version: 27, gameplay: { strictMana: false } }),
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
-    expect(SETTINGS_VERSION).toBe(31);
+    expect(SETTINGS_VERSION).toBe(32);
     expect(defaultSettings().gameplay.attackDefault).toBe("ask");
     const s = get(settings);
-    expect(s.__version).toBe(31);
+    expect(s.__version).toBe(32);
     expect(s.gameplay.attackDefault).toBe("ask");
     expect(s.gameplay.strictMana).toBe(false);
     expect(SYNCED_FIELDS.gameplay.attackDefault).toBe("synced");
@@ -278,7 +278,7 @@ describe("settings", () => {
     );
     const { settings, SYNCED_FIELDS } = await freshModule();
     const a = get(settings).audio;
-    expect(get(settings).__version).toBe(31);
+    expect(get(settings).__version).toBe(32);
     expect(a.cardsVolume).toBe(35);
     expect(a.combatVolume).toBe(35);
     expect(a.interfaceVolume).toBe(35);
@@ -603,7 +603,9 @@ describe("settings", () => {
     expect(s.gameplay.respondCounterspells).toBe(true);
     expect(s.gameplay.respondInstants).toBe(true);
     expect(s.gameplay.respondAbilities).toBe(true);
-    expect(s.gameplay.respondSpecialActions).toBe(true);
+    // v32 (#2861): respondSpecialActions split; face-up keeps it, the rest are off.
+    expect(s.gameplay.respondTurnFaceUp).toBe(true);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
     // v24 (ADR 0143): smart auto-pass off is now Careful.
     expect(s.gameplay.passMode).toBe("careful");
     expect(s.gameplay.autoPassOwnStack).toBe(false);
@@ -1125,7 +1127,7 @@ describe("respondUntargetedAbilities (v21 → v22)", () => {
     expect(gp.respondCounterspells).toBe(true);
     expect(gp.respondInstants).toBe(true);
     expect(gp.respondAbilities).toBe(true);
-    expect(gp.respondSpecialActions).toBe(true);
+    expect(gp.respondTurnFaceUp).toBe(true);
   });
 
   it("moves a player still on the old all-on default to the new default", async () => {
@@ -1266,6 +1268,136 @@ describe("respondValueInstants (v30 → v31)", () => {
   it("a v31 blob with a malformed value falls back to the default", async () => {
     const { s } = await load({ __version: 31, gameplay: { respondValueInstants: "yes" } });
     expect(s.gameplay.respondValueInstants).toBe(false);
+  });
+});
+
+// ---- #2861: the special actions split ----
+
+describe("respondTurnFaceUp and respondOtherSpecialActions (v31 → v32)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  // The v31 default "Stop for" list, as a v31 client materialised it.
+  const v31Defaults = {
+    respondCounterspells: true,
+    respondInstants: true,
+    respondValueInstants: false,
+    respondAbilities: true,
+    respondUntargetedAbilities: false,
+    respondSpecialActions: true,
+  };
+
+  it("turns face up on and the others off for a new player (owner, 2026-10-30)", async () => {
+    const { defaultSettings } = await freshModule();
+    const gp = defaultSettings().gameplay;
+    expect(gp.respondTurnFaceUp).toBe(true);
+    expect(gp.respondOtherSpecialActions).toBe(false);
+    expect("respondSpecialActions" in gp).toBe(false);
+  });
+
+  it("moves a player on the v31 defaults to the new defaults, and drops the old key", async () => {
+    const { mod, s } = await load({ __version: 31, gameplay: v31Defaults });
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(32);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.respondTurnFaceUp).toBe(true);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
+    expect("respondSpecialActions" in s.gameplay).toBe(false);
+  });
+
+  it("moves a blob from before the categories existed to the new defaults", async () => {
+    const { s } = await load({ __version: 11, gameplay: { smartAutoPass: true } });
+    expect(s.gameplay.respondTurnFaceUp).toBe(true);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
+  });
+
+  it("keeps both off for a player who turned special actions off", async () => {
+    let { s } = await load({
+      __version: 31,
+      gameplay: { ...v31Defaults, respondSpecialActions: false },
+    });
+    expect(s.gameplay.respondTurnFaceUp).toBe(false);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
+
+    // Off on a list they also changed elsewhere: still both off.
+    ({ s } = await load({
+      __version: 31,
+      gameplay: { ...v31Defaults, respondInstants: false, respondSpecialActions: false },
+    }));
+    expect(s.gameplay.respondTurnFaceUp).toBe(false);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
+  });
+
+  it("keeps every special action stopping for a player who changed the Stop for list", async () => {
+    for (const change of [
+      { respondCounterspells: false },
+      { respondInstants: false },
+      { respondAbilities: false },
+      { respondUntargetedAbilities: true },
+      { respondValueInstants: true },
+    ]) {
+      const { s } = await load({ __version: 31, gameplay: { ...v31Defaults, ...change } });
+      const what = Object.keys(change)[0];
+      expect(s.gameplay.respondTurnFaceUp, what).toBe(true);
+      expect(s.gameplay.respondOtherSpecialActions, what).toBe(true);
+    }
+  });
+
+  it("follows v22's carry-over for a blob from before value abilities split off", async () => {
+    // A v21 player who turned counters off kept "any ability" (v22): they
+    // looked at the list and left special actions on.
+    const { s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: false,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+      },
+    });
+    expect(s.gameplay.respondTurnFaceUp).toBe(true);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(true);
+  });
+
+  it("migrates an account copy from a v31 client the same way", async () => {
+    const { defaultSettings, applySyncedCopy } = await freshModule();
+    const base = defaultSettings();
+    const off = applySyncedCopy(
+      base,
+      { gameplay: { ...v31Defaults, respondSpecialActions: false } },
+      31,
+    );
+    expect(off.gameplay.respondTurnFaceUp).toBe(false);
+    expect(off.gameplay.respondOtherSpecialActions).toBe(false);
+    const untouched = applySyncedCopy(base, { gameplay: v31Defaults }, 31);
+    expect(untouched.gameplay.respondTurnFaceUp).toBe(true);
+    expect(untouched.gameplay.respondOtherSpecialActions).toBe(false);
+  });
+
+  it("from v32 on, the stored choices stand and survive a save", async () => {
+    const { mod } = await load({
+      __version: 32,
+      gameplay: { respondTurnFaceUp: false, respondOtherSpecialActions: true },
+    });
+    expect(get(mod.settings).gameplay.respondTurnFaceUp).toBe(false);
+    expect(get(mod.settings).gameplay.respondOtherSpecialActions).toBe(true);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.respondTurnFaceUp).toBe(false);
+    expect(get(again.settings).gameplay.respondOtherSpecialActions).toBe(true);
+  });
+
+  it("a v32 blob with malformed values falls back to the defaults", async () => {
+    const { s } = await load({
+      __version: 32,
+      gameplay: { respondTurnFaceUp: "no", respondOtherSpecialActions: 1 },
+    });
+    expect(s.gameplay.respondTurnFaceUp).toBe(true);
+    expect(s.gameplay.respondOtherSpecialActions).toBe(false);
   });
 });
 

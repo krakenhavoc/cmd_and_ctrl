@@ -1,6 +1,7 @@
 package mcpseat
 
 import (
+	"encoding/json"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -116,10 +117,12 @@ func anyAttacking(v *protocol.GameView) bool {
 
 // scanResponses is responseWindow.ts's hasResponse at the default "Stop
 // for" categories (DEFAULT_RESPONSES): a counter, an instant, a targeted
-// or interacting ability and a special action count; a pure value ability
-// (a fetch, Mind Stone, cycling), a mana ability, a land and a declaration
-// do not, and nor does a value instant (Opt, Brainstorm: a cast marked
-// value_only, #2877) while something is on the stack. It reports whether
+// or interacting ability and turning a face-down creature face up count; a
+// pure value ability (a fetch, Mind Stone, cycling), any other special
+// action (foretell, suspend, plot, unlock: #2861), a mana ability, a land
+// and a declaration do not, and nor does a value instant (Opt, Brainstorm:
+// a cast marked value_only, #2877) while something is on the stack. It
+// reports whether
 // any move is a response, and whether any is a matched answer: a cast,
 // activation or mana move whose answers_now is true (#4734).
 func scanResponses(v *protocol.GameView, me string, moves []legal.Move, mine bool) (respond, matched bool) {
@@ -165,9 +168,10 @@ func answersNow(m legal.Move) bool {
 }
 
 // moveIsResponse is classifyMove's response classes: counter, instant,
-// ability and special. The "untargeted" class is off by default, and so
+// ability and faceUp. The "untargeted" class is off by default, and so
 // is "valueInstant", a value_only cast while the stack holds something
-// (#2877; the browser's respondValueInstants, off by default). The
+// (#2877; the browser's respondValueInstants, off by default), and so is
+// "special", every special action but turning face up (#2861). The
 // caller has already passed a stack that is entirely the seat's own, so
 // onStack means an opponent's item is there.
 //
@@ -203,9 +207,30 @@ func moveIsResponse(m legal.Move, sorcery, onStack, combat, defending bool) bool
 		}
 		return combat && m.CombatInteracts && (!m.CombatDefenderOnly || defending)
 	case legal.KindSpecialAction:
-		return true
+		// #2861 (owner decision 2026-10-30): of the special actions only
+		// turning a face-down creature face up is a response by default
+		// (the browser's respondTurnFaceUp). Foretell, suspend, plot,
+		// unlock and the rest answer nothing (respondOtherSpecialActions,
+		// off by default).
+		return specialActionKind(m) == specialTurnFaceUp
 	}
 	return false
+}
+
+// specialTurnFaceUp is game.SpecialActionTurnFaceUp on the wire (this
+// package may not import internal/game, imports_test.go).
+const specialTurnFaceUp = "turn_face_up"
+
+// specialActionKind is a special_action move's params.kind, or "" when
+// its params carry none.
+func specialActionKind(m legal.Move) string {
+	var p struct {
+		Kind string `json:"kind"`
+	}
+	if len(m.Params) == 0 || json.Unmarshal(m.Params, &p) != nil {
+		return ""
+	}
+	return p.Kind
 }
 
 // attackOrBlockLabel names a stack item about an attack or a block.
