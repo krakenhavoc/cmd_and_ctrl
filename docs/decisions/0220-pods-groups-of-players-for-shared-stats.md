@@ -1,6 +1,6 @@
 # ADR 0220 — Pods: groups of players for shared stats
 
-**Status:** Proposed · 2026-11-05 · outside the sprint's scope (owner request; see "Sprint" below)
+**Status:** Accepted · 2026-11-05 · outside the sprint's scope (owner request; see "Sprint" below)
 **Issue:** [#4880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4880) (the stats epic)
 **Owner decisions:** Ian, in ADR 0217's [owner answers](0217-advanced-player-stats-per-deck-and-overall.md#owner-answers-to-the-open-questions-ian-2026-11-04) 5 and 7 and in the brief for this ADR (2026-11-05). They are recorded below as [Owner decisions](#owner-decisions) and are **decided**. Everything else here is a call made in this ADR, listed under [Calls made here](#calls-made-here), and can be overturned in review.
 **Numbering:** checked on 2026-11-05 after `git fetch --all --prune`. Every ADR file ever added on any remote head (`git log --remotes=origin --name-only -- docs/decisions/`, a superset of the loop in [README.md](README.md#picking-a-number)) shows 0218 and 0219 taken on `develop` and nothing above 0219 anywhere. The heads checked are listed in the PR. This is **0220**.
@@ -314,7 +314,7 @@ Each slice is one mergeable PR with its tests, against `develop`.
 
 Slice 4 can wait or be dropped without touching the others.
 
-**Owner question:** slice 2 needs ADR 0213 slice 3 (friends, `user_blocks`, `social_prefs`). Either that slice is built first, or slice 2 ships link-only pods with the friend invite and block checks added when `user_blocks` lands. The second is faster, but until then a member's only tool against another is to leave. This ADR assumes the first.
+**Owner answer (Ian, 2026-11-05):** build ADR 0213 slice 3 (friends, `user_blocks`, `social_prefs`) first. Slice 2 here waits for it, so pods ship with friend invites and block checks from the start, as this ADR assumes. ADR 0213 slice 2 (Played with) comes before its slice 3.
 
 ## Consequences
 
@@ -341,6 +341,7 @@ Ian. **Decided.**
 3. **Who can be a member.** Not guests, bots or agents. Deleted accounts leave. ADR 0213 blocks apply.
 4. **The leaderboard.** Pod games only, with no "All games" scope (this supersedes ADR 0217 §6's earlier text). Ranked by win rate, then average place, with a minimum of 5 counted games, and each row shows its count (ADR 0217 owner answer 7).
 5. **The stats routes and page** are ADR 0217's: `GET /pods/{id}/stats`, `GET /pods/{id}/leaderboard`, members only, and `#/pods/<id>/stats`.
+6. **Order (2026-11-05).** Friends and blocks (ADR 0213 slices 2 and 3) are built before this ADR's slice 2; pods are not shipped link-only first. The calls under [Calls made here](#calls-made-here), including the limits in §5 and blocks hiding two members from each other both ways (§6), stand as written.
 
 ## Sprint
 
