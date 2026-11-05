@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "df98b93b-0aa6-4bea-9d8d-798ebc795b0b",
 		Name:         "Etali's Favor",
+		Purpose:      game.Purpose{Discover: 3},
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Targets:      EnchantCreature(YouControl()),

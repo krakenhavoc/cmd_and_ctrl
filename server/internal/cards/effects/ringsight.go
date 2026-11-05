@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "66e42be3-5125-41b4-9efe-8a6a66899bb6",
 		Name:         "Ringsight",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Keyed (#4253 slice 10b): the search is the tempt's tail.

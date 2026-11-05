@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "ea5103f5-27e0-4eb1-902c-7f34652d6bf3",
 		Name:            "Orcish Bowmasters",
+		Purpose:         game.Purpose{Amass: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{

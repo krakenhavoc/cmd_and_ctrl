@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Rage of Purphoros — Sorcery {4}{R}:
 //
 //	"Rage of Purphoros deals 4 damage to target creature. It can't be
@@ -16,7 +18,7 @@ func init() {
 		Name:         "Rage of Purphoros",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(DamageToTarget(0, 4)),
+		Purpose:      WithRiders(ForTargets(DamageToTarget(0, 4)), game.Purpose{Scry: 1}),
 		OnResolve: damageFirstTargetThenNoRegen(4, func(ctx *Context) error {
 			return Scry{N: 1}.Apply(ctx)
 		}),

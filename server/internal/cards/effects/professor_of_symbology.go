@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1a8ae444-6237-4591-97ab-f43e181b2f4f",
 		Name:         "Professor of Symbology",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Professor of Symbology — learn", Do(Learn{})),

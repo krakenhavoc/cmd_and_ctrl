@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "60092fb4-98db-4f2d-a5d7-24b5f11c8acc",
 		Name:         "Bombadil's Song",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")),
+		Purpose:      WithRiders(ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")), game.Purpose{RingTempts: 1}),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

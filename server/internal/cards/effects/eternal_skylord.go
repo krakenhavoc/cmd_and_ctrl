@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "324a30cc-bddd-463c-9f28-c94c93a26780",
 		Name:         "Eternal Skylord",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Eternal Skylord — amass Zombies 2",

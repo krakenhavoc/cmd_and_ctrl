@@ -28,7 +28,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}{U}, {T}: Scry 2.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 2},
 			Cost:    Plus(ManaCost("{2}{U}{U}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 2}.Apply(NewContext(g, item))

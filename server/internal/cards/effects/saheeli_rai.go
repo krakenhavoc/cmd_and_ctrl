@@ -66,8 +66,9 @@ func init() {
 		StartingLoyalty: 3,
 		Activated: []ActivatedAbility{
 			{
-				Label: "+1: Scry 1. Saheeli Rai deals 1 damage to each opponent.",
-				Cost:  LoyaltyCost(1),
+				Label:   "+1: Scry 1. Saheeli Rai deals 1 damage to each opponent.",
+				Purpose: game.Purpose{Scry: 1},
+				Cost:    LoyaltyCost(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					// Plain values, not the item: the scry's
 					// continuation runs after a player prompt, and

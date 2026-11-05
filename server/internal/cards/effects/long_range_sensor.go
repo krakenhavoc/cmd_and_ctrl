@@ -26,6 +26,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{1}, Remove two charge counters from this artifact: Discover 4",
+			Purpose:      game.Purpose{Discover: 4},
 			Cost:         Plus(ManaCost("{1}"), RemoveCountersFromThis("charge", 2)),
 			SorcerySpeed: true,
 			Effect:       DiscoverN(4),

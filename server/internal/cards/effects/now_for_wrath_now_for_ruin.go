@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8141fb64-7b55-40fb-8fe4-5efd805d8fef",
 		Name:         "Now for Wrath, Now for Ruin!",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var ids []uuid.UUID

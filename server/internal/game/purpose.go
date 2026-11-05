@@ -250,6 +250,33 @@ type Purpose struct {
 	// activator.
 	SourceCounters int
 
+	// The riders below are keyword actions a spell or an ability does
+	// for its controller beside its main effect (#4978, ADR 0126's
+	// amendment of 2026-11-05): Preordain's scry 2 before its draw,
+	// Claim the Precious's "the Ring tempts you" after its removal. Each
+	// is the PRINTED number, like every amount here; "scry X" and
+	// "discover X, where X is ..." are counted at resolution and are not
+	// declared. A rider the text gates on a condition ("if this spell
+	// was bargained, ... you scry 1") is not declared either.
+
+	// Scry is the cards its controller scries (CR 701.22a): Opt 1,
+	// Preordain 2. Two scries in one statement add.
+	Scry int
+	// Learn is how many times its controller learns (CR 701.48a):
+	// Field Trip 1.
+	Learn int
+	// Discover is the N of the discover it does (CR 701.57a): Daring
+	// Discovery 4, Trumpeting Carnosaur's enters effect 5. A statement
+	// that discovers more than once declares none.
+	Discover int
+	// Amass is the N of "amass [subtype] N" (CR 701.47a), the +1/+1
+	// counters put on its controller's Army: Orcish Medicine 1, Eternal
+	// Skylord's enters effect 2.
+	Amass int
+	// RingTempts is how many times the Ring tempts its controller (CR
+	// 701.54a): Claim the Precious 1.
+	RingTempts int
+
 	// Targets is what happens TO each target the statement names, one
 	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
 	// answer 1). Every amount above is its controller's; an entry's are
@@ -811,6 +838,13 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations + o.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse + o.Impulse,
+	}
+	// #4978: the riders. A discover's N is one discover's, so a fused
+	// spell keeps the half that declares one rather than adding them.
+	out.Scry, out.Learn, out.Amass, out.RingTempts = p.Scry+o.Scry, p.Learn+o.Learn, p.Amass+o.Amass, p.RingTempts+o.RingTempts
+	out.Discover = p.Discover
+	if out.Discover == 0 {
+		out.Discover = o.Discover
 	}
 	// #2877: a fused spell answers what either half does, and a half
 	// that declares nothing leaves the whole undeclared, which a reader

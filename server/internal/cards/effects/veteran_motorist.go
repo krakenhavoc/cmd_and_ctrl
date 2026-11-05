@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3e6f51ae-7239-4fcc-919f-aa2437e8ef15",
 		Name:         "Veteran Motorist",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Veteran Motorist — scry 2", Do(Scry{N: 2})),

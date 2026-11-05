@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "f2ef8bda-373d-4387-900d-0f1b6ccf72e9",
 		Name:            "Trumpeting Carnosaur",
+		Purpose:         game.Purpose{Discover: 5},
 		Completeness:    CompletenessFull,
 		Discovers:       true,
 		PrintedKeywords: []string{"trample"},

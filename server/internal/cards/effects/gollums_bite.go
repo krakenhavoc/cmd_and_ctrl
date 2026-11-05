@@ -29,6 +29,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{3}{B}, Exile this card from your graveyard: The Ring tempts you",
+			Purpose:      game.Purpose{RingTempts: 1},
 			Cost:         Plus(ManaCost("{3}{B}"), ExileThis()),
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,

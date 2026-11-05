@@ -28,6 +28,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "4d5fd9f0-ecb3-4b91-ae55-f02336d7cf37",
 		Name:            "Rangers of Ithilien",
+		Purpose:         game.Purpose{RingTempts: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{

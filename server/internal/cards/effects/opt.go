@@ -25,7 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "713332c1-5bd8-400f-bfff-c1ca0697a043",
 		Name:         "Opt",
-		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: a cantrip answers nothing on the stack
+		Purpose:      game.Purpose{Answers: game.AnswerValue, Scry: 1}, // #2877: a cantrip answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()

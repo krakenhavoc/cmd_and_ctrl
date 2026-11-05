@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Gathering of Darkness — Sorcery {3}{B} (The Hobbit, HOB):
 //
 //	"Return up to one target creature card from your graveyard to your
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "85e1556d-c4da-4979-a5db-4ce3842c7797",
 		Name:         "Gathering of Darkness",
+		Purpose:      game.Purpose{Amass: 3},
 		Completeness: CompletenessFull,
 		Targets:      TargetCardInGraveyard("up to one target creature card from your graveyard", YouOwn(), Creature()).WithCount(0, 1),
 		OnResolve: ResolveSteps(
