@@ -61,9 +61,45 @@ type CardCasts struct {
 	Games int    `json:"games"`
 }
 
+// Coverage is how many records were computed under one stats_version
+// (ADR 0217 §9), and of those how many read their replay whole. A
+// version-1 record has no frames_complete and counts in neither.
+type Coverage struct {
+	Version          int `json:"version"`
+	Games            int `json:"games"`
+	FramesComplete   int `json:"frames_complete"`
+	FramesIncomplete int `json:"frames_incomplete"`
+}
+
+// Makeup counts recorded games by their seats: every seat a person
+// (guests count as people), people and bots, or every seat a bot. A
+// seat is a bot when it has a bot tier or an agent client.
+type Makeup struct {
+	PeopleOnly int `json:"people_only"`
+	WithBots   int `json:"with_bots"`
+	BotsOnly   int `json:"bots_only"`
+}
+
+// KindCount is how many games were won one way (ADR 0217 §3), or how
+// many combo wins one part of the combo rule found.
+type KindCount struct {
+	Kind  string `json:"kind"`
+	Games int    `json:"games"`
+}
+
 // Overview is the body of GET /admin/stats.
 type Overview struct {
-	Totals          Totals         `json:"totals"`
+	Totals Totals `json:"totals"`
+	// Coverage is one entry per stats_version in use, oldest first.
+	Coverage []Coverage `json:"coverage"`
+	// WinKinds counts every game with a win kind, in ADR 0217 §3's
+	// order, and ComboRules the combo wins by the rule that fired.
+	// Aggregates only: no game or person is named.
+	WinKinds   []KindCount `json:"win_kinds"`
+	ComboRules []KindCount `json:"combo_rules"`
+	// Makeup counts recorded games by who sat (ADR 0217 §3's table
+	// makeup, read from the seats).
+	Makeup          Makeup         `json:"makeup"`
 	Recent          []AdminGame    `json:"recent"`
 	People          []PersonRecord `json:"people"`
 	CommandersGames []Group        `json:"commanders_by_games"`
@@ -73,7 +109,8 @@ type Overview struct {
 
 // EmptyOverview is an Overview with no data and empty (not null) lists.
 func EmptyOverview() Overview {
-	return Overview{Recent: []AdminGame{}, People: []PersonRecord{}, CommandersGames: []Group{},
+	return Overview{Coverage: []Coverage{}, WinKinds: []KindCount{}, ComboRules: []KindCount{},
+		Recent: []AdminGame{}, People: []PersonRecord{}, CommandersGames: []Group{},
 		CommandersWins: []Group{}, Cards: []CardCasts{}}
 }
 
@@ -98,6 +135,10 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 		 WHERE g.state = 'ended' AND NOT EXISTS (SELECT 1 FROM game_stats gs WHERE gs.game_id = g.id)`).
 		Scan(&out.Totals.Unrecorded); err != nil {
 		return fail("unrecorded", err)
+	}
+
+	if err := s.overviewV2(ctx, &out); err != nil {
+		return fail("version 2", err)
 	}
 
 	rows, err := s.db.QueryContext(ctx,
@@ -241,6 +282,75 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 		return fail("cards", err)
 	}
 	return out, nil
+}
+
+// overviewV2 fills the version-2 aggregates: coverage, win kinds and
+// combo rules (ADR 0217 §9).
+func (s *SQLStore) overviewV2(ctx context.Context, out *Overview) error {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT stats_version, COUNT(*), COALESCE(SUM(frames_complete = 1), 0), COALESCE(SUM(frames_complete = 0), 0)
+		 FROM game_stats GROUP BY stats_version ORDER BY stats_version`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var c Coverage
+		if err := rows.Scan(&c.Version, &c.Games, &c.FramesComplete, &c.FramesIncomplete); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		out.Coverage = append(out.Coverage, c)
+	}
+	if err := closeRows(rows); err != nil {
+		return err
+	}
+	counts := func(col string, order []string) ([]KindCount, error) {
+		rows, err := s.db.QueryContext(ctx,
+			`SELECT `+col+`, COUNT(*) FROM game_stats WHERE `+col+` IS NOT NULL GROUP BY `+col)
+		if err != nil {
+			return nil, err
+		}
+		got := map[string]int{}
+		for rows.Next() {
+			var (
+				k string
+				n int
+			)
+			if err := rows.Scan(&k, &n); err != nil {
+				_ = rows.Close()
+				return nil, err
+			}
+			got[k] = n
+		}
+		if err := closeRows(rows); err != nil {
+			return nil, err
+		}
+		list := []KindCount{}
+		for _, k := range order {
+			if n := got[k]; n > 0 {
+				list = append(list, KindCount{Kind: k, Games: n})
+			}
+		}
+		return list, nil
+	}
+	kinds := make([]string, len(Kinds))
+	for i, k := range Kinds {
+		kinds[i] = string(k)
+	}
+	if out.WinKinds, err = counts("win_kind", kinds); err != nil {
+		return err
+	}
+	if out.ComboRules, err = counts("combo_rule", []string{string(ComboLoop), string(ComboRepeats),
+		string(ComboActions), string(ComboCombats)}); err != nil {
+		return err
+	}
+	return s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(bots = 0), 0), COALESCE(SUM(bots > 0 AND people > 0), 0), COALESCE(SUM(people = 0 AND bots > 0), 0)
+		 FROM (SELECT ss.game_id,
+		         SUM(s.bot_tier IS NOT NULL OR s.agent_client IS NOT NULL) AS bots,
+		         SUM(s.bot_tier IS NULL AND s.agent_client IS NULL) AS people
+		       FROM seat_stats ss JOIN seats s ON s.game_id = ss.game_id AND s.seat = ss.seat
+		       GROUP BY ss.game_id)`).Scan(&out.Makeup.PeopleOnly, &out.Makeup.WithBots, &out.Makeup.BotsOnly)
 }
 
 func closeRows(rows *sql.Rows) error {

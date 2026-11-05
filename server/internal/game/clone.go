@@ -646,6 +646,9 @@ func deepenCard(out *Card) {
 	if len(out.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
+	if len(out.ExileGrants) > 0 {
+		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
+	}
 	if len(out.ManaAbilities) > 0 {
 		out.ManaAbilities = append([]ManaAbilityShape(nil), out.ManaAbilities...)
 	}

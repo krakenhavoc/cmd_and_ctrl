@@ -214,6 +214,8 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Robot artifact":                                     {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 2, Toughness: 2},
 	"2/2 colorless Robot Villain artifact":                             {Name: "Robot Villain", TypeLine: "Token Artifact Creature — Robot Villain", Power: 2, Toughness: 2},
 	"1/1 colorless Robot Hero artifact with flying":                    {Name: "Robot Hero", TypeLine: "Token Artifact Creature — Robot Hero", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"1/1 colorless Borg artifact":                                      {Name: "Borg", TypeLine: "Token Artifact Creature — Borg", Power: 1, Toughness: 1},
+	"1/1 red Officer":                                                  {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"3/3 blue Illusion Villain":                                        {Name: "Illusion Villain", TypeLine: "Token Creature — Illusion Villain", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/1 colorless Robot Hero artifact with flying":                    {Name: "Robot Hero", TypeLine: "Token Artifact Creature — Robot Hero", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
 	"1/1 white Clown Robot artifact":                                   {Name: "Clown Robot", TypeLine: "Token Artifact Creature — Clown Robot", Power: 1, Toughness: 1, Colors: []string{"W"}},
@@ -224,6 +226,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"2/2 green Wolf":                                                   {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
@@ -334,5 +337,19 @@ var tokenTable = map[string]game.Card{
 	// #4457 batch 3: Foot Mystic's Ninja.
 	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
-	"1/1 red Officer": {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
+
+	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
+	"2/1 red Klingon Warrior with haste": {Name: "Klingon Warrior", TypeLine: "Token Creature — Klingon Warrior", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// #4973: Star Trek's Officer (Excalbian Gamemaster).
+
+	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
+
+	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
+
+	// #4973: Star Trek's Officer (Excalbian Gamemaster).
+
+	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
+	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
+	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }

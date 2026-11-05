@@ -416,6 +416,11 @@ type Index struct {
 	tokenPool []Card
 	loaded    time.Time
 	path      string
+	// roles are the Tagger roles of each card by oracle_id, loaded by
+	// LoadRoles from card-roles.json (ADR 0217 §7); rolesAt is when that
+	// file was fetched. Both are nil/zero until a roles file is loaded.
+	roles   map[uuid.UUID][]string
+	rolesAt time.Time
 }
 
 // tokenPoolExcludedSetTypes are the ADR 0078 decision 3a set types

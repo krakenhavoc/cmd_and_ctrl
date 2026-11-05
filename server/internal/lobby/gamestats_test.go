@@ -62,6 +62,14 @@ func TestAFinishedGameGetsAStatsRecord(t *testing.T) {
 	if aliceSeat.EliminatedTurn == nil {
 		t.Error("Alice has no elimination turn: the record did not read the game's log")
 	}
+	// Version 2 (ADR 0217): the worker read the room's replay, and the
+	// log-derived kinds are there.
+	if room.ReplayPath() != "" && !rec.FramesComplete {
+		t.Error("the room keeps a replay, but the record did not read it whole")
+	}
+	if rec.WinKind != gamestats.KindConcession || aliceSeat.OutKind != gamestats.KindConcession {
+		t.Errorf("win kind %q, Alice out %q; want concession", rec.WinKind, aliceSeat.OutKind)
+	}
 }
 
 // countingStats records how many records were written.

@@ -131,6 +131,13 @@ type CastCounts struct {
 	// Nil for a spell that delved nothing, and for a CR 707.10 copy,
 	// which paid nothing (PaidCost.Delved is not copied).
 	Delved []Card
+
+	// CastFrom is the zone the spell was cast from (StackItem.
+	// CastFromZone): Storied Veteran's "You may cast this card from your
+	// graveyard. If you do, it enters with a finality counter on it"
+	// (#4973). Empty for a CR 707.10 copy, which was not cast, and for
+	// every entry that was not a resolving spell.
+	CastFrom ZoneKind
 }
 
 // KickedWith is CR 702.33f's "if it was kicked with its [cost]
@@ -214,6 +221,7 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		KickersPaid: kickersPaidFor(CatalogKey(card), item.Paid.OptionalCosts),
 		ColorsSpent: item.Paid.ColorsSpentCount(),
 		ManaSpent:   item.Paid.ManaSpentCount(),
+		CastFrom:    item.CastFromZone,
 	}
 }
 

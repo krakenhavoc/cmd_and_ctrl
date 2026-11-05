@@ -32,6 +32,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/modelkeys"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
@@ -255,6 +256,19 @@ type Config struct {
 	// bot token, the public origin and the database are all there.
 	Notifications notify.Store
 
+	// StatsPrefs is the advanced-stats setting (ADR 0217 §2, migration
+	// 0030): each person's switch and the server's default, behind
+	// /me/stats/prefs and the admin routes in stats_prefs.go. Nil (no
+	// database): everyone follows gamestats.AdvancedDefault and the
+	// writes answer 503.
+	StatsPrefs gamestats.PrefsStore
+
+	// AdvancedStats reads a person's version-2 stats record (ADR 0217
+	// slice 5) for GET /me/stats/advanced and GET
+	// /me/stats/decks/{deck_id}. Nil (no database): both answer 503 to
+	// a person whose advanced stats are on.
+	AdvancedStats gamestats.AdvancedStore
+
 	// ModelKeys is a signed-in person's own model key for the AI seats
 	// they add (ADR 0182, migration 0025), behind /me/model-key and the
 	// own_key option of POST /games/{id}/seats/bot. Nil means the
@@ -415,6 +429,10 @@ type GameEvictor interface {
 //	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/stats/prefs    — signed in: the caller's advanced-stats setting (ADR 0217)
+//	PUT  /me/stats/prefs    — signed in: switch advanced stats on or off
+//	GET  /me/stats/advanced — signed in, advanced stats on: the overview (ADR 0217 slice 5)
+//	GET  /me/stats/decks/{deck_id} — signed in, advanced stats on: one deck's stats
 //	GET  /me/notifications  — signed in: the caller's Discord DM notification switches (ADR 0162)
 //	PUT  /me/notifications  — signed in: change them
 //	GET  /me/model-key      — signed in: the caller's own model key for AI seats, never the key itself (ADR 0182)
@@ -443,6 +461,9 @@ type GameEvictor interface {
 //	GET  /admin/games       — admin: tables, newest first, filtered and paginated
 //	GET  /admin/games/{id}  — admin: one table
 //	GET  /admin/stats       — admin: game statistics overview (ADR 0165 §8)
+//	GET  /admin/stats/advanced — admin: the advanced-stats default and every account whose switch is set (ADR 0217)
+//	PUT  /admin/stats/advanced-default — admin: store the advanced-stats default
+//	PUT  /admin/users/{id}/advanced-stats — admin: switch advanced stats on or off for one person
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
@@ -781,6 +802,29 @@ func Handler(c Config) http.Handler {
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
 	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
+	// The advanced-stats switch (ADR 0217 §2). Writes share a
+	// per-person bucket of 1 a second, burst 5, as the notifications.
+	statsPrefsLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/stats/prefs", auth.Middleware(c.Auth)(handlerFunc(c, myStatsPrefs)))
+	mux.Handle("PUT /me/stats/prefs", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, putMyStatsPrefs))))
+	// The advanced-stats read routes (ADR 0217 slice 5): refused while
+	// the caller's setting is off. They share a per-person bucket of 2
+	// a second, burst 10: a filter change is one read, and each reads
+	// the caller's whole record.
+	advancedStatsLimit := newLimiter(2, 10)
+	mux.Handle("GET /me/stats/advanced", auth.Middleware(c.Auth)(perCallerLimit(advancedStatsLimit, handlerFunc(c, myAdvancedStats))))
+	mux.Handle("GET /me/stats/decks/{deck_id}", auth.Middleware(c.Auth)(perCallerLimit(advancedStatsLimit, handlerFunc(c, myAdvancedDeckStats))))
+	// The share link (ADR 0217 §6, slice 6): mint (or rotate) and
+	// revoke on the setting's bucket. The shared view needs no sign-in
+	// (owner answer 6), so it is limited per address, 1 a second with a
+	// burst of 10: a viewer changing filters is one read each. /stats is
+	// a top-level prefix, so it is in deploy/Caddyfile's @api matcher,
+	// the Vite proxy and the service worker's API_PATH; the SPA's own
+	// #/stats is a hash route requested as `/`.
+	mux.Handle("POST /me/stats/share-link", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, postMyStatsShareLink))))
+	mux.Handle("DELETE /me/stats/share-link", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, deleteMyStatsShareLink))))
+	sharedStatsLimit := newLimiter(1, 10)
+	mux.Handle("GET /stats/shared/{token}", sharedStatsLimit.Middleware(handlerFunc(c, sharedStats)))
 	// The cards an ended game's opponents cast, for the shop links
 	// after a game (ADR 0179 §7). Under /me/, so already in the proxies.
 	mux.Handle("GET /me/games/{id}/cards", auth.Middleware(c.Auth)(handlerFunc(c, myGameCards)))
@@ -992,6 +1036,10 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /admin/games", requireAdmin(c, handlerFunc(c, adminViewGames)))
 	mux.Handle("GET /admin/games/{id}", requireAdmin(c, handlerFunc(c, adminViewGame)))
 	mux.Handle("GET /admin/stats", requireAdmin(c, handlerFunc(c, adminStats)))
+	// The advanced-stats setting's admin side (ADR 0217 owner answer 1).
+	mux.Handle("GET /admin/stats/advanced", requireAdmin(c, handlerFunc(c, adminAdvancedStats)))
+	mux.Handle("PUT /admin/stats/advanced-default", requireAdmin(c, handlerFunc(c, adminSetAdvancedDefault)))
+	mux.Handle("PUT /admin/users/{id}/advanced-stats", requireAdmin(c, handlerFunc(c, adminSetAdvancedStats)))
 	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
 	// from memory, with names from the database when there is one.
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))

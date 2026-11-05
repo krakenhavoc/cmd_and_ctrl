@@ -157,3 +157,51 @@ func TestOverviewKeepsDeletedBotsAndAgentsOutOfHumanStats(t *testing.T) {
 		t.Errorf("cards = %+v, want only the human seat's", got.Cards)
 	}
 }
+
+// ADR 0217 §9: coverage by stats_version, win kinds, combo rules and
+// table makeup, as aggregates.
+func TestOverviewVersionTwoAggregates(t *testing.T) {
+	s, d := openStore(t)
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := d.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	for i, name := range []string{"A", "B", "C", "D", "E"} {
+		seedSeat(t, d, int64(1000*(i+1)), name, "", "", "", "win", 1, 5, `[]`)
+	}
+	byName := func(name string) string { return `(SELECT id FROM games WHERE name = '` + name + `')` }
+	exec(`UPDATE game_stats SET stats_version = 2, frames_complete = 1, win_kind = 'combo', combo_rule = 'loop' WHERE game_id = ` + byName("A"))
+	exec(`UPDATE game_stats SET stats_version = 2, frames_complete = 1, win_kind = 'combat' WHERE game_id = ` + byName("B"))
+	exec(`UPDATE game_stats SET stats_version = 2, frames_complete = 0, win_kind = 'combat' WHERE game_id = ` + byName("C"))
+	exec(`UPDATE game_stats SET stats_version = 2, frames_complete = 1, win_kind = 'combo', combo_rule = 'repeats' WHERE game_id = ` + byName("D"))
+	// E stays a version-1 record. D seats a bot beside its person, and in
+	// C both seats are bots.
+	exec(`UPDATE seats SET bot_tier = 'heuristic' WHERE seat = 1 AND game_id = ` + byName("D"))
+	exec(`UPDATE seats SET bot_tier = 'heuristic' WHERE game_id = ` + byName("C"))
+	exec(`UPDATE seats SET agent_client = 'claude-code', bot_tier = NULL WHERE seat = 0 AND game_id = ` + byName("C"))
+
+	got, err := s.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Coverage{{Version: 1, Games: 1}, {Version: 2, Games: 4, FramesComplete: 3, FramesIncomplete: 1}}
+	if fmt.Sprint(got.Coverage) != fmt.Sprint(want) {
+		t.Errorf("coverage = %+v, want %+v", got.Coverage, want)
+	}
+	if fmt.Sprint(got.WinKinds) != fmt.Sprint([]KindCount{{"combo", 2}, {"combat", 2}}) {
+		t.Errorf("win kinds = %+v, want combo then combat, two each", got.WinKinds)
+	}
+	if fmt.Sprint(got.ComboRules) != fmt.Sprint([]KindCount{{"loop", 1}, {"repeats", 1}}) {
+		t.Errorf("combo rules = %+v", got.ComboRules)
+	}
+	if got.Makeup != (Makeup{PeopleOnly: 3, WithBots: 1, BotsOnly: 1}) {
+		t.Errorf("makeup = %+v, want 3 people only, 1 with bots, 1 bots only", got.Makeup)
+	}
+
+	empty, err := NoStore{}.Overview(context.Background())
+	if err != nil || empty.Coverage == nil || empty.WinKinds == nil || empty.ComboRules == nil {
+		t.Errorf("an empty overview has null lists: %+v", empty)
+	}
+}
