@@ -893,6 +893,7 @@ confirm confirm/sword-of-light-and-shadow-return
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
+confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-discovery-search
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others

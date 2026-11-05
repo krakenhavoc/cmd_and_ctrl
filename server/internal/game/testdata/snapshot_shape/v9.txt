@@ -561,6 +561,8 @@ delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
 delayedTriggers[].untilLeaves.epoch	number:int
 delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
+dilemmasFacedThisTurn	map:array
+dilemmasFacedThisTurn{}	number:int
 discardPending	map:array
 discardPending{}	number:int
 drawnThisStep	map:array
