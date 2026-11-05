@@ -8,11 +8,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// unearth.go — #1221: unearth (CR 702.82).
+// unearth.go — #1221: unearth (CR 702.84).
 //
 // "Unearth {1}{B}" is not an alternative way to cast the card and not
 // a special action. It is an ACTIVATED ABILITY that functions only
-// while the card is in its owner's GRAVEYARD (CR 702.82a):
+// while the card is in its owner's GRAVEYARD (CR 702.84a):
 //
 //	"{1}{B}: Return this card from your graveyard to the
 //	 battlefield. It gains haste. Exile it at the beginning of the
@@ -33,7 +33,7 @@ import (
 // the two cards cannot drift apart on the one clause that is easy to
 // get subtly wrong.
 
-// Unearth is "Unearth <cost>" — CR 702.82a. `cost` is the printed
+// Unearth is "Unearth <cost>" — CR 702.84a. `cost` is the printed
 // mana cost of the ability, "{1}{B}" or "{3}{R}{R}"; the graveyard
 // zone, the sorcery-speed restriction and the whole of the return
 // come with the keyword and are not the card file's to spell out.

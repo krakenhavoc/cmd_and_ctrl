@@ -164,6 +164,30 @@ func TestZiatorasEnvoyStillOffersATownAsALandPlay(t *testing.T) {
 	}
 }
 
+// A modal DFC whose back face is a land, and whose front face is a spell
+// over the damage dealt, is offered as a play of its land back face
+// (CR 712.11c).
+func TestZiatorasEnvoyPlaysAModalDFCsLandBackFace(t *testing.T) {
+	tb := newEnvoyTable(t)
+	id := tb.pushTop(mdfcCard(uuid.Nil, "", game.LayoutModalDFC,
+		game.Face{Name: "Fixture Awakening", TypeLine: "Sorcery", ManaCost: "{5}{G}{G}", Colors: []string{"G"}},
+		game.Face{Name: "Fixture Undercrypt", TypeLine: "Land"},
+	))
+	tb.attack(t)
+	c := tb.mayCast()
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrHand || c.MayCastCard != id {
+		t.Fatalf("offer %+v (in hand %v), want the land back face's play", c, tb.me.Hand.Contains(id))
+	}
+	tb.answer(t, true)
+	land, ok := battlefieldCard(tb.g, id)
+	if !ok || land.ActiveFace != 1 || !land.IsLand() {
+		t.Fatalf("on the battlefield: %+v, want the land back face", land)
+	}
+	if got := tb.g.LandsPlayedThisTurnFor(tb.me.ID); got != 1 {
+		t.Errorf("lands played this turn = %d, want 1", got)
+	}
+}
+
 // Rashmi's clause is spell-only: a revealed Town is offered for its
 // Adventure.
 func TestRashmiOffersARevealedTownsAdventure(t *testing.T) {

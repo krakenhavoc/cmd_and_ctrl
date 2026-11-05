@@ -19063,6 +19063,7 @@ lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
 lastKnownTriggerIdentity{}.attachedTo.epoch	number:int
 lastKnownTriggerIdentity{}.attachedTo.splice	number:int
+lastKnownTriggerIdentity{}.faceDown	string
 lastKnownTriggerIdentity{}.oracleID	string
 lastKnownTriggerIdentity{}.textBox	object
 lastKnownTriggerIdentity{}.textBox.from	string

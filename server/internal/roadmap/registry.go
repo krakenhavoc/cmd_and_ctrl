@@ -767,7 +767,7 @@ var items = []Item{
 	{
 		Slug: "unearth", Name: "Unearth", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Return a creature from your graveyard to the battlefield with haste for one turn; it's exiled afterwards.",
-		Rules:   []string{"702.82"},
+		Rules:   []string{"702.84"},
 		Probe:   anyOf(activatedLabel("Unearth "), activatedLabel("Unearth—")),
 		Phrases: []string{"unearthed"},
 	},
@@ -780,7 +780,7 @@ var items = []Item{
 	{
 		Slug: "scavenge", Name: "Scavenge", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Exile a creature card from your graveyard to put +1/+1 counters equal to its power on a creature.",
-		Rules:   []string{"702.96"},
+		Rules:   []string{"702.97"},
 		Probe:   activatedLabel("Scavenge "),
 	},
 	{
@@ -3407,7 +3407,7 @@ var items = []Item{
 	{
 		Slug: "a-permanent-you-controlled-left", Name: "A permanent you controlled left the battlefield this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that check whether a permanent you controlled left the battlefield this turn, such as revolt and Shortcut to Mushrooms.",
-		Rules:       []string{"603.4", "702.136"},
+		Rules:       []string{"603.4", "207.2c"},
 		Issue:       2148,
 		Tracked:     "#2148 (the per-player sibling of the void seam, #2128)",
 		Examples:    []string{"Shortcut to Mushrooms", "Fatal Push", "Renegade Rallier", "Hidden Stockpile"},
