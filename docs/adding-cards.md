@@ -9680,6 +9680,14 @@ beside `battlefield` / `stack` / `exile`, with `phased_out: true` on
 each card; the client folds them back onto the controller's row,
 dimmed and badged `PHASED`, with the click withheld.
 
+**"Permanents can't phase in."** (The City on the Edge of Forever's Human
+token, #4973) is the `game.PermanentsCantPhaseIn` restriction bit, put on
+the source itself with `RestrictSelf(game.PermanentsCantPhaseIn)`. While
+any permanent on the battlefield has it, `phaseInLocked` refuses every
+phase-in, at an untap step and from a "phases out until ~ leaves" lock
+alike (CR 101.2); the permanents stay out until a later untap step of the
+player they phased out under. It is not on the wire.
+
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
 turn" whose object phases out keeps its `ScopedEffect` record

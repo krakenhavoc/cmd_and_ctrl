@@ -60,6 +60,10 @@ const (
 	CodeNameNotAllowed   = "name_not_allowed"
 )
 
+// CodeGameClosed is the `code` of every ErrGameArchived refusal: the
+// table was archived, by an admin or (ADR 0211) the idle sweep.
+const CodeGameClosed = "game_closed"
+
 // blockKey is the in-memory form of a BlockRecord.
 type blockKey struct {
 	kind    BlockKind

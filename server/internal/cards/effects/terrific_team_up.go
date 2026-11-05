@@ -52,18 +52,7 @@ func init() {
 			if !ok || victim.Kind != game.TargetCard {
 				return nil
 			}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				for _, s := range sources {
-					c, ok := ctx.Game.LookupCardForEffect(s.ID)
-					if !ok {
-						continue
-					}
-					if err := (DealDamage{Source: s.ID, Target: victim.ID, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
+			return eachDealsDamageEqualToItsPower(ctx, sources, victim.ID)
 		},
 	})
 }

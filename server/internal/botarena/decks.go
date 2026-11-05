@@ -198,12 +198,66 @@ const AnswersDeckID = "answers-battle"
 // tricks-battle`. Synthetic, so it needs no Scryfall dump.
 const TricksDeckID = "tricks-battle"
 
+// ThopterDeckID is the arena deck id of ThopterBattleDeck: `--decks
+// thopter-battle`. Synthetic, so it needs no Scryfall dump.
+const ThopterDeckID = "thopter-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
-// monolith-battle, answers-battle and tricks-battle.
+// monolith-battle, answers-battle, tricks-battle and thopter-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID || id == ThopterDeckID
 }
+
+// ThopterBattleDeck is a mono-blue deck led by Sai, Master Thopterist,
+// for #4991's arena measurement: Sai makes a Thopter for each artifact
+// spell and trades two artifacts for a card. Its artifacts are eight
+// Ornithopters, six Memnites, four Hangarback Walkers, four Burnished
+// Harts and four Mind Stones, beside BattleDeck's vanilla Drakes, Ogres
+// and Wurms recoloured blue and twenty-four Islands. The curated Thopter
+// Swarm deck holds the same artifacts but needs a Scryfall dump; this
+// one does not. Dealt by oracle ID so the catalog gives each card its
+// abilities; the printed costs and stats are the cards' own.
+func ThopterBattleDeck(owner uuid.UUID) []game.Card {
+	cmdr := game.NewCommander("Sai, Master Thopterist", owner)
+	cmdr.OracleID = oracleSai
+	cmdr.TypeLine, cmdr.ManaCost = "Legendary Creature — Human Artificer", "{2}{U}"
+	cmdr.Colors = []string{"U"}
+	cmdr.Power, cmdr.Toughness = 1, 4
+	deck := []game.Card{cmdr}
+	add := func(n int, name, oracle, typeLine, cost string, blue bool, power, toughness int, keywords ...string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			if blue {
+				c.Colors = []string{"U"}
+			}
+			c.Power, c.Toughness = power, toughness
+			c.Keywords = keywords
+			deck = append(deck, c)
+		}
+	}
+	add(24, "Island", "", "Basic Land — Island", "", false, 0, 0)
+	add(8, "Ornithopter", oracleOrnithopter, "Artifact Creature — Thopter", "{0}", false, 0, 2, "flying")
+	add(6, "Memnite", oracleMemnite, "Artifact Creature — Construct", "{0}", false, 1, 1)
+	add(4, "Hangarback Walker", oracleHangarbackWalker, "Artifact Creature — Construct", "{X}{X}", false, 0, 0)
+	add(4, "Burnished Hart", oracleBurnishedHart, "Artifact Creature — Elk", "{3}", false, 2, 2)
+	add(4, "Mind Stone", oracleMindStone, "Artifact", "{2}", false, 0, 0)
+	add(6, "Drake", "", "Creature — Drake", "{2}{U}", true, 3, 3, "flying")
+	add(4, "Ogre", "", "Creature — Ogre", "{3}{U}", true, 4, 4)
+	add(4, "Wurm", "", "Creature — Wurm", "{5}{U}", true, 7, 7, "trample")
+	return deck
+}
+
+// The thopter deck's catalog keys.
+const (
+	oracleSai              = "52241b9c-7a69-4176-9234-8bdab09d8e64"
+	oracleOrnithopter      = "a3a98bc9-caa0-49b7-951c-fe4e4f54e4ba"
+	oracleMemnite          = "7663ac7c-1de3-4250-b96a-fae9dbd66a27"
+	oracleHangarbackWalker = "dde55256-5259-44e7-a267-fca45a7f0d04"
+	oracleBurnishedHart    = "893fed41-c144-433f-af88-bc7d419b7fb3"
+	oracleMindStone        = "c97361b5-af16-4a7b-af85-a429dbaf4ad2"
+)
 
 // TricksBattleDeck is BattleDeck with the changes until end of turn #4312
 // prices in it, for its arena measurement: four Brute Force ("target

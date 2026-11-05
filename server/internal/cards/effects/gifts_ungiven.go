@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -127,17 +125,10 @@ var giftsUngivenSettle = RegisterRevealPick("choose-cards/gifts-ungiven-settle",
 // trimmed, which matches every other name comparison in the catalog. A
 // card with no name (a fixture) matches nothing and is allowed
 // through: this hook is a restriction, not an identity check.
+//
+// The comparison is the engine's (game.CardNamesDiffer, #4947), so an
+// outside-the-game pick registered "with different names" checks exactly
+// what this does.
 func DifferentNames(picked []game.Card) bool {
-	seen := make(map[string]bool, len(picked))
-	for _, c := range picked {
-		key := strings.ToLower(strings.TrimSpace(c.Name))
-		if key == "" {
-			continue
-		}
-		if seen[key] {
-			return false
-		}
-		seen[key] = true
-	}
-	return true
+	return game.CardNamesDiffer(picked)
 }
