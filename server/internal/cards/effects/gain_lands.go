@@ -67,6 +67,8 @@ func init() {
 		{"cab718af-8e6f-4766-856e-3a61ba98f94d", "Qo'noS", "B", "R"},
 		{"365a4644-74f4-4af9-81ab-0d328ca5edce", "Risa", "G", "W"},
 		{"14c4ad24-7f38-409b-8ef0-341f233982da", "Romulus", "U", "B"},
+		// Star Trek (#4973): the same three lines on a Planet.
+		{"c7b6bc1f-9161-415e-a097-d9c8cd81d4ae", "Vulcan", "W", "U"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,

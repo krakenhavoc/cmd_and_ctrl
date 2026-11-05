@@ -10,6 +10,9 @@ import "github.com/google/uuid"
 // already has one place for each of those choices, and each emits
 // EventFacedDilemma once the choice is made.
 //
+// Game.DilemmasFacedThisTurn counts the same events per player for the
+// turn (Captain Benjamin Sisko, The Caretaker).
+//
 // Also the extra-turn count H.M.S. Bounty reads, which shipped in the
 // same batch: Player.ExtraTurnsBegun.
 
@@ -32,6 +35,12 @@ func (g *Game) emitFacedDilemmaLocked(player, source uuid.UUID) {
 	if player == uuid.Nil {
 		return
 	}
+	// The per-turn count "for each dilemma you've faced this turn"
+	// reads, bumped here so it counts exactly the events emitted.
+	if g.DilemmasFacedThisTurn == nil {
+		g.DilemmasFacedThisTurn = make(map[uuid.UUID]int)
+	}
+	g.DilemmasFacedThisTurn[player]++
 	ev := Event{
 		Kind:   EventFacedDilemma,
 		Actor:  player,

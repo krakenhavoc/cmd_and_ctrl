@@ -352,10 +352,11 @@ What to know about how they behave:
   when the server predates the field: a card that declares nothing (most
   instants until ADR 0142's sweep declares them), a value ability, and a
   `remove` effect. That is a counterspell, an instant, an ability that
-  targets or interacts, or a special action; in combat, crew or a manland
-  too. A land, a mana ability and a pure value ability (a fetch, Mind
-  Stone, cycling) are not, and nor is a value instant (Opt) against an
-  opponent's stack item. So a card that declares nothing still stops you
+  targets or interacts, or turning a face-down creature face up; in
+  combat, crew or a manland too. A land, a mana ability, a pure value
+  ability (a fetch, Mind Stone, cycling) and any other special action
+  (foretell, suspend, plot, unlock: #2861) are not, and nor is a value
+  instant (Opt) against an opponent's stack item. So a card that declares nothing still stops you
   where it did: that costs a click, never a window. A manland, a Crew row
   or a keyword grant carries no `answers_now` either at your own beginning
   of combat while the stack holds nothing of an opponent's, and `smart`
