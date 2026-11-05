@@ -51,6 +51,7 @@ tests-e2e/
     ├── skipped-first-target-4497.spec.ts # #4497: Meager Meal cast with its "up to one target creature" left empty (Done with nothing picked), the opponent picked for "target player": on the stack at slot 1, and they gain 2 life
     ├── smoke.spec.ts          # router + entry pages + healthz
     ├── stats-pages-4880.spec.ts # ADR 0217 slice 6: a shared stats link opens signed out and read-only, a revoked one says so; #/stats shows the opt-in while advanced stats are off, then the overview, its filters and the share dialog; no page scroll at 1440, 820 and 390 px in a dark and the light skin
+    ├── stats-deck-4880.spec.ts # ADR 0217 slice 6 part 2: a deck's stats page: the overview's Decks row opens it, the mana curve over the land curve, dead cards, the version picker and filters; the opt-in while advanced stats are off; a shared deck page is read-only and signed out; no page scroll at 1440, 820 and 390 px in a dark and the light skin
     ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
 ├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold

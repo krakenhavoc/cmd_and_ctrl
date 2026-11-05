@@ -59,6 +59,9 @@
   figure {
     margin: 0;
     display: grid;
+    /* One shrinkable column: an opened table scrolls inside its own box,
+       never widens the page. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 6px;
     min-width: 0;
   }

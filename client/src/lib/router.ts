@@ -81,6 +81,10 @@ export type Route =
   // read-only copy of their stats pages. Public: the link is the
   // credential, and it is made to be posted in Discord.
   | { name: "statsShared"; token: string }
+  // One deck's advanced stats (ADR 0217 §8): #/stats/deck/<deck_id>, and
+  // the same page inside a shared view, #/stats/shared/<token>/deck/<deck_id>.
+  | { name: "statsDeck"; id: string }
+  | { name: "statsSharedDeck"; token: string; id: string }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
@@ -181,7 +185,12 @@ export function parseHash(hash: string): Route {
         ? { name: "lobby", show: "history" }
         : { name: "lobby" };
     case "stats":
-      if (parts[1] === "shared" && parts[2]) return { name: "statsShared", token: parts[2] };
+      if (parts[1] === "shared" && parts[2]) {
+        if (parts[3] === "deck" && parts[4])
+          return { name: "statsSharedDeck", token: parts[2], id: parts[4] };
+        return { name: "statsShared", token: parts[2] };
+      }
+      if (parts[1] === "deck" && parts[2]) return { name: "statsDeck", id: parts[2] };
       return { name: "stats" };
     case "friends":
       return { name: "friends" };

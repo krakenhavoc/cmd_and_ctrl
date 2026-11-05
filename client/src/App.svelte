@@ -18,6 +18,7 @@
   import Stats from "./routes/Stats.svelte";
   import Friends from "./routes/Friends.svelte";
   import SharedStats from "./routes/SharedStats.svelte";
+  import StatsDeck from "./routes/StatsDeck.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import Terms from "./routes/Terms.svelte";
   import Funding from "./routes/Funding.svelte";
@@ -204,6 +205,10 @@
   <Friends />
 {:else if $route.name === "statsShared"}
   <SharedStats token={$route.token} />
+{:else if $route.name === "statsDeck"}
+  <StatsDeck deckId={$route.id} />
+{:else if $route.name === "statsSharedDeck"}
+  <StatsDeck deckId={$route.id} token={$route.token} />
 {:else if $route.name === "practice"}
   <Practice />
 {:else if $route.name === "catalog"}

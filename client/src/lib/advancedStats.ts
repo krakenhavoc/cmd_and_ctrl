@@ -107,6 +107,8 @@ export interface AdvancedSummary {
     flood: Rate;
     colour_screw: Rate;
     trend: ManaGame[];
+    /** N = 1 … 7 (7 is 7 and up); the deck page draws it, the overview does not. */
+    land_curve: LandCurvePoint[];
   };
   most_cast: CastCard[];
 }
@@ -402,9 +404,266 @@ export function medianLengthText(l: AdvancedSummary["length"]): string {
 
 /** What the share dialog says the link reveals (ADR 0217 §6), one sentence. */
 export const SHARE_REVEALS =
-  "Anyone with the link can see your stats under your display name, including your deck names, commanders and the cards you cast, which shows much of your decklists; it never shows the other players’ names.";
+  "Anyone with the link can see your stats under your display name, including your deck names, commanders and the cards you cast or held, which shows much of your decklists; it never shows the other players’ names.";
 
 /** The announcement after a filter change: once, through the polite region. */
 export function filterAnnouncement(makeup: Makeup, range: StatsRange): string {
   return `Showing ${MAKEUP_TEXT[makeup].toLowerCase()}, ${RANGE_TEXT[range].toLowerCase()}.`;
+}
+
+// ---- The deck page (ADR 0217 §3, §4, §5, §7 and §8; slice 6 part 2) ----
+
+/** One point of the land-drop reliability curve (§4): N = 1 to 7, where 7 is 7 and up. */
+export interface LandCurvePoint {
+  n: number;
+  hit: Rate;
+  controlled: Rate;
+}
+
+export interface TypeCount {
+  type: string;
+  cards: number;
+}
+
+export interface RoleCount {
+  role: string;
+  cards: number;
+}
+
+export interface ColourShare {
+  colour: string;
+  symbols: number;
+  share: number | null;
+}
+
+/** What GET /me/stats/decks/{id} reads from the saved list (gamestats.DeckFacts). */
+export interface DeckFacts {
+  hash: string;
+  cards: number;
+  unresolved: number;
+  types: TypeCount[];
+  roles_available: boolean;
+  roles: RoleCount[] | null;
+  /** Non-land cards at mana value 0 … 6 and 7+. */
+  mana_curve: number[];
+  nonland: number;
+  avg_mana_value: number | null;
+  colour_share: ColourShare[];
+  colour_identity: string[];
+}
+
+export interface DeckCommander {
+  name: string;
+  scryfall_id?: string;
+  color_identity: string[] | null;
+}
+
+export interface DeckInfo {
+  id: string;
+  name: string;
+  updated_at: number;
+  commanders: string[];
+  commander_cards?: DeckCommander[];
+  roles_at?: number;
+  facts: DeckFacts | null;
+}
+
+/** One version of a deck the person has played (§5). */
+export interface DeckVersion {
+  hash: string;
+  current: boolean;
+  first: number;
+  last: number;
+  games: number;
+}
+
+export interface DeadCard {
+  name: string;
+  dead: Rate;
+  could_afford: boolean;
+  scryfall_id?: string;
+}
+
+export interface OtherDecks {
+  decks: number;
+  types: { type: string; average: number }[];
+  roles?: { role: string; average: number }[];
+}
+
+/** "current" (since last edit), "all", or a version hash. */
+export type DeckVersionChoice = string;
+export const VERSION_CURRENT = "current";
+export const VERSION_ALL = "all";
+
+/** The body of GET /me/stats/decks/{id}, and of a shared deck page. */
+export interface AdvancedDeck extends AdvancedSummary {
+  deck: DeckInfo;
+  version: DeckVersionChoice;
+  no_games_since_edit: boolean;
+  versions: DeckVersion[];
+  makeup: Makeup;
+  range: StatsRange;
+  dead_cards: DeadCard[];
+  other_decks: OtherDecks | null;
+}
+
+export interface SharedDeck extends AdvancedDeck {
+  display_name: string;
+}
+
+function deckQuery(version: string, makeup: Makeup, range: StatsRange): string {
+  return `${filterQuery(makeup, range)}&version=${encodeURIComponent(version)}`;
+}
+
+export async function fetchAdvancedDeck(
+  deckId: string,
+  version: string,
+  makeup: Makeup,
+  range: StatsRange,
+): Promise<AdvancedDeck> {
+  const res = await authFetch(
+    `/me/stats/decks/${encodeURIComponent(deckId)}${deckQuery(version, makeup, range)}`,
+    { cache: "no-store" },
+  );
+  return (await res.json()) as AdvancedDeck;
+}
+
+/** A shared deck page: no session, so a plain fetch (see fetchSharedStats). */
+export async function fetchSharedDeck(
+  token: string,
+  deckId: string,
+  version: string,
+  makeup: Makeup,
+  range: StatsRange,
+): Promise<SharedDeck> {
+  const res = await fetch(
+    `/stats/shared/${encodeURIComponent(token)}/decks/${encodeURIComponent(deckId)}${deckQuery(version, makeup, range)}`,
+    { cache: "no-store", credentials: "omit" },
+  );
+  if (!res.ok) {
+    let msg = "could not load this deck's stats";
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) msg = body.error;
+    } catch {
+      /* not JSON */
+    }
+    throw new LobbyApiError(res.status, msg);
+  }
+  return (await res.json()) as SharedDeck;
+}
+
+/** The deck page's route: the owner's, or the shared view's. */
+export function deckStatsHref(deckId: string, token?: string): string {
+  return token
+    ? `#/stats/shared/${encodeURIComponent(token)}/deck/${encodeURIComponent(deckId)}`
+    : `#/stats/deck/${encodeURIComponent(deckId)}`;
+}
+
+/** Card roles as a player reads them. */
+export const ROLE_TEXT: Record<string, string> = {
+  removal: "Removal",
+  board_wipe: "Board wipes",
+  counterspell: "Counterspells",
+  fog: "Fogs",
+  ramp: "Ramp",
+  mana_rock: "Mana rocks",
+  mana_dork: "Mana dorks",
+  draw: "Card draw",
+  tutor: "Tutors",
+  protection: "Protection",
+  recursion: "Recursion",
+  graveyard_hate: "Graveyard hate",
+  burn: "Burn",
+  lifegain: "Lifegain",
+  token_maker: "Token makers",
+  sacrifice_outlet: "Sacrifice outlets",
+  wincon: "Win conditions",
+};
+
+/** Card types as a player reads them (plural). */
+export const TYPE_TEXT: Record<string, string> = {
+  land: "Lands",
+  creature: "Creatures",
+  artifact: "Artifacts",
+  enchantment: "Enchantments",
+  instant: "Instants",
+  sorcery: "Sorceries",
+  planeswalker: "Planeswalkers",
+  battle: "Battles",
+};
+
+/** A day, e.g. "3 Nov 2026"; the viewer's locale. */
+export function dayText(ms: number): string {
+  return new Date(ms).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/** The version picker's option text for one played version. */
+export function versionText(v: DeckVersion): string {
+  const span =
+    v.first === v.last || sameDay(v.first, v.last)
+      ? dayText(v.first)
+      : `${dayText(v.first)} to ${dayText(v.last)}`;
+  return `${v.current ? "Current list" : "Earlier list"}, ${span} (${v.games} ${v.games === 1 ? "game" : "games"})`;
+}
+
+function sameDay(a: number, b: number): boolean {
+  return dayText(a) === dayText(b);
+}
+
+/** Which games the page is showing, in one line under the header. */
+export function versionNote(d: AdvancedDeck): string {
+  if (d.version === VERSION_ALL)
+    return "All time: every game with this deck, whatever its list was.";
+  if (d.version === VERSION_CURRENT)
+    return `Since your last edit on ${dayText(d.deck.updated_at)}.`;
+  return "One earlier version of this deck's list.";
+}
+
+/** The "no games since your last edit" line (§5). */
+export function noGamesSinceEdit(d: AdvancedDeck): string {
+  return `No games since your last edit on ${dayText(d.deck.updated_at)}.`;
+}
+
+/** The mana-curve and land-curve caption: the 4th land drop is the turn most decks lean on. */
+export function landCurveCaption(points: readonly LandCurvePoint[]): string {
+  const rated = points.filter((p) => p.hit.rate != null);
+  if (rated.length === 0) return "Play 3 games with this deck to see its land curve.";
+  const p = rated.find((r) => r.n === 4) ?? rated[rated.length - 1];
+  const turn = p.n >= 7 ? "turn 7 or later" : `turn ${p.n}`;
+  return `You had hit land drop ${p.n >= 7 ? "7" : p.n} by ${turn} in ${rateText(p.hit)}.`;
+}
+
+/** The mana curve's own sentence, for the table-less reader. */
+export function curveText(f: DeckFacts | null): string {
+  if (!f || f.nonland === 0) return "";
+  const avg =
+    f.avg_mana_value == null ? "" : ` at an average mana value of ${f.avg_mana_value.toFixed(2)}`;
+  return `${f.nonland} non-land cards${avg}.`;
+}
+
+/** Commander tile text: casts per game and the first-cast turn. */
+export function commanderCaption(c: AdvancedSummary["commander"]): string {
+  if (c.casts_per_game == null) return "No commander casts recorded yet.";
+  const first =
+    c.first_cast_turn.median == null
+      ? ""
+      : `, first on turn ${Math.round(c.first_cast_turn.median)} at the median`;
+  return `You cast your commander ${oneDecimal(c.casts_per_game)} times a game${first}.`;
+}
+
+/** The composition chart's caption: the largest gap from the person's other decks. */
+export function compositionCaption(
+  bars: readonly { label: string; value: number; tick?: number }[],
+): string {
+  const gaps = bars.filter((b) => b.tick != null).map((b) => ({ b, gap: b.value - (b.tick ?? 0) }));
+  if (gaps.length === 0) return "How this deck is built.";
+  const big = [...gaps].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
+  if (Math.abs(big.gap) < 1) return "This deck is built much like your other decks.";
+  const more = big.gap > 0;
+  return `${big.b.label} stand out: ${big.b.value} here against ${oneDecimal(big.b.tick)} in your other decks on average, ${more ? "more" : "fewer"} than usual.`;
 }
