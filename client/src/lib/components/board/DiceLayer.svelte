@@ -8,7 +8,7 @@
   // burst rule, the deterministic tumble) is lib/dice.ts, pure and
   // unit-tested; the shared queue is lib/diceQueue.svelte.ts, so the
   // attention strip can hold a roll's text until its die settles. This
-  // file measures, draws and announces.
+  // file measures, draws, announces and plays each roll's sound (#4450).
   //
   // Display only. Nothing waits for a die: the layer is aria-hidden,
   // takes no pointer events, and sits at z 41, above the strip (40), the
@@ -35,6 +35,7 @@
     diceMotion,
     dicePhase,
     diceShown,
+    diceSoundsDue,
     diceThrow,
     faceAt,
     placeDice,
@@ -47,6 +48,7 @@
   } from "../../dice";
   import { DiceQueue, useDiceQueue } from "../../diceQueue.svelte";
   import { latestOpeningDice } from "../../openingRoll";
+  import { play } from "../../sounds";
 
   const LOG_SELECTOR = "aside.log-panel";
 
@@ -304,6 +306,26 @@
         fresh.push({ seq: r.seq, text: r.text });
       }
       if (fresh.length > 0) lines = [...lines, ...fresh].slice(-3);
+    });
+  });
+
+  // ---------------------------------------------------------------- //
+  // The sound (#4450): each entry's rattle or ring as its tumble starts,
+  // at once with motion off (only the motion is gated). Keys leave the
+  // set with their play, so a rewound roll that is rolled again sounds
+  // again; the queue never plays a key twice otherwise.
+
+  const sounded = new Set<string>();
+  $effect(() => {
+    void queue.tick;
+    untrack(() => {
+      const live = queue.plays;
+      const keys = new Set(live.map((p) => p.roll.key));
+      for (const k of [...sounded]) if (!keys.has(k)) sounded.delete(k);
+      for (const due of diceSoundsDue(live, Date.now(), sounded)) {
+        sounded.add(due.key);
+        if (due.name) play(due.name);
+      }
     });
   });
 

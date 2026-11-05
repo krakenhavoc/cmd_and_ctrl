@@ -597,6 +597,10 @@ export interface GameView {
   // legal_moves that the cap loses (legalActions.ts), so it only needs
   // to know.
   legal_moves_truncated?: boolean;
+  // #4765: the enumerator's cuts in the prompts legal_moves answers (a
+  // search, a discard), each with its `choice`. Own seat only. The
+  // browser reads none of it: it is for a seat that plays from the list.
+  legal_prompt_cuts?: LegalCutView[];
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
@@ -1732,6 +1736,14 @@ export interface PendingChoiceView {
     // answer is {option_index: N}, chapter N+1. source is the entering
     // Saga; entry_keyword is "read ahead".
     | "entry_read_ahead"
+    // CR 508.4: what a creature put onto the battlefield attacking
+    // attacks, asked before it enters (CR 614.12a) — Kira Nerys,
+    // Firebrand's "instead it enters tapped and attacking". The defenders
+    // ride pick_options in order, the one already attacked first: a
+    // player's option has `player` set, a planeswalker's or battle's has
+    // its card in `cards`. The answer is {option_index: N}. source is
+    // the replacement's source.
+    | "entry_attack_target"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -4148,6 +4160,9 @@ export interface PurposeView {
   // turn each of its controller's planeswalkers may activate a loyalty
   // ability.
   extra_loyalty_activations?: number;
+  // #5083: on an activated row of its controller's own, the +1/+1
+  // counters it puts on its own source, to stay (Hangarback Walker 1).
+  source_counters?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

@@ -1086,9 +1086,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #3787: the permission's own "cost {N} less" (Urianger Augurelt), read
 	// off the permission the announcement is made under, as the engine's
 	// pricer reads it off the one the cast claims.
-	grantLess := 0
+	grantLess, grantMore := 0, 0
 	if perm != nil {
-		grantLess = perm.CostLess
+		grantLess, grantMore = perm.CostLess, perm.CostMore
 	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
@@ -1256,6 +1256,7 @@ modeLoop:
 				AltSacrificeManaValue: altMV,
 				AltTappedPower:        altPower,
 				GrantReduction:        grantLess,
+				GrantIncrease:         grantMore,
 				ExilingFromHand:       len(handExile),
 				TappingToPay:          len(tapAny),
 			})
@@ -1374,6 +1375,7 @@ modeLoop:
 					AltSacrificeManaValue: altMV,
 					AltTappedPower:        altPower,
 					GrantReduction:        grantLess,
+					GrantIncrease:         grantMore,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
 				})
@@ -1454,6 +1456,7 @@ modeLoop:
 							AltSacrificeManaValue: altMV,
 							AltTappedPower:        altPower,
 							GrantReduction:        grantLess,
+							GrantIncrease:         grantMore,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
 						})
