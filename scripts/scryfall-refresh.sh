@@ -9,6 +9,10 @@
 # Intended cron line (Sundays at 05:00 server time):
 #     0 5 * * 0  /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh >> /var/log/cmdctrl/scryfall.log 2>&1
 #
+# After this script the same workflow runs cmd/cardroles, which writes
+# data/scryfall/card-roles.json from Scryfall's Oracle Tags bulk file
+# (ADR 0217 §7, docs/commands.md).
+#
 # Idempotent: rewrites default-cards.json atomically via a tmp file +
 # mv, and updates data/scryfall/last-refresh with the current UTC
 # timestamp. Exit non-zero on any curl/jq failure — cron will mail the
