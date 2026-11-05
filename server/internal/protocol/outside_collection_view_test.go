@@ -81,3 +81,65 @@ func TestACollectionPickShowsItsSuggestionsToTheChooserAlone(t *testing.T) {
 		}
 	}
 }
+
+// #4947: a database pick "with different names" says so, so the picker
+// takes each name once, and a pick whose names may repeat (Research's
+// "up to four cards") does not. Like the bounds, it is the chooser's.
+func TestACollectionPickSaysWhenItsNamesMustDiffer(t *testing.T) {
+	legend := game.NewCard("Database Legend", uuid.Nil)
+	legend.TypeLine = "Legendary Creature — Turtle"
+	prev := game.OutsideCollection
+	game.OutsideCollection = viewCollection{cards: []game.Card{legend}}
+	t.Cleanup(func() { game.OutsideCollection = prev })
+
+	for _, tc := range []struct {
+		name string
+		pick game.OutsidePick
+		want bool
+	}{
+		{"different names", testProtocolDistinctPick, true},
+		{"names may repeat", testProtocolRepeatPick, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g, _ := sideboardViewGame(t)
+			// Seat 1's deck has no sideboard: its pool is the database.
+			chooser := g.Seats[1]
+			g.WithWriteLock(func() {
+				if !g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
+					Player: chooser.ID, Question: "choose up to four cards", Max: 4,
+					Keyed: tc.pick,
+				}) {
+					t.Fatal("no prompt")
+				}
+			})
+			own := ViewOfGameFor(g, chooser.ID.String())
+			if len(own.PendingChoices) != 1 {
+				t.Fatalf("%d pending choices", len(own.PendingChoices))
+			}
+			pc := own.PendingChoices[0]
+			if pc.Kind != string(game.PendingChoiceOutsideCollection) || pc.ChooseMax != 4 {
+				t.Fatalf("chooser's prompt %q max %d", pc.Kind, pc.ChooseMax)
+			}
+			if pc.DistinctNames != tc.want {
+				t.Fatalf("distinct_names = %v, want %v", pc.DistinctNames, tc.want)
+			}
+			raw, _ := json.Marshal(pc)
+			if got := strings.Contains(string(raw), `"distinct_names":true`); got != tc.want {
+				t.Fatalf("the chooser's wire carries distinct_names: %v, want %v (%s)", got, tc.want, raw)
+			}
+			for _, viewer := range []string{g.Seats[0].ID.String(), SpectatorViewerID, ""} {
+				v := ViewOfGameFor(g, viewer)
+				if len(v.PendingChoices) != 1 {
+					t.Fatalf("viewer %q: %d pending choices", viewer, len(v.PendingChoices))
+				}
+				if v.PendingChoices[0].DistinctNames {
+					t.Errorf("viewer %q sees the chooser's distinct_names", viewer)
+				}
+				raw, _ := json.Marshal(v)
+				if strings.Contains(string(raw), "distinct_names") {
+					t.Errorf("viewer %q: the wire carries distinct_names", viewer)
+				}
+			}
+		})
+	}
+}

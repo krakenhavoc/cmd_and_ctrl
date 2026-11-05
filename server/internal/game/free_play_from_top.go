@@ -33,10 +33,13 @@ import "github.com/google/uuid"
 //     so "if you don't" is already true.
 //
 // #4697: the spell branch judges the face being cast, not the front face
-// (OffersASpell on the permission it stamps). The land branch still reads
-// the front face: a modal DFC whose back face is a land is not offered
-// as a land play, and a Town (land // sorcery Adventure) whose land can
-// be played is offered as the land play only.
+// (OffersASpell on the permission it stamps). The land branch plays a
+// modal DFC's land back face (CR 712.11c) when no face is a spell that
+// fits. Still open: one prompt offers either the land play or the cast,
+// never both, so a Town (land // sorcery Adventure) whose land can be
+// played is offered as the land play only, and a modal DFC with a spell
+// face that fits and a land back face is offered as the cast only. A
+// pathway (land // land) is offered as its front face.
 //
 // The look is private (CR 701.20): only the looker is marked a knower of
 // the card. The land's may_cast is marked private so its words, which
@@ -95,21 +98,20 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	if !ok {
 		return nil
 	}
-	// The land offer is about the card as it is in the library, its
-	// front face: a modal DFC whose BACK face is a land is not offered
-	// as a land play (#4697 left that half open: playing a back face
-	// during a resolution needs a face on the land play and its prompt).
+	// A land the player can play as the card is, its front face, is the
+	// land offer (a Town, a pathway's front).
 	if c.IsLand() && o.Land && g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
-		return g.QueueMayCastKeyedForEffect(MayCastPrompt{
-			Chooser:      o.Player,
-			Source:       o.Source,
-			Card:         id,
-			Question:     o.SourceName + " — play " + c.Name + "?",
-			Keyword:      MayCastKeywordPlayOrHand,
-			AcceptLabel:  "Play it",
-			DeclineLabel: "Put it into your hand",
-			Private:      !o.Reveal,
-		}, freePlayLandOrHand, nil)
+		return g.offerFreePlayLandLocked(o, id, c.Name, freePlayLandOrHand)
+	}
+	spellPerm := g.freeCastFromTopPermissionLocked(o)
+	// #4697: a modal DFC whose back face is a land is played as that face
+	// (CR 712.11c). It is offered when no face is a spell that fits: one
+	// prompt cannot yet offer both the land play and the cast.
+	if o.Land && !spellPerm.OffersASpell(c) && c.FaceCount() > 1 &&
+		g.CanPlayLandFaceDuringResolutionForEffect(o.Player, id, 1) {
+		back := c
+		back.SetFace(1)
+		return g.offerFreePlayLandLocked(o, id, back.Name, freePlayBackLandOrHand)
 	}
 	// #4697: "a spell with mana value N or less" is about the spell, so
 	// the card is offered when some face a cast may choose is a spell
@@ -119,7 +121,7 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	// creature card whose Adventure fits, a Town's sorcery Adventure when
 	// the land is not played. The permission caps the face being cast,
 	// so the cast can only be a face that fits.
-	if !g.freeCastFromTopPermissionLocked(o).OffersASpell(c) || !g.playerInGameLocked(o.Player) {
+	if !spellPerm.OffersASpell(c) || !g.playerInGameLocked(o.Player) {
 		return g.putLibraryCardIntoHandLocked(o, id)
 	}
 	if !g.grantFreeCastFromTopLocked(o, id) {
@@ -147,9 +149,26 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 // reads is on the prompt: the player (the chooser), the source and the
 // card. An on-disk key: never renamed, never reused.
 var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrHandLocked(r, -1)
+})
+
+// freePlayBackLandOrHand is freePlayLandOrHand for a modal DFC whose
+// back face is the land on offer (#4697): accepting plays the card as
+// its back face (CR 712.11c). An on-disk key: never renamed, never
+// reused.
+var freePlayBackLandOrHand = RegisterMayCastThen("may-cast/free-play-back-land-or-hand", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrHandLocked(r, 1)
+})
+
+// freePlayLandFaceOrHandLocked is both land answers: play the card as
+// `face` (below zero: as it is) on an accept, and put it into its
+// owner's hand on a decline or a play the rules end up ignoring.
+//
+// Caller must hold g.mu (write).
+func (g *Game) freePlayLandFaceOrHandLocked(r MayCastAnswer, face int) error {
 	o := FreePlayFromTop{Player: r.Chooser, Source: r.Source}
 	if r.Accepted {
-		played, err := g.PlayLandDuringResolutionForEffect(r.Chooser, r.Card)
+		played, err := g.PlayLandFaceDuringResolutionForEffect(r.Chooser, r.Card, face)
 		if err != nil {
 			return err
 		}
@@ -158,7 +177,25 @@ var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", 
 		}
 	}
 	return g.putLibraryCardIntoHandLocked(o, r.Card)
-})
+}
+
+// offerFreePlayLandLocked queues the land offer's may_cast over the top
+// card, named `name` (the face it would be played as), answered by
+// `then`.
+//
+// Caller must hold g.mu (write).
+func (g *Game) offerFreePlayLandLocked(o FreePlayFromTop, id uuid.UUID, name string, then MayCastThen) error {
+	return g.QueueMayCastKeyedForEffect(MayCastPrompt{
+		Chooser:      o.Player,
+		Source:       o.Source,
+		Card:         id,
+		Question:     o.SourceName + " — play " + name + "?",
+		Keyword:      MayCastKeywordPlayOrHand,
+		AcceptLabel:  "Play it",
+		DeclineLabel: "Put it into your hand",
+		Private:      !o.Reveal,
+	}, then, nil)
+}
 
 // grantFreeCastFromTopLocked stamps the free cast over the card where
 // it sits in the library. Reports false when it has left the library

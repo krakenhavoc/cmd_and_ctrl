@@ -33,7 +33,13 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 	crew := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Crew", Source: card, CombatInteracts: true}
 	attack := legal.Move{Type: legal.TypeDeclareAttacker, Kind: legal.KindAttack, Label: "Attack"}
 	block := legal.Move{Type: legal.TypeDeclareBlocker, Kind: legal.KindBlock, Label: "Block"}
-	special := legal.Move{Type: "special_action", Kind: legal.KindSpecialAction, Label: "Foretell"}
+	// #2861: turning a face-down creature face up is a response by
+	// default; foretell, suspend, plot and unlock are not.
+	faceUp := specialMove("turn_face_up")
+	foretell := specialMove("foretell")
+	suspend := specialMove("suspend")
+	plot := specialMove("plot")
+	unlock := specialMove("unlock")
 
 	view := func(active int, step string, mut func(*protocol.GameView)) *protocol.GameView {
 		v := &protocol.GameView{State: "active",
@@ -113,7 +119,14 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 		{"their spell, a counterspell", view(1, "precombat_main", oppSpell), []legal.Move{pass, counter}, false},
 		{"their spell, a targeted ability", view(1, "precombat_main", oppSpell), []legal.Move{pass, targeted}, false},
 		{"their spell, a sacrifice outlet", view(1, "precombat_main", oppSpell), []legal.Move{pass, outlet}, false},
-		{"their spell, a special action", view(1, "precombat_main", oppSpell), []legal.Move{pass, special}, false},
+		{"their spell, a creature to turn face up", view(1, "precombat_main", oppSpell), []legal.Move{pass, faceUp}, false},
+		{"their spell, a foretell", view(1, "precombat_main", oppSpell), []legal.Move{pass, foretell}, true},
+		{"their spell, a suspend", view(1, "precombat_main", oppSpell), []legal.Move{pass, suspend}, true},
+		{"their spell, a plot", view(1, "precombat_main", oppSpell), []legal.Move{pass, plot}, true},
+		{"their spell, an unlock", view(1, "precombat_main", oppSpell), []legal.Move{pass, unlock}, true},
+		{"their spell, a foretell and a creature to turn face up", view(1, "precombat_main", oppSpell), []legal.Move{pass, foretell, faceUp}, false},
+		{"their end step, a creature to turn face up", view(1, "end", nil), []legal.Move{pass, faceUp}, false},
+		{"their end step, a foretell", view(1, "end", nil), []legal.Move{pass, foretell}, true},
 		{"their spell on my turn, nothing to answer with", view(0, "precombat_main", oppSpell), []legal.Move{pass}, true},
 
 		// #4186: holding an instant. The browser passes a stack that is
@@ -156,6 +169,13 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 	}
 }
 
+// specialMove is a special_action move of `kind`, its params as the
+// enumerator writes them (legal/special_actions.go).
+func specialMove(kind string) legal.Move {
+	return legal.Move{Type: "special_action", Kind: legal.KindSpecialAction, Label: kind,
+		Params: json.RawMessage(`{"card_id":"x","kind":"` + kind + `"}`)}
+}
+
 // TestSmartPassReadsAnswersNow pins #4734 (ADR 0009's amendment of
 // 2026-10-30): the seat reads the server's answers_now first, ahead of
 // interacts, has_targets, targets_stack, combat_interacts and value_only,
@@ -180,7 +200,8 @@ func TestSmartPassReadsAnswersNow(t *testing.T) {
 	rowOld := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Old row", Source: card, Interacts: true}
 	manaOld := legal.Move{Type: legal.TypeActivateManaAbility, Kind: legal.KindMana, Label: "Old outlet", Source: card, Interacts: true}
 	crewOld := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "Crew", Source: card, CombatInteracts: true}
-	special := legal.Move{Type: "special_action", Kind: legal.KindSpecialAction, Label: "Foretell"}
+	// #2861: the one special action that is a response by default.
+	special := specialMove("turn_face_up")
 	// A value cast has no verdict (declared exactly value).
 	opt := legal.Move{Type: legal.TypeCastSpell, Kind: legal.KindCast, Label: "Cast Opt", Source: card, ValueOnly: true}
 
@@ -226,7 +247,7 @@ func TestSmartPassReadsAnswersNow(t *testing.T) {
 		{"their spell, an unmatched mana move that interacts", view(1, "precombat_main", oppSpell), []legal.Move{pass, manaNo}, true},
 		{"their ability, a matched cast", view(1, "precombat_main", oppAbility), []legal.Move{pass, castYes}, false},
 		{"their ability, an unmatched cast and an unmatched row", view(1, "precombat_main", oppAbility), []legal.Move{pass, castNo, rowNo}, true},
-		{"their ability, an unmatched row beside a special action", view(1, "precombat_main", oppAbility), []legal.Move{pass, rowNo, special}, false},
+		{"their ability, an unmatched row beside a creature to turn face up", view(1, "precombat_main", oppAbility), []legal.Move{pass, rowNo, special}, false},
 		{"their spell, an unmatched cast beside a matched row", view(1, "precombat_main", oppSpell), []legal.Move{pass, castNo, rowYes}, false},
 		{"their spell on my turn, a matched cast", view(0, "precombat_main", oppSpell), []legal.Move{pass, castYes}, false},
 		{"their spell on my turn, an unmatched cast", view(0, "precombat_main", oppSpell), []legal.Move{pass, castNo}, true},

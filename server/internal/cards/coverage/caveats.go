@@ -778,6 +778,16 @@ var mechanics = []Mechanic{
 		Adopt:      `OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(n, max)} with Triggered: []game.TriggeredAbility{Replicate()} — see effects/replicate.go`,
 	},
 	{
+		// #5011: effects.Squad stamps its trigger with the keyword, the
+		// replicate shape (CR 702.157a).
+		Name:       "squad",
+		Phrases:    []string{"squad"},
+		Implements: keywordTrigger(effects.KeywordSquad),
+		Evidence:   `a trigger in game.CatalogTriggers(oracleID) is named "squad"`,
+		Confidence: Exact,
+		Adopt:      `OptionalCosts: []game.AdditionalCost{SquadMana(cost, max)} with Triggered: []game.TriggeredAbility{Squad(name)} — see effects/tmc_b4_helpers.go`,
+	},
+	{
 		// ADR 0099: discover is an instruction inside a closure, so the
 		// only machine-readable signal is the Spec's own declaration,
 		// which effects/discover_guard_test.go holds to the source.

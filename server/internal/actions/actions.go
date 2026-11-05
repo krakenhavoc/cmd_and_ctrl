@@ -2237,6 +2237,12 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryReadAhead {
 			return g.ResolveEntryReadAhead(choiceID, a.Player, p.OptionIndex)
 		}
+		// CR 508.4: what a creature entering tapped and attacking
+		// attacks (Kira Nerys, Firebrand). The same {option_index}
+		// payload; the option names the defender.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryAttackTarget {
+			return g.ResolveEntryAttackTarget(choiceID, a.Player, p.OptionIndex)
+		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind
 		// for the same reason the two above are.

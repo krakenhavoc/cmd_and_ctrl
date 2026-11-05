@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -43,6 +44,12 @@ import (
 // it on both branches. A continuation re-checks where its picks are now
 // (StillOutsideForEffect): a keyed pick has no live-zone re-check of its
 // own.
+//
+// A pick "with different names" (Turtles Forever's outside half,
+// Extrapolate the Impossible's pair) registers through
+// RegisterOutsidePickDistinctNames (#4947), which adds the names check to
+// its set rule and says so on the wire (distinct_names), so the database
+// picker never offers a name twice.
 
 // OutsideMatchFunc is a registered outside-pick filter: does `c` satisfy
 // the clause, given the word the prompt carries? Nil offers every card.
@@ -58,9 +65,13 @@ type OutsidePick struct{ then ChooseCardsThen }
 // Key is the pick's on-disk key.
 func (p OutsidePick) Key() string { return p.then.key }
 
-// outsidePickEntry is one registered pick's filter. A struct so a nil
-// filter ("every card") is still a registered entry.
-type outsidePickEntry struct{ match OutsideMatchFunc }
+// outsidePickEntry is one registered pick's filter, and whether its
+// cards must have different names. A struct so a nil filter ("every
+// card") is still a registered entry.
+type outsidePickEntry struct {
+	match         OutsideMatchFunc
+	distinctNames bool
+}
 
 // outsidePicks is guarded by effectRegistryMu. The keys are the
 // continuations' keys in chooseCardsThens, so they share its namespace
@@ -81,11 +92,59 @@ func RegisterOutsidePick(key string, match OutsideMatchFunc, then ChooseCardsFun
 // rule over the whole answer (#4264): "exactly two cards with different
 // names". The rule is never called for an empty pick.
 func RegisterOutsidePickRule(key string, match OutsideMatchFunc, rule SetRuleFunc, then ChooseCardsFunc) OutsidePick {
+	return registerOutsidePick(key, match, rule, false, then)
+}
+
+// RegisterOutsidePickDistinctNames is RegisterOutsidePickRule for a pick
+// of cards "with different names" (#4947): no two picked cards may share
+// a name (CardNamesDiffer), on top of `rule` when there is one (nil adds
+// nothing). The names check and the wire's distinct_names
+// (OutsidePickNamesDiffer) come from this one declaration, so what the
+// server refuses and what the database picker lets a player click cannot
+// disagree.
+func RegisterOutsidePickDistinctNames(key string, match OutsideMatchFunc, rule SetRuleFunc, then ChooseCardsFunc) OutsidePick {
+	names := func(picked []Card) bool {
+		return CardNamesDiffer(picked) && (rule == nil || rule(picked))
+	}
+	return registerOutsidePick(key, match, names, true, then)
+}
+
+func registerOutsidePick(key string, match OutsideMatchFunc, rule SetRuleFunc, distinctNames bool, then ChooseCardsFunc) OutsidePick {
 	t := RegisterChooseCardsThenRule(key, rule, then)
 	effectRegistryMu.Lock()
 	defer effectRegistryMu.Unlock()
-	outsidePicks[key] = outsidePickEntry{match: match}
+	outsidePicks[key] = outsidePickEntry{match: match, distinctNames: distinctNames}
 	return OutsidePick{then: t}
+}
+
+// OutsidePickNamesDiffer reports whether the outside pick registered
+// under key needs its cards to have different names
+// (RegisterOutsidePickDistinctNames). False for a key that names no
+// outside pick, and for a pick whose names may repeat (Research's "up to
+// four cards you own", where a player may own two copies).
+func OutsidePickNamesDiffer(key string) bool {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	return outsidePicks[key].distinctNames
+}
+
+// CardNamesDiffer is "with different names" over a picked set: no two
+// cards share a name. Names are compared case-insensitively with
+// surrounding space trimmed, as every name comparison in the catalog is,
+// and a card with no name (a fixture) matches nothing.
+func CardNamesDiffer(picked []Card) bool {
+	seen := make(map[string]bool, len(picked))
+	for _, c := range picked {
+		key := strings.ToLower(strings.TrimSpace(c.Name))
+		if key == "" {
+			continue
+		}
+		if seen[key] {
+			return false
+		}
+		seen[key] = true
+	}
+	return true
 }
 
 // lookupOutsideMatch is the filter registered under key, and whether the

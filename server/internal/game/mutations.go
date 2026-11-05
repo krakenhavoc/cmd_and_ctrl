@@ -868,7 +868,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// so is every other way a card gets cast out of exile in this
 	// engine: impulse exile, airbend, warp, cascade, a defeated
 	// Siege's back face. No catalog card ever declared ZoneExile, so
-	// nothing shipped through the hole.
+	// nothing shipped through the hole. A card whose OWN text says "You
+	// may cast this card from exile" (ADR 0066, 2026-11-05) reaches here
+	// holding the permission castPermissionLocked derives for its owner
+	// while it is face up, so this gate is unchanged.
 	//
 	// The graveyard and the library reach the same question through
 	// validateCastPathLocked below, which is handed `grant`; exile
@@ -3674,6 +3677,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
+		// and its "costs {N} more" (Zero, Incorporeal Sensate).
+		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
