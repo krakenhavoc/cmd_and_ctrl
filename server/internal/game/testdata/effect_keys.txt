@@ -327,6 +327,7 @@ choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/archon-of-cruelty-payout
@@ -1399,6 +1400,7 @@ run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
+run the-city-on-the-edge-of-forever/gain-five
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
@@ -1913,6 +1915,7 @@ tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
+tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saruman-of-many-colors/after-mill
