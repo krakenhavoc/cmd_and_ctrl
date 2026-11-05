@@ -22,32 +22,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // may" as it resolves (CR 603.5); the first "yes" draws and uses up the
 // turn, and a "no" does not. The record is per object
 // (NoteDoneThisTurn), and the gate is also read as the ability triggers,
-// so no trigger is made once the turn's draw is done.
+// so no trigger is made once the turn's draw is done. The body is
+// onceEachTurnMayDrawThatMany (trek_b46_helpers.go), shared with Chekov
+// and McCoy.
 //
 // No simplification.
 func init() {
-	t := WheneverYouPutCountersOfKindOnACreature(game.CounterPlusOne, creatureYouControl,
-		terrasymbiosisLabel,
-		func(g *game.Game, item *game.StackItem) error {
-			if b28DoneThisTurn(g, item.SourceCardID, terrasymbiosisDone) {
-				return nil
-			}
-			n := CountersOfKindYouPutInTheSameBatch(g, item.Trigger.Event, item.Controller, game.CounterPlusOne)
-			if n <= 0 {
-				return nil
-			}
-			b28NoteDoneThisTurn(g, item.SourceCardID, terrasymbiosisDone)
-			return DrawCards{N: n}.Apply(NewContext(g, item))
-		})
-	when := t.AppliesTo
-	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-		return when(ev, source, ch, g) && !b28DoneThisTurn(g, source.InstanceID, terrasymbiosisDone)
-	}
 	Register(Spec{
 		OracleID:     "4ac94586-3ac7-4ade-af31-ad0d0e3ffc4a",
 		Name:         "Terrasymbiosis",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{OptionalDrawThatMany(t, "Terrasymbiosis — draw that many cards?", terrasymbiosisDraws)},
+		Triggered: []game.TriggeredAbility{onceEachTurnMayDrawThatMany(creatureYouControl,
+			terrasymbiosisLabel, terrasymbiosisDone, "Terrasymbiosis — draw that many cards?")},
 	})
 }
 
@@ -57,12 +43,3 @@ const terrasymbiosisLabel = "Terrasymbiosis — draw that many cards"
 // terrasymbiosisDone is the once-each-turn record's label: the cards
 // were drawn this turn (b28DoneThisTurn).
 const terrasymbiosisDone = "Terrasymbiosis — cards drawn this turn"
-
-// terrasymbiosisDraws is how many cards a "yes" draws: the counters put
-// in the batch (#4016, OptionalDrawThatMany).
-func terrasymbiosisDraws(g *game.Game, item *game.StackItem) int {
-	if item.Trigger == nil {
-		return 0
-	}
-	return CountersOfKindYouPutInTheSameBatch(g, item.Trigger.Event, item.Controller, game.CounterPlusOne)
-}

@@ -4198,6 +4198,7 @@ frozenEntries[].event.damageTail.sourceLki.Controller	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.CostPower	array
 frozenEntries[].event.damageTail.sourceLki.CostPower[]	object
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Bonus	number:int
+frozenEntries[].event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
@@ -12238,6 +12239,7 @@ frozenEntries[].event.sourceLki.Controller	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.CostPower	array
 frozenEntries[].event.sourceLki.CostPower[]	object
 frozenEntries[].event.sourceLki.CostPower[].Bonus	number:int
+frozenEntries[].event.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
@@ -12390,6 +12392,7 @@ frozenEntries[].event.stackItem.paid.tappedOthers[].epoch	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.tappedOthers[].left	bool
 frozenEntries[].event.stackItem.paid.tappedOthers[].power	number:int
+frozenEntries[].event.stackItem.paid.tappedOthers[].stationPower	number:int
 frozenEntries[].event.stackItem.params	object
 frozenEntries[].event.stackItem.params.ability	object
 frozenEntries[].event.stackItem.params.ability.key	string
@@ -17943,6 +17946,7 @@ heldCombatDamage.answers[].frame.SourceLKI.Controller	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.CostPower	array
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[]	object
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Bonus	number:int
+heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Multiplier	number:int
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughness	bool
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
@@ -18118,6 +18122,7 @@ lastKnownBattlefield{}.Controller	custom(uuid.UUID)
 lastKnownBattlefield{}.CostPower	array
 lastKnownBattlefield{}.CostPower[]	object
 lastKnownBattlefield{}.CostPower[].Bonus	number:int
+lastKnownBattlefield{}.CostPower[].Multiplier	number:int
 lastKnownBattlefield{}.CostPower[].UseToughness	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
@@ -18297,6 +18302,7 @@ lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.CostPower	array
 lastKnownPermanents{}[].characteristic.CostPower[]	object
 lastKnownPermanents{}[].characteristic.CostPower[].Bonus	number:int
+lastKnownPermanents{}[].characteristic.CostPower[].Multiplier	number:int
 lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
@@ -18916,6 +18922,7 @@ lastKnownStack[].item.paid.tappedOthers[].epoch	number:int
 lastKnownStack[].item.paid.tappedOthers[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.tappedOthers[].left	bool
 lastKnownStack[].item.paid.tappedOthers[].power	number:int
+lastKnownStack[].item.paid.tappedOthers[].stationPower	number:int
 lastKnownStack[].item.params	object
 lastKnownStack[].item.params.ability	object
 lastKnownStack[].item.params.ability.key	string
@@ -19388,6 +19395,7 @@ pausedModeWalk.item.paid.tappedOthers[].epoch	number:int
 pausedModeWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.tappedOthers[].left	bool
 pausedModeWalk.item.paid.tappedOthers[].power	number:int
+pausedModeWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedModeWalk.item.params	object
 pausedModeWalk.item.params.ability	object
 pausedModeWalk.item.params.ability.key	string
@@ -19709,6 +19717,7 @@ pausedResolutionTail.item.paid.tappedOthers[].epoch	number:int
 pausedResolutionTail.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.tappedOthers[].left	bool
 pausedResolutionTail.item.paid.tappedOthers[].power	number:int
+pausedResolutionTail.item.paid.tappedOthers[].stationPower	number:int
 pausedResolutionTail.item.params	object
 pausedResolutionTail.item.params.ability	object
 pausedResolutionTail.item.params.ability.key	string
@@ -20024,6 +20033,7 @@ pausedStepWalk.item.paid.tappedOthers[].epoch	number:int
 pausedStepWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.tappedOthers[].left	bool
 pausedStepWalk.item.paid.tappedOthers[].power	number:int
+pausedStepWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedStepWalk.item.params	object
 pausedStepWalk.item.params.ability	object
 pausedStepWalk.item.params.ability.key	string
@@ -22510,6 +22520,7 @@ pendingChoices[].copyWalk.item.paid.tappedOthers[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.tappedOthers[].left	bool
 pendingChoices[].copyWalk.item.paid.tappedOthers[].power	number:int
+pendingChoices[].copyWalk.item.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].copyWalk.item.params	object
 pendingChoices[].copyWalk.item.params.ability	object
 pendingChoices[].copyWalk.item.params.ability.key	string
@@ -23292,6 +23303,7 @@ pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.CostPower	array
 pendingChoices[].damageAssignment.SourceLKI.CostPower[]	object
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Bonus	number:int
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].Multiplier	number:int
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
@@ -24099,6 +24111,7 @@ pendingChoices[].divideShield.staged[].lki.Controller	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.CostPower	array
 pendingChoices[].divideShield.staged[].lki.CostPower[]	object
 pendingChoices[].divideShield.staged[].lki.CostPower[].Bonus	number:int
+pendingChoices[].divideShield.staged[].lki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
@@ -24263,6 +24276,7 @@ pendingChoices[].divideShield.staged[].sourceLki.Controller	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.CostPower	array
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[]	object
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
@@ -29651,6 +29665,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Controller	custom(
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
@@ -37691,6 +37706,7 @@ pendingChoices[].replacementResume.event.sourceLki.Controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.CostPower	array
 pendingChoices[].replacementResume.event.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Bonus	number:int
+pendingChoices[].replacementResume.event.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
@@ -37843,6 +37859,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].epoch	num
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].left	bool
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].power	number:int
+pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].replacementResume.event.stackItem.params	object
 pendingChoices[].replacementResume.event.stackItem.params.ability	object
 pendingChoices[].replacementResume.event.stackItem.params.ability.key	string
@@ -44863,6 +44880,7 @@ pendingChoices[].targetWalk.frame.lki.Controller	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.CostPower	array
 pendingChoices[].targetWalk.frame.lki.CostPower[]	object
 pendingChoices[].targetWalk.frame.lki.CostPower[].Bonus	number:int
+pendingChoices[].targetWalk.frame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughness	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
@@ -45551,6 +45569,7 @@ pendingChoices[].triggerFrame.lki.Controller	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.CostPower	array
 pendingChoices[].triggerFrame.lki.CostPower[]	object
 pendingChoices[].triggerFrame.lki.CostPower[].Bonus	number:int
+pendingChoices[].triggerFrame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].triggerFrame.lki.CostPower[].UseToughness	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
@@ -46228,6 +46247,7 @@ pendingTriggers[].paid.tappedOthers[].epoch	number:int
 pendingTriggers[].paid.tappedOthers[].id	custom(uuid.UUID)
 pendingTriggers[].paid.tappedOthers[].left	bool
 pendingTriggers[].paid.tappedOthers[].power	number:int
+pendingTriggers[].paid.tappedOthers[].stationPower	number:int
 pendingTriggers[].params	object
 pendingTriggers[].params.ability	object
 pendingTriggers[].params.ability.key	string
@@ -48350,6 +48370,7 @@ resolving.item.paid.tappedOthers[].epoch	number:int
 resolving.item.paid.tappedOthers[].id	custom(uuid.UUID)
 resolving.item.paid.tappedOthers[].left	bool
 resolving.item.paid.tappedOthers[].power	number:int
+resolving.item.paid.tappedOthers[].stationPower	number:int
 resolving.item.params	object
 resolving.item.params.ability	object
 resolving.item.params.ability.key	string
@@ -53371,6 +53392,7 @@ stackMeta[].paid.tappedOthers[].epoch	number:int
 stackMeta[].paid.tappedOthers[].id	custom(uuid.UUID)
 stackMeta[].paid.tappedOthers[].left	bool
 stackMeta[].paid.tappedOthers[].power	number:int
+stackMeta[].paid.tappedOthers[].stationPower	number:int
 stackMeta[].params	object
 stackMeta[].params.ability	object
 stackMeta[].params.ability.key	string
