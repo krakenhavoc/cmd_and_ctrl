@@ -1835,6 +1835,37 @@ jobs:
           if [ -n "${mod_log}" ]; then modlog=set; else modlog=unset; fi
           echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, bug forum ${mirror}, mod log ${modlog}, ${#exempt_ids[@]} exempt id(s))"
 
+      # ADR 0211 §7: the idle cleanup's thresholds. An unstarted table with
+      # no activity for CMDCTRL_IDLE_LOBBY_TABLE_AFTER (default 24h), a
+      # started game with no human move for CMDCTRL_IDLE_GAME_AFTER (48h)
+      # and a game left to its bots for CMDCTRL_IDLE_BOTS_AFTER (1h) are
+      # closed. Each is a Go duration; empty is the default and 0 switches
+      # that cleanup off.
+      #
+      # BOTH hosts, ALWAYS written, empty included, like the community
+      # variables: clearing one must bring back the default on the next
+      # deploy. A GitHub environment's value overrides the repo's, so the
+      # preview can use short values. Checked here with the server's own
+      # rule (capacity.FromEnv: 0, or a non-negative Go duration) before
+      # anything is written; the server refuses to boot on a malformed one.
+      - name: Sync server env (idle cleanup)
+        env:
+          CMDCTRL_IDLE_LOBBY_TABLE_AFTER: ${{ vars.CMDCTRL_IDLE_LOBBY_TABLE_AFTER }}
+          CMDCTRL_IDLE_GAME_AFTER: ${{ vars.CMDCTRL_IDLE_GAME_AFTER }}
+          CMDCTRL_IDLE_BOTS_AFTER: ${{ vars.CMDCTRL_IDLE_BOTS_AFTER }}
+        run: |
+          trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          for name in CMDCTRL_IDLE_LOBBY_TABLE_AFTER CMDCTRL_IDLE_GAME_AFTER CMDCTRL_IDLE_BOTS_AFTER; do
+            value="$(trim "${!name}")"
+            if [ -n "${value}" ] && [ "${value}" != "0" ] && ! [[ "${value}" =~ ^([0-9]+(\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$ ]]; then
+              echo "::error::${name} must be a Go duration such as 24h or 90m, or 0 for off; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+            fi
+            printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
+            echo "set ${name}=${value:-default}"
+          done
+
       # ADR 0179: optional shop links. One URL template per retailer,
       # holding {url} exactly once: an https wrapper with {url} after the
       # host (https://partner.example/c/123?u={url}), or {url} first plus
