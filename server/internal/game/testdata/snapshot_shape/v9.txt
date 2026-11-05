@@ -1915,6 +1915,7 @@ followUpParks[].then.permission.condition.objectID	custom(uuid.UUID)
 followUpParks[].then.permission.condition.subtype	string
 followUpParks[].then.permission.cost	string
 followUpParks[].then.permission.costLess	number:int
+followUpParks[].then.permission.costMore	number:int
 followUpParks[].then.permission.discardCard	bool
 followUpParks[].then.permission.discardLandCard	bool
 followUpParks[].then.permission.discover	object
@@ -2524,6 +2525,7 @@ frozenEntries[].event.counterTail.then.permission.condition.objectID	custom(uuid
 frozenEntries[].event.counterTail.then.permission.condition.subtype	string
 frozenEntries[].event.counterTail.then.permission.cost	string
 frozenEntries[].event.counterTail.then.permission.costLess	number:int
+frozenEntries[].event.counterTail.then.permission.costMore	number:int
 frozenEntries[].event.counterTail.then.permission.discardCard	bool
 frozenEntries[].event.counterTail.then.permission.discardLandCard	bool
 frozenEntries[].event.counterTail.then.permission.discover	object
@@ -3112,6 +3114,7 @@ frozenEntries[].event.damageTail.each.each.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.each.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.each.permission.cost	string
 frozenEntries[].event.damageTail.each.each.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.each.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.each.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discover	object
@@ -3691,6 +3694,7 @@ frozenEntries[].event.damageTail.each.then.permission.condition.objectID	custom(
 frozenEntries[].event.damageTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.then.permission.cost	string
 frozenEntries[].event.damageTail.each.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.each.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discover	object
@@ -4439,6 +4443,7 @@ frozenEntries[].event.damageTail.then.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.damageTail.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.then.permission.cost	string
 frozenEntries[].event.damageTail.then.permission.costLess	number:int
+frozenEntries[].event.damageTail.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.then.permission.discardLandCard	bool
 frozenEntries[].event.damageTail.then.permission.discover	object
@@ -5133,6 +5138,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.obj
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -5784,6 +5790,7 @@ frozenEntries[].event.entryTail.batch.then.permission.condition.objectID	custom(
 frozenEntries[].event.entryTail.batch.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.batch.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discover	object
@@ -6363,6 +6370,7 @@ frozenEntries[].event.entryTail.keyed.permission.condition.objectID	custom(uuid.
 frozenEntries[].event.entryTail.keyed.permission.condition.subtype	string
 frozenEntries[].event.entryTail.keyed.permission.cost	string
 frozenEntries[].event.entryTail.keyed.permission.costLess	number:int
+frozenEntries[].event.entryTail.keyed.permission.costMore	number:int
 frozenEntries[].event.entryTail.keyed.permission.discardCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discover	object
@@ -6974,6 +6982,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costLess	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMore	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discover	object
@@ -7573,6 +7582,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.condition.objectID	custom
 frozenEntries[].event.entryTail.tokens.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.cost	string
 frozenEntries[].event.entryTail.tokens.then.permission.costLess	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardLandCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discover	object
@@ -8560,6 +8570,7 @@ frozenEntries[].event.keywordActionTail.then.permission.condition.objectID	custo
 frozenEntries[].event.keywordActionTail.then.permission.condition.subtype	string
 frozenEntries[].event.keywordActionTail.then.permission.cost	string
 frozenEntries[].event.keywordActionTail.then.permission.costLess	number:int
+frozenEntries[].event.keywordActionTail.then.permission.costMore	number:int
 frozenEntries[].event.keywordActionTail.then.permission.discardCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardLandCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discover	object
@@ -9161,6 +9172,7 @@ frozenEntries[].event.lifeTail.each.then.permission.condition.objectID	custom(uu
 frozenEntries[].event.lifeTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.each.then.permission.cost	string
 frozenEntries[].event.lifeTail.each.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.each.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.each.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discover	object
@@ -9743,6 +9755,7 @@ frozenEntries[].event.lifeTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.lifeTail.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.then.permission.cost	string
 frozenEntries[].event.lifeTail.then.permission.costLess	number:int
+frozenEntries[].event.lifeTail.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.then.permission.discardLandCard	bool
 frozenEntries[].event.lifeTail.then.permission.discover	object
@@ -11096,6 +11109,7 @@ frozenEntries[].event.millTail.run.then.permission.condition.objectID	custom(uui
 frozenEntries[].event.millTail.run.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.run.then.permission.cost	string
 frozenEntries[].event.millTail.run.then.permission.costLess	number:int
+frozenEntries[].event.millTail.run.then.permission.costMore	number:int
 frozenEntries[].event.millTail.run.then.permission.discardCard	bool
 frozenEntries[].event.millTail.run.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.run.then.permission.discover	object
@@ -11673,6 +11687,7 @@ frozenEntries[].event.millTail.then.permission.condition.objectID	custom(uuid.UU
 frozenEntries[].event.millTail.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.then.permission.cost	string
 frozenEntries[].event.millTail.then.permission.costLess	number:int
+frozenEntries[].event.millTail.then.permission.costMore	number:int
 frozenEntries[].event.millTail.then.permission.discardCard	bool
 frozenEntries[].event.millTail.then.permission.discardLandCard	bool
 frozenEntries[].event.millTail.then.permission.discover	object
@@ -13163,6 +13178,7 @@ frozenEntries[].event.tokenTail.then.permission.condition.objectID	custom(uuid.U
 frozenEntries[].event.tokenTail.then.permission.condition.subtype	string
 frozenEntries[].event.tokenTail.then.permission.cost	string
 frozenEntries[].event.tokenTail.then.permission.costLess	number:int
+frozenEntries[].event.tokenTail.then.permission.costMore	number:int
 frozenEntries[].event.tokenTail.then.permission.discardCard	bool
 frozenEntries[].event.tokenTail.then.permission.discardLandCard	bool
 frozenEntries[].event.tokenTail.then.permission.discover	object
@@ -14520,6 +14536,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.objectI
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -15131,6 +15148,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.o
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -15708,6 +15726,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.objectID	cus
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discover	object
@@ -16305,6 +16324,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.objectID	c
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discover	object
@@ -16967,6 +16987,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.objectID	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -21489,6 +21510,7 @@ pendingChoices[].attackSplit.tail.permission.condition.objectID	custom(uuid.UUID
 pendingChoices[].attackSplit.tail.permission.condition.subtype	string
 pendingChoices[].attackSplit.tail.permission.cost	string
 pendingChoices[].attackSplit.tail.permission.costLess	number:int
+pendingChoices[].attackSplit.tail.permission.costMore	number:int
 pendingChoices[].attackSplit.tail.permission.discardCard	bool
 pendingChoices[].attackSplit.tail.permission.discardLandCard	bool
 pendingChoices[].attackSplit.tail.permission.discover	object
@@ -23433,6 +23455,7 @@ pendingChoices[].diceRoll.then.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.condition.subtype	string
 pendingChoices[].diceRoll.then.permission.cost	string
 pendingChoices[].diceRoll.then.permission.costLess	number:int
+pendingChoices[].diceRoll.then.permission.costMore	number:int
 pendingChoices[].diceRoll.then.permission.discardCard	bool
 pendingChoices[].diceRoll.then.permission.discardLandCard	bool
 pendingChoices[].diceRoll.then.permission.discover	object
@@ -24385,6 +24408,7 @@ pendingChoices[].divideShield.walk.each.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.each.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.each.permission.cost	string
 pendingChoices[].divideShield.walk.each.permission.costLess	number:int
+pendingChoices[].divideShield.walk.each.permission.costMore	number:int
 pendingChoices[].divideShield.walk.each.permission.discardCard	bool
 pendingChoices[].divideShield.walk.each.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.each.permission.discover	object
@@ -24964,6 +24988,7 @@ pendingChoices[].divideShield.walk.then.permission.condition.objectID	custom(uui
 pendingChoices[].divideShield.walk.then.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.then.permission.cost	string
 pendingChoices[].divideShield.walk.then.permission.costLess	number:int
+pendingChoices[].divideShield.walk.then.permission.costMore	number:int
 pendingChoices[].divideShield.walk.then.permission.discardCard	bool
 pendingChoices[].divideShield.walk.then.permission.discardLandCard	bool
 pendingChoices[].divideShield.walk.then.permission.discover	object
@@ -25549,6 +25574,7 @@ pendingChoices[].libraryOrder.then.permission.condition.objectID	custom(uuid.UUI
 pendingChoices[].libraryOrder.then.permission.condition.subtype	string
 pendingChoices[].libraryOrder.then.permission.cost	string
 pendingChoices[].libraryOrder.then.permission.costLess	number:int
+pendingChoices[].libraryOrder.then.permission.costMore	number:int
 pendingChoices[].libraryOrder.then.permission.discardCard	bool
 pendingChoices[].libraryOrder.then.permission.discardLandCard	bool
 pendingChoices[].libraryOrder.then.permission.discover	object
@@ -26184,6 +26210,7 @@ pendingChoices[].nameThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.condition.subtype	string
 pendingChoices[].nameThen.permission.cost	string
 pendingChoices[].nameThen.permission.costLess	number:int
+pendingChoices[].nameThen.permission.costMore	number:int
 pendingChoices[].nameThen.permission.discardCard	bool
 pendingChoices[].nameThen.permission.discardLandCard	bool
 pendingChoices[].nameThen.permission.discover	object
@@ -27222,6 +27249,7 @@ pendingChoices[].pickTail.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.condition.subtype	string
 pendingChoices[].pickTail.permission.cost	string
 pendingChoices[].pickTail.permission.costLess	number:int
+pendingChoices[].pickTail.permission.costMore	number:int
 pendingChoices[].pickTail.permission.discardCard	bool
 pendingChoices[].pickTail.permission.discardLandCard	bool
 pendingChoices[].pickTail.permission.discover	object
@@ -27845,6 +27873,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.condition.o
 pendingChoices[].replacementResume.event.counterTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discover	object
@@ -28433,6 +28462,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discover	object
@@ -29012,6 +29042,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discover	object
@@ -29760,6 +29791,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.condition.ob
 pendingChoices[].replacementResume.event.damageTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discover	object
@@ -30454,6 +30486,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discover	object
@@ -31105,6 +31138,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.conditi
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discover	object
@@ -31684,6 +31718,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.ob
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discover	object
@@ -32295,6 +32330,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discover	object
@@ -32894,6 +32930,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condit
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discover	object
@@ -33881,6 +33918,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condi
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discover	object
@@ -34482,6 +34520,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discover	object
@@ -35064,6 +35103,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discover	object
@@ -36417,6 +36457,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.
 pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discover	object
@@ -36994,6 +37035,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.condition.obje
 pendingChoices[].replacementResume.event.millTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discover	object
@@ -38484,6 +38526,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.obj
 pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discover	object
@@ -39841,6 +39884,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discover	object
@@ -40452,6 +40496,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discover	object
@@ -41029,6 +41074,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.con
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discover	object
@@ -41626,6 +41672,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.c
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discover	object
@@ -42288,6 +42335,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.condition.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discover	object
@@ -43281,6 +43329,7 @@ pendingChoices[].scryThen.permission.condition.objectID	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.condition.subtype	string
 pendingChoices[].scryThen.permission.cost	string
 pendingChoices[].scryThen.permission.costLess	number:int
+pendingChoices[].scryThen.permission.costMore	number:int
 pendingChoices[].scryThen.permission.discardCard	bool
 pendingChoices[].scryThen.permission.discardLandCard	bool
 pendingChoices[].scryThen.permission.discover	object
@@ -43905,6 +43954,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.condition.objectID	custom
 pendingChoices[].searchPrompt.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.cost	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.costLess	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.costMore	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardLandCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discover	object
@@ -48922,6 +48972,7 @@ seats[].castPermissions[].condition.objectID	custom(uuid.UUID)
 seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].costLess	number:int
+seats[].castPermissions[].costMore	number:int
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
 seats[].castPermissions[].discover	object

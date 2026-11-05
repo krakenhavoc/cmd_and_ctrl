@@ -641,6 +641,17 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
+	// Incorporeal Sensate, #4973): generic mana added to the price of a
+	// spell cast through this permission. CostLess's twin, an INCREASE
+	// (CR 601.2f): it composes with whatever the cast would otherwise pay
+	// and is added with the board's increases, before any reduction comes
+	// off. A land has no cost to raise. Read by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the permission
+	// it holds, as CostLess is. Zero is no increase, which is every
+	// permission written before this.
+	CostMore int `json:"costMore,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -3091,4 +3102,19 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 		return 0
 	}
 	return grant.CostLess
+}
+
+// grantIncreaseLocked is CostQuery.GrantIncrease for one announcement: the
+// CostMore of the permission the cast claims, or 0 for a cast that uses
+// none. grantReductionLocked's twin, asking the same claim. Caller must
+// hold g.mu.
+func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
+	if from == ZoneHand || from == ZoneCommand {
+		return 0
+	}
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
+	if grant == nil || grant.CostMore <= 0 {
+		return 0
+	}
+	return grant.CostMore
 }
