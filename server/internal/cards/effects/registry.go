@@ -59,6 +59,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
@@ -113,6 +114,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkUpToCount(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
@@ -153,6 +155,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkUpToCount(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
