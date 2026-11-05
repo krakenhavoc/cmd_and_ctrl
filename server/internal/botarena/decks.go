@@ -198,12 +198,65 @@ const AnswersDeckID = "answers-battle"
 // tricks-battle`. Synthetic, so it needs no Scryfall dump.
 const TricksDeckID = "tricks-battle"
 
+// HasteDeckID is the arena deck id of HasteBattleDeck: `--decks
+// haste-battle`. Synthetic, so it needs no Scryfall dump.
+const HasteDeckID = "haste-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
-// monolith-battle, answers-battle and tricks-battle.
+// monolith-battle, answers-battle, tricks-battle and haste-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID || id == HasteDeckID
 }
+
+// HasteBattleDeck is BattleDeck with haste grants and creatures whose
+// value is a {T} ability in it, for #4981's arena measurement of #4324's
+// PriceHasteTapRows: six Expedite ("target creature gains haste until end
+// of turn", and a card) and two Hanweir Battlements ("{R}, {T}: target
+// creature gains haste until end of turn") for the grants, and four
+// Frostwielder, four Fervent Paincaster and three Goblin Sharpshooter,
+// whose "{T}: deals 1 damage" a summoning-sick creature can't pay
+// (CR 302.6) until haste lets it (CR 702.10c). No curated deck holds a
+// haste grant. The Battlements take two Mountains' places, so the deck
+// keeps BattleDeck's 24 lands. Dealt by oracle ID so the catalog gives
+// each its abilities; the printed costs and stats are the cards' own.
+func HasteBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	drop := map[string]int{"Bear": 8, "Ogre": 4, "Drake": 3, "Mountain": 2, "Lightning Bolt": 2}
+	for _, c := range deck {
+		if drop[c.Name] > 0 {
+			drop[c.Name]--
+			continue
+		}
+		out = append(out, c)
+	}
+	add := func(n int, name, oracle, typeLine, cost string, colors []string, power, toughness int) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Colors = colors
+			c.Power, c.Toughness = power, toughness
+			out = append(out, c)
+		}
+	}
+	red := []string{"R"}
+	add(6, "Expedite", oracleExpedite, "Instant", "{R}", red, 0, 0)
+	add(2, "Hanweir Battlements", oracleHanweirBattlements, "Land", "", nil, 0, 0)
+	add(4, "Frostwielder", oracleFrostwielder, "Creature — Human Shaman", "{2}{R}{R}", red, 1, 2)
+	add(4, "Fervent Paincaster", oracleFerventPaincaster, "Creature — Human Wizard", "{2}{R}", red, 3, 1)
+	add(3, "Goblin Sharpshooter", oracleGoblinSharpshooter, "Creature — Goblin", "{2}{R}", red, 1, 1)
+	return out
+}
+
+// The haste deck's catalog keys.
+const (
+	oracleExpedite           = "3501a839-eef5-44e4-8637-b5754780454e"
+	oracleHanweirBattlements = "0e735ba6-7fd1-4d12-b20c-21525dc1e2b5"
+	oracleFrostwielder       = "f895ec2e-7481-4280-a5c0-38b58c440faf"
+	oracleFerventPaincaster  = "1d569df1-23cf-4e01-8ef9-a1a8b815f11e"
+	oracleGoblinSharpshooter = "d81285b7-a718-411a-8be3-ecc0cfe0bcb0"
+)
 
 // TricksBattleDeck is BattleDeck with the changes until end of turn #4312
 // prices in it, for its arena measurement: four Brute Force ("target

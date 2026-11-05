@@ -70,6 +70,44 @@ mono-red-aggro 16, 33.3% (21.7–47.5%); simic-ramp 10, 20.8%
 (11.7–34.3%). The labelled suite stayed at 42/42. Reports, decision logs
 and the scanner stayed on the authoring machine.
 
+## Haste for a {T} ability in play (#4981, S75)
+
+`--decks haste-battle` is BattleDeck with six Expedite, two Hanweir
+Battlements (in two Mountains' places) and eleven creatures whose value
+is a {T} ping: four Frostwielder, four Fervent Paincaster and three Goblin
+Sharpshooter, for eight Bears, four Ogres, three Drakes and two Lightning
+Bolts. `heuristic-nohastetap` is today's heuristic with
+`PriceHasteTapRows` off. The 2026-11-05 UTC runs used integration base
+`58787165b` (#4324 included), seeds 1000–1047, rotation and lockstep, and
+decision logs:
+
+```
+boteval arena --seats heuristic,heuristic-nohastetap,heuristic,heuristic-nohastetap \
+  --decks haste-battle,haste-battle,haste-battle,haste-battle \
+  --games 48 --seed 1000 --rotate --lockstep --decision-log --out OUT
+```
+
+All 48 games ended with a winner and none stalled. `heuristic` won 21 of
+96 seat-games, 21.9% (14.8–31.1%); `heuristic-nohastetap` won 27, 28.1%
+(20.1–37.8%). Both intervals hold the null 25% and each other, so the
+price shows no measurable effect on the win rate at this size.
+
+It does change play. In the same mixed run the decision logs priced a
+haste grant on the seat's own summoning-sick, untapped pinger above zero
+in all 272 logged windows that offered one with the price on, and in 40
+of 190 with it off (median +0.20 against 0.00). Two more runs on the same
+seeds, all four seats `heuristic` and then all four `heuristic-nohastetap`,
+differed in 11 of 48 games (turns, a seat's final life or its decision
+count) and had a different winner in one. Expedite was cast 329 times in
+each; with the price on, 11 of those casts were made for the {T} row
+(the reason suffix `haste for a {T} ability`, on a Sharpshooter or a
+Frostwielder), 92 grants went to the bot's own sick pinger against 79
+with it off, 67 of those 92 pinged the same turn against 56 of 79, and
+the three pingers activated 752 times against 716. The other grants on
+a sick pinger were cast for Expedite's card or Paincaster's 3-power
+attack, as they are with the price off. Reports, decision logs and the
+scanner stayed on the authoring machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every
