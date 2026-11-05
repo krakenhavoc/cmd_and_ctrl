@@ -5057,3 +5057,15 @@ closure ratchet does not move. Clone, undo and a restore re-derive the answer fr
 Khan, Vengeful Heart (Full). A sweep of the checked-in Scryfall oracle fixtures (8,666 faces), the Star Trek batch data and the
 rest of the repository finds no other card whose text has the standalone line; the 33 other fixture hits are rebound
 reminder text.
+
+## Amendment — 2026-11-05 (#4971): a claim no key answers goes to a printed-cost permission first
+
+After #4969 a permission with a price of its own refuses every claim but its own, so the permission a claim lands on matters.
+`CastPermissionForClaimLocked` gave a claim that no live permission's key answers (a graveyard Mulldrifter's own evoke) the
+first live permission over the card. With Green Goblin and Muldrotha both on the battlefield, the evoke was refused whenever
+Green Goblin's mayhem came first, though Muldrotha allows it. Such a claim now takes the first live permission at the printed
+cost (`AltCostKey` empty, `NamesPrice()` false), in the same stored-then-standing order, and falls back to the first live
+permission only when there is none. A claim that a key answers is unchanged. So is the cast that claims nothing: there the
+first permission still answers, because a flat-priced permission (cascade's `{0}`) has no key to claim and preferring a
+printed-cost one would make the free cast unreachable. Nothing new is stored. Test:
+`TestGreenGoblinBesideMuldrothaStillLetsAGraveyardCardBeEvoked`, in both orders.
