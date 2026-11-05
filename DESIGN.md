@@ -144,6 +144,22 @@ seat hues by hand.
 on the Decks grid ([ADR 0158](docs/decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2).
 They are fixed: no skin may override them.
 
+### Chart colours
+
+`--chart-1` … `--chart-6` are the stats charts' categorical inks
+([ADR 0217](docs/decisions/0217-advanced-player-stats-per-deck-and-overall.md) §8):
+blue, amber, green, rose, violet and olive (`#4ea8f5`, `#f2a33a`, `#43c59e`,
+`#e8708f`, `#a68cf0`, `#c2bd6a` in every dark skin). Light and High contrast
+retune all six for their ground in `app.css`; the other skins keep the dark set.
+They are for charts only and always sit beside a label, a count or a position:
+a chart never tells anything by colour alone. Don't use seat colours in a chart
+(they mean a seat at the table), and use the fixed `--identity-*` tokens, not
+these, for a colour of Magic. Charts are inline SVG built from
+`lib/components/stats/` (`ChartFigure`, `BarChart`, `StackedBar`, `LineChart`,
+`Histogram`, `Sparkline`, `StatTile`), with their geometry in `lib/statsCharts.ts`;
+each is a `<figure>` whose caption states the finding in one sentence and which
+offers **Show as table**.
+
 ### Skins
 
 A skin is a block of palette tokens keyed on `:root[data-theme="<id>"]`; the
