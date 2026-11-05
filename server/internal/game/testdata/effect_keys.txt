@@ -130,6 +130,7 @@ body facedown/ward
 body fatal-fissure/earthbend-4
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
+body fire-lord-sozin/reanimate
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
@@ -264,6 +265,7 @@ body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rowan-kenrith/creatures-attack-this-turn
+body ruinous-waterbending/gain-one-life
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body sakashima/return-listed-to-hand
@@ -1194,6 +1196,7 @@ payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/extort-drain
+payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
@@ -1271,6 +1274,7 @@ payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
+payunless pay-unless/wolfbat-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
@@ -2001,6 +2005,7 @@ tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
 tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
+tail sold-out/clue
 tail sorin-vengeful-bloodlord/vampires
 tail soul-shackled-zombie/drain-if-creature
 tail speak-secrets/after-mill
@@ -2041,6 +2046,7 @@ tail the-gitrog-ravenous-ride/sacrificed
 tail the-invincible-iron-man/attach-equipment
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
+tail the-rise-of-sozin/named
 tail the-wrath-of-khan/draw-if-exiled
 tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
