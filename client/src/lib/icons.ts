@@ -212,6 +212,14 @@ export const ICONS = {
     p("M12 9.5v4"),
     p("M12 17h.01"),
   ],
+  // ADR 0213 §9: the header's button for the Played with drawer, two
+  // people, one a step behind the other.
+  people: [
+    c(9, 8, 3.2),
+    p("M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"),
+    c(17, 9, 2.6),
+    p("M16 14.2c3 .2 5 2.4 5 5.3"),
+  ],
   // A deck's sideboard (ADR 0191), under the picker's grid.
   list: [
     p("M9 6h11"),

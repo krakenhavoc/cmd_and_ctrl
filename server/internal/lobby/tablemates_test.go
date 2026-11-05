@@ -110,6 +110,12 @@ func TestTablematesInBothStores(t *testing.T) {
 				t.Errorf("last-played times are not in recency order: %v then %v",
 					got[0].LastPlayedAt, got[1].LastPlayedAt)
 			}
+			// ADR 0213 §1: one shared table each in the fixture, named.
+			if got[0].GamesTogether != 1 || got[0].LastTable != "fresh" ||
+				got[1].GamesTogether != 1 || got[1].LastTable != "old" {
+				t.Errorf("games_together / last_table = %d %q, %d %q; want 1 fresh, 1 old",
+					got[0].GamesTogether, got[0].LastTable, got[1].GamesTogether, got[1].LastTable)
+			}
 			for _, tm := range got {
 				if tm.UserID == me {
 					t.Error("the caller is in their own tablemates")
@@ -193,6 +199,115 @@ func TestTablematesCountsOnlyGamesTheCallerSatIn(t *testing.T) {
 	}
 	if got[0].UserID != cara {
 		t.Fatalf("a game the caller never sat in changed the order: %+v", got)
+	}
+}
+
+// TestTablematesCountTablesAndNameTheLatest (ADR 0213 §1): a second
+// shared table raises games_together and moves last_table to the newer
+// name, in both stores. A table the caller shared with somebody else
+// counts for neither, and a lobby that never started counts like any.
+func TestTablematesCountTablesAndNameTheLatest(t *testing.T) {
+	for name, newStore := range map[string]func(t *testing.T) (Store, [2]string){
+		"memory": func(*testing.T) (Store, [2]string) {
+			return NewMemoryStore(), [2]string{uuid.NewString(), uuid.NewString()}
+		},
+		"sql": func(t *testing.T) (Store, [2]string) {
+			d := openTestDB(t, t.TempDir())
+			us := users.NewSQLStore(d, nil)
+			var ids [2]string
+			for i, who := range []discord.User{
+				{ID: "d-me", Username: "me", GlobalName: "Me"},
+				{ID: "d-bob", Username: "bob", GlobalName: "Bob"},
+			} {
+				u, err := us.UpsertFromDiscord(context.Background(), who, "", "identify")
+				if err != nil {
+					t.Fatalf("UpsertFromDiscord: %v", err)
+				}
+				ids[i] = u.ID.String()
+			}
+			return NewSQLStore(d), ids
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store, ids := newStore(t)
+			me, bob := ids[0], ids[1]
+			ctx := context.Background()
+			now := time.Now().UTC().Truncate(time.Millisecond)
+			for _, g := range []struct {
+				name  string
+				at    time.Time
+				state string
+			}{
+				{"Game one", now.Add(-72 * time.Hour), "ended"},
+				{"Game three", now.Add(-1 * time.Hour), "lobby"}, // never started
+				{"Game two", now.Add(-24 * time.Hour), "ended"},
+			} {
+				rec := GameRecord{ID: uuid.New(), Name: g.name, State: g.state, CreatedAt: g.at}
+				if err := store.CreateGame(ctx, rec, nil); err != nil {
+					t.Fatalf("CreateGame: %v", err)
+				}
+				seats := []SeatRecord{
+					{Seat: 0, PlayerID: uuid.New(), UserID: me, GuestName: "Me"},
+					{Seat: 1, PlayerID: uuid.New(), UserID: bob, GuestName: "Bob"},
+				}
+				if err := store.ReplaceSeats(ctx, rec.ID, seats); err != nil {
+					t.Fatalf("ReplaceSeats: %v", err)
+				}
+			}
+			got, err := store.Tablemates(ctx, me)
+			if err != nil || len(got) != 1 {
+				t.Fatalf("Tablemates = %+v, %v; want just Bob", got, err)
+			}
+			if got[0].GamesTogether != 3 || got[0].LastTable != "Game three" {
+				t.Errorf("games_together %d, last_table %q; want 3 and %q (the lobby, newest created)",
+					got[0].GamesTogether, got[0].LastTable, "Game three")
+			}
+		})
+	}
+}
+
+// TestTablematesAreCappedButInvitingIsNot (ADR 0213 §1): the list is the
+// 50 most recent people, while the DM route's gate still knows everyone
+// the caller has sat with.
+func TestTablematesAreCappedButInvitingIsNot(t *testing.T) {
+	l := newTestLobby(t)
+	ctx := context.Background()
+	me := uuid.New()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	people := make([]uuid.UUID, MaxTablemates+5)
+	for i := range people {
+		people[i] = uuid.New()
+		// people[0] sat longest ago, the last one most recently.
+		rec := GameRecord{ID: uuid.New(), Name: "t", State: "ended", CreatedAt: now.Add(time.Duration(i-len(people)) * time.Hour)}
+		if err := l.store.CreateGame(ctx, rec, nil); err != nil {
+			t.Fatalf("CreateGame: %v", err)
+		}
+		seats := []SeatRecord{
+			{Seat: 0, PlayerID: uuid.New(), UserID: me.String(), GuestName: "Me"},
+			{Seat: 1, PlayerID: uuid.New(), UserID: people[i].String(), GuestName: "P"},
+		}
+		if err := l.store.ReplaceSeats(ctx, rec.ID, seats); err != nil {
+			t.Fatalf("ReplaceSeats: %v", err)
+		}
+	}
+	got, err := l.Tablemates(me)
+	if err != nil {
+		t.Fatalf("Tablemates: %v", err)
+	}
+	if len(got) != MaxTablemates {
+		t.Fatalf("len = %d, want the cap of %d", len(got), MaxTablemates)
+	}
+	if got[0].UserID != people[len(people)-1] {
+		t.Errorf("first = %s, want the most recent person", got[0].UserID)
+	}
+	for _, m := range got {
+		if m.UserID == people[0] {
+			t.Errorf("the person sat with longest ago is inside the cap")
+		}
+	}
+	// Past the cap, still a tablemate for an invite.
+	if ok, err := l.IsTablemate(me, people[0]); err != nil || !ok {
+		t.Errorf("IsTablemate(oldest) = %v, %v; want true: the cap trims the list, not the gate", ok, err)
 	}
 }
 
