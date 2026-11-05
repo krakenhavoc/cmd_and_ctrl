@@ -3,7 +3,9 @@
   // record, average place, the same by deck and by commander, and your
   // recent games with turns and place. A free page for every signed-in
   // person, in ADR 0158's frame. It shows only the caller's own seats
-  // (GET /me/stats); the server never sends anyone else's.
+  // (GET /me/stats); the server never sends anyone else's. Above the
+  // record, the advanced-stats opt-in card (ADR 0217 §2) while that
+  // setting is off.
   //
   // Signed-out visitors are sent to the front page by the router. A
   // guest or admin session is not a person and has no seats of its own,
@@ -12,6 +14,8 @@
   import Page from "../lib/components/Page.svelte";
   import ShopLinks from "../lib/components/ShopLinks.svelte";
   import ShopNote from "../lib/components/ShopNote.svelte";
+  import AdvancedStatsOptIn from "../lib/components/AdvancedStatsOptIn.svelte";
+  import { loadStatsPrefs } from "../lib/statsPrefs";
   import { visibleShops } from "../lib/shopLinksStore";
   import { fetchMyStats } from "../lib/api";
   import { LobbyApiError, session } from "../lib/session";
@@ -45,8 +49,11 @@
   }
 
   onMount(() => {
-    if (isPerson) void load();
-    else loading = false;
+    if (isPerson) {
+      void load();
+      // The advanced-stats setting (ADR 0217 §2): the opt-in card.
+      void loadStatsPrefs();
+    } else loading = false;
   });
 
   function when(ms: number): string {
@@ -107,6 +114,7 @@
     <p class="card note error" role="alert">{error}</p>
     <button type="button" class="btn" onclick={() => void load()}>Try again</button>
   {:else if stats}
+    <AdvancedStatsOptIn />
     {#if stats.games === 0}
       <p class="card note" role="status" data-testid="stats-empty">
         No finished games yet. Play a game to the end and your record starts here.

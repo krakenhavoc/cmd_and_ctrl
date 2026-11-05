@@ -135,6 +135,10 @@ registered, or when this file is stale.
 | `adminAccountsTab` | `Accounts` | link | text | `routes/Admin.svelte` | the admin views' tab for every account |
 | `adminReportsTab` | `Reports` | link | text | `routes/Admin.svelte` | the admin views' tab for what players have reported at their tables (#2984) |
 | `adminStatsTab` | `Stats` | link | text | `routes/Admin.svelte` | the admin views' tab for game statistics (ADR 0165 §8, #3425) |
+| `advancedStatsSwitch` | `Advanced stats` | checkbox | text | `lib/components/StatsSettings.svelte` | Settings → Stats: the person's own advanced-stats switch (PUT /me/stats/prefs); off unless they, an admin or the server default turned it on |
+| `advancedStatsOptIn` | `Turn on advanced stats` | button | text | `lib/components/AdvancedStatsOptIn.svelte` | the opt-in card on #/stats while advanced stats are off for the person |
+| `advancedStatsDefault` | `Advanced stats for everyone who hasn't chosen` | checkbox | text | `lib/components/admin/AdvancedStatsDefault.svelte` | admin Accounts: the server's advanced-stats default (PUT /admin/stats/advanced-default); anyone who chose for themselves keeps their answer |
+| `accountAdvancedStats` | `advanced stats for <name>` (starts with `advanced stats for `) | checkbox | aria | `lib/components/admin/AccountAdvancedStats.svelte` | admin Accounts and one account: an admin's advanced-stats switch for that person (PUT /admin/users/{id}/advanced-stats) |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |

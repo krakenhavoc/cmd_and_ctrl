@@ -6,6 +6,11 @@
   // counts. `sort` is in the hash too but never sent: the whole list is
   // on the page, so it is sorted here, and the search box filters it as
   // you type. Loads once; Refresh asks again.
+  //
+  // Advanced stats (ADR 0217 owner answer 1): the server's default above
+  // the table, and an Advanced stats column with each person's switch and
+  // its state (on, off, or following the default) and who set it, from
+  // GET /admin/stats/advanced. Neither reads anyone's stats.
   import { onMount } from "svelte";
   import { fetchAdminAccounts } from "../../api";
   import { L } from "../../labels";
@@ -21,6 +26,15 @@
   import { navigate } from "../../router";
   import { LobbyApiError } from "../../session";
   import AccountLink from "./AccountLink.svelte";
+  import AccountAdvancedStats from "./AccountAdvancedStats.svelte";
+  import AdvancedStatsDefault from "./AdvancedStatsDefault.svelte";
+  import {
+    accountStatsOf,
+    fetchAdminAdvancedStats,
+    withAccount,
+    withDefault,
+    type AdminAdvancedStats,
+  } from "../../statsPrefs";
   import RelTime from "./RelTime.svelte";
 
   interface Props {
@@ -33,10 +47,23 @@
   let loading = $state(false);
   let error = $state("");
   let query = $state("");
+  // null until loaded, and left null when this server keeps no setting
+  // (503 with no database): the column and the default are not drawn.
+  let adv = $state<AdminAdvancedStats | null>(null);
+
+  async function loadAdvanced(): Promise<void> {
+    try {
+      adv = await fetchAdminAdvancedStats();
+    } catch (err) {
+      if (err instanceof LobbyApiError && err.status === 403) onforbidden();
+      adv = null;
+    }
+  }
 
   async function load(): Promise<void> {
     loading = true;
     error = "";
+    void loadAdvanced();
     try {
       data = await fetchAdminAccounts(filter);
     } catch (err) {
@@ -106,6 +133,14 @@
     <p class="notice err" role="alert">{error}</p>
   {/if}
 
+  {#if adv}
+    <AdvancedStatsDefault
+      value={adv.default}
+      onchange={(d) => adv && (adv = withDefault(adv, d))}
+      {onforbidden}
+    />
+  {/if}
+
   {#if data}
     <p class="count">
       {data.accounts.length}
@@ -127,6 +162,7 @@
               <th scope="col">Last sign-in</th>
               <th scope="col" class="num">Games</th>
               <th scope="col">Last played</th>
+              {#if adv}<th scope="col">Advanced stats</th>{/if}
             </tr>
           </thead>
           <tbody>
@@ -142,6 +178,16 @@
                 <td><RelTime ms={a.last_sign_in_at} {now} /></td>
                 <td class="num">{a.games_played}</td>
                 <td><RelTime ms={a.last_played_at} {now} /></td>
+                {#if adv}
+                  <td>
+                    <AccountAdvancedStats
+                      name={a.name || "this account"}
+                      row={accountStatsOf(adv, a.id)}
+                      onchange={(r) => adv && (adv = withAccount(adv, r))}
+                      {onforbidden}
+                    />
+                  </td>
+                {/if}
               </tr>
             {/each}
           </tbody>
