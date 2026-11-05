@@ -266,6 +266,10 @@ func applySetupRoute(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !canApplySetup(c, p, meta) {
 		return httpError(http.StatusForbidden, "only the table's host, its creator or an admin may apply a setup")
 	}
+	// #4564: refused whole, not applied with every bot skipped.
+	if meta.Archived() {
+		return ErrGameArchived
+	}
 	if meta.State != string(game.StateLobby) {
 		return ErrGameStarted
 	}
