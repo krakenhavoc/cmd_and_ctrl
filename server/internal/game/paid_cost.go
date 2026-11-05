@@ -390,6 +390,14 @@ type PaidTap struct {
 	// the reader.
 	Power int  `json:"power"`
 	Left  bool `json:"left,omitempty"`
+	// StationPower is CountedPower(CostPowerStation) beside Power, kept
+	// and rewritten at the same two moments: what the object counts for
+	// when it stations a Spacecraft ("as though his power were tripled",
+	// Sulu, Heroic Helmsman). Clamped at zero, so zero means "the plain
+	// power" (a record written before the field existed included) and the
+	// reader falls back to Power. Read it through
+	// PaidTapStationPowerForEffect.
+	StationPower int `json:"stationPower,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was
