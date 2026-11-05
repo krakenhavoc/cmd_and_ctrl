@@ -25,7 +25,7 @@ import (
 //
 //	scavenge     "Exile this card from your graveyard: Put a number
 //	             of +1/+1 counters equal to this card's power on
-//	             target creature."            CR 702.96a
+//	             target creature."            CR 702.97a
 //	embalm       "Exile this card from your graveyard: Create a
 //	             token that's a copy of it, except …"  CR 702.128a
 //	eternalize   the same, 4/4 black Zombie.  CR 702.129a

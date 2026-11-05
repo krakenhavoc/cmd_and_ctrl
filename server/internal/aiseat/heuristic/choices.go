@@ -56,6 +56,7 @@ const (
 	choiceCoinCall            = "coin_call"
 	choiceEntryController     = "entry_controller"
 	choiceEntryReadAhead      = "entry_read_ahead"
+	choiceEntryAttackTarget   = "entry_attack_target"
 	choiceMayCast             = "may_cast"
 	choiceChooseSource        = "choose_source"
 	choiceCommanderReturn     = "commander_return"
@@ -174,6 +175,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceEntryReadAhead:
 		return readAheadValue(cp.OptionIndex)
+	case choiceEntryAttackTarget:
+		return st.entryAttackTargetValue(ch, cp.OptionIndex)
 	case choiceOptionPick:
 		// ADR 0146: a ballot (vote.go).
 		if v, why, ok := st.voteValue(ch, cp.OptionIndex); ok {
@@ -1419,6 +1422,27 @@ func readAheadValue(index *int) (float64, string) {
 		return 0, "read ahead: chapter I"
 	}
 	return -float64(*index), "read ahead: start early and get every chapter"
+}
+
+// entryAttackTargetValue scores one defender of an entry_attack_target
+// prompt: what a creature entering tapped and attacking attacks
+// (CR 508.4, Kira Nerys, Firebrand). A player is scored by how little
+// life they have, so the extra attacker goes where its damage is closest
+// to finishing a seat; a seat that can't lose for life, a planeswalker or
+// battle, and a seat the view has no evaluation for score below every
+// other player, and the enumerator's first offered defender (the one the
+// bot's attack is already pointed at) wins every tie.
+func (st *state) entryAttackTargetValue(ch *protocol.PendingChoiceView, index *int) (float64, string) {
+	if ch == nil || index == nil || *index < 0 || *index >= len(ch.PickOptions) {
+		return 0, "entry attack: the defender already attacked"
+	}
+	opt := ch.PickOptions[*index]
+	tie := -float64(*index) / 1000
+	e := st.evals[opt.Player]
+	if opt.Player == "" || e == nil || e.CantLoseLife {
+		return tie - 1000, "entry attack: " + opt.Label
+	}
+	return -float64(e.Life) + tie, "send it at the opponent with the least life (" + opt.Label + ")"
 }
 
 // entryControllerValue scores one seat of an entry_controller prompt —
