@@ -379,7 +379,7 @@ func paidTapsFrom(cards []Card) []PaidTap {
 	}
 	out := make([]PaidTap, 0, len(cards))
 	for _, c := range cards {
-		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison()})
+		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison(), StationPower: c.CountedPower(CostPowerStation)})
 	}
 	return out
 }
@@ -420,6 +420,7 @@ func (g *Game) freezePaidTapsOnExitLocked(cardID uuid.UUID) {
 				continue
 			}
 			t.Power = c.PowerForComparison()
+			t.StationPower = c.CountedPower(CostPowerStation)
 			t.Left = true
 		}
 	}
@@ -451,5 +452,28 @@ func (g *Game) PaidTapPowerForEffect(t PaidTap) int {
 	}
 	// Gone by a route that never reached the exit choke point. The
 	// power it was tapped with is the last value the engine saw.
+	return t.Power
+}
+
+// PaidTapStationPowerForEffect is PaidTapPowerForEffect for the station
+// ability of a Spacecraft (CR 702.184a and c): the power the tapped
+// creature counts for when it stations one, which a CostPowerStation
+// rule changes ("Sulu stations Spacecraft ... as though his power were
+// tripled"). Live while the object is still on the battlefield, its
+// last-known count once it has left (CR 608.2h). Without such a rule it
+// is the plain power, clamped at zero, which station treats as the
+// unclamped power: zero or less puts nothing on.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) PaidTapStationPowerForEffect(t PaidTap) int {
+	if !t.Left {
+		g.RecomputeLayersIfStaleLocked()
+		if c := findBattlefieldCard(g, t.ID); c != nil && c.ObjectEpoch == t.Epoch {
+			return c.CountedPower(CostPowerStation)
+		}
+	}
+	if t.StationPower != 0 {
+		return t.StationPower
+	}
 	return t.Power
 }

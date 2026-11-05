@@ -468,6 +468,11 @@ const (
 	CostPowerCrew CostPowerUse = 1 << iota
 	// CostPowerSaddle is "saddles Mounts" (CR 702.171a).
 	CostPowerSaddle
+	// CostPowerStation is "stations Spacecraft" (CR 702.184a and c; Sulu,
+	// Heroic Helmsman): the power a station ability of a Spacecraft reads
+	// for the creature tapped to pay it. A Planet's station does not ask
+	// for it.
+	CostPowerStation
 )
 
 // CostPowerRule is "this creature [saddles Mounts and] crews Vehicles
@@ -475,10 +480,15 @@ const (
 // toughness rather than its power" (UseToughness). Uses says which
 // costs it applies to: a rule for crew alone does not help a creature
 // saddle a Mount.
+//
+// Multiplier is "as though its power were tripled" (3; Sulu, Heroic
+// Helmsman). Zero or one leaves the power as it is. It applies before
+// any Bonus.
 type CostPowerRule struct {
 	Uses         CostPowerUse
 	Bonus        int
 	UseToughness bool
+	Multiplier   int `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's
