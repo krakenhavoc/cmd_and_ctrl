@@ -2168,6 +2168,13 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		}
 		return &out
 	}
+	// ADR 0066, 2026-11-05: the card's own "You may cast this card from
+	// exile", for its owner while it is face up.
+	if zone == ZoneExile {
+		if perm := g.ownTextExilePermissionLocked(playerID, card); acceptsPermission(accept, perm) {
+			return perm
+		}
+	}
 	// A permission an ability sticker on the card gives it (#4307).
 	if zone == ZoneGraveyard {
 		if perm := g.stickerGraveyardPermissionLocked(playerID, card); acceptsPermission(accept, perm) {
@@ -2766,6 +2773,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	if g.anyStickerGraveyardCastLocked() {
 		return true
 	}
+	// ADR 0066, 2026-11-05: and a face-up exiled card whose own text
+	// lets its owner cast it from there.
+	if g.anyOwnTextExileCastLocked() {
+		return true
+	}
 	if g.Battlefield == nil {
 		return false
 	}
@@ -2840,6 +2852,12 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 		// foreign holder and the walk above was exact.
 		if derived := g.standingExilePermissionOnLocked(card, zone); derived != nil {
 			return derived
+		}
+	}
+	if fallback == nil && zone == ZoneExile {
+		// ADR 0066, 2026-11-05: the card's own text, for its owner.
+		if own := g.ownTextExilePermissionLocked(card.Owner, card); own != nil {
+			return own
 		}
 	}
 	return fallback
