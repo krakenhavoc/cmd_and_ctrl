@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // cast_outside.go — "cast or play a card you own from outside the game"
 // (#3955, ADR 0198's 2026-10-16 amendment).
@@ -153,8 +157,48 @@ func (g *Game) OutsidePlayRightLocked(player uuid.UUID) *CastPermission {
 			return &out
 		}
 	}
+	// ADR 0066's 2026-11-05 amendment (The Holodeck): a STANDING
+	// permission a permanent of the player's derives over the container
+	// is the same right while its budget has a use left and its timing
+	// lets the player play now. Its budget is kept per granting object,
+	// not per zone, so a use spent through the same object's graveyard
+	// permission closes this one too (CastPermission.PerType).
+	for _, perm := range g.standingCastPermissionsLocked(p) {
+		if perm.Zone != ZoneOutside || !perm.derivedUseLeft() {
+			continue
+		}
+		if perm.Timing == TimingYourTurnOnly && g.activeSeatIDLocked() != player {
+			continue
+		}
+		out := perm
+		return &out
+	}
 	return nil
 }
+
+// derivedUseLeft reports whether a derived standing permission still has
+// a use this turn: no per-type budget, or a type of it left to spend. A
+// derived permission arrives with its spent types copied in
+// (fillDerivedPerTypeUsedLocked).
+func (p *CastPermission) derivedUseLeft() bool {
+	if len(p.PerType) == 0 {
+		return true
+	}
+	for _, t := range p.PerType {
+		if !slices.Contains(p.PerTypeUsed, t) {
+			return true
+		}
+	}
+	return false
+}
+
+// outsidePickPermanent is the naming pick of a right that opens only
+// permanent cards (Filter.PermanentOnly, The Holodeck): a database name
+// the right could not play is not offered. An on-disk key: never renamed,
+// never reused.
+var outsidePickPermanent = RegisterOutsidePick("engine/outside-pick-permanent",
+	func(c Card, _ string) bool { return PermissionFilter{PermanentOnly: true}.Matches(c) },
+	func(*Game, CardsChosen) error { return nil })
 
 // CanNameOutsideCardLocked is whether the player can be asked to name a
 // card from the card database to play under their Wish right: they hold
@@ -193,11 +237,22 @@ func (g *Game) NameOutsideCardToPlay(player uuid.UUID) error {
 		Min:         0,
 		Max:         1,
 		Destination: ChoosePlayFromOutside,
+		Keyed:       outsideNamingPick(right),
 	}) {
 		return ErrNoPlayPermission
 	}
 	g.noteActionTakenLocked(player)
 	return nil
+}
+
+// outsideNamingPick is the pick NameOutsideCardToPlay queues for `right`:
+// only permanent cards for a right that opens nothing else, every card
+// otherwise (Wish).
+func outsideNamingPick(right *CastPermission) OutsidePick {
+	if right.Filter.PermanentOnly {
+		return outsidePickPermanent
+	}
+	return OutsidePick{}
 }
 
 // grantOutsideCastLocked is GrantCastPermissionOverCardForEffect for a

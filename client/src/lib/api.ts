@@ -18,6 +18,7 @@ import {
   type ReportSettings,
 } from "./bugReport";
 import { splicePaymentsWire } from "./targeting";
+import { isGameClosedBody } from "./gameClosed";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
@@ -318,6 +319,36 @@ export async function previewGame(id: string, inviteToken: string): Promise<Game
 export async function getGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}`, { method: "GET" });
   return (await res.json()) as GameMeta;
+}
+
+// tableIsClosed answers the Game route's question after a failed dial
+// (#5082, ADR 0211 §4): was this table closed? A refused upgrade to an
+// archived table reaches the browser as a bare 1006, so the socket alone
+// cannot tell it from a network blip. GET /games/{id} still answers a
+// seat or a spectator of an archived table, with `archived_at` set; a
+// 409 `game_closed` is read the same way, should the route ever refuse.
+//
+// Only a definite yes is true. Anything else (an open table, a 404 for a
+// deleted one, a 401, a 5xx, a network error) is false, and the
+// reconnect ladder carries on as before. Plain fetch, not authFetch: a
+// 401 here must not sign the tab out, which is the dead-session probe's
+// call to make (session.ts checkSessionAlive).
+export async function tableIsClosed(gameID: string): Promise<boolean> {
+  const headers = new Headers({ Accept: "application/json" });
+  const token = currentSession()?.token;
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  try {
+    const res = await fetch(`/games/${encodeURIComponent(gameID)}`, {
+      method: "GET",
+      headers,
+      credentials: "same-origin",
+    });
+    const body = (await res.json()) as { archived_at?: unknown } | null;
+    if (res.ok) return typeof body?.archived_at === "string" && body.archived_at !== "";
+    return res.status === 409 && isGameClosedBody(body);
+  } catch {
+    return false;
+  }
 }
 
 // CreateGameResponse mirrors lobby.createGameResponse: the new table's

@@ -92,6 +92,11 @@ export type SoundName =
   // buckle), and an Aura enchanting one (a soft shimmer).
   | "attach_equip"
   | "attach_aura"
+  // #4450: a spell or ability that fizzles (a quiet counter with no slap),
+  // and a die rolled or a coin flipped (a dice rattle, a coin ring).
+  | "fizzle"
+  | "dice_roll"
+  | "coin_flip"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -157,6 +162,9 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   commander_return: "effects",
   attach_equip: "effects",
   attach_aura: "effects",
+  fizzle: "effects",
+  dice_roll: "effects",
+  coin_flip: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -225,6 +233,13 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // (client/public/sounds/README.md, "Files not made yet").
   attach_equip: [],
   attach_aura: [],
+  // #4450: files not made yet, and no fallback, so a fizzle's dissolve and
+  // a die's tumble or a coin's spin are silent until fizzle-1.mp3,
+  // dice_roll-1.mp3 and coin_flip-1.mp3 (and an optional -2 of each) are
+  // listed here (client/public/sounds/README.md, "Files not made yet").
+  fizzle: [],
+  dice_roll: [],
+  coin_flip: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

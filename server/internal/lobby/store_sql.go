@@ -95,12 +95,14 @@ type execer interface {
 func insertGame(ctx context.Context, x execer, g GameRecord) error {
 	_, err := x.ExecContext(ctx,
 		`INSERT INTO games (id, name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		                    outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                    outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results,
+		                    last_active_at, closed_reason)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		g.ID.String(), g.Name, nullString(g.CreatedBy), g.State, toMillis(g.CreatedAt),
 		nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt), nullInt(g.WinnerSeat),
 		nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
-		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results))
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results),
+		nullMillis(g.LastActiveAt), nullString(g.ClosedReason))
 	return err
 }
 
@@ -162,11 +164,24 @@ func (s *SQLStore) UpdateGame(ctx context.Context, g GameRecord) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE games SET name = ?, state = ?, started_at = ?, ended_at = ?, archived_at = ?, winner_seat = ?,
 		                  outcome = ?, host_player_id = ?, host_discord_id = ?, voice_room = ?, voice_channel_id = ?,
-		                  lfg = ?, lfg_message_id = ?, results = ?
+		                  lfg = ?, lfg_message_id = ?, results = ?, closed_reason = ?,
+		                  last_active_at = COALESCE(?, last_active_at)
 		 WHERE id = ?`,
 		g.Name, g.State, nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt),
 		nullInt(g.WinnerSeat), nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
-		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results), g.ID.String())
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results),
+		nullString(g.ClosedReason), nullMillis(g.LastActiveAt), g.ID.String())
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return ErrStoreNotFound
+	}
+	return nil
+}
+
+func (s *SQLStore) SetLastActive(ctx context.Context, id uuid.UUID, at time.Time) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE games SET last_active_at = ? WHERE id = ?`, toMillis(at), id.String())
 	if err != nil {
 		return err
 	}
@@ -217,13 +232,17 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		lfg                            int
 		lfgMessage                     sql.NullString
 		results                        int
+		lastActive                     sql.NullInt64
+		closedReason                   sql.NullString
 	)
 	err := s.db.QueryRowContext(ctx,
 		`SELECT name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		        outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results
+		        outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results,
+		        last_active_at, closed_reason
 		 FROM games WHERE id = ?`, id.String()).
 		Scan(&g.Name, &createdBy, &g.State, &createdAt, &startedAt, &endedAt, &archivedAt, &winner,
-			&outcome, &hostPlayer, &hostDiscord, &voiceRoom, &voiceChannel, &lfg, &lfgMessage, &results)
+			&outcome, &hostPlayer, &hostDiscord, &voiceRoom, &voiceChannel, &lfg, &lfgMessage, &results,
+			&lastActive, &closedReason)
 	if errors.Is(err, sql.ErrNoRows) {
 		return GameRecord{}, nil, ErrStoreNotFound
 	}
@@ -249,6 +268,8 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 	g.LFG = lfg == 1
 	g.LFGMessageID = lfgMessage.String
 	g.Results = results == 1
+	g.LastActiveAt = timePtr(lastActive)
+	g.ClosedReason = closedReason.String
 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT s.seat, s.player_id, s.user_id, s.guest_name, s.bot_tier, s.deck_id, s.deck_name, s.pending_discord_id, s.agent_client,
