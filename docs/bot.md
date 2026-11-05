@@ -1899,7 +1899,8 @@ three Thopters, or before the Thopters attack, it passes. A nontoken
 creature, a commander, a token in combat, one with counters and one with
 something attached are never spare. The switch ships off: in the arena
 the seats that made this trade lost to the seats that kept their
-Thopters ([bot-testing.md](bot-testing.md#spare-tokens-for-sais-draw-4991-s75)),
+Thopters on the synthetic deck, and did no better on the curated
+`mono-blue-artifacts` deck ([bot-testing.md](bot-testing.md#spare-tokens-for-sais-draw-4991-s75)),
 so the board price stands and Sai's draw is still made only with
 Thopters that are dying anyway. `heuristic-sparetokens` turns it on in
 the arena; `BaselineConfig` leaves it off too. Sai's row now declares

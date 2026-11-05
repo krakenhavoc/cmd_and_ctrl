@@ -33,7 +33,10 @@ import (
 // the price against two without, three seed sets of 48 games) the seats
 // that traded Thopters for cards won 20.1% against 29.9%: under these
 // weights the two fliers were worth more than the card, as the board
-// price said. `heuristic-sparetokens` seats it for the next measurement.
+// price said. On the curated mono-blue-artifacts deck (48 head-to-head
+// games) the price neither won nor lost measurably, 23.9% against
+// 26.1%, so it stays off. `heuristic-sparetokens` seats it for the next
+// measurement.
 //
 // Not spare, whatever the count: a nontoken creature (a card can matter
 // in ways its body does not show, as blockOnly says), a commander, a
