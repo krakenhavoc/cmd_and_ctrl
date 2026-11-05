@@ -157,11 +157,17 @@ func Station() ActivatedAbility {
 // has to resolve against that one).
 func stationEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	power, ok := ctx.TappedPower()
-	if !ok || power <= 0 {
+	if g.AbilitySourceGoneForEffect(item) {
 		return nil
 	}
-	if g.AbilitySourceGoneForEffect(item) {
+	power, ok := ctx.TappedPower()
+	// CR 702.184c: "Sulu stations Spacecraft as though his power were
+	// tripled" changes what a Spacecraft's station reads, and only a
+	// Spacecraft's (a Planet's is the plain power).
+	if src, found := g.LookupCardForEffect(item.SourceCardID); ok && found && src.HasSubtype("Spacecraft") {
+		power, ok = ctx.TappedStationPower()
+	}
+	if !ok || power <= 0 {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterCharge, N: power}.Apply(ctx)

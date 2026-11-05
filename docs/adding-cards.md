@@ -11717,6 +11717,16 @@ its rule (the static is the creature's own), and the enumerator, the
 view's `crew_power` and the engine's validator all count the same
 number. The client sums `crew_power` too since #3550.
 
+**"As though his power were tripled", and station (#4974, CR 702.184c).**
+`CostPowerRule.Multiplier` multiplies the counted power before any bonus
+is added (Sulu, Heroic Helmsman's 3). `game.CostPowerStation` is the use for
+"stations Spacecraft": the station ability of a Spacecraft reads
+`Context.TappedStationPower`, which is `Card.CountedPower(CostPowerStation)`
+live, or the `PaidTap.StationPower` the exit hook froze when the creature
+has left (CR 608.2h). A Planet's station still reads the plain power,
+because the card names Spacecraft. Sulu's static is
+`crewsAndStationsAsThoughPowerTripled` (trek_b46_helpers.go).
+
 A card that makes a Pilot token passes `PilotToken()` ("This token saddles
 Mounts and crews Vehicles as though its power were 2 greater") or, for the
 crew-only wording, `CrewPilotToken()` to `CreateToken`

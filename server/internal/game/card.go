@@ -2026,7 +2026,9 @@ func (c Card) PowerForComparison() int {
 //  1. Start from PowerForComparison (layers and P/T counters, not
 //     clamped). If a rule for this use says UseToughness, start from the
 //     toughness instead.
-//  2. Add the Bonus of every rule for this use. Two rules add up.
+//  2. Multiply by the Multiplier of every rule for this use that has one
+//     ("as though its power were tripled"), then add the Bonus of every
+//     rule for this use. Two bonuses add up.
 //  3. Clamp at zero, as CurrentPower does: a creature never takes power
 //     away from a total, but the bonus is added BEFORE the clamp, so a
 //     -1/1 with "+2" counts 1, not 2 (owner decision 2, 2026-10-14).
@@ -2044,6 +2046,11 @@ func (c Card) CountedPower(use CostPowerUse) int {
 		if r.Uses&use != 0 && r.UseToughness {
 			p = t
 			break
+		}
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.Multiplier > 1 {
+			p = SaturatingMul(p, r.Multiplier)
 		}
 	}
 	for _, r := range eff.CostPower {
