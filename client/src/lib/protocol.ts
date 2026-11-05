@@ -4156,6 +4156,9 @@ export interface PurposeView {
   // turn each of its controller's planeswalkers may activate a loyalty
   // ability.
   extra_loyalty_activations?: number;
+  // #5083: on an activated row of its controller's own, the +1/+1
+  // counters it puts on its own source, to stay (Hangarback Walker 1).
+  source_counters?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

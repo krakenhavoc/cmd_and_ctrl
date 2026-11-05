@@ -527,6 +527,17 @@ type Config struct {
 	// SpareTokenKeep is how many copies of a token body the bot keeps
 	// at their full price under PriceSpareTokens.
 	SpareTokenKeep int
+	// PriceSourceCounters prices the +1/+1 counters an activated row of
+	// the bot's own declares it puts on its own source
+	// (Purpose.SourceCounters, #5083, source_counter.go) at Weights.Power
+	// plus Weights.Toughness each, in place of the flat ActivateBase. So
+	// Hangarback Walker grows in the bot's own main phase with spare
+	// mana. Off (the zero value, DefaultConfig and BaselineConfig) prices
+	// the row at ActivateBase, so the Walker grows in the end step before
+	// the bot's untap, where the tap costs nothing: in #5083's arena the
+	// price lost head-to-head, so it ships off and the arena's
+	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
+	PriceSourceCounters bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -955,6 +966,8 @@ func DefaultConfig() Config {
 		// #4991: spare tokens stay at their board value (the price lost
 		// in the arena); two copies kept when it is turned on.
 		SpareTokenKeep: 2,
+		// #5083: PriceSourceCounters stays off (the price lost in the
+		// arena); `heuristic-sourcecounters` turns it on.
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -1183,6 +1196,8 @@ func BaselineConfig() Config {
 	// #4991: every sacrificed token cost its board value.
 	c.PriceSpareTokens = false
 	c.SpareTokenKeep = 0
+	// #5083: a row's counter on its own source was the flat ActivateBase.
+	c.PriceSourceCounters = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

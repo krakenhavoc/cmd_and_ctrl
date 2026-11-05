@@ -35,6 +35,61 @@ Scryfall dump the authoring machine did not have, and the synthetic
 battle decks hold no graveyard-exile sink. The labelled position suite
 kept its agreement.
 
+## A counter on its own source (#5083, S75)
+
+Hangarback Walker's "{1}, {T}: Put a +1/+1 counter on this creature."
+declared only that it answers (`pump`), so it was priced at the flat
+`ActivateBase` (0.50) less the blocker its tap costs (0.30): 0.20 on the
+bot's own turn, under `PassThreshold` (0.25). The row now declares
+`source_counters: 1`, and `PriceSourceCounters` prices each counter at
+`Weights.Power` plus `Weights.Toughness` (1.45; [bot.md](bot.md#a-counter-on-its-own-source-5083)).
+It **ships off**: the arena below found the price a loss.
+`heuristic-sourcecounters` seats today's heuristic with it on. The
+position tests (`heuristic/source_counter_test.go`) and the real-engine
+regression (`aiseat/source_counter_bot_test.go`) hold both sides: with
+the price on, the Walker grows in the bot's own main phase with two
+spare Islands, keeps its attack when the attack is lethal, keeps its
+block on an opponent's turn, and gives way to a castable 3/3 flier; with
+it off the bot passes on its own turn. Both grow it in the end step
+before the bot's untap.
+
+The 2026-11-05 UTC runs used develop `f01023882` plus #5083 and the
+synthetic `--decks thopter-battle` at all four seats, rotation and
+lockstep. Every game ended with a winner and none stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy, and decision logs:
+
+| Policy | Walker activations | When | Mean turns |
+|---|---|---|---|
+| price on | 185 | own precombat main 177, own postcombat main 8 | 15.1 |
+| price off (today) | 67 | all in the end step before the bot's untap ("leftover mana") | 14.3 |
+
+With the price on, 126 of the 177 precombat activations were made with no
+cast on offer. The Walker was never grown on an opponent's turn, so it
+was tapped through each of them.
+
+Then one head-to-head: two seats with the price on against two without,
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games | 95% CI |
+|---|---|---|
+| price on (`heuristic-sourcecounters`) | 17, 17.7% | 11.4–26.5% |
+| price off (today's `heuristic`) | 31, 32.3% | 23.8–42.2% |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. The seats that grew the
+Walker before combat did worse. Grown on its own turn, the Walker stays
+tapped through every opponent's turn; grown in the end step before the
+bot's untap, it gets the same counter from the same mana and blocks all
+round. The blocker price (0.30) is too small for a round of blocks
+against a counter one window away, so the flat price's timing was the
+better play. A price that waits for that end step, or one that counts
+the blocks the opponents' turns would ask for, is the next thing to
+measure before turning the switch on. The labelled position suite and
+the package tests passed. Reports and decision logs stayed on the
+authoring machine.
+
 ## Spare tokens for Sai's draw (#4991, S75)
 
 Sai, Master Thopterist's "{1}{U}, Sacrifice two artifacts: Draw a card"
