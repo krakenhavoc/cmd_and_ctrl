@@ -262,6 +262,36 @@ jobs:
         working-directory: server
         run: go vet ./...
 
+      # The golangci-lint and govulncheck binaries (#4958). Neither tool
+      # is in server/go.mod, so no setup-go cache holds them, and every
+      # hosted run downloaded and compiled both before lint could start
+      # (a minute or more). `make tools` builds them under
+      # server/bin/tools/<go version>/<tool>-<version>/, and `make lint`
+      # and `make vulncheck` run that binary when it is there. The key is
+      # the OS, arch and Go version plus `make tools-key`, which prints the
+      # Makefile's pins: the versions stay set in one place, and a pin
+      # bump or a new Go patch release builds once and saves a new entry.
+      # On a hit `make tools` builds nothing. Hosted only, like the caches
+      # above: a self-hosted runner keeps its warm build cache, and lint
+      # and vulncheck fall back to `go run` there as before.
+      - name: Compute tool cache key
+        id: tools-key
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: echo "key=server-tools-${RUNNER_OS}-${RUNNER_ARCH}-$(go env GOVERSION)-$(make -s tools-key)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache golangci-lint and govulncheck binaries
+        if: runner.environment == 'github-hosted'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: server/bin/tools
+          key: ${{ steps.tools-key.outputs.key }}
+
+      - name: Server — build lint tools
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: make tools
+
       # golangci-lint's own analysis cache (#4855). Nothing else restores
       # ~/.cache/golangci-lint: setup-go caches only the module and build
       # caches. So every hosted run linted the whole tree from nothing:
@@ -291,7 +321,8 @@ jobs:
 
       - name: Server — lint
         working-directory: server
-        # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
+        # golangci-lint v2.14.0, the binary `make tools` built (else via
+        # `go run`; see server/Makefile): the
         # repo's .golangci.yml, with errcheck and unparam excluded in
         # test files. Wired in by #582 once the tree was clean under it.
         # It runs on the job's own Go 1.27 (its floor is 1.26), so the
