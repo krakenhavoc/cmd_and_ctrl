@@ -120,7 +120,9 @@ func TestFlatPricedPermissionRefusesTheCardsOwnOverload(t *testing.T) {
 // but its own; Muldrotha's is at the printed cost and lets the card's
 // own evoke through. A claim that names neither permission's key is
 // cast under the printed-cost one, so evoke is castable whichever of
-// the two came under its controller's control first.
+// the two came under its controller's control first. And it is offered
+// in either order too: the offer list (the view's buttons, the bot's
+// moves) lists it under the same permission the cast uses.
 func TestGreenGoblinBesideMuldrothaLetsAGraveyardCardBeEvokedInEitherOrder(t *testing.T) {
 	for _, goblinFirst := range []bool{true, false} {
 		name := "Muldrotha first"
@@ -144,6 +146,9 @@ func TestGreenGoblinBesideMuldrothaLetsAGraveyardCardBeEvokedInEitherOrder(t *te
 			}
 			drifter := spmB18Graveyard(g, me, mulldrifterCard(me))
 
+			if keys := grantedKeysFor(g, me.ID, drifter, game.ZoneGraveyard); !hasKey(keys, "evoke") {
+				t.Errorf("offers from the graveyard = %v, want Mulldrifter's own evoke under Muldrotha", keys)
+			}
 			// Evoke {2}{U}, less Green Goblin's {2}: {U}.
 			g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
 			floatForTest(g, me, "U")
