@@ -65,20 +65,8 @@ var (
 	})
 
 	// "Put two charge counters on up to one target artifact."
-	sevenOfNineChargeBody = game.ReflexiveBody("seven-of-nine-tertiary-adjunct/charge", simpleBody(sevenOfNineCharge),
+	sevenOfNineChargeBody = game.ReflexiveBody("seven-of-nine-tertiary-adjunct/charge", simpleBody(trekB28TwoChargeCountersOnTheTarget),
 		constTargets(func() *game.TargetSpec {
 			return TargetPermanent("up to one target artifact", Artifact()).WithCount(0, 1)
 		}))
 )
-
-// sevenOfNineCharge puts two charge counters on the target if it is
-// still legal; none chosen is not an error.
-func sevenOfNineCharge(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return AddCounter{Target: t.ID, Kind: game.CounterCharge, N: 2}.Apply(ctx)
-		}
-	}
-	return nil
-}
