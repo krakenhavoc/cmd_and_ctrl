@@ -43,6 +43,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Waterbend {4}: Target creature can't be blocked this turn.",
+			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    WaterbendCost("{4}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  msc17CantBeBlockedTheTarget("Waterbender Ascension — can't be blocked"),

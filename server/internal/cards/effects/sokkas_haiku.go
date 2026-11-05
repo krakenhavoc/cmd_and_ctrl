@@ -35,10 +35,10 @@ func init() {
 				}
 				return DrawCards{N: 1}.Apply(ctx)
 			}),
+			Instruction(func(ctx *Context) error { return MillCards{N: 3}.Apply(ctx) }),
+			// The untap is its own instruction: it reads the land target,
+			// never the mill's outcome.
 			Instruction(func(ctx *Context) error {
-				if err := (MillCards{N: 3}).Apply(ctx); err != nil {
-					return err
-				}
 				if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
 					return UntapTarget{Target: t.ID}.Apply(ctx)
 				}
