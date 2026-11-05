@@ -1379,8 +1379,15 @@ export const LABEL_SPECS = {
     name: "filter the catalogue by set",
     kind: "aria",
     role: "combobox",
-    owners: ["routes/Catalog.svelte"],
-    doc: "the Catalogue's set picker (#4790): narrows the grid to one set's cards and shows how many of its cards the game plays",
+    owners: ["lib/components/SetPicker.svelte"],
+    doc: "the Catalogue's set picker (#4790): a combobox that filters the sets by name or set code as you type, narrows the grid to the picked set's cards and shows how many of its cards the game plays",
+  }),
+  clearCatalogueSet: label({
+    name: "clear the set filter",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/SetPicker.svelte"],
+    doc: "the set picker's clear button (#4790): empties the box and goes back to All sets",
   }),
   searchRoadmap: label({
     name: "search the roadmap",
