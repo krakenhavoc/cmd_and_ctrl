@@ -88,6 +88,7 @@ body decayed/sacrifice
 body decayed/schedule
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
+body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
 body destroy/the-payload-permanent
@@ -327,6 +328,7 @@ choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/archon-of-cruelty-payout
@@ -340,6 +342,7 @@ choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
+choose choose-cards/borg-cube-assimilate
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
 choose choose-cards/brazen-bluff-cast
@@ -529,6 +532,7 @@ choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-something-worth-saving-pick
+choose choose-cards/mill-then-take-temporal-anomaly-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/minas-tirith-garrison-tap-humans
 choose choose-cards/mind-extraction-discard-b
@@ -664,6 +668,7 @@ choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
+choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/transpose-after-discard
@@ -746,6 +751,7 @@ condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
 condition combat/your-creature-hit-the-player
+condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
@@ -780,6 +786,7 @@ confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
+confirm confirm/bebop-skull-and-crossbones-draw-lose
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
@@ -842,6 +849,7 @@ confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
+confirm confirm/merciful-mandate-end-combat
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/msh-a6-nick-fury-transform
@@ -890,6 +898,7 @@ confirm confirm/sword-of-light-and-shadow-return
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
+confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-discovery-search
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
@@ -947,6 +956,7 @@ drawthen teferi-akosa-discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
+maycast may-cast/free-play-back-land-or-hand
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
@@ -1242,6 +1252,7 @@ pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 pick revealed-pick/traumatic-revelation-incubate
 pick revealed-pick/word-of-command-play
+pick revealed-pick/zero-incorporeal-sensate-exile
 resume replacement-resume/combat-damage
 resume replacement-resume/combat-damage-redirected
 resume replacement-resume/counter
@@ -1398,6 +1409,7 @@ run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
+run the-city-on-the-edge-of-forever/gain-five
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
@@ -1520,6 +1532,7 @@ tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
+tail borg-cube/assimilated
 tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
 tail brago-king-eternal/return-exiled
@@ -1813,6 +1826,7 @@ tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
 tail mill-then-take/something-worth-saving
+tail mill-then-take/temporal-anomaly
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
@@ -1914,6 +1928,7 @@ tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
+tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saruman-of-many-colors/after-mill
@@ -2143,6 +2158,7 @@ tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
+tail trek-b27/deep-space-9-put-permanents
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders

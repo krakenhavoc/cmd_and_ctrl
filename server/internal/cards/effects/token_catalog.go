@@ -320,8 +320,15 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
 	printedPestAttackToken,
+	// Star Trek batch 23 (#4973): Cleveland Booker, Empath's Worm that
+	// can't block, and The City on the Edge of Forever's Human.
+	printedTrekB23CantBlockWormToken,
+	printedTrekB23CantPhaseInHumanToken,
+
 	// Genesis Effect's New Planet (Star Trek, #4973).
 	printedTrekB16NewPlanetToken,
+	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
+	printedTrekB33TribbleToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
