@@ -15,6 +15,12 @@ import (
 // card on reveal_ids, and either shows it to the table or pays {2}
 // more.
 //
+// The row's purpose declares the trample as a benefit on its target
+// (#4302) and the {R}{R}{R}{R} of its third resolution this turn
+// (ResolutionMana, #4980), so the bot prices the activation that will
+// be the third resolution by the mana it returns rather than as a
+// repeat of a grant the creature already has.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -26,12 +32,22 @@ func init() {
 			Label:   soulbrightSeekerLabel,
 			Cost:    ManaCost("{R}"),
 			Targets: TargetCreature("target creature you control", YouControl()),
+			Purpose: soulbrightSeekerPurpose(),
 			Effect:  soulbrightSeekerAbility,
 		}},
 	})
 }
 
 const soulbrightSeekerLabel = "{R}: Target creature you control gains trample until end of turn; the third time it resolves this turn, add {R}{R}{R}{R}"
+
+// soulbrightSeekerPurpose is what the row does: trample for its target
+// until end of turn, and {R}{R}{R}{R} on the third resolution this turn
+// (the count soulbrightSeekerAbility reads).
+func soulbrightSeekerPurpose() game.Purpose {
+	p := ForTargets(BenefitUntilEOT(0, 0, 0, "trample"))
+	p.ResolutionMana = &game.ResolutionMana{Resolution: 3, Mana: "{R}{R}{R}{R}"}
+	return p
+}
 
 // soulbrightSeekerAbility is the ability's body. The count is the
 // per-turn tally of this Seeker's resolutions of this ability, which

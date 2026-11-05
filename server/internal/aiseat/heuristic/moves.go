@@ -409,9 +409,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && p.repeatsFreeActivation(st, m) {
 			return freeRepeat, "free activation already made this turn"
 		}
+		// #4980: a run to the resolution that adds mana
+		// (resolution_mana.go) repeats its grant on purpose.
+		rmV, rmOK := 0.0, false
+		if !across {
+			rmV, rmOK = p.resolutionManaValue(st, m)
+		}
 		// #4302: a no-amount grant the row already gave the same
 		// creature this turn (temporary_effect.go).
-		if !across && p.repeatsTemporaryGrant(st, m) {
+		if !across && !rmOK && p.repeatsTemporaryGrant(st, m) {
 			return redundantGrant, "grant already made this turn"
 		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
@@ -470,6 +476,18 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 					v, reason, purposed = 0, "activate (counter on its source)", true
 				}
 				v += cv
+			}
+			// #4980: the mana the run's last resolution returns, which
+			// the bot's hand can spend (resolution_mana.go).
+			if rmOK {
+				if !purposed {
+					v, purposed = 0, true
+				}
+				v += rmV
+				reason = "activate (mana on a counted resolution)"
+				if targetV < 0 && st.ownPicksOnly(cp.Targets) {
+					targetV = 0
+				}
 			}
 			// #4978: a rider on a row that declares nothing else priced
 			// is added to ActivateBase (riders.go), and such a row pays

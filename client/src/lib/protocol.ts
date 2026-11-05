@@ -3796,6 +3796,11 @@ export interface ActivatedAbilityView {
   // charged_mana_cost already carries the keyword's reduction by the
   // permanent's mana cost the turn it entered.
   power_up_used?: boolean;
+  // #4980: on a row whose purpose declares resolution_mana, how many
+  // times this permanent's row has resolved this turn (the engine's own
+  // count; an activation still on the stack is not in it). Bot data; the
+  // client does not read it.
+  resolved_this_turn?: number;
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -4213,6 +4218,10 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4980: on an activated row of its controller's own, the mana it adds
+  // on one numbered resolution of it this turn (Soulbright Seeker: the
+  // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.
+  resolution_mana?: { resolution: number; mana: string };
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

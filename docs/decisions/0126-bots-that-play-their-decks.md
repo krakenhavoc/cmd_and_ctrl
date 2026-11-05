@@ -3041,3 +3041,31 @@ Every game ended on the same turn with the same winner. On these decks the chang
 - The attack of a creature that already has lifelink, a lifelink blocker's block, and double strike's second event.
 - Life a spell, an enters trigger or a landfall or creature-enter row gains (Courser of Kruphix, Lifecreed Duo): one event each.
 - A lifegain payoff counted at resolution (Archangel of Thune's counter on each creature you control), and the "if you gained life this turn" rows.
+
+## Amendment 2026-11-05 (#4980): mana on a counted resolution
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceResolutionMana`, on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noresolutionmana` is `DefaultConfig()` with it off.
+**Issue:** [#4980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4980), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) (the "Soulbright Seeker's third activation" item of the amendment of 2026-10-24 (b)'s "Not priced"). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (one new purpose field) and the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is), whose item 5 exempted Soulbright Seeker from `TestUntilEndOfTurnRowsDeclareTheirDirection`.
+
+### The problem
+
+Soulbright Seeker's "{R}: Target creature you control gains trample until end of turn. If this is the third time this ability has resolved this turn, add {R}{R}{R}{R}." declared nothing. A direction alone would price every repeat of the trample below a pass, because the creature already has it and #4302's grant memory refuses a repeat on the same creature, so the third activation, which costs {R} and returns {R}{R}{R}{R}, was never priced for its mana, and the row was exempt from the guard test.
+
+### Decision
+
+1. **A row declares the mana and the resolution** (`game.ResolutionMana`, `purpose.resolution_mana: {resolution, mana}`): which of the row's resolutions this turn adds it, counting the one resolving, and the mana as printed symbols. Only on an activated row of the controller's own; `effects.Register` refuses it elsewhere, on a resolution before the first, and on mana that is not fixed symbols (a generic number, X, hybrid or Phyrexian). Declared on Soulbright Seeker, `{3, "{R}{R}{R}{R}"}`, beside its trample's target entry, so the row is no longer exempt.
+2. **The view carries the engine's count.** A row that declares `resolution_mana` is stamped with `resolved_this_turn`: `Game.ResolvedThisTurn` for the row's label on its source, the tally the card's own effect reads, per object (CR 400.7). Public, since every player saw each resolution. The policy adds the row's items still on the stack, which have not resolved: the move on offer is resolution `resolved_this_turn + pending + 1`. The engine's count, not the policy's per-turn memory of its own activations, because the card counts resolutions: a countered activation and a seat restarted mid-turn would put a remembered count off.
+3. **Priced only where the mana comes back and can be spent** (`aiseat/heuristic/resolution_mana.go`). In the bot's own main phase, an activation on a run to that resolution is priced when the rest of the run (this activation included) can be paid from the bot's untapped mana and pool, the mana added is more than the run still costs, and the most mana the hand and command zone could spend after the run (a subset sum over their mana values, commander tax included, colours not counted) is more than without it. It is then worth `SpellPerMana` per mana they could spend after the run, in place of the grant's price: a ritual is worth the casts it pays for. A repeated grant on the bot's own creature costs nothing more on such a run, so neither the redundant-grant price nor the grant memory blocks it, and the row is not a mana sink under `SinkManaLast`: a run that nets mana never takes away a cast the bot could make without it. Anywhere else the row keeps the trample grant's price.
+4. **On by default.** The position tests (`heuristic/resolution_mana_test.go`) show the price adds a move only where the mana returns and is spent: the third activation with one Mountain and a four-drop in hand, the run from none or one resolution with the Mountains to finish it, in either main phase, and ahead of a two-drop that would leave the four-drop uncast. It adds none when the run cannot be paid, when the hand cannot spend the mana (nothing in hand, or a five-drop the mana still misses), when an activation already on the stack is the third, and on another player's turn. The whole-engine test (`aiseat/resolution_mana_bot_test.go`) runs the real Seeker three times off three Mountains and casts a {3}{R} 4/4 from the pool; with the switch off the bot does neither.
+
+### Measurements
+
+None. No curated or synthetic arena deck holds Soulbright Seeker, and the declaration changes no other card's price, so an arena run would compare identical games. `heuristic-noresolutionmana` is there for the run a deck with the Seeker would allow.
+
+### Not priced
+
+- An instant the mana could pay for outside the bot's own main phase, and an activated ability the mana could pay for.
+- The colours of the cards the mana would pay for: a run toward a card whose other colours the bot's lands cannot make is priced as though they could.
+- A run the turn plan (ADR 0136) would weigh as a member: the plan ranks casts, and the run is a single move it is compared against.
+- The other "the nth time this ability has resolved this turn" cards in the catalog (Elrond, Lord of Rivendell; Belladonna Took; Victor, Valgavoth's Seneschal; Sephiroth, Fabled SOLDIER, among others): what their numbered resolution does is not mana, and Soulbright Seeker is the only one whose is.
