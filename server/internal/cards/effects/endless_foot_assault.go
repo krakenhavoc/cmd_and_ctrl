@@ -13,8 +13,10 @@ import (
 //	 creature token that's tapped and attacking that player."
 //
 // Squad is CR 702.157a's two linked abilities: an optional mana cost
-// paid any number of times (Squad), and an enters trigger that makes a
-// token copy for each payment (SquadTrigger). The copies have both of
+// paid any number of times (SquadMana), and an enters trigger that makes
+// a token copy for each payment (Squad; both in tmc_b4_helpers.go). The
+// cap of 20 payments on one announcement is the engine's, multikicker's
+// reason. The copies have both of
 // this card's abilities, so each one makes its own Ninjas.
 //
 // "Whenever you attack" is CR 508.3d: it triggers once when one or more
@@ -32,10 +34,10 @@ func init() {
 		Name:         "Endless Foot Assault",
 		Completeness: CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{
-			Squad("{1}{W}"),
+			SquadMana("{1}{W}", 20),
 		},
 		Triggered: []game.TriggeredAbility{
-			SquadTrigger("Endless Foot Assault — squad: a token copy for each time squad was paid"),
+			Squad("Endless Foot Assault"),
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller)
 			}, "Endless Foot Assault — a tapped and attacking Ninja for each opponent", endlessFootAssaultNinjas)),
