@@ -1749,6 +1749,33 @@ walker), where the grant cannot be used before the turn ends. After it
 resolves, the enumerator offers the walkers' loyalty rows again and they
 are priced as usual.
 
+### A counter on its own source (#5083)
+
+Hangarback Walker's "{1}, {T}: Put a +1/+1 counter on this creature."
+declares `source_counters: 1` on the row. With `PriceSourceCounters` on
+(`source_counter.go`; off by default, see below), each such counter is worth `Weights.Power` plus
+`Weights.Toughness` (1.45), the price a landfall or discard payoff's
+counter on its source already has, in place of the flat `ActivateBase`.
+The tap is priced as before: the blocker (0.30), and before combat on
+the bot's own turn the attack it gives up. So the Walker grows in the
+bot's own main phase with spare mana (1.15 against `PassThreshold`
+0.25), where the flat price (0.20) left it for the end step before the
+bot's untap. A spell that wants the mana, or an attack worth more than
+the counter, comes first. On an opponent's turn before blockers are
+declared the counter is not priced, since the tap takes a blocker out of
+the coming combat. The Thopters the counter becomes when the Walker dies
+are not priced, so the price is a floor.
+
+The switch ships off: in the arena the seats that grew the Walker on
+their own turn lost to the seats that grew it in the end step before
+their untap ([bot-testing.md](bot-testing.md#a-counter-on-its-own-source-5083-s75)).
+Grown before combat, the Walker stays tapped through every opponent's
+turn, and the flat blocker price undercounts that against a counter the
+bot gets for nothing one window later. So the row keeps `ActivateBase`
+in `DefaultConfig` and `BaselineConfig`, and the Walker grows in the end
+step before the bot's untap, as before. `heuristic-sourcecounters` turns
+the price on in the arena.
+
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
 An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
@@ -2684,7 +2711,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink` or `heuristic-sparetokens`. `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink` or `heuristic-sparetokens`. `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |

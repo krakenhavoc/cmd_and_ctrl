@@ -454,6 +454,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				}
 				curveRow = true
 			}
+			// #5083: the +1/+1 counters the row puts on its own source
+			// (source_counter.go), in place of the flat ActivateBase.
+			if cv, ok := p.sourceCounterValue(st, src, row); ok {
+				if !purposed {
+					v, reason, purposed = 0, "activate (counter on its source)", true
+				}
+				v += cv
+			}
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
 			// Strip Mine targeting itself would otherwise beat passing.
