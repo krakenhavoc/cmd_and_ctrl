@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Shire Terrace — Land (EDHREC rank 2284):
 //
 //	"{T}: Add {C}.
@@ -17,19 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "619173f4-0403-49cd-9659-2fedd5028a90",
-		Name:         "Shire Terrace",
-		Completeness: CompletenessFull,
-		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{C}",
-			Label:    "Add {C}",
-		}},
-		Activated: []ActivatedAbility{{
-			Label:   "{1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1},
-			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
-			Effect:  fetchBasicTapped,
-		}},
+		OracleID:      "619173f4-0403-49cd-9659-2fedd5028a90",
+		Name:          "Shire Terrace",
+		Completeness:  CompletenessFull,
+		ManaAbilities: []ManaAbility{tapForColorless()},
+		Activated:     []ActivatedAbility{oneTapSacFetchBasicTapped()},
 	})
 }

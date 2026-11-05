@@ -67,6 +67,18 @@ const (
 	maxConfiguredInt = 1 << 20
 )
 
+// The idle cleanup (ADR 0211 §7): how long a table may go unused before
+// the server closes it. Each is a Go duration; "0" switches that cleanup
+// off. The defaults are the owner's decisions of 2026-10-29.
+const (
+	EnvIdleLobby     = "CMDCTRL_IDLE_LOBBY_TABLE_AFTER"
+	EnvIdleGame      = "CMDCTRL_IDLE_GAME_AFTER"
+	EnvIdleBots      = "CMDCTRL_IDLE_BOTS_AFTER"
+	defaultIdleLobby = 24 * time.Hour
+	defaultIdleGame  = 48 * time.Hour
+	defaultIdleBots  = time.Hour
+)
+
 // Limits are the server's caps. The zero value has every cap off and
 // every creation limit at its default; use FromEnv or Defaults for a
 // deployment's.
@@ -101,6 +113,16 @@ type Limits struct {
 	AccountEvery time.Duration
 	IPBurst      int
 	IPEvery      time.Duration
+
+	// IdleLobbyAfter, IdleGameAfter and IdleBotsAfter are the idle
+	// cleanup's thresholds (ADR 0211 §7): an unstarted table with no
+	// activity for IdleLobbyAfter, a started game with no human move
+	// for IdleGameAfter, and a started game left to its bots, with no
+	// person connected, for IdleBotsAfter, are closed. 0 switches that
+	// cleanup off, which is what the zero Limits has.
+	IdleLobbyAfter time.Duration
+	IdleGameAfter  time.Duration
+	IdleBotsAfter  time.Duration
 }
 
 // Defaults are the shipped limits. See ADR 0148 for the derivation:
@@ -118,6 +140,9 @@ func Defaults() Limits {
 		AccountEvery:    defaultAccEvery,
 		IPBurst:         defaultIPBurst,
 		IPEvery:         defaultIPEvery,
+		IdleLobbyAfter:  defaultIdleLobby,
+		IdleGameAfter:   defaultIdleGame,
+		IdleBotsAfter:   defaultIdleBots,
 	}
 }
 
@@ -199,6 +224,29 @@ func FromEnv(getenv func(string) string) (Limits, error) {
 		d, err := time.ParseDuration(raw)
 		if err != nil || d <= 0 {
 			return Limits{}, fmt.Errorf("%s=%q: want a positive Go duration such as 30s", f.name, raw)
+		}
+		*f.dst = d
+	}
+	idle := []struct {
+		name string
+		dst  *time.Duration
+	}{
+		{EnvIdleLobby, &l.IdleLobbyAfter},
+		{EnvIdleGame, &l.IdleGameAfter},
+		{EnvIdleBots, &l.IdleBotsAfter},
+	}
+	for _, f := range idle {
+		raw := strings.TrimSpace(getenv(f.name))
+		if raw == "" {
+			continue
+		}
+		if raw == "0" {
+			*f.dst = 0
+			continue
+		}
+		d, err := time.ParseDuration(raw)
+		if err != nil || d < 0 {
+			return Limits{}, fmt.Errorf("%s=%q: want a Go duration such as 24h, or 0 for off", f.name, raw)
 		}
 		*f.dst = d
 	}

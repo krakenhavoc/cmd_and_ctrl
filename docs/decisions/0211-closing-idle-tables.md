@@ -255,3 +255,12 @@ The owner answered the six questions this ADR asked when it was Proposed. The an
 4. **My games shows why a table closed,** from `closed_reason`. Yes.
 5. **Agent seats count as people** for the idle clocks, as in ADR 0177. Yes.
 6. **The keep window is 48 hours, not 7 days.** The recommendation was 7 days. The owner chose 48 hours after being told that once the window ends, the restore point is removed and the game cannot be resumed; only the row and the replay remain.
+
+## Amendment (2026-11-05, #4562): sub-PRs 2 and 3 as built
+
+- **Migration 0031, not 0029.** Game statistics version 2 (ADR 0217) took 0029 and 0030 first, so `last_active_at` and `closed_reason` are migration 0031 (`0031_idle_tables.sql`). Nothing else about the columns changes.
+- **The commit stamp.** `Room.LastHumanAt` is stamped by `ApplyAction`, `ApplyExternalAction` (the opening roll, mulligans, table rolls and socket settings changes mint no undo entry but are moves), `ApplyBundle` and `UndoBy`, under the rule of §1. The hub passes the admin flag to the undo (`UndoBy`), so an admin bound to a seat never counts.
+- **Unarchiving gives a fresh clock.** `DELETE /games/{id}/archive` clears `closed_reason` and touches the table, even though it is an admin's. Without that the sweep would close an unarchived table again on its next tick, which would make the 48-hour keep window useless.
+- **Admin calls through a host's lobby method still touch.** Most lobby entry points do not know who called them (adding a bot, transferring hosting, rotating an invite, starting). Where the caller is known it is honoured: the HTTP settings change (actor `uuid.Nil`), an away answer and the DM invite skip the touch for an admin. Elsewhere an admin's lobby call keeps a lobby table open a little longer, which is the safe direction.
+- **The warning's closing time** is rendered in UTC in the log line ("closes at 21:14 UTC on Friday"); the local time is sub-PR 4's `idle_close_at` field.
+- **Still to build:** sub-PR 4 (the `idle_close_at` view field and table notice, the warning DM, the close reason in My games and the admin views, the runbook entry) and sub-PR 5 (the bot-only play-out at fast pace).

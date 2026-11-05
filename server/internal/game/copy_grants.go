@@ -261,6 +261,16 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.TriggerDoublers) > 0 {
 			merged.TriggerDoublers = append(append([]TriggerDoubler(nil), merged.TriggerDoublers...), g.TriggerDoublers...)
 		}
+		// #4973: a layer-6 grant may carry "you may play an additional
+		// land on each of your turns" and "you may play lands from your
+		// graveyard" (Nog, Ambitious Cadet's Officer). Both are facts
+		// about the recipient's controller, read live off the composite
+		// key (EffectiveLandDropsLocked, standingCastPermissionsLocked),
+		// so they end the pass the grant does and two recipients add.
+		merged.AdditionalLandPlays += g.AdditionalLandPlays
+		if len(g.CastPermissions) > 0 {
+			merged.CastPermissions = append(append([]CastPermission(nil), merged.CastPermissions...), g.CastPermissions...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

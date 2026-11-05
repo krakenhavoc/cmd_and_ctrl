@@ -12,6 +12,8 @@
 - [ADR 0041](0041-game-persistence.md) (the replay JSONL), [ADR 0055](0055-loop-breaker.md) (the loop breaker) and [ADR 0193](0193-demonstrate-a-loop-record-once-replay-n-times.md) (demonstrated loops), for combo detection.
 - [ADR 0124](0124-admin-views-accounts-games-and-who-is-on-now.md) (admin Accounts, and the `admin action` audit line), [ADR 0158](0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) (the Decks page and the signed-in page frame), [ADR 0213](0213-friends-recently-played-with-and-live-presence.md) (friends and blocks).
 
+**Amended 2026-11-05:** the pod ADR this one requires is [ADR 0220](0220-pods-groups-of-players-for-shared-stats.md). §6, §9 and slice 7 now point at it, and §6's leaderboard is pod games only (owner answer 7).
+
 ---
 
 ## Context
@@ -245,7 +247,7 @@ All of this reads the turn samples of §1, on the seat's **own turns** only.
   - table names (a host may have named a table after people);
   - game ids or replay links;
   - anything about any other seat.
-- **Pods: a separate ADR.** No group concept exists, and a pod brings things this ADR should not decide in passing: who creates one, how members join (link or request), its name as a free-text surface to moderate, leaving, size limits and deletion. This ADR scopes itself to the stats side and **requires a pod ADR before slice 7**. What the stats side needs from a pod:
+- **Pods: a separate ADR**, now [ADR 0220](0220-pods-groups-of-players-for-shared-stats.md). No group concept exists, and a pod brings things this ADR should not decide in passing: who creates one, how members join (link or request), its name as a free-text surface to moderate, leaving, size limits and deletion. This ADR scopes itself to the stats side and **requires a pod ADR before slice 7**. What the stats side needs from a pod:
   - **Membership:** a pod is a named set of accounts. Guests, bots and agents cannot be members. Deleted accounts leave it, and ADR 0213 blocks apply.
   - **Consent:** a member's stats are visible to the pod only when that member has switched on `stats_prefs.share_pods` **and** belongs to the pod. Joining a pod is not consent to share. The switch is. A member who has not opted in shows as "not sharing" with no numbers.
   - **Pod stats** (`GET /pods/{id}/stats`, members only):
@@ -253,12 +255,12 @@ All of this reads the turn samples of §1, on the seat's **own turns** only.
     - the pod's own games, meaning games where two or more sharing members sat;
     - win kinds and turn order in those games;
     - head-to-head between two sharing members (wins when both sat).
-  - **A leaderboard** (`GET /pods/{id}/leaderboard`, members only). It ranks sharing members with at least **5 counted games** in the range, by win rate, then average place, then games. Each row shows its count, so a 3–2 record doesn't look like a 60–40 one. It has two scopes: "Pod games" (the default) and "All games".
+  - **A leaderboard** (`GET /pods/{id}/leaderboard`, members only). It ranks sharing members with at least **5 counted games** in the range, by win rate, then average place, then games. Each row shows its count, so a 3–2 record doesn't look like a 60–40 one. It covers pod games only. *(Amended 2026-11-05: this ADR first offered a second "All games" scope; owner answer 7 removed it.)*
 - **The rules every reader keeps** (ADR 0165 §9):
   - Deleted accounts never appear (`users.deleted_at IS NULL`).
   - A seat with `bot_tier` or `agent_client` never ranks and is never a human's record.
   - Opponents are never named unless they are sharing members of the same pod and the view is that pod's.
-  - A person blocked under ADR 0213 never sees the blocker's stats through a pod. The share link is the one exception, because it is a link the person chose to post.
+  - A person blocked under ADR 0213 never sees the blocker's stats through a pod, and the blocker does not see theirs ([ADR 0220](0220-pods-groups-of-players-for-shared-stats.md) §6). The share link is the one exception, because it is a link the person chose to post.
 
 ### 7. Card roles
 
@@ -318,7 +320,7 @@ The owner wants a stats experience that is "pretty" and useful for improving pla
     - **Play**: win kinds, places, aggression over turns.
     - **Commander**: casts per game and the first-cast turn.
 - **`#/stats/shared/<token>`**, the shared view (§6). The same components, read-only, with the owner's name in the header.
-- **`#/pods/<id>/stats`**, the pod page (slice 7, after the pod ADR). The leaderboard table, then the sharing members, then the pod's games.
+- **`#/pods/<id>/stats`**, the pod page (slice 7, after [ADR 0220](0220-pods-groups-of-players-for-shared-stats.md)). The leaderboard table, then the sharing members, then the pod's games.
 
 **Which chart for which stat:**
 
@@ -365,7 +367,7 @@ Every new stored item, and what deleting an account does to it:
 | Version-2 columns on `game_stats` and `seat_stats` | DB | as long as the game | **Kept**: part of the game record the other players keep, reached through the tombstone, as ADR 0165 §5 |
 | `seat_turn_stats`, `seat_target_stats`, `seat_card_seen` | DB | as long as the game | **Kept**, as above |
 | `stats_prefs` (the setting, who set it, pod sharing, the share link's hash and date) | DB | until changed | **Deleted**. The share link stops working in the same transaction |
-| Pod tables | the pod ADR | | the pod ADR |
+| Pod tables | [ADR 0220](0220-pods-groups-of-players-for-shared-stats.md) §12 | | ADR 0220 §12 |
 | Card roles | `data/scryfall/card-roles.json` | until the next refresh | not personal |
 | The deck-hash cache | memory | until restart | not stored |
 
@@ -374,7 +376,7 @@ Every new stored item, and what deleting an account does to it:
 - **The privacy page** (`routes/Privacy.svelte`, numbers in `lib/privacy.ts`) changes in the slice that ships each part:
   - **Slice 2:** the "Game statistics" row gains: "For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. It is part of the game's record, kept with the game, and shown only to you."
   - **Slice 3:** a new "Stats settings" row: "Whether advanced stats are on for you, and whether you or an admin set it. Kept until you change it or delete your account." It also says an admin can switch advanced stats on for you, and you can switch them off.
-  - **Slice 6:** a new "Sharing your stats" entry under "Who it is shared with": "If you make a share link, anyone with the link can see your stats pages under your display name, including your deck names, commanders and the cards you cast or held. They never show the other players' names. You can revoke the link at any time." Slice 7 adds the pod sentence.
+  - **Slice 6:** a new "Sharing your stats" entry under "Who it is shared with": "If you make a share link, anyone with the link can see your stats pages under your display name, including your deck names, commanders and the cards you cast or held. They never show the other players' names. You can revoke the link at any time." Slice 7 adds the pod sentence (its text is in ADR 0220 §12).
 - **Admins.** `GET /admin/stats` gains aggregates only: win kinds, table makeup totals and version-2 coverage (games at each `stats_version`, with `frames_complete`). An admin gets **no per-person advanced page**. The privacy page's existing "server admins can read them" stays true and needs no new wording.
 
 ## Calls made here
@@ -425,9 +427,9 @@ Each slice is one mergeable PR with its tests, against `develop`.
 | 4 | **Card roles** | none | `cmd/cardroles` with its tag mapping (each tag confirmed live) and its test against a recorded search response; `data/scryfall/card-roles.json`; `cards.Index.Roles`; the Purpose override and `roles_overrides.go`; the cron line and docs/commands.md | — | none (not personal) | 2 |
 | 5 | **The read routes** | none | `GET /me/stats/advanced?makeup=&range=` (overview) and `GET /me/stats/decks/{deck_id}?version=` (a deck), both refusing when the setting is off; deck composition, mana curve, average mana value and colour share from the deck list; cards in the most decks; the makeup filter; docs/lobby.md | — | none | 2 |
 | 6 | **The pages and the share link** | none (`stats_prefs` has the columns) | `POST`/`DELETE /me/stats/share-link`; `GET /stats/shared/{token}`, rate limited | `lib/statsCharts.ts`, `lib/components/stats/*`, `--chart-*` tokens and DESIGN.md; the rebuilt `#/stats`; `#/stats/deck/<id>` and the Stats link on `DeckCard`; `#/stats/shared/<token>`; the share dialog; labels and e2e; screenshots at 1440, 820 and 390 px | the Sharing your stats entry | 3 |
-| 7 | **Pod stats and the leaderboard** (after the pod ADR) | per the pod ADR, plus `share_pods` already in `stats_prefs` | `GET /pods/{id}/stats`, `GET /pods/{id}/leaderboard` | `#/pods/<id>/stats`, the pod-sharing switch | the pod sentence | 3 |
+| 7 | **Pod stats and the leaderboard** (ADR 0220's slice 5) | ADR 0220's tables, plus `share_pods` already in `stats_prefs` | `GET /pods/{id}/stats`, `GET /pods/{id}/leaderboard` | `#/pods/<id>/stats`, the pod-sharing switch | the pod sentence | 3 |
 
-Slice 6 may split into the overview and the deck page if the PR grows past review size. Slices 3 and 4 are independent of each other and of slice 2's code. Slice 5 needs 2 and 3, slice 6 needs 4 and 5, and slice 7 needs 6 and the pod ADR.
+Slice 6 may split into the overview and the deck page if the PR grows past review size. Slices 3 and 4 are independent of each other and of slice 2's code. Slice 5 needs 2 and 3, slice 6 needs 4 and 5, and slice 7 needs 6 and ADR 0220's slices 2 and 3.
 
 ## Consequences
 

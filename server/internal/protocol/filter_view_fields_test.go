@@ -45,12 +45,13 @@ func filterViewDeliberatelyZeroed(viewerID string) map[string]bool {
 	// deliberately handed zero for.
 	// LegalActions (ADR 0105) is the digest of that same list and
 	// follows the same rule, and so does LegalMovesTruncated (ADR 0122
-	// §6.1), the flag that says the list was cut.
+	// §6.1), the flag that says the list was cut, and LegalPromptCuts
+	// (#4765), what the enumerator cut from its prompts.
 	// ControlledLegalActions (ADR 0167 §7) is the digest of the moves in
 	// that list made for a seat the viewer controls, under the same rule.
 	// StackPositions (#3429) is a seat's own placement; the fixture gives
 	// it to the owner only, so this unseated viewer has none.
-	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true, "ControlledLegalActions": true, "StackPositions": true}
+	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true, "LegalPromptCuts": true, "ControlledLegalActions": true, "StackPositions": true}
 }
 
 // everyFieldGameView returns a GameView with every top-level exported
@@ -147,6 +148,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		ownerID: {Pass: true},
 	}
 	v.legalTruncatedBySeat = map[string]bool{ownerID: true}
+	v.legalPromptCutsBySeat = map[string][]LegalCutView{
+		ownerID: {{Choice: "cleanup_discard", Cap: "per_source", Omitted: 24}},
+	}
 	return v
 }
 
@@ -164,7 +168,7 @@ func assertGameViewFixtureComplete(t *testing.T, v GameView) {
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
-		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" || f.Name == "LegalMovesTruncated" || f.Name == "ControlledLegalActions" {
+		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" || f.Name == "LegalMovesTruncated" || f.Name == "LegalPromptCuts" || f.Name == "ControlledLegalActions" {
 			continue
 		}
 		if rv.Field(i).IsZero() {

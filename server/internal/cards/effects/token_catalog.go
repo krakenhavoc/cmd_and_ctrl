@@ -327,6 +327,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Genesis Effect's New Planet (Star Trek, #4973).
 	printedTrekB16NewPlanetToken,
+	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
+	printedTrekB33TribbleToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

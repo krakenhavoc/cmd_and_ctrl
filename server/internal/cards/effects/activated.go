@@ -656,7 +656,7 @@ func ExileACreatureYouControl() game.AbilityCost {
 //     not die and it is not sacrificed. Compose it with Plus like any
 //     other component.
 //   - from the GRAVEYARD — scavenge's and embalm's "Exile this card
-//     from your graveyard" (CR 702.96a, CR 702.128a). Build those with
+//     from your graveyard" (CR 702.97a, CR 702.128a). Build those with
 //     Scavenge / Embalm / Eternalize rather than by hand.
 //
 // Register refuses it on an ability that functions from any other

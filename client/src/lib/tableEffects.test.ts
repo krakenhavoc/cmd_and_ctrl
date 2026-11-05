@@ -39,6 +39,9 @@ import {
   effectMotion,
   effectsScheduled,
   exitKind,
+  FIZZLE_MOTES,
+  fizzleCue,
+  fizzleMotes,
   headlines,
   isEffectsMode,
   planEffects,
@@ -214,6 +217,81 @@ describe("cue selection", () => {
   it("exitKind reads the zone entry's own new_zone first", () => {
     const z = zone("a", "exile", { cause: "destroy" });
     expect(exitKind({ zone: z, sacrificed: false, step: "main1" }, ctx())).toBe("exile");
+  });
+});
+
+describe("a spell or ability fizzles (#4450)", () => {
+  const fizzle = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "fizzle",
+    seat: 1,
+    card_id: "bolt",
+    stack_item_id: "item-1",
+    batch: 12,
+    text: "Lightning Bolt fizzled: no legal targets",
+    ...extra,
+  });
+
+  it("is a fizzle cue on its stack item, with its batch", () => {
+    const [q] = plan([fizzle()]).cues;
+    expect(q.kind).toBe("fizzle");
+    expect(q.stackItemID).toBe("item-1");
+    expect(q.cardID).toBe("bolt");
+    expect(q.batch).toBe(12);
+    expect(q.weight).toBe("full");
+    expect(q.delayMs).toBe(0);
+  });
+
+  it("an entry from an old server falls back to the spell's card as the item", () => {
+    expect(plan([fizzle({ stack_item_id: undefined })]).cues[0].stackItemID).toBe("bolt");
+  });
+
+  it("an optional trigger that lapsed (call condition, CR 603.4) is no cue", () => {
+    expect(kinds([fizzle({ call: "condition" })])).toEqual([]);
+    expect(fizzleCue(fizzle({ call: "condition" }))).toBeNull();
+  });
+
+  it("an entry of another kind is never a fizzle", () => {
+    expect(fizzleCue({ ...fizzle(), kind: "resolve" })).toBeNull();
+    expect(kinds([{ ...fizzle(), kind: "resolve" }])).toEqual([]);
+  });
+
+  it("plays the fizzle sound, an effects-category entry with no takes until its file lands", () => {
+    expect(EFFECT_SOUND.fizzle).toBe("fizzle");
+    expect(cueSound({ kind: "fizzle", weight: "full" })).toEqual({ name: "fizzle", volume: 1 });
+    expect(SOUND_CATEGORY.fizzle).toBe("effects");
+    expect(SOUND_MANIFEST.fizzle).toEqual([]);
+  });
+
+  it("is a soft dissolve inside its sound's 0.8 s, and the same in Short", () => {
+    expect(EFFECT_BASE_MS.fizzle).toBe(800);
+    expect(cueTiming(plan([fizzle()]).cues[0], "full", 1)).toEqual({ delayMs: 0, ms: 800 });
+    expect(cueTiming(plan([fizzle()]).cues[0], "short", 1)).toEqual({ delayMs: 0, ms: 800 });
+    expect(cueTiming(plan([fizzle()]).cues[0], "still", 1).ms).toBe(EFFECT_STILL_HOLD_MS);
+  });
+
+  it("counts once on a busy table", () => {
+    expect(headlines(plan([fizzle()]))).toBe(1);
+  });
+
+  it("comes apart into seeded specks over its box, top first, each drifting up", () => {
+    const a = fizzleMotes("7", 150, 210);
+    expect(a).toEqual(fizzleMotes("7", 150, 210));
+    expect(a).not.toEqual(fizzleMotes("8", 150, 210));
+    expect(a).toHaveLength(FIZZLE_MOTES);
+    for (const m of a) {
+      expect(m.x).toBeGreaterThanOrEqual(0);
+      expect(m.x).toBeLessThanOrEqual(100);
+      expect(m.y).toBeGreaterThanOrEqual(0);
+      expect(m.y).toBeLessThanOrEqual(100);
+      expect(m.dy).toBeLessThan(0);
+      expect(m.at).toBeGreaterThan(0);
+      expect(m.at).toBeLessThan(1);
+    }
+    // The higher half lets go before the lower half, on average.
+    const byY = [...a].sort((p, q) => p.y - q.y);
+    const mean = (ms: typeof a) => ms.reduce((t, m) => t + m.at, 0) / ms.length;
+    expect(mean(byY.slice(0, 7))).toBeLessThan(mean(byY.slice(7)));
   });
 });
 

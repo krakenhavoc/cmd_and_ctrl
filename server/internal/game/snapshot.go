@@ -410,6 +410,11 @@ type GameSnapshot struct {
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
+	// DilemmasFacedThisTurn is Game.DilemmasFacedThisTurn (#4973).
+	// Additive within v9: a file written before it restores with no
+	// dilemmas faced this turn.
+	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
+
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
@@ -1184,6 +1189,11 @@ type cardSnapshot struct {
 	// ChosenPlayer's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenPermanent *ObjectRef `json:"chosenPermanent,omitempty"`
+	// LinkedPermanent is the permanent a linked ability of this one
+	// affected (CR 607.2e) — The Best of Both Worlds' assimilated Borg.
+	// Carried for ChosenPermanent's reason: nothing can re-derive it. Old
+	// snapshots have no key and read "none".
+	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -2549,6 +2559,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
+	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -3032,6 +3043,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
+		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -3855,6 +3867,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
+	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -4149,6 +4162,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
+		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,

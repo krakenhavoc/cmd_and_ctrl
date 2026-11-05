@@ -866,7 +866,9 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 	}
 	// Trigger doublers see a delayed trigger like any other (#2169):
 	// the count is fixed at the moment it triggered, before prompts.
-	extra := g.triggerDoublersLocked(pass, source, lki, ability, false)
+	// A delayed trigger is not "a triggered ability of" the permanent
+	// that created it (CR 603.2d), so it is never SourceIsPermanent.
+	extra := g.triggerDoublersLocked(pass, source, lki, ability, triggerOfNonPermanent)
 	g.dispatchTriggerInstanceLocked(ev, source, lki, ability, doublerRef{})
 	for _, d := range extra {
 		g.dispatchTriggerInstanceLocked(ev, source, lki, ability, d)

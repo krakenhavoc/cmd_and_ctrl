@@ -354,6 +354,11 @@ var tokenTable = map[string]game.Card{
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
 	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
 	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+
+
+	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker).
+
 	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker) uses the
 	// "3/3 colorless Illusion artifact" row batch 19 added above.
 	// #4973 batch 21: Star Trek's Murf (Rok-Tahk, Budding Scientist).

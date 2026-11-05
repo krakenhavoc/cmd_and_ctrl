@@ -561,6 +561,7 @@ func (l *Lobby) seatRematch(id uuid.UUID, spec rematchSeatSpec) (uuid.UUID, erro
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
 	l.syncHostLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1: seated by a rematch accept
 	return p.ID, nil
 }
 
