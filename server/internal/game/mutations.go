@@ -823,7 +823,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
 	// permission for this cast, from here down: the path gate refuses a
 	// zone nothing else opens, and a hand cast is an ordinary one.
-	grant = grant.ForSpell(card)
+	grant = g.permissionForSpellLocked(grant, card)
 	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
@@ -868,7 +868,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// so is every other way a card gets cast out of exile in this
 	// engine: impulse exile, airbend, warp, cascade, a defeated
 	// Siege's back face. No catalog card ever declared ZoneExile, so
-	// nothing shipped through the hole.
+	// nothing shipped through the hole. A card whose OWN text says "You
+	// may cast this card from exile" (ADR 0066, 2026-11-05) reaches here
+	// holding the permission castPermissionLocked derives for its owner
+	// while it is face up, so this gate is unchanged.
 	//
 	// The graveyard and the library reach the same question through
 	// validateCastPathLocked below, which is handed `grant`; exile
@@ -2458,6 +2461,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)
+	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
+	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
+	// came before the cast finished.
+	if modeSpec != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,
@@ -3668,6 +3677,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
+		// and its "costs {N} more" (Zero, Incorporeal Sensate).
+		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -3775,7 +3786,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// through it (ForSpell).
 	//
 	// #4696: the permission that opens that face, as CastSpell finds it.
-	grant := g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face).ForSpell(card)
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face), card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err

@@ -76,6 +76,20 @@ jobs:
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             "sudo -u cmdctrl CMDCTRL_DATA_DIR=${CMDCTRL_DATA_DIR} /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh"
 
+      # Card roles for the advanced stats (ADR 0217 §7): Scryfall's Oracle
+      # Tags bulk file mapped to roles, written beside the dump. It
+      # fails closed (a renamed tag, an unreachable Scryfall) by leaving
+      # the last good card-roles.json, so a failure here must not stop
+      # the restart that loads the fresh dump below; the job still shows
+      # the warning. The binary is shipped by CD with the server.
+      # Requires this sudoers stanza on the host, beside the one above:
+      #   krkn ALL=(cmdctrl) NOPASSWD:SETENV: /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-cardroles
+      - name: Refresh card roles on deploy host
+        continue-on-error: true
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo -u cmdctrl CMDCTRL_DATA_DIR=${CMDCTRL_DATA_DIR} /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-cardroles"
+
       - name: Restart cmd-and-ctrl to reload the card index
         # The server loads the index once at boot, so a fresh dump on
         # disk has no effect until the process re-reads it. Restart is

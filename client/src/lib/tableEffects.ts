@@ -31,6 +31,7 @@
 import type { LogEvent } from "./protocol";
 import { seeded } from "./combatStrikes";
 import { COUNTER_MINUS_ONE, COUNTER_PLUS_ONE } from "./counterTypes";
+import { entryItemID, outcomeOf } from "./stackLinger";
 import type { SoundName } from "./sounds";
 
 // ---- The setting and the gates ----
@@ -112,6 +113,9 @@ export type EffectKind =
   | "sacrifice"
   | "bounce"
   | "counter"
+  // #4450: a spell or ability that left the stack with no legal target
+  // (CR 608.2b), the counterspell's quiet cousin.
+  | "fizzle"
   | "pw_enter"
   | "pw_leave"
   // S80 (#4441 on): the common moments.
@@ -172,6 +176,8 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   sacrifice: 1750,
   bounce: 1300,
   counter: 1600,
+  // #4450: a soft dissolve on the stack item, inside its sound's 0.8 s.
+  fizzle: 800,
   pw_enter: 1200,
   pw_leave: 1500,
   token_create: 400,
@@ -212,6 +218,7 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   sacrifice: "sacrifice",
   bounce: "bounce",
   counter: "counter",
+  fizzle: "fizzle",
   pw_enter: "pw_enter",
   pw_leave: "pw_leave",
   token_create: "token_create",
@@ -357,7 +364,7 @@ export interface EffectCue {
   kind: EffectKind;
   /** The permanent (or, for a counter, the spell's card), when the entry names one. */
   cardID: string | null;
-  /** For a counter: the stack item that was countered. */
+  /** For a counter or a fizzle (#4450): the stack item that left. */
   stackItemID: string | null;
   batch: number | null;
   /** "light" inside a board wipe: shorter, no flourish, a quieter sound. */
@@ -610,6 +617,13 @@ export function planEffects(
       continue;
     }
 
+    // #4450: a fizzle, read as the stack linger reads it.
+    if (e.kind === "fizzle") {
+      const cue = fizzleCue(e);
+      if (cue) cues.push(cue);
+      continue;
+    }
+
     if (e.kind === "zone" && e.new_zone === "battlefield" && e.old_zone !== "battlefield") {
       if (e.card_id && ctx.isPlaneswalker(e.card_id)) {
         const cue: EffectCue = {
@@ -848,6 +862,29 @@ function commanderCues(entries: readonly LogEvent[]): EffectCue[] {
     else lead.add(k);
     return cue;
   });
+}
+
+/**
+ * fizzleCue is the cue a `fizzle` entry gets (#4450): a spell or ability
+ * the game removed from the stack as it tried to resolve, because every
+ * target it had was illegal (CR 608.2b). It dissolves where it sat on the
+ * stack. A `fizzle` entry with call "condition" is not one: an optional
+ * trigger whose intervening "if" no longer held (CR 603.4) lapsed, and
+ * the stack linger says so on its own. An entry that names no stack item
+ * has nowhere to dissolve, and still plays its sound.
+ */
+export function fizzleCue(e: LogEvent): EffectCue | null {
+  if (e.kind !== "fizzle" || outcomeOf(e) !== "fizzled") return null;
+  return {
+    id: String(e.seq),
+    seq: e.seq,
+    kind: "fizzle",
+    cardID: e.card_id ?? null,
+    stackItemID: entryItemID(e),
+    batch: e.batch ?? null,
+    weight: "full",
+    delayMs: 0,
+  };
 }
 
 /**
@@ -1817,6 +1854,47 @@ export function crackPlan(seed: string, w: number, h: number, rot = 0): CrackPla
   };
   const path = `M${line.map((p) => `${round1(p.x)} ${round1(p.y)}`).join(" L")}`;
   return { path, halves: [half(left, -1), half(right, 1)] };
+}
+
+/** A speck a fizzling spell comes apart into (#4450). */
+export interface FizzleMote {
+  /** Where it starts, in percent of the stack item's box. */
+  x: number;
+  y: number;
+  /** Its drift, px: a little sideways, mostly up. */
+  dx: number;
+  dy: number;
+  size: number;
+  /** When it lets go, as a share of the cue. */
+  at: number;
+}
+
+export const FIZZLE_MOTES = 14;
+
+/**
+ * fizzleMotes plans a fizzle's dissolve over a stack item `w` x `h`
+ * (#4450): specks scattered over the box that let go from the top down,
+ * each drifting up and a little sideways as it fades, so the spell seems
+ * to come apart into the air. Seeded by the entry.
+ */
+export function fizzleMotes(seed: string, w: number, h: number, n = FIZZLE_MOTES): FizzleMote[] {
+  const rnd = seeded(`fizzle:${seed}`);
+  const H = Math.max(1, h);
+  const W = Math.max(1, w);
+  const out: FizzleMote[] = [];
+  for (let i = 0; i < n; i++) {
+    const y = 8 + ((i + rnd()) / n) * 84;
+    out.push({
+      x: round1(8 + rnd() * 84),
+      y: round1(y),
+      dx: round1((rnd() - 0.5) * W * 0.3),
+      dy: round1(-H * (0.18 + rnd() * 0.22)),
+      size: round1(2 + rnd() * 3),
+      // The top lets go first: the dissolve runs down the card.
+      at: round2(0.08 + (y / 100) * 0.4 + rnd() * 0.08),
+    });
+  }
+  return out;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

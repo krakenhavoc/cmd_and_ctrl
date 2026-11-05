@@ -100,12 +100,22 @@ type PlayerTurnTally struct {
 	ArtifactsOrCreaturesSacrificed int `json:"artifactsOrCreaturesSacrificed,omitempty"`
 	// PermanentsLeft counts the permanents this player controlled that
 	// left the battlefield, by any route and to any zone (revolt,
-	// CR 702.136; #2148): a sacrifice, a bounce, an exile, a death, a
+	// CR 207.2c; #2148): a sacrifice, a bounce, an exile, a death, a
 	// token that ceased to exist, a permanent that left and came back.
 	// "As it left" is the controller the exit stamped on the event
 	// (CR 603.10a), not the card's field afterwards. Read through
 	// Game.PermanentLeftThisTurn.
 	PermanentsLeft int `json:"permanentsLeft,omitempty"`
+	// PermanentsReturnedToHand counts the permanents that were put into
+	// this player's hand from the battlefield, by any player's spell or
+	// ability, a cost, or the sandbox (Miles O'Brien, Transporter Ops'
+	// "if a permanent was returned to your hand from the battlefield
+	// this turn", #4973). Keyed on the card's OWNER, whose hand it goes
+	// to (CR 400.3), not on the controller it left from; a token
+	// bounced to its owner's hand counts before it ceases to exist
+	// (CR 111.8). Read through Game.PermanentReturnedToHandThisTurn.
+	// Additive within the schema version.
+	PermanentsReturnedToHand int `json:"permanentsReturnedToHand,omitempty"`
 	// LandsToGraveyard counts the lands this player controlled that
 	// were put into a graveyard from the battlefield (#2664, ADR 0049's
 	// 2026-10-08 amendment): destroyed, sacrificed, or put there by any
@@ -1975,6 +1985,12 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.recordPermanentLeftLocked(ev)
 		// #2128: void. The table-wide nonland sibling.
 		g.recordNonlandPermanentLeftLocked(ev)
+		if ev.NewZone == ZoneHand {
+			// #4973: returned to its owner's hand from the battlefield.
+			if c := g.findCardByIDLocked(ev.CardID); c != nil {
+				g.bumpPlayerTally(c.Owner, func(p *PlayerTurnTally) { p.PermanentsReturnedToHand++ })
+			}
+		}
 		if ev.NewZone != ZoneGraveyard {
 			return
 		}
@@ -2149,12 +2165,21 @@ func (g *Game) VoidThisTurn() bool {
 	return g.TurnTally.NonlandPermanentsLeft > 0 || g.TurnTally.SpellsWarped > 0
 }
 
-// PermanentLeftThisTurn reports revolt (CR 702.136): whether a
+// PermanentLeftThisTurn reports revolt (CR 207.2c): whether a
 // permanent `playerID` controlled left the battlefield this turn.
 //
 // Caller must hold g.mu.
 func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).PermanentsLeft > 0
+}
+
+// PermanentReturnedToHandThisTurn reports whether a permanent was
+// returned to `playerID`'s hand from the battlefield this turn (#4973,
+// Miles O'Brien, Transporter Ops' intervening "if", CR 603.4).
+//
+// Caller must hold g.mu.
+func (g *Game) PermanentReturnedToHandThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).PermanentsReturnedToHand > 0
 }
 
 // LandToGraveyardThisTurn reports whether a land `playerID` controlled

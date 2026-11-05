@@ -129,6 +129,9 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
     case "counter":
       counter(node, f);
       return;
+    case "fizzle":
+      fizzle(node, f);
+      return;
     case "pw_leave":
       pwLeave(node, f);
       return;
@@ -734,6 +737,54 @@ function counter(node: HTMLElement, f: CueMotion): void {
         },
       ],
       span(f, hit, 0.62),
+    );
+  }
+}
+
+// ---- A spell fizzles (#4450): a soft dissolve, no palm and no glass ----
+
+/**
+ * fizzle thins the stack item away: a cool grey haze settles over it and
+ * lifts, its edge glows faintly and fades, and specks come off it from
+ * the top down and drift up as they go. The stack linger dims the spell
+ * under its "Fizzled" badge, so nothing here covers it for long.
+ */
+function fizzle(node: HTMLElement, f: CueMotion): void {
+  const mist = node.querySelector<HTMLElement>(".fmist");
+  if (mist) {
+    run(
+      mist,
+      [
+        { offset: 0, translate: "0px 0px", opacity: 0 },
+        { offset: 0.25, translate: "0px 0px", opacity: 0.7, easing: EASE.power1In },
+        { offset: 1, translate: `0px ${-Math.round(f.height * 0.12)}px`, opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.power1Out),
+    );
+  }
+  const edge = node.querySelector<HTMLElement>(".fedge");
+  if (edge) {
+    run(
+      edge,
+      [
+        { offset: 0, scale: "1", opacity: 0 },
+        { offset: 0.15, scale: "1", opacity: 0.85, easing: EASE.power1In },
+        { offset: 0.7, scale: "1.04", opacity: 0 },
+        { offset: 1, scale: "1.04", opacity: 0 },
+      ],
+      span(f, 0, 1),
+    );
+  }
+  for (const el of all<HTMLElement>(node, ".fmote")) {
+    const at = num(el, "at");
+    run(
+      el,
+      [
+        { offset: 0, translate: "0px 0px", opacity: 0 },
+        { offset: 0.12, translate: "0px 0px", opacity: 0.95, easing: EASE.power2Out },
+        { offset: 1, translate: `${num(el, "dx")}px ${num(el, "dy")}px`, opacity: 0 },
+      ],
+      span(f, at, at + 0.5, EASE.power1Out),
     );
   }
 }

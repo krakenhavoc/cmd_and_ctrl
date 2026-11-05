@@ -273,6 +273,13 @@ type CostQuery struct {
 	// permission it is announcing under, so the two agree (#544).
 	GrantReduction int
 
+	// GrantIncrease is the generic mana a cast permission adds to the
+	// spell cast through it (CastPermission.CostMore): Zero, Incorporeal
+	// Sensate's "a spell cast this way costs {2} more to cast". Added with
+	// the board's increases (CR 601.2f), before every reduction. Filled by
+	// the one pricer and by the enumerator, as GrantReduction is.
+	GrantIncrease int
+
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
 	// tax, after every increase for a reduction, after everything
@@ -723,6 +730,8 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	// command-zone card says works there, so a modifier without the flag
 	// is skipped, and a card in any other zone is never asked.
 	out = g.appendEminenceCostModifiersLocked(out, q)
+	// ADR 0216 §6: a face-up plane's cost modifiers, all of them.
+	out = g.appendPlanarCostModifiersLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
@@ -840,6 +849,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 		// ADR 0135 §4: emerge's reduction is the one reduction that
 		// needs no modifier on the board.
 		// #3931: and harmonize's, the same kind of reduction.
+		// The cast permission's "costs {N} more" (CastPermission.CostMore)
+		// is an increase, so it is in before any reduction comes off.
+		base = increaseBy(base, q.GrantIncrease, nil)
 		return reduceGeneric(reduceGeneric(reduceGeneric(reduceByManaCost(base, powerUp), q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
 	}
 	cost := base
@@ -868,6 +880,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			cost = increaseBy(cost, n, bm.modifier.Unit)
 		}
 	}
+	// And the cast permission's own "costs {N} more" (Zero, Incorporeal
+	// Sensate), one more increase among them.
+	cost = increaseBy(cost, q.GrantIncrease, nil)
 	// CR 601.2f step 4: every reduction. Also additive, but each one
 	// is clamped against the generic remaining as it is spent, which
 	// is what keeps two {2}-reducers from making a {1}{B} spell owe

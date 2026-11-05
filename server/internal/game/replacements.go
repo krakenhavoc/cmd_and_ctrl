@@ -1546,6 +1546,16 @@ type ReplacementEffect struct {
 	// rather than skipping it. See entry_controller.go and ADR 0102.
 	EntryController *EntryControllerChoice
 
+	// EntryAttack, when non-nil, makes this an "instead it enters
+	// tapped and attacking" effect (CR 614.1d) with CR 508.4's choice of
+	// what the creature attacks, made before it enters (CR 614.12a) —
+	// Kira Nerys, Firebrand. The apply-loop sets EntersTapped and settles
+	// the defender inline or queues a PendingChoiceEntryAttackTarget and
+	// bails; the answer becomes ev.EntersAttacking. Replace is never
+	// called. Mandatory: a window that cannot ask takes the default
+	// defender rather than skipping it. See entry_attack.go.
+	EntryAttack *EntryAttackChoice
+
 	// ChangesEntryController declares CR 616.1b's tier: this effect
 	// would modify under whose control an object enters, so it is
 	// applied before every other effect in the window, and when
@@ -2267,7 +2277,7 @@ func sameModification(applicable []activeReplacement) bool {
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
 	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil ||
-		e.entryKeyword == KeywordRiot || e.entryKeyword == KeywordReadAhead
+		e.entryKeyword == KeywordRiot || e.entryKeyword == KeywordReadAhead || e.EntryAttack != nil
 }
 
 // declineIsReplace reports that this effect's Replace IS the "you
@@ -2306,6 +2316,12 @@ func declineIsReplace(e ReplacementEffect) bool {
 // map entry for ev.ID.
 func (g *Game) skipOwnQuestionLocked(ev *ReplacementEvent, a activeReplacement) {
 	g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+	if a.effect.EntryAttack != nil {
+		// Mandatory (entry_attack.go): the default defender, never a
+		// skip.
+		g.settleEntryAttackByDefaultLocked(ev, a)
+		return
+	}
 	if !declineIsReplace(a.effect) || a.effect.Replace == nil || ev.Canceled {
 		return
 	}
@@ -2350,6 +2366,10 @@ func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplace
 	case chosen.effect.entryKeyword == KeywordReadAhead:
 		// Read ahead's starting chapter (CR 702.155b) — read_ahead.go.
 		return g.offerEntryReadAheadLocked(ev, chosen), true
+	case chosen.effect.EntryAttack != nil:
+		// "Instead it enters tapped and attacking", and what it
+		// attacks (CR 508.4) — entry_attack.go.
+		return g.offerEntryAttackLocked(ev, chosen), true
 	case chosen.effect.Optional:
 		// A "may" (#847) — the owner decides each time. The two cases
 		// that decline it inline — a chooser who has left, an event
@@ -2394,6 +2414,11 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 		// ADR 0102: mandatory, and nobody can be asked on this path, so
 		// the default opponent — never a skip.
 		g.settleEntryControllerByDefaultLocked(ev, chosen)
+		return
+	}
+	if chosen.effect.EntryAttack != nil {
+		// entry_attack.go: mandatory, so the default defender.
+		g.settleEntryAttackByDefaultLocked(ev, chosen)
 		return
 	}
 	g.runReplaceLocked(ev, chosen)
@@ -2652,7 +2677,7 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 		// CatalogAbilityKey: nothing can name an emblem to remove its
 		// abilities. Its owner orders it against every other effect
 		// like any permanent's (CR 616.1).
-		g.forEachEmblemLocked(func(card *Card) bool {
+		g.forEachCommandSourceLocked(func(card *Card) bool {
 			if key := CatalogKey(*card); key != "" {
 				gatherFrom(card, key)
 			}

@@ -197,7 +197,7 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 		// printed emblem says "can't play lands" yet; the slot is here so
 		// the first one is a Spec field, not an engine change.
 		var refused *CantPlayLandError
-		g.forEachEmblemLocked(func(src *Card) bool {
+		g.forEachCommandSourceLocked(func(src *Card) bool {
 			refused = refusedBy(src)
 			return refused == nil
 		})

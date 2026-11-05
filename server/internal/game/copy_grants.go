@@ -108,11 +108,15 @@ func BaseCatalogKey(key string) string {
 }
 
 // catalogKeyWithGrants appends a card's granted-ability keys to its
-// base catalog key. An empty base (no oracle ID, or a face-down
-// permanent's CR 708.2a silence) stays empty: an object with no text
-// has no granted text either.
+// base catalog key. The base may be EMPTY: an object with no catalog
+// identity of its own (a copy of a hand-made token with no token key, an
+// imported card with no oracle ID) still has the abilities a copy effect
+// granted it (CR 707.9a), and the composite "|grant:<a>" is what says
+// so, as composeAbilityKey's does for a layer-6 grant. A face-down
+// permanent's CR 708.2a silence never reaches here: printedTextKeyOf
+// returns "" before it asks.
 func catalogKeyWithGrants(base string, grants []string) string {
-	if base == "" || len(grants) == 0 {
+	if len(grants) == 0 {
 		return base
 	}
 	var b strings.Builder
@@ -256,6 +260,16 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// its own doubler (CR 603.2d: they add).
 		if len(g.TriggerDoublers) > 0 {
 			merged.TriggerDoublers = append(append([]TriggerDoubler(nil), merged.TriggerDoublers...), g.TriggerDoublers...)
+		}
+		// #4973: a layer-6 grant may carry "you may play an additional
+		// land on each of your turns" and "you may play lands from your
+		// graveyard" (Nog, Ambitious Cadet's Officer). Both are facts
+		// about the recipient's controller, read live off the composite
+		// key (EffectiveLandDropsLocked, standingCastPermissionsLocked),
+		// so they end the pass the grant does and two recipients add.
+		merged.AdditionalLandPlays += g.AdditionalLandPlays
+		if len(g.CastPermissions) > 0 {
+			merged.CastPermissions = append(append([]CastPermission(nil), merged.CastPermissions...), g.CastPermissions...)
 		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its

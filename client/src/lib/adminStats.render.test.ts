@@ -2,7 +2,8 @@
 //
 // adminStats.render.test.ts — #3425, rendered: the admin Stats tab (a
 // fixture overview, the backfill note, the empty state, an error and a
-// 403 handed to the page).
+// 403 handed to the page), and #4880's stats record v2 blocks (coverage,
+// win kinds, combo rules, makeup), with and without the fields.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tick } from "svelte";
@@ -95,6 +96,9 @@ async function settle(): Promise<void> {
 const text = (el: Element | null | undefined): string =>
   (el?.textContent ?? "").replace(/\s+/g, " ");
 
+const cells = (row: Element): string[] =>
+  [...row.querySelectorAll("td")].map((td) => text(td).trim());
+
 describe("the Stats tab", () => {
   it("shows totals, the backfill note, and every list", async () => {
     const { container } = render(StatsView as never, { onforbidden: vi.fn() } as never);
@@ -134,6 +138,89 @@ describe("the Stats tab", () => {
     expect(text(container.querySelector("table[aria-label='most-cast cards']"))).toContain(
       "Sol Ring",
     );
+  });
+
+  it("shows stats record v2: coverage, how games were won, combo rules and makeup", async () => {
+    body = {
+      ...structuredClone(STATS),
+      coverage: [
+        { version: 1, games: 4, frames_complete: 0, frames_incomplete: 0 },
+        { version: 2, games: 36, frames_complete: 34, frames_incomplete: 2 },
+      ],
+      win_kinds: [
+        { kind: "commander_damage", games: 7 },
+        { kind: "combat", games: 21 },
+        { kind: "win_effect", games: 1 },
+      ],
+      combo_rules: [
+        { kind: "loop", games: 2 },
+        { kind: "repeats", games: 4 },
+      ],
+      makeup: { people_only: 22, with_bots: 15, bots_only: 3 },
+    } satisfies AdminStatsResponse;
+    const { container } = render(StatsView as never, { onforbidden: vi.fn() } as never);
+    await settle();
+
+    const coverage = container.querySelector("table[aria-label='record coverage']")!;
+    const cov = [...coverage.querySelectorAll("tbody tr")].map(text);
+    expect(cov).toHaveLength(2);
+    expect(cov[0]).toContain("v1");
+    expect(cov[1]).toContain("v2");
+    expect(cov[1]).toContain("36");
+    expect(cov[1]).toContain("34");
+    expect(text(coverage)).toContain("Replay read whole");
+    expect(text(coverage)).toContain("Replay not read whole");
+
+    const won = container.querySelector("table[aria-label='how games were won']")!;
+    const kinds = [...won.querySelectorAll("tbody tr")].map(cells);
+    expect(kinds).toEqual([
+      ["Commander damage", "7"],
+      ["Combat damage", "21"],
+      ["Win-the-game effect", "1"],
+    ]);
+    expect(text(won)).not.toContain("commander_damage");
+
+    const rules = container.querySelector("table[aria-label='combo wins by rule']")!;
+    const rr = [...rules.querySelectorAll("tbody tr")].map(cells);
+    expect(rr).toEqual([
+      ["Loop", "2"],
+      ["Repeats", "4"],
+    ]);
+
+    const makeup = text(container.querySelector("[aria-label='table makeup']"));
+    expect(makeup).toContain("People only 22");
+    expect(makeup).toContain("People and bots 15");
+    expect(makeup).toContain("Bots only 3");
+  });
+
+  it("treats v2 fields an older server leaves out, or sends empty, as empty", async () => {
+    // STATS has none of the v2 fields: an older server.
+    const { container } = render(StatsView as never, { onforbidden: vi.fn() } as never);
+    await settle();
+    expect(text(container)).toContain("Record coverage");
+    expect(text(container)).toContain("No coverage reported.");
+    expect(text(container)).toContain("No wins recorded.");
+    expect(text(container)).toContain("No combo wins recorded.");
+    expect(text(container)).toContain("No table makeup recorded.");
+    expect(container.querySelector("table[aria-label='record coverage']")).toBeNull();
+    expect(container.querySelector("[aria-label='table makeup']")).toBeNull();
+    // The v1 lists still render.
+    expect(container.querySelector("table[aria-label='recent games']")).not.toBeNull();
+    cleanup();
+
+    body = {
+      ...structuredClone(STATS),
+      coverage: [],
+      win_kinds: [],
+      combo_rules: [],
+      makeup: { people_only: 0, with_bots: 0, bots_only: 0 },
+    } satisfies AdminStatsResponse;
+    const second = render(StatsView as never, { onforbidden: vi.fn() } as never);
+    await settle();
+    expect(text(second.container)).toContain("No coverage reported.");
+    expect(text(second.container)).toContain("No wins recorded.");
+    expect(text(second.container)).toContain("No combo wins recorded.");
+    expect(text(second.container)).toContain("No table makeup recorded.");
   });
 
   it("says nothing is recorded yet, with no backfill note, when there is nothing", async () => {

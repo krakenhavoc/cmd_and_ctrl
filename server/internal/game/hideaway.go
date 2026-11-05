@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -194,12 +195,33 @@ func (g *Game) hideawayKnowersSweepLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) CanPlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) bool {
+	return g.CanPlayLandFaceDuringResolutionForEffect(playerID, cardID, -1)
+}
+
+// CanPlayLandFaceDuringResolutionForEffect is the same gate for one face
+// of the card (#4697): a modal double-faced card whose back face is a
+// land is played as that face (CR 712.11c), so the face is the one
+// judged. A face below zero is the card as it is in its zone; a face the
+// card does not offer to be played (CastableFaces: a transforming card's
+// back, an Adventure's own half) is never a land play.
+//
+// Caller must hold g.mu.
+func (g *Game) CanPlayLandFaceDuringResolutionForEffect(playerID, cardID uuid.UUID, face int) bool {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind == ZoneBattlefield || src.Kind == ZoneStack {
 		return false
 	}
 	card, ok := g.cardInZoneLocked(src, cardID)
-	if !ok || !card.IsLand() {
+	if !ok {
+		return false
+	}
+	if face >= 0 {
+		if !slices.Contains(card.CastableFaces(), face) {
+			return false
+		}
+		card.SetFace(face)
+	}
+	if !card.IsLand() {
 		return false
 	}
 	// ADR 0109 §4, CR 101.2 and CR 305.2a: a land played while a spell
@@ -238,10 +260,41 @@ func (g *Game) CanPlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) 
 //
 // Caller must hold g.mu.
 func (g *Game) PlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) (bool, error) {
-	if !g.CanPlayLandDuringResolutionForEffect(playerID, cardID) {
+	return g.PlayLandFaceDuringResolutionForEffect(playerID, cardID, -1)
+}
+
+// PlayLandFaceDuringResolutionForEffect is PlayLandDuringResolutionForEffect
+// as one face of the card (#4697): a modal double-faced card's land back
+// face (CR 712.11c). A face below zero plays the card as it is. The face
+// is stamped on the card in its zone before the replacement pipeline
+// runs, as castSpellLocked's land branch does (ADR 0034: the pipeline and
+// a paused entry's resume find the card by ID), and put back when the
+// play does not happen.
+//
+// Caller must hold g.mu.
+func (g *Game) PlayLandFaceDuringResolutionForEffect(playerID, cardID uuid.UUID, face int) (bool, error) {
+	if !g.CanPlayLandFaceDuringResolutionForEffect(playerID, cardID, face) {
 		return false, nil
 	}
 	src := g.findCardZoneLocked(cardID)
+	if face >= 0 {
+		wasFace := setFaceInZoneLocked(src, cardID, face)
+		played := false
+		defer func() {
+			if !played {
+				setFaceInZoneLocked(src, cardID, wasFace)
+			}
+		}()
+		ok, err := g.playLandDuringResolutionLocked(playerID, cardID, src)
+		played = ok
+		return ok, err
+	}
+	return g.playLandDuringResolutionLocked(playerID, cardID, src)
+}
+
+// playLandDuringResolutionLocked is the land play itself, the card
+// already wearing the face it is played as. Caller must hold g.mu.
+func (g *Game) playLandDuringResolutionLocked(playerID, cardID uuid.UUID, src *Zone) (bool, error) {
 	ev := &ReplacementEvent{
 		Kind:           RepEventMove,
 		CardID:         cardID,

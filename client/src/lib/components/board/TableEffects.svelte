@@ -2,9 +2,10 @@
   // TableEffects — the generic effect cues (ADR 0209 §1 and §3, #4396).
   //
   // When a permanent is destroyed, exiled, sacrificed or bounced, a spell
-  // is countered, a planeswalker arrives or goes, a token is created, or a
-  // board wipe clears three or more permanents at once, this layer draws
-  // one cue over the table and plays its sound, so a player sees what
+  // is countered or fizzles (#4450), a planeswalker arrives or goes, a
+  // token is created, or a board wipe clears three or more permanents at
+  // once, this layer draws one cue over the table and plays its sound, so
+  // a player sees what
   // happened before they read the log. The board already shows the frame's end state: this is
   // presentation over it, and nothing waits for it (ADR 0209 §1: no input,
   // priority pass or bot seat ever does).
@@ -140,6 +141,7 @@
     effectLate,
     effectMotion,
     effectsScheduled,
+    fizzleMotes,
     headlines,
     planEffects,
     sacrificeBeats,
@@ -467,6 +469,8 @@
     bounce: L.effectBadgeBounced,
     // StackLinger's "Countered" badge already says it, in every motion mode.
     counter: null,
+    // And its "Fizzled" badge says this one (#4450).
+    fizzle: null,
     pw_enter: L.effectBadgePwEnter,
     pw_leave: L.effectBadgePwLeave,
     // The token itself is the news: it is on the board, and the log says
@@ -558,8 +562,9 @@
       cardID: cue.cardID ?? "",
       fromDestroy: cue.fromDestroy === true,
     };
-    if (cue.kind === "counter") {
-      // The stack linger's badge says "Countered"; only the motion is ours.
+    if (cue.kind === "counter" || cue.kind === "fizzle") {
+      // The stack linger's badge says "Countered" (or "Fizzled", #4450);
+      // only the motion is ours.
       if (motion === "still") return;
       const box = cue.stackItemID ? stackBoxes.get(cue.stackItemID) : undefined;
       if (!box) return;
@@ -1862,6 +1867,10 @@
   function burstOf(f: Fx) {
     return counterBurst(f.seed, f.width, f.height);
   }
+  // The specks a fizzling spell comes apart into (#4450).
+  function fizzleOf(f: Fx) {
+    return fizzleMotes(f.seed, f.width, f.height);
+  }
   // The crack across a planeswalker that dies (a fixed, readable shape).
   const PW_CRACK = "M50 0 L44 22 L56 40 L42 62 L54 80 L48 100";
 
@@ -2043,6 +2052,33 @@
             </g>
             <path class="palm-crease" d={PALM_CREASE} />
           </svg>
+        </div>
+      </div>
+    {:else if f.kind === "fizzle"}
+      <!-- #4450: no palm and no glass: the spell thins into the air. -->
+      <div
+        class="fx m"
+        data-effect="fizzle"
+        data-effect-motion={f.motion}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="spot" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+          <div class="fmist"></div>
+          <div class="fedge"></div>
+          {#each fizzleOf(f) as s, i (i)}
+            <div
+              class="fmote"
+              data-dx={s.dx}
+              data-dy={s.dy}
+              data-at={s.at}
+              style:left={`${s.x}%`}
+              style:top={`${s.y}%`}
+              style:width={`${s.size}px`}
+              style:height={`${s.size}px`}
+            ></div>
+          {/each}
         </div>
       </div>
     {:else if f.kind === "token_create"}
@@ -3701,6 +3737,38 @@
     translate: -50% -50%;
     clip-path: polygon(0 100%, 55% 0, 100% 80%);
     background: linear-gradient(135deg, rgba(235, 245, 255, 0.95), rgba(140, 190, 255, 0.6));
+    opacity: 0;
+  }
+
+  /* A spell that fizzles (#4450): a cool grey haze, a faint edge and
+     specks that drift off it. Quieter than the counterspell's light. */
+  .fmist {
+    position: absolute;
+    inset: -8%;
+    border-radius: 12px;
+    background: radial-gradient(
+      ellipse,
+      rgba(214, 220, 236, 0.6) 0%,
+      rgba(160, 168, 196, 0.35) 45%,
+      rgba(160, 168, 196, 0) 75%
+    );
+    opacity: 0;
+  }
+  .fedge {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1.5px solid rgba(226, 232, 246, 0.8);
+    box-shadow: 0 0 10px 1px rgba(170, 180, 214, 0.55);
+    opacity: 0;
+  }
+  .fmote {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: rgba(236, 240, 250, 0.95);
+    box-shadow: 0 0 4px rgba(190, 200, 230, 0.8);
     opacity: 0;
   }
 

@@ -317,6 +317,12 @@ const (
 	// it ("Foretell {2}"), and the entry is the only thing that
 	// says WHICH action a card leaving a hand for exile was.
 	LogSpecialAction LogKind = "special_action"
+	// LogPlaneswalk — a player planeswalked (CR 901.11, ADR 0216 §5).
+	// `Choice` is "from" for each plane they planeswalked away from and
+	// "to" for the plane they planeswalked to, and `Label` is that
+	// plane's name: a card turned face down is in no zone a view shows,
+	// so the line carries it. `card_id` is the plane.
+	LogPlaneswalk LogKind = "planeswalk"
 	// LogCompanionRevealed — a player revealed their companion as the
 	// game began (CR 103.2b, ADR 0172 §5): "Alice revealed Jegantha,
 	// the Wellspring as their companion". `card_id` is the companion,
@@ -859,8 +865,12 @@ type LogEvent struct {
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
 	Faces   []string `json:"faces,omitempty"`
-	Call    string   `json:"call,omitempty"`
-	Wins    int      `json:"wins,omitempty"`
+	// PlanarFace is the face a planar die showed on a `roll` line
+	// ("blank", "chaos" or "planeswalk", ADR 0216 §4). Such a line has
+	// no sides and no results: the planar die has no number (CR 901.9d).
+	PlanarFace string `json:"planar_face,omitempty"`
+	Call       string `json:"call,omitempty"`
+	Wins       int    `json:"wins,omitempty"`
 	// Seats are the seats a LogOpeningRoll entry names: the seats that
 	// tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
@@ -1192,6 +1202,10 @@ type logFold struct {
 	// them. Kept through a loop replay, whose events write no line but
 	// still move the counts.
 	counts map[uuid.UUID]map[string]int
+	// stats is FullLogOf's StatsLog (ADR 0217 §1): the loop breaker's
+	// event gets a line, and a loop replay's line says it is one. Never
+	// set on a fold whose entries go on the wire.
+	stats bool
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1231,6 +1245,31 @@ func (f *logFold) countDelta(ev game.Event) int {
 		}
 	}
 	return 0
+}
+
+// statsEntry is the stats-only log's change to one projected entry
+// (FullLogOf's StatsLog): the loop breaker firing, which the public log
+// leaves out, becomes a LogLoop line with Call LoopCallSuspected, and a
+// loop replay's line is marked LoopCallReplayed.
+func (f *logFold) statsEntry(ev game.Event, e LogEvent, ok bool) (LogEvent, bool) {
+	switch ev.Kind {
+	case game.EventLoopSuspected:
+		return LogEvent{
+			Seq:    ev.Seq,
+			Batch:  ev.Batch,
+			Kind:   LogLoop,
+			Seat:   f.seatOf(ev.Actor),
+			CardID: uuidStringOrEmpty(ev.Source),
+			Label:  ev.Label,
+			Amount: ev.Amount,
+			Call:   LoopCallSuspected,
+		}, true
+	case game.EventLoopReplayed:
+		if ok {
+			e.Call = LoopCallReplayed
+		}
+	}
+	return e, ok
 }
 
 // extends reports whether g's event log is the log f folded, possibly
@@ -1297,6 +1336,9 @@ func (f *logFold) feed(events []game.Event) int {
 			}
 		}
 		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
+		if f.stats {
+			e, ok = f.statsEntry(events[i], e, ok)
+		}
 		if !ok {
 			continue
 		}
@@ -1526,7 +1568,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventRollDie, game.EventFlipCoin:
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.batchSeq = ev.BatchSeq
-		if ev.Kind == game.EventRollDie {
+		if ev.Kind == game.EventRollDie && ev.PlanarFace != "" {
+			// ADR 0216 §4: the planar die shows a face, not a number.
+			base.Kind = LogRoll
+			base.PlanarFace = ev.PlanarFace
+		} else if ev.Kind == game.EventRollDie {
 			base.Kind = LogRoll
 			base.Sides = ev.Sides
 			base.Results = []int{ev.Amount}
@@ -2047,6 +2093,16 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogSpecialAction
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
+		return base, true
+
+	case game.EventPlaneswalkFrom, game.EventPlaneswalkTo:
+		base.Kind = LogPlaneswalk
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.PublicNames[ev.CardID]
+		base.Choice = "to"
+		if ev.Kind == game.EventPlaneswalkFrom {
+			base.Choice = "from"
+		}
 		return base, true
 
 	case game.EventCompanionRevealed:
@@ -3240,7 +3296,17 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		if e.Label == "" {
 			return fmt.Sprintf("%s took a special action on %s", actor, card)
 		}
+		if e.CardID == "" {
+			// ADR 0216 §4: the planar die is taken on no card.
+			return fmt.Sprintf("%s used %s", actor, e.Label)
+		}
 		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogPlaneswalk:
+		plane := nameOr(e.Label, "a plane")
+		if e.Choice == "from" {
+			return fmt.Sprintf("%s planeswalked away from %s", actor, plane)
+		}
+		return fmt.Sprintf("%s planeswalked to %s", actor, plane)
 	case LogCompanionRevealed:
 		// The view always holds a revealed companion, outside the game
 		// or later in play, so the name comes from the card; the label
@@ -3536,6 +3602,12 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s set the away time to 1 minute", who)
 		}
 		return fmt.Sprintf("%s set the away time to %s minutes", who, e.Choice)
+	case game.SettingPlanechase:
+		// ADR 0216 §1.
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s turned on Planechase", who)
+		}
+		return fmt.Sprintf("%s turned off Planechase", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

@@ -266,11 +266,89 @@ type ProtectionQuality struct {
 	// its controller (bindProtectionQuality). Zero matches no source,
 	// the weaker direction.
 	Holder uuid.UUID
+
+	// SparesAura is the one Aura this instance of protection does not
+	// remove, and uuid.Nil for nearly every instance (CR 702.16n, #4843):
+	// "Enchanted creature has protection from the chosen color. This
+	// effect doesn't remove this Aura" (Flickering Ward, Ward of Lights).
+	//
+	// Unlike Player it is PARSED, not bound by the reader, because it is
+	// a fact about the instance and not about the protected permanent:
+	// the granting Aura writes its own id into the token it mints
+	// (ProtectionSparingAura), so two Auras granting the same quality
+	// mint two tokens and the ability list keeps both. That is CR
+	// 702.16n's last sentence for free — "If the creature has other
+	// instances of protection from the same quality, those instances
+	// affect Auras as normal" — because the other instance is another
+	// token that spares nothing, or spares another Aura.
+	//
+	// Read by exactly one consumer, the CR 704.5m attachment check
+	// (ProtectedFromAttachment). Targeting, damage and blocking ignore
+	// it: CR 702.16n is about the state-based action and nothing else.
+	SparesAura uuid.UUID
+
+	// SparesAuras is CR 702.16n's other form, "This effect doesn't
+	// remove Auras": the instance removes no Aura at all
+	// (ProtectionSparingAuras).
+	SparesAuras bool
+}
+
+// protectionSparesHead opens the CR 702.16n exemption a token can end
+// with: "protection from white (doesn't remove <aura id>)" or
+// "protection from white (doesn't remove Auras)". The suffix is never
+// part of Printed, so the badge, the block sentence and the client's
+// protection row read the quality exactly as before (the client
+// already drops raw "protection from " abilities and renders
+// card.protection).
+const (
+	protectionSparesHead  = " (doesn't remove "
+	protectionSparesAuras = "Auras"
+)
+
+// ProtectionSparingAura is `tok` (a "protection from <quality>" token)
+// for an instance of protection that doesn't remove the Aura `aura`
+// (CR 702.16n): the token Flickering Ward's static mints with its own
+// id. "" for a token the grammar cannot parse, or a nil id, so a
+// mistake mints no protection rather than an unexempted one.
+func ProtectionSparingAura(tok string, aura uuid.UUID) string {
+	if aura == uuid.Nil {
+		return ""
+	}
+	if _, ok := ParseProtectionQuality(tok); !ok || strings.Contains(tok, protectionSparesHead) {
+		return ""
+	}
+	return tok + protectionSparesHead + aura.String() + ")"
+}
+
+// ProtectionSparingAuras is ProtectionSparingAura for "This effect
+// doesn't remove Auras" (CR 702.16n's "or all Auras").
+func ProtectionSparingAuras(tok string) string {
+	if _, ok := ParseProtectionQuality(tok); !ok || strings.Contains(tok, protectionSparesHead) {
+		return ""
+	}
+	return tok + protectionSparesHead + protectionSparesAuras + ")"
+}
+
+// Spares reports whether this instance of protection leaves the
+// attachment `att` alone under CR 702.16n: `att` is an Aura, and the
+// instance says it doesn't remove that Aura or doesn't remove Auras.
+func (q ProtectionQuality) Spares(att *Card) bool {
+	if att == nil || !att.IsAura() {
+		return false
+	}
+	return q.SparesAuras || (q.SparesAura != uuid.Nil && q.SparesAura == att.InstanceID)
 }
 
 // Token is the canonical wire token this quality was parsed from.
 func (q ProtectionQuality) Token() string {
-	return protectionPrefix + q.Printed
+	tok := protectionPrefix + q.Printed
+	switch {
+	case q.SparesAuras:
+		return tok + protectionSparesHead + protectionSparesAuras + ")"
+	case q.SparesAura != uuid.Nil:
+		return tok + protectionSparesHead + q.SparesAura.String() + ")"
+	}
+	return tok
 }
 
 // ParseProtectionQuality parses one whole token, "protection from
@@ -282,7 +360,35 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 	if len(t) <= len(protectionPrefix) || !strings.EqualFold(t[:len(protectionPrefix)], protectionPrefix) {
 		return ProtectionQuality{}, false
 	}
-	return parseQuality(t[len(protectionPrefix):])
+	rest := t[len(protectionPrefix):]
+	// CR 702.16n's exemption, if the token carries one. A malformed
+	// suffix parses as nothing at all, the weaker direction: no
+	// protection rather than protection that removes the Aura it
+	// promised to spare.
+	var (
+		sparesAura  uuid.UUID
+		sparesAuras bool
+	)
+	if i := strings.Index(rest, protectionSparesHead); i >= 0 {
+		what, closed := strings.CutSuffix(rest[i+len(protectionSparesHead):], ")")
+		if !closed {
+			return ProtectionQuality{}, false
+		}
+		if strings.EqualFold(what, protectionSparesAuras) {
+			sparesAuras = true
+		} else if id, err := uuid.Parse(what); err == nil && id != uuid.Nil {
+			sparesAura = id
+		} else {
+			return ProtectionQuality{}, false
+		}
+		rest = rest[:i]
+	}
+	q, ok := parseQuality(rest)
+	if !ok {
+		return ProtectionQuality{}, false
+	}
+	q.SparesAura, q.SparesAuras = sparesAura, sparesAuras
+	return q, true
 }
 
 // parseQuality parses the part after "protection from ". The closed
@@ -780,6 +886,35 @@ func MatchedProtection(protected *Card, src *Characteristic) (ProtectionQuality,
 		return true
 	})
 	return out, found
+}
+
+// ProtectedFromAttachment is ProtectedFrom for CR 702.16c-d's
+// attachment half as the CR 704.5m state-based action asks it: does
+// `host` have an instance of protection that `att`'s characteristics
+// match and that does not spare `att` (CR 702.16n)?
+//
+// The instances are the tokens, one per granting effect, so a
+// Flickering Ward that chose white stays on its creature through its
+// own instance and falls off it the moment a second instance of
+// protection from white arrives from anything else.
+func ProtectedFromAttachment(host, att *Card) bool {
+	if host == nil || att == nil {
+		return false
+	}
+	src := SourceCharacteristics(att)
+	found := false
+	forEachAbilityToken(host, func(tok string) bool {
+		q, ok := ParseProtectionQuality(tok)
+		if !ok || q.Spares(att) {
+			return true
+		}
+		if bindProtectionQuality(host, q).Matches(src) {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 // SourceCharacteristics is the source snapshot every consumer that

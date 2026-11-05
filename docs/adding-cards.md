@@ -1598,6 +1598,15 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   nothing else stays a plain `Landfall`. The bot prices every land it
   puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
   by what these rows pay.
+- **`SourceCounters`** goes on an activated row of the controller's own
+  that puts +1/+1 counters on its own source, to stay: Hangarback
+  Walker's "{1}, {T}: Put a +1/+1 counter on this creature." is
+  `game.Purpose{Answers: game.AnswerPump, SourceCounters: 1}`
+  ([#5083](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5083)).
+  Under `PriceSourceCounters` (off by default, [bot.md](bot.md#a-counter-on-its-own-source-5083))
+  the bot prices each counter as a point of power and toughness. A
+  counter on a target, an X amount, and an any-player row (Feral Hydra)
+  declare none; `effects.Register` refuses it off an activated row.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
@@ -5588,8 +5597,8 @@ countered spell takes it along, and a cast from hand or through another
 permission gets none. Only a creature spell as cast is marked (every
 printed rider says "that creature"), so a noncreature spell, a
 noncreature face and a bestowed Aura spell cast this way get nothing. A
-finality counter works the same way (Leonardo, Sewer Samurai, which also
-needs a power-or-toughness filter the permission does not have yet).
+finality counter works the same way (Leonardo, Sewer Samurai, whose
+`game.CounterFinality` rider rides the power-or-toughness filter below).
 `PermissionFilter.CreatureTypesAny` holds two types and must not be
 widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
 Turtle spells" is two permissions with the same rider.
@@ -7435,6 +7444,19 @@ stamp (Bilbo, Thief in the Night), never with a type check on the card,
 which reads only its front face. A free cast's "a spell [with mana value
 N or less]" is a `freeCastSpell` clause (`freeInstantOrSorcery()`,
 `spellWithManaValueAtMost(n)`) that the permission carries.
+
+**"Creature spells with power or toughness N or less" (#4964, ADR 0066
+amendment 2026-11-04).** `Filter: game.PermissionFilter{CreatureOnly:
+true, PowerOrToughnessCapped: true, PowerOrToughnessAtMost: 1}` (Leonardo,
+Sewer Samurai). An OR over the two numbers, so a 2/1 and a 1/2 qualify and
+a 2/2 does not, and the flag carries the clause because 0 is a legal cap.
+A `*/*` card is judged by its own characteristic-defining ability where it
+sits (CR 604.3, CR 113.6a): the engine lends the card its reading
+(`Game.withPTAnywhereLocked`), so a card file writes nothing for it, and a
+`*` the engine cannot compute does not qualify — unknown is never "N or
+less". Nothing else in a card file reads power off a card in a graveyard:
+use `g.PowerAnywhereForEffect` / `ToughnessAnywhereForEffect` for an
+effect that needs the number itself.
 
 **"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
 permission over a set good for one spell: the first cast it is the
@@ -9666,6 +9688,14 @@ and a permanent that has lost all abilities stops phasing.
 beside `battlefield` / `stack` / `exile`, with `phased_out: true` on
 each card; the client folds them back onto the controller's row,
 dimmed and badged `PHASED`, with the click withheld.
+
+**"Permanents can't phase in."** (The City on the Edge of Forever's Human
+token, #4973) is the `game.PermanentsCantPhaseIn` restriction bit, put on
+the source itself with `RestrictSelf(game.PermanentsCantPhaseIn)`. While
+any permanent on the battlefield has it, `phaseInLocked` refuses every
+phase-in, at an untap step and from a "phases out until ~ leaves" lock
+alike (CR 101.2); the permanents stay out until a later untap step of the
+player they phased out under. It is not on the wire.
 
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
@@ -12436,6 +12466,15 @@ declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.
 
+The one card that wants exactly that prints it on itself: *"You may
+cast this card from exile."* (Khan, Vengeful Heart). Declare it as
+`CastableZones: []game.ZoneKind{game.ZoneExile}` beside
+`CastsItselfFromExile: true`; `Register` refuses either half alone
+([ADR 0066, amendment of 2026-11-05](decisions/0066-granted-cast-and-play-permissions.md)).
+The engine opens any face-up copy in exile for its owner, however it got
+there, and never a face-down one (CR 406.3a). Rebound's reminder text is
+not this clause.
+
 ### Opening-hand actions (ADR 0133, #2190, CR 103.6a)
 
 "If this card is in your opening hand, you may begin the game with it on
@@ -12538,6 +12577,20 @@ Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries t
 `ReturnToHand` narrowed by `UnblockedAttacker`, so the picker, the enumerator and the validator agree. An instant or
 sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
 ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
+
+"Creature cards in your graveyard have sneak {3}{B}. You may cast creature spells from your graveyard using their sneak
+abilities." (Ninja Teen, #4680) is a standing permission, not a `GrantedAlternativeCost`:
+
+```go
+GatedCastPermissions: []game.CastPermissionGate{{
+    Permission: CreatureCardsInYourGraveyardHaveSneak("{3}{B}", "Ninja Teen"),
+    ActiveWhen: Level(3),
+}},
+```
+
+It opens the graveyard only to a sneak cast of a creature spell, under the granted `granted-sneak` offer or the card's
+own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
+[ADR 0025](decisions/0025-alternative-costs.md).
 
 ### Flash if X is N or less (#3225)
 

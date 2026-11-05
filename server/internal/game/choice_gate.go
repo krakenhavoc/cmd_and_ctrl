@@ -295,6 +295,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// the Saga enters, with the CR 614 pipeline suspended on the
 	// answer: entry_riot's reason.
 	PendingChoiceEntryReadAhead: true,
+	// CR 508.4, CR 614.12a. What a creature put onto the battlefield
+	// attacking attacks is chosen as it enters, with the CR 614
+	// pipeline suspended on the answer: entry_read_ahead's reason.
+	PendingChoiceEntryAttackTarget: true,
 	// ADR 0098: "if this would enter, you may discard a land card
 	// instead" and "sacrifice a Forest instead". The same reason: the
 	// entry is suspended on the answer.

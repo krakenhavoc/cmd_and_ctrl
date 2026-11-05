@@ -76,6 +76,8 @@ func attackLimitRows(v reflect.Value) []string {
 			what = fmt.Sprintf("No more than %d %s can attack it each combat.", l.Max, creatures)
 		case AttackLimitOnlyAlone:
 			what = "This creature can only attack alone."
+		case AttackLimitNotAlone:
+			what = "This creature can't attack alone."
 		default:
 			what = fmt.Sprintf("No more than %d %s can attack you each combat.", l.Max, creatures)
 		}

@@ -111,3 +111,56 @@ func TestCollectionFeedsTheGamesSuggestions(t *testing.T) {
 		t.Errorf("suggestions %v", got)
 	}
 }
+
+// ADR 0216 §2: the planar deck's source keeps exactly the playable
+// planar rows the outside-the-game pool excludes, one per oracle ID, in
+// oracle-ID order, and the pool still never sees them.
+func TestPlanarCardsAreThePlanesTheCollectionExcludes(t *testing.T) {
+	idx := cards.NewIndex()
+	idx.Put(collectionIndexCard("Lightning Bolt", "Instant", "normal", true))
+	akoum := collectionIndexCard("Akoum", "Plane — Zendikar", "planar", false)
+	idx.Put(akoum)
+	reprint := akoum
+	reprint.ID = uuid.New()
+	reprint.SetCode = "tsr"
+	idx.Put(reprint)
+	idx.Put(collectionIndexCard("Bant", "Plane — Alara", "planar", false))
+	idx.Put(collectionIndexCard("Chaotic Aether", "Phenomenon", "planar", false))
+	idx.Put(collectionIndexCard("Plane Token", "Plane — Nowhere", "token", false))
+	idx.Put(collectionIndexCard("Planeswalker Friend", "Legendary Planeswalker — Friend", "normal", true))
+	col := NewCollection(idx)
+
+	planes := col.PlanarCards(game.PlanarPlanes)
+	var names []string
+	for i, c := range planes {
+		names = append(names, c.Name)
+		if c.OracleID == "" || c.ScryfallID == "" || c.Layout != "planar" {
+			t.Errorf("%s: a template without its identity or layout (%q, %q, %q)", c.Name, c.OracleID, c.ScryfallID, c.Layout)
+		}
+		if c.Owner != uuid.Nil {
+			t.Errorf("%s: a template with an owner", c.Name)
+		}
+		if i > 0 && planes[i-1].OracleID >= c.OracleID {
+			t.Errorf("not in oracle-ID order at %s", c.Name)
+		}
+	}
+	joined := strings.Join(names, ",")
+	if len(planes) != 2 || !strings.Contains(joined, "Akoum") || !strings.Contains(joined, "Bant") {
+		t.Errorf("planes = %v, want Akoum and Bant once each", names)
+	}
+	if got := col.PlanarCards(game.PlanarPhenomena); len(got) != 1 || got[0].Name != "Chaotic Aether" {
+		t.Errorf("phenomena = %v, want Chaotic Aether", got)
+	}
+	if got := col.PlanarCards(game.PlanarPlanes | game.PlanarPhenomena); len(got) != 3 {
+		t.Errorf("planes and phenomena = %d cards, want 3", len(got))
+	}
+	for _, n := range []string{"Akoum", "Bant", "Chaotic Aether"} {
+		if _, ok := col.Named(n); ok {
+			t.Errorf("the outside-the-game pool hands out %s", n)
+		}
+	}
+	var nilCol *Collection
+	if nilCol.PlanarCards(game.PlanarPlanes) != nil {
+		t.Error("a nil collection has planar cards")
+	}
+}

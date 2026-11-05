@@ -1063,6 +1063,19 @@ const (
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
 
+	// EventFacedDilemma — a player chose one or more modes for a spell
+	// or ability (#4973, Star Trek's "you face a dilemma as you choose
+	// one or more modes for a spell or ability"; CR 700.2a, 700.2b).
+	// Actor = the player who chose, Source / CardID = the spell, or the
+	// source of the ability. Emitted where the choice is made: as a
+	// modal spell is cast (just before its EventCast), as a modal
+	// activated ability is put on the stack, and as a modal trigger's
+	// mode_pick is answered. A copy (CR 700.2g), a mode chosen at
+	// random, and a "choose up to" answered with no mode choose nothing
+	// and emit nothing. Delivered to the listeners only, never appended
+	// to Game.Events (emitFacedDilemmaLocked says why).
+	EventFacedDilemma EventKind = "faced_dilemma"
+
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
 	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
 	// the permanent, Actor = its controller, Amount = the N of the
@@ -1246,7 +1259,10 @@ const (
 	//
 	// Emitted from commitBlockDeclarationLocked, in the same event
 	// batch as the EventBlock events of the same declaration, so a
-	// OncePerBatch ability sees one occurrence. Added in #830.
+	// OncePerBatch ability sees one occurrence. Added in #830. Also
+	// emitted by stampEntryBlockerLocked when a creature put onto the
+	// battlefield blocking blocks an attacker that was unblocked at
+	// that time (CR 509.3c, #4956).
 	EventBecomesBlocked EventKind = "becomes_blocked"
 
 	// EventBlockersDeclared — the defending player named by Actor has
@@ -1718,6 +1734,12 @@ type Event struct {
 	Sides int    `json:"sides,omitempty"`
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
+
+	// PlanarFace is the face a planar die showed on an EventRollDie
+	// (CR 901.3a, ADR 0216 §4): PlanarFaceBlank, PlanarFaceChaos or
+	// PlanarFacePlaneswalk. Amount is 0 on such an event: the planar die
+	// has no numerical result (CR 901.9d). Empty on every other event.
+	PlanarFace string `json:"planarFace,omitempty"`
 
 	// Seats are the seat indexes an EventOpeningRoll names: the seats
 	// that tied, or the seats the host rolled for (ADR 0121 §3).

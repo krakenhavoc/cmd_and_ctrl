@@ -88,6 +88,9 @@ files, list the takes in the manifest and take the entry out of
 | `treasure_crack`   | `treasure_crack-1.mp3` (and an optional `treasure_crack-2.mp3`)     | At most 0.5 s, a little quieter than the other effect cues. A coin clink. Plays once when a Treasure is sacrificed for its own mana, by hand or by the auto-tapper paying for a spell, as it splits and falls away (#4427): two Treasures spent on one spell are one sound. Any other permanent sacrificed for its own ability that is not a land, Clue or Food (a Blood, a Map, Lotus Petal, Mind Stone) plays it too. | none (silent) |
 | `clue_crack`       | `clue_crack-1.mp3` (and an optional `clue_crack-2.mp3`)             | At most 0.5 s, a little quieter than the other effect cues. A paper crumple. Plays once when a Clue is sacrificed for its own ability, as it splits and falls away (#4427).                                                                                                                                                                                                                                             | none (silent) |
 | `food_crack`       | `food_crack-1.mp3` (and an optional `food_crack-2.mp3`)             | At most 0.5 s, a little quieter than the other effect cues. A crunch or a bite. Plays once when a Food is sacrificed for its own ability, as it splits and falls away (#4427).                                                                                                                                                                                                                                          | none (silent) |
+| `fizzle`           | `fizzle-1.mp3` (and an optional `fizzle-2.mp3`)                     | At most 0.8 s. A quiet version of `counter` without the slap. Plays once when a spell or ability leaves the stack with no legal target (CR 608.2b), as it dissolves where it sat (#4450).                                                                                                                                                                                                                               | none (silent) |
+| `dice_roll`        | `dice_roll-1.mp3` (and an optional `dice_roll-2.mp3`)               | At most 1 s. A dice rattle. Plays once for each roll as its dice start to tumble, however many dice it rolls: a card's roll, a table roll or the opening roll (#4450).                                                                                                                                                                                                                                                  | none (silent) |
+| `coin_flip`        | `coin_flip-1.mp3` (and an optional `coin_flip-2.mp3`)               | At most 1 s. A coin ring. Plays once for each flip as its coins start to spin, however many coins it flips (#4450).                                                                                                                                                                                                                                                                                                     | none (silent) |
 
 ### Hits on a player and elimination (#4543, #4449)
 
@@ -242,3 +245,12 @@ character for the event.
 300 ms fade-out, in code, so its tail doesn't cover the sounds after combat.
 The files are untouched. The caps live in `SOUND_MAX_MS` and `SOUND_FADE_MS`
 in `client/src/lib/sounds.ts` (#4567).
+
+## Files waiting to be wired
+
+Delivered by Ian on 2026-11-04 (ElevenLabs Sound Effects, his Creator plan, which allows commercial use; normalised to −16 LUFS, peak −1 dBTP). They are not in `SoundName` yet. The cue that plays them is #4427, which is claimed on `claude/brave-galileo-t0um7r-stacked`.
+
+| Sound         | Files                                         | When it plays                            |
+| ------------- | --------------------------------------------- | ---------------------------------------- |
+| `food_enters` | `food_enters-1.mp3`, `-2`, `-3` (about 1.2 s) | A Food token enters                      |
+| `food_sac`    | `food_sac-1.mp3`, `-2`, `-3` (about 1.2 s)    | A Food is sacrificed for its own ability |

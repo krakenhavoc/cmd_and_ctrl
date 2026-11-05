@@ -42,6 +42,9 @@ func (g *Game) cloneLocked() *Game {
 		Turn:              g.Turn,
 		MulligansOpen:     g.MulligansOpen,
 		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
+		Planechase:        clonePlanechase(g.Planechase),
+		PlanarDeck:        cloneZone(g.PlanarDeck),
+		PlanarFaceUp:      cloneZone(g.PlanarFaceUp),
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
 		DayNight:          g.DayNight,
@@ -143,6 +146,12 @@ func (g *Game) cloneLocked() *Game {
 		out.ForetoldThisTurn = make(map[uuid.UUID]int, len(g.ForetoldThisTurn))
 		for k, v := range g.ForetoldThisTurn {
 			out.ForetoldThisTurn[k] = v
+		}
+	}
+	if len(g.DilemmasFacedThisTurn) > 0 {
+		out.DilemmasFacedThisTurn = make(map[uuid.UUID]int, len(g.DilemmasFacedThisTurn))
+		for k, v := range g.DilemmasFacedThisTurn {
+			out.DilemmasFacedThisTurn[k] = v
 		}
 	}
 	if len(g.LandsPlayedThisTurn) > 0 {
@@ -637,6 +646,9 @@ func deepenCard(out *Card) {
 	if len(out.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
+	if len(out.ExileGrants) > 0 {
+		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
+	}
 	if len(out.ManaAbilities) > 0 {
 		out.ManaAbilities = append([]ManaAbilityShape(nil), out.ManaAbilities...)
 	}
@@ -751,6 +763,7 @@ func clonePlayer(p *Player) *Player {
 		Poison:            p.Poison,
 		Energy:            p.Energy,
 		TurnsBegun:        p.TurnsBegun,
+		ExtraTurnsBegun:   p.ExtraTurnsBegun,
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -1261,6 +1274,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
 	g.OpeningRoll = src.OpeningRoll
+	g.Planechase = src.Planechase
+	g.PlanarDeck = src.PlanarDeck
+	g.PlanarFaceUp = src.PlanarFaceUp
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
 	g.DayNight = src.DayNight
@@ -1291,6 +1307,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
+	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn

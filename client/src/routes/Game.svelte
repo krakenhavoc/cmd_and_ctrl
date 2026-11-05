@@ -39,6 +39,7 @@
     leaveRematch,
     answerAwaySeat,
     takeBackSeat,
+    tableIsClosed,
   } from "../lib/api";
   import { awayOfferFor, awayOfferRequest, standInSelf, type AwayAction } from "../lib/away";
   import StandInBanner from "../lib/components/board/StandInBanner.svelte";
@@ -421,6 +422,12 @@
     return verdict;
   });
 
+  // #5082, ADR 0211 §4: an archived table refuses this socket, and the
+  // browser reports the refusal as a bare 1006. After a failed dial (or
+  // the 1000 an archive closes sockets with) the client asks the server
+  // whether the table was closed, and stops on "table_closed" if so.
+  client.setTableClosedCheck(() => tableIsClosed(gameID));
+
   // Dev tools (ADR 0023). Every tool is gated inside DevDock on its
   // own feature flag; this route only needs to know whether ANY of
   // them is live so it can decide to mount the dock at all.
@@ -710,7 +717,9 @@
       valueInstant: gp.respondValueInstants,
       ability: gp.respondAbilities,
       untargeted: gp.respondUntargetedAbilities,
-      special: gp.respondSpecialActions,
+      // #2861: turning a creature face up, and the other special actions.
+      faceUp: gp.respondTurnFaceUp,
+      special: gp.respondOtherSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
     const respond = hasResponse(view, viewerID, cats);
@@ -3271,7 +3280,7 @@
     {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
       <i class="dot" aria-hidden="true"></i><span class="status-word"
-        >{$status === "session_ended" ? "session ended" : $status}</span
+        >{$status.replace("_", " ")}</span
       >
       <span class="seq">· seq {$lastSeq}</span>
     </span>
@@ -4194,7 +4203,8 @@
     }
   }
   .status-disconnected .dot,
-  .status-session_ended .dot {
+  .status-session_ended .dot,
+  .status-table_closed .dot {
     background: var(--danger);
     box-shadow: 0 0 8px var(--danger);
   }

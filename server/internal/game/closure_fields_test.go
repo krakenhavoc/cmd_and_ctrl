@@ -227,7 +227,14 @@ var closureClassCeilings = map[string]int{
 	// TargetSpec.{AbilityOK,CardOK,Different,PlayerOK,Rest}. Their last
 	// frame route (ReplacementEvent.stackItem) is keyed, so they fall to
 	// their remaining route, Game.StackMeta. Neither is a new route.
-	"census:IntrinsicAbilityCards": 74,
+	//
+	// 76 (2026-11-04, #4870, ADR 0216 slice 1, the raise Ian approved on
+	// 2026-11-04 for these two routes, ADR 0216 "Owner answers" 2): +
+	// Game.PlanarDeck and Game.PlanarFaceUp, a Planechase table's
+	// communal planar deck and its face-up planes. Each is a *Zone of
+	// plain cards, written through snapshotCard like
+	// Player.AttractionDeck, which the same counter holds.
+	"census:IntrinsicAbilityCards": 76,
 	"transient":                    1,
 }
 

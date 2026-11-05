@@ -2237,6 +2237,12 @@ func dispatch(g *game.Game, a Action) error {
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryReadAhead {
 			return g.ResolveEntryReadAhead(choiceID, a.Player, p.OptionIndex)
 		}
+		// CR 508.4: what a creature entering tapped and attacking
+		// attacks (Kira Nerys, Firebrand). The same {option_index}
+		// payload; the option names the defender.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryAttackTarget {
+			return g.ResolveEntryAttackTarget(choiceID, a.Player, p.OptionIndex)
+		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind
 		// for the same reason the two above are.
@@ -2874,9 +2880,15 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		cardID, err := uuid.Parse(p.CardID)
-		if err != nil {
-			return fmt.Errorf("special_action card_id: %w", err)
+		// CR 901.9 (ADR 0216 §4): the planar die is taken on no card,
+		// so its card_id is absent; the engine refuses one that is sent.
+		var cardID uuid.UUID
+		var err error
+		if p.CardID != "" || game.SpecialActionKind(p.Kind) != game.SpecialActionPlanarDie {
+			cardID, err = uuid.Parse(p.CardID)
+			if err != nil {
+				return fmt.Errorf("special_action card_id: %w", err)
+			}
 		}
 		var sacrificeID uuid.UUID
 		if p.SacrificeID != "" {

@@ -322,6 +322,13 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// also drops any added phase the old turn never reached.
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	// #4973: an extra turn that really begins (CR 500.7) — the one
+	// count "haven't begun an extra turn this game" reads.
+	if s := g.Turn.ActiveSeat; g.Turn.Extra && s >= 0 && s < len(g.Seats) && g.Seats[s] != nil {
+		g.Seats[s].ExtraTurnsBegun++
+	}
+	// CR 901.6: the planar controller is whoever the active player is.
+	g.followActivePlayerAsPlanarControllerLocked()
 	g.sweepUnreachableBoundTriggersLocked()
 	// ADR 0167 §2: a turn-long player control waiting for this player's
 	// turn begins with it, before any step entry hook asks them
@@ -445,6 +452,7 @@ func (g *Game) onTurnBeganLocked() {
 	if g.ForetoldThisTurn != nil {
 		g.ForetoldThisTurn = nil
 	}
+	g.DilemmasFacedThisTurn = nil
 	if g.LandsPlayedThisTurn != nil {
 		g.LandsPlayedThisTurn = nil
 	}

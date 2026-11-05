@@ -9,7 +9,7 @@ import (
 // enumerator decides affordability here, so the engine never has to
 // reject a move a bot was offered (#544).
 type specialActionParams struct {
-	CardID  string `json:"card_id"`
+	CardID  string `json:"card_id,omitempty"`
 	Kind    string `json:"kind"`
 	Strict  bool   `json:"strict,omitempty"`
 	AutoTap bool   `json:"auto_tap,omitempty"`
@@ -50,6 +50,7 @@ func (e *enumerator) specialActionMoves() {
 	}
 	e.outsidePlayMove()
 	e.ignoreEffectMoves()
+	e.planarDieMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
 			e.specialActionMovesForCard(p.Hand.Cards[i], game.ZoneHand)
@@ -199,6 +200,33 @@ func (e *enumerator) ignoreEffectMoves() {
 			}),
 		})
 	}
+}
+
+// planarDieMove offers CR 901.9's planar die (ADR 0216 §4) to the active
+// player in their main phase with an empty stack, when they can pay its
+// {N}, priced by the same CR 601.2f pass and spend context the engine
+// charges with. It is taken on no card, so the params carry no card_id.
+func (e *enumerator) planarDieMove() {
+	g := e.g
+	sa := g.PlanarDieOfferLocked()
+	if sa == nil || !g.SpecialActionTimingOKLocked(e.seat, game.Card{}, game.SpecialActionPlanarDie) {
+		return
+	}
+	cost, ok := g.PlanarDieCostForEffect(e.seat)
+	if !ok || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionPlanarDie)) {
+		return
+	}
+	e.add(Move{
+		Type:   TypeSpecialAction,
+		Player: e.seat,
+		Kind:   KindSpecialAction,
+		Label:  sa.Label,
+		Params: mustJSON(specialActionParams{
+			Kind:    string(game.SpecialActionPlanarDie),
+			Strict:  true,
+			AutoTap: true,
+		}),
+	})
 }
 
 // outsidePlayMove offers the Wish right's action (#3955): name a card from

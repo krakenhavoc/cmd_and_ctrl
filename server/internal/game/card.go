@@ -239,6 +239,17 @@ type Card struct {
 	// on a card in a zone — and so never persisted or cloned.
 	wordLens *TextWords
 
+	// ptAnywhere is this card's power and toughness where it sits, one
+	// reading per face, with its own characteristic-defining abilities
+	// applied (CR 604.3), lent to a value copy by withPTAnywhereLocked so
+	// a cast permission's "power or toughness N or less" clause
+	// (PermissionFilter.PowerOrToughnessCapped, #4964) can judge a `*/*`
+	// card in a graveyard without the game. Set only on a copy handed to
+	// a permission lookup — never on a card in a zone (MoveCard clears it
+	// all the same) — and so never persisted. Nil on every card without
+	// such an ability, which reads its printed numbers.
+	ptAnywhere []ptReading
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
@@ -889,6 +900,19 @@ type Card struct {
 	// Game.ChosenPermanentOf.
 	ChosenPermanent ObjectRef
 
+	// LinkedPermanent is the permanent one of this object's abilities
+	// affected, which a linked ability of the same object later names
+	// (CR 607.1, CR 607.2e): The Best of Both Worlds' chapter I assimilates
+	// a creature and chapter III exiles "the Borg assimilated with this
+	// Saga". An OBJECT, not a card: a linked permanent that leaves the
+	// battlefield and returns is a new object the ability never affected
+	// (CR 400.7). ChosenPermanent's lifecycle: per INSTANCE, carried by the
+	// snapshot and by clone, cleared when this permanent leaves the
+	// battlefield, and NOT a copiable value (CR 707.2). Written by
+	// Game.SetLinkedPermanentForEffect and read with
+	// Game.LinkedPermanentForEffect (linked_permanent.go).
+	LinkedPermanent ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.
@@ -1324,6 +1348,20 @@ type Card struct {
 	// never written in place, and cleared by MoveCard on every zone
 	// change, because a grant to a card ends with the object (CR 400.7).
 	zoneGranted []GrantedAbility
+
+	// ExileGrants is the ability bundles a RESOLVED effect gave this card
+	// while it is in exile (CR 113.10, ADR 0219, #4973): Q, Stacking the
+	// Deck's "That nonland card gains '…Activate only … if this card is
+	// exiled.'" Plain data (bundle key, grantor, activator), never a
+	// closure, read by activatedAbilityRows beside zoneGranted
+	// (abilityGrantsOf). Written only by GrantAbilityToExiledCardForEffect
+	// (exile_effect_grants.go), always as a fresh slice.
+	//
+	// Per object (CR 400.7): cleared in MoveCard on every zone change, so
+	// the grant ends the moment the card leaves exile. Not a copiable value
+	// (CR 707.2), so a copy of the card never has it. Carried by the
+	// snapshot, because no source on the battlefield rebuilds it.
+	ExileGrants []GrantedAbility
 
 	// zoneLayered is this object's characteristic after layers 4 and 5
 	// while it is NOT on the battlefield (#3862, ADR 0039 amendment

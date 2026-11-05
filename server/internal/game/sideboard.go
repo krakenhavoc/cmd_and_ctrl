@@ -210,7 +210,10 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 	// #4256: the keyed pick. The filter has done its work (the
 	// candidates). #4361 S4: the picks are re-checked against the
 	// container, as the closure form's were, so a card that left under
-	// the open prompt is pruned from it and refused in an answer.
+	// the open prompt is pruned from it and refused in an answer. #4962:
+	// the key is also how the view tells a pick "with different names"
+	// (OutsidePickNamesDiffer) and sends distinct_names, so nothing beyond
+	// it is stored on the prompt.
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:     p.Player,
 		FromPlayer:  p.Player,

@@ -509,6 +509,59 @@ and not attacking.
 
 Tests: `cards/effects/sneak_test.go`.
 
+## Amendment (2026-11-04, [#4680](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4680)): a granted sneak, for the creature cards in a graveyard
+
+Ninja Teen's level 3 (TMNT, a Class): "Creature cards in your graveyard have sneak {3}{B}. You may cast creature spells
+from your graveyard using their sneak abilities." The first sentence gives each creature card there a sneak cost; it works
+in the graveyard because that is the zone the card is cast from (CR 113.6e). The second is the permission to cast from a
+zone the card would otherwise not leave by casting, and it names the only way: a sneak ability, the granted one or the
+card's own (CR 113.2c: an object may have two instances of a keyword, and the caster picks which one pays, CR 118.9a).
+
+**It is Goblin Formula's shape, not a `GrantedAlternativeCost`.** ADR 0066's 2026-11-03 amendment expected a
+`GrantedAlternativeCost` with `Zones` and `Spells` here. That type is claimable only where the printed mana cost could be
+paid (`grantedOfferClaimableLocked`, CR 118.9a), and nothing opens a graveyard for the mana cost, so it would need a second
+declaration for the door and a rule tying the two together. Green Goblin's "Each nonland card in your graveyard has mayhem"
+(#4460) already answers both halves with one standing `CastPermission`: it is the door, and its `AlternativeCostFor` is the
+price. So `effects.CreatureCardsInYourGraveyardHaveSneak(cost, label)` is one permission over its controller's graveyard,
+`CardInZone` and `CreatureOnly` ("creature cards"), under the key `granted-sneak` (`game.AltCostKeyGrantedSneak`, an on-disk
+identity on `StackItem.AltCost`, never renamed), and Ninja Teen declares it in `Spec.GatedCastPermissions` at `Level(3)`
+(CR 716.2a). Derived from the battlefield on every query and never stored, like every standing permission.
+
+- **The price.** `CastPermission.SneakCost` holds `{3}{B}`; `AlternativeCostFor` synthesises the offer under the key
+  (`grantedSneakOffer`): that mana, `game.SneakReturnSpec()` (the unblocked creature you control, now the one spec
+  `effects.Sneak` uses too, so a printed and a granted sneak take the same payment by construction) and the `Sneak` bit,
+  which brings the window (`CastTimingForOfferOpenLocked`) and the stamp of the returned creature's defender in CastSpell
+  unchanged. Not `CastPermission.Cost`: that is a flat price `CastCostFor` charges over whatever offer was claimed, so it
+  would reprice the card's own sneak claimed under the same permission. `SneakCost` is a new `omitempty` field, additive
+  in snapshot v9 (`testdata/snapshot_shape/v9.txt`); no stored permission carries it.
+- **Only by sneak.** `validateCastPathLocked`'s rule 4 (a permission is the reason the cast is legal) refuses, under a
+  `granted-sneak` permission, a cast of a spell that is not a creature or that claims anything but a sneak offer
+  (`sneakOnlyClaimOK`). So the mana cost, and any other alternative cost the card prints, are not ways out of the graveyard,
+  and neither is a noncreature face. A card that opens the graveyard itself (Gravecrawler) keeps its own ways and gains the
+  granted sneak, as rule 4 already reads it.
+- **Either sneak.** `CastOffersForLocked` lists a card's own unbound sneak offer under the `granted-sneak` permission
+  (looked up by claim, as the granted miracle is), beside the granted one, and `castPermissionForClaimMatchingLocked`
+  hands a claim of the card's own sneak the `granted-sneak` permission, so the view, the enumerator and CastSpell agree.
+  Elektra in a graveyard is offered at `sneak` {1}{B}{B} and at `granted-sneak` {3}{B}.
+- **The entry.** `sneakPaid` reads `granted-sneak` as a paid sneak cost: no catalog row prints the key, so the lookup by
+  the card's row that a printed sneak uses would miss it. The creature enters tapped and attacking the returned creature's
+  defender (CR 702.190b), through a clone and a snapshot restore.
+
+`checkGrantedAlternativeCosts` still refuses `Sneak` on a `GrantedAlternativeCost`: a granted sneak is declared only
+through this permission.
+
+Not done: a card whose front face is not a creature but which prints sneak on a creature back face is not reached ("creature
+cards" judges the card in the graveyard, CR 712.8a), so it cannot use its own sneak there. No such card exists. The bot
+prices the granted offer as it prices a printed sneak.
+
+Back-out: drop the `granted-sneak` branch of `AlternativeCostFor` and nothing is offered
+(`TestNinjaTeenSneaksACreatureCardFromYourGraveyard`). Drop `sneakOnlyClaimOK` from rule 4 and a creature card's other
+alternative cost casts it from the graveyard (`TestNinjaTeenOpensTheGraveyardOnlyToSneak`). Drop the `granted-sneak` case in
+`sneakPaid` and the creature enters untapped and not attacking. Drop the listing in `CastOffersForLocked` and Elektra is
+offered only the granted sneak (`TestNinjaTeenACardWithSneakMayUseEither`).
+
+Tests: `cards/effects/ninja_teen_test.go`.
+
 ## Amendment (2026-10-30, [#4641](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4641)): a "connives" event, for "whenever a creature you control connives"
 
 Connive entered this ADR with Lethal Scheme (#3172, above) as a catalog helper that drew, discarded and countered but said

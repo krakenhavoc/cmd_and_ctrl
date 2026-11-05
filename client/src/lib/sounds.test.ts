@@ -220,6 +220,9 @@ describe("sounds", () => {
       "treasure_crack", // #4427, silent
       "clue_crack", // #4427, silent
       "food_crack", // #4427, silent
+      "fizzle", // #4450, silent
+      "dice_roll", // #4450, silent
+      "coin_flip", // #4450, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -309,6 +312,24 @@ describe("sounds", () => {
         expect(played()).toHaveLength(0);
       }
       for (const name of ["mill", "discard"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for fizzle, dice_roll and coin_flip until their files land, and each itself once a take is listed (#4450)", async () => {
+      const m = await load();
+      for (const name of ["fizzle", "dice_roll", "coin_flip"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["fizzle", "dice_roll", "coin_flip"] as const) {
         tick();
         m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
         m.play(name);

@@ -181,6 +181,9 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.StartingSeat = v.StartingSeat
 	// ADR 0121: seat indexes and results only, nothing to normalise.
 	out.OpeningRoll = v.OpeningRoll
+	// ADR 0216 §9: the planar controller is a seat id, and the face-up
+	// planes are cards.
+	out.Planechase = n.planechase(v.Planechase)
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
@@ -213,6 +216,10 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// naming attack targets and attackers by ID, every one of them a
 	// card or player a zone or seat above has already numbered.
 	out.LegalActions = n.legalActions(v.LegalActions)
+	// ADR 0122 §6.2 (#4765): the prompt cuts. Source is a card the walk
+	// above has numbered; Choice is a pending-choice ID, which passes
+	// through as PendingChoices does.
+	out.LegalPromptCuts = n.legalPromptCuts(v.LegalPromptCuts)
 	// ADR 0167: the same digest per controlled seat, keyed by its ID.
 	if len(v.ControlledLegalActions) > 0 {
 		out.ControlledLegalActions = make(map[string]*protocol.LegalActionsView, len(v.ControlledLegalActions))
@@ -250,6 +257,21 @@ func (n *normalizer) legalActions(in *protocol.LegalActionsView) *protocol.Legal
 		src.AttackTargets = n.idList(src.AttackTargets)
 		src.Blocks = n.idList(src.Blocks)
 		out.Sources[n.id(k)] = &src
+	}
+	return out
+}
+
+// legalPromptCuts normalizes each prompt cut's Source card ID.
+func (n *normalizer) legalPromptCuts(in []protocol.LegalCutView) []protocol.LegalCutView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]protocol.LegalCutView, len(in))
+	for i, c := range in {
+		if c.Source != "" {
+			c.Source = n.id(c.Source)
+		}
+		out[i] = c
 	}
 	return out
 }
@@ -316,6 +338,19 @@ func (n *normalizer) attackDirections(in []protocol.AttackDirectionView) []proto
 		}
 	}
 	return out
+}
+
+func (n *normalizer) planechase(v *protocol.PlanechaseView) *protocol.PlanechaseView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.PlanarController = n.id(v.PlanarController)
+	out.FaceUp = make([]protocol.CardView, len(v.FaceUp))
+	for i, c := range v.FaceUp {
+		out.FaceUp[i] = n.card(c)
+	}
+	return &out
 }
 
 func (n *normalizer) vote(v *protocol.VoteView) *protocol.VoteView {
@@ -667,6 +702,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},
 		}},
+		Planechase: &protocol.PlanechaseView{PlanarController: ownerID, DeckCount: 74,
+			FaceUp: []protocol.CardView{{InstanceID: cardID, Name: "Test Plane", Layout: "planar"}}},
 
 		StackItems:      []protocol.StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
 		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
@@ -687,6 +724,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 		LegalMoves:          []protocol.LegalMoveView{{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
 		LegalMovesTruncated: true,
+		LegalPromptCuts:     []protocol.LegalCutView{{Source: cardID, Choice: "choice-1", Cap: "per_source", Omitted: 24}},
 		LegalActions: &protocol.LegalActionsView{Pass: true, Sources: map[string]*protocol.LegalSourceView{
 			cardID: {Kinds: []legal.Kind{legal.KindAttack}, Moves: 1, AttackTargets: []string{oppID}},
 		}},

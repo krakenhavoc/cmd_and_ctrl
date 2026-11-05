@@ -117,6 +117,11 @@ type GameView struct {
 	// while the roll is open; a client ignores StartingSeat meanwhile
 	// (it reads 0). Public and identical for every viewer.
 	OpeningRoll *OpeningRollView `json:"opening_roll,omitempty"`
+	// Planechase is a Planechase table's planar state (CR 901, ADR 0216
+	// §9). Absent when the table is not playing Planechase. Public and
+	// identical for every viewer: the command zone is public, and the
+	// planar deck's cards are on nobody's wire, only its size.
+	Planechase *PlanechaseView `json:"planechase,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -258,6 +263,16 @@ type GameView struct {
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
 	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
+	// LegalPromptCuts is the enumerator's cut report for the prompts in
+	// LegalMoves (ADR 0122 §6.2, #4765): each count cap that left
+	// answers to a pending choice, or to the cleanup discard, out of the
+	// list, with the choice and, for a prompt a card raised, the card. A
+	// card's own cuts ride its LegalActions entry instead, but a frame
+	// whose only moves answer a prompt has no digest, so these ride here,
+	// on every frame and whatever the 48-move cap did. Absent when no
+	// prompt was cut, which is nearly every frame. OWN SEAT ONLY,
+	// projected out of legalPromptCutsBySeat exactly as LegalMoves is.
+	LegalPromptCuts []LegalCutView `json:"legal_prompt_cuts,omitempty"`
 	// LegalActions is a per-card digest of the same enumeration
 	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
 	// something with, which kinds of move, which ability rows (by
@@ -294,6 +309,9 @@ type GameView struct {
 	// legalTruncatedBySeat names the seats whose wire list
 	// capLegalMoves degraded, keyed and projected as legalBySeat is.
 	legalTruncatedBySeat map[string]bool
+	// legalPromptCutsBySeat is LegalPromptCuts per viewer seat, keyed
+	// and projected as legalBySeat is.
+	legalPromptCutsBySeat map[string][]LegalCutView
 	// controlledLegalActionsBySeat is ControlledLegalActions per
 	// viewer seat, keyed and projected as legalBySeat is.
 	controlledLegalActionsBySeat map[string]map[string]*LegalActionsView
@@ -553,6 +571,18 @@ type PendingChoiceView struct {
 	// answer with any card the search returns, by name. ChooseMin /
 	// ChooseMax carry the bounds. Sent to the chooser only.
 	CollectionOptions []CardView `json:"collection_options,omitempty"`
+	// DistinctNames marks an outside-the-game pick whose cards must
+	// have different names (#4947: Turtles Forever's outside half,
+	// Extrapolate the Impossible's pair), so the picker takes each name
+	// once: an "outside_collection" pick from the card database, or
+	// (#4962) a "choose_cards" pick over the chooser's sideboard.
+	// Derived from the pick's registered rule
+	// (game.OutsidePickNamesDiffer, by the prompt's PickThen key, so
+	// nothing new is persisted); the server refuses a repeated name
+	// either way. Absent on a pick where a name may repeat (Research,
+	// Spawnsire of Ulamog: a player may own two copies) and on every
+	// other kind. Sent to the chooser only, with the bounds.
+	DistinctNames bool `json:"distinct_names,omitempty"`
 
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
@@ -3589,7 +3619,7 @@ type CardView struct {
 	// ZoneAbilities are the CR 602 activated abilities this card
 	// offers from the NON-BATTLEFIELD zone it is sitting in — the
 	// hand (cycling and typecycling, CR 702.29a/e), a graveyard
-	// (unearth CR 702.82a, scavenge CR 702.96a, embalm CR 702.128a),
+	// (unearth CR 702.84a, scavenge CR 702.97a, embalm CR 702.128a),
 	// exile, the command zone. Whatever `ActivatedAbilityShape.Zones`
 	// names. Absent for every card that prints none, which is nearly
 	// all of them.
@@ -4897,7 +4927,7 @@ type ActivatedAbilityView struct {
 	// payment, so no `discard_ids` is sent for it.
 	DiscardSelf bool `json:"discard_self,omitempty"`
 	// ExileSelf is scavenge's and embalm's "Exile this card from your
-	// graveyard" cost component (CR 702.96a / CR 702.128a, #1221).
+	// graveyard" cost component (CR 702.97a / CR 702.128a, #1221).
 	// DiscardSelf's sibling one zone over, and advisory for exactly
 	// the same reason: the source IS the payment, so there is nothing
 	// to collect and nothing on the payload. The keyword's own label
@@ -5841,6 +5871,7 @@ func ViewOfGame(g *game.Game) GameView {
 			Settings:              viewOfTableSettings(g.Settings),
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
+			Planechase:            viewOfPlanechase(g, ids),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -5902,7 +5933,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		stampCrewedAndSaddledBy(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat, view.legalPromptCutsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
 		// #4154: public, who chooses the attackers and blockers.
@@ -5956,11 +5987,17 @@ func ViewOfGame(g *game.Game) GameView {
 // same way: the seat's own moves make its legal_actions, and each
 // controlled seat's make an entry of the fourth map,
 // controlled_legal_actions.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView) {
+//
+// The fifth map is the cut report's prompt cuts (#4765), which the
+// digest does not carry: a frame of prompt answers has no digest. Like
+// the move list, it covers the prompts of the seats the viewer plays
+// for too.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView, map[string][]LegalCutView) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
 	var truncated map[string]bool
 	var controlled map[string]map[string]*LegalActionsView
+	var promptCuts map[string][]LegalCutView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
@@ -5992,6 +6029,12 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			}
 			controlled[p.ID.String()][grp[0].Player.String()] = d
 		}
+		if pc := promptCutViews(rep.Cuts); pc != nil {
+			if promptCuts == nil {
+				promptCuts = make(map[string][]LegalCutView, len(g.Seats))
+			}
+			promptCuts[p.ID.String()] = pc
+		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
@@ -6004,7 +6047,7 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			truncated[p.ID.String()] = true
 		}
 	}
-	return out, digests, truncated, controlled
+	return out, digests, truncated, controlled, promptCuts
 }
 
 // splitMovesByPlayer separates seat's own moves from the moves it makes
@@ -8844,7 +8887,7 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 // stampZoneAbilities fills CardView.ZoneAbilities for every card in
 // every NON-BATTLEFIELD zone an ability can function from (CR 113.6):
 // a seat's own hand (cycling and typecycling, CR 702.29), their own
-// graveyard (unearth CR 702.82a, scavenge CR 702.96a, embalm
+// graveyard (unearth CR 702.84a, scavenge CR 702.97a, embalm
 // CR 702.128a), their command zone, and their cards in exile.
 // #660 / ADR 0062 Decision 5, widened by #1221.
 //
@@ -10083,6 +10126,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			// #4962: with a sideboard seated, an outside pick "with
+			// different names" (Turtles Forever's outside half) is a
+			// choose_cards over the sideboard keyed by the same
+			// registered pick as the database prompt below, so it says
+			// so the same way. False for every other key.
+			if c.Kind == game.PendingChoiceChooseCards {
+				v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
+			}
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
 				card, ok := g.LookupCardForEffect(id)
@@ -10127,9 +10178,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// them.
 		//
 		// So does read ahead's entry_read_ahead (#2123): one option per
-		// chapter, option N being chapter N+1.
+		// chapter, option N being chapter N+1. And entry_attack_target
+		// (CR 508.4): one option per defender, a player's with Player
+		// set and a planeswalker's or battle's with its card inlined.
 		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController ||
-			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
+			c.Kind == game.PendingChoiceEntryReadAhead || c.Kind == game.PendingChoiceEntryAttackTarget) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost, Harm: opt.Harm, Dungeon: opt.Dungeon, Room: opt.Room}
@@ -10283,6 +10336,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
 			for _, card := range game.CollectionCardsLocked(c.CollectionSuggestions) {
 				cv := viewOfCard(card)
 				cv.InstanceID = ""
@@ -11305,7 +11359,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
 		StartingSeat:   v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
-		OpeningRoll:           v.OpeningRoll,
+		OpeningRoll: v.OpeningRoll,
+		// ADR 0216 §9: the face-up planar cards are public.
+		Planechase:            filterPlanechaseFor(v.Planechase, isKnower),
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,
@@ -11322,6 +11378,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
 		// ADR 0122 §6.1: the flag for the same list, under the same rule.
 		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
+		// #4765: the cut report's prompt cuts, under the same rule.
+		LegalPromptCuts: legalPromptCutsFor(v.legalPromptCutsBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// ADR 0167 §7: the digests of the turns the viewer plays, under
@@ -11479,6 +11537,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			out[i].ChooseDestination = ""
+			out[i].DistinctNames = false
 			continue
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
@@ -11521,6 +11580,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 				out[i].ChooseMax = 0
 				out[i].ChooseDestination = ""
 				out[i].ChooseSuggested = nil
+				out[i].DistinctNames = false
 			}
 			continue
 		}
@@ -11550,6 +11610,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// rest of the pick. The offer and the earlier choices
 			// stay: they are the table's public record (CR 101.4b).
 			out[i].ChooseSuggested = nil
+			// #4962: so does a sideboard pick's "different names".
+			out[i].DistinctNames = false
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's
@@ -14090,6 +14152,71 @@ type TableSettingsView struct {
 	// seat the table waits on must be offline before the table is
 	// offered a way on. 0 is never. Changeable at any time.
 	AwayAfter int `json:"away_after"`
+	// Planechase plays the game with a communal planar deck and the
+	// planar die (ADR 0216). Fixed once the game is active.
+	Planechase bool `json:"planechase,omitempty"`
+}
+
+// PlanechaseView is GameView.planechase (ADR 0216 §9).
+type PlanechaseView struct {
+	// PlanarController is the planar controller's player ID (CR 901.6),
+	// empty until the starting player is known.
+	PlanarController string `json:"planar_controller,omitempty"`
+	// DeckCount is how many cards are in the communal planar deck,
+	// public like a library's size.
+	DeckCount int `json:"deck_count"`
+	// FaceUp is the face-up plane cards, in the order they were turned
+	// up: ordinary CardViews, with the existing layout ("planar") and
+	// type_line so a client can lay a plane out landscape. Empty until
+	// the hands are kept (CR 901.5).
+	FaceUp []CardView `json:"face_up"`
+	// DieRolls is how many times the planar die special action has been
+	// taken this turn (CR 901.9), and DieCost what the active player
+	// would pay to take it now, priced by the CR 601.2f pass: "{0}",
+	// "{1}" and so on.
+	DieRolls int    `json:"die_rolls"`
+	DieCost  string `json:"die_cost"`
+}
+
+// viewOfPlanechase projects the planar state, nil when the table is not
+// playing Planechase.
+func viewOfPlanechase(g *game.Game, ids *idStrings) *PlanechaseView {
+	if g.Planechase == nil {
+		return nil
+	}
+	face := viewOfZone(g.PlanarFaceUp, ids).Cards
+	if face == nil {
+		face = []CardView{}
+	}
+	out := &PlanechaseView{
+		PlanarController: uuidStringOrEmpty(g.Planechase.Controller),
+		DeckCount:        len(g.PlanarDeckCards()),
+		FaceUp:           face,
+		DieRolls:         g.PlanarDieRollsThisTurnLocked(),
+		DieCost:          g.PlanarDieCostLocked(),
+	}
+	if seat := g.Turn.ActiveSeat; seat >= 0 && seat < len(g.Seats) && g.Seats[seat] != nil {
+		if cost, ok := g.PlanarDieCostForEffect(g.Seats[seat].ID); ok {
+			out.DieCost = cost.String()
+			if out.DieCost == "" {
+				out.DieCost = "{0}"
+			}
+		}
+	}
+	return out
+}
+
+// filterPlanechaseFor is the per-viewer copy. The face-up cards are
+// known to every seat (turnUpStartingPlaneLocked), so redaction leaves
+// them as they are; it runs anyway so a card a seat could not know
+// would never be shown to it.
+func filterPlanechaseFor(v *PlanechaseView, isKnower func(CardView) bool) *PlanechaseView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.FaceUp = redactZone(ZoneView{Cards: v.FaceUp}, isKnower).Cards
+	return &out
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -14113,6 +14240,7 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 
 		FreeMulligans: s.EffectiveFreeMulligans(),
 		AwayAfter:     s.EffectiveAwayAfter(),
+		Planechase:    s.Planechase,
 	}
 }
 

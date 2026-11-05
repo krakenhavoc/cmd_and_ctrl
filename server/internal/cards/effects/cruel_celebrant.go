@@ -16,6 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // An opponent's creature is not "you control" and an exile or a
 // bounce is not a death.
 //
+// The row declares DeathPayoff (ADR 0126 §6), as Zulaport's does, so
+// the bot keeps it in play and sacrifices around it (#4990).
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -23,7 +26,7 @@ func init() {
 		Name:         "Cruel Celebrant",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if cardDied(ev, source) {
 					return true
 				}
@@ -32,7 +35,7 @@ func init() {
 				}
 				dead, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && leftUnderControlOf(ev, dead) == source.Controller && (leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker"))
-			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
+			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }
