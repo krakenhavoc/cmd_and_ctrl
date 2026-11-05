@@ -65,15 +65,7 @@ func init() {
 				Label:   "−1: Untap up to four target permanents.",
 				Cost:    LoyaltyCost(-1),
 				Targets: TargetPermanent("up to four target permanents").WithCount(0, 4),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, id := range legalTargetCards(item, g) {
-						if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Effect:  untapEachLegalTarget,
 			},
 			{
 				Label: "−10: You get an emblem with \"You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant.\"",
