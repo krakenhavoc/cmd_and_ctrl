@@ -1741,6 +1741,7 @@ tail lady-loki/damage-then-cast
 tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
+tail level-up/then-draw-if-power-10
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
@@ -1785,6 +1786,7 @@ tail mill-then-take/something-worth-saving
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
+tail mole-module/after-mill
 tail morningtides-light/schedule-return-prevent-exile-self
 tail msc6/daredevil-fearless-fighter-exiled
 tail msh-a3/black-widow-after-exile
@@ -1923,6 +1925,7 @@ tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
 tail tchaka/after-mill
+tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
 tail tetzin-gnome-champion/after-mill
