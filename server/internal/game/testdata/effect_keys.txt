@@ -1168,6 +1168,7 @@ payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/mana-vault-untap
+payunless pay-unless/marooned-tap-enchanted-permanent
 payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
 payunless pay-unless/mendicant-core-guidelight-copy-spell
