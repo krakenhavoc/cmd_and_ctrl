@@ -947,6 +947,7 @@ drawthen teferi-akosa-discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
+maycast may-cast/free-play-back-land-or-hand
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
