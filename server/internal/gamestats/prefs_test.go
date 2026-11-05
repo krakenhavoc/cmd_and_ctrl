@@ -140,3 +140,71 @@ func TestPrefsStoreDefault(t *testing.T) {
 		t.Fatalf("stored default: %+v", def)
 	}
 }
+
+// The share link (ADR 0217 §6, slice 6): minting stores only the hash,
+// minting again replaces it, revoking clears it, and neither touches the
+// advanced switch.
+func TestPrefsStoreShareLink(t *testing.T) {
+	s, d := openPrefs(t)
+	ctx := context.Background()
+	mustUser(t, d, "u1")
+	if _, err := s.SetShareLink(ctx, "nobody", "h0", time.UnixMilli(1)); !errors.Is(err, ErrNoUser) {
+		t.Errorf("a missing account: %v, want ErrNoUser", err)
+	}
+	if _, err := s.SetAdvanced(ctx, "u1", true, SetBySelf, time.UnixMilli(5)); err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.SetShareLink(ctx, "u1", "h1", time.UnixMilli(10))
+	if err != nil || p.ShareLinkAt.UnixMilli() != 10 || p.Advanced == nil || !*p.Advanced {
+		t.Fatalf("after minting: %+v %v; want the link's time and the switch kept", p, err)
+	}
+	if id, err := s.ShareLinkOwner(ctx, "h1"); err != nil || id != "u1" {
+		t.Fatalf("ShareLinkOwner(h1) = %q, %v", id, err)
+	}
+	if _, err := s.SetShareLink(ctx, "u1", "h2", time.UnixMilli(20)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ShareLinkOwner(ctx, "h1"); !errors.Is(err, ErrNoShareLink) {
+		t.Errorf("the rotated-out link still works: %v", err)
+	}
+	if id, _ := s.ShareLinkOwner(ctx, "h2"); id != "u1" {
+		t.Errorf("the new link does not resolve: %q", id)
+	}
+	if err := s.ClearShareLink(ctx, "u1", time.UnixMilli(30)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ShareLinkOwner(ctx, "h2"); !errors.Is(err, ErrNoShareLink) {
+		t.Errorf("a revoked link still works: %v", err)
+	}
+	p, _ = s.Prefs(ctx, "u1")
+	if !p.ShareLinkAt.IsZero() || p.Advanced == nil || !*p.Advanced {
+		t.Errorf("after revoking: %+v; want no link and the switch kept", p)
+	}
+	if err := s.ClearShareLink(ctx, "nobody", time.UnixMilli(40)); err != nil {
+		t.Errorf("revoking with no link: %v", err)
+	}
+	if _, err := s.ShareLinkOwner(ctx, ""); !errors.Is(err, ErrNoShareLink) {
+		t.Errorf("an empty hash: %v", err)
+	}
+}
+
+// A share link on a row with no switch keeps advanced NULL (the
+// default), which the table's CHECK requires along with set_by.
+func TestPrefsStoreShareLinkWithoutASwitch(t *testing.T) {
+	s, d := openPrefs(t)
+	ctx := context.Background()
+	mustUser(t, d, "u1")
+	p, err := s.SetShareLink(ctx, "u1", "h1", time.UnixMilli(10))
+	if err != nil || p.Advanced != nil || p.SetBy != "" {
+		t.Fatalf("SetShareLink: %+v %v; want the default kept", p, err)
+	}
+	if list, _ := s.Accounts(ctx, 0); len(list) != 0 {
+		t.Errorf("a link alone listed the account as switched: %+v", list)
+	}
+	if _, err := d.Exec(`UPDATE users SET deleted_at = 9 WHERE id = 'u1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ShareLinkOwner(ctx, "h1"); !errors.Is(err, ErrNoShareLink) {
+		t.Errorf("a deleted account's link still works: %v", err)
+	}
+}

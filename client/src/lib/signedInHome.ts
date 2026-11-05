@@ -56,6 +56,10 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // the roadmap is public, and the Discord bot links straight here.
   // The library on it shows only to a signed-in person.
   "decks",
+  // A shared stats link (ADR 0217 §6): made to be opened without signing
+  // in, the way it is posted in Discord. It shows only what its owner
+  // chose to share.
+  "statsShared",
 ]);
 
 // isPublicRoute reports whether a signed-out visitor may open r.
