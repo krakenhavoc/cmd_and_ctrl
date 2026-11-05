@@ -561,6 +561,18 @@ func TestTmcB2ShredderCopiesAttackEachOtherOpponentAndAreSacrificed(t *testing.T
 	if len(copies) != 2 || !attacked[g.Seats[2].ID] || !attacked[g.Seats[3].ID] || attacked[opp.ID] {
 		t.Fatalf("%d copies attacking %v; want one attacking each other opponent", len(copies), attacked)
 	}
+	// Each of the three deals combat damage to its player, and each player
+	// it hits loses half their life, rounded up.
+	advanceTo(t, g, game.StepCombatDamage)
+	if triggerOrderPrompt(g) != nil {
+		answerTriggerOrderInOfferedOrder(t, g)
+	}
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats[1:] {
+		if got := tmcB2LifeOf(g, p); got >= startingLifeOf(g)/2 {
+			t.Errorf("an attacked player is at %d, want under %d", got, startingLifeOf(g)/2)
+		}
+	}
 	advanceTo(t, g, game.StepEndCombat)
 	passPriorityAroundTable(t, g)
 	for _, id := range copies {

@@ -70,23 +70,33 @@ func footChopperMaySacrifice(g *game.Game, item *game.StackItem) error {
 		YesLabel: "Sacrifice",
 		NoLabel:  "Decline",
 		Then:     footChopperAnswer,
+		Objects:  []game.ObjectRef{ref},
 	}.Apply(ctx)
 }
 
-var footChopperDraw = RegisterThenSteps("then-steps/foot-chopper-draw",
-	Instruction(func(ctx *Context) error {
-		if n := departedCreaturePower(ctx.Game, ctx.Item.Params.Object.ID); n > 0 {
-			return DrawCards{N: n}.Apply(ctx)
-		}
+// footChopperDraw is "if you do, draw cards equal to its power": told the
+// creature that was sacrificed, it reads that creature's power as it last
+// existed on the battlefield (CR 608.2h). An on-disk key.
+var footChopperDraw = CardTail("foot-chopper/draw-cards-equal-to-sacrificed-power", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
 		return nil
-	}),
-)
+	}
+	if n := departedCreaturePower(ctx.Game, o.IDs[0]); n > 0 {
+		return DrawCards{N: n}.Apply(ctx)
+	}
+	return nil
+})
 
-var footChopperAnswer = MayYes("confirm/foot-chopper-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
-	ref := ctx.Item.Params.Object
+// footChopperAnswer sacrifices the creature the prompt carries, if it is
+// still that object and still yours. An on-disk key.
+var footChopperAnswer = MayYes("confirm/foot-chopper-sacrifice", func(ctx *Context, r game.ConfirmAnswer) error {
+	if len(r.Objects) == 0 {
+		return nil
+	}
+	ref := r.Objects[0]
 	c, ok := ctx.Game.LookupCardForEffect(ref.ID)
 	if !ok || !onBattlefield(ctx.Game, ref.ID) || c.ObjectEpoch != ref.Epoch || c.Controller != ctx.Controller() {
 		return nil
 	}
-	return SacrificePermanent{Target: ref.ID, ThenTail: ctx.ifItWentThen(footChopperDraw)}.Apply(ctx)
+	return SacrificePermanent{Target: ref.ID, ThenTail: ctx.ItemTail(footChopperDraw)}.Apply(ctx)
 })
