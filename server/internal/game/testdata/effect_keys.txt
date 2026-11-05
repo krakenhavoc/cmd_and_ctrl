@@ -149,6 +149,7 @@ body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
 body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
+body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
 body grim-reaper-lethal-legionnaire/return
 body guide-of-souls/angel
@@ -677,6 +678,7 @@ choose choose-cards/ultra-magnus-tactician-put
 choose choose-cards/under-the-skin-return
 choose choose-cards/undercity-plague-sacrifice
 choose choose-cards/underrealm-lich-take
+choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
