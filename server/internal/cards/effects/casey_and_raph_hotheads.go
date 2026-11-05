@@ -32,23 +32,10 @@ func init() {
 	etb.Modes = ChooseN("Choose one or both", 1, 2,
 		ModeDoing("Target player exiles the top card of their library. Until that player's next end step, they may play that card without paying its mana cost.",
 			Distinct(TargetPlayer("target player")),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetPlayer {
-					return nil
-				}
-				window := ctx.Game.UntilYourNextEndStepDuration(t.ID)
-				return ExileTopWithPermission{From: t.ID, GrantToOwner: true, N: 1, Free: true, Window: &window}.Apply(ctx)
-			}),
+			caseyAndRaphExileTop),
 		ModeDoing("Target player creates two Treasure tokens.",
 			Distinct(TargetPlayer("target player")),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetPlayer {
-					return nil
-				}
-				return CreateToken{Controller: t.ID, Template: TreasureToken(), N: 2}.Apply(ctx)
-			}),
+			caseyAndRaphTreasures),
 	)
 	Register(Spec{
 		OracleID:     "f20a5297-31ba-4bbd-810e-be23175a116f",
@@ -56,4 +43,25 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{etb},
 	})
+}
+
+// caseyAndRaphExileTop is the first bullet: the target player's top card,
+// playable free by them until their next end step.
+func caseyAndRaphExileTop(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	window := ctx.Game.UntilYourNextEndStepDuration(t.ID)
+	return ExileTopWithPermission{From: t.ID, GrantToOwner: true, N: 1, Free: true, Window: &window}.Apply(ctx)
+}
+
+// caseyAndRaphTreasures is the second bullet: two Treasures for the target
+// player.
+func caseyAndRaphTreasures(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	return CreateToken{Controller: t.ID, Template: TreasureToken(), N: 2}.Apply(ctx)
 }
