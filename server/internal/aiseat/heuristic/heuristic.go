@@ -186,6 +186,21 @@ type Config struct {
 	// one more source is not what stands between a Commander deck and
 	// its hand.
 	RampWantCap int
+	// PriceRampCurve prices the lands a row that sacrifices its own
+	// source puts onto the battlefield (Burnished Hart, Sakura-Tribe
+	// Elder) by the turn as well as the hand (#5084, ramp_curve.go):
+	// while the round is below RampWantCap, each land is ramp up to the
+	// mana a deck on curve wants RampCurveLead turns from now, and the
+	// flat tapped-blocker charge the row's creature already paid for in
+	// its sacrifice is not charged again. Off (the zero value,
+	// DefaultConfig and BaselineConfig) prices those lands by the hand's
+	// deficit alone: in #5084's thopter-battle arena the seats with the
+	// curve won no more, so it ships off and the arena's
+	// `heuristic-rampcurve` turns it on (docs/bot-testing.md).
+	PriceRampCurve bool
+	// RampCurveLead is how many turns ahead of the round the curve's
+	// mana is wanted: round 4 wants six mana at a lead of two.
+	RampCurveLead int
 
 	// PricePurposes turns on ADR 0126 §6's prices (purpose.go): a
 	// spell, mode, alternative cost or own activated row that declares
@@ -873,6 +888,9 @@ func DefaultConfig() Config {
 		ActivateBase:   0.50,
 		RampPerMana:    1.00,
 		RampWantCap:    7,
+		// #5084: the curve for a self-sacrificing land search stays off
+		// (it won no more in the arena); two turns' lead when it is on.
+		RampCurveLead: 2,
 
 		PricePurposes:       true,
 		NetLandSwaps:        true,
@@ -1048,6 +1066,9 @@ func BaselineConfig() Config {
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
 	c.RampWantCap = 0
+	// #5084: the hand's deficit alone priced a land search.
+	c.PriceRampCurve = false
+	c.RampCurveLead = 0
 	// §3, permanents by what they do (PR 4).
 	c.Weights.PermanentPerMana = 0
 	c.Weights.RowTriggered = 0
