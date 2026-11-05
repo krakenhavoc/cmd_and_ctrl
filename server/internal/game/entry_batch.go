@@ -355,10 +355,18 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 			ev.auraHost, ev.auraHostFixed = b.opts.AttachedTo, true
 		}
 		if m.token {
+			// The fields createdTokenEntryEvent gives a token entering on
+			// its own, so a creation entering together (#4867) asks every
+			// replacement what a single token's entry asks.
+			ev.NewZoneOwner = m.controller
 			ev.EntersTapped = m.tokenEntry.Tapped
 			ev.EntersAttacking = m.attacking
 			for name, n := range m.tokenEntry.Counters {
 				ev.AddCounterAtETB(name, n)
+			}
+			// #3158: a creation that names the Aura token's host.
+			if m.tokenEntry.AttachedTo.Kind != "" {
+				ev.auraHost, ev.auraHostFixed = m.tokenEntry.AttachedTo, true
 			}
 		}
 		out, err := g.applyReplacementsLocked(ev)
