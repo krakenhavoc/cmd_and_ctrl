@@ -357,7 +357,6 @@ var tokenTable = map[string]game.Card{
 	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker) is the
 	// "3/3 colorless Illusion artifact" row above.
 
-
 	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker).
 
 	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker) uses the
