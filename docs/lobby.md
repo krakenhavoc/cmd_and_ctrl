@@ -2736,9 +2736,13 @@ same person signed in in another tab).
 resolves the Discord account from `identities` itself, so a snowflake
 appears on the wire in neither direction.
 
-An ordinary caller may name only a **tablemate**: someone who is in the
-caller's own [`GET /me/tablemates`](#get-metablemates-adr-0051-decision-8-s34-sub-pr-6)
-list, so the picker and the route agree about who counts. Anyone else,
+An ordinary caller may name only a **tablemate**: someone who has shared
+a table with the caller, the relation behind
+[`GET /me/tablemates`](#get-metablemates-adr-0051-decision-8-s34-sub-pr-6)
+(before that list's cap of 50), so the picker and the route agree about
+who counts. [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md)
+§1 will add friends, and a personal block in either direction, to this
+rule when those slices land. Anyone else,
 including a stranger, a deleted account and an id that names nobody, is
 the same **404** (`no such tablemate`): a 403 would confirm that the
 account exists. The bot's shared token and an allowlisted person in
@@ -3469,10 +3473,10 @@ when it reinstalls a saved identity.
 ### `GET /me/tablemates` (ADR 0051 decision 8, S34 sub-PR 6)
 
 The people the caller has shared a table with, **most recently shared
-table first** — the list the invite picker offers. Decision 8's whole
-design: a self-join of `seats`, not a `friendships` table. There are
-no friend requests and no acceptance; if an explicit list is ever
-wanted it is one table on top of this and changes nothing here.
+table first** — the list the invite picker offers, and the **Played
+with** list in the header's drawer ([ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md)
+§1, slice 2). Decision 8's whole design: a self-join of `seats`, not a
+`friendships` table. Nothing is stored for it.
 
 Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
 person — an `identified` session, or a `player` or `spectator` session
@@ -3481,9 +3485,12 @@ with a non-nil `user_id`. No credential is **401**; every other caller is
 a person) and everyone on a deployment with no database.
 
 Excluded, always: the caller themselves, any seat with no user — a
-guest, a bot, or a Discord seat still waiting on its `users` row — and
-a deleted account (its seats stay, as "Deleted player", but there is no
-one left to invite).
+guest, a bot, an agent seat or a Discord seat still waiting on its
+`users` row — and a deleted account (its seats stay, as "Deleted
+player", but there is no one left to invite; the query leaves the
+tombstone out). A table counts if both people sat at it, including a
+lobby that never started; a practice table has no `seats` rows, so it
+never does. The list is capped at the **50 most recent people**.
 
 **Response 200**
 
@@ -3494,7 +3501,9 @@ one left to invite).
       "user_id": "<uuid>",
       "display_name": "Bob",
       "avatar_url": "/avatars/<snowflake>/<hash>.png",
-      "last_played_at": 1789820000000
+      "last_played_at": 1789820000000,
+      "games_together": 3,
+      "last_table": "FNM"
     }
   ]
 }
@@ -3513,6 +3522,15 @@ one left to invite).
   `ended_at` — those are null on a table that never started, and a
   lobby you both sat in yesterday is a better suggestion than a game
   you finished a year ago.
+- `games_together` is how many tables the two of you have shared (at
+  least 1).
+- `last_table` is the name of the most recent one — the table
+  `last_played_at` dates, and one that is already in both people's
+  History.
+
+The cap is on this list only. `POST /games/{id}/invites/dm` checks the
+whole relation, so someone beyond the 50 is still a tablemate for that
+route.
 
 ### `GET /me/setup` (ADR 0110 §5)
 
@@ -5407,14 +5425,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true, "dm_invites": true }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
 admitting role. `voice` is whether a host may give a table a voice room
 (ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
-[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)). No guild, role or user id is ever in it. Answered with
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)), and `dm_invites` whether this server can DM a table's invite link through the bot (`POST /games/{id}/invites/dm`: the bot token and a public origin, so production only); where it is false the Played with list offers Copy invite instead (ADR 0213 §1). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`

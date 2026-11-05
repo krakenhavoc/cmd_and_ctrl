@@ -1495,8 +1495,8 @@ export const LABEL_SPECS = {
     name: "Copy invite",
     kind: "text",
     role: "menuitem",
-    owners: ["routes/Lobby.svelte"],
-    doc: "copies a lobby table's player invite link, from the Invite menu and the right-click menu",
+    owners: ["routes/Lobby.svelte", "lib/components/PlayedWithDrawer.svelte"],
+    doc: "copies a lobby table's player invite link, from the Invite menu and the right-click menu; a Played with row's button where the server has no bot to DM it (ADR 0213 §1)",
   }),
   newInviteLink: label({
     name: "New invite link…",
@@ -1660,6 +1660,21 @@ export const LABEL_SPECS = {
     role: "button",
     owners: ["lib/components/SiteHeader.svelte"],
     doc: "the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877)",
+  }),
+
+  playedWithButton: label({
+    name: "People you've played with",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/SiteHeader.svelte"],
+    doc: "the site header's button for the Played with drawer, for someone signed in with Discord (ADR 0213 §9); opens the drawer, which fetches the list then and never polls",
+  }),
+  playedWith: label({
+    name: "Played with",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/components/PlayedWithDrawer.svelte"],
+    doc: "the Played with drawer (ADR 0213 §1, §9): the people you have shared a table with, newest first, each with Invite; covers the page at tablet width",
   }),
 
   // -- The front door (ADR 0156 §4–6) --

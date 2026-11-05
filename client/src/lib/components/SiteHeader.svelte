@@ -50,6 +50,7 @@
   import { currentBugDraft } from "../bugReportDraft.svelte";
   import { bugReportConfig } from "../bugReportConfig";
   import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
+  import PlayedWithDrawer from "./PlayedWithDrawer.svelte";
   import { PRIVACY_HASH } from "../privacy";
   import { ABOUT_HASH, GUIDE_HASH } from "../about";
   import { isAdmin } from "../admin";
@@ -68,6 +69,18 @@
 
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
+
+  // The Played with drawer (ADR 0213 §9, slice 2): a person's own list,
+  // so not for a guest seat or the admin token, which are credentials.
+  // It fetches when it opens and never polls. Closing it hands focus back
+  // to the button.
+  const canSeePlayedWith = $derived(hasLinkedUser && $session?.principal.role !== "admin");
+  let playedOpen = $state(false);
+  let playedBtnEl = $state<HTMLButtonElement | null>(null);
+  function closePlayedWith(): void {
+    playedOpen = false;
+    void tick().then(() => playedBtnEl?.focus());
+  }
   const invite = $derived($community.invite_url);
 
   // Whether this server has Discord sign-in. Probed once, for a session
@@ -371,6 +384,20 @@
           <Icon name="bug" size={17} />
         </button>
       {/if}
+      {#if canSeePlayedWith}
+        <button
+          type="button"
+          class="people-btn"
+          bind:this={playedBtnEl}
+          aria-label={L.playedWithButton}
+          aria-haspopup="dialog"
+          aria-expanded={playedOpen}
+          title="People you've played with"
+          onclick={() => (playedOpen = true)}
+        >
+          <Icon name="people" size={18} />
+        </button>
+      {/if}
       <!-- Help (ADR 0125 §6), for everyone: tips, a practice game, the keymap. -->
       <HelpMenu />
       <div class="acct" bind:this={accountEl}>
@@ -467,6 +494,10 @@
     </button>
   </div>
 </header>
+
+{#if playedOpen && canSeePlayedWith}
+  <PlayedWithDrawer onclose={closePlayedWith} />
+{/if}
 
 {#if deleteOpen}
   <DeleteAccountDialog onclose={() => (deleteOpen = false)} />
@@ -618,7 +649,8 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
-  .bug-btn {
+  .bug-btn,
+  .people-btn {
     display: inline-grid;
     place-items: center;
     width: 34px;
@@ -630,11 +662,14 @@
     color: var(--fg-muted);
     cursor: pointer;
   }
-  .bug-btn:hover {
+  .bug-btn:hover,
+  .people-btn:hover,
+  .people-btn[aria-expanded="true"] {
     color: var(--fg);
     background: var(--overlay);
   }
-  .bug-btn:focus-visible {
+  .bug-btn:focus-visible,
+  .people-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -797,6 +832,10 @@
     .account .discord-link,
     .account .bug-btn {
       display: none;
+    }
+    .account .people-btn {
+      width: 44px;
+      height: 44px;
     }
     .account .sign-in {
       height: 44px;

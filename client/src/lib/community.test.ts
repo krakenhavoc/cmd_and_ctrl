@@ -22,7 +22,18 @@ describe("parseCommunity", () => {
       voice: false,
       lfg: false,
       results: false,
+      dm_invites: false,
     });
+  });
+
+  it("reads whether invite DMs are offered, and only a literal true (ADR 0213 §1)", () => {
+    expect(parseCommunity({ invite_url: INVITE, gate: false, dm_invites: true }).dm_invites).toBe(
+      true,
+    );
+    expect(parseCommunity({ invite_url: INVITE, gate: false, dm_invites: "yes" }).dm_invites).toBe(
+      false,
+    );
+    expect(parseCommunity({ invite_url: INVITE, gate: false }).dm_invites).toBe(false);
   });
 
   it("reads whether the results feed is offered, and only a literal true (ADR 0174 §6)", () => {
@@ -78,6 +89,7 @@ describe("loadCommunity", () => {
       voice: false,
       lfg: false,
       results: false,
+      dm_invites: false,
     });
     expect(f).toHaveBeenCalledTimes(1);
     expect(f.mock.calls[0][0]).toBe("/community");
