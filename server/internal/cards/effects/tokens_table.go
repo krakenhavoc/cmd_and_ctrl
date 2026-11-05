@@ -109,6 +109,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white and blue Merfolk":                                       {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"W", "U"}},
 	"1/1 blue Tentacle":                                                {Name: "Tentacle", TypeLine: "Token Creature — Tentacle", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Thopter artifact with flying":                            {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"1/1 blue Faerie with flying":                                      {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue and black Faerie with flying":                            {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U", "B"}, Keywords: []string{"flying"}},
 	"1/1 blue and black Faerie Rogue with flying":                      {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Colors: []string{"U", "B"}, Keywords: []string{"flying"}},
 	"1/1 blue and black Zombie Wizard":                                 {Name: "Zombie Wizard", TypeLine: "Token Creature — Zombie Wizard", Power: 1, Toughness: 1, Colors: []string{"U", "B"}},
