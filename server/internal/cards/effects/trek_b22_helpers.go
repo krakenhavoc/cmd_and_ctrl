@@ -10,38 +10,9 @@ import (
 
 // trek_b22_helpers.go — shared pieces for Star Trek batch 22 (#4973).
 
-// trekB16NewPlanetToken is the "tapped Planet land token named New Planet
-// with "{T}: Add one mana of any color."" (ttrk 27) that Saurian Explorer,
-// Stable Wormhole and Genesis Effect create.
-//
-// MERGE NOTE: this template and printedTrekB16NewPlanetToken are
-// byte-identical to the ones in trek_b16_helpers.go on the batch 16
-// branch (#5010), and token_catalog.go lists it with the identical line,
-// so the two PRs share one token (slug "new-planet"). Whichever lands
-// second deletes this pair; the compiler names it.
-func trekB16NewPlanetToken() game.Card { return tokenFromCatalog(printedTrekB16NewPlanetToken) }
-
-// printedTrekB16NewPlanetToken is the New Planet as PRINTED, its mana
-// ability included: a colourless land, Planet its only subtype.
-func printedTrekB16NewPlanetToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "new-planet",
-		Card: game.Card{
-			Name:     "New Planet",
-			TypeLine: "Token Land — Planet",
-		},
-		Mana: []game.ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{W|U|B|R|G}",
-			Label:    "{T}: Add one mana of any color",
-		}},
-		Text: "{T}: Add one mana of any color.",
-	}
-}
-
 // trekB22CreateTappedNewPlanet is "create a tapped Planet land token named
-// New Planet" as one Do step, so a trigger that does only this declares
-// its footprint.
+// New Planet" (batch 16's template, trek_b16_helpers.go) as one Do step,
+// so a trigger that does only this declares its footprint.
 func trekB22CreateTappedNewPlanet() CreateTokenAdvanced {
 	return CreateTokenAdvanced{Spec: Token(trekB16NewPlanetToken()).EntersTapped(), N: 1}
 }
