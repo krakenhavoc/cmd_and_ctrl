@@ -291,6 +291,7 @@ body synthetic-destiny/reveal-that-many-creatures
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body teferi-hero/untap-two-lands
+body teo-spirited-glider/counter
 body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
@@ -674,6 +675,7 @@ choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
 choose choose-cards/temporal-conqueror-return-land
+choose choose-cards/teo-spirited-glider-discarded
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -980,6 +982,7 @@ drawthen seasoned-cryomancer/discard-two
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
+drawthen teo-spirited-glider/discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
@@ -1271,6 +1274,7 @@ payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
+payunless pay-unless/waterbending-lesson-discard
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two

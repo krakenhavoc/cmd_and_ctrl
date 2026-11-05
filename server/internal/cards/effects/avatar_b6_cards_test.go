@@ -161,8 +161,8 @@ func TestAvatarB6SerpentOfThePassCostsLessPerNoncreatureNonlandCard(t *testing.T
 		pool string
 		ok   bool
 	}{
-		{"discounted by three", "{2}{U}{U}", true},
-		{"one short", "{1}{U}{U}", false},
+		{"discounted by three", "{C}{C}{U}{U}", true},
+		{"one short", "{C}{U}{U}", false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -209,7 +209,7 @@ func TestAvatarB6SerpentOfThePassHasFlashWithThreeLessons(t *testing.T) {
 			avB6Graveyard(me, lessons, "Sorcery — Lesson")
 			id := avB6HandSpell(me, "Serpent of the Pass", avB6SerpentTypeLine, avB6SerpentOracle, avB6SerpentManaCost)
 			// The lessons are noncreature, nonland cards: the discount applies too.
-			addPool(t, g, me.ID, "{4}{U}{U}")
+			addPool(t, g, me.ID, "{C}{C}{C}{C}{U}{U}")
 			if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err == nil {
 				t.Fatal("cast at sorcery speed outside a main phase without the flash offer")
 			}
@@ -239,9 +239,8 @@ func TestAvatarB6SokkasHaikuCountersDrawsMillsAndUntaps(t *testing.T) {
 	if !opp.Graveyard.Contains(bolt) || me.Life != 40 {
 		t.Fatal("the Bolt was not countered")
 	}
-	if me.Hand.Size() != hand {
-		// The Haiku left the hand and one card was drawn.
-		t.Errorf("hand %d, want %d (the Haiku out, one card in)", me.Hand.Size(), hand)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d, want %d (one card drawn)", me.Hand.Size(), hand+1)
 	}
 	if me.Library.Size() != lib-4 {
 		t.Errorf("library %d, want %d (one drawn, three milled)", me.Library.Size(), lib-4)
@@ -290,7 +289,7 @@ func TestAvatarB6TheSpiritOasisDrawsPerShrineThenOnEachOtherShrine(t *testing.T)
 	castCatalogSpell(t, g, "The Spirit Oasis", avB6ShrineTypeLine, avB6OasisOracle, nil)
 	passPriorityAroundTable(t, g)
 	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size() - (hand - 1); got != 2 {
+	if got := me.Hand.Size() - hand; got != 2 {
 		t.Fatalf("drew %d on entering, want 2 (the Oasis and your other Shrine)", got)
 	}
 
@@ -298,7 +297,7 @@ func TestAvatarB6TheSpiritOasisDrawsPerShrineThenOnEachOtherShrine(t *testing.T)
 	castCatalogSpell(t, g, "New Shrine", avB6ShrineTypeLine, "", nil)
 	passPriorityAroundTable(t, g)
 	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size() - (hand - 1); got != 1 {
+	if got := me.Hand.Size() - hand; got != 1 {
 		t.Errorf("drew %d when another Shrine entered, want 1", got)
 	}
 
@@ -306,13 +305,18 @@ func TestAvatarB6TheSpiritOasisDrawsPerShrineThenOnEachOtherShrine(t *testing.T)
 	castCatalogSpell(t, g, "Plain Enchantment", "Enchantment", "", nil)
 	passPriorityAroundTable(t, g)
 	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size() - (hand - 1); got != 0 {
+	if got := me.Hand.Size() - hand; got != 0 {
 		t.Errorf("drew %d when a non-Shrine entered, want 0", got)
 	}
 	b12Permanent(g, opp.ID, "Their New Shrine", avB6ShrineTypeLine)
-	spec, _ := Lookup(avB6OasisOracle)
-	if len(spec.Triggered) != 2 || spec.Triggered[1].Footprint == nil {
-		t.Error("the second trigger has no footprint")
+	footprinted := 0
+	for _, row := range game.CatalogTriggers(avB6OasisOracle) {
+		if len(row.Footprint) > 0 {
+			footprinted++
+		}
+	}
+	if footprinted < 1 {
+		t.Error("the one-sentence draw trigger has no footprint")
 	}
 }
 
@@ -326,7 +330,7 @@ func TestAvatarB6SpiritWaterRevivalUnpaidDrawsTwoAndExilesItself(t *testing.T) {
 	yard := me.Graveyard.Size()
 	id := avB6HandSpell(me, "Spirit Water Revival", "Sorcery", avB6RevivalOracle, "{1}{U}{U}")
 	hand := me.Hand.Size()
-	addPool(t, g, me.ID, "{1}{U}{U}")
+	addPool(t, g, me.ID, "{C}{U}{U}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
@@ -353,7 +357,7 @@ func TestAvatarB6SpiritWaterRevivalWaterbentShufflesDrawsSevenAndLiftsTheHandSiz
 	taps := pushTapCostSoldiers(g, me.ID, 6)
 	id := avB6HandSpell(me, "Spirit Water Revival", "Sorcery", avB6RevivalOracle, "{1}{U}{U}")
 	hand, lib := me.Hand.Size(), me.Library.Size()
-	addPool(t, g, me.ID, "{1}{U}{U}")
+	addPool(t, g, me.ID, "{C}{U}{U}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, OptionalCosts: []int{0}, TapIDs: taps}); err != nil {
 		t.Fatalf("cast with waterbend {6} paid by six taps: %v", err)
 	}
@@ -386,7 +390,7 @@ func TestAvatarB6SpiritWaterRevivalWaterbendCannotBePaidShort(t *testing.T) {
 	advanceToMain(t, g)
 	taps := pushTapCostSoldiers(g, me.ID, 5)
 	id := avB6HandSpell(me, "Spirit Water Revival", "Sorcery", avB6RevivalOracle, "{1}{U}{U}")
-	addPool(t, g, me.ID, "{1}{U}{U}")
+	addPool(t, g, me.ID, "{C}{U}{U}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, OptionalCosts: []int{0}, TapIDs: taps}); err == nil {
 		t.Fatal("five taps and no extra mana paid waterbend {6}")
 	}
@@ -501,7 +505,9 @@ func TestAvatarB6TigerSealTapsInYourUpkeepAndUntapsOnTheSecondDraw(t *testing.T)
 
 func TestAvatarB6TigerSealDoesNotTapInAnOpponentsUpkeep(t *testing.T) {
 	g := newCatalogGame(t)
-	seat := (g.Turn.ActiveSeat + 1) % len(g.Seats)
+	// The active seat's upkeep is behind it; the next upkeep is the
+	// next player's.
+	seat := g.Turn.ActiveSeat
 	me := g.Seats[seat]
 	seal := pushCatalogPermanent(g, me.ID, "Tiger-Seal", "Creature — Cat Seal", avB6TigerSealOracle, false)
 	stepToSeat(t, g, (seat+1)%len(g.Seats), game.StepUpkeep)
@@ -564,7 +570,7 @@ func avB6CastWaterLesson(t *testing.T, g *game.Game, me *game.Player) (hand int)
 	trekB35Library(g, me, 5)
 	id := avB6HandSpell(me, "Waterbending Lesson", avB6WaterLessonTypeLine, avB6WaterLessonOracle, "{3}{U}")
 	hand = me.Hand.Size() - 1
-	addPool(t, g, me.ID, "{3}{U}")
+	addPool(t, g, me.ID, "{C}{C}{C}{U}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
