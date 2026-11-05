@@ -32,7 +32,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, ThisBecameTapped,
 				"Jett Reno, Problem Solver — surveil 1, or draw a card if her power is 4 or greater",
-				jettRenoTapped),
+				Do(If{Cond: jettRenoBig{}, Then: []Applier{DrawCards{N: 1}}},
+					If{Cond: jettRenoBig{Not: true}, Then: []Applier{Surveil{N: 1}}})),
 			On(game.EventFacedDilemma, YouFacedADilemma,
 				"Jett Reno, Problem Solver — put a +1/+1 counter on Jett Reno",
 				b35PutCounterOnSelf),
@@ -40,12 +41,17 @@ func init() {
 	})
 }
 
-// jettRenoTapped is the tap trigger's resolution: her power now, or as
-// she last existed on the battlefield.
-func jettRenoTapped(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if info, ok := ctx.SourcePermanent(); ok && info.Power >= 4 {
-		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-	}
-	return Surveil{Player: item.Controller, N: 1}.Apply(ctx)
+// jettRenoBig is the tap trigger's "if her power is 4 or greater" (Not:
+// "otherwise"): her power now, or as she last existed on the battlefield
+// (CR 608.2h). It reads the battlefield through the layers, so it
+// declares a board read.
+type jettRenoBig struct{ Not bool }
+
+func (c jettRenoBig) Holds(ctx *Context) bool {
+	info, ok := ctx.SourcePermanent()
+	return (ok && info.Power >= 4) != c.Not
+}
+
+func (jettRenoBig) condition() (game.FootprintStep, bool) {
+	return condStep(game.FootprintCondBoard, 0), true
 }

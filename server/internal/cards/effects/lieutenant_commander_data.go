@@ -34,7 +34,7 @@ func init() {
 				return ok && !spell.IsCreature()
 			},
 			Key:    "Lieutenant Commander Data — put a +1/+1 counter on Lieutenant Commander Data",
-			Effect: b35PutCounterOnSelf,
+			Effect: Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}),
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, Remove three counters from among creatures you control: Draw a card.",
