@@ -1114,6 +1114,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a
 	// chooser for the roll to ignore.
 	ModRollExtraDieIgnoreOne: {reader: readerReplacement},
+	// #4973: Brad Boimler's one more counter of each kind this turn.
+	ModOneMoreCounter: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},

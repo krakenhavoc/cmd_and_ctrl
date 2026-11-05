@@ -138,6 +138,26 @@ registered, or when this file is stale.
 | `adminAccountsTab` | `Accounts` | link | text | `routes/Admin.svelte` | the admin views' tab for every account |
 | `adminReportsTab` | `Reports` | link | text | `routes/Admin.svelte` | the admin views' tab for what players have reported at their tables (#2984) |
 | `adminStatsTab` | `Stats` | link | text | `routes/Admin.svelte` | the admin views' tab for game statistics (ADR 0165 §8, #3425) |
+| `advancedStatsSwitch` | `Advanced stats` | checkbox | text | `lib/components/StatsSettings.svelte`<br>`routes/Stats.svelte` | Settings → Stats and the head of #/stats: the person's own advanced-stats switch (PUT /me/stats/prefs); off unless they, an admin or the server default turned it on |
+| `advancedStatsOptIn` | `Turn on advanced stats` | button | text | `lib/components/AdvancedStatsOptIn.svelte` | the opt-in card on #/stats while advanced stats are off for the person |
+| `advancedStatsDefault` | `Advanced stats for everyone who hasn't chosen` | checkbox | text | `lib/components/admin/AdvancedStatsDefault.svelte` | admin Accounts: the server's advanced-stats default (PUT /admin/stats/advanced-default); anyone who chose for themselves keeps their answer |
+| `accountAdvancedStats` | `advanced stats for <name>` (starts with `advanced stats for `) | checkbox | aria | `lib/components/admin/AccountAdvancedStats.svelte` | admin Accounts and one account: an admin's advanced-stats switch for that person (PUT /admin/users/{id}/advanced-stats) |
+| `statsMakeupFilter` | `Table makeup` | group | text | `lib/components/stats/StatsFilters.svelte` | #/stats and a shared view: the radio group that filters by who else sat at the table |
+| `statsRangeFilter` | `Date range` | group | text | `lib/components/stats/StatsFilters.svelte` | #/stats and a shared view: the radio group that filters by when the game ended |
+| `statsMakeupAll` | `All tables` | radio | text | `lib/advancedStats.ts` | the table makeup filter: every counted game (the default) |
+| `statsMakeupPeople` | `People only` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games where every other seat was a person |
+| `statsMakeupWithBots` | `With bots` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games with at least one bot and one person among the other seats |
+| `statsMakeupBots` | `Bots only` | radio | text | `lib/advancedStats.ts` | the table makeup filter: games where every other seat was a bot |
+| `statsRangeAll` | `All time` | radio | text | `lib/advancedStats.ts` | the date range filter: every game (the default) |
+| `statsRange90` | `90 days` | radio | text | `lib/advancedStats.ts` | the date range filter: games that ended in the last 90 days |
+| `statsRange30` | `30 days` | radio | text | `lib/advancedStats.ts` | the date range filter: games that ended in the last 30 days |
+| `showAsTable` | `Show as table` | disclosure | text | `lib/components/stats/ChartFigure.svelte` | under every stats chart: the same numbers as a table with headers (ADR 0217 §8) |
+| `shareStats` | `Share my stats` | button | text | `routes/Stats.svelte` | #/stats: opens the share dialog (ADR 0217 §6) |
+| `shareStatsDialog` | `share your stats` | dialog | aria | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: make, copy and revoke the link to a read-only copy of your stats |
+| `makeShareLink` | `Make a link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with no link yet: mints one (POST /me/stats/share-link) |
+| `makeNewShareLink` | `Make a new link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with a link: mints a new one, and the old one stops working |
+| `copyShareLink` | `Copy link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: copies the link just made; it is shown only once |
+| `revokeShareLink` | `Revoke link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: the link answers not found from now on (DELETE /me/stats/share-link) |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |
@@ -224,6 +244,7 @@ registered, or when this file is stale.
 | `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts`<br>`routes/Lobby.svelte` | the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
+| `gameClosed` | `This table was closed.` | status | text | `lib/gameClosed.ts`<br>`lib/connectionBanner.ts` | ADR 0211 §4, #5082: what a refused join, spectate, start, deck, bot or setup says for the server's `game_closed` code, and the connection banner's headline once a failed redial finds the table archived |
 | `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |
 | `recommendedAnswer` | `Recommended` | generic | text | `lib/choiceDock.ts` | the tag after the recommended answer of the which-skip question, "Use my skip" (ADR 0188 Decision 12); Enter takes it |
 | `choosingNextTurn` | `Choosing the next turn` | generic | text | `lib/components/board/PhaseDisplay.svelte` | the step label while the turn change waits on the which-skip question (turn.between_turns, ADR 0188 Decision 12): the old turn is over and the next has not begun |
@@ -235,6 +256,8 @@ registered, or when this file is stale.
 | `automaticAnswers` | `automatic answers` | region | aria | `lib/components/AutoAnswersSettings.svelte` | Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it |
 | `forgetAutoAnswer` | `Forget` | button | text | `lib/components/AutoAnswersSettings.svelte` | removes one standing answer in Settings → Gameplay, so its prompt is asked again |
 | `respondValueInstantsToggle` | `Value instants (Opt, Brainstorm) on an opponent's spell` | checkbox | text | `lib/components/Settings.svelte` | Settings → Gameplay → Advanced, What counts as a response: off by default, so a value instant does not stop you on an opponent's spell; it still does in combat and at an opponent's end step, gameplay.respondValueInstants (#2877) |
+| `respondTurnFaceUpToggle` | `Turning a face-down creature face up` | checkbox | text | `lib/components/Settings.svelte` | Settings → Gameplay → Advanced, What counts as a response: on by default, so a morph, disguise or manifested creature you can turn face up stops you on an opponent's spell, gameplay.respondTurnFaceUp (#2861) |
+| `respondOtherSpecialActionsToggle` | `Other special actions (foretell, suspend, plot, unlock)` | checkbox | text | `lib/components/Settings.svelte` | Settings → Gameplay → Advanced, What counts as a response: off by default, so a special action that answers nothing does not stop you; on your own main phase it still counts as something to do, gameplay.respondOtherSpecialActions (#2861) |
 | `useThisOrderAgain` | `Use this order again` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart |
 | `searchLibraryAndGraveyard` | `Library and graveyard` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the primary of the question a "search your library and/or graveyard" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards |
 | `searchLibraryAndHand` | `Library and hand` | button | text | `lib/components/board/ChoicePromptModal.svelte` | the primary of the question a "search your hand and/or library" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards |

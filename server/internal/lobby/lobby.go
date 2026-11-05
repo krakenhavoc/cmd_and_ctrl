@@ -44,9 +44,12 @@ var (
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
 	ErrPlayerNotInGame = errors.New("lobby: player is not in this game")
 
-	// ErrGameArchived is returned by the operations that refuse to
-	// act on a retired table — minting or redeeming a seat-reclaim
-	// ticket. Unarchive first; the state is all still there.
+	// ErrGameArchived is returned by every way into a retired table
+	// (#4564, ADR 0211 §4 "Closed means closed"): a seat (join), a
+	// spectator, a deck, a bot, a start, a seat-reclaim ticket and a
+	// WebSocket upgrade by anyone but an admin. The HTTP layer maps
+	// it to 409 with CodeGameClosed. Unarchive first; the state is
+	// all still there.
 	ErrGameArchived = errors.New("lobby: game is archived")
 
 	// ErrGameNotActiveForSpawn is returned by Spawn when the
@@ -364,9 +367,14 @@ type Lobby struct {
 	away awayState
 	// gameStats, when non-nil, keeps each stored game's statistics
 	// record (ADR 0165); recordStatsLocked writes it when the game ends.
-	// statsWG counts the writes still running (WaitGameStats).
-	gameStats gamestats.Store
-	statsWG   sync.WaitGroup
+	// statsWG counts the writes still queued or running (WaitGameStats).
+	// statsQueue is the one stats worker's queue (ADR 0217 §1), under
+	// its own statsMu, and statsRunning says the worker is up.
+	gameStats    gamestats.Store
+	statsWG      sync.WaitGroup
+	statsMu      sync.Mutex
+	statsQueue   []statsJob
+	statsRunning bool
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
@@ -954,6 +962,11 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
+	// #4564: an archived table is closed (ADR 0211 §4). After the
+	// invite, so only someone holding one learns that it was closed.
+	if entry.meta.Archived() {
+		return GameMeta{}, uuid.Nil, ErrGameArchived
+	}
 	// #2984: removed-and-blocked from this table. After the invite, which
 	// is the credential, so the refusal is only ever seen by someone who
 	// holds one.
@@ -1109,6 +1122,10 @@ func (l *Lobby) SpectateAs(id uuid.UUID, invite string, userID uuid.UUID, discor
 	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
 	}
+	// #4564: an archived table is closed to watchers too.
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.blockedLocked(userID, discordID, name) {
 		return GameMeta{}, ErrBlockedFromWatching
 	}
@@ -1230,6 +1247,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, ErrGameStarted
 	}
@@ -1286,6 +1306,9 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string, power f
 	entry, ok := l.games[gameID]
 	if !ok {
 		return ErrGameNotFound
+	}
+	if entry.meta.Archived() {
+		return ErrGameArchived
 	}
 	for i := range entry.meta.Players {
 		if entry.meta.Players[i].PlayerID == playerID {
@@ -1376,6 +1399,11 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	entry, ok := l.games[id]
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
+	}
+	// #4564: before the already-running no-op, so a closed game is
+	// never reported as started.
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
 	}
 	if entry.room.Game.CurrentState() == game.StateActive {
 		return copyMeta(entry.meta), nil
@@ -1512,6 +1540,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	entry, ok := l.games[id]
 	if !ok {
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
+	}
+	if entry.meta.Archived() {
+		return GameMeta{}, uuid.Nil, ErrGameArchived
 	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
@@ -1686,6 +1717,17 @@ func (l *Lobby) List() []GameMeta { return l.list(false) }
 // every existing caller, including the Discord bot's /c2-games —
 // keeps meaning "the tables you can actually play at".
 func (l *Lobby) ListArchived() []GameMeta { return l.list(true) }
+
+// IsArchived reports whether the table id is resident and archived.
+// The WebSocket authorizer asks it so a session for a closed table
+// cannot reconnect (#4564, ADR 0211 §4). An unknown id is false: the
+// hub refuses that one itself, as not found.
+func (l *Lobby) IsArchived(id uuid.UUID) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	return ok && entry.meta.Archived()
+}
 
 func (l *Lobby) list(archived bool) []GameMeta {
 	l.mu.Lock()

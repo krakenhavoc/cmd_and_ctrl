@@ -6,9 +6,12 @@
 // For each ended game with a replay (<data dir>/replays/<game id>.jsonl)
 // it merges the frames' log windows by Seq, takes the last frame's view as
 // the final view, and stores gamestats.Compute's record with source
-// "replay". Games that already have a record of the current
-// gamestats.Version are skipped; older records are computed again. It
-// prints a summary and exits non-zero if any game failed.
+// "replay". A second pass over the replay gives Compute its frames, for
+// version 2's turn samples (ADR 0217 §1), and the Scryfall dump, when
+// there is one, is the card index for the deck hash and mana sources.
+// Games that already have a record of the current gamestats.Version are
+// skipped; older records are computed again. It prints a summary and
+// exits non-zero if any game failed.
 package main
 
 import (
@@ -17,19 +20,35 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 )
 
 func main() {
 	dataDir := flag.String("data-dir", os.Getenv("CMDCTRL_DATA_DIR"),
 		"server data directory (default $CMDCTRL_DATA_DIR)")
 	dryRun := flag.Bool("dry-run", false, "compute and report, but write no records")
+	dump := flag.String("scryfall-dump", "",
+		"Scryfall default-cards dump for the card index (default <data dir>/scryfall/default-cards.json)")
 	flag.Parse()
 	if *dataDir == "" {
 		fmt.Fprintln(os.Stderr, "statsbackfill: -data-dir (or CMDCTRL_DATA_DIR) is required")
 		os.Exit(2)
+	}
+	if *dump == "" {
+		*dump = filepath.Join(*dataDir, "scryfall", "default-cards.json")
+	}
+	var idx gamestats.CardIndex
+	ci := cards.NewIndex()
+	if n, err := ci.Load(*dump); err != nil {
+		fmt.Fprintln(os.Stderr, "statsbackfill: no card index, so no deck hashes and mana sources from the view only:", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "statsbackfill: card index loaded, %d cards\n", n)
+		idx = ci
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -41,7 +60,7 @@ func main() {
 	}
 	defer func() { _ = d.Close() }()
 
-	sum, err := run(ctx, d, *dataDir, *dryRun, time.Now(), os.Stdout)
+	sum, err := run(ctx, d, *dataDir, idx, *dryRun, time.Now(), os.Stdout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "statsbackfill:", err)
 		os.Exit(1)

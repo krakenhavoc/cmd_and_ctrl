@@ -148,6 +148,12 @@ func (g *Game) cloneLocked() *Game {
 			out.ForetoldThisTurn[k] = v
 		}
 	}
+	if len(g.DilemmasFacedThisTurn) > 0 {
+		out.DilemmasFacedThisTurn = make(map[uuid.UUID]int, len(g.DilemmasFacedThisTurn))
+		for k, v := range g.DilemmasFacedThisTurn {
+			out.DilemmasFacedThisTurn[k] = v
+		}
+	}
 	if len(g.LandsPlayedThisTurn) > 0 {
 		out.LandsPlayedThisTurn = make(map[uuid.UUID]int, len(g.LandsPlayedThisTurn))
 		for k, v := range g.LandsPlayedThisTurn {
@@ -640,6 +646,9 @@ func deepenCard(out *Card) {
 	if len(out.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
+	if len(out.ExileGrants) > 0 {
+		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
+	}
 	if len(out.ManaAbilities) > 0 {
 		out.ManaAbilities = append([]ManaAbilityShape(nil), out.ManaAbilities...)
 	}
@@ -754,6 +763,7 @@ func clonePlayer(p *Player) *Player {
 		Poison:            p.Poison,
 		Energy:            p.Energy,
 		TurnsBegun:        p.TurnsBegun,
+		ExtraTurnsBegun:   p.ExtraTurnsBegun,
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -1298,6 +1308,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
+	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn

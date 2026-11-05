@@ -30,13 +30,20 @@ import "github.com/google/uuid"
 //     the same kind of permission and shipped as one on #658 / #659;
 //     madness (CR 702.35a) will be a third.
 //
-//     A card may NOT declare ZoneExile. S29 allowed it "for the shape
-//     suspend and foretell will use" and #659 retired it, because it
-//     is not that shape and could not be: a card-level declaration
-//     opens exile for every copy of the card, at any time, however
-//     the copy got there, so a Path to Exile'd Rift Bolt would be
-//     castable. No catalog card ever declared it, and
-//     CastableZonesFor refuses it now so none can.
+//     A card may not declare ZoneExile for any of THOSE. S29 allowed it
+//     "for the shape suspend and foretell will use" and #659 retired
+//     it, because it is not that shape and could not be: a card-level
+//     declaration opens exile for every copy of the card, at any time,
+//     however the copy got there, so a Path to Exile'd Rift Bolt would
+//     be castable.
+//
+//     The one exception (ADR 0066, 2026-11-05) is a card whose OWN
+//     printed text says "You may cast this card from exile" (Khan,
+//     Vengeful Heart): for it, every face-up copy in exile, however it
+//     got there, is exactly what the text says. effects.Register admits
+//     the declaration only for a card that sets Spec.CastsItselfFromExile,
+//     and the engine reads it as a permission derived for the card's
+//     owner while it is face up (cast_from_exile_own_text.go).
 //
 //   - THE LIBRARY (S42, CR 401.5). Bolas's Citadel and the Future
 //     Sight family open the top card of a library, which is a
@@ -102,6 +109,11 @@ func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
 	// the whole of a sideboard to every copy of the card, which is
 	// Wish's permission without Wish.
 	if zone == ZoneOutside {
+		return false
+	}
+	// A card exiled face down has no characteristics (CR 406.3a, 708.2),
+	// so it has no text to open exile with (ADR 0066, 2026-11-05).
+	if zone == ZoneExile && card.FaceDown {
 		return false
 	}
 	if CardCastableFromZone(key, zone) {
@@ -387,13 +399,25 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	// zone-bound offer); this lists it. A permission with a price of its
 	// own ("without paying its mana cost", escape, Bolas's Citadel)
 	// lists none: CR 118.9a allows one alternative cost per cast.
-	if grant != nil && grant.AltCostKey == "" && !grant.NamesPrice() && zone != ZoneHand && zone != ZoneCommand {
-		for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
-			if ac.FromZone != "" {
-				continue
+	//
+	// #4971: when `grant` has a price of its own and a second permission
+	// at the printed cost opens the card too (Green Goblin's mayhem beside
+	// Muldrotha), the offers are listed under that one, which is the
+	// permission CastPermissionForClaimLocked hands a cast claiming them.
+	var printed *CastPermission
+	if zone != ZoneHand && zone != ZoneCommand {
+		printed = grant
+		if grant != nil && !grant.atPrintedCost() {
+			printed = g.printedCostPermissionForOffersLocked(playerID, card, zone)
+		}
+		if printed.atPrintedCost() {
+			for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
+				if ac.FromZone != "" {
+					continue
+				}
+				offer := ac
+				add(&offer, printed)
 			}
-			offer := ac
-			add(&offer, grant)
 		}
 	}
 	add(grant.AlternativeCostFor(card), grant)
@@ -441,6 +465,12 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 			continue
 		}
 		under := grant
+		if printed.atPrintedCost() {
+			// #4971: claimed under the permission at the printed cost,
+			// as CastSpell's lookup hands it, not under a priced one
+			// that happens to come first.
+			under = printed
+		}
 		if ac.RequiresGrant {
 			// A granted miracle is claimable only under the hand
 			// permission that names ITS key, which is not always the
@@ -503,7 +533,10 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 	case ZoneHand, ZoneCommand:
 		return false
 	case ZoneExile:
-		return true
+		// ADR 0066, 2026-11-05: a card whose own text opens exile is
+		// not cast BY a permission that also covers it, exactly as a
+		// printed flashback is not in a graveyard.
+		return !g.cardOpensZoneLocked(card, castPathKey(card, alt), srcKind)
 	}
 	aftermathOpens, _ := aftermathZoneRule(card, srcKind)
 	return !aftermathOpens && !g.cardOpensZoneLocked(card, castPathKey(card, alt), srcKind)
@@ -650,12 +683,14 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	case ZoneHand, ZoneCommand:
 		return nil
 	case ZoneExile:
-		// A per-instance permission is the ONLY way in, and CastSpell
-		// has already checked it. #659 retired the card-level
-		// ZoneExile declaration that used to be a second door: it
-		// covers every copy in exile, at any time, however the copy
-		// got there, which is the wrong shape for suspend, for
-		// foretell and for every other exile cast this engine has.
+		// A permission is the ONLY way in, and CastSpell has already
+		// checked it. #659 retired the card-level ZoneExile declaration
+		// as a second door: it covers every copy in exile, at any time,
+		// however the copy got there, which is the wrong shape for
+		// suspend, for foretell and for every other exile cast this
+		// engine has. A card whose own text opens exile (ADR 0066,
+		// 2026-11-05) comes in through the same door, as the permission
+		// castPermissionLocked derives for its owner.
 		if grant == nil {
 			return ErrNoPlayPermission
 		}

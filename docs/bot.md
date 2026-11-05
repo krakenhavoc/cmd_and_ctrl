@@ -429,6 +429,13 @@ read-ahead Saga on chapter I, so it gets every chapter the Saga prints.
 It has no measure of when trading the skipped chapters for tempo is
 worth it. See `readAheadValue` in `aiseat/heuristic/choices.go`.
 
+**What an entering attacker attacks (`entry_attack_target`, CR 508.4).**
+The bot sends a creature that enters tapped and attacking (Kira Nerys,
+Firebrand) at the opponent with the least life, skipping a seat that
+can't lose for life, and on a tie keeps it with the attack it already
+made (the first option). Planeswalkers and battles are offered but never
+preferred. See `entryAttackTargetValue` in `aiseat/heuristic/choices.go`.
+
 **Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
 CR 903.9a).** When the bot's commander has been put into a graveyard or
 exile, the state-based action asks its owner whether it goes to the
@@ -1706,6 +1713,46 @@ opponent's Tatyova, it keeps the Hart.
   the one it sacrifices is ramp. So a fetch with no payoff out is
   cracked as before.
 
+### A land search that sacrifices its source, by the turn (#5084)
+
+Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library
+for up to two basic land cards" was priced as two lands (`ManaSource`
+each, 2.00) plus the ramp premium, which is the hand's deficit (the
+largest mana value the bot holds above its sources), against the Hart's
+board value (about 3.30), with the flat `tappedBlocker` (0.30) for an
+untapped creature on top. A hand of cheap cards has no deficit, so the
+bot cracked the Hart only while it held a card it could not yet cast.
+The 0.30 was charged twice: the sacrifice already pays the creature's
+whole board value, blocker and all.
+
+With `PriceRampCurve` on (`ramp_curve.go`), the premium for an
+activated row that sacrifices its own source and declares `lands`
+(Burnished Hart, Sakura-Tribe Elder) is the larger of the hand's
+deficit and the curve's:
+
+```
+curve = min(RampWantCap, round + RampCurveLead) − the bot's mana sources
+        while round < RampWantCap, else 0
+```
+
+`RampCurveLead` is 2, so round 4 wants six mana. The two are not added
+up. Such a row is also not charged `tappedBlocker` again. So on round 4
+with four lands and a castable hand, the real Hart's activation is about
++0.70 rather than −1.60, and the bot cracks it once its cheaper casts
+are made; on round 6 with six lands the curve adds one mana, not two;
+from round 7 the curve has closed, and a Hart on a stalled board is kept
+unless the hand asks for the mana. The casts of ramp spells (Cultivate,
+Harrow), mana rocks and fetch lands keep their prices.
+
+The switch **ships off**, and the double charge stays with it. In
+thopter-battle the curve changed few decisions: the Hart is mostly on
+the battlefield from round 7, when the curve has closed, and early its
+{3} competes with casts the turn plan prices higher. The seats with the
+curve won no more than the seats without
+([bot-testing.md](bot-testing.md#burnished-harts-land-search-by-the-turn-5084-s75)).
+`heuristic-rampcurve` turns it on in the arena; `BaselineConfig` leaves
+it off too.
+
 ### One more loyalty activation (#4191)
 
 The Chain Veil's "{4}, {T}: For each planeswalker you control, you may
@@ -1718,6 +1765,33 @@ passing anywhere else (another player's turn, its own combat, no
 walker), where the grant cannot be used before the turn ends. After it
 resolves, the enumerator offers the walkers' loyalty rows again and they
 are priced as usual.
+
+### A counter on its own source (#5083)
+
+Hangarback Walker's "{1}, {T}: Put a +1/+1 counter on this creature."
+declares `source_counters: 1` on the row. With `PriceSourceCounters` on
+(`source_counter.go`; off by default, see below), each such counter is worth `Weights.Power` plus
+`Weights.Toughness` (1.45), the price a landfall or discard payoff's
+counter on its source already has, in place of the flat `ActivateBase`.
+The tap is priced as before: the blocker (0.30), and before combat on
+the bot's own turn the attack it gives up. So the Walker grows in the
+bot's own main phase with spare mana (1.15 against `PassThreshold`
+0.25), where the flat price (0.20) left it for the end step before the
+bot's untap. A spell that wants the mana, or an attack worth more than
+the counter, comes first. On an opponent's turn before blockers are
+declared the counter is not priced, since the tap takes a blocker out of
+the coming combat. The Thopters the counter becomes when the Walker dies
+are not priced, so the price is a floor.
+
+The switch ships off: in the arena the seats that grew the Walker on
+their own turn lost to the seats that grew it in the end step before
+their untap ([bot-testing.md](bot-testing.md#a-counter-on-its-own-source-5083-s75)).
+Grown before combat, the Walker stays tapped through every opponent's
+turn, and the flat blocker price undercounts that against a counter the
+bot gets for nothing one window later. So the row keeps `ActivateBase`
+in `DefaultConfig` and `BaselineConfig`, and the Walker grows in the end
+step before the bot's untap, as before. `heuristic-sourcecounters` turns
+the price on in the arena.
 
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
@@ -1781,6 +1855,45 @@ With `OneShotManaAsToken` on (#2480), a token whose every mana ability
 sacrifices it (a Treasure) costs `TokenWeight` (0.50) when it is given
 up to pay a cost, rather than its board value as a mana source (1.00).
 It makes its mana once, and 0.50 is what the bot prices making one at.
+
+With `PriceSpareTokens` on (#4991, `spare_token.go`; off by default,
+see below), a creature token
+given up to pay a cost is *spare* when, after the payment, the bot still
+controls `SpareTokenKeep` (2) other creature tokens with the same body:
+the same name, power, toughness and keywords. A spare token costs what
+tapping it would (`tapCreatureCost`: a blocker, 0.30, and before combat
+on the bot's own turn the attack it gives up), never less than the
+blocker, rather than its board value (2.95 for a 1/1 flying Thopter).
+So Sai, Master Thopterist, whose row declares its draw, trades two of
+four Thopters for a card after combat (1.20 less 0.30 for Sai and 0.30
+for each Thopter, against `PassThreshold` 0.25) and keeps two. With
+three Thopters, or before the Thopters attack, it passes. A nontoken
+creature, a commander, a token in combat, one with counters and one with
+something attached are never spare. The switch ships off: in the arena
+the seats that made this trade lost to the seats that kept their
+Thopters ([bot-testing.md](bot-testing.md#spare-tokens-for-sais-draw-4991-s75)),
+so the board price stands and Sai's draw is still made only with
+Thopters that are dying anyway. `heuristic-sparetokens` turns it on in
+the arena; `BaselineConfig` leaves it off too. Sai's row now declares
+its draw (`draws: 1`), so it is priced by the card rather than the flat
+`ActivateBase`.
+
+With `PriceSpareManaSources` on (#5085, `spare_mana.go`; on by
+default), a mana rock given up to pay a cost, its own row's or another's,
+is *spare* when the mana the bot's other sources make, leaving out every
+permanent the cost gives up, still covers what its hand and commander
+want (the ramp deficit's `want`, capped at `RampWantCap`) and
+`SpareManaKeep` (5). A spare rock costs `SpareManaSourceCost` (0.50)
+rather than its board value as a mana source (1.00 untapped). So Mind
+Stone's "{1}, {T}, Sacrifice: Draw a card", whose row declares its draw,
+nets 0.70 against `PassThreshold` (0.25) once the bot has five other
+sources and nothing in hand it cannot already cast, and Commander's
+Sphere's the same; early, or while a card in hand still wants the
+stone's mana, it costs 1.00 and the draw (1.20) does not clear the bar.
+A rock is a noncreature, nonland permanent with a repeatable mana
+ability: a land and a mana creature are never spare, nor a commander.
+`heuristic-nosparemana` turns it off in the arena; `BaselineConfig`
+leaves it off ([bot-testing.md](bot-testing.md#spare-mana-rocks-for-mind-stones-draw-5085-s75)).
 
 The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
@@ -2627,8 +2740,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants` or `heuristic-nomanasink`. `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink` or `heuristic-sparetokens`. `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |

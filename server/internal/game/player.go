@@ -227,6 +227,13 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
+	// ExtraTurnsBegun counts the EXTRA turns (CR 500.7) this player has
+	// begun this game (#4973, H.M.S. Bounty's "haven't begun an extra
+	// turn this game"). Unlike TurnsBegun it counts only turns that
+	// really began: a skipped extra turn (CR 614.10a) and a seat stepped
+	// over after leaving the game began nothing.
+	ExtraTurnsBegun int
+
 	// UpkeepsBegun counts the upkeep steps this player has begun
 	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
 	// before any "at the beginning of your upkeep" trigger is checked,

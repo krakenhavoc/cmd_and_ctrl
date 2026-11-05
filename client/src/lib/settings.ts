@@ -285,7 +285,9 @@ export interface Settings {
     // §2.5: read always, so never greyed out). Each is a
     // category of the viewer's own legal moves; mana abilities and
     // land plays are never responses. All on by default except
-    // respondUntargetedAbilities (#2853, schema v22).
+    // respondUntargetedAbilities (#2853, schema v22),
+    // respondValueInstants (#2877, schema v31) and
+    // respondOtherSpecialActions (#2861, schema v32).
     //   respondCounterspells       — casts / activations that target the stack
     //   respondInstants            — any other instant-speed cast
     //   respondAbilities           — any other activated ability that
@@ -295,7 +297,16 @@ export interface Settings {
     //                                ability: pure value (Mind Stone, a
     //                                fetch land, cycling). Off by
     //                                default: not interaction.
-    //   respondSpecialActions      — foretell, suspend, turning face up
+    //   respondTurnFaceUp          — #2861 (schema v32): turning a
+    //                                face-down creature face up (morph,
+    //                                disguise, a manifested card). It
+    //                                can answer a spell, so it is on by
+    //                                default.
+    //   respondOtherSpecialActions — #2861 (schema v32): every other
+    //                                special action (foretell, suspend,
+    //                                plot, unlock). Off by default
+    //                                (owner, 2026-10-30). Until v32 the
+    //                                two were respondSpecialActions.
     //   respondValueInstants       — #2877 (schema v31): a value
     //                                instant (Opt, Brainstorm: a cast
     //                                the server marks value_only) also
@@ -310,7 +321,8 @@ export interface Settings {
     respondValueInstants: boolean;
     respondAbilities: boolean;
     respondUntargetedAbilities: boolean;
-    respondSpecialActions: boolean;
+    respondTurnFaceUp: boolean;
+    respondOtherSpecialActions: boolean;
     // #1307 bluffing (Smart pass mode only, ADR 0143 §4.3). When smart autopass would pass a window you
     // cannot answer, act as if you could instead, so a pause gives
     // nothing away.
@@ -426,7 +438,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 31;
+export const SETTINGS_VERSION = 32;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -610,7 +622,11 @@ export function defaultSettings(): Settings {
       respondValueInstants: false,
       respondAbilities: true,
       respondUntargetedAbilities: false,
-      respondSpecialActions: true,
+      // #2861 defaults (owner, 2026-10-30): turning a face-down creature
+      // face up can answer a spell; foretell, suspend, plot and unlock
+      // answer nothing.
+      respondTurnFaceUp: true,
+      respondOtherSpecialActions: false,
       // #1307 bluff defaults: off, timed, 1.5–4 s. A bluff slows the
       // table, so nobody gets one they didn't ask for.
       bluffCounterspell: false,
@@ -759,7 +775,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     respondValueInstants: "synced",
     respondAbilities: "synced",
     respondUntargetedAbilities: "synced",
-    respondSpecialActions: "synced",
+    respondTurnFaceUp: "synced",
+    respondOtherSpecialActions: "synced",
     bluffCounterspell: "synced",
     bluffInstant: "synced",
     bluffMode: "synced",
@@ -1161,7 +1178,10 @@ function migrate(raw: unknown): Settings {
   // here too (applySyncedCopy). From v22 on, the stored choice stands.
   const gp = merged.gameplay as Settings["gameplay"];
   if (storedVersion < 22) {
-    const old = s.gameplay as Partial<Settings["gameplay"]> | undefined;
+    // respondSpecialActions is v12-v31's key (v32 splits it below).
+    const old = s.gameplay as
+      | (Partial<Settings["gameplay"]> & { respondSpecialActions?: unknown })
+      | undefined;
     const customised =
       !!old &&
       [
@@ -1356,6 +1376,44 @@ function migrate(raw: unknown): Settings {
   } else if (typeof gp.respondValueInstants !== "boolean") {
     gp.respondValueInstants = d.gameplay.respondValueInstants;
   }
+  // v31 → v32 (#2861, owner decision 2026-10-30): respondSpecialActions
+  // splits in two. Turning a face-down creature face up can answer a
+  // spell (CR 116.2b), so respondTurnFaceUp is on by default; foretell,
+  // suspend, plot and unlock answer nothing, so
+  // respondOtherSpecialActions is off. For a blob from before v32:
+  //   - respondTurnFaceUp copies respondSpecialActions (on when it was
+  //     not stored), so nobody's face-up stop changes.
+  //   - respondOtherSpecialActions is off when respondSpecialActions
+  //     was off. When it was on, a stored blob is materialised, so a
+  //     `true` from the default cannot be told from a chosen one; as
+  //     v22 did, a "Stop for" list that is not the v31 default can be:
+  //     a player who changed any category looked at the list and left
+  //     special actions on, so they keep stopping for all of them.
+  //     Everyone still on the default moves to the new default, off.
+  // The old key is deleted because the shallow merge keeps unknown
+  // keys. An account copy from an older client goes through here too
+  // (applySyncedCopy). From v32 on, the stored choices stand, and
+  // anything but a boolean is the default.
+  if (storedVersion < 32) {
+    const old = legacyGameplay.respondSpecialActions;
+    const specialOn = old !== false;
+    const customised =
+      gp.respondCounterspells === false ||
+      gp.respondInstants === false ||
+      gp.respondAbilities === false ||
+      gp.respondUntargetedAbilities === true ||
+      gp.respondValueInstants === true;
+    gp.respondTurnFaceUp = specialOn;
+    gp.respondOtherSpecialActions = specialOn && customised;
+  } else {
+    if (typeof gp.respondTurnFaceUp !== "boolean") {
+      gp.respondTurnFaceUp = d.gameplay.respondTurnFaceUp;
+    }
+    if (typeof gp.respondOtherSpecialActions !== "boolean") {
+      gp.respondOtherSpecialActions = d.gameplay.respondOtherSpecialActions;
+    }
+  }
+  delete legacyGameplay.respondSpecialActions;
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
   // boolean is the default.
@@ -1686,6 +1744,7 @@ export type SettingsTab =
   | "display"
   | "playmat"
   | "notifications"
+  | "stats"
   | "ai"
   | "gameplay"
   | "shortcuts"

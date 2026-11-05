@@ -360,6 +360,14 @@ type Game struct {
 	// Turn.advance to a new turn, alongside SpellsCastThisTurn.
 	ForetoldThisTurn map[uuid.UUID]int
 
+	// DilemmasFacedThisTurn counts, per player, the dilemmas that player
+	// has faced this turn (#4973, Star Trek: "for each dilemma you've
+	// faced this turn", "if you faced a dilemma this turn"). Bumped by
+	// emitFacedDilemmaLocked, the one place EventFacedDilemma is made,
+	// so the count and the trigger never disagree. Cleared as a turn
+	// begins, alongside ForetoldThisTurn.
+	DilemmasFacedThisTurn map[uuid.UUID]int
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
@@ -629,14 +637,17 @@ type Game struct {
 	//
 	// blockedAttackers is the CR 509.1h state: "a creature remains
 	// blocked even if all the creatures blocking it are removed from
-	// combat". It is written in exactly one place —
-	// commitBlockDeclarationLocked, the block declaration's lock-in —
-	// and read by both combat damage steps, which never ask the live
-	// battlefield whether an attacker is blocked (#715: they used to,
-	// so an attacker whose chump blocker died hit the player). The
-	// same set is the CR 506.4 announcement guard, because an
-	// attacker becomes blocked exactly once: an EventBecomesBlocked
-	// is emitted when, and only when, an attacker is added here.
+	// combat". It is written in two places —
+	// commitBlockDeclarationLocked, the block declaration's lock-in,
+	// and stampEntryBlockerLocked, a creature put onto the battlefield
+	// blocking (put_blocking.go) — and read by both combat damage
+	// steps, which never ask the live battlefield whether an attacker
+	// is blocked (#715: they used to, so an attacker whose chump
+	// blocker died hit the player). The same set is the CR 506.4
+	// announcement guard, because an attacker becomes blocked exactly
+	// once: an EventBecomesBlocked is emitted only when an attacker is
+	// added here (and, for a put-onto-the-battlefield blocker, only if
+	// the attacker was unblocked at that time, CR 509.3c).
 	//
 	// The maps exist because the declaration is announced at LOCK-IN
 	// and the sandbox lets the defender keep clicking afterwards: the
@@ -2215,6 +2226,16 @@ func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
 		return 0
 	}
 	return g.ForetoldThisTurn[playerID]
+}
+
+// DilemmasFacedThisTurnFor returns how many dilemmas `playerID` has
+// faced this turn (Game.DilemmasFacedThisTurn); zero when none.
+// Caller must hold g.mu.
+func (g *Game) DilemmasFacedThisTurnFor(playerID uuid.UUID) int {
+	if g.DilemmasFacedThisTurn == nil {
+		return 0
+	}
+	return g.DilemmasFacedThisTurn[playerID]
 }
 
 // stepExistsLocked reports whether the step the cursor has landed on

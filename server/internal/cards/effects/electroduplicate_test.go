@@ -9,10 +9,8 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-const (
-	electroduplicateOracle    = "112f2b3f-32e7-40b1-b80e-0b99184a840c"
-	cacklingCounterpartOracle = "9e2adca5-f39c-4a09-bcce-8238ebac2c4a"
-)
+// cacklingCounterpartOracle is declared in token_copy_end_step_grant_test.go.
+const electroduplicateOracle = "112f2b3f-32e7-40b1-b80e-0b99184a840c"
 
 // electroduplicateBearToken casts Electroduplicate on a 4/4 Big Bear and
 // resolves it, returning the token's and the bear's IDs.
@@ -61,6 +59,7 @@ func TestElectroduplicateMakesAHastyCopyThatSacrificesAtEndStep(t *testing.T) {
 		t.Errorf("the token's granted abilities are %v, want [%s]", tok.GrantedAbilities, want)
 	}
 
+	// Advance to the end step; the token's own trigger sacrifices it.
 	advanceTo(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
 	if onBattlefieldByID(g, token) || !sacrificedInLog(g, token) {

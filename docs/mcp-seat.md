@@ -257,10 +257,12 @@ What to know about how they behave:
   same controller and owner, and both tokens or both cards. A face-down
   permanent is never folded. `match` folds nothing, so
   `legal_moves(card: "<id>", match: "Treasure")` lists them one by one.
-- **A capped search is fetched in full.** A prompt's cut comes only with
-  the whole list, so the binary sees it when the wire cap cut the list.
-  When the cut is a "search your library" prompt (Demonic Tutor), the
-  binary asks for that prompt's whole list itself, up to three searches
+- **A capped search is fetched in full.** The enumerator's caps cut a
+  prompt's answers too, such as a search or a discard. The frame's
+  `legal_prompt_cuts` says so, whatever the length of the list (#4765),
+  and the binary counts the window as truncated. When the cut is a
+  "search your library" prompt (Demonic Tutor), the binary asks for that
+  prompt's whole list itself before Layer A runs, up to three searches
   a window. Other capped prompts stay capped, and every cut names the
   exact call that expands it, whether or not a card raised the prompt:
   `choice <id>: N answers not listed … legal_moves(choice: "<id>")
@@ -352,10 +354,11 @@ What to know about how they behave:
   when the server predates the field: a card that declares nothing (most
   instants until ADR 0142's sweep declares them), a value ability, and a
   `remove` effect. That is a counterspell, an instant, an ability that
-  targets or interacts, or a special action; in combat, crew or a manland
-  too. A land, a mana ability and a pure value ability (a fetch, Mind
-  Stone, cycling) are not, and nor is a value instant (Opt) against an
-  opponent's stack item. So a card that declares nothing still stops you
+  targets or interacts, or turning a face-down creature face up; in
+  combat, crew or a manland too. A land, a mana ability, a pure value
+  ability (a fetch, Mind Stone, cycling) and any other special action
+  (foretell, suspend, plot, unlock: #2861) are not, and nor is a value
+  instant (Opt) against an opponent's stack item. So a card that declares nothing still stops you
   where it did: that costs a click, never a window. A manland, a Crew row
   or a keyword grant carries no `answers_now` either at your own beginning
   of combat while the stack holds nothing of an opponent's, and `smart`

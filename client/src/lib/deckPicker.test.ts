@@ -275,13 +275,17 @@ describe("tilePreview: your seat while you browse (§1)", () => {
   it("names the commander, then the deck when it is not the commander's", () => {
     const p = tilePreview(
       libraryTile(
-        saved({ commander_cards: [{ name: "Nissa", scryfall_id: "n1", color_identity: ["G"] }] }),
+        saved({
+          commander_cards: [{ name: "Nissa", scryfall_id: "n1", color_identity: ["G"] }],
+          color_identity: ["G"],
+        }),
       ),
     );
     expect(p.text).toEqual({
       what: "Nissa, Leyline Tamer",
       second: "Inverse Nissa",
-      colors: [],
+      colors: ["G"],
+      colorless: false,
       ready: false,
     });
     expect(p.art).toEqual([{ name: "Nissa", scryfallId: "n1" }]);

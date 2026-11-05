@@ -1,36 +1,59 @@
 <script lang="ts">
-  // Stats — your own games (#/stats, ADR 0165 §7, #3366): games played,
-  // record, average place, the same by deck and by commander, and your
-  // recent games with turns and place. A free page for every signed-in
-  // person, in ADR 0158's frame. It shows only the caller's own seats
-  // (GET /me/stats); the server never sends anyone else's.
+  // Stats — your own games (#/stats, ADR 0165 §7 and ADR 0217 §8).
   //
-  // Signed-out visitors are sent to the front page by the router. A
-  // guest or admin session is not a person and has no seats of its own,
-  // so it sees a line saying to sign in with Discord.
-  import { onMount } from "svelte";
+  // Basic stats are on for every signed-in person: record, by deck and by
+  // commander, most-cast cards and recent games (GET /me/stats). With
+  // advanced stats on (ADR 0217 §2), the page is the advanced overview
+  // instead (GET /me/stats/advanced): a filter bar, stat tiles, then
+  // Results, Play, Mana, Cards, Colours and Decks, with recent games
+  // under them. While advanced stats are off the page says what they are
+  // and offers the switch (the opt-in card), never an error. The switch
+  // stays at the head of the page once they are on, and "Share my stats"
+  // opens the share dialog (ADR 0217 §6).
+  //
+  // Only the caller's own seats are counted; the server never sends
+  // anyone else's. Signed-out visitors are sent to the front page by the
+  // router. A guest or admin session is not a person and has no seats of
+  // its own, so it sees a line saying to sign in with Discord.
+  import { onMount, untrack } from "svelte";
   import Page from "../lib/components/Page.svelte";
   import ShopLinks from "../lib/components/ShopLinks.svelte";
   import ShopNote from "../lib/components/ShopNote.svelte";
+  import AdvancedStatsOptIn from "../lib/components/AdvancedStatsOptIn.svelte";
+  import AdvancedOverview from "../lib/components/stats/AdvancedOverview.svelte";
+  import RecordTables from "../lib/components/stats/RecordTables.svelte";
+  import StatsFilters from "../lib/components/stats/StatsFilters.svelte";
+  import ShareStatsDialog from "../lib/components/stats/ShareStatsDialog.svelte";
+  import { L } from "../lib/labels";
+  import { loadStatsPrefs, setAdvancedStats, statsPrefs, statsPrefsNote } from "../lib/statsPrefs";
   import { visibleShops } from "../lib/shopLinksStore";
   import { fetchMyStats } from "../lib/api";
+  import {
+    fetchAdvancedOverview,
+    type AdvancedOverview as Overview,
+    type Makeup,
+    type StatsRange,
+  } from "../lib/advancedStats";
   import { LobbyApiError, session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
-  import {
-    avgPlaceText,
-    placeText,
-    recordText,
-    resultText,
-    winRateText,
-    type MyStats,
-    type StatsGroup,
-  } from "../lib/myStats";
+  import { avgPlaceText, placeText, resultText, winRateText, type MyStats } from "../lib/myStats";
 
   const isPerson = $derived(signedInUserID($session) !== null);
 
   let stats = $state<MyStats | null>(null);
   let loading = $state(true);
   let error = $state("");
+
+  let overview = $state<Overview | null>(null);
+  let overviewLoading = $state(false);
+  let overviewError = $state("");
+  let makeup = $state<Makeup>("all");
+  let range = $state<StatsRange>("all");
+  let sharing = $state(false);
+  let switching = $state(false);
+  let switchError = $state("");
+
+  const advanced = $derived($statsPrefs.available && $statsPrefs.advanced);
 
   async function load(): Promise<void> {
     loading = true;
@@ -44,10 +67,57 @@
     }
   }
 
+  async function loadOverview(): Promise<void> {
+    overviewLoading = true;
+    overviewError = "";
+    try {
+      overview = await fetchAdvancedOverview(makeup, range);
+    } catch (err) {
+      // A 403 here means the setting went off under us (another tab):
+      // read it again, and the page falls back to the opt-in card.
+      if (err instanceof LobbyApiError && err.status === 403) {
+        overview = null;
+        void loadStatsPrefs();
+      } else {
+        overviewError =
+          err instanceof LobbyApiError ? err.message : "could not load your advanced stats";
+      }
+    } finally {
+      overviewLoading = false;
+    }
+  }
+
   onMount(() => {
-    if (isPerson) void load();
-    else loading = false;
+    if (isPerson) {
+      void load();
+      void loadStatsPrefs();
+    } else loading = false;
   });
+
+  // Advanced stats on: read the overview; off: drop it.
+  // Only `advanced` is tracked: a filter change reads on its own.
+  $effect(() => {
+    if (advanced) untrack(() => void loadOverview());
+    else overview = null;
+  });
+
+  function onFilters(m: Makeup, r: StatsRange): void {
+    makeup = m;
+    range = r;
+    void loadOverview();
+  }
+
+  async function toggle(on: boolean): Promise<void> {
+    switching = true;
+    switchError = "";
+    try {
+      await setAdvancedStats(on);
+    } catch (e) {
+      switchError = e instanceof Error ? e.message : "could not save; try again";
+    } finally {
+      switching = false;
+    }
+  }
 
   function when(ms: number): string {
     return new Date(ms).toLocaleDateString(undefined, {
@@ -58,45 +128,19 @@
   }
 </script>
 
-{#snippet breakdown(title: string, id: string, rows: StatsGroup[])}
-  <section class="card" aria-labelledby={id}>
-    <h2 {id}>{title}</h2>
-    {#if rows.length === 0}
-      <p class="muted">Nothing yet.</p>
-    {:else}
-      <div class="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col" class="num">Games</th>
-              <th scope="col" class="num">Record</th>
-              <th scope="col" class="num">Win rate</th>
-              <th scope="col" class="num">Avg. place</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each rows as row (row.name)}
-              <tr>
-                <th scope="row" class="name">{row.name}</th>
-                <td class="num">{row.games}</td>
-                <td class="num">{recordText(row)}</td>
-                <td class="num">{winRateText(row)}</td>
-                <td class="num">{avgPlaceText(row.avg_place)}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </section>
-{/snippet}
-
 <Page
   eyebrow="Stats"
   title="Your games"
   lede="How your decks and commanders do at CMD & CTRL tables. Only your own seats are counted."
 >
+  {#snippet actions()}
+    {#if isPerson && $statsPrefs.available}
+      <button type="button" class="btn" onclick={() => (sharing = true)} data-testid="share-stats">
+        {L.shareStats}
+      </button>
+    {/if}
+  {/snippet}
+
   {#if !isPerson}
     <p class="card note" role="status">
       Statistics belong to a signed-in account. Sign in with Discord to see how your games go.
@@ -107,26 +151,61 @@
     <p class="card note error" role="alert">{error}</p>
     <button type="button" class="btn" onclick={() => void load()}>Try again</button>
   {:else if stats}
+    {#if advanced}
+      <div class="switch-bar">
+        <label class="switch-row">
+          <input
+            type="checkbox"
+            checked={$statsPrefs.advanced}
+            disabled={switching}
+            onchange={(e) => toggle(e.currentTarget.checked)}
+            data-testid="advanced-stats-switch"
+          />
+          <span>
+            {L.advancedStatsSwitch}
+            <span class="help">{statsPrefsNote($statsPrefs)}</span>
+          </span>
+        </label>
+        {#if switchError}<p class="error-line" role="alert">{switchError}</p>{/if}
+      </div>
+    {:else}
+      <AdvancedStatsOptIn />
+    {/if}
+
     {#if stats.games === 0}
       <p class="card note" role="status" data-testid="stats-empty">
         No finished games yet. Play a game to the end and your record starts here.
       </p>
     {:else}
-      <div class="tiles" data-testid="stats-tiles">
-        <div class="tile">
-          <span class="tile-label">Games played</span>
-          <span class="tile-value">{stats.games}</span>
+      {#if advanced}
+        <StatsFilters {makeup} {range} onchange={onFilters} disabled={overviewLoading} />
+        {#if overviewError}
+          <p class="card note error" role="alert">{overviewError}</p>
+          <button type="button" class="btn" onclick={() => void loadOverview()}>Try again</button>
+        {:else if overview}
+          <div class:stale={overviewLoading} data-testid="advanced-overview">
+            <AdvancedOverview {overview} />
+          </div>
+        {:else}
+          <p class="muted" role="status">Loading your advanced stats…</p>
+        {/if}
+      {:else}
+        <div class="tiles" data-testid="stats-tiles">
+          <div class="tile">
+            <span class="tile-label">Games played</span>
+            <span class="tile-value">{stats.games}</span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Record (W-L-D)</span>
+            <span class="tile-value">{stats.wins}-{stats.losses}-{stats.draws}</span>
+            <span class="tile-sub">{winRateText(stats)} won</span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Average place</span>
+            <span class="tile-value">{avgPlaceText(stats.avg_place)}</span>
+          </div>
         </div>
-        <div class="tile">
-          <span class="tile-label">Record (W-L-D)</span>
-          <span class="tile-value">{stats.wins}-{stats.losses}-{stats.draws}</span>
-          <span class="tile-sub">{winRateText(stats)} won</span>
-        </div>
-        <div class="tile">
-          <span class="tile-label">Average place</span>
-          <span class="tile-value">{avgPlaceText(stats.avg_place)}</span>
-        </div>
-      </div>
+      {/if}
       {#if stats.unfinished > 0}
         <p class="muted small">
           {stats.unfinished}
@@ -136,8 +215,9 @@
       {/if}
 
       <div class="stack">
-        {@render breakdown("By deck", "by-deck", stats.by_deck)}
-        {@render breakdown("By commander", "by-commander", stats.by_commander)}
+        {#if !advanced}
+          <RecordTables byDeck={stats.by_deck} byCommander={stats.by_commander} />
+        {/if}
 
         {#if (stats.top_cards ?? []).length > 0 && $visibleShops.length > 0}
           <section class="card" aria-labelledby="top-cards" data-testid="top-cards">
@@ -180,6 +260,10 @@
   {/if}
 </Page>
 
+{#if sharing}
+  <ShareStatsDialog onclose={() => (sharing = false)} />
+{/if}
+
 <style>
   .stack {
     display: grid;
@@ -187,7 +271,7 @@
     margin-top: 16px;
   }
   .muted {
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     margin: 0;
   }
   .small {
@@ -198,6 +282,32 @@
     color: var(--danger, var(--fg));
     border-color: var(--danger, var(--border));
     margin-bottom: 12px;
+  }
+  .switch-bar {
+    margin: 0 0 16px;
+  }
+  .switch-row {
+    display: inline-flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    font-weight: 600;
+  }
+  .switch-row input {
+    margin-top: 3px;
+  }
+  .switch-row .help {
+    display: block;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+  }
+  .error-line {
+    margin: 6px 0 0;
+    color: var(--danger);
+  }
+  .stale {
+    opacity: 0.6;
+    transition: opacity 120ms var(--ease);
   }
   .tiles {
     display: grid;
@@ -230,38 +340,6 @@
   }
   h2 {
     margin-top: 0;
-  }
-  .scroll {
-    overflow-x: auto;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.92rem;
-  }
-  th,
-  td {
-    padding: 8px 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-  thead th {
-    font: 600 0.7rem/1 var(--font-mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-  }
-  tbody tr:last-child > * {
-    border-bottom: 0;
-  }
-  th.name {
-    font-weight: 600;
-    min-width: 12ch;
-  }
-  .num {
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
   }
   .top {
     list-style: none;
@@ -336,7 +414,7 @@
     border-color: var(--accent);
     color: var(--accent);
   }
-  @media (max-width: 640px) {
+  @media (max-width: 819px) {
     .top li {
       grid-template-columns: minmax(0, 1fr) auto;
     }

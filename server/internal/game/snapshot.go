@@ -410,6 +410,11 @@ type GameSnapshot struct {
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
+	// DilemmasFacedThisTurn is Game.DilemmasFacedThisTurn (#4973).
+	// Additive within v9: a file written before it restores with no
+	// dilemmas faced this turn.
+	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
+
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
@@ -834,6 +839,10 @@ type playerSnapshot struct {
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
 	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// ExtraTurnsBegun is Player.ExtraTurnsBegun (#4973). Additive within
+	// v9: a file written before it restores with 0, which reads as "has
+	// begun no extra turn this game".
+	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -1184,6 +1193,11 @@ type cardSnapshot struct {
 	// ChosenPlayer's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenPermanent *ObjectRef `json:"chosenPermanent,omitempty"`
+	// LinkedPermanent is the permanent a linked ability of this one
+	// affected (CR 607.2e) — The Best of Both Worlds' assimilated Borg.
+	// Carried for ChosenPermanent's reason: nothing can re-derive it. Old
+	// snapshots have no key and read "none".
+	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -1419,6 +1433,12 @@ type cardSnapshot struct {
 	// shows the card as automated again, which is cosmetic, not a
 	// rules change.
 	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+
+	// ExileGrants is Card.ExileGrants (ADR 0219, #4973): abilities a
+	// resolved effect gave an exiled card. Additive within the version:
+	// absent from every earlier file, which restores as "has only its
+	// printed abilities", the state before the field existed.
+	ExileGrants []ExileGrantSnapshot `json:"exileGrants,omitempty"`
 }
 
 // AbilityCounts is how many catalog abilities of each kind a card
@@ -2543,6 +2563,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
+	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -3004,6 +3025,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -3025,6 +3047,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
+		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -3105,6 +3128,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
+		ExtraTurnsBegun:       p.ExtraTurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -3848,6 +3872,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
+	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -4120,6 +4145,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4141,6 +4167,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
+		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4253,6 +4280,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
+		ExtraTurnsBegun:    p.ExtraTurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),

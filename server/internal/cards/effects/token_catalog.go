@@ -303,6 +303,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// U.S.Agent's Sturdy Shield: an Equipment token, +1/+2, equip {2}.
 	printedSturdyShieldToken,
 
+	// Gwyndala, the Progeny's Neuroflux Heirloom (#4973): an Equipment
+	// token, +1/+1, equip {2}.
+	printedNeurofluxHeirloomToken,
+
 	// White Tiger's The Tiger God: a legendary 4/4 Cat God that can't be
 	// blocked by more than one creature.
 	printedTigerGodToken,
@@ -316,6 +320,15 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
 	printedPestAttackToken,
+	// Star Trek batch 23 (#4973): Cleveland Booker, Empath's Worm that
+	// can't block, and The City on the Edge of Forever's Human.
+	printedTrekB23CantBlockWormToken,
+	printedTrekB23CantPhaseInHumanToken,
+
+	// Genesis Effect's New Planet (Star Trek, #4973).
+	printedTrekB16NewPlanetToken,
+	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
+	printedTrekB33TribbleToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

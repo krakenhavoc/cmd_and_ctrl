@@ -285,6 +285,9 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 	if g.PhasedOut == nil || g.Battlefield == nil || len(ids) == 0 {
 		return nil
 	}
+	if g.permanentsCantPhaseInLocked() {
+		return nil
+	}
 	moved := make([]uuid.UUID, 0, len(ids))
 	actors := make(map[uuid.UUID]uuid.UUID, len(ids))
 	for _, id := range ids {
@@ -335,6 +338,22 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 		})
 	}
 	return moved
+}
+
+// permanentsCantPhaseInLocked reports whether a permanent on the
+// battlefield carries the PermanentsCantPhaseIn world rule ("Permanents
+// can't phase in."), read off the layered view the way every
+// restriction gate reads it. A phased-out source is not in the
+// battlefield slice and stops nothing (CR 702.26b).
+//
+// Caller must hold g.mu.
+func (g *Game) permanentsCantPhaseInLocked() bool {
+	for i := range g.Battlefield.Cards {
+		if Restricted(&g.Battlefield.Cards[i], PermanentsCantPhaseIn) {
+			return true
+		}
+	}
+	return false
 }
 
 // phasedOutControllerLocked reads the controller of a card that has

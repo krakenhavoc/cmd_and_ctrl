@@ -181,6 +181,12 @@ func hasBestowOffer(c Card) bool {
 // permissionTypeTallyKey is TurnTally.PermissionTypes' key for one type
 // a derived permission has spent: whose permission, which granting
 // object (CR 400.7), which type.
+//
+// The zone is NOT in the key, and that is a contract (ADR 0066's
+// 2026-11-05 amendment): two permissions one card declares over two
+// zones, each naming the same type, share that type's use. The
+// Holodeck's "once during each of your turns ... from outside the game
+// or from your graveyard" is two such permissions and one use.
 func permissionTypeTallyKey(holder, source uuid.UUID, epoch int, typ string) string {
 	return holder.String() + "/" + ObjectTallyKey(source, epoch, typ)
 }

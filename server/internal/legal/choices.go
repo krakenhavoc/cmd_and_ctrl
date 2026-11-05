@@ -1186,6 +1186,28 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
+		case game.PendingChoiceEntryAttackTarget:
+			// CR 508.4: what a creature entering tapped and attacking
+			// attacks (Kira Nerys, Firebrand). One answer per offered
+			// defender; ResolveEntryAttackTarget accepts every one (a
+			// defender gone since the prompt opened is CR 508.4a's
+			// "enters, not attacking"). The first is what the chooser is
+			// already attacking, and the always-legal answer.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "defender " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.addChoice(c, reason+": "+label, p)
+			}
+
 		case game.PendingChoiceEntryReadAhead:
 			// Read ahead (CR 702.155b, #2123): the chapter the Saga
 			// starts on, one answer per chapter. ResolveEntryReadAhead

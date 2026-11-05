@@ -40,6 +40,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // toughness check read every printed 0/0 as the importer's stand-in —
 // and what closed it is the printing behind the object
 // (game.Card.ToughnessIsKnown).
+//
+// The tap row's purpose declares the +1/+1 counter it puts on the
+// Walker (SourceCounters, #5083), so a bot with PriceSourceCounters on
+// prices the row by the counter it keeps rather than the flat activation
+// price.
 func init() {
 	Register(Spec{
 		OracleID:                   "dde55256-5259-44e7-a267-fca45a7f0d04",
@@ -65,7 +70,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Put a +1/+1 counter on this creature.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump, SourceCounters: 1},
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {

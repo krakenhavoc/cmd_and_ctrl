@@ -158,6 +158,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a rollExtraDieIgnoreOne replacement names no player"
 		}
+	case ModOneMoreCounter:
+		// #4973: Brad Boimler names whose permanents get the extra counter.
+		if m.Player == uuid.Nil {
+			return "a oneMoreCounter replacement names no player"
+		}
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
@@ -193,6 +198,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchLife
 	case ModRollExtraDieIgnoreOne:
 		return watchRollDie
+	case ModOneMoreCounter:
+		return watchCounterPlaced
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
 	case ModLandManaIsColor:
@@ -712,6 +719,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModRollExtraDieIgnoreOne:
 		return rollExtraDieAppliesLocked(m, ev)
+	case ModOneMoreCounter:
+		return oneMoreCounterAppliesLocked(g, m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
@@ -790,6 +799,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.Cancel()
 	case ModRollExtraDieIgnoreOne:
 		g.applyRollExtraDieLocked(e, ev)
+	case ModOneMoreCounter:
+		// "That many plus one": one window per kind, so one more each.
+		ev.CounterDelta++
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)
