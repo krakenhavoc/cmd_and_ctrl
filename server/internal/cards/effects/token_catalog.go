@@ -320,6 +320,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Essenceknit Scholar's Pest: gains life when it attacks (#4456).
 	printedPestAttackToken,
+	// Star Trek batch 23 (#4973): Cleveland Booker, Empath's Worm that
+	// can't block, and The City on the Edge of Forever's Human.
+	printedTrekB23CantBlockWormToken,
+	printedTrekB23CantPhaseInHumanToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
