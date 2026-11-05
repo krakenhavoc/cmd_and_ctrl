@@ -38,12 +38,20 @@ import { SERVER_FULL_CODE, serverFull } from "./serverFull";
 // directly instead — GET /me came back 401, so the credential this
 // socket is dialling with is gone, not merely unreachable. Nothing
 // redials from here; the player has to sign in again.
+//
+// "table_closed" is the third (#5082, ADR 0211 §4): the table was
+// archived, by an admin or the idle sweep, and refuses this socket. The
+// refused upgrade reaches the browser as a bare 1006, so the client
+// learns it by asking (setTableClosedCheck) after a failed dial, or
+// after the 1000 that closes the sockets of a table being archived.
+// Nothing redials from here either.
 export type ConnectionStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
   | "disconnected"
-  | "session_ended";
+  | "session_ended"
+  | "table_closed";
 
 export type LogDirection = "sent" | "received" | "error" | "info";
 
@@ -196,6 +204,11 @@ const CLOSE_HEARTBEAT_TIMEOUT = 4002;
 // stops for good, and "retry" (GET /me did not answer) waits a rung of
 // the backoff ladder and asks again, never dialling in between.
 export type AdminModeHandler = () => Promise<"reconnect" | "leave" | "retry">;
+
+// TableClosedCheck asks the server whether the table this client dials
+// was closed (#5082): true only for a definite yes. The Game route
+// installs api.ts's tableIsClosed for its game.
+export type TableClosedCheck = () => Promise<boolean>;
 
 // SESSION_TOKEN_PARAM is the query parameter that carries the session
 // token on a WS upgrade — browsers cannot set headers on a WebSocket
@@ -364,6 +377,12 @@ export class GameClient {
   // set, every rung of the ladder asks the handler before it dials.
   private adminModeHandler: AdminModeHandler | null = null;
   private adminRecheck = false;
+  // tableClosedCheck is asked after a dial that never opened and after a
+  // terminal 1000 (#5082); tableCheckInFlight keeps it to one question
+  // at a time. Cleared, like the dead-session probe's, on every reset of
+  // the ladder.
+  private tableClosedCheck: TableClosedCheck | null = null;
+  private tableCheckInFlight = false;
   // actionsSent counts action frames that left the socket. A timed
   // bluff (#1307) reads it to tell whether the viewer did anything
   // while it was waiting, whichever of the many send paths they used.
@@ -387,6 +406,14 @@ export class GameClient {
   // an ordinary drop, as it was before ADR 0112.
   setAdminModeHandler(fn: AdminModeHandler | null): void {
     this.adminModeHandler = fn;
+  }
+
+  // setTableClosedCheck installs what the client asks when a dial fails
+  // or the server closes the socket with 1000 (#5082). With none, both
+  // behave as they did before ADR 0211: a failed dial climbs the ladder
+  // and a 1000 lands on "disconnected".
+  setTableClosedCheck(fn: TableClosedCheck | null): void {
+    this.tableClosedCheck = fn;
   }
 
   // setFrameRecording turns raw frame capture on or off. Callers are
@@ -478,9 +505,14 @@ export class GameClient {
     // socket has already been assigned during reconnect, silently
     // nulling out the live socket.
     const isCurrent = (): boolean => this.socket === socket;
+    // opened tells a dial the server refused (a bare 1006 before any
+    // open, which is how a browser reports a refused upgrade) from a
+    // connection that dropped after it was up (#5082).
+    let opened = false;
 
     socket.addEventListener("open", () => {
       if (!isCurrent()) return;
+      opened = true;
       this.status.set("connected");
       this.resetReconnectAttempts();
       this.startHeartbeat(socket);
@@ -537,6 +569,10 @@ export class GameClient {
           `socket closed by server (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`,
         );
         this.status.set("disconnected");
+        // #5082: archiving a table closes its sockets with this same
+        // 1000 as deleting one does. Ask which it was, so a closed table
+        // says so instead of offering a Reconnect that would be refused.
+        if (ev.reason !== SEAT_REMOVED_MESSAGE) this.checkTableClosed();
         return;
       }
       this.append("info", `socket closed (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`);
@@ -547,6 +583,9 @@ export class GameClient {
         return;
       }
       this.scheduleReconnect();
+      // #5082: a dial that never opened may be an archived table's
+      // refusal. Asked alongside the ladder, as the dead-session probe is.
+      if (!opened) this.checkTableClosed();
     });
 
     socket.addEventListener("error", () => {
@@ -716,6 +755,40 @@ export class GameClient {
     });
   }
 
+  // checkTableClosed asks the installed TableClosedCheck whether the
+  // table was closed (#5082) and, on a definite yes, stops for good on
+  // "table_closed". It runs alongside the reconnect ladder, never in
+  // place of it: "no" and a failed question change nothing. A verdict
+  // that comes back after the ladder was reset (a successful open, a
+  // deliberate connect() or disconnect()) is dropped, as the dead-session
+  // probe's is.
+  private checkTableClosed(): void {
+    const check = this.tableClosedCheck;
+    if (!check || this.tableCheckInFlight) return;
+    this.tableCheckInFlight = true;
+    const generation = this.reconnectGeneration;
+    void check()
+      .catch(() => false)
+      .then((closed) => {
+        if (generation !== this.reconnectGeneration) return;
+        this.tableCheckInFlight = false;
+        if (!closed) return;
+        this.append("info", "table check: the table was closed — not reconnecting");
+        this.enterTableClosed();
+      });
+  }
+
+  // enterTableClosed stops the ladder for good on "table_closed", the
+  // way enterSessionEnded stops it on "session_ended".
+  private enterTableClosed(): void {
+    this.cancelReconnect();
+    this.stopHeartbeat();
+    const socket = this.socket;
+    this.socket = null;
+    this.status.set("table_closed");
+    socket?.close();
+  }
+
   // enterSessionEnded stops the reconnect ladder for good and moves to
   // the terminal "session_ended" status the connection banner reads as
   // "sign in again" (#1475). It closes any live socket the same way
@@ -743,6 +816,7 @@ export class GameClient {
     this.reconnectAttempt.set(0);
     this.sessionCheckDone = false;
     this.sessionCheckInFlight = false;
+    this.tableCheckInFlight = false;
     this.adminRecheck = false;
     this.reconnectGeneration += 1;
   }

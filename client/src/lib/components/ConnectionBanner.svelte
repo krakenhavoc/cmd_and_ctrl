@@ -62,6 +62,7 @@
     if (
       status === "reconnecting" ||
       status === "session_ended" ||
+      status === "table_closed" ||
       (status === "disconnected" && dialed)
     ) {
       dropped = true;
