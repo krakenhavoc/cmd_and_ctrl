@@ -141,6 +141,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
+	"DilemmasFacedThisTurn", carried, "", // #4973
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn

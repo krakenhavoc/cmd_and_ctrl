@@ -360,6 +360,14 @@ type Game struct {
 	// Turn.advance to a new turn, alongside SpellsCastThisTurn.
 	ForetoldThisTurn map[uuid.UUID]int
 
+	// DilemmasFacedThisTurn counts, per player, the dilemmas that player
+	// has faced this turn (#4973, Star Trek: "for each dilemma you've
+	// faced this turn", "if you faced a dilemma this turn"). Bumped by
+	// emitFacedDilemmaLocked, the one place EventFacedDilemma is made,
+	// so the count and the trigger never disagree. Cleared as a turn
+	// begins, alongside ForetoldThisTurn.
+	DilemmasFacedThisTurn map[uuid.UUID]int
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
@@ -2215,6 +2223,16 @@ func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
 		return 0
 	}
 	return g.ForetoldThisTurn[playerID]
+}
+
+// DilemmasFacedThisTurnFor returns how many dilemmas `playerID` has
+// faced this turn (Game.DilemmasFacedThisTurn); zero when none.
+// Caller must hold g.mu.
+func (g *Game) DilemmasFacedThisTurnFor(playerID uuid.UUID) int {
+	if g.DilemmasFacedThisTurn == nil {
+		return 0
+	}
+	return g.DilemmasFacedThisTurn[playerID]
 }
 
 // stepExistsLocked reports whether the step the cursor has landed on
