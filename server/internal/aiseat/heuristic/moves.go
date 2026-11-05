@@ -411,6 +411,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// own source pays for the source. A row with no purpose keeps
 		// ActivateBase (owner decision 6).
 		purposed := false
+		// #5084: a row that sacrifices its source for lands, priced by
+		// the turn as well as the hand (ramp_curve.go).
+		curveRow := false
 		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
 		// declares an entry for is priced by what the row does to it.
 		targetV, targetsPriced := p.pricedTargetsHarm(st, cp.Targets, func(t targetRef) bool {
@@ -443,6 +446,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				// A row that taps a creature pays for it below, by when the
 				// tap happens (tapCreatureCost): a loot before combat
 				// costs the attack it replaces.
+			}
+			if purposed && p.cfg.PriceRampCurve && rampCurveRow(row, ps) {
+				if c := p.rampCurveValue(st, ps.lands); c > 0 {
+					v += c
+					reason += " (ramp curve)"
+				}
+				curveRow = true
 			}
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
@@ -554,7 +564,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// flat price it always had.
 			if row := activatedRow(src, cp.AbilityIndex); row != nil && row.TapCost {
 				v -= p.tapCreatureCost(st, src)
-			} else {
+			} else if !curveRow {
+				// #5084: a row that sacrificed the creature has paid
+				// for the blocker in its board value already.
 				v -= tappedBlocker
 			}
 		}

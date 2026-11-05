@@ -9,6 +9,65 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Burnished Hart's land search by the turn (#5084, S75)
+
+Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library for
+up to two basic land cards" priced its two lands (2.00) plus a ramp
+premium from the hand's deficit alone, against the Hart's board value
+(about 3.30) and, a second time, the flat 0.30 for an untapped creature.
+`PriceRampCurve` ([bot.md](bot.md#a-land-search-that-sacrifices-its-source-by-the-turn-5084))
+prices such a row's lands up to the mana a deck on curve wants two turns
+ahead while the round is below seven, and drops the double charge. It
+**ships off**: the arena below found no gain. `heuristic-rampcurve` seats
+today's heuristic with it on. The position tests
+(`heuristic/ramp_curve_test.go`) and the real-engine regression
+(`aiseat/ramp_curve_bot_test.go`) hold both sides: with the curve on, the
+Hart is cracked in rounds 3 to 5 on curve and in round 6 a land behind,
+with a castable hand (+1.10 against −0.20 to −1.20 off; the real card
++0.70), and two basic Islands enter tapped; it is kept from round 7, on
+a stalled board facing two 7/7s, and a land or more behind. The default
+keeps the Hart in every one of those positions. Ramp spells, rows that
+declare no lands and a hand that already asks for the mana are priced as
+before.
+
+The 2026-11-05 UTC runs used develop `f01023882` plus #5084 and the
+synthetic `--decks thopter-battle` at all four seats, rotation and
+lockstep. Every game ended with a winner and none stalled. First,
+curated-arena.sh's shape (16 games, seeds 1000–1015) with all four seats
+on one policy:
+
+| Policy | Hart activations (seat-games) | Hart windows offered | Wins |
+|---|---|---|---|
+| curve on | 10 (9 of 43) | 3,872 | 16 / 64 |
+| curve off (today) | 9 (8 of 44) | 3,941 | 16 / 64 |
+
+Fifteen of the sixteen games had the same length either way. Decision
+logs of four of those games with the curve on show why: in 108 windows
+of the Hart's controller's own main phase with an empty stack, 96 were
+from round 7 on, when the curve has closed, and in the 12 earlier ones
+the bot cast what it held, played a land or passed in round 6 with six
+sources, where the curve adds one mana and the Hart prices −0.30.
+
+Then head-to-head: two seats with the curve against two without, seeds
+2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games | Hart activations (seat-games) |
+|---|---|---|
+| curve on | 21, 21.9% (14.8–31.1%) | 10 (10 of 65) |
+| curve off | 27, 28.1% (20.1–37.8%) | 14 (14 of 66) |
+
+Two seats of one policy share a game, so the intervals are conservative.
+The intervals overlap and the curve seats made fewer Hart activations,
+not more, so the gap is the games the change re-dealt, not the curve. On
+this deck the Hart arrives late and its {3} competes with Drakes and
+Ogres the turn plan prices higher, so the price is not what keeps it on
+the battlefield. A ramp deck with big spells in hand, or the curated
+decks, is the run to make before turning the switch on. The labelled
+position suite (42/42), the heuristic, suite, botarena, boteval and
+aiseat package tests and docsguard passed. With the switch off,
+`DefaultConfig` plays exactly as before. Reports stayed on the authoring
+machine.
+
 ## Mana sinks and graveyard exiles (#4559, S75)
 
 `heuristic-nomanasink` is today's heuristic with `SinkManaLast` and
