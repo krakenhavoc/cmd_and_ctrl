@@ -17,6 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entirely, which OncePerBatch alone does not do since it only
 // dedupes within one batch.
 //
+// The row declares Draws 1 and DeathPayoff, as Midnight Reaper's does
+// (#4990). The bot counts it on every creature it sacrifices, the
+// second one of a turn included, which this row does not pay for.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -24,12 +28,12 @@ func init() {
 		Name:         "Morbid Opportunist",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 				if !AnotherCreatureDied(ev, source, ch, g) {
 					return false
 				}
 				return !b11TriggeredThisTurn(g, source.InstanceID, morbidOpportunistDrawLabel)
-			}, morbidOpportunistDrawLabel, Do(DrawCards{N: 1}))),
+			}, morbidOpportunistDrawLabel, Do(DrawCards{N: 1}))), game.Purpose{Draws: 1, DeathPayoff: true}),
 		},
 	})
 }

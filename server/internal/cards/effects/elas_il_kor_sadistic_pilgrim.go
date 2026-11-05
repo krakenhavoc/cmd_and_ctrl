@@ -15,6 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // excluded, unlike Zulaport's "this creature or another". The drain
 // is life loss, not damage, so no prevention applies.
 //
+// The enter row declares its 1 life as Hinterland Sanctifier's does,
+// and the dies row DeathPayoff as Zulaport Cutthroat's does (#4990).
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -23,10 +26,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Elas il-Kor — you gain 1 life", Do(GainLife{Amount: 1})),
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl("Elas il-Kor — you gain 1 life", Do(GainLife{Amount: 1})),
+				game.CreatureEnterPayoff{LifeGain: 1}),
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherCreatureYouControlDied(ev, source, g)
-			}, "Elas il-Kor — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
+			}, "Elas il-Kor — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }
