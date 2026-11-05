@@ -129,7 +129,7 @@ type TokenGroup struct {
 	CreatedWith PermissionCardRef
 
 	// Blocking is the attacking creature this group's tokens are created
-	// BLOCKING (CR 506.3d, 509.5): Brimaz's "create a 1/1 Cat Soldier
+	// BLOCKING (CR 506.3d, 509.4): Brimaz's "create a 1/1 Cat Soldier
 	// creature token with vigilance that's blocking that creature". It
 	// is stampEntryBlockerLocked's, once the token has landed: never
 	// declared as a blocker, so no "whenever this blocks" trigger fires

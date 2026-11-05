@@ -135,7 +135,7 @@ func (e *enumerator) activatedMoves() {
 	// #660, widened by #1221: every OTHER zone an ability can
 	// function from. Cycling is an ordinary CR 602 activation whose
 	// ability functions from hand (CR 702.29a), unearth is one whose
-	// ability functions from a graveyard (CR 702.82a), and both go
+	// ability functions from a graveyard (CR 702.84a), and both go
 	// through the same body below rather than through a second
 	// enumerator — the zone predicate is the only thing that differs,
 	// which is the whole point of ADR 0062 Decision 1.
