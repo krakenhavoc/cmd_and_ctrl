@@ -707,6 +707,7 @@ choose grasping-tentacles/take-pick
 choose hama/exile-pick
 choose manifest-dread/pick
 choose resolution-cast/abstract-performance-rest-to-hand
+choose resolution-cast/commander-spock-after-cast
 choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
@@ -791,6 +792,7 @@ confirm confirm/charismatic-conqueror-tap
 confirm confirm/clash-of-elements-top-or-bottom
 confirm confirm/cloak-of-confusion-no-damage
 confirm confirm/combustible-gearhulk-draw-or-mill
+confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
 confirm confirm/corruption-of-towashi-draw
@@ -2141,6 +2143,10 @@ tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
+tail trek-b31/artifact-creatures-protection-from-chosen-color
+tail trek-b31/borg-queen-exiled
+tail trek-b31/borg-queen-rest-on-bottom
+tail trek-b31/commander-spock-draw-if-on-top
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
