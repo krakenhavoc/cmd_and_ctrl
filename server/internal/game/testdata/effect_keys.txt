@@ -1244,6 +1244,7 @@ pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 pick revealed-pick/traumatic-revelation-incubate
 pick revealed-pick/word-of-command-play
+pick revealed-pick/zero-incorporeal-sensate-exile
 resume replacement-resume/combat-damage
 resume replacement-resume/combat-damage-redirected
 resume replacement-resume/counter
