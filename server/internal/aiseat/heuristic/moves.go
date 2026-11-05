@@ -922,6 +922,27 @@ func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64
 	if p.cfg.RampPerMana == 0 || amount <= 0 || st.seat == nil {
 		return 0
 	}
+	sources := 0
+	for _, c := range st.bf {
+		if c.Controller == st.me {
+			sources += repeatableMana(c)
+		}
+	}
+	deficit := p.manaWant(st, card) - sources
+	if deficit <= 0 {
+		return 0
+	}
+	return p.cfg.RampPerMana * float64(min(amount, deficit))
+}
+
+// manaWant is the mana a turn the bot wants to cast what it holds (ADR
+// 0126 §2): the largest mana value among the cards in its hand, less
+// `card` (nil for none), and its commanders in the command zone with
+// their tax, capped at RampWantCap. Zero with no seat in the view.
+func (p *Policy) manaWant(st *state, card *protocol.CardView) int {
+	if st.seat == nil {
+		return 0
+	}
 	want := 0
 	consider := func(c *protocol.CardView, tax int) {
 		if (card != nil && c.InstanceID == card.InstanceID) || isLand(c) {
@@ -941,17 +962,7 @@ func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64
 	if want > p.cfg.RampWantCap {
 		want = p.cfg.RampWantCap
 	}
-	sources := 0
-	for _, c := range st.bf {
-		if c.Controller == st.me {
-			sources += repeatableMana(c)
-		}
-	}
-	deficit := want - sources
-	if deficit <= 0 {
-		return 0
-	}
-	return p.cfg.RampPerMana * float64(min(amount, deficit))
+	return want
 }
 
 // castSource finds the card a cast move names, in any zone a cast can

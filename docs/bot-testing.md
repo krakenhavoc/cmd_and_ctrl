@@ -162,6 +162,61 @@ the switch on. The labelled position suite, the gated heuristic games
 package tests passed. Reports and decision logs stayed on the authoring
 machine.
 
+## Spare mana rocks for Mind Stone's draw (#5085, S75)
+
+Mind Stone's "{1}, {T}, Sacrifice Mind Stone: Draw a card" was offered
+about 6,000 times in #4991's 16 games and never taken. Its row already
+declared `draws: 1`; the price was the cause. The card is
+`Weights.Hand` (1.20) and the stone its board value as an untapped mana
+source (`ManaSource`, 1.00), so the activation netted 0.20, under
+`PassThreshold` (0.25) in every window. `PriceSpareManaSources` prices a
+spare rock at `SpareManaSourceCost` (0.50; [bot.md](bot.md#sacrifices)),
+and it **ships on**. `heuristic-nosparemana` seats today's heuristic
+with it off. The position tests (`heuristic/spare_mana_test.go`) and the
+real-engine regression (`aiseat/mind_stone_bot_test.go`) hold both
+sides: with seven lands and an empty hand the stone is cashed in (0.70);
+with three or four lands, or a hand card that still wants the stone's
+mana, it is kept; a mana creature is never spare; with the price off the
+bot passes.
+
+The 2026-11-05 UTC runs used develop `f01023882` plus #5085 and the
+synthetic `--decks thopter-battle` at all four seats, rotation and
+lockstep. Every game ended with a winner and none stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all
+four seats on one policy:
+
+| Policy | Mind Stone activations | Offered windows | Seat-games used |
+|---|---|---|---|
+| price on (`heuristic`) | 44 | 1,168 | 32 of 41 |
+| price off (`heuristic-nosparemana`) | 0 | 5,771 | 0 of 41 |
+
+With the price on, the decision logs put every activation at +0.70 in
+the bot's own main phase (31 before combat, 13 after), from game turn 5
+to 18 (median 8), with six to eleven mana sources counting the stone and
+at most three cards in hand. Hangarback Walker's activation (56 against
+67) and Burnished Hart's (5 against 9) moved little; Sai's went from 5
+to 8.
+
+Then head-to-head: two seats with the price on against two without,
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 | Mind Stone activations |
+|---|---|---|
+| price on | 23, 24.0% (16.5–33.4%) | 95 |
+| price off | 25, 26.0% (18.3–35.6%) | 0 |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. Two wins in 96 is well
+inside the noise: the trade neither wins nor loses measurably on a deck
+whose draws are vanilla creatures and lands, and it ships on because a
+deck that draws better cards gets more for each stone. Back it out with
+`PriceSpareManaSources` if a curated-deck run says otherwise. The
+labelled position suite (42 positions, 100% agreement), the gated
+heuristic games (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic
+tests) and the package tests passed. Reports and decision logs stayed on
+the authoring machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every

@@ -480,12 +480,15 @@ func (p *Policy) valueWaits(st *state, src *protocol.CardView, row *protocol.Act
 // PriceAnswerOnlyRows (#4318), still pays nothing, as before ADR 0142: its
 // payoff is the flat ActivateBase, which cannot cover an undeclared
 // benefit when charged the full source. Declared draw rows already
-// price their draw and pay this cost.
+// price their draw and pay this cost. A spare mana rock (#5085,
+// Config.PriceSpareManaSources, spare_mana.go) is worth
+// SpareManaSourceCost here: Mind Stone's draw late in the game.
 func (p *Policy) selfSacrificeCost(st *state, src *protocol.CardView) float64 {
+	v := p.spareManaCost(st, src, nil, st.permanentValue(src))
 	if !p.cfg.PriceAnswers || !p.cfg.SacrificeDyingAnyway {
-		return st.permanentValue(src)
+		return v
 	}
-	return (1 - p.dyingAnyway(st, src)) * st.permanentValue(src)
+	return (1 - p.dyingAnyway(st, src)) * v
 }
 
 // exiledOutletCost is what a `sac_outlet` row's exile-a-permanent cost
