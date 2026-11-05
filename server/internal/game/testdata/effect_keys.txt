@@ -394,6 +394,7 @@ choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
+choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/exile-top-face-down-linked
@@ -1167,6 +1168,7 @@ payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/mana-vault-untap
+payunless pay-unless/marooned-tap-enchanted-permanent
 payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
 payunless pay-unless/mendicant-core-guidelight-copy-spell
@@ -1305,6 +1307,7 @@ run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
 run prompt-run/humiliate-counter
 run prompt-run/ill-gotten-gains-return
+run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/killmonger-sacrificed
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/lich-knights-conquest-sacrifice
@@ -1640,6 +1643,7 @@ tail engine/surveil-routed
 tail engine/suspend-exiled
 tail engine/value-chosen-nothing
 tail enlightened-confidant/return-top-card
+tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail espers-to-magicite/copy-a-creature-exiled
@@ -1698,6 +1702,7 @@ tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
+tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail hellcat/loses-abilities-gains-haste
@@ -1864,6 +1869,7 @@ tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/general-traag-sacrifice
+tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures

@@ -46,6 +46,8 @@
   import PlaymatSettings from "./PlaymatSettings.svelte";
   import NotificationSettings from "./NotificationSettings.svelte";
   import { loadNotifications, notificationPrefs } from "../notifications";
+  import { loadStatsPrefs, statsPrefs } from "../statsPrefs";
+  import StatsSettings from "./StatsSettings.svelte";
   import ModelKeySettings from "./ModelKeySettings.svelte";
   import { loadModelKey, modelKeyState } from "../modelKey";
   import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
@@ -133,6 +135,7 @@
     | "display"
     | "playmat"
     | "notifications"
+    | "stats"
     | "ai"
     | "gameplay"
     | "shortcuts"
@@ -186,6 +189,11 @@
   // tab is left out until it says yes.
   $effect(() => {
     if ($settingsOpen) void loadNotifications();
+  });
+  // ADR 0217 §2: the advanced-stats switch, for a signed-in person on a
+  // server that keeps it. The Stats tab is left out until it says so.
+  $effect(() => {
+    if ($settingsOpen) void loadStatsPrefs();
   });
   // ADR 0182: the same for your own model key. The AI opponents tab is
   // left out until the server says it can keep a key here.
@@ -481,6 +489,13 @@
               class:active={activeTab === "notifications"}
               aria-current={activeTab === "notifications" ? "page" : undefined}
               onclick={() => (activeTab = "notifications")}>Notifications</button
+            >
+          {/if}
+          {#if $statsPrefs.available}
+            <button
+              class:active={activeTab === "stats"}
+              aria-current={activeTab === "stats" ? "page" : undefined}
+              onclick={() => (activeTab = "stats")}>Stats</button
             >
           {/if}
           {#if $modelKeyState.available}
@@ -1019,6 +1034,8 @@
             <PlaymatSettings />
           {:else if activeTab === "notifications" && $notificationPrefs.available}
             <NotificationSettings />
+          {:else if activeTab === "stats" && $statsPrefs.available}
+            <StatsSettings />
           {:else if activeTab === "ai" && $modelKeyState.available}
             <ModelKeySettings />
           {:else if activeTab === "gameplay"}

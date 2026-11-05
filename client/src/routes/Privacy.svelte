@@ -73,6 +73,14 @@
       source: "migration 0022 notification_prefs; notify/notifier.go; ws/presence.go",
     },
     {
+      what: "Stats settings",
+      details:
+        "Whether advanced stats are on for you, and whether you or an admin set it. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
+      why: "So the Stats page shows the advanced stats only to the people who want them.",
+      howLong: "Until you change it or delete your account.",
+      source: "migration 0030 stats_prefs; lobby/stats_prefs.go",
+    },
+    {
       what: "Your own model key for AI opponents",
       details:
         "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",
@@ -100,12 +108,12 @@
     {
       what: "Game statistics",
       details:
-        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
+        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. It is part of the game’s record, kept with the game, and shown only to you. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
       why: "So you can see how your decks and games go, on your Stats page.",
       howLong:
         "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
       source:
-        "migration 0023 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
+        "migration 0023 game_stats, seat_stats, seat_card_stats; migration 0029 seat_turn_stats, seat_target_stats, seat_card_seen; gamestats/gamestats.go Compute",
     },
     {
       what: "Results post in Discord",
@@ -281,10 +289,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, deck-request history, playmats, settings, last table setup, notification settings and
-        Discord sign-in, signs you out everywhere, and turns your seat in every table that has ended
-        into “Deleted player”, so the other players keep their games. It is refused while you hold a
-        seat at a table that has not ended.
+        decks, deck-request history, playmats, settings, last table setup, notification settings,
+        stats settings and Discord sign-in, signs you out everywhere, and turns your seat in every
+        table that has ended into “Deleted player”, so the other players keep their games. It is
+        refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

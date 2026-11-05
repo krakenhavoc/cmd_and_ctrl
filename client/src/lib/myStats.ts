@@ -47,6 +47,8 @@ export interface MyStats extends StatsTally {
   recent: RecentStatsGame[];
   /** The caller's most-cast cards, at most ten (ADR 0179 §7). */
   top_cards?: TopCard[];
+  /** Whether advanced stats are on for the caller (ADR 0217 §2). */
+  advanced?: boolean;
 }
 
 /** "4-7-1", or "4-7" when nothing was drawn. */

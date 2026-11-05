@@ -10,7 +10,7 @@
 //  1. Refuse if the person holds a seat at a table that has not ended
 //     (a lobby or an active game). SeatedError names the table.
 //  2. Delete: decks, user_settings, table_setups, notification_prefs,
-//     model_keys, user_playmats, the
+//     stats_prefs, model_keys, user_playmats, the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -93,6 +93,7 @@ type Counts struct {
 	SettingsRows    int
 	SetupRows       int
 	NotifyPrefRows  int
+	StatsPrefRows   int
 	ModelKeyRows    int
 	Identities      int
 	Reports         int
@@ -294,6 +295,12 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.NotifyPrefRows, `DELETE FROM notification_prefs WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
+	// The advanced-stats setting (ADR 0217 §9, migration 0030). Its
+	// share link's hash goes with it, so the link stops working in
+	// this transaction.
+	if err := exec(&res.Counts.StatsPrefRows, `DELETE FROM stats_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
 	// The person's own model key (ADR 0182, migration 0025), sealed

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -16,10 +18,11 @@ import (
 // The creatures are read once as the spell resolves, then each is copied
 // under the caster's control (the copies' "you" is the caster). Haste
 // rides the token's printed keywords (TokenCopyGainsHaste). The
-// sacrifice clause is a granted trigger (ADR 0093): a catalog bundle
-// pinned to each new token with an indefinite duration, so a copy of a
-// copy does not inherit it (a granted ability is not copiable, CR 707.2)
-// and a token that leaves is gone with its grant. It fires at EVERY end
+// sacrifice clause is gained as part of the copying process (CR 707.9a),
+// so it is a copiable value of each token: a named bundle on its
+// GrantedAbilities (TokenCopyGainsAbility), which a copy of the token
+// copies too, and which a token that loses all its abilities loses. It
+// fires at EVERY end
 // step, not only the caster's, and checks "if you don't control a
 // planeswalker" both when the step begins and again on resolution
 // (CR 603.4), so a planeswalker arriving in response saves the token.
@@ -54,14 +57,21 @@ func init() {
 				}
 				ctx.RecordStep(faceYourselfRecord, nil, int(b25LastEventSeq(ctx.Game)))
 				// One creation (#4594): the copies are created, and enter, together.
-				return CreateTokenCopiesTogether{Controller: ctx.Controller(), Copies: originals, Except: TokenCopyGainsHaste}.Apply(ctx)
+				return CreateTokenCopiesTogether{Controller: ctx.Controller(), Copies: originals, Except: faceYourselfException}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
 				r := ctx.StepRecord(faceYourselfRecord)
 				if len(r.Ns) == 0 {
 					return nil
 				}
+				// Before the grant was a copiable value, this step gave each
+				// token a layer-6 grant. It stays for a table restored between
+				// the two steps of the old resolution, whose tokens were made
+				// without the copiable grant; a token that has it is skipped.
 				for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(r.N())) {
+					if tok, ok := ctx.Game.LookupCardForEffect(id); ok && slices.Contains(tok.GrantedAbilities, game.GrantKey(faceYourselfSacrifice)) {
+						continue
+					}
 					if err := (GrantAbilitiesFor{
 						Target:   id,
 						Keys:     []string{faceYourselfSacrifice},
@@ -79,6 +89,12 @@ func init() {
 
 // faceYourselfSacrifice is the key of the granted sacrifice bundle.
 const faceYourselfSacrifice = "face-yourself/sacrifice"
+
+// faceYourselfException is "except it has haste and '…'" (CR 707.9a).
+func faceYourselfException(t *game.Card) {
+	TokenCopyGainsHaste(t)
+	TokenCopyGainsAbility(t, faceYourselfSacrifice)
+}
 
 // faceYourselfRecord files the event log's position before the copies are made.
 const faceYourselfRecord = "face-yourself/cursor"
