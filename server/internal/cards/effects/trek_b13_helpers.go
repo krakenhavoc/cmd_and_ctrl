@@ -23,3 +23,31 @@ func CountersIfCastFrom(zone game.ZoneKind, kind string, n int) game.EntryCounte
 		},
 	}
 }
+
+// ReturnTheModesTargetsToHand is a modal bullet's "Return one or two
+// target ... cards from your graveyard to your hand" (Yuna's Decision,
+// Stray from History): each of this occurrence's targets that is still
+// legal (CR 608.2b) returns, and one that has left stays where it is.
+func ReturnTheModesTargetsToHand(_ *game.StackItem, ctx *Context, occ int) error {
+	for _, t := range ctx.ModeTargets(occ) {
+		if !ctx.IsTargetLegal(t) {
+			continue
+		}
+		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ReturnTheModesTargetToBattlefield is a modal bullet's "Return target
+// ... card from your graveyard to the battlefield" (Inscription of Ruin,
+// Resistance Is Futile): the occurrence's still-legal target returns under
+// its owner's control.
+func ReturnTheModesTargetToBattlefield(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
+}

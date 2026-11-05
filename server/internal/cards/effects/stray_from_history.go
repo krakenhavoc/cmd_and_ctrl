@@ -26,17 +26,7 @@ func init() {
 			ModeDoing("Rewrite the Past — Return one or two target creature and/or Spacecraft cards from your graveyard to your hand.",
 				TargetCardInGraveyard("one or two target creature and/or Spacecraft cards from your graveyard",
 					YouOwn(), Or(Creature(), Subtype("Spacecraft"))).WithCount(1, 2),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				ReturnTheModesTargetsToHand),
 			ModeDoing("Repair the Timeline — Target opponent reveals their hand. You choose a nonland card from it. Exile that card.",
 				TargetPlayer("target opponent", Opponent()),
 				func(_ *game.StackItem, ctx *Context, occ int) error {

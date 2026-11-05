@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Resistance Is Futile — Sorcery {1}{B} (Star Trek, #4973):
 //
 //	"Choose one —
@@ -26,13 +24,7 @@ func init() {
 			ModeDoing("Return target artifact creature card with mana value 3 or less from your graveyard to the battlefield.",
 				TargetCardInGraveyard("target artifact creature card with mana value 3 or less from your graveyard",
 					YouOwn(), Artifact(), Creature(), ManaValueLE(3)),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-				}),
+				ReturnTheModesTargetToBattlefield),
 		),
 	})
 }
