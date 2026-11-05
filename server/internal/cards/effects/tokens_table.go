@@ -350,4 +350,6 @@ var tokenTable = map[string]game.Card{
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
 	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
 	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// #4973 batch 20: Star Trek's Illusion (Holo-Engineer).
+	"3/3 colorless Illusion artifact": {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 }

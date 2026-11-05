@@ -50206,6 +50206,9 @@ seats[].endStepTurn	number:int
 seats[].enduringStory	bool
 seats[].energy	number:int
 seats[].extraTurnsBegun	number:int
+seats[].firstSpellCast	object
+seats[].firstSpellCast.epoch	number:int
+seats[].firstSpellCast.id	custom(uuid.UUID)
 seats[].graveyard	object
 seats[].graveyard.cards	array
 seats[].graveyard.cards[]	object

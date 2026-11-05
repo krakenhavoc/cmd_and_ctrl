@@ -101,6 +101,8 @@ body discard-by-opponent/return-with-counter
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
+body dr-leonard-mccoy/return-at-next-end-step
+body dr-leonard-mccoy/when-it-dies-this-turn
 body draw/controller-one
 body draw/one-card
 body eagles-are-coming/birds
@@ -523,6 +525,8 @@ choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/mill-then-take-first-contact-first-spell-pick
+choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/minas-tirith-garrison-tap-humans
@@ -1307,6 +1311,7 @@ run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
 run prompt-run/general-traag-sacrifice
+run prompt-run/genesis-device-sacrifice
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/god-eternal-bontu-sacrifice
@@ -1795,6 +1800,8 @@ tail mass/worlds-within-worlds-exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
+tail mill-then-take/first-contact
+tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
