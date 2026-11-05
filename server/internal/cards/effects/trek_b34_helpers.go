@@ -17,35 +17,6 @@ func trekB34ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source 
 	return target.IsArtifact() && target.IsCreature() && target.Controller == source.Controller
 }
 
-// trekB34DifferentlyNamedLandsPT is the characteristic-defining ability
-// "This creature's power and toughness are each equal to the number of
-// differently named lands you control" (CR 604.3a), counted every layer
-// pass: each land its controller controls, once per name. It reads the
-// battlefield slice directly, as landsYouControlPT does, so it is safe
-// inside a layer pass.
-func trekB34DifferentlyNamedLandsPT(label string) game.StaticAbility {
-	return game.StaticAbility{
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7A_CDA,
-		Label:     label,
-		AppliesTo: selfOnly,
-		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := 0
-			if g.Battlefield != nil {
-				names := map[string]bool{}
-				for i := range g.Battlefield.Cards {
-					l := &g.Battlefield.Cards[i]
-					if l.Controller == source.Controller && l.IsLand() {
-						names[l.Name] = true
-					}
-				}
-				n = len(names)
-			}
-			c.Power, c.Toughness = n, n
-		},
-	}
-}
-
 // trekB34GiftOfPerfection is Gift of Perfection's resolution:
 //
 //	"Each opponent reveals cards from the top of their library until they

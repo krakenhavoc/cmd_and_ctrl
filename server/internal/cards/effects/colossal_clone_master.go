@@ -33,7 +33,7 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key:    colossalCloneMasterGrant,
 			Text:   text,
-			Static: []game.StaticAbility{trekB34DifferentlyNamedLandsPT(text)},
+			Static: []game.StaticAbility{trekB19DifferentlyNamedLandsPT(text)},
 		}},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
