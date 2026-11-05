@@ -34,7 +34,7 @@ func seedSeat(t *testing.T, d *db.DB, at int64, name, userID, deckID, deckName, 
 	exec(`INSERT INTO seats (game_id, seat, player_id, user_id, deck_id, deck_name) VALUES (?, 0, 'p0', ?, ?, ?)`, id, uid, did, deckName)
 	// A second seat that is nobody's, so Players counts both.
 	exec(`INSERT INTO seats (game_id, seat, player_id) VALUES (?, 1, 'p1')`, id)
-	exec(`INSERT INTO game_stats VALUES (?, 1, 'live', 1, ?, 1, 0, ?)`, id, turns, at)
+	exec(`INSERT INTO game_stats (game_id, stats_version, source, log_complete, turns, rounds, starting_seat, computed_at) VALUES (?, 1, 'live', 1, ?, 1, 0, ?)`, id, turns, at)
 	for seat, r := range []string{result, "loss"} {
 		p := place
 		if seat == 1 {
@@ -44,7 +44,7 @@ func seedSeat(t *testing.T, d *db.DB, at int64, name, userID, deckID, deckName, 
 		if seat == 1 {
 			c = `["Other Person's Commander"]`
 		}
-		exec(`INSERT INTO seat_stats VALUES (?, ?, ?, ?, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, id, seat, r, p, c)
+		exec(`INSERT INTO seat_stats (game_id, seat, result, place, eliminated_turn, conceded, final_life, life_gained, life_lost, damage_to_players, combat_damage_to_players, commander_damage_dealt, commander_damage_taken, spells_cast, cards_drawn, attacks, tokens_created, mulligans, commanders) VALUES (?, ?, ?, ?, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, id, seat, r, p, c)
 	}
 }
 

@@ -1154,6 +1154,10 @@ type logFold struct {
 	// them. Kept through a loop replay, whose events write no line but
 	// still move the counts.
 	counts map[uuid.UUID]map[string]int
+	// stats is FullLogOf's StatsLog (ADR 0217 §1): the loop breaker's
+	// event gets a line, and a loop replay's line says it is one. Never
+	// set on a fold whose entries go on the wire.
+	stats bool
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1193,6 +1197,31 @@ func (f *logFold) countDelta(ev game.Event) int {
 		}
 	}
 	return 0
+}
+
+// statsEntry is the stats-only log's change to one projected entry
+// (FullLogOf's StatsLog): the loop breaker firing, which the public log
+// leaves out, becomes a LogLoop line with Call LoopCallSuspected, and a
+// loop replay's line is marked LoopCallReplayed.
+func (f *logFold) statsEntry(ev game.Event, e LogEvent, ok bool) (LogEvent, bool) {
+	switch ev.Kind {
+	case game.EventLoopSuspected:
+		return LogEvent{
+			Seq:    ev.Seq,
+			Batch:  ev.Batch,
+			Kind:   LogLoop,
+			Seat:   f.seatOf(ev.Actor),
+			CardID: uuidStringOrEmpty(ev.Source),
+			Label:  ev.Label,
+			Amount: ev.Amount,
+			Call:   LoopCallSuspected,
+		}, true
+	case game.EventLoopReplayed:
+		if ok {
+			e.Call = LoopCallReplayed
+		}
+	}
+	return e, ok
 }
 
 // extends reports whether g's event log is the log f folded, possibly
@@ -1259,6 +1288,9 @@ func (f *logFold) feed(events []game.Event) int {
 			}
 		}
 		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
+		if f.stats {
+			e, ok = f.statsEntry(events[i], e, ok)
+		}
 		if !ok {
 			continue
 		}
