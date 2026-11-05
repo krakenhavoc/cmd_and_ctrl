@@ -207,6 +207,13 @@ async function serve(url: string, init: RequestInit = {}): Promise<Response> {
   if (url === "/auth/discord/config") return json({ enabled: false });
   if (url.startsWith("/admin/") && forbid) return json({ error: "admin only" }, 403);
   if (url === "/admin/live") return json(LIVE);
+  // ADR 0217: the advanced-stats default and every account whose switch is set.
+  if (url === "/admin/stats/advanced") {
+    return json({
+      default: { on: false, stored: false },
+      accounts: [{ user_id: USER, choice: "on", set_by: "admin", advanced: true, updated_at: 1 }],
+    });
+  }
   if (url.startsWith("/admin/games/")) return json(GAME_DETAIL);
   if (url.startsWith("/admin/games")) return json(GAMES);
   if (url.endsWith("/revoke-sessions")) {
@@ -411,11 +418,19 @@ describe("one table", () => {
 describe("Accounts", () => {
   it("lists every account in table 'accounts', sorted here, never sending sort", async () => {
     const c = await show({ view: "accounts", filter: { played: "7d", sort: "name" } });
-    expect(adminCalls()).toEqual([{ url: "/admin/users?played=7d", method: "GET" }]);
+    expect(adminCalls()).toEqual([
+      { url: "/admin/stats/advanced", method: "GET" },
+      { url: "/admin/users?played=7d", method: "GET" },
+    ]);
     const rows = c.querySelectorAll('table[aria-label="accounts"] tbody tr');
     expect([...rows].map((r) => r.querySelector(".nm")?.textContent)).toEqual(["Ann", "zed"]);
     expect(text(rows[1])).toContain("playing now");
     expect(text(c)).toContain("2 accounts played in the last 7d");
+    // ADR 0217: the default above the table, and each person's state.
+    expect(c.querySelector("[data-testid=advanced-stats-default]")).not.toBeNull();
+    const states = [...rows].map((r) => r.querySelector(".adv .state")?.textContent?.trim());
+    expect(states).toContain("On, set by an admin");
+    expect(states).toContain("Default (off)");
   });
 
   it("filters the list as you type", async () => {
@@ -433,9 +448,15 @@ describe("Accounts", () => {
 describe("one account", () => {
   it("shows sign-in state, tables, decks and deck requests, and revokes after naming the person", async () => {
     const c = await show({ view: "account", id: USER });
-    expect(adminCalls()).toEqual([{ url: `/admin/users/${USER}`, method: "GET" }]);
+    expect(adminCalls()).toEqual([
+      { url: `/admin/users/${USER}`, method: "GET" },
+      { url: "/admin/stats/advanced", method: "GET" },
+    ]);
     const t = text(c);
     expect(t).toContain("zed");
+    expect(c.querySelector("[data-testid=account-advanced-stats]")?.textContent).toContain(
+      "On, set by an admin",
+    );
     expect(t).toContain("no list on the server");
     expect(t).toContain("refused: no role");
     expect(t).toContain("Atraxa superfriends");
