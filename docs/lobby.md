@@ -142,6 +142,33 @@ tables back **without a restart** with
 once load has freed up. The `RestoreDeferredGames` alert says when there
 are any ([monitoring](monitoring.md#alerts)).
 
+**Idle tables are closed** ([ADR 0211](decisions/0211-closing-idle-tables.md),
+#4562), so an abandoned table stops holding the load cap and its
+creator's three open tables. A sweep every 5 minutes (`Lobby.RunIdle`,
+`lobby/idle.go`) closes:
+
+| Variable | Default | Closes |
+|---|---|---|
+| `CMDCTRL_IDLE_LOBBY_TABLE_AFTER` | `24h` | an unstarted table with no activity: a seat joining or leaving (a rematch accept included), a deck, a bot added or removed, a setting, the host passing on, voice, #lfg or results switched, an invite rotated or DMed, a seated person's chat line, the start. Not a spectator, a preview, a read, a reconnect or the admin. |
+| `CMDCTRL_IDLE_GAME_AFTER` | `48h` | a started game with no move by a person or an agent: an action, a bundle or an undo for their own seat, the opening roll, a mulligan, a table roll, a settings change, an away answer or a take-back. Not a bot's, a stand-in's or the admin's commit, and not chat. Warned 12 hours before (a quarter of the threshold when that is shorter) with a line in the game's log, and never closed within an hour of its warning. |
+| `CMDCTRL_IDLE_BOTS_AFTER` | `1h` | a started game left to its bots (every seat still in it is a bot or a stand-in) with no socket on any person's seat, conceded players included. |
+
+`0` switches a cleanup off. Nothing is closed within an hour of the table
+coming into the process (a create, the boot restore, a hot restore of a
+deferred table), and deferred tables are never touched. The close is an
+archive, recorded exactly as an admin's (`archived_at`, no `outcome`, no
+winner, `cmdctrl_games_ended_total{outcome="closed"}` once, no statistics,
+no result post, no rematch, bots stopped, voice room and #lfg post
+removed, sockets evicted), plus `games.closed_reason` (`idle_lobby`,
+`idle_game` or `idle_bots`) and one `idle_close` line in the game's log.
+The sweep writes `games.last_active_at` when the table's activity moves,
+so the clock survives a restart (a row without it starts its clock when
+it is loaded). `DELETE /games/{id}/archive` brings a closed table back
+with a fresh clock and clears the reason; after **48 hours** an
+idle-closed table is unloaded: its room, restore point and snapshot are
+removed (the replay is kept) and its row is written `ended`, still
+archived and with no outcome.
+
 **The Discord join at the connection cap.** `GET /auth/discord/callback`
 is a browser navigation, so a JSON 503 would be shown as a blank page. At
 the connection cap, an invite-link callback does **not** claim the seat:
