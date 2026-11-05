@@ -1863,6 +1863,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/ShortcutsOverlay.svelte"],
     doc: "the keymap overlay (?), named by its heading",
   }),
+  gameClosed: label({
+    name: "This table was closed.",
+    kind: "text",
+    role: "status",
+    owners: ["lib/gameClosed.ts", "lib/connectionBanner.ts"],
+    doc: "ADR 0211 §4, #5082: what a refused join, spectate, start, deck, bot or setup says for the server's `game_closed` code, and the connection banner's headline once a failed redial finds the table archived",
+  }),
 
   // -- Automatic answers (ADR 0127) --
   rememberThisAnswer: label({
@@ -1941,6 +1948,20 @@ export const LABEL_SPECS = {
     role: "checkbox",
     owners: ["lib/components/Settings.svelte"],
     doc: "Settings → Gameplay → Advanced, What counts as a response: off by default, so a value instant does not stop you on an opponent's spell; it still does in combat and at an opponent's end step, gameplay.respondValueInstants (#2877)",
+  }),
+  respondTurnFaceUpToggle: label({
+    name: "Turning a face-down creature face up",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Gameplay → Advanced, What counts as a response: on by default, so a morph, disguise or manifested creature you can turn face up stops you on an opponent's spell, gameplay.respondTurnFaceUp (#2861)",
+  }),
+  respondOtherSpecialActionsToggle: label({
+    name: "Other special actions (foretell, suspend, plot, unlock)",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Gameplay → Advanced, What counts as a response: off by default, so a special action that answers nothing does not stop you; on your own main phase it still counts as something to do, gameplay.respondOtherSpecialActions (#2861)",
   }),
   useThisOrderAgain: label({
     name: "Use this order again",

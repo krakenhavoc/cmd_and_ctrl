@@ -43,10 +43,20 @@ type TriggerDoublingQuery struct {
 	Source     Card
 	SourceLKI  Characteristic
 	FromSpell  bool
-	Ability    *TriggeredAbility
-	Subject    uuid.UUID
-	SubjectLKI Characteristic
-	HasSubject bool
+	// SourceIsPermanent is true when the ability being doubled belongs to
+	// a permanent: it was found on the battlefield, or it is the
+	// leaves-the-battlefield ability of the permanent that just left.
+	// False for a spell's own trigger, an emblem's (CR 114.4), a card's
+	// ability that works from another zone (CR 113.6), and a delayed
+	// trigger, which is not an ability the permanent has (CR 603.2d).
+	// TriggerSuppressionQuery's field of the same name, for a doubler
+	// printed "a triggered ability of a permanent you control" whose
+	// cause is not a permanent (Krang, the All-Powerful's drawing).
+	SourceIsPermanent bool
+	Ability           *TriggeredAbility
+	Subject           uuid.UUID
+	SubjectLKI        Characteristic
+	HasSubject        bool
 }
 
 type doublerRef struct {
@@ -96,6 +106,18 @@ type triggerIdentityLKI struct {
 	// PermanentInfo.TextWords carries it: "when this creature dies"
 	// reads its own words as they last were (CR 603.10a, #3872).
 	TextWords []TextWordChange `json:"textWords,omitempty"`
+	// FaceDown is the CR 708.2 permanent state it left in, or empty for
+	// a permanent that was face up (#4845). The card is turned face up
+	// as it leaves (CR 708.9), so its new zone has its printed text
+	// back, but a face-down permanent had no text (CR 708.2) and a
+	// leaves-the-battlefield ability looks back at the permanent as it
+	// last existed (CR 603.10a): a manifested Doomed Traveler that dies
+	// has no dies trigger. Restoring the state makes CatalogKey answer
+	// "no text" for that look-back, and keeps its real name out of the
+	// trigger's object snapshot. Additive within the snapshot version
+	// (#522): a record written before it reads back as face up, which
+	// is what every record was then taken to be.
+	FaceDown FaceDownKind `json:"faceDown,omitempty"`
 }
 
 // harvestPass is the event-local, immutable view shared by every matching
@@ -215,7 +237,7 @@ func (g *Game) simultaneousExitCardLocked(id uuid.UUID) (Card, bool) {
 	return Card{}, false
 }
 
-func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteristic, ability TriggeredAbility, fromSpell bool) []doublerRef {
+func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteristic, ability TriggeredAbility, origin triggerOrigin) []doublerRef {
 	if CatalogTriggerDoublers == nil {
 		return nil
 	}
@@ -238,7 +260,7 @@ func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteri
 			if doubler.ActiveWhen.IsGate() && !doubler.ActiveWhen.Active(candidate.card) {
 				continue
 			}
-			q := TriggerDoublingQuery{Event: p.ev, Doubler: candidate.card, DoublerLKI: candidate.lki, Source: source, SourceLKI: lki, FromSpell: fromSpell, Ability: &decl, Subject: p.subject, SubjectLKI: p.subjectLKI, HasSubject: p.hasSubject}
+			q := TriggerDoublingQuery{Event: p.ev, Doubler: candidate.card, DoublerLKI: candidate.lki, Source: source, SourceLKI: lki, FromSpell: origin == triggerOfSpell, SourceIsPermanent: origin == triggerOfPermanent, Ability: &decl, Subject: p.subject, SubjectLKI: p.subjectLKI, HasSubject: p.hasSubject}
 			if doubler.Applies(g, q) {
 				name := doubler.Label
 				if name == "" {
@@ -356,6 +378,12 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 	c.AttachedTo = identity.AttachedTo
 	c.TextBox = identity.TextBox
 	c.TextWords = textWordsFromEntries(identity.TextWords)
+	// #4845: the face-down permanent it was, not the card face up in its
+	// new zone. Only the state is put back: the body the permanent had
+	// is the last-known characteristic below.
+	if identity.FaceDown.IsPermanentState() {
+		c.SetFaceDown(identity.FaceDown)
+	}
 	if lki, ok := g.lastKnownBattlefield[c.InstanceID]; ok {
 		c.Name = lki.Name
 		c.Controller = lki.Controller

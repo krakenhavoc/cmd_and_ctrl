@@ -399,13 +399,25 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	// zone-bound offer); this lists it. A permission with a price of its
 	// own ("without paying its mana cost", escape, Bolas's Citadel)
 	// lists none: CR 118.9a allows one alternative cost per cast.
-	if grant != nil && grant.AltCostKey == "" && !grant.NamesPrice() && zone != ZoneHand && zone != ZoneCommand {
-		for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
-			if ac.FromZone != "" {
-				continue
+	//
+	// #4971: when `grant` has a price of its own and a second permission
+	// at the printed cost opens the card too (Green Goblin's mayhem beside
+	// Muldrotha), the offers are listed under that one, which is the
+	// permission CastPermissionForClaimLocked hands a cast claiming them.
+	var printed *CastPermission
+	if zone != ZoneHand && zone != ZoneCommand {
+		printed = grant
+		if grant != nil && !grant.atPrintedCost() {
+			printed = g.printedCostPermissionForOffersLocked(playerID, card, zone)
+		}
+		if printed.atPrintedCost() {
+			for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
+				if ac.FromZone != "" {
+					continue
+				}
+				offer := ac
+				add(&offer, printed)
 			}
-			offer := ac
-			add(&offer, grant)
 		}
 	}
 	add(grant.AlternativeCostFor(card), grant)
@@ -453,6 +465,12 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 			continue
 		}
 		under := grant
+		if printed.atPrintedCost() {
+			// #4971: claimed under the permission at the printed cost,
+			// as CastSpell's lookup hands it, not under a priced one
+			// that happens to come first.
+			under = printed
+		}
 		if ac.RequiresGrant {
 			// A granted miracle is claimable only under the hand
 			// permission that names ITS key, which is not always the

@@ -37,22 +37,8 @@ func trekB11PutCounterOnEachOfTypeYouControl(subtype string) Effect {
 }
 
 // trekB11Assimilate is the Star Trek keyword action assimilate on one
-// card in a graveyard: "Put it onto the battlefield under your control
-// with a +1/+1 counter. It's a Borg artifact creature and loses all other
-// creature types." CR 205.1b: a "[creature type] artifact creature"
-// keeps its other card types and its subtypes other than creature types,
-// so the put adds Artifact and replaces the creature types with Borg, in
-// one record registered as the permanent lands (ADR 0210). The counter is
-// an entry counter, so the creature enters with it.
+// card in a graveyard (Death Is Irrelevant); the body is
+// trekAssimilateFrom (trek_assimilate.go).
 func trekB11Assimilate(ctx *Context, card uuid.UUID, label string) error {
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, []uuid.UUID{card},
-		game.ZoneEntryOptions{
-			Controller:         ctx.Controller(),
-			EntersWithCounters: map[string]int{game.CounterPlusOne: 1},
-			EntersAs: &game.EntersAs{
-				AddTypes:      []string{"Artifact"},
-				CreatureTypes: ctx.TextSubtypes("Borg"),
-				Label:         label,
-			},
-		}, game.TailRef{}, 0)
+	return trekAssimilateFrom(ctx, game.ZoneGraveyard, card, label, game.TailRef{})
 }

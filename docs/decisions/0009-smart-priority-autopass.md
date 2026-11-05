@@ -66,6 +66,12 @@ can change. A move that declares nothing stops as before. See "Amendment of
 beginning of combat out of that match: a manland, a Crew row or a keyword
 grant no longer stops you there every turn (see "Owner decision (2026-10-31):
 your own beginning of combat").
+**Amended by:** S78 (#2861), 2026-11-05 — the special-action category
+splits in two. Turning a face-down creature face up still stops you by
+default; foretell, suspend, plot, unlock and the other special actions no
+longer do (owner decision, 2026-10-30). Settings schema v32. See
+"Amendment: turning face up is the special action that stops you (#2861)"
+below.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -936,6 +942,111 @@ default.
 - A spell's other declared answers are not tiered or threat-gated: Altar's
   Reap (`sac_outlet`) still stops you on every opponent spell, as #3555's Q2
   kept for instants. Gating them would be a decision of its own.
+
+## Amendment: turning face up is the special action that stops you (#2861)
+
+**Status:** Accepted · 2026-11-05 · Sprint S78
+
+The #2853 amendment kept special actions in one category, on by default
+(owner answer 1), and left them to a separate issue. So smart auto-pass
+still stopped you on every opponent stack item while you could take any
+special action: a foretell card in hand on your own turn, a suspend card
+with instant timing, a Damping Engine's ignore, and a face-down creature
+you could turn face up. Only the last can answer a spell. Turning a
+face-down creature face up is a special action (CR 116.2b) that the player
+may take any time they have priority (CR 702.37e for morph), and a creature
+that turns face up in response can change what the spell does: it becomes a
+bigger blocker, gains an ability, or triggers. Foretelling, suspending,
+plotting and unlocking a door put nothing between the spell and its
+targets (plot and unlock are sorcery-timed, so they never meet a stack at
+all).
+
+**Owner decision (2026-10-30).** Split the special-action stop. "Turn a
+face-down creature up" stops by default; foretell, suspend, plot and unlock
+don't. A settings migration carries existing players over.
+
+### What changed
+
+- **Two classes.** `classifyMove` reads a `special_action` move's
+  `params.kind`, which the enumerator has always sent
+  (`legal/special_actions.go`):
+
+  | Move | Class |
+  |---|---|
+  | `special_action`, in the viewer's sorcery window | play |
+  | `special_action` with `kind: "turn_face_up"` | faceUp |
+  | any other `special_action` | special |
+
+  `special` covers foretell, suspend, plot and unlock, and also the kinds
+  the issue did not name: CR 116.2d's ignore (Damping Engine, offered at
+  every priority while the effect bears on you, so it would stop you on
+  every spell), the Wish right's outside-the-game naming, and a kind this
+  client does not know yet. Plot, unlock, companion and the planar die are
+  sorcery-timed (the engine's timing table in `game/special_action.go`), so
+  they only ever meet the first row, and the split changes nothing for
+  them.
+- **A special action in your own main phase with an empty stack is a play**,
+  as a cast or activation there already is. Before, it was `special`
+  everywhere, and the category being on made it count on a ticked main
+  phase. With the category off by default, a hand whose only move is a
+  foretell or a plot would otherwise skip a ticked main phase. Elsewhere on
+  your own turn (a ticked upkeep, say) a foretell counts only with the
+  setting on.
+- **Two "What counts as a response" settings** replace
+  `respondSpecialActions`: `gameplay.respondTurnFaceUp`, **Turning a
+  face-down creature face up** (`L.respondTurnFaceUpToggle`), on by default,
+  and `gameplay.respondOtherSpecialActions`, **Other special actions
+  (foretell, suspend, plot, unlock)** (`L.respondOtherSpecialActionsToggle`),
+  off by default. `ResponseCategories` gains `faceUp`, and `special` now
+  means the other half.
+- **The MCP seat's smart pass** (`mcpseat/smart.go`) mirrors the default: a
+  special action is a response only when its `kind` is `turn_face_up`.
+
+The precedence list is unchanged. Careful stops at every opponent item
+anyway, Manual holds everywhere, and Skip to my turn passes everything.
+
+### No missed window
+
+Priority is given as before (CR 117.3d), and every special action is still
+offered. A foretell or a suspend in response to a particular spell has, in
+that window, the stack hold's **wait** button, the hold key `h`, a phase pin
+or the pass chip's Undo; for every spell, the setting. Turning a creature
+face up, the one special action that answers, stops you exactly as it did.
+
+### The settings migration (schema v32)
+
+A stored blob is materialised, so a `respondSpecialActions: true` from the
+default cannot be told from a chosen one. For a blob from before v32:
+
+- `respondTurnFaceUp` copies `respondSpecialActions` (on when it was not
+  stored), so nobody's face-up stop changes.
+- `respondOtherSpecialActions` is off when `respondSpecialActions` was off.
+  When it was on, the rest of the list decides, as v22 did: a "What counts
+  as a response" list that is not the v31 default (counterspells, instants
+  or targeted abilities off, or value abilities or value instants on) is a
+  list the player looked at and left special actions on in, so every
+  special action keeps stopping them. Everyone still on the default moves to
+  the new default, off.
+
+`respondSpecialActions` is deleted, because the shallow merge keeps unknown
+keys. An account copy from a v31 client goes through the same migrate
+(`applySyncedCopy`). From v32 on, the stored values stand, and a non-boolean
+falls back to the default. An older client that reads a v32 account copy
+fills `respondSpecialActions` from its own default (on), so it stops for
+every special action, as it always did.
+
+### Costs
+
+- A foretell or suspend cast in response for its own sake (to hide a card
+  from a discard spell) no longer stops you by default. Tick the setting, or
+  use wait, hold or a pin.
+- The Damping Engine ignore is in the "other" half. Sacrificing a permanent
+  to it in response to removal (to deny an exile) is possible and now needs
+  the setting, wait or a pin.
+- A kind this client does not know is put in the "other" half too, against
+  §3's false-positive lean: every special action so far but turning face up
+  answers nothing, and the server names the kind on every move, so a new
+  one that answers gets its own class when it lands.
 
 ## Amendment of 2026-10-30 (#4734): a held answer stops you only when it can answer now
 

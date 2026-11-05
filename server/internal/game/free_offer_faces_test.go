@@ -182,3 +182,98 @@ func TestFreePlayFromTopStillSendsNoSpellToHand(t *testing.T) {
 		t.Fatal("a card with no face of mana value 5 or less was offered")
 	}
 }
+
+// spellFrontLandBackMDFC is the Zendikar Rising shape: a mana value 7
+// sorcery front face and a land back face (CR 712.11c).
+func spellFrontLandBackMDFC(owner uuid.UUID) Card {
+	return mdfcFixture(owner,
+		Face{Name: "Fixture Awakening", TypeLine: "Sorcery", ManaCost: "{5}{G}{G}", Colors: []string{"G"}},
+		Face{Name: "Fixture Undercrypt", TypeLine: "Land"},
+	)
+}
+
+// Ziatora's Envoy's "play a land from the top of your library": a modal
+// DFC whose back face is a land, and no face of which is a spell that
+// fits, is offered as a play of that land face, and accepting it puts the
+// back face onto the battlefield as the turn's land play.
+func TestFreePlayFromTopOffersAModalDFCsBackFaceLandPlay(t *testing.T) {
+	g, me, id := freePlayFromTopOver(t, spellFrontLandBackMDFC(uuid.Nil), 3, true)
+	c := mayCastChoiceFor(g, me.ID)
+	if c == nil || c.MayCastKeyword != MayCastKeywordPlayOrHand || c.MayCastCard != id {
+		t.Fatalf("offer %+v (in hand %v), want the back face's land play", c, me.Hand.Contains(id))
+	}
+	if freeCastGrantOn(g, id) != nil {
+		t.Error("a card with no spell face that fits was also offered as a free cast")
+	}
+	if err := g.ResolveMayCast(c.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	land := findCardForTest(g.Battlefield, id)
+	if land == nil || land.ActiveFace != 1 || !land.IsLand() || land.Name != "Fixture Undercrypt" {
+		t.Fatalf("on the battlefield: %+v, want the land back face", land)
+	}
+	if got := g.LandsPlayedThisTurnFor(me.ID); got != 1 {
+		t.Errorf("lands played this turn = %d, want 1", got)
+	}
+}
+
+// Declining puts the card into the hand as the card it is, front face up.
+func TestFreePlayFromTopDecliningABackFaceLandPutsTheCardInHand(t *testing.T) {
+	g, me, id := freePlayFromTopOver(t, spellFrontLandBackMDFC(uuid.Nil), 3, true)
+	c := mayCastChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the back face's land play was not offered")
+	}
+	if err := g.ResolveMayCast(c.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	card := findCardForTest(me.Hand, id)
+	if card == nil || card.ActiveFace != 0 {
+		t.Fatalf("in hand: %+v, want the card front face up", card)
+	}
+	if g.LandsPlayedThisTurnFor(me.ID) != 0 {
+		t.Error("a declined land play spent the land drop")
+	}
+}
+
+// The offer is a restore point: a restored table plays the back face.
+func TestFreePlayFromTopBackFaceLandPlaySurvivesARestore(t *testing.T) {
+	g, me, id := freePlayFromTopOver(t, spellFrontLandBackMDFC(uuid.Nil), 3, true)
+	restored := restoreStrictForTest(t, g)
+	c := mayCastChoiceFor(restored, me.ID)
+	if c == nil {
+		t.Fatal("the restored table lost the offer")
+	}
+	if err := restored.ResolveMayCast(c.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast on the restored game: %v", err)
+	}
+	if land := findCardForTest(restored.Battlefield, id); land == nil || land.ActiveFace != 1 || !land.IsLand() {
+		t.Fatalf("on the restored battlefield: %+v, want the land back face", land)
+	}
+}
+
+// No land drop left, or a spell-only clause (Rashmi): a back face land is
+// not a play the player can make, so the card goes to the hand.
+func TestFreePlayFromTopBackFaceLandWithNoPlayGoesToHand(t *testing.T) {
+	g, me, id := freePlayFromTopOver(t, spellFrontLandBackMDFC(uuid.Nil), 3, false)
+	if !me.Hand.Contains(id) || mayCastChoiceFor(g, me.ID) != nil {
+		t.Fatal("a spell-only offer offered a land play")
+	}
+
+	g = newActiveGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	toMainPhase(t, g)
+	c := spellFrontLandBackMDFC(me.ID)
+	g.WithWriteLock(func() {
+		g.LandsPlayedThisTurn = map[uuid.UUID]int{me.ID: 1}
+		me.Library.PushTop(c)
+		if err := g.OfferFreePlayFromTopOrHandForEffect(FreePlayFromTop{
+			Player: me.ID, Source: uuid.New(), SourceName: "Test Envoy", MaxManaValue: 3, Land: true,
+		}); err != nil {
+			t.Fatalf("OfferFreePlayFromTopOrHandForEffect: %v", err)
+		}
+	})
+	if !me.Hand.Contains(c.InstanceID) || mayCastChoiceFor(g, me.ID) != nil {
+		t.Fatal("a back face land with no land drop left was offered")
+	}
+}

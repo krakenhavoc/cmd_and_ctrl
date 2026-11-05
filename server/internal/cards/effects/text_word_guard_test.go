@@ -193,7 +193,7 @@ var textWordDoors = []string{
 	"SacrificeSubtype", "RevealX", "CraftWithEachOf", "CraftWithOneOrMoreSubtype",
 	"ManaRestrictSubtype", "ManaRestrictColor",
 	"anotherEnteredWithSubtypeThisTurn", "b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer",
-	"IsBasicLandOfAnySubtype", "IsLandWithAnySubtype", "CraftWithSubtype", "frodoSauronsBaneIs",
+	"IsBasicLandOfAnySubtype", "IsLandWithAnySubtype", "CraftWithSubtype", "sourceIsStillThisPermanentWithTextSubtype",
 }
 
 // textWordReaders are the calls whose first (or, for devotionTo, last)

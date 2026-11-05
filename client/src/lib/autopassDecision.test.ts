@@ -680,6 +680,21 @@ describe("autopassDecision — #2853: an untargeted value ability is not a respo
     expect(autopassDecision({ ...gatesFor(frame(valueBoard)), holdPriority: true })).toBe("hold");
   });
 
+  // #2861 (owner decision 2026-10-30): turning a face-down creature face
+  // up stops you by default; foretell, suspend, plot and unlock don't.
+  it("holds to turn a creature face up, and passes a foretell, suspend, plot or unlock", () => {
+    const sa = (kind: string) =>
+      mv("special_action", { source: `c-${kind}`, params: { kind, card_id: `c-${kind}` } });
+    expect(autopassDecision(gatesFor(frame([...valueBoard, sa("turn_face_up")])))).toBe("hold");
+    for (const kind of ["foretell", "suspend", "plot", "unlock"]) {
+      const view = frame([...valueBoard, sa(kind)]);
+      expect(autopassDecision(gatesFor(view)), kind).toBe("pass");
+      expect(autopassDecision(gatesFor(view, { ...DEFAULT_RESPONSES, special: true })), kind).toBe(
+        "hold",
+      );
+    }
+  });
+
   // #3316: Skip to my turn passes whatever the categories say, in
   // every mode.
   it("the autopass toggle passes whatever the categories say", () => {

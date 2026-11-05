@@ -124,6 +124,10 @@ type PurposeView struct {
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
+	// SourceCounters is the +1/+1 counters an activated row of the
+	// controller's own puts on its own source, to stay (#5083):
+	// Hangarback Walker's {1}, {T} row 1.
+	SourceCounters int `json:"source_counters,omitempty"`
 	// Targets is what happens to each target the statement names, one
 	// entry per target clause, keyed by the clause's slot: the slot a
 	// move's `targets[].slot` names, within the statement this purpose
@@ -395,6 +399,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		LandfallExtraTriggers:     p.LandfallExtraTriggers,
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse,
+		SourceCounters:            p.SourceCounters,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
