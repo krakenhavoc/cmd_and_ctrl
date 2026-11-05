@@ -384,6 +384,8 @@ choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
+choose choose-cards/crashing-wave-stun-among
+choose choose-cards/crashing-wave-stun-two
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
@@ -1446,6 +1448,7 @@ run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
 run the-city-on-the-edge-of-forever/gain-five
+searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names

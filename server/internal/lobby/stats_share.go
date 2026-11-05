@@ -32,6 +32,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
 
 // shareTokenBytes is the token's entropy: 128 bits (ADR 0217 §6).
@@ -136,34 +137,15 @@ type sharedStatsResponse struct {
 
 // sharedStats is GET /stats/shared/{token}.
 func sharedStats(c Config, w http.ResponseWriter, r *http.Request) error {
-	token := r.PathValue("token")
-	if !shareTokenRe.MatchString(token) || c.StatsPrefs == nil {
-		return errNoSharedStats
-	}
 	makeup, rng, err := advancedFilters(r)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), statsTimeout)
 	defer cancel()
-	ownerID, err := c.StatsPrefs.ShareLinkOwner(ctx, shareLinkHash(token))
-	if errors.Is(err, gamestats.ErrNoShareLink) {
-		return errNoSharedStats
-	}
+	owner, u, advanced, err := c.sharedOwner(ctx, r.PathValue("token"))
 	if err != nil {
-		return sharedStatsFailed(c, err)
-	}
-	owner, err := uuid.Parse(ownerID)
-	if err != nil || owner == uuid.Nil || c.Users == nil {
-		return errNoSharedStats
-	}
-	u, err := c.Users.Get(ctx, owner)
-	if err != nil {
-		return errNoSharedStats
-	}
-	prefs, def, err := c.advancedStatsFor(ctx, owner)
-	if err != nil {
-		return sharedStatsFailed(c, err)
+		return err
 	}
 	basic, err := c.Lobby.UserStats(owner)
 	if err != nil {
@@ -175,18 +157,13 @@ func sharedStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	if out.Basic.TopCards == nil {
 		out.Basic.TopCards = []gamestats.TopCard{}
 	}
-	if prefs.Effective(def.Advanced) && c.AdvancedStats != nil {
+	if advanced {
+		// The deck ids stay: the shared deck pages are reached by them
+		// (GET /stats/shared/{token}/decks/{deck_id}), and an id opens
+		// nothing without the token, since every read checks the owner.
 		ov, err := c.advancedOverview(ctx, owner, makeup, rng)
 		if err != nil {
 			return sharedStatsFailed(c, err)
-		}
-		// A shared view has no deck pages yet, and a deck id is the
-		// owner's library key, not something a viewer needs.
-		for i := range ov.Decks {
-			ov.Decks[i].DeckID = ""
-		}
-		if ov.MostPlayedDeck != nil {
-			ov.MostPlayedDeck.DeckID = ""
 		}
 		out.Advanced, out.Overview = true, &ov
 	}
@@ -194,6 +171,74 @@ func sharedStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	// A link posted in Discord is not something to index.
 	w.Header().Set("X-Robots-Tag", "noindex")
 	return writeJSON(w, http.StatusOK, out)
+}
+
+// sharedOwner resolves a share token to its owner, and says whether
+// the owner's advanced stats are on. An unknown, revoked or malformed
+// token, and an account that is gone, are all errNoSharedStats.
+func (c Config) sharedOwner(ctx context.Context, token string) (uuid.UUID, users.User, bool, error) {
+	if !shareTokenRe.MatchString(token) || c.StatsPrefs == nil {
+		return uuid.Nil, users.User{}, false, errNoSharedStats
+	}
+	ownerID, err := c.StatsPrefs.ShareLinkOwner(ctx, shareLinkHash(token))
+	if errors.Is(err, gamestats.ErrNoShareLink) {
+		return uuid.Nil, users.User{}, false, errNoSharedStats
+	}
+	if err != nil {
+		return uuid.Nil, users.User{}, false, sharedStatsFailed(c, err)
+	}
+	owner, err := uuid.Parse(ownerID)
+	if err != nil || owner == uuid.Nil || c.Users == nil {
+		return uuid.Nil, users.User{}, false, errNoSharedStats
+	}
+	u, err := c.Users.Get(ctx, owner)
+	if err != nil {
+		return uuid.Nil, users.User{}, false, errNoSharedStats
+	}
+	prefs, def, err := c.advancedStatsFor(ctx, owner)
+	if err != nil {
+		return uuid.Nil, users.User{}, false, sharedStatsFailed(c, err)
+	}
+	return owner, u, prefs.Effective(def.Advanced) && c.AdvancedStats != nil, nil
+}
+
+// sharedDeckStats is GET /stats/shared/{token}/decks/{deck_id}: one of
+// the owner's deck pages, read-only (ADR 0217 §6 and §8). It answers
+// what the owner's own page does, so what it shows is what the share
+// dialog says the link reveals. A deck that is not the owner's, and a
+// link whose owner has advanced stats off, are the same 404 as a dead
+// link.
+func sharedDeckStats(c Config, w http.ResponseWriter, r *http.Request) error {
+	makeup, rng, err := advancedFilters(r)
+	if err != nil {
+		return err
+	}
+	version, err := deckVersionParam(r)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), statsTimeout)
+	defer cancel()
+	owner, u, advanced, err := c.sharedOwner(ctx, r.PathValue("token"))
+	if err != nil {
+		return err
+	}
+	if !advanced {
+		return errNoSharedStats
+	}
+	deckStats, err := c.advancedDeck(ctx, owner, r.PathValue("deck_id"), version, makeup, rng)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Robots-Tag", "noindex")
+	return writeJSON(w, http.StatusOK, sharedDeckResponse{DisplayName: u.DisplayName, advancedDeckResponse: deckStats})
+}
+
+// sharedDeckResponse is a deck page and the owner's display name.
+type sharedDeckResponse struct {
+	DisplayName string `json:"display_name"`
+	advancedDeckResponse
 }
 
 func nonNilGroups(g []gamestats.Group) []gamestats.Group {

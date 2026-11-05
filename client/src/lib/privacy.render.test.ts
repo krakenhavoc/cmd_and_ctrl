@@ -130,6 +130,19 @@ describe("the privacy page", () => {
     expect(text).toContain("Only a signed-in Discord account can be deleted");
   });
 
+  it("says who sees you in the Played with list, and what the bot can do (ADR 0213 §10, slice 2)", () => {
+    const { container } = render(Privacy as never, {} as never);
+    const entry = [...container.querySelectorAll("h3")].find(
+      (h) => h.textContent === "People you’ve played with",
+    );
+    expect(entry).toBeDefined();
+    const text = entry!.parentElement!.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain("display name and avatar appear in the Played with list");
+    expect(text).toContain("name of your latest table together and how many you have shared");
+    expect(text).toContain("the bot send you a table’s invite link as a Discord direct message");
+    expect(text).toContain("Deleting your account removes you from these lists");
+  });
+
   it("is a public route and is reachable by its hash", async () => {
     session.set(null);
     navigate(PRIVACY_HASH);

@@ -613,6 +613,8 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	s := newSignupStack(t, true, func(c *Config) {
 		c.CommunityInviteURL = "https://discord.gg/c2table"
 		c.DiscordVoice = discord.Voice{Token: "bot-token", GuildID: gateGuild, CategoryID: voiceCategory}
+		c.DiscordBot = discord.Bot{Token: "bot-token"}
+		c.InviteBaseURL = "https://cmd.example"
 	})
 	resp := doGet(t, s.srv, "/community", "")
 	defer resp.Body.Close()
@@ -627,7 +629,7 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	if err := json.Unmarshal(raw, &body); err != nil {
 		t.Fatal(err)
 	}
-	if len(body) != 5 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true || body["voice"] != true || body["lfg"] != false || body["results"] != false {
+	if len(body) != 6 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true || body["voice"] != true || body["lfg"] != false || body["results"] != false || body["dm_invites"] != true {
 		t.Errorf("body = %s", raw)
 	}
 	if strings.Contains(string(raw), gateGuild) || strings.Contains(string(raw), gateRole) ||
@@ -640,7 +642,7 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	defer resp2.Body.Close()
 	var offBody map[string]any
 	_ = json.NewDecoder(resp2.Body).Decode(&offBody)
-	if offBody["invite_url"] != "" || offBody["gate"] != false || offBody["voice"] != false {
+	if offBody["invite_url"] != "" || offBody["gate"] != false || offBody["voice"] != false || offBody["dm_invites"] != false {
 		t.Errorf("gate off, no invite, no voice: %v", offBody)
 	}
 }
