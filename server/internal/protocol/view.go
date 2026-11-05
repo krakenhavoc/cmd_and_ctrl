@@ -3594,7 +3594,7 @@ type CardView struct {
 	// ZoneAbilities are the CR 602 activated abilities this card
 	// offers from the NON-BATTLEFIELD zone it is sitting in — the
 	// hand (cycling and typecycling, CR 702.29a/e), a graveyard
-	// (unearth CR 702.82a, scavenge CR 702.96a, embalm CR 702.128a),
+	// (unearth CR 702.84a, scavenge CR 702.97a, embalm CR 702.128a),
 	// exile, the command zone. Whatever `ActivatedAbilityShape.Zones`
 	// names. Absent for every card that prints none, which is nearly
 	// all of them.
@@ -4902,7 +4902,7 @@ type ActivatedAbilityView struct {
 	// payment, so no `discard_ids` is sent for it.
 	DiscardSelf bool `json:"discard_self,omitempty"`
 	// ExileSelf is scavenge's and embalm's "Exile this card from your
-	// graveyard" cost component (CR 702.96a / CR 702.128a, #1221).
+	// graveyard" cost component (CR 702.97a / CR 702.128a, #1221).
 	// DiscardSelf's sibling one zone over, and advisory for exactly
 	// the same reason: the source IS the payment, so there is nothing
 	// to collect and nothing on the payload. The keyword's own label
@@ -8850,7 +8850,7 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 // stampZoneAbilities fills CardView.ZoneAbilities for every card in
 // every NON-BATTLEFIELD zone an ability can function from (CR 113.6):
 // a seat's own hand (cycling and typecycling, CR 702.29), their own
-// graveyard (unearth CR 702.82a, scavenge CR 702.96a, embalm
+// graveyard (unearth CR 702.84a, scavenge CR 702.97a, embalm
 // CR 702.128a), their command zone, and their cards in exile.
 // #660 / ADR 0062 Decision 5, widened by #1221.
 //

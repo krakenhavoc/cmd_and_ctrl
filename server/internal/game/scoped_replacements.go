@@ -314,7 +314,7 @@ func (g *Game) PreventNextDamageThenThisTurnForEffect(sourceID, target uuid.UUID
 
 // ExileInsteadOfLeavingBattlefieldForEffect is "if it would leave the
 // battlefield, exile it instead of putting it anywhere else" on the one
-// permanent `cardID` (Whip of Erebos, unearth — CR 702.82a).
+// permanent `cardID` (Whip of Erebos, unearth — CR 702.84a).
 // `controller` controls the replacement effect.
 //
 // The duration is INDEFINITE and pinned to the object (#1591): the
