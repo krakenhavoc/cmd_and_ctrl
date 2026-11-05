@@ -39,9 +39,10 @@ func init() {
 				captainBenjaminSiskoOfficers),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{W}{U}{B}{R}{G}, {T}: Exile the top five cards of your library. You may cast any number of spells with mana value less than or equal to the number of Officers you control from among those cards without paying their mana costs.",
-			Cost:   Plus(ManaCost("{2}{W}{U}{B}{R}{G}"), TapCost()),
-			Effect: captainBenjaminSiskoExile,
+			Label:   "{2}{W}{U}{B}{R}{G}, {T}: Exile the top five cards of your library. You may cast any number of spells with mana value less than or equal to the number of Officers you control from among those cards without paying their mana costs.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{W}{U}{B}{R}{G}"), TapCost()),
+			Effect:  captainBenjaminSiskoExile,
 		}},
 	})
 }
