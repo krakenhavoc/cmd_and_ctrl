@@ -64,7 +64,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerPump},
 				Cost:    ManaCost("{1}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !nogAmbitiousCadetIs(g, item, "Rogue") {
+					if !sourceIsStillThisPermanentWithTextSubtype(g, item, "Rogue") {
 						return nil
 					}
 					self := item.SourceCardID
@@ -86,7 +86,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    ManaCost("{3}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !nogAmbitiousCadetIs(g, item, "Scout") {
+					if !sourceIsStillThisPermanentWithTextSubtype(g, item, "Scout") {
 						return nil
 					}
 					self := item.SourceCardID
@@ -107,15 +107,3 @@ const (
 	nogAmbitiousCadetScoutGrant   = "nog-ambitious-cadet/scout"
 	nogAmbitiousCadetOfficerGrant = "nog-ambitious-cadet/officer"
 )
-
-// nogAmbitiousCadetIs is the abilities' "if Nog is a <type>", read as the
-// ability resolves: Nog must still be the permanent that activated it (CR
-// 400.7) and have that creature type now. The type is a word of Nog's text
-// (CR 612.2).
-func nogAmbitiousCadetIs(g *game.Game, item *game.StackItem, subtype string) bool {
-	if !sourceIsStillThisPermanent(g, item) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	return ok && c.HasSubtype(g.TextReaderForEffect(item).TextSubtype(subtype))
-}

@@ -59,3 +59,16 @@ func trekB25ExceptItHasMenace(t *game.Card) {
 	}
 	t.Keywords = append(t.Keywords, "menace")
 }
+
+// sourceIsStillThisPermanentWithTextSubtype is a ladder ability's "if
+// <this> is a <type>", read as the ability resolves: the source must still
+// be the permanent that activated it (CR 400.7) and have that creature type
+// now, the type a word of the source's text (CR 612.2, #3984). Frodo,
+// Sauron's Bane and Nog, Ambitious Cadet.
+func sourceIsStillThisPermanentWithTextSubtype(g *game.Game, item *game.StackItem, subtype string) bool {
+	if !sourceIsStillThisPermanent(g, item) {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(item.SourceCardID)
+	return ok && c.HasSubtype(g.TextReaderForEffect(item).TextSubtype(subtype))
+}
