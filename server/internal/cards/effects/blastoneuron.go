@@ -40,7 +40,8 @@ func init() {
 				TargetCardInGraveyard("target creature card with mana value 3 or less from your graveyard",
 					YouOwn(), Creature(), ManaValueLE(3))),
 			OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
-				"Blastoneuron — each opponent loses 1 life and you gain 1 life", drainEachOpponent)),
+				"Blastoneuron — each opponent loses 1 life and you gain 1 life",
+				Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1}))),
 		},
 	})
 }
