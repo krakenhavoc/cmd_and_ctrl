@@ -204,6 +204,13 @@ type PermanentInfo struct {
 	// Processor is sacrificed in response to its own ability (CR 608.2h).
 	ChosenNumber int `json:"chosenNumber,omitempty"`
 
+	// LinkedPermanent is the permanent a linked ability of it affected
+	// (Card.LinkedPermanent, CR 607.2e), as it last existed: The Best of
+	// Both Worlds' chapter III still names the Borg its chapter I
+	// assimilated when the Saga has left in response (CR 608.2h). Nil when
+	// none was linked. Resolve it with Game.LinkedPermanentForEffect.
+	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
+
 	// ManaValue is the permanent's mana value as it last existed on the
 	// battlefield (#1600): Food Chain's "1 plus the exiled creature's
 	// mana value". Read off the card's mana cost while it was a
@@ -277,29 +284,30 @@ func (p PermanentInfo) TextReader() *Card {
 func permanentInfoOf(c *Card) PermanentInfo {
 	copiable := CopiableValuesOf(*c).Clone()
 	return PermanentInfo{
-		Copiable:       &copiable,
-		Epoch:          c.ObjectEpoch,
-		Controller:     c.Controller,
-		Characteristic: c.Effective(),
-		Power:          c.PowerForComparison(),
-		Toughness:      c.CurrentToughness(),
-		BasePower:      c.BasePower(),
-		Counters:       copyStringIntMap(c.Counters),
-		AttachedTo:     c.AttachedTo,
-		Tapped:         c.Tapped,
-		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
-		CraftedWith:    cloneObjectRefs(c.CraftedWith),
-		ChosenColor:    c.ChosenColor,
-		ChosenOption:   c.ChosenOption,
-		NamedTribe:     c.NamedTribe,
-		ChosenNumber:   c.ChosenNumber,
-		ManaValue:      c.ManaValue(),
-		RingBearer:     IsRingBearerOf(*c, c.Controller),
-		Suspected:      c.Suspected,
-		Renowned:       c.Renowned,
-		Attacking:      c.AttackingTarget != uuid.Nil,
-		Blocking:       c.BlockedAttackers(),
-		TextWords:      c.TextWords.entries(),
+		Copiable:        &copiable,
+		Epoch:           c.ObjectEpoch,
+		Controller:      c.Controller,
+		Characteristic:  c.Effective(),
+		Power:           c.PowerForComparison(),
+		Toughness:       c.CurrentToughness(),
+		BasePower:       c.BasePower(),
+		Counters:        copyStringIntMap(c.Counters),
+		AttachedTo:      c.AttachedTo,
+		Tapped:          c.Tapped,
+		Delved:          append([]ObjectRef(nil), c.Provenance.Delved...),
+		CraftedWith:     cloneObjectRefs(c.CraftedWith),
+		ChosenColor:     c.ChosenColor,
+		ChosenOption:    c.ChosenOption,
+		NamedTribe:      c.NamedTribe,
+		ChosenNumber:    c.ChosenNumber,
+		LinkedPermanent: objectRefPtr(c.LinkedPermanent),
+		ManaValue:       c.ManaValue(),
+		RingBearer:      IsRingBearerOf(*c, c.Controller),
+		Suspected:       c.Suspected,
+		Renowned:        c.Renowned,
+		Attacking:       c.AttackingTarget != uuid.Nil,
+		Blocking:        c.BlockedAttackers(),
+		TextWords:       c.TextWords.entries(),
 	}
 }
 

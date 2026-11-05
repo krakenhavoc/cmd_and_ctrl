@@ -214,6 +214,9 @@ battlefield.cards[].keywords[]	string
 battlefield.cards[].knownBy	map:array
 battlefield.cards[].knownBy{}	bool
 battlefield.cards[].layout	string
+battlefield.cards[].linkedPermanent	object
+battlefield.cards[].linkedPermanent.epoch	number:int
+battlefield.cards[].linkedPermanent.id	custom(uuid.UUID)
 battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
 battlefield.cards[].manaAbilityText	number:uint8
@@ -748,6 +751,9 @@ enteringTokens[].keywords[]	string
 enteringTokens[].knownBy	map:array
 enteringTokens[].knownBy{}	bool
 enteringTokens[].layout	string
+enteringTokens[].linkedPermanent	object
+enteringTokens[].linkedPermanent.epoch	number:int
+enteringTokens[].linkedPermanent.id	custom(uuid.UUID)
 enteringTokens[].lostLastCounter	bool
 enteringTokens[].manaAbilityCount	number:int
 enteringTokens[].manaAbilityText	number:uint8
@@ -1241,6 +1247,9 @@ exile.cards[].keywords[]	string
 exile.cards[].knownBy	map:array
 exile.cards[].knownBy{}	bool
 exile.cards[].layout	string
+exile.cards[].linkedPermanent	object
+exile.cards[].linkedPermanent.epoch	number:int
+exile.cards[].linkedPermanent.id	custom(uuid.UUID)
 exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
 exile.cards[].manaAbilityText	number:uint8
@@ -8133,6 +8142,9 @@ frozenEntries[].event.keywordActionTail.armyToken.keywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.knownBy	map:array
 frozenEntries[].event.keywordActionTail.armyToken.knownBy{}	bool
 frozenEntries[].event.keywordActionTail.armyToken.layout	string
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent	object
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.lostLastCounter	bool
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityCount	number:int
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -10296,6 +10308,9 @@ frozenEntries[].event.millTail.run.planned[].keywords[]	string
 frozenEntries[].event.millTail.run.planned[].knownBy	map:array
 frozenEntries[].event.millTail.run.planned[].knownBy{}	bool
 frozenEntries[].event.millTail.run.planned[].layout	string
+frozenEntries[].event.millTail.run.planned[].linkedPermanent	object
+frozenEntries[].event.millTail.run.planned[].linkedPermanent.epoch	number:int
+frozenEntries[].event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.planned[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -10686,6 +10701,9 @@ frozenEntries[].event.millTail.run.seen[].keywords[]	string
 frozenEntries[].event.millTail.run.seen[].knownBy	map:array
 frozenEntries[].event.millTail.run.seen[].knownBy{}	bool
 frozenEntries[].event.millTail.run.seen[].layout	string
+frozenEntries[].event.millTail.run.seen[].linkedPermanent	object
+frozenEntries[].event.millTail.run.seen[].linkedPermanent.epoch	number:int
+frozenEntries[].event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.seen[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -12757,6 +12775,9 @@ frozenEntries[].event.tokenGroups[].template.keywords[]	string
 frozenEntries[].event.tokenGroups[].template.knownBy	map:array
 frozenEntries[].event.tokenGroups[].template.knownBy{}	bool
 frozenEntries[].event.tokenGroups[].template.layout	string
+frozenEntries[].event.tokenGroups[].template.linkedPermanent	object
+frozenEntries[].event.tokenGroups[].template.linkedPermanent.epoch	number:int
+frozenEntries[].event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.lostLastCounter	bool
 frozenEntries[].event.tokenGroups[].template.manaAbilityCount	number:int
 frozenEntries[].event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -13735,6 +13756,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].knownBy	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -14125,6 +14149,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].knownBy	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -17540,6 +17567,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].keywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].knownBy	map:array
 frozenEntries[].event.zoneRoute.simultaneousExit[].knownBy{}	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].layout	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -18337,6 +18367,9 @@ lastKnownPermanents{}[].delved[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].enchanted	bool
 lastKnownPermanents{}[].epoch	number:int
 lastKnownPermanents{}[].left	bool
+lastKnownPermanents{}[].linkedPermanent	object
+lastKnownPermanents{}[].linkedPermanent.epoch	number:int
+lastKnownPermanents{}[].linkedPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
@@ -18531,6 +18564,9 @@ lastKnownStack[].card.keywords[]	string
 lastKnownStack[].card.knownBy	map:array
 lastKnownStack[].card.knownBy{}	bool
 lastKnownStack[].card.layout	string
+lastKnownStack[].card.linkedPermanent	object
+lastKnownStack[].card.linkedPermanent.epoch	number:int
+lastKnownStack[].card.linkedPermanent.id	custom(uuid.UUID)
 lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
 lastKnownStack[].card.manaAbilityText	number:uint8
@@ -20700,6 +20736,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.keywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.knownBy	map:array
 pendingChoices[].attackSplit.settled.chosen[].template.knownBy{}	bool
 pendingChoices[].attackSplit.settled.chosen[].template.layout	string
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent	object
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityText	number:uint8
@@ -21109,6 +21148,9 @@ pendingChoices[].attackSplit.settled.groups[].template.keywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.knownBy	map:array
 pendingChoices[].attackSplit.settled.groups[].template.knownBy{}	bool
 pendingChoices[].attackSplit.settled.groups[].template.layout	string
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent	object
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityText	number:uint8
@@ -22078,6 +22120,9 @@ pendingChoices[].attackSplit.template.keywords[]	string
 pendingChoices[].attackSplit.template.knownBy	map:array
 pendingChoices[].attackSplit.template.knownBy{}	bool
 pendingChoices[].attackSplit.template.layout	string
+pendingChoices[].attackSplit.template.linkedPermanent	object
+pendingChoices[].attackSplit.template.linkedPermanent.epoch	number:int
+pendingChoices[].attackSplit.template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.lostLastCounter	bool
 pendingChoices[].attackSplit.template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.template.manaAbilityText	number:uint8
@@ -22830,6 +22875,9 @@ pendingChoices[].copyWalk.src.keywords[]	string
 pendingChoices[].copyWalk.src.knownBy	map:array
 pendingChoices[].copyWalk.src.knownBy{}	bool
 pendingChoices[].copyWalk.src.layout	string
+pendingChoices[].copyWalk.src.linkedPermanent	object
+pendingChoices[].copyWalk.src.linkedPermanent.epoch	number:int
+pendingChoices[].copyWalk.src.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.lostLastCounter	bool
 pendingChoices[].copyWalk.src.manaAbilityCount	number:int
 pendingChoices[].copyWalk.src.manaAbilityText	number:uint8
@@ -33518,6 +33566,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.keywords[]	
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.knownBy	map:array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.knownBy{}	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.layout	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.lostLastCounter	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -35681,6 +35732,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].keywords[]	strin
 pendingChoices[].replacementResume.event.millTail.run.planned[].knownBy	map:array
 pendingChoices[].replacementResume.event.millTail.run.planned[].knownBy{}	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].layout	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -36071,6 +36125,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].knownBy	map:array
 pendingChoices[].replacementResume.event.millTail.run.seen[].knownBy{}	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].layout	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -38142,6 +38199,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.keywords[]	strin
 pendingChoices[].replacementResume.event.tokenGroups[].template.knownBy	map:array
 pendingChoices[].replacementResume.event.tokenGroups[].template.knownBy{}	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.layout	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.lostLastCounter	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -39120,6 +39180,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].keyw
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -39510,6 +39573,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].keyword
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -42925,6 +42991,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].keywords[]
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].knownBy	map:array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].knownBy{}	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].layout	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -44953,6 +45022,9 @@ pendingChoices[].targetWalk.frame.source.keywords[]	string
 pendingChoices[].targetWalk.frame.source.knownBy	map:array
 pendingChoices[].targetWalk.frame.source.knownBy{}	bool
 pendingChoices[].targetWalk.frame.source.layout	string
+pendingChoices[].targetWalk.frame.source.linkedPermanent	object
+pendingChoices[].targetWalk.frame.source.linkedPermanent.epoch	number:int
+pendingChoices[].targetWalk.frame.source.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.lostLastCounter	bool
 pendingChoices[].targetWalk.frame.source.manaAbilityCount	number:int
 pendingChoices[].targetWalk.frame.source.manaAbilityText	number:uint8
@@ -45638,6 +45710,9 @@ pendingChoices[].triggerFrame.source.keywords[]	string
 pendingChoices[].triggerFrame.source.knownBy	map:array
 pendingChoices[].triggerFrame.source.knownBy{}	bool
 pendingChoices[].triggerFrame.source.layout	string
+pendingChoices[].triggerFrame.source.linkedPermanent	object
+pendingChoices[].triggerFrame.source.linkedPermanent.epoch	number:int
+pendingChoices[].triggerFrame.source.linkedPermanent.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.lostLastCounter	bool
 pendingChoices[].triggerFrame.source.manaAbilityCount	number:int
 pendingChoices[].triggerFrame.source.manaAbilityText	number:uint8
@@ -46476,6 +46551,9 @@ phasedOut.cards[].keywords[]	string
 phasedOut.cards[].knownBy	map:array
 phasedOut.cards[].knownBy{}	bool
 phasedOut.cards[].layout	string
+phasedOut.cards[].linkedPermanent	object
+phasedOut.cards[].linkedPermanent.epoch	number:int
+phasedOut.cards[].linkedPermanent.id	custom(uuid.UUID)
 phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
 phasedOut.cards[].manaAbilityText	number:uint8
@@ -46869,6 +46947,9 @@ planechase.deck.cards[].keywords[]	string
 planechase.deck.cards[].knownBy	map:array
 planechase.deck.cards[].knownBy{}	bool
 planechase.deck.cards[].layout	string
+planechase.deck.cards[].linkedPermanent	object
+planechase.deck.cards[].linkedPermanent.epoch	number:int
+planechase.deck.cards[].linkedPermanent.id	custom(uuid.UUID)
 planechase.deck.cards[].lostLastCounter	bool
 planechase.deck.cards[].manaAbilityCount	number:int
 planechase.deck.cards[].manaAbilityText	number:uint8
@@ -47262,6 +47343,9 @@ planechase.faceUp.cards[].keywords[]	string
 planechase.faceUp.cards[].knownBy	map:array
 planechase.faceUp.cards[].knownBy{}	bool
 planechase.faceUp.cards[].layout	string
+planechase.faceUp.cards[].linkedPermanent	object
+planechase.faceUp.cards[].linkedPermanent.epoch	number:int
+planechase.faceUp.cards[].linkedPermanent.id	custom(uuid.UUID)
 planechase.faceUp.cards[].lostLastCounter	bool
 planechase.faceUp.cards[].manaAbilityCount	number:int
 planechase.faceUp.cards[].manaAbilityText	number:uint8
@@ -47883,6 +47967,9 @@ resolving.card.keywords[]	string
 resolving.card.knownBy	map:array
 resolving.card.knownBy{}	bool
 resolving.card.layout	string
+resolving.card.linkedPermanent	object
+resolving.card.linkedPermanent.epoch	number:int
+resolving.card.linkedPermanent.id	custom(uuid.UUID)
 resolving.card.lostLastCounter	bool
 resolving.card.manaAbilityCount	number:int
 resolving.card.manaAbilityText	number:uint8
@@ -48839,6 +48926,9 @@ seats[].attractionDeck.cards[].keywords[]	string
 seats[].attractionDeck.cards[].knownBy	map:array
 seats[].attractionDeck.cards[].knownBy{}	bool
 seats[].attractionDeck.cards[].layout	string
+seats[].attractionDeck.cards[].linkedPermanent	object
+seats[].attractionDeck.cards[].linkedPermanent.epoch	number:int
+seats[].attractionDeck.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].lostLastCounter	bool
 seats[].attractionDeck.cards[].manaAbilityCount	number:int
 seats[].attractionDeck.cards[].manaAbilityText	number:uint8
@@ -49361,6 +49451,9 @@ seats[].command.cards[].keywords[]	string
 seats[].command.cards[].knownBy	map:array
 seats[].command.cards[].knownBy{}	bool
 seats[].command.cards[].layout	string
+seats[].command.cards[].linkedPermanent	object
+seats[].command.cards[].linkedPermanent.epoch	number:int
+seats[].command.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
 seats[].command.cards[].manaAbilityText	number:uint8
@@ -49756,6 +49849,9 @@ seats[].companion.cards[].keywords[]	string
 seats[].companion.cards[].knownBy	map:array
 seats[].companion.cards[].knownBy{}	bool
 seats[].companion.cards[].layout	string
+seats[].companion.cards[].linkedPermanent	object
+seats[].companion.cards[].linkedPermanent.epoch	number:int
+seats[].companion.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].companion.cards[].lostLastCounter	bool
 seats[].companion.cards[].manaAbilityCount	number:int
 seats[].companion.cards[].manaAbilityText	number:uint8
@@ -50160,6 +50256,9 @@ seats[].emblems.cards[].keywords[]	string
 seats[].emblems.cards[].knownBy	map:array
 seats[].emblems.cards[].knownBy{}	bool
 seats[].emblems.cards[].layout	string
+seats[].emblems.cards[].linkedPermanent	object
+seats[].emblems.cards[].linkedPermanent.epoch	number:int
+seats[].emblems.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
 seats[].emblems.cards[].manaAbilityText	number:uint8
@@ -50555,6 +50654,9 @@ seats[].graveyard.cards[].keywords[]	string
 seats[].graveyard.cards[].knownBy	map:array
 seats[].graveyard.cards[].knownBy{}	bool
 seats[].graveyard.cards[].layout	string
+seats[].graveyard.cards[].linkedPermanent	object
+seats[].graveyard.cards[].linkedPermanent.epoch	number:int
+seats[].graveyard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
 seats[].graveyard.cards[].manaAbilityText	number:uint8
@@ -50946,6 +51048,9 @@ seats[].hand.cards[].keywords[]	string
 seats[].hand.cards[].knownBy	map:array
 seats[].hand.cards[].knownBy{}	bool
 seats[].hand.cards[].layout	string
+seats[].hand.cards[].linkedPermanent	object
+seats[].hand.cards[].linkedPermanent.epoch	number:int
+seats[].hand.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
 seats[].hand.cards[].manaAbilityText	number:uint8
@@ -51342,6 +51447,9 @@ seats[].junkyard.cards[].keywords[]	string
 seats[].junkyard.cards[].knownBy	map:array
 seats[].junkyard.cards[].knownBy{}	bool
 seats[].junkyard.cards[].layout	string
+seats[].junkyard.cards[].linkedPermanent	object
+seats[].junkyard.cards[].linkedPermanent.epoch	number:int
+seats[].junkyard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].junkyard.cards[].lostLastCounter	bool
 seats[].junkyard.cards[].manaAbilityCount	number:int
 seats[].junkyard.cards[].manaAbilityText	number:uint8
@@ -51742,6 +51850,9 @@ seats[].library.cards[].keywords[]	string
 seats[].library.cards[].knownBy	map:array
 seats[].library.cards[].knownBy{}	bool
 seats[].library.cards[].layout	string
+seats[].library.cards[].linkedPermanent	object
+seats[].library.cards[].linkedPermanent.epoch	number:int
+seats[].library.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
 seats[].library.cards[].manaAbilityText	number:uint8
@@ -52174,6 +52285,9 @@ seats[].sideboard.cards[].keywords[]	string
 seats[].sideboard.cards[].knownBy	map:array
 seats[].sideboard.cards[].knownBy{}	bool
 seats[].sideboard.cards[].layout	string
+seats[].sideboard.cards[].linkedPermanent	object
+seats[].sideboard.cards[].linkedPermanent.epoch	number:int
+seats[].sideboard.cards[].linkedPermanent.id	custom(uuid.UUID)
 seats[].sideboard.cards[].lostLastCounter	bool
 seats[].sideboard.cards[].manaAbilityCount	number:int
 seats[].sideboard.cards[].manaAbilityText	number:uint8
@@ -52870,6 +52984,9 @@ stack.cards[].keywords[]	string
 stack.cards[].knownBy	map:array
 stack.cards[].knownBy{}	bool
 stack.cards[].layout	string
+stack.cards[].linkedPermanent	object
+stack.cards[].linkedPermanent.epoch	number:int
+stack.cards[].linkedPermanent.id	custom(uuid.UUID)
 stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
 stack.cards[].manaAbilityText	number:uint8

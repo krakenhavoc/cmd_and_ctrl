@@ -578,6 +578,7 @@ var cardFields = plan(
 	// ADR 0155 §8 (#3202): the permanent chosen as it entered (Scheming
 	// Fence's). A player's choice, so nothing can rebuild it.
 	"ChosenPermanent", carried, "",
+	"LinkedPermanent", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
