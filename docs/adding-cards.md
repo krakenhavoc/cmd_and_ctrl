@@ -2294,6 +2294,12 @@ library search, an exile return and a reanimation use** (#478) — as a
 comes from no zone, CR 111.1). So an
 enters-tapped or enters-with-counters replacement you write for cards
 covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation that makes more than one token enters them **together**, as
+one simultaneous entry (#4867, ADR 0061 amendment 2026-11-05; CR 608.2f,
+603.6a), whatever door you call: a Soul Warden token sees the other
+tokens of its own creation enter. (Tokens created blocking are the one
+exception; see the amendment.) Do not loop `N: 1` creations to make N
+tokens; one creation with `N: n` is the printed instruction.
 A creation CAN PAUSE — two different effects in the window is a CR 616
 ordering prompt — and so can a single token's entry, so
 `CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
