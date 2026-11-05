@@ -5356,7 +5356,8 @@ refuses fewer than two branches, a branch without a unique `Key`, an
 empty, optional, repeating or nested branch, a variable sacrifice in a
 branch, and components on the branched cost itself. Reveal and behold
 branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
-`OptionalBehold` (#4642). "tap an untapped artifact", "exile two cards from your graveyard" and
+`OptionalBehold` (#4642), and a mandatory "behold a Kithkin and exile it"
+is `BeholdAndExileCost` (#4687, below). "tap an untapped artifact", "exile two cards from your graveyard" and
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
@@ -5370,6 +5371,26 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+**Behold a creature type and exile it (#4687, CR 701.4a, CR 607.2q, ADR
+0100 amendment 2026-11-05):** the Lorwyn Eclipsed Champions' "As an
+additional cost to cast this spell, behold a Kithkin and exile it" and "When
+this creature leaves the battlefield, return the exiled card to its owner's
+hand" are
+
+```go
+AdditionalCost: BeholdAndExileCost("a", "Kithkin"),                 // Champion of the Clachan
+Triggered: []game.TriggeredAbility{ReturnTheExiledCardToHand("Champion of the Clachan")},
+```
+
+The caster names one card on `reveal_ids`: a permanent of that creature
+type they control, or a card of it in their hand (a changeling counts). It
+is exiled with the spell on the stack, linked to the spell object
+(`Card.ExiledWith`), and the link moves to the permanent as the spell
+resolves, so the leave trigger returns that card and no other. A countered
+spell's card stays in exile. With nothing to behold the card can't be cast.
+The mandatory slot only, and alone on it: Register refuses the exiling form
+on a branch, an optional cost, an alternative cost and an ability.
 
 **Tap an untapped permanent you control as an additional cost (#3868):**
 "As an additional cost to cast this spell, tap an untapped Vampire you
@@ -7251,7 +7272,8 @@ client's pay picker reads "Behold", and the bot charges nothing for the
 picks. `Register` counts the behold as the offer's one card component
 and refuses a malformed one (a plain reveal, no type, a colour, no
 count). An additional cost of "behold a … and exile it" (#4687) is not
-this shape: that card is spent.
+this shape, because that card is spent: it is `BeholdAndExileCost` on the
+mandatory slot.
 
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback

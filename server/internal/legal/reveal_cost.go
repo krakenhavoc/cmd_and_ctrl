@@ -27,10 +27,45 @@ func (e *enumerator) revealPayment(castID uuid.UUID, mandatory *game.AdditionalC
 	if len(options) == 0 {
 		return nil, false
 	}
+	if rc.Exile {
+		return []uuid.UUID{beholdExilePick(e.g, e.seat, options)}, true
+	}
 	if rc.Behold {
 		return []uuid.UUID{options[len(options)-1]}, true
 	}
 	return []uuid.UUID{options[0]}, true
+}
+
+// beholdExilePick is the one card a seat exiles to a "behold a Kithkin
+// and exile it" (#4687), out of the engine's own options. The card is
+// spent until the permanent leaves, so the cheapest goes first: a card in
+// hand (the one with the lowest mana value), which keeps the seat's board;
+// then a token (the one with the lowest power), which is cheap to lose; and
+// only then a nontoken permanent, the one with the lowest mana value.
+// Ties keep the engine's order.
+func beholdExilePick(g *game.Game, seat uuid.UUID, options []uuid.UUID) uuid.UUID {
+	p := g.PlayerByIDForEffect(seat)
+	rank := func(id uuid.UUID) (tier, n int) {
+		c, ok := g.LookupCardForEffect(id)
+		switch {
+		case !ok:
+			return 3, 0
+		case p != nil && p.Hand.Contains(id):
+			return 0, c.ManaValue()
+		case c.IsToken():
+			return 1, c.CurrentPower()
+		default:
+			return 2, c.ManaValue()
+		}
+	}
+	best := options[0]
+	bt, bn := rank(best)
+	for _, id := range options[1:] {
+		if t, n := rank(id); t < bt || (t == bt && n < bn) {
+			best, bt, bn = id, t, n
+		}
+	}
+	return best
 }
 
 // beholdOrder is an alternative cost's behold candidates (#4689) with the

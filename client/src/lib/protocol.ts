@@ -3171,6 +3171,11 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #4687: the mandatory "behold a Kithkin and exile it" (the Lorwyn
+  // Eclipsed Champions). `reveal` and `behold` are set too, and the one
+  // pick on `reveal_ids` is exiled with the spell on the stack rather than
+  // shown; the permanent returns it to its owner's hand when it leaves.
+  behold_exile?: boolean;
   // #3402: an "exile a creature you control" additional cost (Soul
   // Exchange). `exile_permanent_options` lists the permanents that could
   // pay it, in payment order, min / max the clause's count; the picks ride
