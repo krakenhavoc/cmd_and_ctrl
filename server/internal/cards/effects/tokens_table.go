@@ -336,8 +336,6 @@ var tokenTable = map[string]game.Card{
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
 	"1/1 red Officer": {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
 
-
-
 	// #4973: Star Trek's Officer (Excalbian Gamemaster).
 
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
