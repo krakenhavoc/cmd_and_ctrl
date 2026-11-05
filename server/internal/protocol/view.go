@@ -7410,9 +7410,18 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// #1012's price list, read here so the gate below can judge the
 	// face the cast would put on the stack (castGateFace). It is
 	// stamped further down.
+	//
+	// #5081: each with the permission a cast claiming it is made under,
+	// which is not always `grant` (Green Goblin's granted mayhem beside
+	// Muldrotha): the timing and per-type stamps below judge each offer
+	// under its own, as CastSpell and the bot enumerator do.
+	var offerGrants []game.OfferGrant
 	var offers []*game.AlternativeCost
 	if haveLive {
-		offers = g.CastOffersForLocked(caster, live, kind, grant)
+		offerGrants = g.CastOfferGrantsForLocked(caster, live, kind, grant)
+		for _, og := range offerGrants {
+			offers = append(offers, og.Offer)
+		}
 	}
 	gated := castGateFace(live, offers)
 	if haveLive && !live.IsLand() {
@@ -7485,11 +7494,11 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 			out.PrintedCostTimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(nil))
 		}
 		for i := range out.AlternativeCosts {
-			for _, o := range offers {
-				if o != nil && o.Key == out.AlternativeCosts[i].Key {
+			for _, og := range offerGrants {
+				if o := og.Offer; o != nil && o.Key == out.AlternativeCosts[i].Key {
 					// ADR 0107 §4: a disturb offer is timed as the back
 					// face it casts, as CastSpell times it.
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, grant.ForClaim(o), o)
+					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, og.Permission.ForClaim(o), o)
 					break
 				}
 			}
@@ -7532,8 +7541,9 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	typesOK := true
 	if haveLive {
 		typesOK = false
-		for _, o := range offers {
-			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, grant, o)
+		for _, og := range offerGrants {
+			o := og.Offer
+			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, og.Permission, o)
 			if !ok {
 				continue
 			}
@@ -7553,7 +7563,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	case game.ZoneGraveyard, game.ZoneLibrary, game.ZoneOutside:
 		// ZoneOutside (#3955): the owner's sideboard card under a cast
 		// permission, the one way it is ever a cast surface.
-		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
 		if kind == game.ZoneOutside && haveLive {
 			// The sideboard tab's price tag, as the exile strip's.
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
@@ -7564,7 +7574,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	case game.ZoneCommand:
@@ -7662,7 +7672,7 @@ func phyrexianSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, g
 //     ErrLandDropUnavailable.
 //
 // Caller must hold g.mu.
-func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []game.OfferGrant) bool {
 	// #1474: a card an effect has paused on its way out — a commander
 	// Bojuka Bog is exiling while its owner answers CR 903.9 — is
 	// neither cast nor played until the answer is in. The same gate
@@ -7693,13 +7703,14 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // window is open for the cast as a whole, or for one of its offers
 // that carries its own "as though it had flash" (CR 601.3c, Primal
 // Prayers) or sneak's declare-blockers window (CR 702.190a, #4586),
-// judged as CastSpell would judge that claim.
-func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []*game.AlternativeCost) bool {
+// judged as CastSpell would judge that claim: under the permission that
+// claim is made under (game.OfferGrant, #5081).
+func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []game.OfferGrant) bool {
 	if g.CastTimingOpenLocked(caster, card, kind, grant) {
 		return true
 	}
-	for _, o := range offers {
-		if o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
+	for _, og := range offers {
+		if o := og.Offer; o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, og.Permission.ForClaim(o), o) {
 			return true
 		}
 	}
@@ -7707,8 +7718,8 @@ func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, k
 	// Reduction's teamwork) makes the card castable here for the caster
 	// who announces it; the announce path holds the cast to it.
 	if game.AnyOptionalCostOpensCastWindow(payableOpeningCosts(g, caster, card)) {
-		for _, o := range offers {
-			if g.CastTimingForCastOpenLocked(caster, card, kind, grant.ForClaim(o), o, true) {
+		for _, og := range offers {
+			if g.CastTimingForCastOpenLocked(caster, card, kind, og.Permission.ForClaim(og.Offer), og.Offer, true) {
 				return true
 			}
 		}
