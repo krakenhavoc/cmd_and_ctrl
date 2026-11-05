@@ -88,6 +88,8 @@ func otherLandsAtMost(n int) func(*game.Game, *game.Card) bool {
 
 // otherLandsAtLeast is a slowland's condition: "unless you control
 // two or more other lands".
+//
+//nolint:unparam // the printed threshold, kept at the call site like otherLandsAtMost's
 func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 	return func(g *game.Game, src *game.Card) bool {
 		return countOtherLandsControlled(g, src) >= n
