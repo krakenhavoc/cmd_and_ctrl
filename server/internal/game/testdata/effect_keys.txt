@@ -278,6 +278,7 @@ body superior-spider-man/exile-that-card
 body suspend/free-cast
 body suspend/tick
 body swans-of-bryn-argoll/source-controller-draws
+body sylvia-tilly-joy-of-discovery/counter
 body synthetic-destiny/reveal-that-many-creatures
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
@@ -639,6 +640,7 @@ choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/sylvan-library-chosen
+choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
 choose choose-cards/take-rest-bottom-any-order
 choose choose-cards/take-rest-bottom-random
@@ -651,6 +653,7 @@ choose choose-cards/teferi-akosa-discard-the-one
 choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
+choose choose-cards/temporal-conqueror-return-land
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -1209,6 +1212,7 @@ payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
+payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/tester-of-the-tangential-move
@@ -2090,6 +2094,7 @@ tail then/stay-hidden-shuffle-manifest
 tail then/stronghold-arena-lose-life
 tail then/suspect-each
 tail then/sylvan-library-next-card
+tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
