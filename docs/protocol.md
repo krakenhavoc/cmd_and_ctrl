@@ -689,7 +689,13 @@ the Impossible; [ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-po
 declares `choose_destination: "outside"`: the named cards come in from the
 chooser's sideboard. Its `options[]` are those cards, sent to the chooser only
 (every other seat gets the open prompt and nothing about its cards), and the
-answer is the usual `resolve_choice { choice_id, card_ids }`.
+answer is the usual `resolve_choice { choice_id, card_ids }`. A pick whose
+cards must have different names (Turtles Forever's outside half) carries
+`distinct_names: true` (#4962), as the database prompt below does: the picker
+disables a second card whose name is already picked, since a sideboard may hold
+two cards with one name. The server refuses a repeated name either way. The
+flag is derived from the effect's own rule (nothing new is stored), is absent
+where a name may repeat, and is sent to the chooser only, like the bounds.
 
 ### `outside_collection` — a card from the card database (ADR 0198)
 

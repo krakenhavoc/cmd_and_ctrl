@@ -558,11 +558,14 @@ type PendingChoiceView struct {
 	// answer with any card the search returns, by name. ChooseMin /
 	// ChooseMax carry the bounds. Sent to the chooser only.
 	CollectionOptions []CardView `json:"collection_options,omitempty"`
-	// DistinctNames marks an "outside_collection" pick whose cards must
+	// DistinctNames marks an outside-the-game pick whose cards must
 	// have different names (#4947: Turtles Forever's outside half,
 	// Extrapolate the Impossible's pair), so the picker takes each name
-	// once. Derived from the pick's registered rule
-	// (game.OutsidePickNamesDiffer); the server refuses a repeated name
+	// once: an "outside_collection" pick from the card database, or
+	// (#4962) a "choose_cards" pick over the chooser's sideboard.
+	// Derived from the pick's registered rule
+	// (game.OutsidePickNamesDiffer, by the prompt's PickThen key, so
+	// nothing new is persisted); the server refuses a repeated name
 	// either way. Absent on a pick where a name may repeat (Research,
 	// Spawnsire of Ulamog: a player may own two copies) and on every
 	// other kind. Sent to the chooser only, with the bounds.
@@ -10098,6 +10101,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.ChooseDestination = string(c.ChooseDestination)
+			// #4962: with a sideboard seated, an outside pick "with
+			// different names" (Turtles Forever's outside half) is a
+			// choose_cards over the sideboard keyed by the same
+			// registered pick as the database prompt below, so it says
+			// so the same way. False for every other key.
+			if c.Kind == game.PendingChoiceChooseCards {
+				v.DistinctNames = game.OutsidePickNamesDiffer(c.PickThen)
+			}
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
 				card, ok := g.LookupCardForEffect(id)
@@ -11540,6 +11551,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 				out[i].ChooseMax = 0
 				out[i].ChooseDestination = ""
 				out[i].ChooseSuggested = nil
+				out[i].DistinctNames = false
 			}
 			continue
 		}
@@ -11569,6 +11581,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// rest of the pick. The offer and the earlier choices
 			// stay: they are the table's public record (CR 101.4b).
 			out[i].ChooseSuggested = nil
+			// #4962: so does a sideboard pick's "different names".
+			out[i].DistinctNames = false
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's

@@ -85,6 +85,28 @@ export function toggleCollectionPick(
 }
 
 /**
+ * #4962: on a sideboard pick (a "choose_cards" prompt) that carries
+ * `distinct_names`, whether the card `id` shares a name with a different
+ * card already picked, so it can't be picked too. Names compare as the
+ * server compares them (game.CardNamesDiffer): case-insensitively, with
+ * surrounding space trimmed, and a card with no name matches nothing. A
+ * picked card is never blocked, so it can always be taken back.
+ */
+export function nameAlreadyPicked(
+  options: CardView[],
+  selected: ReadonlySet<string>,
+  id: string,
+): boolean {
+  if (selected.has(id)) return false;
+  const key = (c: CardView | undefined): string => (c?.name ?? "").trim().toLowerCase();
+  const name = key(options.find((c) => c.instance_id === id));
+  if (name === "") return false;
+  return options.some(
+    (c) => c.instance_id !== id && selected.has(c.instance_id) && key(c) === name,
+  );
+}
+
+/**
  * Whether the picks can be sent as a "take": at least one card, and
  * within the prompt's bounds. Declining is its own button.
  */

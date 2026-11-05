@@ -1930,8 +1930,10 @@ export interface PendingChoiceView {
   collection_options?: CardView[];
   // #4947: on an "outside_collection" pick, true when the cards must have
   // different names (Turtles Forever, Extrapolate the Impossible), so the
-  // picker takes each name once whatever the ceiling. Absent where a name
-  // may repeat (Research, Spawnsire of Ulamog). The chooser's only.
+  // picker takes each name once whatever the ceiling. #4962: the same on a
+  // "choose_cards" pick over the chooser's sideboard, where a second card
+  // with a picked name is disabled. Absent where a name may repeat
+  // (Research, Spawnsire of Ulamog). The chooser's only.
   distinct_names?: boolean;
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
