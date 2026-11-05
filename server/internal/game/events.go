@@ -1259,7 +1259,10 @@ const (
 	//
 	// Emitted from commitBlockDeclarationLocked, in the same event
 	// batch as the EventBlock events of the same declaration, so a
-	// OncePerBatch ability sees one occurrence. Added in #830.
+	// OncePerBatch ability sees one occurrence. Added in #830. Also
+	// emitted by stampEntryBlockerLocked when a creature put onto the
+	// battlefield blocking blocks an attacker that was unblocked at
+	// that time (CR 509.3c, #4956).
 	EventBecomesBlocked EventKind = "becomes_blocked"
 
 	// EventBlockersDeclared — the defending player named by Actor has

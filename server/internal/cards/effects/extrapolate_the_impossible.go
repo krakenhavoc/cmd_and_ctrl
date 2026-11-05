@@ -85,8 +85,10 @@ func extrapolateResolve(ctx *Context) error {
 // rule "exactly two with different names" (never asked of an empty
 // pick), and the reveal that follows. The continuation reads the
 // controller and the card off the prompt (a stand-in for the spell, which
-// has long resolved) and checks the pair is still outside the game.
-var extrapolatePick = game.RegisterOutsidePickRule("choose-cards/extrapolate-the-impossible-reveal",
+// has long resolved) and checks the pair is still outside the game. A
+// distinct-names pick, so the database picker offers each name once
+// (#4947).
+var extrapolatePick = game.RegisterOutsidePickDistinctNames("choose-cards/extrapolate-the-impossible-reveal",
 	nil, exactlyTwoDifferentNames, func(g *game.Game, r game.CardsChosen) error {
 		if !r.Answered {
 			return nil

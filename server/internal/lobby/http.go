@@ -4743,7 +4743,14 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrAgentSignedIn):
 		status = http.StatusBadRequest
-	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
+	case errors.Is(err, ErrGameArchived):
+		// 409 with the stable code a client matches to say the table
+		// was closed (#4564, ADR 0211 §4).
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": CodeGameClosed})
+		return
+	case errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
 	case errors.Is(err, ErrRematchNotHost), errors.Is(err, ErrRematchNotAsked):
 		status = http.StatusForbidden
