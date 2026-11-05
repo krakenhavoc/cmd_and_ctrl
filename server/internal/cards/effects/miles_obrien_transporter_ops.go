@@ -33,7 +33,7 @@ func init() {
 			InterveningIf(condPermanentReturnedToYourHand{},
 				On(game.EventBeginEndStep, permanentReturnedToYourHand,
 					"Miles O'Brien — draw a card if a permanent was returned to your hand from the battlefield this turn",
-					drawOneCardEffect)),
+					Do(DrawCards{N: 1}))),
 		},
 	})
 }

@@ -16,7 +16,7 @@ func (condPermanentReturnedToYourHand) Holds(ctx *Context) bool {
 }
 
 func (condPermanentReturnedToYourHand) condition() (game.FootprintStep, bool) {
-	return game.FootprintStep{}, false
+	return condStep(game.FootprintCondPermanentReturned, 0), true
 }
 
 // permanentReturnedToYourHand is the same "if" as the trigger fires, for
