@@ -116,7 +116,7 @@ var Inventory = join(
 		"user_id", "body", "game_id", "updated_at"),
 	cols("notification_prefs", Deleted, "the person's Discord DM notification switches and when Discord last refused one (ADR 0162)",
 		"user_id", "turn", "table_ready", "table_filled", "dm_failed_at", "updated_at"),
-	cols("stats_prefs", Deleted, "the person's advanced-stats switch and whether they or an admin set it, and the stats-sharing columns later slices of ADR 0217 fill in (pod sharing, the share link's hash and date); the share link stops working in the same transaction",
+	cols("stats_prefs", Deleted, "the person's advanced-stats switch and whether they or an admin set it, the SHA-256 of their stats share link and when they made it (ADR 0217 §6, never the token itself), and pod sharing, which slice 7 fills in; the share link stops working in the same transaction",
 		"user_id", "advanced", "advanced_set_by", "share_pods", "share_link_hash", "share_link_at", "updated_at"),
 	cols("stats_settings", NotPersonal, "the server's advanced-stats default, set by an admin (ADR 0217 owner answer 1); one row, about no one",
 		"id", "advanced_default", "updated_at"),
