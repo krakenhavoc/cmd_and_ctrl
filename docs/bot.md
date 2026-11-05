@@ -429,6 +429,13 @@ read-ahead Saga on chapter I, so it gets every chapter the Saga prints.
 It has no measure of when trading the skipped chapters for tempo is
 worth it. See `readAheadValue` in `aiseat/heuristic/choices.go`.
 
+**What an entering attacker attacks (`entry_attack_target`, CR 508.4).**
+The bot sends a creature that enters tapped and attacking (Kira Nerys,
+Firebrand) at the opponent with the least life, skipping a seat that
+can't lose for life, and on a tie keeps it with the attack it already
+made (the first option). Planeswalkers and battles are offered but never
+preferred. See `entryAttackTargetValue` in `aiseat/heuristic/choices.go`.
+
 **Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
 CR 903.9a).** When the bot's commander has been put into a graveyard or
 exile, the state-based action asks its owner whether it goes to the
