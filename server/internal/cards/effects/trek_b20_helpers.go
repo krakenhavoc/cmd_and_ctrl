@@ -10,30 +10,6 @@ import (
 
 // trek_b20_helpers.go — shared pieces for Star Trek batch 20 (#4973).
 
-// trekB20NewPlanetToken is David and Carol Marcus's "tapped Planet land
-// token named New Planet with "{T}: Add one mana of any color."" (ttrk
-// 27): the same printed token as Genesis Effect's (batch 16).
-func trekB20NewPlanetToken() game.Card { return tokenFromCatalog(printedTrekB16NewPlanetToken) }
-
-// printedTrekB16NewPlanetToken is the New Planet as PRINTED, its mana
-// ability included: a colourless land, Planet its only subtype. Batch 16
-// (#5010) adds the identical template; whichever lands second keeps one.
-func printedTrekB16NewPlanetToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "new-planet",
-		Card: game.Card{
-			Name:     "New Planet",
-			TypeLine: "Token Land — Planet",
-		},
-		Mana: []game.ManaAbilityShape{{
-			TapCost:  true,
-			Produced: "{W|U|B|R|G}",
-			Label:    "{T}: Add one mana of any color",
-		}},
-		Text: "{T}: Add one mana of any color.",
-	}
-}
-
 // trekB20IsBasicLandOrPlanetCard is "a basic land card or Planet card":
 // a basic land, or a land card with the Planet land type (CR 205.3i).
 func trekB20IsBasicLandOrPlanetCard(c game.Card) bool {

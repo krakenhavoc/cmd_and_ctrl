@@ -21,7 +21,7 @@ func init() {
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("David and Carol Marcus — create a tapped New Planet",
-				Do(CreateTokenAdvanced{Spec: Token(trekB20NewPlanetToken()).EntersTapped(), N: 1})),
+				Do(CreateTokenAdvanced{Spec: Token(trekB16NewPlanetToken()).EntersTapped(), N: 1})),
 		},
 	})
 }
