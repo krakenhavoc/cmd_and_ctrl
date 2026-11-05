@@ -1938,6 +1938,8 @@ tail spelunking/gain-life-for-a-cave
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail strago-and-relm/after-mill
+tail study-the-classics/double
+tail study-the-classics/gain
 tail summoners-sending/after-exile
 tail summoners-sending/counter-if-big
 tail sunder-the-gateway/choose-an-incubator-and-transform
@@ -2141,6 +2143,7 @@ tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
+tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
 tail ugin-eye-of-the-storms/free-cast-permission
