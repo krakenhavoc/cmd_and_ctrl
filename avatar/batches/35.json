@@ -1,0 +1,232 @@
+{
+ "batch": 35,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Hei Bai, Forest Guardian",
+   "oracle_id": "11e70692-2057-49c8-90e6-953362f4817f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Bear Spirit",
+   "oracle_text": "When Hei Bai enters, reveal cards from the top of your library until you reveal a Shrine card. You may put that card onto the battlefield. Then shuffle.\n{W}{U}{B}{R}{G}, {T}: For each legendary enchantment you control, create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "205",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Master's Guidance",
+   "oracle_id": "66de5b97-0de0-422c-a351-bfe55ad4503a",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever you attack with two or more legendary creatures, put a +1/+1 counter on each of up to two target attacking creatures.\nAt the beginning of your end step, if you control a creature with power 4 or greater, draw a card.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "206",
+   "set": "tle",
+   "rulings": [
+    "Master's Guidance's first ability can put a +1/+1 counter on each of any two attacking creatures, not just on the legendary attacking creatures that caused it to trigger.",
+    "Creatures that enter the battlefield attacking will not trigger Master's Guidance's first triggered ability. You have to declare two or more legendary creatures as attackers during your declare attackers step to trigger the ability."
+   ]
+  },
+  {
+   "name": "Tale of Katara and Toph",
+   "oracle_id": "7c376ea9-d50a-4cc3-ae40-7bac3a926f20",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control have \"Whenever this creature becomes tapped for the first time during each of your turns, put a +1/+1 counter on it.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "207",
+   "set": "tle"
+  },
+  {
+   "name": "Allied Teamwork",
+   "oracle_id": "ceddea59-de47-4ddd-b424-6e1dcb13ab79",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a 1/1 white Ally creature token.\nAllies you control get +1/+1.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "213",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Appa, Aang's Companion",
+   "oracle_id": "215215b8-6ddc-4e94-8640-6d324ff65f9c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Bison Ally",
+   "oracle_text": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhenever Appa attacks, another target attacking creature without flying gains flying until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "214",
+   "set": "tle"
+  },
+  {
+   "name": "Katara, Heroic Healer",
+   "oracle_id": "703032eb-98b3-4ecf-8b92-4f4f1551c5d7",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)\nWhen Katara enters, put a +1/+1 counter on each other creature you control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "215",
+   "set": "tle"
+  },
+  {
+   "name": "Kyoshi Warrior Guard",
+   "oracle_id": "18fe834f-4417-4df8-a49c-98e9bf2f87d2",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "216",
+   "set": "tle"
+  },
+  {
+   "name": "Momo, Rambunctious Rascal",
+   "oracle_id": "8854222e-590f-4fc0-b5d7-bf3d986b8507",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Lemur Bat Ally",
+   "oracle_text": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhen Momo enters, he deals 4 damage to target tapped creature an opponent controls.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "217",
+   "set": "tle"
+  },
+  {
+   "name": "Sledding Otter-Penguin",
+   "oracle_id": "1b115051-a3c8-4c5f-9ad2-82b5a6897c51",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Otter Bird",
+   "oracle_text": "{3}: Put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "218",
+   "set": "tle"
+  },
+  {
+   "name": "Sokka, Wolf Cove's Protector",
+   "oracle_id": "7dd518f9-1ddd-4950-add3-fc21f675f4dc",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "219",
+   "set": "tle"
+  }
+ ]
+}

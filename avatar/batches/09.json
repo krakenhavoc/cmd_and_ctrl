@@ -1,0 +1,272 @@
+{
+ "batch": 9,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Joo Dee, One of Many",
+   "oracle_id": "4601ed7b-716e-4c89-b733-1eeabe8bf5a2",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Advisor",
+   "oracle_text": "{B}, {T}: Surveil 1. Create a token that's a copy of this creature, then sacrifice an artifact or creature. Activate only as a sorcery. (To surveil 1, look at the top card of your library. You may put it into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "105",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you control no creatures other than Joo Dee and no artifacts as the ability resolves, you'll need to sacrifice either Joo Dee or the token copy.",
+    "The token copies exactly what was printed on the original creature and nothing else (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "The sacrifice part of Joo Dee's ability happens as part of the resolution of the ability. Players cannot do anything between creating the copy and sacrificing an artifact or creature."
+   ]
+  },
+  {
+   "name": "June, Bounty Hunter",
+   "oracle_id": "1779869a-5e54-4ab5-86b8-d4d20e2e1ba4",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Mercenary",
+   "oracle_text": "June can't be blocked as long as you've drawn two or more cards this turn.\n{1}, Sacrifice another creature: Create a Clue token. Activate only during your turn. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "106",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn.",
+    "Once June, Bounty Hunter has been blocked, drawing two or more cards will not cause June to become unblocked.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Koh, the Face Stealer",
+   "oracle_id": "2bbb33e3-7d03-457c-92bb-b0c943615fa1",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Shapeshifter Spirit",
+   "oracle_text": "When Koh enters, exile up to one other target creature.\nWhenever another nontoken creature dies, you may exile it.\nPay 1 life: Choose a creature card exiled with Koh.\nKoh has all activated and triggered abilities of the last chosen card.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "107",
+   "set": "tla",
+   "rulings": [
+    "Players can respond to the triggered ability that exiles nontoken creatures that die. If the card leaves the graveyard before the ability resolves, Koh will not exile the card and it cannot be chosen with Koh's activated ability.",
+    "Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" Some keyword abilities, like equip, are activated abilities and they have colons in their reminder text.",
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities, such as prowess, are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text."
+   ]
+  },
+  {
+   "name": "Lo and Li, Twin Tutors",
+   "oracle_id": "ad643992-eb9f-4a4a-9b74-a5aee2337f30",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "When Lo and Li enter, search your library for a Lesson or Noble card, reveal it, put it into your hand, then shuffle.\nNoble creatures you control and Lesson spells you control have lifelink.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "108",
+   "set": "tla",
+   "rulings": [
+    "An instant or sorcery spell with lifelink causes its controller to gain life only if it's the source of any damage that's dealt. An instant or sorcery spell with lifelink that causes another source to deal damage won't cause its controller to gain life."
+   ]
+  },
+  {
+   "name": "Merchant of Many Hats",
+   "oracle_id": "23820b45-2f3a-4b6e-99ea-d84caccb7e37",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Peasant Ally",
+   "oracle_text": "{2}{B}: Return this card from your graveyard to your hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "110",
+   "set": "tla"
+  },
+  {
+   "name": "Northern Air Temple",
+   "oracle_id": "28a2ad5b-d637-4634-8d4b-889e1fc88319",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Legendary Enchantment — Shrine",
+   "oracle_text": "When Northern Air Temple enters, each opponent loses X life and you gain X life, where X is the number of Shrines you control.\nWhenever another Shrine you control enters, each opponent loses 1 life and you gain 1 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "111",
+   "set": "tla"
+  },
+  {
+   "name": "Ozai's Cruelty",
+   "oracle_id": "aba5c046-2f8c-4749-b347-9a7d8cb1c865",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Ozai's Cruelty deals 2 damage to target player. That player discards two cards.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "113",
+   "set": "tla"
+  },
+  {
+   "name": "Phoenix Fleet Airship",
+   "oracle_id": "6ffe71c0-acb5-4ba9-8c2f-719330e1ea69",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Flying\nAt the beginning of your end step, if you sacrificed a permanent this turn, create a token that's a copy of this Vehicle.\nAs long as you control eight or more permanents named Phoenix Fleet Airship, this Vehicle is an artifact creature.\nCrew 1",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Crew"
+   ],
+   "collector_number": "114",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token won't copy counters or damage marked on Phoenix Fleet Airship, nor will it copy other effects that have changed Phoenix Fleet Airship's power, toughness, types, color, and so on. Normally, this means the token will simply be a Phoenix Fleet Airship, but if any copy effects have affected that Phoenix Fleet Airship, they're taken into account.",
+    "The token will have Phoenix Fleet Airship's abilities. It will also be able to create copies of itself on future turns.",
+    "If Phoenix Fleet Airship leaves the battlefield before its triggered ability resolves, the token will still enter as a copy of Phoenix Fleet Airship, using its copiable values from when it was last on the battlefield."
+   ]
+  },
+  {
+   "name": "Pirate Peddlers",
+   "oracle_id": "4771a871-576e-4a14-92f0-b5b41c63d615",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Pirate",
+   "oracle_text": "Deathtouch\nWhenever you sacrifice another permanent, put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "115",
+   "set": "tla"
+  },
+  {
+   "name": "Raven Eagle",
+   "oracle_id": "f75ac0a3-8795-48b4-91fd-4717900ef5b7",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird Assassin",
+   "oracle_text": "Flying\nWhenever this creature enters or attacks, exile up to one target card from a graveyard. If a creature card is exiled this way, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you draw your second card each turn, each opponent loses 1 life and you gain 1 life.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "116",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "If an effect instructs you to draw multiple cards, the ability triggers after you draw whichever is the second one for the turn. It goes on the stack after you've drawn and looked at all the cards and finished resolving the spell or ability that caused you to draw them.",
+    "The second triggered ability can trigger only once each turn. It doesn't matter whether Raven Eagle was on the battlefield when the first card was drawn. If it's not on the battlefield when the second card is drawn, the ability can't trigger at all that turn. It won't trigger when the third or fourth card is drawn.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn."
+   ]
+  }
+ ]
+}

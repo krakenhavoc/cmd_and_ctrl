@@ -1,0 +1,275 @@
+{
+ "batch": 21,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Realm of Koh",
+   "oracle_id": "bb9ce416-eef1-49e8-89a0-2b6837505070",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a basic land.\n{T}: Add {B}.\n{3}{B}, {T}: Create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "276",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If one of these lands enters at the same time as any number of basic lands, those other lands are not counted when determining if this land enters tapped or untapped."
+   ]
+  },
+  {
+   "name": "Rumble Arena",
+   "oracle_id": "83f2470e-2114-4cd9-ab1a-21b76e9cdf63",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "Vigilance\nWhen this land enters, scry 1. (Look at the top card of your library. You may put it on the bottom.)\n{T}: Add {C}.\n{1}, {T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Vigilance",
+    "Scry"
+   ],
+   "collector_number": "277",
+   "set": "tla"
+  },
+  {
+   "name": "Secret Tunnel",
+   "oracle_id": "632e2979-d88a-482e-9bb8-57b683c5310f",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Cave",
+   "oracle_text": "This land can't be blocked.\n{T}: Add {C}.\n{4}, {T}: Two target creatures you control that share a creature type can't be blocked this turn.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "278",
+   "set": "tla",
+   "rulings": [
+    "If one of the two creatures leaves the battlefield before Secret Tunnel's ability resolves, the other still can't be blocked this turn as long as it has a creature type that the other card had as it left the battlefield. Love and music always find a way.",
+    "The creatures must share at least one creature type, such as Ally or Lemur. Card types such as artifact, and supertypes such as legendary or snow, aren't creature types."
+   ]
+  },
+  {
+   "name": "Serpent's Pass",
+   "oracle_id": "f715f701-a735-42ab-b31a-8e1bd04ac5ff",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U} or {B}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "279",
+   "set": "tla"
+  },
+  {
+   "name": "Sun-Blessed Peak",
+   "oracle_id": "d188a397-c7d9-4f16-bc21-d9e1b5ffc951",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {R} or {W}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "280",
+   "set": "tla"
+  },
+  {
+   "name": "White Lotus Hideout",
+   "oracle_id": "2cdbfda3-98fc-4108-b551-c7049168924e",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Lesson or Shrine spell.\n{1}, {T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "281",
+   "set": "tla",
+   "rulings": [
+    "A \"Lesson or Shrine spell\" is any spell with the subtype Lesson or Shrine. Mana produced by the second ability can't be spent to pay the costs of abilities of Shrines you control."
+   ]
+  },
+  {
+   "name": "Azula, Cunning Usurper",
+   "oracle_id": "7c9e351d-2e6c-4050-9c3d-b15bb9255a4d",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Noble Rogue",
+   "oracle_text": "Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\nWhen Azula enters, target opponent exiles a nontoken creature they control, then they exile a nonland card from their graveyard.\nDuring your turn, you may cast cards exiled with Azula and you may cast them as though they had flash. Mana of any type can be spent to cast those spells.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "303",
+   "set": "tla",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "The six types of mana are white, blue, black, red, green, and colorless.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "You pay the costs for an exiled card if you cast it. You may pay any alternative costs the card has rather than the card's mana cost.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Casting an exiled card causes it to leave exile. You can't cast it multiple times.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Dai Li Agents",
+   "oracle_id": "8c05e716-b6eb-4f95-866b-7e43a898ebe2",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "When this creature enters, earthbend 1, then earthbend 1. (To earthbend 1, target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)\nWhenever this creature attacks, each opponent loses X life and you gain X life, where X is the number of creatures you control with +1/+1 counters on them.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "306",
+   "set": "tla",
+   "rulings": [
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The value of X is determined as Dai Li Agents's second ability resolves, not when it is put on the stack.",
+    "You can target the same land or two different lands with the multiple instances of earthbend from Dai Li Agents.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\""
+   ]
+  },
+  {
+   "name": "Avatar Aang // Aang, Master of Elements",
+   "oracle_id": "b4872bac-5822-4c35-9b73-38c4e3ffa477",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Avatar Ally // Legendary Creature — Avatar Ally",
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Transform",
+    "Firebending"
+   ],
+   "collector_number": "308",
+   "set": "tla",
+   "card_faces": [
+    {
+     "name": "Avatar Aang",
+     "mana_cost": "{R}{G}{W}{U}",
+     "type_line": "Legendary Creature — Human Avatar Ally",
+     "oracle_text": "Flying, firebending 2\nWhenever you waterbend, earthbend, firebend, or airbend, draw a card. Then if you've done all four this turn, transform Avatar Aang.",
+     "power": "4",
+     "toughness": "4"
+    },
+    {
+     "name": "Aang, Master of Elements",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Avatar Ally",
+     "oracle_text": "Flying\nSpells you cast cost {W}{U}{B}{R}{G} less to cast. (This can reduce generic costs.)\nAt the beginning of each upkeep, you may transform Aang, Master of Elements. If you do, you gain 4 life, draw four cards, put four +1/+1 counters on him, and he deals 4 damage to each opponent.",
+     "power": "6",
+     "toughness": "6"
+    }
+   ],
+   "rulings": [
+    "An ability that triggers \"whenever you waterbend\" triggers whenever you pay a waterbend cost, regardless of how you paid that cost. You do not have to tap artifacts or creatures to help pay the cost for the ability to trigger.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "An ability that triggers \"whenever you earthbend\" triggers immediately after the list of actions earthbend entails is complete, even if some or all of those actions were impossible, perhaps because an effect does not allow counters to be placed on creatures you control.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Avatar Aang's last ability looks at the whole turn when determining whether or not Avatar Aang should transform, not just actions you've taken since he entered or came under your control. For example, say you airbend, waterbend, and earthbend, then play Avatar Aang. If you firebend later in the turn, then when Avatar Aang's ability resolves, he'll transform since you've done all four this turn.",
+    "An ability that triggers \"whenever you airbend\" triggers after the process described by the airbend keyword action is complete, even if some or all of the actions were impossible.",
+    "An ability that triggers \"whenever you firebend\" triggers whenever a firebending ability you control resolves.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Ozai, the Phoenix King",
+   "oracle_id": "7472af8e-2e93-43b2-bc32-a3741f6d7502",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Trample, firebending 4, haste\nIf you would lose unspent mana, that mana becomes red instead.\nOzai has flying and indestructible as long as you have six or more unspent mana.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Haste",
+    "Trample",
+    "Firebending"
+   ],
+   "collector_number": "311",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "If unspent mana has any restrictions or riders associated with it (for example, if it was produced by White Lotus Hideout), those restrictions or riders will remain associated with that mana when it becomes red.",
+    "As long as Ozai, the Phoenix King is on the battlefield, you'll keep unspent mana as steps and phases end (although it will become red). This means you can add mana and spend it during a future step, phase, or turn. Once Ozai leaves the battlefield, you have until the end of the current step or phase to use the mana before it disappears.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\""
+   ]
+  }
+ ]
+}

@@ -1,0 +1,292 @@
+{
+ "batch": 18,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "The Lion-Turtle",
+   "oracle_id": "fff728a1-56f5-4e97-91e2-19aba5772909",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elder Cat Turtle",
+   "oracle_text": "Reach, vigilance\nWhen The Lion-Turtle enters, you gain 3 life.\nThe Lion-Turtle can't attack or block unless there are three or more Lesson cards in your graveyard.\n{T}: Add one mana of any color.",
+   "power": "3",
+   "toughness": "6",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance"
+   ],
+   "collector_number": "232",
+   "set": "tla"
+  },
+  {
+   "name": "Long Feng, Grand Secretariat",
+   "oracle_id": "9bf9fe83-b0df-4ef8-ac54-c0d223d4e410",
+   "layout": "normal",
+   "mana_cost": "{1}{B/G}{B/G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Whenever another creature you control or a land you control is put into a graveyard from the battlefield, put a +1/+1 counter on target creature you control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "233",
+   "set": "tla"
+  },
+  {
+   "name": "Messenger Hawk",
+   "oracle_id": "4029e884-8154-42b3-ae29-3cb98374a294",
+   "layout": "normal",
+   "mana_cost": "{2}{U/B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird Scout",
+   "oracle_text": "Flying\nWhen this creature enters, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nThis creature gets +2/+0 as long as you've drawn two or more cards this turn.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "234",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Messenger Hawk's last ability applies even if you drew two or more cards only before Messenger Hawk entered.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "If a spell or ability causes you to put cards into your hand without specifically using the word \"draw,\" Messenger Hawk's ability doesn't count them."
+   ]
+  },
+  {
+   "name": "Platypus-Bear",
+   "oracle_id": "933e4e8a-01ea-4f58-8f5e-4f6c43f4e105",
+   "layout": "normal",
+   "mana_cost": "{1}{G/U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Platypus Bear",
+   "oracle_text": "Defender\nWhen this creature enters, mill two cards. (Put the top two cards of your library into your graveyard.)\nAs long as there is a Lesson card in your graveyard, this creature can attack as though it didn't have defender.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Mill",
+    "Defender"
+   ],
+   "collector_number": "236",
+   "set": "tla",
+   "rulings": [
+    "Once Platypus-Bear has attacked, it will remain an attacking creature for that combat, even if the Lesson card is removed from your graveyard."
+   ]
+  },
+  {
+   "name": "Pretending Poxbearers",
+   "oracle_id": "fefef024-3a05-4221-bb74-419ee08716e5",
+   "layout": "normal",
+   "mana_cost": "{1}{W/B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Citizen Ally",
+   "oracle_text": "When this creature dies, create a 1/1 white Ally creature token.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "237",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Professor Zei, Anthropologist",
+   "oracle_id": "59a10335-72df-44a5-a514-5bac392cd282",
+   "layout": "normal",
+   "mana_cost": "{U/R}{U/R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Advisor Ally",
+   "oracle_text": "{T}, Discard a card: Draw a card.\n{1}, {T}, Sacrifice Professor Zei: Return target instant or sorcery card from your graveyard to your hand. Activate only during your turn.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "238",
+   "set": "tla"
+  },
+  {
+   "name": "Sandbender Scavengers",
+   "oracle_id": "0feacc7c-b93e-4322-bc8b-b3c19006128e",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rogue",
+   "oracle_text": "Whenever you sacrifice another permanent, put a +1/+1 counter on this creature.\nWhen this creature dies, you may exile it. When you do, return target creature card with mana value less than or equal to this creature's power from your graveyard to the battlefield.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "239",
+   "set": "tla",
+   "rulings": [
+    "Use Sandbender Scavengers's power as it last existed on the battlefield to determine which creature cards may be targeted with its last ability."
+   ]
+  },
+  {
+   "name": "Sokka, Lateral Strategist",
+   "oracle_id": "427f8ef9-12b3-4fa0-b303-28153566b6dc",
+   "layout": "normal",
+   "mana_cost": "{1}{W/U}{W/U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Vigilance\nWhenever Sokka and at least one other creature attack, draw a card.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "241",
+   "set": "tla"
+  },
+  {
+   "name": "Suki, Kyoshi Warrior",
+   "oracle_id": "9223488e-5206-4d43-90ef-387189dcee16",
+   "layout": "normal",
+   "mana_cost": "{2}{G/W}{G/W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Suki's power is equal to the number of creatures you control.\nWhenever Suki attacks, create a 1/1 white Ally creature token that's tapped and attacking.",
+   "power": "*",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "243",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Although the Ally token created by the triggered ability is attacking, it was never declared as an attacking creature (for the purposes of abilities that trigger whenever a creature attacks, for example).",
+    "The ability that defines Suki, Kyoshi Warrior's power works in all zones, not just the battlefield. As long as Suki is on the battlefield (and still a creature), that ability will count Suki herself.",
+    "You choose which opponent, planeswalker, or battle the token is attacking as it enters."
+   ]
+  },
+  {
+   "name": "Sun Warriors",
+   "oracle_id": "513a2fca-fea4-434e-9b25-b0c0d7f322b2",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "Firebending X, where X is the number of creatures you control. (Whenever this creature attacks, add X {R}. This mana lasts until end of combat.)\n{5}: Create a 1/1 white Ally creature token.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "244",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to."
+   ]
+  }
+ ]
+}

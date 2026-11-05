@@ -1,0 +1,294 @@
+{
+ "batch": 11,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Combustion Man",
+   "oracle_id": "533b107c-fd66-45ef-b74e-e6bd9b75ea8f",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Assassin",
+   "oracle_text": "Whenever Combustion Man attacks, destroy target permanent unless its controller has Combustion Man deal damage to them equal to his power.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "127",
+   "set": "tla"
+  },
+  {
+   "name": "Crescent Island Temple",
+   "oracle_id": "2886f95e-c4e8-4770-b7de-40985f336cfb",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Enchantment — Shrine",
+   "oracle_text": "When Crescent Island Temple enters, for each Shrine you control, create a 1/1 red Monk creature token with prowess. (Whenever you cast a noncreature spell, it gets +1/+1 until end of turn.)\nWhenever another Shrine you control enters, create a 1/1 red Monk creature token with prowess.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "129",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Monk",
+     "type_line": "Token Creature — Monk",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Cunning Maneuver",
+   "oracle_id": "96335212-ec57-4beb-bab1-11c8eaa62119",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +3/+1 until end of turn.\nCreate a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "130",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\""
+   ]
+  },
+  {
+   "name": "Deserter's Disciple",
+   "oracle_id": "73ca3132-d849-4cf9-beba-75ba09789332",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rebel Ally",
+   "oracle_text": "{T}: Another target creature you control with power 2 or less can't be blocked this turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "131",
+   "set": "tla",
+   "rulings": [
+    "If the target creature's power is increased to 3 or greater after Deserter's Disciple's ability is activated but before it resolves, the ability doesn't resolve. However, if instead the creature's power is increased to 3 or greater after the ability resolves, it still can't be blocked that turn.",
+    "Once a creature with power 2 or less has been blocked, Deserter's Disciple's ability won't cause it to become unblocked."
+   ]
+  },
+  {
+   "name": "Fire Nation Attacks",
+   "oracle_id": "399fba23-fc13-440b-ab67-192eede6ecab",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Create two 2/2 red Soldier creature tokens with firebending 1. (Whenever a creature with firebending 1 attacks, add {R}. This mana lasts until end of combat.)\nFlashback {8}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "133",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Soldier",
+     "type_line": "Token Creature — Soldier",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to."
+   ]
+  },
+  {
+   "name": "Fire Nation Cadets",
+   "oracle_id": "5ebfa3f5-f80a-4845-bba7-75c4ddb88682",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "This creature has firebending 2 as long as there's a Lesson card in your graveyard. (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\n{2}: This creature gets +1/+0 until end of turn.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "134",
+   "set": "tla",
+   "rulings": [
+    "You must have a Lesson card in your graveyard while you attack with Fire Nation Cadets in order for the firebending 2 ability to trigger. If you put a Lesson card into your graveyard after Fire Nation Cadets has attacked, Fire Nation Cadets will still gain firebending 2, but the ability will not trigger.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Fire Nation Raider",
+   "oracle_id": "b37e9bc5-6a2c-4f08-b856-3f8d0d16defb",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Raid — When this creature enters, if you attacked this turn, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Raid"
+   ],
+   "collector_number": "135",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield, respectively.",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with, or which opponent or planeswalker controlled by an opponent those creatures attacked."
+   ]
+  },
+  {
+   "name": "Fire Sages",
+   "oracle_id": "08d1940a-ddc6-4b6d-b6c9-9d2aa470b906",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\n{1}{R}{R}: Put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "136",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\""
+   ]
+  },
+  {
+   "name": "Firebending Lesson",
+   "oracle_id": "a9282f91-638e-414b-8b3d-9a99e30aec96",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Kicker {4} (You may pay an additional {4} as you cast this spell.)\nFirebending Lesson deals 2 damage to target creature. If this spell was kicked, it deals 5 damage to that creature instead.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "138",
+   "set": "tla",
+   "rulings": [
+    "If a spell's kicker cost was paid, the spell is \"kicked.\"",
+    "To determine a spell's total cost, start with the mana cost (or an alternative cost if another card's effect allows you to pay one instead), add any cost increases (such as kicker), then apply any cost reductions. The spell's mana value remains unchanged, no matter what the total cost to cast it was.",
+    "If you copy a kicked spell on the stack, the copy is also kicked.",
+    "The kicker ability doesn't let you pay a kicker cost more than once."
+   ]
+  },
+  {
+   "name": "Firebending Student",
+   "oracle_id": "1ad3be51-f68b-46d6-b58e-400b50e384f1",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Monk",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nFirebending X, where X is this creature's power. (Whenever this creature attacks, add X {R}. This mana lasts until end of combat.)",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Prowess",
+    "Firebending"
+   ],
+   "collector_number": "139",
+   "set": "tla",
+   "rulings": [
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,247 @@
+{
+ "batch": 6,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Otter-Penguin",
+   "oracle_id": "e2171c48-a816-41b2-aa55-e0ba2503fd6a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Otter Bird",
+   "oracle_text": "Whenever you draw your second card each turn, this creature gets +1/+2 until end of turn and can't be blocked this turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "67",
+   "set": "tla",
+   "rulings": [
+    "Once Otter-Penguin has been blocked, its triggered ability will not cause it to become unblocked.",
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn."
+   ]
+  },
+  {
+   "name": "Rowdy Snowballers",
+   "oracle_id": "74224cce-c2ce-4456-8a97-3abbbb199385",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Peasant Ally",
+   "oracle_text": "When this creature enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "68",
+   "set": "tla"
+  },
+  {
+   "name": "Serpent of the Pass",
+   "oracle_id": "98e36c6e-a868-4679-a5b5-6f02097f560b",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Serpent",
+   "oracle_text": "If there are three or more Lesson cards in your graveyard, you may cast this spell as though it had flash.\nThis spell costs {1} less to cast for each noncreature, nonland card in your graveyard.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "70",
+   "set": "tla",
+   "rulings": [
+    "Serpent of the Pass's second ability cannot reduce the {U}{U} in its cost.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Serpent of the Pass's second ability). The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Sokka's Haiku",
+   "oracle_id": "87a97c72-143d-48a8-a1c5-3c44aa8e5a86",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Counter target spell.\nDraw a card, then mill three cards.\nUntap target land.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "71",
+   "set": "tla",
+   "rulings": [
+    "A haiku has five syllables in the first and third lines and seven in the second line."
+   ]
+  },
+  {
+   "name": "The Spirit Oasis",
+   "oracle_id": "b677a73c-f179-46bf-83ee-c2b05f9fca67",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Enchantment — Shrine",
+   "oracle_text": "When The Spirit Oasis enters, draw a card for each Shrine you control.\nWhenever another Shrine you control enters, draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "72",
+   "set": "tla"
+  },
+  {
+   "name": "Spirit Water Revival",
+   "oracle_id": "68979160-b5ce-4787-8a1e-1f40e614c3b0",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, you may waterbend {6}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nDraw two cards. If this spell's additional cost was paid, instead shuffle your graveyard into your library, draw seven cards, and you have no maximum hand size for the rest of the game.\nExile Spirit Water Revival.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "73",
+   "set": "tla",
+   "rulings": [
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend."
+   ]
+  },
+  {
+   "name": "Teo, Spirited Glider",
+   "oracle_id": "ea74940f-01de-4804-92ed-b273fddf6d62",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Pilot Ally",
+   "oracle_text": "Flying\nWhenever one or more creatures you control with flying attack, draw a card, then discard a card. When you discard a nonland card this way, put a +1/+1 counter on target creature you control.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "74",
+   "set": "tla"
+  },
+  {
+   "name": "Tiger-Seal",
+   "oracle_id": "68f84643-c0f9-4d31-ba2e-38b65ab45d04",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Creature — Cat Seal",
+   "oracle_text": "Vigilance\nAt the beginning of your upkeep, tap this creature.\nWhenever you draw your second card each turn, untap this creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "75",
+   "set": "tla",
+   "rulings": [
+    "If an effect instructs you to draw multiple cards, the ability triggers after you draw whichever is the second one for the turn. It goes on the stack after you've drawn and looked at all the cards and finished resolving the spell or ability that caused you to draw them.",
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn.",
+    "The second triggered ability can trigger only once each turn. It doesn't matter whether Tiger-Seal was on the battlefield when the first card was drawn. If it's not on the battlefield when the second card is drawn, the ability can't trigger at all that turn. It won't trigger when the third or fourth card is drawn."
+   ]
+  },
+  {
+   "name": "Waterbender Ascension",
+   "oracle_id": "aeddfdc2-149b-4703-ba57-8d844b25ef08",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature you control deals combat damage to a player, put a quest counter on this enchantment. Then if it has four or more quest counters on it, draw a card.\nWaterbend {4}: Target creature can't be blocked this turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "79",
+   "set": "tla",
+   "rulings": [
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "Waterbending Lesson",
+   "oracle_id": "3d28886c-46bf-4d2e-a257-cb9016cc3573",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Draw three cards. Then discard a card unless you waterbend {2}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "80",
+   "set": "tla",
+   "rulings": [
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost."
+   ]
+  }
+ ]
+}

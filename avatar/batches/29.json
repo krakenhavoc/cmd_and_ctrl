@@ -1,0 +1,253 @@
+{
+ "batch": 29,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Dutiful Knowledge Seeker",
+   "oracle_id": "b58a70e2-3609-441a-993a-dccb9a2cf242",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Fox Spirit",
+   "oracle_text": "Whenever one or more cards are put into a library from anywhere, put a +1/+1 counter on this creature.\n{3}: Put target card from a graveyard on the bottom of its owner's library.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "tle"
+  },
+  {
+   "name": "Nightmares and Daydreams",
+   "oracle_id": "0403bfb0-2174-4360-994d-68d8ca96fc55",
+   "layout": "saga",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after IV.)\nI, II, III — Until your next turn, whenever you cast an instant or sorcery spell, target player mills cards equal to that spell's mana value.\nIV — Draw a card. If a graveyard has twenty or more cards in it, draw three cards instead.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "94",
+   "set": "tle"
+  },
+  {
+   "name": "Princess Yue",
+   "oracle_id": "08c59e5e-d01c-49b7-a812-8ea75e9e945d",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "95",
+   "set": "tle",
+   "rulings": [
+    "You cannot have multiple legendary permanents with the same name on the battlefield at the same time. However, Princess Yue's name becomes Moon when she returns to the battlefield as a land. Notably, you can control a legendary creature named Princess Yue and a legendary land named Moon at the same time.",
+    "When Princess Yue returns to the battlefield as a land named Moon, she is no longer a creature. That's rough, buddy."
+   ]
+  },
+  {
+   "name": "Unagi's Spray",
+   "oracle_id": "74b8976a-15cb-4604-a65d-ca9735cd6000",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets -4/-0 until end of turn. If you control a Fish, Octopus, Otter, Seal, Serpent, or Whale, draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "97",
+   "set": "tle",
+   "rulings": [
+    "Unagi's Spray checks if you control a Fish, Octopus, Otter, Seal, Serpent, or Whale when it resolves, not when it is cast.",
+    "If the targeted creature becomes an illegal target before Unagi's Spray resolves (perhaps because it left the battlefield), the spell will not resolve."
+   ]
+  },
+  {
+   "name": "Wan Shi Tong, All-Knowing",
+   "oracle_id": "6927bd2e-cb05-487a-af86-89ede6e8dabd",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bird Spirit",
+   "oracle_text": "Flying\nWhen Wan Shi Tong enters, target nonland permanent's owner puts it into their library second from the top or on the bottom.\nWhenever one or more cards are put into a library from anywhere, create two 1/1 colorless Spirit creature tokens with \"This token can't block or be blocked by non-Spirit creatures.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "98",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Wan Shi Tong, All-Knowing's last ability triggers only when cards are put into a library from somewhere other than the library. It won't trigger when you scry, surveil, or otherwise reorder cards in your library."
+   ]
+  },
+  {
+   "name": "Whirlwind Technique",
+   "oracle_id": "a4477852-66eb-4a54-b4c1-760cbf624f82",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Target player draws two cards, then discards a card.\nAirbend up to two target creatures. (To airbend a creature, exile it. While it's exiled, its owner may cast it for {2} rather than its mana cost.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Airbend"
+   ],
+   "collector_number": "100",
+   "set": "tle",
+   "rulings": [
+    "To airbend one or more permanents and/or spells means to exile each of those objects. For each card exiled this way, for as long as it's exiled, its owner may cast it from exile by paying {2} rather than paying its mana cost.",
+    "Lands exiled this way cannot be played from exile. (Lands that were animated by earthbend will be returned to the battlefield tapped when they're exiled.)",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X.",
+    "Tokens exiled this way will cease to exist and cannot be cast.",
+    "Since you are using an alternative cost to cast a spell from exile this way, you can't pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those."
+   ]
+  },
+  {
+   "name": "Dai Li Censor",
+   "oracle_id": "f13a8621-4d88-4c1f-8b6e-80f8ef383cd2",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Soldier Advisor",
+   "oracle_text": "{1}, Sacrifice another creature: This creature gets +2/+2 until end of turn. Activate only once each turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "102",
+   "set": "tle"
+  },
+  {
+   "name": "Fire Lord Ozai",
+   "oracle_id": "5945306d-e792-4eae-999b-dfb44b10f062",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Whenever Fire Lord Ozai attacks, you may sacrifice another creature. If you do, add an amount of {R} equal to the sacrificed creature's power. Until end of combat, you don't lose this mana as steps end.\n{6}: Exile the top card of each opponent's library. Until end of turn, you may play one of those cards without paying its mana cost.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "104",
+   "set": "tle",
+   "rulings": [
+    "You must follow normal time restrictions for cards cast using Fire Lord Ozai's activated ability. For example, if you exile a creature card, it can only be cast in your main phase when the stack is empty. Notably, you usually cannot cast a creature card exiled with this ability on your opponent's turn unless it has flash."
+   ]
+  },
+  {
+   "name": "Fire Nation Occupation",
+   "oracle_id": "2a99c0d6-3200-44ff-8d4c-f7a38cecb05f",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a 2/2 red Soldier creature token with firebending 1. (Whenever it attacks, add {R}. This mana lasts until end of combat.)\nWhenever you cast a spell during an opponent's turn, create a 2/2 red Soldier creature token with firebending 1.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "105",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Soldier",
+     "type_line": "Token Creature — Soldier",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Giant Fly",
+   "oracle_id": "439ae30b-348d-480c-8d3d-fe105167bdc4",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Flying\nWhenever you sacrifice another permanent, this creature gets +1/+0 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "107",
+   "set": "tle"
+  }
+ ]
+}

@@ -1,0 +1,259 @@
+{
+ "batch": 13,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Sozin's Comet",
+   "oracle_id": "bc0da02c-2b85-4ddc-9ce0-63934dd14164",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each creature you control gains firebending 5 until end of turn. (Whenever it attacks, add {R}{R}{R}{R}{R}. This mana lasts until end of combat.)\nForetell {2}{R} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Foretell"
+   ],
+   "collector_number": "154",
+   "set": "tla",
+   "rulings": [
+    "Casting a foretold card from exile follows the timing rules for that card. If you foretell an instant card, you can cast it as soon as the next player's turn. In most cases, if you foretell a card that isn't an instant (or doesn't have flash), you'll have to wait until your next turn to cast it.",
+    "Because exiling a card with foretell from your hand is a special action, you can do so any time you have priority during your turn, including in response to spells and abilities. Once you announce you're taking the action, no other player can respond by trying to remove the card from your hand.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "If you're casting a foretold card from exile for its foretell cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, those must be paid to cast the spell.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Tiger-Dillo",
+   "oracle_id": "b6e82d4f-4fbf-495c-bebd-982d2a855ad0",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Cat Armadillo",
+   "oracle_text": "This creature can't attack or block unless you control another creature with power 4 or greater.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "155",
+   "set": "tla"
+  },
+  {
+   "name": "Treetop Freedom Fighters",
+   "oracle_id": "922176b8-7174-4248-92fb-b196ceb802c7",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Rebel Ally",
+   "oracle_text": "Haste\nWhen this creature enters, create a 1/1 white Ally creature token.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "156",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Twin Blades",
+   "oracle_id": "88b076a4-46ff-4a41-95a5-2821f4d8944d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Flash\nWhen this Equipment enters, attach it to target creature you control. That creature gains double strike until end of turn.\nEquipped creature gets +1/+1.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Equip",
+    "Flash"
+   ],
+   "collector_number": "157",
+   "set": "tla"
+  },
+  {
+   "name": "Ty Lee, Artful Acrobat",
+   "oracle_id": "3726b9a0-67cb-4f45-ab50-62db50f93568",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Performer",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhenever Ty Lee attacks, you may pay {1}. When you do, target creature can't block this turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Prowess"
+   ],
+   "collector_number": "158",
+   "set": "tla"
+  },
+  {
+   "name": "War Balloon",
+   "oracle_id": "021b495d-236f-4274-988d-2dfd7103c9ef",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Flying\n{1}: Put a fire counter on this Vehicle.\nAs long as this Vehicle has three or more fire counters on it, it's an artifact creature.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Crew"
+   ],
+   "collector_number": "159",
+   "set": "tla"
+  },
+  {
+   "name": "Yuyan Archers",
+   "oracle_id": "63e5180f-16d0-4524-94bf-ecbf3c417814",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Archer",
+   "oracle_text": "Reach\nWhen this creature enters, you may discard a card. If you do, draw a card.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "161",
+   "set": "tla"
+  },
+  {
+   "name": "Zuko, Exiled Prince",
+   "oracle_id": "3231ce2e-d4f8-44fc-872d-aeafa59aed4b",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Firebending 3 (Whenever this creature attacks, add {R}{R}{R}. This mana lasts until end of combat.)\n{3}: Exile the top card of your library. You may play that card this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "163",
+   "set": "tla",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "You must follow all normal timing rules for a card you play using Zuko, Exiled Prince's last ability and, if it's a spell, you must pay its costs to cast it.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat."
+   ]
+  },
+  {
+   "name": "Allies at Last",
+   "oracle_id": "c15e5e93-2eff-407d-ae75-437e36ef85ba",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Affinity for Allies (This spell costs {1} less to cast for each Ally you control.)\nUp to two target creatures you control each deal damage equal to their power to target creature an opponent controls.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Affinity"
+   ],
+   "collector_number": "164",
+   "set": "tla",
+   "rulings": [
+    "Affinity for Allies reduces only the generic mana in Allies at Last's cost. The colored mana must still be paid.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Allies at Last's first ability). The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Badgermole",
+   "oracle_id": "2084a7f6-226b-4fb4-a30e-703f674d33b4",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Badger Mole",
+   "oracle_text": "When this creature enters, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)\nCreatures you control with +1/+1 counters on them have trample.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "166",
+   "set": "tla",
+   "rulings": [
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  }
+ ]
+}

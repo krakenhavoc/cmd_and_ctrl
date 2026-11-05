@@ -1,0 +1,293 @@
+{
+ "batch": 4,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Benevolent River Spirit",
+   "oracle_id": "12d91743-1ccb-4f2b-b2a9-1c2b34f7c8eb",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "As an additional cost to cast this spell, waterbend {5}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nFlying, ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nWhen this creature enters, scry 2.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Scry",
+    "Flying",
+    "Ward",
+    "Waterbend"
+   ],
+   "collector_number": "45",
+   "set": "tla",
+   "rulings": [
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn."
+   ]
+  },
+  {
+   "name": "Crashing Wave",
+   "oracle_id": "c8d3936f-4c08-4ffe-83c9-7ed26fb8f9cd",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, waterbend {X}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nTap up to X target creatures, then distribute three stun counters among any number of tapped creatures your opponents control. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "47",
+   "set": "tla",
+   "rulings": [
+    "You decide how to distribute the stun counters as Crashing Wave resolves, and you can put the counters on any tapped creatures your opponents control, not just creatures tapped by Crashing Wave.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If all targets of Crashing Wave become illegal before it resolves, the spell will not resolve at all and you will not distribute any stun counters, even if the opponent still controls some tapped creatures.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost."
+   ]
+  },
+  {
+   "name": "Ember Island Production",
+   "oracle_id": "0b786547-67ed-49fa-9981-35c4c2175f62",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Create a token that's a copy of target creature you control, except it's not legendary and it's a 4/4 Hero in addition to its other types.\n• Create a token that's a copy of target creature an opponent controls, except it's not legendary and it's a 2/2 Coward in addition to its other types.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "48",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token copies exactly what was printed on the original creature and nothing else (unless that creature is copying something else or is a token; see below), with the listed exceptions. It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "If the copied creature is a token, the token that's created copies the original characteristics of that token as stated by the effect that created the token, with the listed exceptions.",
+    "Any enters abilities of the copied creature will trigger when the token enters. Any \"as [this creature] enters\" or \"[this creature] enters with\" abilities of the targetted creature will also work.",
+    "If the copied creature has {X} in its mana cost, X is considered to be 0.",
+    "If the copied creature is copying something else (for example, if the copied creature is an Evil Twin), then the token enters as whatever that creature copied, with the listed exceptions."
+   ]
+  },
+  {
+   "name": "First-Time Flyer",
+   "oracle_id": "cbbea4e2-4b36-4965-89b6-00d2a564f146",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Pilot Ally",
+   "oracle_text": "Flying\nThis creature gets +1/+1 as long as there's a Lesson card in your graveyard.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "49",
+   "set": "tla"
+  },
+  {
+   "name": "Flexible Waterbender",
+   "oracle_id": "8cf88fa8-2f47-4125-a59d-9c2b2d4765a7",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "Vigilance\nWaterbend {3}: This creature has base power and toughness 5/2 until end of turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Waterbend"
+   ],
+   "collector_number": "50",
+   "set": "tla",
+   "rulings": [
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\""
+   ]
+  },
+  {
+   "name": "Forecasting Fortune Teller",
+   "oracle_id": "a5a05edd-2a30-414b-b766-f0651d5783f5",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Advisor Ally",
+   "oracle_text": "When this creature enters, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "51",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Geyser Leaper",
+   "oracle_id": "dfdcb451-a597-46fe-893c-49e6dbda5f71",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "Flying\nWaterbend {4}: Draw a card, then discard a card. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Waterbend"
+   ],
+   "collector_number": "52",
+   "set": "tla",
+   "rulings": [
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\""
+   ]
+  },
+  {
+   "name": "Giant Koi",
+   "oracle_id": "c93bb65a-a74a-499b-a538-65272079aab8",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Fish",
+   "oracle_text": "Waterbend {3}: This creature can't be blocked this turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "7",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Islandcycling",
+    "Landcycling",
+    "Typecycling",
+    "Waterbend",
+    "Cycling"
+   ],
+   "collector_number": "53",
+   "set": "tla",
+   "rulings": [
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost."
+   ]
+  },
+  {
+   "name": "Gran-Gran",
+   "oracle_id": "0259a9ed-0558-4183-b737-871ed5573c32",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Human Peasant Ally",
+   "oracle_text": "Whenever Gran-Gran becomes tapped, draw a card, then discard a card.\nNoncreature spells you cast cost {1} less to cast as long as there are three or more Lesson cards in your graveyard.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "54",
+   "set": "tla",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Honest Work",
+   "oracle_id": "12956c07-e679-471b-8dcb-2a2d15b0be55",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature an opponent controls\nWhen this Aura enters, tap enchanted creature and remove all counters from it.\nEnchanted creature loses all abilities and is a Citizen with base power and toughness 1/1 and \"{T}: Add {C}\" named Humble Merchant. (It loses all other creature types and names.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "55",
+   "set": "tla",
+   "rulings": [
+    "If the enchanted creature had any abilities, including those granted by other sources, before being enchanted, it loses those abilities. It can still gain new abilities after it is enchanted."
+   ]
+  }
+ ]
+}

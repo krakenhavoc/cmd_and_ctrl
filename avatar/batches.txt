@@ -1,0 +1,40 @@
+01: Aang's Journey; Airbender Ascension; Appa, Loyal Sky Bison; Avatar Enthusiasts; Compassionate Healer; Curious Farm Animals; Destined Confrontation; Earth Kingdom Jailer; Earth Kingdom Protectors; Enter the Avatar State
+02: Fancy Footwork; Gather the White Lotus; Glider Kids; Glider Staff; Invasion Reinforcements; Jeong Jeong's Deserters; Kyoshi Warriors; Master Piandao; Momo, Playful Pet; Rabaroo Troop
+03: Sandbenders' Storm; Southern Air Temple; Suki, Courageous Rescuer; Team Avatar; United Front; Vengeful Villagers; Water Tribe Captain; Water Tribe Rallier; Yip Yip!; Accumulate Wisdom
+04: Benevolent River Spirit; Crashing Wave; Ember Island Production; First-Time Flyer; Flexible Waterbender; Forecasting Fortune Teller; Geyser Leaper; Giant Koi; Gran-Gran; Honest Work
+05: Iguana Parrot; Invasion Submersible; It'll Quench Ya!; Katara, Bending Prodigy; Knowledge Seeker; Lost Days; Master Pakku; The Mechanist, Aerial Artisan; North Pole Patrol; Octopus Form
+06: Otter-Penguin; Rowdy Snowballers; Serpent of the Pass; Sokka's Haiku; The Spirit Oasis; Spirit Water Revival; Teo, Spirited Glider; Tiger-Seal; Waterbender Ascension; Waterbending Lesson
+07: Waterbending Scroll; Watery Grasp; Azula Always Lies; Azula, On the Hunt; Beetle-Headed Merchants; Boiling Rock Rioter; Buzzard-Wasp Colony; Callous Inspector; Canyon Crawler; Cat-Gator
+08: Corrupt Court Official; Day of Black Sun; Epic Downfall; The Fire Nation Drill; Fire Nation Engineer; Fire Navy Trebuchet; Foggy Swamp Hunters; Foggy Swamp Visions; Heartless Act; Hog-Monkey
+09: Joo Dee, One of Many; June, Bounty Hunter; Koh, the Face Stealer; Lo and Li, Twin Tutors; Merchant of Many Hats; Northern Air Temple; Ozai's Cruelty; Phoenix Fleet Airship; Pirate Peddlers; Raven Eagle
+10: The Rise of Sozin // Fire Lord Sozin; Ruinous Waterbending; Sold Out; Swampsnare Trap; Tundra Tank; Wolfbat; Zuko's Conviction; Boar-q-pine; Bumi Bash; The Cave of Two Lovers
+11: Combustion Man; Crescent Island Temple; Cunning Maneuver; Deserter's Disciple; Fire Nation Attacks; Fire Nation Cadets; Fire Nation Raider; Fire Sages; Firebending Lesson; Firebending Student
+12: How to Start a Riot; Iroh's Demonstration; Jeong Jeong, the Deserter; Jet's Brainwashing; Mai, Jaded Edge; Mongoose Lizard; Price of Freedom; Ran and Shaw; Rough Rhino Cavalry; Solstice Revelations
+13: Sozin's Comet; Tiger-Dillo; Treetop Freedom Fighters; Twin Blades; Ty Lee, Artful Acrobat; War Balloon; Yuyan Archers; Zuko, Exiled Prince; Allies at Last; Badgermole
+14: Badgermole Cub; The Boulder, Ready to Rumble; Bumi, King of Three Trials; Diligent Zookeeper; Earth Kingdom General; Earth Rumble; Earthbender Ascension; Flopsie, Bumi's Buddy; Foggy Swamp Vinebender; Haru, Hidden Talent
+15: Invasion Tactics; Kyoshi Island Plaza; Leaves from the Vine; Origin of Metalbending; Ostrich-Horse; Pillar Launch; Raucous Audience; Rebellious Captives; Rocky Rebuke; Saber-Tooth Moose-Lion
+16: Seismic Sense; Sparring Dummy; Toph, the Blind Bandit; True Ancestry; Turtle-Duck; Unlucky Cabbage Merchant; Walltop Sentries; Air Nomad Legacy; Cat-Owl; Cruel Administrator
+17: Dragonfly Swarm; Earth Kingdom Soldier; Earth King's Lieutenant; Earth Rumble Wrestlers; Earth Village Ruffians; Foggy Swamp Spirit Keeper; Guru Pathik; Hei Bai, Spirit of Balance; Hermitic Herbalist; Jet, Freedom Fighter
+18: The Lion-Turtle; Long Feng, Grand Secretariat; Messenger Hawk; Platypus-Bear; Pretending Poxbearers; Professor Zei, Anthropologist; Sandbender Scavengers; Sokka, Lateral Strategist; Suki, Kyoshi Warrior; Sun Warriors
+19: Tolls of War; Uncle Iroh; Vindictive Warden; Wandering Musicians; White Lotus Reinforcements; Zhao, Ruthless Admiral; Barrels of Blasting Jelly; Fire Nation Warship; Kyoshi Battle Fan; Meteor Sword
+20: Planetarium of Wan Shi Tong; Trusty Boomerang; Airship Engine Room; Boiling Rock Prison; Foggy Bottom Swamp; Kyoshi Village; Meditation Pools; Misty Palms Oasis; North Pole Gates; Omashu City
+21: Realm of Koh; Rumble Arena; Secret Tunnel; Serpent's Pass; Sun-Blessed Peak; White Lotus Hideout; Azula, Cunning Usurper; Dai Li Agents; Avatar Aang // Aang, Master of Elements; Ozai, the Phoenix King
+22: Firebender Ascension; The Walls of Ba Sing Se; Fire Lord Azula; Aang's Iceberg; Yue, the Moon Spirit; Obsessive Pursuit; Aang, at the Crossroads // Aang, Destined Savior; Bumi, Unleashed; Iroh, Grand Lotus; Fire Lord Zuko
+23: Katara, the Fearless; Toph, the First Metalbender; Hakoda, Selfless Commander; South Pole Voyager; Wartime Protestors; Zhao, the Moon Slayer; Earthen Ally; Elemental Teachings; Iroh, Tea Master; Sokka, Bold Boomeranger
+24: Toph, Hardheaded Teacher; Fire Nation Palace; Jasmine Dragon Tea Shop; Momo, Friendly Flier; Brought Back; Empty City Ruse; Lita, Mechanical Engineer; Release to Memory; Scout's Warning; Three Dreams
+25: Clone Legion; Standstill; Training Grounds; Black Sun's Zenith; Cruel Tutor; Dockside Extortionist; Humble Defector; Rending Volley; Searing Blood; Shattering Spree
+26: Heartbeat of Spring; Rites of Flourishing; Join the Dance; Koma, Cosmos Serpent; Rhys the Redeemed; Meteorite; Treetop Village; Appa, the Vigilant; Katara's Reversal; Fire Nation Turret
+27: Swampbenders; Sokka's Charge; Mai and Zuko; Aang and Katara; Toph, Greatest Earthbender; Sokka and Suki; Momo's Heist; Uncle's Musings; Air Nomad Student; The Duke, Rebel Sentry
+28: Inspired Insurgent; Kindly Customer; Koala-Sheep; Pipsqueak, Rebel Strongarm; Sokka, Swordmaster; Sokka's Sword Training; Tale of Momo; That's Rough Buddy; Toucan-Puffin; Chakra Meditation
+29: Dutiful Knowledge Seeker; Nightmares and Daydreams; Princess Yue; Unagi's Spray; Wan Shi Tong, All-Knowing; Whirlwind Technique; Dai Li Censor; Fire Lord Ozai; Fire Nation Occupation; Giant Fly
+30: Lo and Li, Royal Advisors; Ruthless Waterbender; Scarring Memories; Deer-Dog; Founding of Omashu; Frantic Confrontation; Freedom Fighter Recruit; Longshot, Rebel Bowman; Lost in Memories; Moku, Meandering Drummer
+31: Storm of Memories; Zuko, Firebending Master; Animal Attendant; The Art of Tea; Bison Whistle; Bosco, Just a Bear; Bumi's Feast Lecture; Cracked Earth Technique; Creeping Crystal Coating; Crystalline Armor
+32: Elephant-Mandrill; Kyoshi Warrior Exemplars; Solid Ground; Tectonic Split; Toph, Earthbending Master; Aang, A Lot to Learn; Hook Swords; Katara, Seeking Revenge; Stand United; Zuko, Seeking Honor
+33: Acrobatic Leap; Diresight; Fists of Flame; Descendants' Path; Jet, Rebel Leader; Suki, Kyoshi Captain; Baboon Spirit; The Blue Spirit; Tui and La, Moon and Ocean; Azula, Ruthless Firebender
+34: Fire Nation Salvagers; Nyla, Shirshu Sleuth; Avatar Roku, Firebender; Chong and Lily, Nomads; Fang, Roku's Companion; Iroh, Dragon of the West; Overwhelming Victory; Reckless Blaze; Smellerbee, Rebel Fighter; Avatar Kyoshi, Earthbender
+35: Hei Bai, Forest Guardian; Master's Guidance; Tale of Katara and Toph; Allied Teamwork; Appa, Aang's Companion; Katara, Heroic Healer; Kyoshi Warrior Guard; Momo, Rambunctious Rascal; Sledding Otter-Penguin; Sokka, Wolf Cove's Protector
+36: Tundra Wall; Wolf Cove Villager; Deny Entry; Flying Dolphin-Fish; Lost in the Spirit World; The Terror of Serpent's Pass; Turtle-Seals; Water Whip; Elephant-Rat; Fire Nation Ambushers
+37: Fire Nation Sentinels; Gilacorn; Lion Vulture; Purple Pentapus; Capital Guard; Fire Nation Archers; Iroh, Firebending Instructor; Loyal Fire Sage; Roku's Mastery; Warship Scout
+38: Zuko, Avatar Hunter; Bumi, Eclectic Earthbender; Earthbending Student; Eel-Hounds; Frog-Squirrels; Hippo-Cows; Match the Odds; Seismic Tutelage; Hog-Monkey Rampage; Mechanical Glider
+39: Aang, Air Nomad; Aang's Defense; Aardvark Sloth; Path to Redemption; Razor Rings; Dragon Moose; Explosive Shot; Fire Nation Soldier; Fire Nation's Conquest; Komodo Rhino
+40: Run Amok; Zhao, the Seething Flame; Zuko's Offense

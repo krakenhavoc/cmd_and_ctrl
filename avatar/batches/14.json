@@ -1,0 +1,295 @@
+{
+ "batch": 14,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Badgermole Cub",
+   "oracle_id": "2b0afb89-0944-4861-b9c3-e909e2ac215e",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Badger Mole",
+   "oracle_text": "When this creature enters, earthbend 1. (Target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)\nWhenever you tap a creature for mana, add an additional {G}.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "167",
+   "set": "tla",
+   "rulings": [
+    "Badgermole Cub's last ability is a triggered mana ability. It doesn't use the stack and can't be responded to.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "An ability that triggers \"whenever you tap a creature for mana\" triggers only if you activate a mana ability of a creature including {T} in its cost. Mana abilities that don't include the {T} symbol and instead say \"Tap an untapped creature you control\" or similar won't cause Badgermole Cub's second ability to trigger. Similarly, it won't trigger if you tap a creature to activate a mana ability of another object (even if that mana ability also includes {T}).",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\""
+   ]
+  },
+  {
+   "name": "The Boulder, Ready to Rumble",
+   "oracle_id": "d33ee141-a880-4368-a274-a6ae2f2c624b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Performer",
+   "oracle_text": "Whenever The Boulder attacks, earthbend X, where X is the number of creatures you control with power 4 or greater. (Target land you control becomes a 0/0 creature with haste that's still a land. Put X +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "168",
+   "set": "tla",
+   "rulings": [
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  },
+  {
+   "name": "Bumi, King of Three Trials",
+   "oracle_id": "f7493bcf-5c17-4562-a759-37082ec49ff8",
+   "layout": "normal",
+   "mana_cost": "{5}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "When Bumi enters, choose up to X, where X is the number of Lesson cards in your graveyard —\n• Put three +1/+1 counters on Bumi.\n• Target player scries 3.\n• Earthbend 3. (Target land you control becomes a 0/0 creature with haste that's still a land. Put three +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend",
+    "Scry"
+   ],
+   "collector_number": "169",
+   "set": "tla",
+   "rulings": [
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You can't choose the same mode of Bumi, King of Three Trials's triggered ability more than once. As there are only three modes, even if X is greater than three, you won't get additional effects after choosing each mode once.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  },
+  {
+   "name": "Diligent Zookeeper",
+   "oracle_id": "6a84a8a4-c8b0-45ce-af6f-605fcffc395b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Citizen Ally",
+   "oracle_text": "Each non-Human creature you control gets +1/+1 for each of its creature types, to a maximum of 10.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "171",
+   "set": "tla"
+  },
+  {
+   "name": "Earth Kingdom General",
+   "oracle_id": "e43c31ee-1bac-4f96-8b74-334b3238ab73",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "When this creature enters, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)\nWhenever you put one or more +1/+1 counters on a creature, you may gain that much life. Do this only once each turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "173",
+   "set": "tla",
+   "rulings": [
+    "Once you choose to gain life using Earth Kingdom General's second ability, that ability won't trigger again that turn.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  },
+  {
+   "name": "Earth Rumble",
+   "oracle_id": "f04a7763-5fba-42e5-a45a-b3dc2daba902",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Earthbend 2. When you do, up to one target creature you control fights target creature an opponent controls. (To earthbend 2, target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped. Creatures that fight each deal damage equal to their power to the other.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight",
+    "Earthbend"
+   ],
+   "collector_number": "174",
+   "set": "tla",
+   "rulings": [
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If either target is an illegal target as the fight ability tries to resolve, neither creature will deal or be dealt damage.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  },
+  {
+   "name": "Earthbender Ascension",
+   "oracle_id": "f8966fd5-2926-4ba0-b7d6-cfea40cd4e05",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, earthbend 2. Then search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nLandfall — Whenever a land you control enters, put a quest counter on this enchantment. When you do, if it has four or more quest counters on it, put a +1/+1 counter on target creature you control. It gains trample until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend",
+    "Landfall"
+   ],
+   "collector_number": "175",
+   "set": "tla",
+   "rulings": [
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The land that the first ability searches for is not on the battlefield when you select targets for earthbend, so it cannot be the land that you earthbend.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  },
+  {
+   "name": "Flopsie, Bumi's Buddy",
+   "oracle_id": "a8966245-501c-47e4-8ce0-849dcb532eb2",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Ape Goat",
+   "oracle_text": "When Flopsie enters, put a +1/+1 counter on each creature you control.\nEach creature you control with power 4 or greater can't be blocked by more than one creature.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "179",
+   "set": "tla",
+   "rulings": [
+    "The second ability applies only as blockers are declared. If a creature you control with power less than 4 becomes blocked by more than one creature, increasing its power to 4 or greater won't change or undo the block."
+   ]
+  },
+  {
+   "name": "Foggy Swamp Vinebender",
+   "oracle_id": "82fefb82-a436-488d-8ecd-594686117e34",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Plant Ally",
+   "oracle_text": "This creature can't be blocked by creatures with power 2 or less.\nWaterbend {5}: Put a +1/+1 counter on this creature. Activate only during your turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "180",
+   "set": "tla",
+   "rulings": [
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost."
+   ]
+  },
+  {
+   "name": "Haru, Hidden Talent",
+   "oracle_id": "7488ce54-37c6-475c-b327-59f52f2b1424",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Peasant Ally",
+   "oracle_text": "Whenever another Ally you control enters, earthbend 1. (Target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "182",
+   "set": "tla",
+   "rulings": [
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,226 @@
+{
+ "batch": 28,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Inspired Insurgent",
+   "oracle_id": "5863c67b-a47c-4466-8bd1-210ab26e0d3f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Peasant Ally",
+   "oracle_text": "{1}, Sacrifice this creature: Destroy target artifact or enchantment.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "77",
+   "set": "tle"
+  },
+  {
+   "name": "Kindly Customer",
+   "oracle_id": "3faab84f-7055-4554-b948-181928d8d4e2",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "When this creature enters, draw a card.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "tle"
+  },
+  {
+   "name": "Koala-Sheep",
+   "oracle_id": "2e0226eb-20a3-488c-8f2b-f99a5b4d0cf4",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bear Sheep",
+   "oracle_text": "When this creature enters, you gain 3 life.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "80",
+   "set": "tle"
+  },
+  {
+   "name": "Pipsqueak, Rebel Strongarm",
+   "oracle_id": "08a5445b-e9e6-44c3-9bc4-aff1b91c18a7",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "Pipsqueak can't attack alone unless he has a +1/+1 counter on him.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "82",
+   "set": "tle"
+  },
+  {
+   "name": "Sokka, Swordmaster",
+   "oracle_id": "90b4d288-e950-4182-af62-516549a8712c",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Vigilance\nEquipment spells you cast cost {1} less to cast for each Ally you control.\nAt the beginning of combat on your turn, attach up to one target Equipment you control to Sokka.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "83",
+   "set": "tle",
+   "rulings": [
+    "Sokka will count himself as an Ally for his second ability.",
+    "Once you announce that you're casting a spell, no player may take actions until the spell has been paid for. Notably, opponents can't remove Sokka to change by how much Equipment spell costs are reduced.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Sokka's Sword Training",
+   "oracle_id": "19963c90-e7b2-4935-adcd-d41f0faf401a",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Target creature gets +2/+2 until end of turn.\nCreate a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "84",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Tale of Momo",
+   "oracle_id": "728157a3-fcd4-4295-85ff-1162dbb64f8a",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "This spell costs {2} less to cast if a creature left the battlefield under your control this turn.\nSearch your library and/or graveyard for an Ally creature card, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "tle",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Tale of Momo's first ability). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "That's Rough Buddy",
+   "oracle_id": "fc3ee37a-f676-44af-80d0-774ff271ce11",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Put a +1/+1 counter on target creature. Put two +1/+1 counters on that creature instead if a creature left the battlefield under your control this turn.\nDraw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "87",
+   "set": "tle"
+  },
+  {
+   "name": "Toucan-Puffin",
+   "oracle_id": "39d283e0-9d9b-4c04-aa6a-66a9883af9a2",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird",
+   "oracle_text": "Flying\nWhen this creature enters, target creature you control gets +2/+0 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "88",
+   "set": "tle"
+  },
+  {
+   "name": "Chakra Meditation",
+   "oracle_id": "12c57ebe-35a7-4cb3-936b-99c148a3cfed",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, return up to one target instant or sorcery card from your graveyard to your hand.\nWhenever you cast an instant or sorcery spell, draw a card. Then discard a card unless there are three or more Lesson cards in your graveyard.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "91",
+   "set": "tle",
+   "rulings": [
+    "Chakra Meditation's second triggered ability will trigger and resolve before the instant or sorcery spell that triggered it. Notably, if you cast a Lesson spell while you have two Lesson cards in your graveyard, you will still have to discard a card to Chakra Meditation's ability because the Lesson you cast is still on the stack."
+   ]
+  }
+ ]
+}

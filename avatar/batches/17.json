@@ -1,0 +1,277 @@
+{
+ "batch": 17,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Dragonfly Swarm",
+   "oracle_id": "83abf1d0-04e4-49e5-bf63-59f77829ffd1",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dragon Insect",
+   "oracle_text": "Flying, ward {1} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {1}.)\nThis creature's power is equal to the number of noncreature, nonland cards in your graveyard.\nWhen this creature dies, if there's a Lesson card in your graveyard, draw a card.",
+   "power": "*",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Ward"
+   ],
+   "collector_number": "215",
+   "set": "tla",
+   "rulings": [
+    "Dragonfly Swarm's triggered ability checks if there is a Lesson card in your graveyard when it is put on the stack and again when it goes to resolve. If there is no Lesson card in your graveyard when Dragonfly Swarm dies, the ability will not be put on the stack at all."
+   ]
+  },
+  {
+   "name": "Earth Kingdom Soldier",
+   "oracle_id": "4289f2d4-3db2-4dd1-9c18-af3f78309844",
+   "layout": "normal",
+   "mana_cost": "{4}{G/W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Vigilance\nWhen this creature enters, put a +1/+1 counter on each of up to two target creatures you control.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "216",
+   "set": "tla"
+  },
+  {
+   "name": "Earth King's Lieutenant",
+   "oracle_id": "9da9248d-1201-447f-b6c2-2b64af4f71c4",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "Trample\nWhen this creature enters, put a +1/+1 counter on each other Ally creature you control.\nWhenever another Ally you control enters, put a +1/+1 counter on this creature.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "217",
+   "set": "tla",
+   "rulings": [
+    "If Earth King's Lieutenant enters at the same time as another Ally, each of Earth King's Lieutenant's abilities will trigger. You'll put a +1/+1 counter on both creatures."
+   ]
+  },
+  {
+   "name": "Earth Rumble Wrestlers",
+   "oracle_id": "1de17747-27e8-40bb-b6f7-6d5402d4705c",
+   "layout": "normal",
+   "mana_cost": "{3}{R/G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior Performer",
+   "oracle_text": "Reach\nThis creature gets +1/+0 and has trample as long as you control a land creature or a land entered the battlefield under your control this turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "218",
+   "set": "tla"
+  },
+  {
+   "name": "Earth Village Ruffians",
+   "oracle_id": "0380e99c-18f9-4472-8223-bb208e5f0963",
+   "layout": "normal",
+   "mana_cost": "{2}{B/G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier Rogue",
+   "oracle_text": "When this creature dies, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "219",
+   "set": "tla",
+   "rulings": [
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend."
+   ]
+  },
+  {
+   "name": "Foggy Swamp Spirit Keeper",
+   "oracle_id": "faecfb8d-2f63-4b98-a842-b11448f0d538",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Druid Ally",
+   "oracle_text": "Lifelink\nWhenever you draw your second card each turn, create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "222",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The triggered ability can trigger only once each turn. It doesn't matter whether Foggy Swamp Spirit Keeper was on the battlefield when the first card was drawn. If it's not on the battlefield when the second card is drawn, the ability can't trigger at all that turn. It won't trigger when the third or fourth card is drawn.",
+    "If an effect instructs you to draw multiple cards, the ability triggers after you draw whichever is the second one for the turn. It goes on the stack after you've drawn and looked at all the cards and finished resolving the spell or ability that caused you to draw them.",
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn."
+   ]
+  },
+  {
+   "name": "Guru Pathik",
+   "oracle_id": "4dcd7b78-ce5a-43eb-a16d-3b9ea411795d",
+   "layout": "normal",
+   "mana_cost": "{2}{G/U}{G/U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Monk Ally",
+   "oracle_text": "When Guru Pathik enters, look at the top five cards of your library. You may reveal a Lesson, Saga, or Shrine card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nWhenever you cast a Lesson, Saga, or Shrine spell, put a +1/+1 counter on another target creature you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "223",
+   "set": "tla"
+  },
+  {
+   "name": "Hei Bai, Spirit of Balance",
+   "oracle_id": "8f709660-bb26-409f-9650-e5228ac8db7e",
+   "layout": "normal",
+   "mana_cost": "{2}{W/B}{W/B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Bear Spirit",
+   "oracle_text": "Whenever Hei Bai enters or attacks, you may sacrifice another creature or artifact. If you do, put two +1/+1 counters on Hei Bai.\nWhen Hei Bai leaves the battlefield, put its counters on target creature you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "225",
+   "set": "tla",
+   "rulings": [
+    "Hei Bai's last ability doesn't cause you to move counters from Hei Bai onto the target creature. Rather, you put the same number of each kind of counter Hei Bai had when he left the battlefield onto the target creature.",
+    "If Hei Bai has -1/-1 counters on him when he leaves the battlefield, that ability will include those as well. This may result in the recipient of the counters dying.",
+    "In some cases, you may end up putting the appropriate counters on more than one permanent. For example, if you control a Buzzard-Wasp Colony when Hei Bai dies, you'll put the appropriate number of each kind of counter onto both the Buzzard-Wasp Colony and the target creature. If you target Buzzard-Wasp Colony with Hei Bai's last ability, it will receive counters from both abilities.",
+    "If enough -1/-1 counters are put on Hei Bai at the same time to make his toughness 0 or less, his last ability will see all of the +1/+1 counters he had when he left the battlefield as well as the -1/-1 counters he had, and an equal number of each of those types of counters (plus any other applicable counters) will be put onto the target creature.",
+    "Hei Bai's last ability puts all counters that were on Hei Bai onto the target creature, not just his +1/+1 counters."
+   ]
+  },
+  {
+   "name": "Hermitic Herbalist",
+   "oracle_id": "9928773d-3f35-4b0e-965d-4233e04398fb",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid Ally",
+   "oracle_text": "{T}: Add one mana of any color.\n{T}: Add two mana in any combination of colors. Spend this mana only to cast Lesson spells.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "226",
+   "set": "tla"
+  },
+  {
+   "name": "Jet, Freedom Fighter",
+   "oracle_id": "77cd2246-6906-4dce-8580-4c9d2e68c477",
+   "layout": "normal",
+   "mana_cost": "{2}{R/W}{R/W}{R/W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "When Jet enters, he deals damage equal to the number of creatures you control to target creature an opponent controls.\nWhen Jet dies, put a +1/+1 counter on each of up to two target creatures.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "229",
+   "set": "tla",
+   "rulings": [
+    "The amount of damage Jet's first ability deals is calculated only on resolution of the ability. Only creatures you control when the ability resolves will be counted."
+   ]
+  }
+ ]
+}

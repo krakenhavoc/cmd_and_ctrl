@@ -1,0 +1,240 @@
+{
+ "batch": 30,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Lo and Li, Royal Advisors",
+   "oracle_id": "b5018037-cf4e-46d2-86c3-fb8eec6e44d1",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Whenever an opponent discards a card or mills one or more cards, put a +1/+1 counter on each Advisor you control.\n{2}{U/B}: Target player mills four cards. (They put the top four cards of their library into their graveyard.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "108",
+   "set": "tle"
+  },
+  {
+   "name": "Ruthless Waterbender",
+   "oracle_id": "100771fd-07db-47be-ada3-935dc918fa33",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "Waterbend {2}: This creature gets +1/+1 until end of turn. Activate only during your turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "110",
+   "set": "tle",
+   "rulings": [
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend."
+   ]
+  },
+  {
+   "name": "Scarring Memories",
+   "oracle_id": "63957ec0-89e6-4be2-8740-846ca56ee48c",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "You may cast this spell as though it had flash if you control an attacking legendary creature.\nTarget opponent sacrifices a creature of their choice, discards a card, and loses 3 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "111",
+   "set": "tle"
+  },
+  {
+   "name": "Deer-Dog",
+   "oracle_id": "76c7a339-015b-4074-8e10-14d52b784f9b",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elk Dog",
+   "oracle_text": "First strike (This creature deals combat damage before creatures without first strike.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "114",
+   "set": "tle"
+  },
+  {
+   "name": "Founding of Omashu",
+   "oracle_id": "ea58fb10-3d70-4c25-b317-615dfb20a48d",
+   "layout": "saga",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Create two 1/1 white Ally creature tokens.\nII — You may discard a card. If you do, draw a card.\nIII — Creatures you control get +1/+0 until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "116",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Frantic Confrontation",
+   "oracle_id": "a866cc05-69b0-45f2-8829-b6ef08193ed1",
+   "layout": "normal",
+   "mana_cost": "{X}{R}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature you control gets +X/+0 and gains first strike and trample until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "117",
+   "set": "tle"
+  },
+  {
+   "name": "Freedom Fighter Recruit",
+   "oracle_id": "33e66662-aea6-480c-b69b-1907d987b69e",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rebel Ally",
+   "oracle_text": "Freedom Fighter Recruit's power is equal to the number of creatures you control.",
+   "power": "*",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "118",
+   "set": "tle",
+   "rulings": [
+    "The ability that sets Freedom Fighter Recruit's power functions in all zones, not only on the battlefield."
+   ]
+  },
+  {
+   "name": "Longshot, Rebel Bowman",
+   "oracle_id": "f93c3468-5b1d-4fa7-a281-1009ea0f2062",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "Reach (This creature can block creatures with flying.)\nNoncreature spells you cast cost {1} less to cast.\nWhenever you cast a noncreature spell, Longshot deals 2 damage to each opponent.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "120",
+   "set": "tle",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Lost in Memories",
+   "oracle_id": "69ac3757-66f8-47d4-af7b-dda66c96c254",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature you control\nEnchanted creature gets +1/+1 and has \"Whenever this creature deals combat damage to a player, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost.\" (You may cast that card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "121",
+   "set": "tle",
+   "rulings": [
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Moku, Meandering Drummer",
+   "oracle_id": "d6e1b1ff-e4e5-4814-9a20-2d527014463f",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Bard Ally",
+   "oracle_text": "Whenever you cast a noncreature spell, you may pay {1}. If you do, Moku gets +2/+1 and creatures you control gain haste until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "122",
+   "set": "tle"
+  }
+ ]
+}

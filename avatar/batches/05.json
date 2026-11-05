@@ -1,0 +1,283 @@
+{
+ "batch": 5,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Iguana Parrot",
+   "oracle_id": "edd3a3ea-6bde-408c-8b16-85ed3cc312b2",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Lizard Bird Pirate",
+   "oracle_text": "Flying, vigilance\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Prowess",
+    "Vigilance"
+   ],
+   "collector_number": "56",
+   "set": "tla"
+  },
+  {
+   "name": "Invasion Submersible",
+   "oracle_id": "97369152-3b85-4cf1-aeb9-b3a8f1c37611",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "When this Vehicle enters, return up to one other target nonland permanent to its owner's hand.\nExhaust — Waterbend {3}: This Vehicle becomes an artifact creature. Put three +1/+1 counters on it. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}. Activate each exhaust ability only once.)",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Waterbend"
+   ],
+   "collector_number": "57",
+   "set": "tla",
+   "rulings": [
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves.",
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "It'll Quench Ya!",
+   "oracle_id": "cb184995-700f-4900-994a-4ce7fd12f942",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Counter target spell unless its controller pays {2}.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "58",
+   "set": "tla"
+  },
+  {
+   "name": "Katara, Bending Prodigy",
+   "oracle_id": "55adde23-c818-40fe-9bba-123de93568a5",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "At the beginning of your end step, if Katara is tapped, put a +1/+1 counter on her.\nWaterbend {6}: Draw a card. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "59",
+   "set": "tla",
+   "rulings": [
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\""
+   ]
+  },
+  {
+   "name": "Knowledge Seeker",
+   "oracle_id": "bdc2d980-ca14-4040-a9a1-786d724dc65c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Fox Spirit",
+   "oracle_text": "Vigilance\nWhenever you draw your second card each turn, put a +1/+1 counter on this creature.\nWhen this creature dies, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "60",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The first triggered ability can trigger only once each turn. It doesn't matter whether Knowledge Seeker was on the battlefield when the first card was drawn. If it's not on the battlefield when the second card is drawn, the ability can't trigger at all that turn. It won't trigger when the third or fourth card is drawn.",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn.",
+    "If an effect instructs you to draw multiple cards, the ability triggers after you draw whichever is the second one for the turn. It goes on the stack after you've drawn and looked at all the cards and finished resolving the spell or ability that caused you to draw them.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\""
+   ]
+  },
+  {
+   "name": "Lost Days",
+   "oracle_id": "3bc47eae-cf6f-4b5e-96e1-94a4f307f474",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "The owner of target creature or enchantment puts it into their library second from the top or on the bottom. You create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "62",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "The permanent's owner chooses whether to put it second from the top or on the bottom of their library. If multiple cards are put into the library this way (such as when this spell targets a melded permanent), that permanent's owner puts all the cards second from the top or all the cards on the bottom. They put them in whatever order they wish and do not need to reveal the order."
+   ]
+  },
+  {
+   "name": "Master Pakku",
+   "oracle_id": "b1727c07-c829-4d64-a1c5-8b53c743888a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Advisor Ally",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhenever Master Pakku becomes tapped, target player mills X cards, where X is the number of Lesson cards in your graveyard. (They put the top X cards of their library into their graveyard.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Prowess",
+    "Mill"
+   ],
+   "collector_number": "63",
+   "set": "tla"
+  },
+  {
+   "name": "The Mechanist, Aerial Artisan",
+   "oracle_id": "bad27b43-7716-4ce1-82ba-2a6d437363e7",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Artificer Ally",
+   "oracle_text": "Whenever you cast a noncreature spell, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\n{T}: Until end of turn, target artifact token you control becomes a 3/1 Construct artifact creature with flying.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "The Mechanist, Aerial Artisan's activated ability doesn't remove any abilities the target artifact token has. The artifact token also retains any types, subtypes, and supertypes other than creature types.",
+    "The resulting artifact creature will be able to attack on your turn if it's been under your control continuously since the turn began. That is, it doesn't matter how long it's been a creature, just how long it's been on the battlefield.",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "If the artifact token was already a creature, its base power and toughness will become 3/1. This overwrites any previous effects that set the creature's base power and toughness to specific values. Any power- or toughness-setting effects that start to apply after The Mechanist, Aerial Artisan's ability resolves will overwrite this effect.",
+    "Effects that modify a creature's power and/or toughness, such as the ones created by Titanic Growth or a +/1+1 counter, will apply to the creature no matter when they started to take effect. The same is true for any counters that change its power and/or toughness and effects that switch power and toughness."
+   ]
+  },
+  {
+   "name": "North Pole Patrol",
+   "oracle_id": "a1230e78-0bfa-489e-a1b9-3c227bceb6fb",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "{T}: Untap another target permanent you control.\nWaterbend {3}, {T}: Tap target creature an opponent controls. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "65",
+   "set": "tla",
+   "rulings": [
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "Octopus Form",
+   "oracle_id": "6fec368d-374d-4318-861b-ff478ba51a3c",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Target creature you control gets +1/+1 and gains hexproof until end of turn. Untap it. (It can't be the target of spells or abilities your opponents control.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "tla"
+  }
+ ]
+}

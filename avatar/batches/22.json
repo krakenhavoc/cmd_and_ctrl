@@ -1,0 +1,350 @@
+{
+ "batch": 22,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Firebender Ascension",
+   "oracle_id": "96cc63af-69d1-4493-b241-0cb244a9e48a",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a 2/2 red Soldier creature token with firebending 1.\nWhenever a creature you control attacking causes a triggered ability of that creature to trigger, put a quest counter on this enchantment. Then if it has four or more quest counters on it, you may copy that ability. You may choose new targets for the copy.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "312",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Soldier",
+     "type_line": "Token Creature — Soldier",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Triggered abilities use the words \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\"",
+    "If the ability is modal (that is, it has a bulleted list of choices), the copy will have the same mode(s). You can't choose new ones.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebender Ascension's ability will always go on the stack on top of the triggered ability that caused it to trigger. The copy it creates will be created on the stack on top of the original triggered ability and the copy will resolve before that ability.",
+    "The copy will have the same targets as the ability it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can't choose a new legal target, then it remains unchanged (even if the current target is illegal)."
+   ]
+  },
+  {
+   "name": "The Walls of Ba Sing Se",
+   "oracle_id": "af7d7da5-aff5-48e1-901a-f81257a85f71",
+   "layout": "normal",
+   "mana_cost": "{8}",
+   "cmc": 8.0,
+   "type_line": "Legendary Artifact Creature — Wall",
+   "oracle_text": "Defender\nOther permanents you control have indestructible.",
+   "power": "0",
+   "toughness": "30",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "329",
+   "set": "tla",
+   "rulings": [
+    "A battle with indestructible still loses defense counters as it's dealt damage. If it's a Siege, it will still be exiled when the last defense counter is removed from it, and its controller may still cast it transformed without paying its mana cost.",
+    "Because damage remains marked on a creature until the damage is removed as the turn ends, nonlethal damage dealt to a creature you control may become lethal if The Walls of Ba Sing Se leave the battlefield during that turn.",
+    "A planeswalker with indestructible still loses loyalty as it's dealt damage. It is put into its owner's graveyard if its loyalty becomes 0."
+   ]
+  },
+  {
+   "name": "Fire Lord Azula",
+   "oracle_id": "2631130e-63e2-43a3-914a-648e76722203",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\nWhenever you cast a spell while Fire Lord Azula is attacking, copy that spell. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "334",
+   "set": "tla",
+   "rulings": [
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Any choices made when the spell resolves won't have been made yet when it's copied. Any such choices will be made separately when the copy resolves.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy has the same value of X.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger.",
+    "The copy will have the same targets as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can't choose a new legal target, then it remains unchanged (even if the current target is illegal).",
+    "A resolving copy of a permanent spell becomes a token. That token isn't \"created\" and won't interact with abilities that care about tokens being created.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Azula's ability and the copy it creates both resolve before the spell that caused the ability to trigger. They resolve even if the spell is countered before the copy is created.",
+    "You can't choose to pay any additional costs for a copied spell. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to."
+   ]
+  },
+  {
+   "name": "Aang's Iceberg",
+   "oracle_id": "646f9ad8-9d18-4b42-954a-e21a62e9f0e8",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Flash\nWhen this enchantment enters, exile up to one other target nonland permanent until this enchantment leaves the battlefield.\nWaterbend {3}: Sacrifice this enchantment. If you do, scry 2. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flash",
+    "Waterbend",
+    "Scry"
+   ],
+   "collector_number": "336",
+   "set": "tla",
+   "rulings": [
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "Auras attached to the exiled permanent will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield.",
+    "If Aang's Iceberg leaves the battlefield before its triggered ability resolves, including if it is sacrificed by its activated ability, the target permanent won't be exiled.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "The third ability of Aang's Iceberg allows you to sacrifice Aang's Iceberg as the ability resolves, not as a cost to activate the ability. If Aang's Iceberg leaves the battlefield before the activated ability resolves, you will be unable to sacrifice Aang's Iceberg and will not scry, even if Aang's Iceberg was sacrificed via a different ability while its activated ability was on the stack.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "If an Aura is exiled this way, its owner chooses what it will enchant as it returns to the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to a permanent with shroud, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in exile for the rest of the game."
+   ]
+  },
+  {
+   "name": "Yue, the Moon Spirit",
+   "oracle_id": "961f1883-2f97-4249-90f9-416279d7a9dd",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Spirit Ally",
+   "oracle_text": "Flying, vigilance\nWaterbend {5}, {T}: You may cast a noncreature spell from your hand without paying its mana cost. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Waterbend"
+   ],
+   "collector_number": "338",
+   "set": "tla",
+   "rulings": [
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "If a card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "If you cast a card \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, such as that of Cathartic Reunion, you must pay those to cast the card.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn."
+   ]
+  },
+  {
+   "name": "Obsessive Pursuit",
+   "oracle_id": "7e7abb44-47b0-4d80-b8a1-36f0c1032aa3",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters and at the beginning of your upkeep, you lose 1 life and create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you attack, put X +1/+1 counters on target attacking creature, where X is the number of permanents you've sacrificed this turn. If X is three or more, that creature gains lifelink until end of turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "340",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Aang, at the Crossroads // Aang, Destined Savior",
+   "oracle_id": "96e5d4a1-e59f-4140-823f-a17e15ee5d8d",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Avatar Ally // Legendary Creature — Avatar Ally",
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Transform",
+    "Earthbend"
+   ],
+   "collector_number": "346",
+   "set": "tla",
+   "card_faces": [
+    {
+     "name": "Aang, at the Crossroads",
+     "mana_cost": "{2}{G}{W}{U}",
+     "type_line": "Legendary Creature — Human Avatar Ally",
+     "oracle_text": "Flying\nWhen Aang enters, look at the top five cards of your library. You may put a creature card with mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.\nWhen another creature you control leaves the battlefield, transform Aang at the beginning of the next upkeep.",
+     "power": "3",
+     "toughness": "3"
+    },
+    {
+     "name": "Aang, Destined Savior",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Avatar Ally",
+     "oracle_text": "Flying\nLand creatures you control have vigilance.\nAt the beginning of combat on your turn, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "Aang, at the Crossroads's delayed triggered ability won't cause it to transform back into Aang, at the Crossroads if it has already transformed into Aang, Destined Savior, perhaps because several creatures left the battlefield in one turn.",
+    "Aang, at the Crossroads's delayed triggered ability triggers at the beginning of the next upkeep regardless of whose turn it is."
+   ]
+  },
+  {
+   "name": "Bumi, Unleashed",
+   "oracle_id": "1fef13d8-5da2-46a6-91ed-7a31bd46e538",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Trample\nWhen Bumi enters, earthbend 4.\nWhenever Bumi deals combat damage to a player, untap all lands you control. After this phase, there is an additional combat phase. Only land creatures can attack during that combat phase.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Trample",
+    "Earthbend"
+   ],
+   "collector_number": "348",
+   "set": "tla",
+   "rulings": [
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The restriction that only land creatures can attack applies only to the combat phase created by Bumi, Unleashed, not to any other combat phases that might occur that turn.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  },
+  {
+   "name": "Iroh, Grand Lotus",
+   "oracle_id": "ee8e6ef3-eb96-48bd-8619-8a9112b3d4f0",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Firebending 2\nDuring your turn, each non-Lesson instant and sorcery card in your graveyard has flashback. The flashback cost is equal to that card's mana cost. (You may cast a card from your graveyard for its flashback cost. Then exile it.)\nDuring your turn, each Lesson card in your graveyard has flashback {1}.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "349",
+   "set": "tla",
+   "rulings": [
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Fire Lord Zuko",
+   "oracle_id": "a129423d-c886-4120-96f7-c2517ea7eb83",
+   "layout": "normal",
+   "mana_cost": "{R}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Firebending X, where X is Fire Lord Zuko's power. (Whenever this creature attacks, add X {R}. This mana lasts until end of combat.)\nWhenever you cast a spell from exile and whenever a permanent you control enters from exile, put a +1/+1 counter on each creature you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "360",
+   "set": "tla",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,237 @@
+{
+ "batch": 33,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Acrobatic Leap",
+   "oracle_id": "1347224f-421e-4270-8e50-cf25c875909c",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +1/+3 and gains flying until end of turn. Untap it.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "151",
+   "set": "tle"
+  },
+  {
+   "name": "Diresight",
+   "oracle_id": "a7b12df9-fddd-4cd4-8c09-d54a47867ab6",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Surveil 2, then draw two cards. You lose 2 life. (To surveil 2, look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "162",
+   "set": "tle"
+  },
+  {
+   "name": "Fists of Flame",
+   "oracle_id": "e05abb6b-e9f4-4d9e-ad1e-7805ebc09914",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Draw a card. Until end of turn, target creature gains trample and gets +1/+0 for each card you've drawn this turn. (A creature with trample can deal excess combat damage to the player or planeswalker it's attacking.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "166",
+   "set": "tle",
+   "rulings": [
+    "If the target creature is an illegal target by the time Fists of Flame tries to resolve, the spell doesn't resolve. You won't draw a card.",
+    "If a spell or ability causes you to put cards into your hand without specifically using the word \"draw,\" Fists of Flame's effect doesn't count them.",
+    "The bonus that the target creature receives is locked in as Fists of Flame resolves, counting the card drawn during its first effect. The creature won't get an additional +1/+0 if you draw another card later in the turn."
+   ]
+  },
+  {
+   "name": "Descendants' Path",
+   "oracle_id": "ba13cbdb-8043-4c1b-8a85-084c86886ac8",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your upkeep, reveal the top card of your library. If it's a creature card that shares a creature type with a creature you control, you may cast it without paying its mana cost. If you don't cast it, put it on the bottom of your library.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "167",
+   "set": "tle",
+   "rulings": [
+    "If the card has {X} in its mana cost, you must choose 0 as its value.",
+    "If you cast a card \"without paying its mana cost,\" you can't pay any alternative costs. You can pay additional costs, such as kicker costs. If the card has mandatory additional costs, you must pay those.",
+    "If the revealed card is a creature card that shares a creature type with a creature you control, but you choose not to cast it, it's put on the bottom of your library. (This is a recent change.)"
+   ]
+  },
+  {
+   "name": "Jet, Rebel Leader",
+   "oracle_id": "b9ca8ead-c267-4170-a6c8-04498330c82b",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "Whenever Jet attacks, look at the top five cards of your library. You may put a creature card with mana value 3 or less from among them onto the battlefield tapped and attacking. Put the rest on the bottom of your library in a random order.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "172",
+   "set": "tle"
+  },
+  {
+   "name": "Suki, Kyoshi Captain",
+   "oracle_id": "558513bb-a76d-434a-98fc-3707a5d8886a",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Other Warriors you control get +1/+1.\n{3}{W}: Attacking Warriors you control gain double strike until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "175",
+   "set": "tle"
+  },
+  {
+   "name": "Baboon Spirit",
+   "oracle_id": "eb036e02-f43e-46a2-90f1-931579467c9b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Monkey Spirit",
+   "oracle_text": "Whenever another nontoken Spirit you control enters, create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"\n{3}{U}: Exile another target creature you control. Return it to the battlefield under its owner's control at the beginning of the next end step.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "177",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "The Blue Spirit",
+   "oracle_id": "497e9c7c-a16d-43e5-a7ec-04153aa2566a",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Rogue Ally",
+   "oracle_text": "You may cast the first creature spell you cast each turn as though it had flash.\nWhenever a nontoken creature you control enters during combat, draw a card.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "178",
+   "set": "tle"
+  },
+  {
+   "name": "Tui and La, Moon and Ocean",
+   "oracle_id": "781c9391-0322-40ad-8050-07151e2e6fc7",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Fish Spirit",
+   "oracle_text": "Whenever Tui and La become tapped, draw a card.\nWhenever Tui and La become untapped, put a +1/+1 counter on them.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "181",
+   "set": "tle"
+  },
+  {
+   "name": "Azula, Ruthless Firebender",
+   "oracle_id": "7139ead5-86f0-46ae-8a6d-ad66d0408f73",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nWhenever Azula attacks, you may discard a card. Then you get an experience counter for each player who discarded a card this turn.\n{2}{B}: Until end of turn, Azula gets +1/+1 for each experience counter you have and gains menace.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "184",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Experience",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "The experience counter goes on you, the player, not on Azula. You will keep that counter even if Azula, Ruthless Firebender dies.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "All experience counters are identical, no matter how you got them. For example, the last ability will count experience counters that you got from the second ability, from another ability, from another copy of Azula, Ruthless Firebender, and so on.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  }
+ ]
+}

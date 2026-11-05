@@ -1,0 +1,271 @@
+{
+ "batch": 19,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Tolls of War",
+   "oracle_id": "5d1d9914-3ef2-45c5-b1cb-cb85d2f7394c",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice a permanent during your turn, create a 1/1 white Ally creature token. This ability triggers only once each turn.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "245",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    },
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Uncle Iroh",
+   "oracle_id": "8a98ddac-7341-4118-b188-51d8d03afd1d",
+   "layout": "normal",
+   "mana_cost": "{1}{R/G}{R/G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nLesson spells you cast cost {1} less to cast.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "248",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Vindictive Warden",
+   "oracle_id": "43b339ec-4d7d-41ac-a5ab-96c6a6de00e2",
+   "layout": "normal",
+   "mana_cost": "{2}{B/R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nFirebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\n{3}: This creature deals 1 damage to each opponent.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Firebending",
+    "Menace"
+   ],
+   "collector_number": "249",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Wandering Musicians",
+   "oracle_id": "7166bf81-05c2-457d-a0bb-a175175b8e79",
+   "layout": "normal",
+   "mana_cost": "{3}{R/W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Bard Ally",
+   "oracle_text": "Whenever this creature attacks, creatures you control get +1/+0 until end of turn.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "250",
+   "set": "tla"
+  },
+  {
+   "name": "White Lotus Reinforcements",
+   "oracle_id": "c55a4b25-ccc4-49de-9f98-a829c547a64d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "Vigilance\nOther Allies you control get +1/+1.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "251",
+   "set": "tla"
+  },
+  {
+   "name": "Zhao, Ruthless Admiral",
+   "oracle_id": "d6b0198a-c1f2-4142-b5e2-8205adf14d0a",
+   "layout": "normal",
+   "mana_cost": "{2}{B/R}{B/R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\nWhenever you sacrifice another permanent, creatures you control get +1/+0 until end of turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "252",
+   "set": "tla",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt."
+   ]
+  },
+  {
+   "name": "Barrels of Blasting Jelly",
+   "oracle_id": "c6cd520c-106b-4ee5-bc02-6c5fbdbc78dd",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}: Add one mana of any color. Activate only once each turn.\n{5}, {T}, Sacrifice this artifact: It deals 5 damage to target creature.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "254",
+   "set": "tla"
+  },
+  {
+   "name": "Fire Nation Warship",
+   "oracle_id": "987aab63-a889-400f-a3bd-feaef978b407",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Reach\nWhen this Vehicle dies, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Reach",
+    "Crew"
+   ],
+   "collector_number": "256",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\""
+   ]
+  },
+  {
+   "name": "Kyoshi Battle Fan",
+   "oracle_id": "849e54f9-7662-4186-859c-e4f52afbccac",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, create a 1/1 white Ally creature token, then attach this Equipment to it.\nEquipped creature gets +1/+0.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "257",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The Ally creature token enters as a 1/1 creature. Any abilities that trigger when a creature with a certain power or toughness enters will see the token enter as a 1/1 creature."
+   ]
+  },
+  {
+   "name": "Meteor Sword",
+   "oracle_id": "181965fb-e685-4b1f-9bd6-3a33bed933b2",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, destroy target permanent.\nEquipped creature gets +3/+3.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "258",
+   "set": "tla"
+  }
+ ]
+}

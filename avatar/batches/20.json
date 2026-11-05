@@ -1,0 +1,182 @@
+{
+ "batch": 20,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Planetarium of Wan Shi Tong",
+   "oracle_id": "f89d093d-c815-4df7-a348-2005aa227586",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "{1}, {T}: Scry 2.\nWhenever you scry or surveil, look at the top card of your library. You may cast that card without paying its mana cost. Do this only once each turn. (Look at the card after you scry or surveil.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "259",
+   "set": "tla",
+   "rulings": [
+    "Planetarium of Wan Shi Tong's triggered ability allows you to cast the top card of your library during the resolution of the ability. It doesn't allow you to wait and cast the card later.",
+    "Once you choose to cast the top card of your library, Planetarium of Wan Shi Tong's ability won't trigger again that turn.",
+    "You cannot choose to pay the mana cost or any alternate costs for the card if you choose to cast it, and if it has {X} in its mana cost, you must choose 0 as the value of {X}.",
+    "You must pay any mandatory additional costs (such as sacrificing a creature) and you may pay any optional additional costs (such as kicker) for the card you cast."
+   ]
+  },
+  {
+   "name": "Trusty Boomerang",
+   "oracle_id": "3c032e74-69c6-48ca-95d4-51aa3d894c14",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has \"{1}, {T}: Tap target creature. Return Trusty Boomerang to its owner's hand.\"\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "260",
+   "set": "tla"
+  },
+  {
+   "name": "Airship Engine Room",
+   "oracle_id": "01ed9139-293d-4477-a145-3c6fe59266c7",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U} or {R}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "265",
+   "set": "tla"
+  },
+  {
+   "name": "Boiling Rock Prison",
+   "oracle_id": "6caabc45-4644-4941-a2f3-f04ee7b50a89",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {B} or {R}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "267",
+   "set": "tla"
+  },
+  {
+   "name": "Foggy Bottom Swamp",
+   "oracle_id": "b56bb8cb-457e-4b85-9bf9-5e891e79f1dd",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {B} or {G}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "269",
+   "set": "tla"
+  },
+  {
+   "name": "Kyoshi Village",
+   "oracle_id": "da81b78b-89fd-4fc1-9395-b5b01b96be70",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G} or {W}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "271",
+   "set": "tla"
+  },
+  {
+   "name": "Meditation Pools",
+   "oracle_id": "66208129-20fb-4cb4-8f00-8d4574c9c653",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G} or {U}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "272",
+   "set": "tla"
+  },
+  {
+   "name": "Misty Palms Oasis",
+   "oracle_id": "dfd2c57a-4557-4df1-8f6f-da2cbd317f12",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {W} or {B}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "273",
+   "set": "tla"
+  },
+  {
+   "name": "North Pole Gates",
+   "oracle_id": "3fcd1432-66d0-40e1-85ef-b57a6fa94b7c",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {W} or {U}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "274",
+   "set": "tla"
+  },
+  {
+   "name": "Omashu City",
+   "oracle_id": "6f9a4bb2-5959-4a5c-83af-c2729e6673df",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {R} or {G}.\n{4}, {T}, Sacrifice this land: Draw a card.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "275",
+   "set": "tla"
+  }
+ ]
+}

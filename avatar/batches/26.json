@@ -1,0 +1,259 @@
+{
+ "batch": 26,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Heartbeat of Spring",
+   "oracle_id": "f15911a5-f597-452e-a015-b115339f28fc",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a player taps a land for mana, that player adds one mana of any type that land produced.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "42",
+   "set": "tle",
+   "rulings": [
+    "If you tap a land for more than one mana, you choose one type that was produced and add one mana of that type.",
+    "Heartbeat of Spring doesn't care about any restrictions or riders your lands put on the mana they produce, such as those of Unclaimed Territory and Cavern of Souls. It just produces one mana of the appropriate type, with no restrictions or riders.",
+    "The types of mana are white, blue, black, red, green, and colorless."
+   ]
+  },
+  {
+   "name": "Rites of Flourishing",
+   "oracle_id": "7080fb43-5d93-41f5-87d3-bc1801805ea0",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of each player's draw step, that player draws an additional card.\nEach player may play an additional land on each of their turns.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "45",
+   "set": "tle",
+   "rulings": [
+    "The triggered ability is put onto the stack after you have already drawn your card for the turn."
+   ]
+  },
+  {
+   "name": "Join the Dance",
+   "oracle_id": "d8fc015c-7e6d-441d-bbeb-98ca74b21314",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create two 1/1 white Human creature tokens.\nFlashback {3}{G}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "50",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Human",
+     "type_line": "Token Creature — Human",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Koma, Cosmos Serpent",
+   "oracle_id": "6ba0656f-e0d2-4735-9c66-3a00afa9fc23",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Serpent",
+   "oracle_text": "This spell can't be countered.\nAt the beginning of each upkeep, create a 3/3 blue Serpent creature token named Koma's Coil.\nSacrifice another Serpent: Choose one —\n• Tap target permanent. Its activated abilities can't be activated this turn.\n• Koma gains indestructible until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "51",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Koma's Coil",
+     "type_line": "Token Creature — Serpent",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A spell or ability that counters spells can still target Koma, Cosmos Serpent. When that spell or ability resolves, Koma won't be countered, but any additional effects of the countering spell or ability will still happen.",
+    "You can't sacrifice Koma itself to activate its last ability, but you can sacrifice any other Serpent you control, including Koma's Coil.",
+    "If you choose the first mode of Koma's activated ability, you can choose a permanent that's already tapped as the target. The effect stopping its activated abilities will still apply.",
+    "Activated abilities contain a colon and appear in the form \"[Cost]: [Effect].\" Some keywords such as equip are activated abilities and will have colons in their reminder texts. Loyalty abilities of planeswalkers are also activated abilities.",
+    "The first mode of Koma's activated ability doesn't stop static abilities from affecting the game, and it doesn't stop triggered abilities from triggering. Unlike similar effects, it does stop mana abilities from being activated. Most activated abilities that produce mana as they resolve are mana abilities."
+   ]
+  },
+  {
+   "name": "Rhys the Redeemed",
+   "oracle_id": "f7252190-ad24-4ba3-a644-2790dd1d680d",
+   "layout": "normal",
+   "mana_cost": "{G/W}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Elf Warrior",
+   "oracle_text": "{2}{G/W}, {T}: Create a 1/1 green and white Elf Warrior creature token.\n{4}{G/W}{G/W}, {T}: For each creature token you control, create a token that's a copy of that creature.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "52",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Elf Warrior",
+     "type_line": "Token Creature — Elf Warrior",
+     "component": "token"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Meteorite",
+   "oracle_id": "0c3c3bcc-d485-4a01-92fe-8bf29c0fc926",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, it deals 2 damage to any target.\n{T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "54",
+   "set": "tle"
+  },
+  {
+   "name": "Treetop Village",
+   "oracle_id": "b53f216d-1592-4eee-b204-502a805fbc8c",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G}.\n{1}{G}: This land becomes a 3/3 green Ape creature with trample until end of turn. It's still a land. (It can deal excess combat damage to the player or planeswalker it's attacking.)",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "60",
+   "set": "tle",
+   "rulings": [
+    "Activating the ability that turns it into a creature while it's already a creature will override any effects that set its power and/or toughness to a specific number. However, any effect that raises or lowers power and/or toughness (such as the effect created by Giant Growth, Glorious Anthem, or a +1/+1 counter) will continue to apply.",
+    "A noncreature permanent that turns into a creature can attack, and its {T} abilities can be activated, only if its controller has continuously controlled that permanent since the beginning of their most recent turn. It doesn't matter how long the permanent has been a creature."
+   ]
+  },
+  {
+   "name": "Appa, the Vigilant",
+   "oracle_id": "72994a7a-7c0d-4f28-8cc0-28161d098d7f",
+   "layout": "normal",
+   "mana_cost": "{5}{W}{W}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Bison Ally",
+   "oracle_text": "Flying, vigilance\nWhenever Appa or another Ally you control enters, creatures you control get +1/+1 and gain flying and vigilance until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "62",
+   "set": "tle"
+  },
+  {
+   "name": "Katara's Reversal",
+   "oracle_id": "83ccbcb1-7cf0-41a0-8abd-18f4bc647b5f",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter up to four target spells and/or abilities.\nUntap up to four target artifacts and/or creatures.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "tle"
+  },
+  {
+   "name": "Fire Nation Turret",
+   "oracle_id": "2ce2a091-95b6-45e5-9097-77fea411162e",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "At the beginning of combat on your turn, up to one target creature gets +2/+0 and gains firebending 2 until end of turn.\n{R}: Put a charge counter on this artifact.\nRemove fifty charge counters from this artifact: It deals 50 damage to any target.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "tle",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to."
+   ]
+  }
+ ]
+}

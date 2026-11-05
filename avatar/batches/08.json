@@ -1,0 +1,266 @@
+{
+ "batch": 8,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Corrupt Court Official",
+   "oracle_id": "ec84201d-757f-4a7a-b3a2-85ccd5ee81ae",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Advisor",
+   "oracle_text": "When this creature enters, target opponent discards a card.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "tla"
+  },
+  {
+   "name": "Day of Black Sun",
+   "oracle_id": "dc857129-533c-41d1-8e8b-1c0443030d69",
+   "layout": "normal",
+   "mana_cost": "{X}{B}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each creature with mana value X or less loses all abilities until end of turn. Destroy those creatures.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "94",
+   "set": "tla",
+   "rulings": [
+    "If a creature with an ability that triggers when that creature dies or leaves the battlefield loses that ability and is then destroyed, that ability will not trigger. Those types of triggers need to exist on the battlefield in order to work. Any abilities that trigger when a creature card is \"put into the graveyard from anywhere\" would still trigger, because those abilities function from the graveyard, where the card is a new object that still has the ability."
+   ]
+  },
+  {
+   "name": "Epic Downfall",
+   "oracle_id": "ed5d6aba-0b8d-48b3-a84c-618f45fb67b1",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile target creature with mana value 3 or greater.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "96",
+   "set": "tla",
+   "rulings": [
+    "If a creature on the battlefield has {X} in its mana cost, X is considered to be 0.",
+    "If a creature on the battlefield has {X} in its mana cost, X is considered to be 0."
+   ]
+  },
+  {
+   "name": "The Fire Nation Drill",
+   "oracle_id": "3d4b9d71-4275-4c18-a4dc-9aad234eb92c",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Vehicle",
+   "oracle_text": "Trample\nWhen The Fire Nation Drill enters, you may tap it. When you do, destroy target creature with power 4 or less.\n{1}: Permanents your opponents control lose hexproof and indestructible until end of turn.\nCrew 2",
+   "power": "6",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Crew",
+    "Trample"
+   ],
+   "collector_number": "98",
+   "set": "tla",
+   "rulings": [
+    "If a permanent enters under an opponent's control with hexproof or indestructible after The Fire Nation Drill's first activated ability resolves, it won't lose that ability unless you activate The Fire Nation Drill's ability again. The same is true if an opponent's permanent gains indestructible or hexproof after The Fire Nation Drill's ability resolves.",
+    "Because damage remains marked on a creature until the damage is removed as the turn ends, damage previously dealt to a creature with indestructible may cause it to be destroyed if The Fire Nation Drill's first activated ability resolves during that turn."
+   ]
+  },
+  {
+   "name": "Fire Nation Engineer",
+   "oracle_id": "9a983666-376b-48a8-9f82-8d041d32ae93",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "Raid — At the beginning of your end step, if you attacked this turn, put a +1/+1 counter on another target creature or Vehicle you control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Raid"
+   ],
+   "collector_number": "99",
+   "set": "tla",
+   "rulings": [
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with, or which opponent, planeswalker, or battle those creatures attacked.",
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield."
+   ]
+  },
+  {
+   "name": "Fire Navy Trebuchet",
+   "oracle_id": "1f018a8c-6ceb-4d03-94a7-8713467c9cf5",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Wall",
+   "oracle_text": "Defender, reach\nWhenever you attack, create a 2/1 colorless Construct artifact creature token with flying named Ballistic Boulder that's tapped and attacking. Sacrifice that token at the beginning of the next end step.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Reach",
+    "Defender"
+   ],
+   "collector_number": "100",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ballistic Boulder",
+     "type_line": "Token Artifact Creature — Construct",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Fire Navy Trebuchet's controller chooses which player, planeswalker, or battle the token is attacking. It doesn't need to be the same player, planeswalker, or battle as other creatures are attacking."
+   ]
+  },
+  {
+   "name": "Foggy Swamp Hunters",
+   "oracle_id": "1941cf7a-ad53-4bce-beea-104951619a30",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Ranger Ally",
+   "oracle_text": "As long as you've drawn two or more cards this turn, this creature has lifelink and menace. (It can't be blocked except by two or more creatures.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "101",
+   "set": "tla"
+  },
+  {
+   "name": "Foggy Swamp Visions",
+   "oracle_id": "16af0a22-833e-47c6-ac27-002702194595",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, waterbend {X}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nExile X target creature cards from graveyards. For each creature card exiled this way, create a token that's a copy of it. At the beginning of your next end step, sacrifice those tokens.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "102",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Any enters abilities of the copied card will trigger when the token enters. Any \"as [this creature] enters\" or \"[this creature] enters with\" abilities of the chosen creature will also work.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "The tokens copy exactly what was printed on the original cards and nothing else.",
+    "If the copied card has {X} in its mana cost, X is considered to be 0.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend."
+   ]
+  },
+  {
+   "name": "Heartless Act",
+   "oracle_id": "3641d572-8335-4804-88ad-edf4dc67a8e4",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Destroy target creature with no counters on it.\n• Remove up to three counters from target creature.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "103",
+   "set": "tla",
+   "rulings": [
+    "If you choose the first mode and the creature gains a counter in response, you can't remove counters from it instead; the spell just doesn't resolve. Similarly, if you choose the second mode and the creature loses its counters in response, you can't destroy it instead.",
+    "If you choose the second mode for Heartless Act, you choose which counters to remove from the creature, no matter who controls the creature. You may choose counters of different kinds.",
+    "If you choose the first mode and the creature gains a counter in response, you can't remove counters from it instead; the spell just doesn't resolve. Similarly, if you choose the second mode and the creature loses its counters in response, you can't destroy it instead.",
+    "If you choose the second mode for Heartless Act, you choose which counters to remove from the creature, no matter who controls the creature. You may choose counters of different kinds."
+   ]
+  },
+  {
+   "name": "Hog-Monkey",
+   "oracle_id": "e11591ee-7074-488e-8d2f-f8c89e385a55",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Boar Monkey",
+   "oracle_text": "At the beginning of combat on your turn, target creature you control with a +1/+1 counter on it gains menace until end of turn. (It can't be blocked except by two or more creatures.)\nExhaust — {5}: Put two +1/+1 counters on this creature. (Activate each exhaust ability only once.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Exhaust"
+   ],
+   "collector_number": "104",
+   "set": "tla",
+   "rulings": [
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "The creature you target must have a +1/+1 counter on it when the ability goes on the stack at the beginning of combat. You cannot put the counter on it in response.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  }
+ ]
+}

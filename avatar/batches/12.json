@@ -1,0 +1,295 @@
+{
+ "batch": 12,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "How to Start a Riot",
+   "oracle_id": "268d0056-0d3e-438a-ab17-625a6f5ec68a",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Target creature gains menace until end of turn. (It can't be blocked except by two or more creatures.)\nCreatures target player controls get +2/+0 until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "tla"
+  },
+  {
+   "name": "Iroh's Demonstration",
+   "oracle_id": "8dd2e73a-d1b4-4d26-857f-9eb8e384c8ff",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Choose one —\n• Iroh's Demonstration deals 1 damage to each creature your opponents control.\n• Iroh's Demonstration deals 4 damage to target creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "141",
+   "set": "tla"
+  },
+  {
+   "name": "Jeong Jeong, the Deserter",
+   "oracle_id": "2158c73d-421b-4c94-af06-dd89cb8d3126",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nExhaust — {3}: Put a +1/+1 counter on Jeong Jeong. When you next cast a Lesson spell this turn, copy it and you may choose new targets for the copy. (Activate each exhaust ability only once.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Firebending"
+   ],
+   "collector_number": "142",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "You can't choose to pay any additional costs for a copied spell. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy has the same value of X.",
+    "The copy will have the same targets as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can't choose a new legal target, then it remains unchanged (even if the current target is illegal).",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves.",
+    "The trigger from Jeong Jeong's exhaust ability and the copy it creates both resolve before the spell that caused the ability to trigger. They resolve even if the spell is countered before the copy is created.",
+    "Any choices made when the spell resolves won't have been made yet when it's copied. Any such choices will be made separately when the copy resolves.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana."
+   ]
+  },
+  {
+   "name": "Jet's Brainwashing",
+   "oracle_id": "5cca85e0-43e8-4b97-a43b-1b8f23f541d1",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Kicker {3} (You may pay an additional {3} as you cast this spell.)\nTarget creature can't block this turn. If this spell was kicked, gain control of that creature until end of turn, untap it, and it gains haste until end of turn.\nCreate a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "143",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "If a spell's kicker cost was paid, the spell is \"kicked.\"",
+    "If you copy a kicked spell on the stack, the copy is also kicked.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "The kicker ability doesn't let you pay a kicker cost more than once.",
+    "To determine a spell's total cost, start with the mana cost (or an alternative cost if another card's effect allows you to pay one instead), add any cost increases (such as kicker), then apply any cost reductions. The spell's mana value remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Mai, Jaded Edge",
+   "oracle_id": "b5029f21-e0d6-4f22-9afd-79452de26490",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nExhaust — {3}: Put a double strike counter on Mai. (Activate each exhaust ability only once.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Prowess",
+    "Exhaust"
+   ],
+   "collector_number": "147",
+   "set": "tla",
+   "rulings": [
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  },
+  {
+   "name": "Mongoose Lizard",
+   "oracle_id": "a9bae56c-9666-42e8-94ec-03b0a964b142",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Mongoose Lizard",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, it deals 1 damage to any target.\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Mountaincycling",
+    "Landcycling",
+    "Menace",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "148",
+   "set": "tla"
+  },
+  {
+   "name": "Price of Freedom",
+   "oracle_id": "5e6faa98-cf55-430d-87ce-8085f68aa20a",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Destroy target artifact or land an opponent controls. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle.\nDraw a card.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "149",
+   "set": "tla",
+   "rulings": [
+    "The controller of the destroyed artifact or land isn't required to search their library. If that player doesn't, the player won't shuffle their library."
+   ]
+  },
+  {
+   "name": "Ran and Shaw",
+   "oracle_id": "a728685f-8670-4db2-ae02-3cf74eb3c402",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Dragon",
+   "oracle_text": "Flying, firebending 2\nWhen Ran and Shaw enter, if you cast them and there are three or more Dragon and/or Lesson cards in your graveyard, create a token that's a copy of Ran and Shaw, except it's not legendary.\n{3}{R}: Dragons you control get +2/+0 until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Firebending"
+   ],
+   "collector_number": "150",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Except for the legendary supertype, the token copies only what is printed on Ran and Shaw unless Ran and Shaw are being modified by another copy effect. It doesn't copy whether Ran and Shaw are tapped or untapped, whether they have any counters on them or Auras or Equipment attached to them, or any non-copy effects that have changed their power, toughness, types, color, or so on.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt."
+   ]
+  },
+  {
+   "name": "Rough Rhino Cavalry",
+   "oracle_id": "3ac94b28-4b0a-4121-99b9-9cd7dff7948c",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Mercenary",
+   "oracle_text": "Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\nExhaust — {8}: Put two +1/+1 counters on this creature. It gains trample until end of turn. (Activate each exhaust ability only once.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Firebending"
+   ],
+   "collector_number": "152",
+   "set": "tla",
+   "rulings": [
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Exhaust abilities can be activated any time you could normally activate an ability."
+   ]
+  },
+  {
+   "name": "Solstice Revelations",
+   "oracle_id": "310c1280-dee8-426f-8440-6132a634a1e0",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Exile cards from the top of your library until you exile a nonland card. You may cast that card without paying its mana cost if the spell's mana value is less than the number of Mountains you control. If you don't cast that card this way, put it into your hand.\nFlashback {6}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "153",
+   "set": "tla",
+   "rulings": [
+    "If you wish to cast the exiled card without paying its mana cost, you must cast it while Solstice Revelations is resolving. You can't cast it that way later in the turn. A spell cast this way may be cast at a time you normally wouldn't be able to cast a spell of that type, but other restrictions (such as \"Cast this spell only during combat\") are enforced.",
+    "If you cast a card \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, such as sacrificing a creature, those must be paid to cast the card.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "If the exiled card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  }
+ ]
+}

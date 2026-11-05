@@ -1,0 +1,252 @@
+{
+ "batch": 34,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Fire Nation Salvagers",
+   "oracle_id": "9e76d56a-67b6-4bd9-8f2d-3328d18a2880",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Menace\nWhen this creature enters, put a +1/+1 counter on target creature or Vehicle you control.\nWhenever one or more creatures you control with counters on them deal combat damage to a player, put target creature or Vehicle card from that player's graveyard onto the battlefield under your control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "188",
+   "set": "tle",
+   "rulings": [
+    "The last ability will trigger once for each player dealt damage by creatures you control. If you deal damage to two opponents, you will be able to target a creature or Vehicle card from each of their graveyards."
+   ]
+  },
+  {
+   "name": "Nyla, Shirshu Sleuth",
+   "oracle_id": "3492cee8-b854-449a-ada4-a4e8a4333d87",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mole Beast",
+   "oracle_text": "When Nyla enters, exile up to one target creature card from your graveyard. If you do, you lose X life and create X Clue tokens, where X is that card's mana value. (A Clue token is an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nAt the beginning of your end step, if you control no Clues, return target card exiled with Nyla to its owner's hand.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "190",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Nyla, Shirshu Sleuth's second ability has an \"intervening 'if' clause.\" That means the ability won't trigger at all unless you control no Clues at the beginning of your end step, and the ability will do nothing if you control a Clue by the time it resolves.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "If Nyla leaves the battlefield before you return the card to your hand with the last ability, the card remains exiled without a way to return it to its owner's hand. If Nyla returns to the battlefield as a new object (such as if you airbend it and cast it again), it doesn't maintain connection to cards exiled by Nyla previously, and they cannot be targeted to return by the current Nyla."
+   ]
+  },
+  {
+   "name": "Avatar Roku, Firebender",
+   "oracle_id": "9eb9e4c1-fabf-45ff-a584-fbe4b94fb41c",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Avatar",
+   "oracle_text": "Whenever a player attacks, add six {R}. Until end of combat, you don't lose this mana as steps end.\n{R}{R}{R}: Target creature gets +3/+0 until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "191",
+   "set": "tle"
+  },
+  {
+   "name": "Chong and Lily, Nomads",
+   "oracle_id": "faffc9fb-32b3-4015-8c3f-e6b45002c050",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Bard Ally",
+   "oracle_text": "Whenever one or more Bards you control attack, choose one —\n• Put a lore counter on each of any number of target Sagas you control.\n• Creatures you control get +1/+0 until end of turn for each lore counter among Sagas you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "192",
+   "set": "tle",
+   "rulings": [
+    "Putting a lore counter on a Saga outside of the normal timing for lore counters will cause the appropriate chapter ability of that Saga to trigger immediately."
+   ]
+  },
+  {
+   "name": "Fang, Roku's Companion",
+   "oracle_id": "6665bfe2-942c-4b3d-a976-776fe00c99f4",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Dragon",
+   "oracle_text": "Flying\nWhenever Fang attacks, another target legendary creature you control gets +X/+0 until end of turn, where X is Fang's power.\nWhen Fang dies, if he wasn't a Spirit, return this card to the battlefield under your control. He's a Spirit in addition to his other types.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "193",
+   "set": "tle"
+  },
+  {
+   "name": "Iroh, Dragon of the West",
+   "oracle_id": "98f9b97b-4c15-4d24-895a-a9bebb68e79b",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Haste\nMentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)\nAt the beginning of combat on your turn, each creature you control with a counter on it gains firebending 2 until end of turn. (Whenever it attacks, add {R}{R}. This mana lasts until end of combat.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Mentor",
+    "Haste"
+   ],
+   "collector_number": "194",
+   "set": "tle",
+   "rulings": [
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat."
+   ]
+  },
+  {
+   "name": "Overwhelming Victory",
+   "oracle_id": "20d94561-7526-4305-8d2d-7daf62729ff4",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Overwhelming Victory deals 5 damage to target creature. Each creature you control gains trample and gets +X/+0 until end of turn, where X is the amount of excess damage dealt this way.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "196",
+   "set": "tle",
+   "rulings": [
+    "Excess damage has been dealt to a creature if the damage dealt to it is greater than lethal damage. Usually, this means damage greater than its toughness, although damage already marked on the creature is taken into account."
+   ]
+  },
+  {
+   "name": "Reckless Blaze",
+   "oracle_id": "75137acb-dc8e-439b-8d84-c5cf682ff6bc",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Reckless Blaze deals 5 damage to each creature. Whenever a creature you control dealt damage this way dies this turn, add {R}.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "197",
+   "set": "tle"
+  },
+  {
+   "name": "Smellerbee, Rebel Fighter",
+   "oracle_id": "127bc05b-2945-434c-bc6a-283a267cc72a",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "First strike\nOther creatures you control have haste.\nWhenever Smellerbee attacks, you may discard your hand. If you do, draw cards equal to the number of attacking creatures.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "198",
+   "set": "tle"
+  },
+  {
+   "name": "Avatar Kyoshi, Earthbender",
+   "oracle_id": "fd751ed4-4002-4cae-9d1d-1fe0f1fd4965",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}{G}",
+   "cmc": 8.0,
+   "type_line": "Legendary Creature — Human Avatar",
+   "oracle_text": "During your turn, Avatar Kyoshi has hexproof.\nAt the beginning of combat on your turn, earthbend 8, then untap that land. (Target land you control becomes a 0/0 creature with haste that's still a land. Put eight +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "201",
+   "set": "tle",
+   "rulings": [
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0."
+   ]
+  }
+ ]
+}

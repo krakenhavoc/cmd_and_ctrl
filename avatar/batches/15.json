@@ -1,0 +1,237 @@
+{
+ "batch": 15,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Invasion Tactics",
+   "oracle_id": "eef63cb4-96de-4c9d-84aa-62a3b52a3c7f",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, creatures you control get +2/+2 until end of turn.\nWhenever one or more Allies you control deal combat damage to a player, draw a card.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "183",
+   "set": "tla"
+  },
+  {
+   "name": "Kyoshi Island Plaza",
+   "oracle_id": "c0cdc333-6c5a-401c-9810-220d2027f2fe",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Enchantment — Shrine",
+   "oracle_text": "When Kyoshi Island Plaza enters, search your library for up to X basic land cards, where X is the number of Shrines you control. Put those cards onto the battlefield tapped, then shuffle.\nWhenever another Shrine you control enters, search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "184",
+   "set": "tla",
+   "rulings": [
+    "For Kyoshi Island Plaza's first ability, the number of Shrines you control is checked when the ability resolves. You will still search and shuffle your library if you control no Shrines when the ability resolves, but you won't get any lands."
+   ]
+  },
+  {
+   "name": "Leaves from the Vine",
+   "oracle_id": "7c4abd72-29b0-4c82-9e67-b481cf7e8775",
+   "layout": "saga",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Mill three cards, then create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nII — Put a +1/+1 counter on each of up to two target creatures you control.\nIII — Draw a card if there's a creature or Lesson card in your graveyard.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food",
+    "Mill"
+   ],
+   "collector_number": "185",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type."
+   ]
+  },
+  {
+   "name": "Origin of Metalbending",
+   "oracle_id": "177113f8-1188-4e5e-8ad7-34a7bb8ca7f1",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Choose one —\n• Destroy target artifact or enchantment.\n• Put a +1/+1 counter on target creature you control. It gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "187",
+   "set": "tla"
+  },
+  {
+   "name": "Ostrich-Horse",
+   "oracle_id": "2b6cb199-1564-4214-b24f-624dc962c907",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird Horse",
+   "oracle_text": "When this creature enters, mill three cards. You may put a land card from among them into your hand. If you don't, put a +1/+1 counter on this creature. (To mill three cards, put the top three cards of your library into your graveyard.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "188",
+   "set": "tla"
+  },
+  {
+   "name": "Pillar Launch",
+   "oracle_id": "a39c758d-82be-4d8c-bb3e-8ee8a6c6788b",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +2/+2 and gains reach until end of turn. Untap it.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "189",
+   "set": "tla"
+  },
+  {
+   "name": "Raucous Audience",
+   "oracle_id": "5be6f245-31cf-4294-ace0-ca6ce3463fed",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "{T}: Add {G}. If you control a creature with power 4 or greater, add {G}{G} instead.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "190",
+   "set": "tla"
+  },
+  {
+   "name": "Rebellious Captives",
+   "oracle_id": "70401db7-edbc-402f-98ef-be74bd316273",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Peasant Ally",
+   "oracle_text": "Exhaust — {6}: Put two +1/+1 counters on this creature, then earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped. Activate each exhaust ability only once.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Earthbend"
+   ],
+   "collector_number": "191",
+   "set": "tla",
+   "rulings": [
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  },
+  {
+   "name": "Rocky Rebuke",
+   "oracle_id": "fd85db70-8616-42df-9dac-bad7923f88d7",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature you control deals damage equal to its power to target creature an opponent controls.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "193",
+   "set": "tla"
+  },
+  {
+   "name": "Saber-Tooth Moose-Lion",
+   "oracle_id": "7af493e3-15a1-42d6-a66c-82aacabe816f",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elk Cat",
+   "oracle_text": "Reach\nForestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand, then shuffle.)",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Landcycling",
+    "Forestcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "194",
+   "set": "tla"
+  }
+ ]
+}

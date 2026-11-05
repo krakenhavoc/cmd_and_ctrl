@@ -1,0 +1,257 @@
+{
+ "batch": 27,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Swampbenders",
+   "oracle_id": "feb00c6d-ff43-49bc-84d5-57e2d4651258",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Human Druid Ally",
+   "oracle_text": "Swampbenders's power and toughness are each equal to the number of Swamps on the battlefield.\nLands you control are Swamps in addition to their other types.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "65",
+   "set": "tle",
+   "rulings": [
+    "Swampbenders's second ability causes each land on the battlefield you control to have the land type Swamp in addition to its other types. Any land that's a Swamp has the ability \"{T}: Add {B}.\" Nothing else changes about those lands, including their names, other subtypes, other abilities, and whether they're legendary, basic, or snow.",
+    "Land cards not on the battlefield aren't affected by Swampbenders's second ability."
+   ]
+  },
+  {
+   "name": "Sokka's Charge",
+   "oracle_id": "dcc29e59-341c-4175-aa54-f535e2c3e355",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "During your turn, Allies you control have double strike and lifelink.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "tle"
+  },
+  {
+   "name": "Mai and Zuko",
+   "oracle_id": "b86ba0aa-89f3-4924-b3c4-f7ca44468e9b",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "Firebending 3\nYou may cast Ally spells and artifact spells as though they had flash.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "68",
+   "set": "tle",
+   "rulings": [
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat."
+   ]
+  },
+  {
+   "name": "Aang and Katara",
+   "oracle_id": "481c3e14-b670-4fab-aa9f-6ce5b514096d",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{W}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Avatar Ally",
+   "oracle_text": "Whenever Aang and Katara enter or attack, create X 1/1 white Ally creature tokens, where X is the number of tapped artifacts and/or creatures you control.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "69",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Toph, Greatest Earthbender",
+   "oracle_id": "3741206f-8ef5-4b8f-ae4c-df3ab0a17683",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "When Toph enters, earthbend X, where X is the amount of mana spent to cast her.\nLand creatures you control have double strike.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "70",
+   "set": "tle",
+   "rulings": [
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  },
+  {
+   "name": "Sokka and Suki",
+   "oracle_id": "e84becc0-6e15-4a74-aec0-9746b86ab5cc",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Whenever Sokka and Suki or another Ally you control enters, attach up to one target Equipment you control to that creature.\nWhenever an Equipment you control enters, create a 1/1 white Ally creature token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "71",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Momo's Heist",
+   "oracle_id": "b8f05217-1f61-4d6d-be17-7fb15f1d1e32",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gain control of target artifact. Untap it. It gains haste. At the beginning of the next end step, sacrifice it.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "72",
+   "set": "tle"
+  },
+  {
+   "name": "Uncle's Musings",
+   "oracle_id": "6de489bf-6922-4f97-8001-efa8cb5a27cb",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Converge — Return up to X permanent cards from your graveyard to your hand, where X is the number of colors of mana spent to cast this spell.\nExile Uncle's Musings.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Converge"
+   ],
+   "collector_number": "73",
+   "set": "tle"
+  },
+  {
+   "name": "Air Nomad Student",
+   "oracle_id": "a468f6ab-c0a8-4295-8b01-7147d3f889b4",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Monk",
+   "oracle_text": "Flying\nAt the beginning of your end step, if this creature didn't attack this turn, put a +1/+1 counter on it.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "75",
+   "set": "tle"
+  },
+  {
+   "name": "The Duke, Rebel Sentry",
+   "oracle_id": "1c55047d-badc-49bb-b791-e9759577e4eb",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Human Rebel Ally",
+   "oracle_text": "The Duke enters with a +1/+1 counter on him.\n{T}, Remove a counter from The Duke: Put a +1/+1 counter on another target creature you control. It gains hexproof until end of turn. (It can't be the target of spells or abilities your opponents control.)",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "76",
+   "set": "tle"
+  }
+ ]
+}

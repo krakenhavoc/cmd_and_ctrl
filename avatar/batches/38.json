@@ -1,0 +1,247 @@
+{
+ "batch": 38,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Zuko, Avatar Hunter",
+   "oracle_id": "d445a584-98e7-4501-bb20-e76c9cafa757",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Reach (This creature can block creatures with flying.)\nWhenever you cast a red spell, create a 2/2 red Soldier creature token.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "246",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Soldier",
+     "type_line": "Token Creature — Soldier",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Bumi, Eclectic Earthbender",
+   "oracle_id": "301af2b2-e2f7-4220-a3f5-7702fb62664a",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "When Bumi enters, earthbend 1. (Target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)\nWhenever Bumi attacks, put two +1/+1 counters on each land creature you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "248",
+   "set": "tle",
+   "rulings": [
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}."
+   ]
+  },
+  {
+   "name": "Earthbending Student",
+   "oracle_id": "8f8fd2ba-df0e-49bd-a916-cc4f50b9fa24",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "When this creature enters, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)\nLand creatures you control have vigilance. (Attacking doesn't cause them to tap.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "249",
+   "set": "tle",
+   "rulings": [
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0."
+   ]
+  },
+  {
+   "name": "Eel-Hounds",
+   "oracle_id": "25432a3a-bcfd-4c43-b662-07676e9b3fdd",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Fish Dog",
+   "oracle_text": "Trample (This creature can deal excess combat damage to the player it's attacking.)\nWhenever this creature attacks, another target creature you control gets +2/+2 and gains trample until end of turn.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "250",
+   "set": "tle"
+  },
+  {
+   "name": "Frog-Squirrels",
+   "oracle_id": "b8563788-debc-4f97-adf4-b186bf3960e2",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Frog Squirrel",
+   "oracle_text": "Reach (This creature can block creatures with flying.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "251",
+   "set": "tle"
+  },
+  {
+   "name": "Hippo-Cows",
+   "oracle_id": "f66fca2b-6c44-4079-b29e-4d18ef030a0c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Hippo Ox",
+   "oracle_text": "Trample (This creature can deal excess combat damage to the player it's attacking.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "252",
+   "set": "tle"
+  },
+  {
+   "name": "Match the Odds",
+   "oracle_id": "797d8776-9dcf-45b1-8c5e-1d025f916773",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Create a 1/1 white Ally creature token. Put a +1/+1 counter on it for each creature your opponents control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "253",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Seismic Tutelage",
+   "oracle_id": "7ece47b1-0b4b-40ac-a90f-4573a8e3b8bd",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, put a +1/+1 counter on enchanted creature.\nWhenever enchanted creature attacks, double the number of +1/+1 counters on it.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant",
+    "Double"
+   ],
+   "collector_number": "254",
+   "set": "tle"
+  },
+  {
+   "name": "Hog-Monkey Rampage",
+   "oracle_id": "9e5df175-5f91-47f7-957c-63bac31f0858",
+   "layout": "normal",
+   "mana_cost": "{1}{R/G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose target creature you control and target creature an opponent controls. Put a +1/+1 counter on the creature you control if it has power 4 or greater. Then those creatures fight each other. (Each deals damage equal to its power to the other.)",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Fight"
+   ],
+   "collector_number": "255",
+   "set": "tle"
+  },
+  {
+   "name": "Mechanical Glider",
+   "oracle_id": "d53d1805-c4ec-4b42-a226-3cd78cd2be84",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, attach it to target creature you control.\nEquipped creature has flying. (It can't be blocked except by creatures with flying or reach.)\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "256",
+   "set": "tle"
+  }
+ ]
+}

@@ -1,0 +1,305 @@
+{
+ "batch": 31,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Storm of Memories",
+   "oracle_id": "6f8ca795-d6fd-4e3e-911c-c621a942acbb",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Storm (When you cast this spell, copy it for each spell cast before it this turn.)\nExile an instant or sorcery card with mana value 3 or less from your graveyard at random. You may cast it without paying its mana cost. If that spell would be put into a graveyard, exile it instead.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Storm"
+   ],
+   "collector_number": "126",
+   "set": "tle",
+   "rulings": [
+    "Spells cast from zones other than a player's hand and spells that were countered or otherwise failed to resolve are counted by the storm ability.",
+    "The instants or sorceries cast using copies of Storm of Memories go on the stack as each copy of Storm of Memories resolves, and those spells will each resolve before more copies of Storm of Memories resolve.",
+    "The copies are put directly onto the stack. They aren't cast and won't be counted by other spells with storm cast later in the turn.",
+    "A copy of a spell can be countered like any other spell, but it must be countered individually. Countering a spell with storm won't affect the copies.",
+    "The triggered ability that creates the copies can itself be countered by anything that can counter a triggered ability. If it is countered, no copies will be put onto the stack."
+   ]
+  },
+  {
+   "name": "Zuko, Firebending Master",
+   "oracle_id": "33db6dc8-2c88-4a7f-8d4d-3bc9fb6544b2",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Noble Ally",
+   "oracle_text": "First strike\nFirebending X, where X is the number of experience counters you have. (Whenever this creature attacks, add X {R}. This mana lasts until end of combat.)\nWhenever you cast a spell during combat, you get an experience counter.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike",
+    "Firebending"
+   ],
+   "collector_number": "127",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Experience",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The experience counter goes on you, the player, not on Zuko. You will keep that counter even if Zuko, Firebending Master dies.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "All experience counters are identical, no matter how you got them. For example, the firebending ability will count experience counters that you got from the last ability, from another ability, from another copy of Zuko, Firebending Master, and so on."
+   ]
+  },
+  {
+   "name": "Animal Attendant",
+   "oracle_id": "787e6cc6-d97a-4229-97d1-ec2377d138d3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "{T}: Add one mana of any color. If that mana is spent to cast a non-Human creature spell, that creature enters with an additional +1/+1 counter on it.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "128",
+   "set": "tle"
+  },
+  {
+   "name": "The Art of Tea",
+   "oracle_id": "9ed4e48f-91bd-45f9-9f31-a2705b330713",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Put a +1/+1 counter on up to one target creature you control. Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "129",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Whatever you do, don't eat the delicious cards.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type."
+   ]
+  },
+  {
+   "name": "Bison Whistle",
+   "oracle_id": "47e77918-13ec-47ce-9256-5a3b5bf8d315",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}, {T}: Look at the top card of your library. If it's a Bison card, you may put it onto the battlefield. If it's a creature card, you may reveal it and put it into your hand. Otherwise, you may put it into your graveyard.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "131",
+   "set": "tle"
+  },
+  {
+   "name": "Bosco, Just a Bear",
+   "oracle_id": "a213c650-06cc-4ea8-86f8-78ccfe103b38",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bear",
+   "oracle_text": "When Bosco enters, create a Food token for each legendary creature you control. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{2}{G}, Sacrifice a Food: Put two +1/+1 counters on Bosco. He gains trample until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "132",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Whatever you do, don't eat the delicious cards.",
+    "Bosco will count himself as a legendary creature for his first ability. He's a bit of a legend around Ba Sing Se!",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability."
+   ]
+  },
+  {
+   "name": "Bumi's Feast Lecture",
+   "oracle_id": "41f53bb5-8a62-4e6b-b9c3-5aa530a036bc",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Create a Food token. Then earthbend X, where X is twice the number of Foods you control. (A Food token is an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\" To earthbend X, target land you control becomes a 0/0 creature with haste that's still a land. Put X +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food",
+    "Earthbend"
+   ],
+   "collector_number": "133",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\""
+   ]
+  },
+  {
+   "name": "Cracked Earth Technique",
+   "oracle_id": "d5314006-afe0-4cdc-88f0-ff1f7d85fba9",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Earthbend 3, then earthbend 3. You gain 3 life. (To earthbend 3, target land you control becomes a 0/0 creature with haste that's still a land. Put three +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "135",
+   "set": "tle",
+   "rulings": [
+    "You can target the same land or two different lands with the multiple instances of earthbend from Cracked Earth Technique.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve."
+   ]
+  },
+  {
+   "name": "Creeping Crystal Coating",
+   "oracle_id": "c23f2546-bf9e-4390-b6f7-c616920e04ca",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature\nEnchanted creature gets +0/+3 and has \"Whenever this creature attacks, create a Food token.\" (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food",
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "136",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability."
+   ]
+  },
+  {
+   "name": "Crystalline Armor",
+   "oracle_id": "93d2638b-0c19-4fba-a0ad-84b6a9784eb3",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +1/+1 for each land you control and has trample.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "137",
+   "set": "tle"
+  }
+ ]
+}

@@ -1,0 +1,259 @@
+{
+ "batch": 25,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Clone Legion",
+   "oracle_id": "690bd111-5b32-4156-b650-9afad3d6ef3d",
+   "layout": "normal",
+   "mana_cost": "{7}{U}{U}",
+   "cmc": 9.0,
+   "type_line": "Sorcery",
+   "oracle_text": "For each creature target player controls, create a token that's a copy of that creature.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "12",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Any enters-the-battlefield abilities of the copied creature will trigger when the token enters the battlefield. Any \"as [this permanent] enters the battlefield\" or \"[this permanent] enters the battlefield with\" abilities of the copied creature will also work.",
+    "The token creatures all enter the battlefield at the same time.",
+    "A token that enters the battlefield as a copy of a face-down creature is a face-up colorless 2/2 creature with no name, abilities, or creature types.",
+    "If the copied creature is a token, the token created by Clone Legion copies the original characteristics of that token as stated by the effect that put the token onto the battlefield.",
+    "If the copied creature is copying something else, then the token enters the battlefield as whatever that creature copied.",
+    "If the copied creature has {X} in its mana cost, X is considered to be zero.",
+    "Each token copies exactly what was printed on the original creature and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Remember that if you control more than one legendary permanent with the same name, you'll choose one to remain on the battlefield and put the rest into their owners' graveyards."
+   ]
+  },
+  {
+   "name": "Standstill",
+   "oracle_id": "fea4cb32-0329-4199-9abe-bff0cc45882a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When a player casts a spell, sacrifice this enchantment. If you do, each of that player's opponents draws three cards.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "tle",
+   "rulings": [
+    "It only works once. If someone casts another spell after it triggers, but before that trigger resolves, then it will trigger again. The first time one of these triggers resolves, it will be sacrificed for the full effect. Any additional triggers on the stack will do nothing when they resolve because you will be unable to sacrifice it additional times."
+   ]
+  },
+  {
+   "name": "Training Grounds",
+   "oracle_id": "8de3eabe-9a8f-4865-beef-a4888c081d39",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Activated abilities of creatures you control cost {2} less to activate. This effect can't reduce the mana in that cost to less than one mana.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "20",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Trackhand Trainer",
+     "type_line": "Creature — Merfolk",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Training Grounds affects only creatures you control on the battlefield. The costs of activated abilities that work in other zones (such as cycling or unearth) won't be reduced.",
+    "Training Grounds can reduce the amount you pay for a creature's activated ability cost that includes {X}. For example, Drana, Kalastria Bloodchief has an activated ability that costs {X}{B}{B}. If you control Training Grounds and you activate the ability with X equal to 5, you'll have to pay only {3}{B}{B}. This is true even if the ability states that {X} must be paid with a certain color of mana, as Crimson Hellkite's ability does.",
+    "Training Grounds takes the total cost to activate a creature's activated ability into account, not just the cost printed on it. For example, Urabrask has an activated ability that costs {R}, and Suppression Field says \"Activated abilities cost {2} more to activate unless they're mana abilities.\" Since activating Urabrask's activated ability would now cost {2}{R}, Training Grounds reduces that cost back to {R}.",
+    "If an activated ability of a creature you control costs no generic mana to activate (for example, if it costs {R}{R}, it costs {0}, or it costs only nonmana actions such as {T} or \"Sacrifice a creature\"), Training Grounds simply won't affect it. In particular, it won't increase the cost to include a mana payment of {1}.",
+    "Training Grounds reduces the generic mana in waterbend costs for activated abilities. It will not reduce waterbend costs that are additional costs for casting spells.",
+    "Training Grounds won't affect the part of an activation cost represented by colored mana symbols or snow mana symbols. It also won't affect nonmana parts of an activation cost, if there are any.",
+    "Training Grounds can reduce the part of an activation cost represented by generic mana symbols down to nothing, as long as it still costs at least one mana. For example, if an activation cost is {2}{G}, you'd have to pay only {G}. If an activation cost is {2}, though, you'd still have to pay {1}.",
+    "Training Grounds won't affect a cost that isn't the cost to activate a creature's activated ability. For example, it won't affect Flameblast Dragon's {X}{R} cost, since that's a cost paid when a triggered ability resolves, and it won't affect a kicker cost, since that's an additional cost to cast a spell. Activated ability costs appear before a colon (:) in a card's rules text, or, in the case of some keywords, before a colon in reminder text."
+   ]
+  },
+  {
+   "name": "Black Sun's Zenith",
+   "oracle_id": "038c0165-32b6-4e81-8180-604b49905207",
+   "layout": "normal",
+   "mana_cost": "{X}{B}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Put X -1/-1 counters on each creature. Shuffle Black Sun's Zenith into its owner's library.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "22",
+   "set": "tle",
+   "rulings": [
+    "If this spell doesn't resolve, none of its effects occur. In particular, it will go to the graveyard rather than to its owner's library."
+   ]
+  },
+  {
+   "name": "Cruel Tutor",
+   "oracle_id": "d9353eb6-c7e7-4d85-a0c2-32b1d091881a",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for a card, then shuffle and put that card on top. You lose 2 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "24",
+   "set": "tle"
+  },
+  {
+   "name": "Dockside Extortionist",
+   "oracle_id": "697bcfe1-ecbf-42a1-bfc7-0766d48ca56b",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Goblin Pirate",
+   "oracle_text": "When this creature enters, create X Treasure tokens, where X is the number of artifacts and enchantments your opponents control. (Treasure tokens are artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "28",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an opponent controls an artifact that's also an enchantment, that permanent is counted only once for Dockside Extortionist's ability."
+   ]
+  },
+  {
+   "name": "Humble Defector",
+   "oracle_id": "1582e16d-4825-4cc5-b12c-449c45e4e449",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rogue",
+   "oracle_text": "{T}: Draw two cards. Target opponent gains control of this creature. Activate only during your turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "30",
+   "set": "tle",
+   "rulings": [
+    "If Humble Defector isn't on the battlefield as its ability resolves, but the target player is still a legal target, the ability will resolve. You'll draw two cards, even though the player doesn't gain control of Humble Defector.",
+    "Humble Defector's ability can be activated any time during your turn, including in response to a spell or ability.",
+    "If Humble Defector is controlled by a player other than its owner, and its controller leaves the game, the effect giving that player control of Humble Defector ends. Humble Defector will return to the control of the player still in the game who most recently controlled it.",
+    "If Humble Defector's owner leaves the game, Humble Defector humbly leaves the game along with that player."
+   ]
+  },
+  {
+   "name": "Rending Volley",
+   "oracle_id": "0324941f-484c-4656-8d1c-66e919c2bc7c",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell can't be countered.\nRending Volley deals 4 damage to target white or blue creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "34",
+   "set": "tle"
+  },
+  {
+   "name": "Searing Blood",
+   "oracle_id": "902b82fd-bb18-4833-b427-af8c9751f870",
+   "layout": "normal",
+   "mana_cost": "{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Searing Blood deals 2 damage to target creature. When that creature dies this turn, Searing Blood deals 3 damage to the creature's controller.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "35",
+   "set": "tle",
+   "rulings": [
+    "If the target creature dies that turn, Searing Blood will deal 3 damage to whoever controls the creature when it dies, who isn't necessarily the player who controlled it when Searing Blood resolved. It doesn't matter what causes the creature to die."
+   ]
+  },
+  {
+   "name": "Shattering Spree",
+   "oracle_id": "fe725b27-49ef-41bc-91f9-9cd9871ad863",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Replicate {R} (When you cast this spell, copy it for each time you paid its replicate cost. You may choose new targets for the copies.)\nDestroy target artifact.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Replicate"
+   ],
+   "collector_number": "36",
+   "set": "tle",
+   "rulings": [
+    "As the replicate triggered ability resolves, you'll copy Shattering Spree for each time you paid its replicate cost, even if the original spell is no longer on the stack at that time (perhaps because it was countered).",
+    "The copies that replicate creates are created on the stack, so they're not \"cast.\" Abilities that trigger when a player casts a spell won't trigger."
+   ]
+  }
+ ]
+}

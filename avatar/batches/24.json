@@ -1,0 +1,241 @@
+{
+ "batch": 24,
+ "set": [
+  "tla",
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Toph, Hardheaded Teacher",
+   "oracle_id": "8c1c0117-6fc0-43c5-a4c8-6472de6503d9",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "When Toph enters, you may discard a card. If you do, return target instant or sorcery card from your graveyard to your hand.\nWhenever you cast a spell, earthbend 1. If that spell is a Lesson, put an additional +1/+1 counter on that land. (Target land you control becomes a 0/0 creature with haste that's still a land. Put a +1/+1 counter on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "384",
+   "set": "tla",
+   "rulings": [
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0."
+   ]
+  },
+  {
+   "name": "Fire Nation Palace",
+   "oracle_id": "f2000fb8-39c6-4ad6-a020-5245faaa1eba",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a basic land.\n{T}: Add {R}.\n{1}{R}, {T}: Target creature you control gains firebending 4 until end of turn. (Whenever it attacks, add {R}{R}{R}{R}. This mana lasts until end of combat.)",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "389",
+   "set": "tla",
+   "rulings": [
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "If one of these lands enters at the same time as any number of basic lands, those other lands are not counted when determining if this land enters tapped or untapped.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat."
+   ]
+  },
+  {
+   "name": "Jasmine Dragon Tea Shop",
+   "oracle_id": "d9a24444-289f-473f-9985-8df275257555",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast an Ally spell or activate an ability of an Ally source.\n{5}, {T}: Create a 1/1 white Ally creature token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "390",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Momo, Friendly Flier",
+   "oracle_id": "a3c56e71-0de6-447a-a9b4-0971f56c2362",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Lemur Bat Ally",
+   "oracle_text": "Flying\nThe first non-Lemur creature spell with flying you cast during each of your turns costs {1} less to cast.\nWhenever another creature you control with flying enters, Momo gets +1/+1 until end of turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "394",
+   "set": "tla",
+   "rulings": [
+    "Momo, Friendly Flier's second ability only reduces the generic mana cost of the spell. If first non-Lemur creature spell with flying you cast on your turn doesn't have generic mana in its cost, the cost will not be reduced and the cost reduction will not apply to the next spell you cast that turn."
+   ]
+  },
+  {
+   "name": "Brought Back",
+   "oracle_id": "f6ed46e2-08f9-4e89-aae3-e5dd7f30f007",
+   "layout": "normal",
+   "mana_cost": "{W}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose up to two target permanent cards in your graveyard that were put there from the battlefield this turn. Return them to the battlefield tapped.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "1",
+   "set": "tle",
+   "rulings": [
+    "A permanent card is an artifact, creature, enchantment, land, or planeswalker card.",
+    "Permanent spells that were countered earlier in the turn never entered the battlefield, so they won't be legal targets for Brought Back.",
+    "If you return an Aura this way, you choose what the Aura will enchant just before it enters, but you can't choose any permanent cards that will enter at the same time as that Aura. An Aura returning to the battlefield this way doesn't target the player or permanent it will enchant, so permanents or players with hexproof may be chosen; however, the chosen recipient must be able to legally be enchanted by the Aura, so a player or permanent with protection from one of the Aura's qualities can't be chosen this way. If there's nothing legal for the Aura to enchant, it stays in the graveyard."
+   ]
+  },
+  {
+   "name": "Empty City Ruse",
+   "oracle_id": "b0391ea4-e37d-48c9-91df-79aefe376bcc",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent skips all combat phases of their next turn.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "3",
+   "set": "tle"
+  },
+  {
+   "name": "Lita, Mechanical Engineer",
+   "oracle_id": "715cb547-726f-4bc8-ad46-297d4dccb881",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Artificer",
+   "oracle_text": "Vigilance\nAt the beginning of your end step, untap each other artifact creature you control.\n{3}{W}, {T}: Create a 5/5 colorless Vehicle artifact token named Zeppelin with flying and crew 3. (It has \"Tap any number of creatures you control with total power 3 or more: This token becomes an artifact creature until end of turn.\")",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "4",
+   "set": "tle"
+  },
+  {
+   "name": "Release to Memory",
+   "oracle_id": "3ae456e4-cb35-47be-b654-051e288622fe",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target opponent's graveyard. For each creature card exiled this way, create a 1/1 colorless Spirit creature token.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Scout's Warning",
+   "oracle_id": "f65cba6a-3ef4-4841-b2c1-578b2a2c3300",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "The next creature card you play this turn can be played as though it had flash.\nDraw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "6",
+   "set": "tle",
+   "rulings": [
+    "After Scout's Warning resolves, you can suspend a creature card in your hand any time you can cast an instant. As soon as you actually cast a creature card, you lose this capability.",
+    "If you cast multiple Scout's Warnings on the same turn, they'll all apply to the very next creature spell you cast.",
+    "You cannot use this effect to play Dryad Arbor during an opponent's turn.",
+    "You don't choose a creature card when Scout's Warning resolves. Rather, this sets up a rule that is true for you until the turn ends or until you cast a creature card, even if you cast that creature at a time you normally could."
+   ]
+  },
+  {
+   "name": "Three Dreams",
+   "oracle_id": "b3f9da94-c822-49b8-a1fc-be82189206af",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for up to three Aura cards with different names, reveal them, put them into your hand, then shuffle.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "8",
+   "set": "tle"
+  }
+ ]
+}

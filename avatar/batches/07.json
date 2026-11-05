@@ -1,0 +1,284 @@
+{
+ "batch": 7,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Waterbending Scroll",
+   "oracle_id": "882d032b-db36-401a-8075-a9fabc90c53d",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{6}, {T}: Draw a card. This ability costs {1} less to activate for each Island you control.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "81",
+   "set": "tla"
+  },
+  {
+   "name": "Watery Grasp",
+   "oracle_id": "520b2799-66bd-40bf-9bc0-9cd3aed321f5",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature doesn't untap during its controller's untap step.\nWaterbend {5}: Enchanted creature's owner shuffles it into their library. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant",
+    "Waterbend"
+   ],
+   "collector_number": "82",
+   "set": "tla",
+   "rulings": [
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "Azula Always Lies",
+   "oracle_id": "f56c6c35-d09b-4bee-a685-98e9afed13d1",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Choose one or both —\n• Target creature gets -1/-1 until end of turn.\n• Put a +1/+1 counter on target creature.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "84",
+   "set": "tla"
+  },
+  {
+   "name": "Azula, On the Hunt",
+   "oracle_id": "89f96032-5cba-404d-82b0-38d2be963e4b",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)\nWhenever Azula attacks, you lose 1 life and create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "85",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt."
+   ]
+  },
+  {
+   "name": "Beetle-Headed Merchants",
+   "oracle_id": "0e6609b4-f359-4bf1-a06e-f4317a0e7b3c",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "Whenever this creature attacks, you may sacrifice another creature or artifact. If you do, draw a card and put a +1/+1 counter on this creature.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "tla"
+  },
+  {
+   "name": "Boiling Rock Rioter",
+   "oracle_id": "5193172c-9024-409e-bd9e-0387971d65fe",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Rogue Ally",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nTap an untapped Ally you control: Exile target card from a graveyard.\nWhenever this creature attacks, you may cast an Ally spell from among cards you own exiled with this creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "87",
+   "set": "tla",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Since Boiling Rock Rioter's activated ability doesn't have a tap symbol in its cost, you can tap a creature (including Boiling Rock Rioter itself) that hasn't been under your control since your most recent turn began to pay the cost.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat."
+   ]
+  },
+  {
+   "name": "Buzzard-Wasp Colony",
+   "oracle_id": "29fd050c-dd1d-4e1b-b3cc-f7d8d18e4dcb",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Bird Insect",
+   "oracle_text": "Flying\nWhen this creature enters, you may sacrifice an artifact or creature. If you do, draw a card.\nWhenever another creature you control dies, if it had counters on it, put its counters on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "88",
+   "set": "tla",
+   "rulings": [
+    "Buzzard-Wasp Colony's last ability doesn't cause you to move counters from the creature that died onto it. Rather, you put the same number of each kind of counter the creature had when it died onto Buzzard-Wasp Colony.",
+    "Buzzard-Wasp Colony's last ability puts all counters that were on the creature that died onto Buzzard-Wasp Colony, not just its +1/+1 counters.",
+    "If enough -1/-1 counters are put on a creature you control at the same time to make its toughness 0 or less, Buzzard-Wasp Colony's last ability will see all of the +1/+1 counters it had when it died as well as the -1/-1 counters it had, and an equal number of each of those types of counters (plus any other applicable counters) will be put onto Buzzard-Wasp Colony.",
+    "You may end up putting the appropriate counters on more than one permanent. For example, if you control two Buzzard-Wasp Colonies when a creature dies, you'll put the appropriate number of each kind of counter onto both of them.",
+    "If another creature you control has -1/-1 counters on it when it dies, Buzzard-Wasp Colony's ability will include those as well. This may result in Buzzard-Wasp Colony dying."
+   ]
+  },
+  {
+   "name": "Callous Inspector",
+   "oracle_id": "5d950fd4-8956-4b1a-ab0f-ab31bcffce4e",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature dies, it deals 1 damage to you. Create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "89",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way.",
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\""
+   ]
+  },
+  {
+   "name": "Canyon Crawler",
+   "oracle_id": "bac94fc9-808b-4dc9-b405-408dd2aa6194",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Spider Beast",
+   "oracle_text": "Deathtouch\nWhen this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nSwampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Landcycling",
+    "Food",
+    "Typecycling",
+    "Cycling",
+    "Swampcycling",
+    "Deathtouch"
+   ],
+   "collector_number": "90",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type."
+   ]
+  },
+  {
+   "name": "Cat-Gator",
+   "oracle_id": "349e6b9e-40a8-49bc-9cd3-4a22f5363fa5",
+   "layout": "normal",
+   "mana_cost": "{6}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Fish Crocodile",
+   "oracle_text": "Lifelink\nWhen this creature enters, it deals damage equal to the number of Swamps you control to any target.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "91",
+   "set": "tla"
+  }
+ ]
+}

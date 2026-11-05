@@ -1,0 +1,236 @@
+{
+ "batch": 1,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Aang's Journey",
+   "oracle_id": "ddf461b9-a205-4dc7-a9c3-c047b1ff709f",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "Kicker {2} (You may pay an additional {2} as you cast this spell.)\nSearch your library for a basic land card. If this spell was kicked, instead search your library for a basic land card and a Shrine card. Reveal those cards, put them into your hand, then shuffle.\nYou gain 2 life.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "1",
+   "set": "tla"
+  },
+  {
+   "name": "Airbender Ascension",
+   "oracle_id": "c4d2fdf9-637d-4e97-ae33-45f2d27bf8cd",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, airbend up to one target creature.\nWhenever a creature you control enters, put a quest counter on this enchantment.\nAt the beginning of your end step, if this enchantment has four or more quest counters on it, exile up to one target creature you control, then return it to the battlefield under its owner's control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Airbend"
+   ],
+   "collector_number": "6",
+   "set": "tla",
+   "rulings": [
+    "To airbend one or more permanents and/or spells means to exile each of those objects. For each card exiled this way, for as long as it's exiled, its owner may cast it from exile by paying {2} rather than paying its mana cost.",
+    "If a token is exiled by airbend or Airbender Ascension's last ability, it will cease to exist and can't be cast or return to the battlefield.",
+    "When the creature is exiled, Auras attached to the exiled creature will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled creature will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled.",
+    "Since you are using an alternative cost to cast a spell from exile this way, you can't pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those.",
+    "Tokens exiled this way will cease to exist and cannot be cast.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X.",
+    "Lands exiled this way cannot be played from exile. (Lands that were animated by earthbend will be returned to the battlefield tapped when they're exiled.)"
+   ]
+  },
+  {
+   "name": "Appa, Loyal Sky Bison",
+   "oracle_id": "c6e28cf0-81c7-4f52-a29b-988cc6fd31ee",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Bison Ally",
+   "oracle_text": "Flying\nWhenever Appa enters or attacks, choose one —\n• Target creature you control gains flying until end of turn.\n• Airbend another target nonland permanent you control. (Exile it. While it's exiled, its owner may cast it for {2} rather than its mana cost.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Airbend"
+   ],
+   "collector_number": "9",
+   "set": "tla",
+   "rulings": [
+    "Since you are using an alternative cost to cast a spell from exile this way, you can't pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those.",
+    "Lands exiled this way cannot be played from exile. (Lands that were animated by earthbend will be returned to the battlefield tapped when they're exiled.)",
+    "Tokens exiled this way will cease to exist and cannot be cast.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X.",
+    "To airbend one or more permanents and/or spells means to exile each of those objects. For each card exiled this way, for as long as it's exiled, its owner may cast it from exile by paying {2} rather than paying its mana cost."
+   ]
+  },
+  {
+   "name": "Avatar Enthusiasts",
+   "oracle_id": "7b0d9d79-2e86-4079-8db3-500483c8807e",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Peasant Ally",
+   "oracle_text": "Whenever another Ally you control enters, put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "tla"
+  },
+  {
+   "name": "Compassionate Healer",
+   "oracle_id": "6ef464bd-2ed0-4f99-af4a-ebf276f55384",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Cleric Ally",
+   "oracle_text": "Whenever this creature becomes tapped, you gain 1 life and scry 1. (Look at the top card of your library. You may put it on the bottom.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "13",
+   "set": "tla",
+   "rulings": [
+    "Compassionate Healer's triggered ability doesn't allow you to tap Compassionate Healer. You have to find some other way to tap it, such as paying a waterbend cost or attacking."
+   ]
+  },
+  {
+   "name": "Curious Farm Animals",
+   "oracle_id": "e451b5aa-5832-42b3-8d72-f67e126a529f",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Boar Elk Bird Ox",
+   "oracle_text": "When this creature dies, you gain 3 life.\n{2}, Sacrifice this creature: Destroy up to one target artifact or enchantment.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "14",
+   "set": "tla"
+  },
+  {
+   "name": "Destined Confrontation",
+   "oracle_id": "9703140f-36ee-4427-a390-c1dbdb9e4ee9",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each player chooses any number of creatures they control with total power 4 or less, then sacrifices all other creatures they control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "15",
+   "set": "tla",
+   "rulings": [
+    "If a creature's power is somehow less than 0, it subtracts from the total power of the other creatures its controller chooses. This can cause creatures with power 5 or greater to survive.",
+    "As Destined Confrontation resolves, first the player whose turn it is chooses which creatures will be spared, then each other player in turn order does the same knowing the choices made before them. Then all the creatures not chosen are sacrificed simultaneously.",
+    "Destined Confrontation has each player choose any number of creatures and then checks that the total power of creatures each player chose this way is 4 or less. For example, you could save two 2/2 creatures, or a 1/1 and a 3/3 creature, but not all four of those creatures."
+   ]
+  },
+  {
+   "name": "Earth Kingdom Jailer",
+   "oracle_id": "1b799c30-4a43-403d-b822-0555bd513913",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "When this creature enters, exile up to one target artifact, creature, or enchantment an opponent controls with mana value 3 or greater until this creature leaves the battlefield.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "16",
+   "set": "tla",
+   "rulings": [
+    "If an Aura is exiled this way, its owner chooses what it will enchant as it returns to the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to a permanent with shroud, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in exile for the rest of the game.",
+    "If Earth Kingdom Jailer leaves the battlefield before its triggered ability resolves, the target artifact, creature, or enchantment won't be exiled.",
+    "Auras attached to the exiled permanent will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled."
+   ]
+  },
+  {
+   "name": "Earth Kingdom Protectors",
+   "oracle_id": "3bfb3913-808d-444b-97c3-a90af3bc585b",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "Vigilance\nSacrifice this creature: Another target Ally you control gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "17",
+   "set": "tla"
+  },
+  {
+   "name": "Enter the Avatar State",
+   "oracle_id": "4e552be1-0702-4e18-822f-98611f8a8e70",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Until end of turn, target creature you control becomes an Avatar in addition to its other types and gains flying, first strike, lifelink, and hexproof. (A creature with hexproof can't be the target of spells or abilities your opponents control.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "tla"
+  }
+ ]
+}

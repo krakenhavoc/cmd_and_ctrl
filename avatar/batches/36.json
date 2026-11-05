@@ -1,0 +1,230 @@
+{
+ "batch": 36,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Tundra Wall",
+   "oracle_id": "68df4c46-513a-4d75-9d4b-ac95d45be255",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Wall",
+   "oracle_text": "Defender (This creature can't attack.)",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "220",
+   "set": "tle"
+  },
+  {
+   "name": "Wolf Cove Villager",
+   "oracle_id": "549a3f53-f90e-4af0-bbc5-2c4b9df30008",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Peasant",
+   "oracle_text": "This creature enters tapped.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "221",
+   "set": "tle"
+  },
+  {
+   "name": "Deny Entry",
+   "oracle_id": "a7dad8fe-b0b8-4c6d-ad11-76b402952799",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target creature spell. Draw a card, then discard a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "222",
+   "set": "tle"
+  },
+  {
+   "name": "Flying Dolphin-Fish",
+   "oracle_id": "59fa8323-bba9-4c51-833d-2ab966599b62",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Whale Fish",
+   "oracle_text": "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "223",
+   "set": "tle"
+  },
+  {
+   "name": "Lost in the Spirit World",
+   "oracle_id": "a37adc18-ea11-4972-8d04-936cf3fe2613",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to one target creature to its owner's hand. Create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "224",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "The Terror of Serpent's Pass",
+   "oracle_id": "771bf51d-cb32-4240-936c-f9d1e0c90cf0",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Serpent",
+   "oracle_text": "Hexproof (This creature can't be the target of spells or abilities your opponents control.)",
+   "power": "8",
+   "toughness": "8",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Hexproof"
+   ],
+   "collector_number": "225",
+   "set": "tle"
+  },
+  {
+   "name": "Turtle-Seals",
+   "oracle_id": "e0172cad-8b93-4d1a-b442-5eced3212b17",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Turtle Seal",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "226",
+   "set": "tle"
+  },
+  {
+   "name": "Water Whip",
+   "oracle_id": "2015f455-988e-444c-93df-23fab179ef87",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "As an additional cost to cast this spell, waterbend {5}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nReturn up to two target creatures to their owners' hands. Draw two cards.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "227",
+   "set": "tle",
+   "rulings": [
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "Elephant-Rat",
+   "oracle_id": "84557d9d-ee22-46c9-8f4a-62a440fb302f",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elephant Rat",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "228",
+   "set": "tle"
+  },
+  {
+   "name": "Fire Nation Ambushers",
+   "oracle_id": "8ed27504-f86b-4ce5-9395-7029825176ab",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "229",
+   "set": "tle"
+  }
+ ]
+}

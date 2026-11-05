@@ -1,0 +1,277 @@
+{
+ "batch": 10,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "The Rise of Sozin // Fire Lord Sozin",
+   "oracle_id": "9b0b217d-cc9d-4187-89cb-f13160ed2983",
+   "layout": "transform",
+   "cmc": 6.0,
+   "type_line": "Enchantment — Saga // Legendary Creature — Human Noble",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Transform",
+    "Firebending",
+    "Menace"
+   ],
+   "collector_number": "117",
+   "set": "tla",
+   "card_faces": [
+    {
+     "name": "The Rise of Sozin",
+     "mana_cost": "{4}{B}{B}",
+     "type_line": "Enchantment — Saga",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Destroy all creatures.\nII — Choose a card name. Search target opponent's graveyard, hand, and library for up to four cards with that name and exile them. Then that player shuffles.\nIII — Exile this Saga, then return it to the battlefield transformed under your control."
+    },
+    {
+     "name": "Fire Lord Sozin",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Human Noble",
+     "oracle_text": "Menace, firebending 3 (Whenever this creature attacks, add {R}{R}{R}. This mana lasts until end of combat.)\nWhenever Fire Lord Sozin deals combat damage to a player, you may pay {X}. When you do, put any number of target creature cards with total mana value X or less from that player's graveyard onto the battlefield under your control.",
+     "power": "5",
+     "toughness": "5"
+    }
+   ],
+   "rulings": [
+    "This ability has no effect on permanents with the chosen name that are on the battlefield.",
+    "You target an opponent when The Rise of Sozin's second chapter ability is put on the stack, but you don't name a card until it resolves. Notably, this means that players don't get to respond to the ability knowing what card you will name.",
+    "Even if you choose a card name (for example, a basic land) that appears more than four times in your opponent's deck, you may only choose up to four copies of the card. You can also always choose fewer than four copies of the card to exile, even if there are more in the deck.",
+    "You don't have to choose the name of a card that you've already seen this game; you may guess at a card you think your opponent might have in their hand or library if you'd like.",
+    "Fire Lord Sozin's triggered ability can target any combination of creature cards whose mana values total X or less. Regardless of what other creature cards you choose as targets, you can also choose any number of creature cards with mana value 0 as targets."
+   ]
+  },
+  {
+   "name": "Ruinous Waterbending",
+   "oracle_id": "7d3a0216-871b-4c1b-adb1-de99b832f577",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery — Lesson",
+   "oracle_text": "As an additional cost to cast this spell, you may waterbend {4}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nAll creatures get -2/-2 until end of turn. If this spell's additional cost was paid, whenever a creature dies this turn, you gain 1 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "118",
+   "set": "tla",
+   "rulings": [
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost.",
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost."
+   ]
+  },
+  {
+   "name": "Sold Out",
+   "oracle_id": "6a69d4b1-72dd-4599-a16d-32299de5b0b9",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target creature. If it was dealt damage this turn, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "119",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue tokens are artifact tokens with \"{2}, Sacrifice this token: Draw a card.\"",
+    "Creating a Clue token this way isn't the same thing as investigating. Notably, an ability that triggers whenever you investigate won't trigger because of creating a Clue token this way."
+   ]
+  },
+  {
+   "name": "Swampsnare Trap",
+   "oracle_id": "fc532d1d-6cf5-4b59-afb3-325d0bc0db77",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "This spell costs {1} less to cast if it targets a creature with flying.\nEnchant creature\nEnchanted creature gets -5/-3.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "120",
+   "set": "tla",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Swampsnare Trap). The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Tundra Tank",
+   "oracle_id": "2ded4b02-7aa4-46a1-b10f-8480eb942cd4",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nWhen this Vehicle enters, target creature you control gains indestructible until end of turn.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Crew",
+    "Firebending"
+   ],
+   "collector_number": "121",
+   "set": "tla",
+   "rulings": [
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\""
+   ]
+  },
+  {
+   "name": "Wolfbat",
+   "oracle_id": "adc47a25-daab-49c7-93a5-5bbf2bc20cf9",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Wolf Bat",
+   "oracle_text": "Flying\nWhenever you draw your second card each turn, you may pay {B}. If you do, return this card from your graveyard to the battlefield with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "122",
+   "set": "tla",
+   "rulings": [
+    "If a card or ability instructs you to put cards into your hand without specifically using the word \"draw,\" it's not a card drawn.",
+    "If an effect instructs you to draw multiple cards, the ability triggers after you draw whichever is the second one for the turn. It goes on the stack after you've drawn and looked at all the cards and finished resolving the spell or ability that caused you to draw them.",
+    "The triggered ability can trigger only once each turn. It doesn't matter whether Wolfbat was in your graveyard when the first card was drawn. If it's not in your graveyard when the second card is drawn, the ability can't trigger at all that turn. It won't trigger when the third or fourth card is drawn."
+   ]
+  },
+  {
+   "name": "Zuko's Conviction",
+   "oracle_id": "f034e8a3-82f7-4c70-93ea-0bf2688f66e1",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Kicker {4} (You may pay an additional {4} as you cast this spell.)\nReturn target creature card from your graveyard to your hand. If this spell was kicked, instead put that card onto the battlefield tapped.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "123",
+   "set": "tla"
+  },
+  {
+   "name": "Boar-q-pine",
+   "oracle_id": "551e4356-5b1f-475c-a64b-9c50ea9b0368",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Boar Porcupine",
+   "oracle_text": "Whenever you cast a noncreature spell, put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "124",
+   "set": "tla"
+  },
+  {
+   "name": "Bumi Bash",
+   "oracle_id": "629f247c-1e64-4c32-8892-0716ed469d1c",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Bumi Bash deals damage equal to the number of lands you control to target creature.\n• Destroy target land creature or nonbasic land.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "125",
+   "set": "tla"
+  },
+  {
+   "name": "The Cave of Two Lovers",
+   "oracle_id": "c2df54f1-a2db-4de3-bc96-5c07f4594752",
+   "layout": "saga",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Create two 1/1 white Ally creature tokens.\nII — Search your library for a Mountain or Cave card, reveal it, put it into your hand, then shuffle.\nIII — Earthbend 3. (Target land you control becomes a 0/0 creature with haste that's still a land. Put three +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "126",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0."
+   ]
+  }
+ ]
+}

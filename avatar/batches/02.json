@@ -1,0 +1,266 @@
+{
+ "batch": 2,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Fancy Footwork",
+   "oracle_id": "c5648a32-98b0-4625-aae1-ae56e0ef0197",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Untap one or two target creatures. They each get +2/+2 until end of turn.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "tla"
+  },
+  {
+   "name": "Gather the White Lotus",
+   "oracle_id": "db69c3c9-d809-4361-8055-8c2dd4c6dd67",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 1/1 white Ally creature token for each Plains you control. Scry 2. (Look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "20",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Glider Kids",
+   "oracle_id": "ff5ce28b-25be-4136-a7b2-8f25c08a6455",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Pilot Ally",
+   "oracle_text": "Flying\nWhen this creature enters, scry 1. (Look at the top card of your library. You may put it on the bottom.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Scry",
+    "Flying"
+   ],
+   "collector_number": "21",
+   "set": "tla"
+  },
+  {
+   "name": "Glider Staff",
+   "oracle_id": "823006a8-098c-457a-8546-77ae2457c459",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, airbend up to one target creature. (Exile it. While it's exiled, its owner may cast it for {2} rather than its mana cost.)\nEquipped creature gets +1/+1 and has flying.\nEquip {2}",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Airbend",
+    "Equip"
+   ],
+   "collector_number": "22",
+   "set": "tla",
+   "rulings": [
+    "To airbend one or more permanents and/or spells means to exile each of those objects. For each card exiled this way, for as long as it's exiled, its owner may cast it from exile by paying {2} rather than paying its mana cost.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X.",
+    "Tokens exiled this way will cease to exist and cannot be cast.",
+    "Lands exiled this way cannot be played from exile. (Lands that were animated by earthbend will be returned to the battlefield tapped when they're exiled.)",
+    "Since you are using an alternative cost to cast a spell from exile this way, you can't pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those."
+   ]
+  },
+  {
+   "name": "Invasion Reinforcements",
+   "oracle_id": "185316ff-6fb7-4b5c-8a60-3238674562a6",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "Flash\nWhen this creature enters, create a 1/1 white Ally creature token.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "24",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Jeong Jeong's Deserters",
+   "oracle_id": "6a06d281-3ca2-498f-91d0-e13e7b0869f9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rebel Ally",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "25",
+   "set": "tla"
+  },
+  {
+   "name": "Kyoshi Warriors",
+   "oracle_id": "b29abb09-75ea-431c-ab60-f2940d002e83",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "When this creature enters, create a 1/1 white Ally creature token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "26",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Master Piandao",
+   "oracle_id": "e294d9d2-df91-4410-85d3-8ffb13fb2285",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "First strike\nWhenever Master Piandao attacks, look at the top four cards of your library. You may reveal an Ally, Equipment, or Lesson card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "28",
+   "set": "tla"
+  },
+  {
+   "name": "Momo, Playful Pet",
+   "oracle_id": "85ee8ab6-8db5-45d7-85ae-64838771146a",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Lemur Bat Ally",
+   "oracle_text": "Flying, vigilance\nWhen Momo leaves the battlefield, choose one —\n• Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n• Put a +1/+1 counter on target creature you control.\n• Scry 2.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Scry",
+    "Flying",
+    "Vigilance",
+    "Food"
+   ],
+   "collector_number": "30",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Whatever you do, don't eat the delicious cards.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type."
+   ]
+  },
+  {
+   "name": "Rabaroo Troop",
+   "oracle_id": "48252207-d345-455c-b655-c2027664e6a6",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Rabbit Kangaroo",
+   "oracle_text": "Landfall — Whenever a land you control enters, this creature gains flying until end of turn and you gain 1 life.\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Plainscycling",
+    "Landcycling",
+    "Typecycling",
+    "Cycling",
+    "Landfall"
+   ],
+   "collector_number": "32",
+   "set": "tla"
+  }
+ ]
+}

@@ -1,0 +1,293 @@
+{
+ "batch": 32,
+ "set": [
+  "tle"
+ ],
+ "cards": [
+  {
+   "name": "Elephant-Mandrill",
+   "oracle_id": "8695c7e2-464e-464c-9d3f-a7cf025f3eb2",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elephant Monkey",
+   "oracle_text": "Reach\nWhen this creature enters, each player creates a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nAt the beginning of combat on your turn, this creature gets +1/+1 until end of turn for each artifact your opponents control.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Food"
+   ],
+   "collector_number": "138",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens.",
+    "Whatever you do, don't eat the delicious cards.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability."
+   ]
+  },
+  {
+   "name": "Kyoshi Warrior Exemplars",
+   "oracle_id": "4bb0596f-df1d-4977-bb8b-4d2e6648dcb3",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior Ally",
+   "oracle_text": "Whenever this creature attacks, if you control eight or more lands, creatures you control get +2/+2 until end of turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "tle"
+  },
+  {
+   "name": "Solid Ground",
+   "oracle_id": "8609ed1a-f202-483e-9299-408ef6e84ad6",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, earthbend 3. (Target land you control becomes a 0/0 creature with haste that's still a land. Put three +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)\nIf one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on it instead.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "142",
+   "set": "tle",
+   "rulings": [
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "If a permanent you control would enter with a number of +1/+1 counters on it, it enters with that many plus one instead.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "If you control multiple copies of Solid Ground, they each increase the number of +1/+1 counters put on a permanent you control by one.",
+    "If two or more effects attempt to modify how many counters would be put on a permanent you control, you choose the order to apply those effects, no matter who controls the sources of those effects.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\""
+   ]
+  },
+  {
+   "name": "Tectonic Split",
+   "oracle_id": "b71c3c1e-f927-4192-ac3a-cf6a442ffd00",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Enchantment",
+   "oracle_text": "As an additional cost to cast this spell, sacrifice half the lands you control, rounded up.\nHexproof\nLands you control have \"{T}: Add three mana of any one color.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Hexproof"
+   ],
+   "collector_number": "144",
+   "set": "tle"
+  },
+  {
+   "name": "Toph, Earthbending Master",
+   "oracle_id": "ad5d3e7e-bf8c-4fa3-a81e-1523aec2585f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Landfall — Whenever a land you control enters, you get an experience counter.\nWhenever you attack, earthbend X, where X is the number of experience counters you have. (Target land you control becomes a 0/0 creature with haste that's still a land. Put X +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Earthbend",
+    "Landfall"
+   ],
+   "collector_number": "145",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Experience",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "All experience counters are identical, no matter how you got them. For example, the last ability will count experience counters that you got from the first ability, from another ability, from another copy of Toph, Earthbending Master, and so on.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "The experience counter goes on you, the player, not on Toph. You will keep that counter even if Toph, Earthbending Master dies.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend."
+   ]
+  },
+  {
+   "name": "Aang, A Lot to Learn",
+   "oracle_id": "854278bc-2bcf-45dd-abd5-6aca7a1e5fc9",
+   "layout": "normal",
+   "mana_cost": "{2}{G/W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Avatar Ally",
+   "oracle_text": "Aang has vigilance as long as there's a Lesson card in your graveyard.\nWhenever another creature you control dies, put a +1/+1 counter on Aang.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "146",
+   "set": "tle",
+   "rulings": [
+    "Gaining vigilance any time after the moment you choose to attack with Aang, A Lot to Learn won't cause him to become untapped, and losing vigilance after that time won't cause it to become tapped."
+   ]
+  },
+  {
+   "name": "Hook Swords",
+   "oracle_id": "610e5fda-ff6c-408d-9d58-ba2b02c5101f",
+   "layout": "normal",
+   "mana_cost": "{2}{R/W}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, create a 1/1 white Ally creature token, then attach this Equipment to it.\nDuring your turn, equipped creature gets +1/+1 and has first strike.\nEquip {3}",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "147",
+   "set": "tle",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Katara, Seeking Revenge",
+   "oracle_id": "124cc815-0877-40f2-98c8-e7c4f8cd6598",
+   "layout": "normal",
+   "mana_cost": "{3}{U/B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "As an additional cost to cast this spell, you may waterbend {2}. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)\nWhen Katara enters, draw a card, then discard a card unless her additional cost was paid.\nKatara gets +1/+1 for each Lesson card in your graveyard.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Waterbend"
+   ],
+   "collector_number": "148",
+   "set": "tle",
+   "rulings": [
+    "If an artifact or creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell or activating an ability with waterbend will result in the artifact or creature being tapped before you pay the spell's costs. You won't be able to tap it again for waterbend. Similarly, if you sacrifice an artifact or creature to activate a mana ability to pay a cost with waterbend, that artifact or creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for waterbend.",
+    "Even if the cost of the spell or ability that waterbend is part of increases or decreases, you still may only tap artifacts or creatures to pay for costs up to the amount of the generic mana in the waterbend cost.",
+    "\"Waterbend [cost]\" means \"Pay [cost]. For each generic mana in that cost, you may tap an untapped artifact or creature you control rather than pay that mana.\"",
+    "You can tap any untapped creature or artifact you control to pay a waterbend cost, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a waterbend cost is part of the total cost to cast a spell or activate an ability, you may tap an untapped artifact or creature you control rather than pay one generic mana in that total cost any number of times up to a maximum of the amount of generic mana in the waterbend component of that total cost."
+   ]
+  },
+  {
+   "name": "Stand United",
+   "oracle_id": "5a05ee6e-1812-4792-ad00-6df8fa4fd85f",
+   "layout": "normal",
+   "mana_cost": "{1}{G/W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +2/+2 until end of turn. If it's an Ally, scry 2. (Look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "149",
+   "set": "tle"
+  },
+  {
+   "name": "Zuko, Seeking Honor",
+   "oracle_id": "6e737c52-cbe0-493f-ae46-7bf068e04882",
+   "layout": "normal",
+   "mana_cost": "{2}{B/R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Firebending 1 (Whenever this creature attacks, add {R}. This mana lasts until end of combat.)\nWhenever you cast a noncreature spell, Zuko gains first strike until end of turn.\nWhenever Zuko deals combat damage to a player, put a +1/+1 counter on him.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Firebending"
+   ],
+   "collector_number": "150",
+   "set": "tle",
+   "rulings": [
+    "\"Firebending N\" is a keyword that represents the ability \"Whenever this creature attacks, add N {R}. Until end of combat, you don't lose this mana as steps end.\"",
+    "Multiple instances of firebending on the same creature trigger separately, each granting you the appropriate amount of mana.",
+    "Firebending abilities aren't mana abilities. They use the stack and can be responded to.",
+    "Any other mana you add during combat will still be lost as normal when moving between steps of combat.",
+    "Mana from firebending abilities isn't lost until you leave combat and go to your second main phase. It can be used at any time during combat, even after combat damage has been dealt."
+   ]
+  }
+ ]
+}

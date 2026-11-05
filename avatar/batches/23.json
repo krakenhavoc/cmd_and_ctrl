@@ -1,0 +1,295 @@
+{
+ "batch": 23,
+ "set": [
+  "tla"
+ ],
+ "cards": [
+  {
+   "name": "Katara, the Fearless",
+   "oracle_id": "0972d46e-423b-454e-87c7-a2d40fb6fb6d",
+   "layout": "normal",
+   "mana_cost": "{G}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "If a triggered ability of an Ally you control triggers, that ability triggers an additional time.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "361",
+   "set": "tla",
+   "rulings": [
+    "Replacement effects are unaffected by Katara's ability. For example, an Ally that enters with one +1/+1 counter on it won't receive an additional +1/+1 counter.",
+    "If you somehow control two copies of Katara, the Fearless, an Ally's triggered ability will trigger three times, not four.",
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities, such as prowess, are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text.",
+    "In some cases involving linked abilities, an ability requires information about \"the exiled card.\" When this happens, the ability gets multiple answers. If these answers are being used to determine the value of a variable, the sum is used.",
+    "If an Ally entering at the same time as Katara (including Katara herself) causes a triggered ability of an Ally you control to trigger, that ability triggers an additional time.",
+    "Katara's effect doesn't copy the triggered ability; it just causes the ability to trigger twice. Any choices made as you put the ability onto the stack, such as modes and targets, are made separately for each instance of the ability. Any choices made on resolution, such as whether to put counters on a permanent, are also made individually.",
+    "If a triggered ability is linked to a second ability, additional instances of that triggered ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by instances of the triggered ability."
+   ]
+  },
+  {
+   "name": "Toph, the First Metalbender",
+   "oracle_id": "fbfef028-b10c-4ade-9503-d9af5b0c211b",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Nontoken artifacts you control are lands in addition to their other types. (They don't gain the ability to {T} for mana.)\nAt the beginning of your end step, earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "362",
+   "set": "tla",
+   "rulings": [
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "Toph, the First Metalbender's first ability does not allow you to play nontoken artifacts as lands. It only affects permanents on the battlefield.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless."
+   ]
+  },
+  {
+   "name": "Hakoda, Selfless Commander",
+   "oracle_id": "de3a469a-e38b-456b-994d-abec1b010e42",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "Vigilance\nYou may look at the top card of your library any time.\nYou may cast Ally spells from the top of your library.\nSacrifice Hakoda: Creatures you control get +0/+5 and gain indestructible until end of turn.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "366",
+   "set": "tla",
+   "rulings": [
+    "You can look at the top card of your library whenever you want (with one restriction; see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you're casting a spell, playing a land, activating an ability, or taking a special action, you can't look at the new top card until you finish doing so. This means that if you cast a spell from the top of your library, you can't look at the next one until you're done paying for that spell.",
+    "You must pay all costs and follow all timing rules for spells cast from the top of your library this way."
+   ]
+  },
+  {
+   "name": "South Pole Voyager",
+   "oracle_id": "c5173332-68ad-456e-ad85-dd7475464d94",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Scout Ally",
+   "oracle_text": "Whenever this creature or another Ally you control enters, you gain 1 life. If this is the second time this ability has resolved this turn, draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "367",
+   "set": "tla"
+  },
+  {
+   "name": "Wartime Protestors",
+   "oracle_id": "6557813b-4ee7-4881-a37c-10c8ea097360",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Rebel Ally",
+   "oracle_text": "Haste\nWhenever another Ally you control enters, put a +1/+1 counter on that creature and it gains haste until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "375",
+   "set": "tla"
+  },
+  {
+   "name": "Zhao, the Moon Slayer",
+   "oracle_id": "94c64d41-d756-42b6-b0e7-0a351d64a68c",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "Menace\nNonbasic lands enter tapped.\n{7}: Put a conqueror counter on Zhao.\nAs long as Zhao has a conqueror counter on him, nonbasic lands are Mountains. (They lose all other land types and abilities and have \"{T}: Add {R}.\")",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "376",
+   "set": "tla",
+   "rulings": [
+    "If an effect states that a land enters tapped unless a condition is met, Zhao, the Moon Slayer's second ability has it enter tapped even if that condition is true. For example, you may control a basic land while playing Abandoned Air Temple, but Abandoned Air Temple will still enter tapped.",
+    "While Zhao has a conqueror counter on him, if a nonbasic land has an ability that triggers \"when\" it enters, it will lose that ability before it can trigger. Nonbasic lands will lose any other land types and abilities they had. They will have the land type Mountain and the intrinsic ability \"{T}: Add {R}.\" This effect doesn't affect names or supertypes. It won't turn any land into a basic land or remove the legendary supertype from a legendary land, and the lands won't be named \"Mountain.\""
+   ]
+  },
+  {
+   "name": "Earthen Ally",
+   "oracle_id": "913bca28-faf9-42e6-a8c0-469cd9bc0208",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier Ally",
+   "oracle_text": "This creature gets +1/+0 for each color among Allies you control.\n{2}{W}{U}{B}{R}{G}: Earthbend 5. (Target land you control becomes a 0/0 creature with haste that's still a land. Put five +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)",
+   "power": "0",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Earthbend"
+   ],
+   "collector_number": "377",
+   "set": "tla",
+   "rulings": [
+    "Earthen Ally's first ability can give it at most +5/+0, that is, +1/+0 each for white, blue, black, red, and green. \"Gold,\" \"multicolor,\" and \"colorless\" aren't colors.",
+    "Earthbend doesn't give the land you control a color. As most lands are colorless, in most cases the resulting land creature will also be colorless.",
+    "You may target a land that is already a creature, perhaps because of a previous earthbend ability. The land will get the +1/+1 counters, gain haste, and have its base power and toughness set to 0/0.",
+    "The land will retain any other types, subtypes, or supertypes it previously had. It will also retain any mana abilities it had as a result of those subtypes. For example, a Forest that's turned into a creature this way can still be tapped for {G}.",
+    "\"Earthbend N\" means \"Target land you control becomes a 0/0 land creature with haste in addition to its other types. Put N +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped under your control.\"",
+    "If a land was animated by earthbend and would go to any zone other than the graveyard or exile, it will not be returned to the battlefield by the delayed triggered ability created by earthbend.",
+    "If the targeted land becomes an illegal target before the spell or ability that includes earthbend resolves, earthbend does nothing. If the spell or ability didn't have other targets, it won't resolve."
+   ]
+  },
+  {
+   "name": "Elemental Teachings",
+   "oracle_id": "7255705c-b788-4bb1-824a-9262f4a0864e",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Instant — Lesson",
+   "oracle_text": "Search your library for up to four land cards with different names and reveal them. An opponent chooses two of those cards. Put the chosen cards into your graveyard and the rest onto the battlefield tapped, then shuffle.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "378",
+   "set": "tla",
+   "rulings": [
+    "You can choose to find fewer than four cards if you want. If you find one or two cards, your opponent must choose for them to be put into your graveyard."
+   ]
+  },
+  {
+   "name": "Iroh, Tea Master",
+   "oracle_id": "87adda41-113b-4126-8978-25a258b31bdd",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Citizen Ally",
+   "oracle_text": "When Iroh enters, create a Food token.\nAt the beginning of combat on your turn, you may have target opponent gain control of target permanent you control. When you do, create a 1/1 white Ally creature token. Put a +1/+1 counter on that token for each permanent you own that your opponents control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "381",
+   "set": "tla",
+   "related": [
+    {
+     "name": "Ally",
+     "type_line": "Token Creature — Ally",
+     "component": "token"
+    },
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you leave the game, all permanents you own leave the game with you.",
+    "If either the opponent or the permanent you control becomes an illegal target by the time Iroh's second ability resolves, the ability does nothing and you cannot choose to have the opponent gain control of the permanent.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Bosco, Just a Bear's ability (an ability with \"Sacrifice a Food\" in its cost). You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Bosco, Just a Bear's ability.",
+    "If an opponent leaves the game, all permanents you gave to them will return to your control.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You will choose targets for Iroh's second ability at the beginning of every combat, even if you aren't feeling generous. The decision to have the opponent gain control of the permanent isn't made until the ability resolves.",
+    "Some spells and abilities that create Food tokens may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Food tokens."
+   ]
+  },
+  {
+   "name": "Sokka, Bold Boomeranger",
+   "oracle_id": "bdbec6d5-0f10-4114-b709-4402a44debdf",
+   "layout": "normal",
+   "mana_cost": "{U}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Warrior Ally",
+   "oracle_text": "When Sokka enters, discard up to two cards, then draw that many cards.\nWhenever you cast an artifact or Lesson spell, put a +1/+1 counter on Sokka.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "383",
+   "set": "tla"
+  }
+ ]
+}
