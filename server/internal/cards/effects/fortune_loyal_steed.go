@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "dc440b62-0bf0-4f23-9210-3550ff0a8d4d",
 		Name:         "Fortune, Loyal Steed",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Saddle(1)},
 		Triggered: []game.TriggeredAbility{

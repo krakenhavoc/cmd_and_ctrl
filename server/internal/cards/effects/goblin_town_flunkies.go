@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "85ceb4ac-7a1c-4c7e-95a3-515a5b5d6116",
 		Name:            "Goblin-town Flunkies",
+		Purpose:         game.Purpose{Amass: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{

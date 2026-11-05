@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Lazotep Plating — Instant {1}{U}:
 //
 //	"Amass Zombies 1.
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ba0082fb-2d4c-489e-8140-93a6fa693fd0",
 		Name:         "Lazotep Plating",
+		Purpose:      game.Purpose{Amass: 1},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The hexproof waits for a prompt the amass asks (CR 608.2c, #4155).

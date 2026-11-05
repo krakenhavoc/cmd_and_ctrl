@@ -18,7 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "29423b70-7cb7-4617-898c-78a38eb233ad",
 		Name:         "Field Trip",
-		Purpose:      game.Purpose{Lands: 1},
+		Purpose:      game.Purpose{Lands: 1, Learn: 1},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {

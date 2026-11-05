@@ -229,6 +229,9 @@ var gameFields = plan(
 	// #4361 S17: an entry frozen behind its discard or sacrifice, as
 	// FrozenEntries; one that is not data is counted instead.
 	"frozenEntries", carried, "",
+	// #4522: a move parked behind its token creation, as
+	// MovesAwaitingTokens; one that is not data is counted instead.
+	"movesAwaitingTokens", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
 	// #4163: what an earlier step handed a later one.
@@ -809,6 +812,8 @@ var playerFields = plan(
 	"CompletedDungeons", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
+	// #4973: the first spell cast this game (First Contact).
+	"FirstSpellCast", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.

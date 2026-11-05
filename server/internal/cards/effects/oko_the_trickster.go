@@ -34,15 +34,7 @@ func init() {
 				Label:   "+1: Put two +1/+1 counters on up to one target creature you control.",
 				Cost:    LoyaltyCost(1),
 				Targets: TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetCard {
-							return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  TwoPlusOneCountersOnTheTarget,
 			},
 			{
 				Label:   "0: Until end of turn, Oko becomes a copy of target creature you control. Prevent all damage that would be dealt to him this turn.",

@@ -36,6 +36,17 @@ func checkDiscardClause(name, where string, dc *game.DiscardCost) {
 	if dc == nil {
 		return
 	}
+	// #4896: "with different names" is a rule over a fixed set of named
+	// picks. A random draw, the whole hand, an announced X and the board
+	// clause either name no cards or count them some other way, and one
+	// card has no set to differ from.
+	if dc.DifferentNames {
+		if dc.Random || dc.Hand || dc.CountFromX || dc.ManaValueX || dc.SameNameAsLegendaryPermanent || dc.N < 2 {
+			panic(fmt.Sprintf("effects.Register: %q %s discards cards with different names beside \"at random\", your hand, X, the legendary-name clause or a count below two — build it with DiscardNDifferentNames",
+				name, where))
+		}
+		return
+	}
 	// #2527: "Discard X cards" counts from the announced X, so N is
 	// never read; a fixed count, "at random" or the hand form beside it
 	// is a card file that has mixed the forms up. An ABILITY only is

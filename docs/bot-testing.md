@@ -149,6 +149,44 @@ measure before turning the switch on. The labelled position suite and
 the package tests passed. Reports and decision logs stayed on the
 authoring machine.
 
+## Riders: scry, learn, discover, amass and the Ring (#4978, S75)
+
+`heuristic-noriders` is today's heuristic with `PriceRiders` off: every
+declared `scry`, `learn`, `discover`, `amass` and `ring_tempts` is
+priced at nothing again. The position tests
+(`heuristic/riders_test.go`) hold each rider's weight, the back-out, and
+the issue's acceptance case: Preordain over a plain cantrip of the same
+cost, and Claim the Precious over the same removal without its
+tempting, with the proxy kept. `TestRiderPurposesMatchThePrintedCard`
+(`cards/coverage`) holds the catalog's declarations to the card text.
+
+The 2026-11-05 UTC runs used the #4978 branch at `734108a46` (on that
+morning's develop, before its rebase), the standard pool (mono-red-aggro, simic-ramp,
+esper-control, mono-black-aristocrats), seeds 2000–2047, `--rotate
+--lockstep`, two seats of each policy. Rotation moves each chair's deck
+with it, so a second run swapped the policies between the chairs, and
+each policy played each deck 48 times. All 96 games ended with a winner
+and none stalled.
+
+| Deck | heuristic: wins / 48 | heuristic-noriders: wins / 48 |
+|---|---|---|
+| mono-red-aggro (Fiery Inscription) | 20, 41.7% (28.8–55.7%) | 20, 41.7% (28.8–55.7%) |
+| simic-ramp (Preordain) | 6, 12.5% (5.9–24.7%) | 6, 12.5% (5.9–24.7%) |
+| esper-control (Read the Bones) | 7, 14.6% (7.2–27.2%) | 8, 16.7% (8.7–29.6%) |
+| mono-black-aristocrats (Read the Bones) | 14, 29.2% (18.2–43.2%) | 15, 31.2% (19.9–45.3%) |
+| all four | 47 / 192, 24.5% (18.9–31.0%) | 49 / 192, 25.5% (19.9–32.1%) |
+
+The four-seat null rate is 25%. The riders on these decks are small
+(one scry 2 spell per deck, one tempting), and the win rate did not
+move beyond noise in either direction. What moved is when the cards are
+cast: priced, Read the Bones was taken in 7 of the 21 aristocrats windows
+it was offered in (without the price, 7 of 48), and Preordain in 10 of 44
+(11 of 58), each used in the same share of games. Fiery Inscription was
+used in 6 of 6 games with the price and 5 of 6 without. Charming
+Prince's bullet is on mono-white-weenie, which these runs did not seat;
+its position test covers it. The labelled position suite kept its
+agreement. Reports are local under `data/arena-4978/` (gitignored).
+
 ## Spare tokens for Sai's draw (#4991, S75)
 
 Sai, Master Thopterist's "{1}{U}, Sacrifice two artifacts: Draw a card"

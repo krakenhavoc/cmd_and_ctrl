@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "bd9f4f20-cdef-4a20-b4cb-4f25c137a786",
 		Name:         "Dreadful as the Storm",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

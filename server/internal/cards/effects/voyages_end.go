@@ -17,7 +17,7 @@ func init() {
 		OracleID:     "1c2829b7-f73f-4023-95f3-9cd40b4125d7",
 		Name:         "Voyage's End",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerRemove},
+		Purpose:      game.Purpose{Answers: game.AnswerRemove, Scry: 1},
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if id, ok := b16FirstLegalTargetCard(ctx); ok {

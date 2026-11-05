@@ -577,6 +577,13 @@ type GameSnapshot struct {
 	// counted, not written. Additive within v9.
 	FrozenEntries []replacementResumeSnapshot `json:"frozenEntries,omitempty"`
 
+	// MovesAwaitingTokens is Game.movesAwaitingTokens (#4522,
+	// move_tokens.go): a replaced move whose declared token creation has
+	// paused, as a carrier event holding its route and the instructions
+	// not yet run. The creation's keyed tail names it by event ID. One
+	// that is not data is counted, not written. Additive within v9.
+	MovesAwaitingTokens []replacementEventSnapshot `json:"movesAwaitingTokens,omitempty"`
+
 	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
 	// multi-seat instructions in flight whose continuation is a
 	// registered key, each with its outstanding count, ask order, what
@@ -929,6 +936,10 @@ type playerSnapshot struct {
 	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
 	// within v7: a file without it restores as no speed.
 	Speed int `json:"speed,omitempty"`
+	// FirstSpellCast is Player.FirstSpellCast (#4973). Additive within
+	// the version: a file without it restores a player who has cast no
+	// spell yet.
+	FirstSpellCast *ObjectRef `json:"firstSpellCast,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -2653,6 +2664,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		if s.FrozenEntries = g.snapshotFrozenEntriesLocked(cen); len(s.FrozenEntries) > 0 {
 			keyedFrames = true
 		}
+		// #4522: the moves parked behind a token creation one of these
+		// prompts is pausing.
+		if s.MovesAwaitingTokens = g.snapshotMovesAwaitingTokensLocked(cen); len(s.MovesAwaitingTokens) > 0 {
+			keyedFrames = true
+		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
 			// #4389: staged tokens are written only here, and none is
@@ -2683,6 +2699,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		// restart rewinds rather than guessing.
 		cen.ChoiceResumeFrames++
 		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
+	} else if len(g.movesAwaitingTokens) > 0 {
+		// #4522: likewise a move parked behind a token creation.
+		cen.ChoiceResumeFrames++
+		cen.note("a move parked behind its token creation with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
 	// damage-assignment prompts. #4362: written as data, and each open
@@ -3165,6 +3185,10 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		MaxHandSizeAt:         p.MaxHandSizeAt,
 		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
+	}
+	if p.FirstSpellCast.ID != uuid.Nil {
+		first := p.FirstSpellCast
+		out.FirstSpellCast = &first
 	}
 	// ADR 0018's eighth amendment (#3016): the remembered trigger orders.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
@@ -4028,6 +4052,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 		// #4361 S17: after the serials, like the frames.
 		g.frozenEntries = append(g.frozenEntries, g.rebuildFrozenEntryLocked(&s.FrozenEntries[i]))
 	}
+	// #4522: the moves parked behind a token creation.
+	g.restoreMovesAwaitingTokensLocked(s.MovesAwaitingTokens)
 	return g
 }
 
@@ -4318,6 +4344,9 @@ func restorePlayer(p *playerSnapshot) *Player {
 	}
 	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
+	if p.FirstSpellCast != nil {
+		out.FirstSpellCast = *p.FirstSpellCast
+	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
 	// play a land again. Nothing in the catalog sets an allowance of

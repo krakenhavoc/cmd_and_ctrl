@@ -490,7 +490,9 @@ func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
 		}
 	}
-	return SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	src.spell = cf.item.Kind == StackItemSpell
+	return src
 }
 
 // createCopyLocked puts the copy on the stack: a new spell object for

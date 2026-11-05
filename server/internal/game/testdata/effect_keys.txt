@@ -103,8 +103,11 @@ body discard-by-opponent/return-with-counter
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
+body dr-leonard-mccoy/return-at-next-end-step
+body dr-leonard-mccoy/when-it-dies-this-turn
 body draw/controller-one
 body draw/one-card
+body draw/the-inner-light-that-many
 body eagles-are-coming/birds
 body earthbend/return-tapped
 body eden/return-from-graveyard
@@ -281,6 +284,7 @@ body superior-spider-man/exile-that-card
 body suspend/free-cast
 body suspend/tick
 body swans-of-bryn-argoll/source-controller-draws
+body sylvia-tilly-joy-of-discovery/counter
 body synthetic-destiny/reveal-that-many-creatures
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
@@ -422,6 +426,7 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/gert-and-old-lace-search
+choose choose-cards/gift-of-perfection-assimilate
 choose choose-cards/gifts-ungiven-settle
 choose choose-cards/gilgamesh-master-at-arms-equipment
 choose choose-cards/gilgamesh-master-at-arms-samurai
@@ -533,6 +538,8 @@ choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/mill-then-take-first-contact-first-spell-pick
+choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
 choose choose-cards/mill-three-return-land-tapped
@@ -649,6 +656,7 @@ choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/sylvan-library-chosen
+choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
 choose choose-cards/take-rest-bottom-any-order
 choose choose-cards/take-rest-bottom-random
@@ -661,6 +669,7 @@ choose choose-cards/teferi-akosa-discard-the-one
 choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
+choose choose-cards/temporal-conqueror-return-land
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -937,6 +946,7 @@ drawinstead dredge-5
 drawinstead dredge-6
 drawinstead forbidden-crypt
 drawinstead necrobloom-dredge-2
+drawinstead ormos-archive-keeper
 drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
@@ -1026,6 +1036,7 @@ option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
+option option-pick/dathon-his-heart-open-counter-kind
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1
@@ -1235,6 +1246,7 @@ payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
+payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/tester-of-the-tangential-move
@@ -1286,6 +1298,7 @@ resume replacement-resume/move-exchange
 resume replacement-resume/move-reflexive
 resume replacement-resume/move-tail
 resume replacement-resume/move-token-batch
+resume replacement-resume/move-tokens
 run blight/blighted-blackthorn-draw
 run blight/boggart-mischief-tokens
 run blight/dream-seizer-discard
@@ -1339,6 +1352,7 @@ run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
 run prompt-run/general-traag-sacrifice
+run prompt-run/genesis-device-sacrifice
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/god-eternal-bontu-sacrifice
@@ -1675,6 +1689,7 @@ tail engine/manifest-dread-entered
 tail engine/manifest-dread-finished
 tail engine/meld-entered
 tail engine/meld-exiled
+tail engine/move-tokens-created
 tail engine/opening-hand-entered
 tail engine/ordered-picks-sacrificed
 tail engine/paid-cast-or-else-exiled
@@ -1845,6 +1860,8 @@ tail mass/worlds-within-worlds-exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
+tail mill-then-take/first-contact
+tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
 tail mirkwood-nurturer/counter
@@ -1872,6 +1889,7 @@ tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
+tail ormos-archive-keeper/then-draw
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made
@@ -2150,6 +2168,7 @@ tail then/stay-hidden-shuffle-manifest
 tail then/stronghold-arena-lose-life
 tail then/suspect-each
 tail then/sylvan-library-next-card
+tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland

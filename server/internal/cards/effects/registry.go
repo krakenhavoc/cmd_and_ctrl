@@ -802,6 +802,17 @@ func Register(spec Spec) {
 				}
 			}
 		}
+		// The put-this-on-the-bottom twin of the check above: the
+		// component is paid from the battlefield or the graveyard
+		// (game.BottomSelfZoneSupported), and from nowhere else.
+		if ab.Cost.BottomSelf {
+			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
+				if !game.BottomSelfZoneSupported(z) {
+					panic(fmt.Sprintf("effects.Register: %q ability %d declares a put-this-on-the-bottom cost but functions from the %s — the component is paid from the battlefield or the graveyard",
+						spec.Name, i, z))
+				}
+			}
+		}
 		// #1310, CR 701.67b: a waterbend clause names part of the
 		// mana component — the part its taps may cover — so the mana
 		// component must contain it. A clause with no key or no pool
@@ -840,6 +851,13 @@ func Register(spec Spec) {
 		// make the ability free — the refusal the CR 602 discard gets,
 		// and the same "Discard your hand" exception (#1600).
 		checkDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
+		// #4896: the mana payer solves its discard as the cheapest N,
+		// with no set rule, and no printed mana ability says "with
+		// different names".
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
+				spec.Name, i))
+		}
 		checkManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
 		// ADR 0109 §7: a random discard is a CR 602 component only. No
 		// printed mana ability discards at random, and the mana payer

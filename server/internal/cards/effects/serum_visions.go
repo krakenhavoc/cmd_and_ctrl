@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Serum Visions — Sorcery {U} (EDHREC rank 888):
 //
 //	"Draw a card. Scry 2."
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "56956afd-db53-4542-816b-490c8b0bbcf7",
 		Name:         "Serum Visions",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The scry waits for a prompt the draw asks (CR 608.2c, #4155).

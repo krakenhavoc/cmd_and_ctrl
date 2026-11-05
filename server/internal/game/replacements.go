@@ -885,6 +885,15 @@ type ReplacementEvent struct {
 	// it (runMoveTailLocked). Unexported engine plumbing.
 	reflexiveAfterMove []reflexiveMoveInstruction
 
+	// tokensAfterMove is the list of token creations a replacement
+	// declared as part of the modified move ("instead exile that card
+	// and create a 2/2 black Zombie creature token", #4522), set only
+	// through CreateTokensAfterReplacedMoveForEffect. They run after the
+	// card has landed and before the life instructions, and the route's
+	// continuation waits for them (runMoveTailLocked). Unexported engine
+	// plumbing.
+	tokensAfterMove []tokenMoveInstruction
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. It is NOT a gate on the CR 903.9

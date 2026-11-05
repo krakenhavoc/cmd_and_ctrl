@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d41b2a4f-e137-4e61-99eb-6261ab3edd03",
 		Name:         "Stalwarts of Osgiliath",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Stalwarts of Osgiliath — the Ring tempts you", Do(TheRingTemptsYou{})),

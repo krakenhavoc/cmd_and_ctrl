@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Hunt for Specimens — Sorcery {1}{B} (EDHREC rank 18326):
 //
 //	"Create a 1/1 black and green Pest creature token with "When this
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "53f1bcff-55fb-4d38-b108-dcbed623f488",
 		Name:         "Hunt for Specimens",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		OnResolve:    ResolveSteps(CreateToken{Template: PestToken(), N: 1}, Learn{}),
 	})

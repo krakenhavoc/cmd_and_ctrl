@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "60bfcaef-9014-4707-b681-cc3920bf223e",
 		Name:         "Foray of Orcs",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Amass{

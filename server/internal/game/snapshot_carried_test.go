@@ -567,6 +567,10 @@ var carriedNotRoundTrippable = map[string]string{
 		"sacrifice, and rebuilt by gathering the event's effect again by ID, which a generated frame names " +
 		"nothing for (its effect is a func the probe cannot compare). Its round trip is pinned by the strict " +
 		"restores in census_s17_restore_test.go (effects): Lotus Vale, Mox Diamond under Library of Leng.",
+	"Game.movesAwaitingTokens": "#4522: written only beside the prompt that pauses the parked move's token " +
+		"creation, and only when the carrier is data, which a generated event is not (its gate fields are set). " +
+		"Its round trip is pinned by TestMoveTokensPausedCreationIsARestorePoint (move_tokens_test.go) and the " +
+		"event mirror's by TestReplacementEventMirrorRoundTrips.",
 	"Game.heldCombatDamage": "#4362: written only beside the open damage_assignment prompts whose PickThen it " +
 		"takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round trip " +
 		"is pinned by the strict restores in combat_damage_keyed_test.go: TestAHeldCombatDamageStepIsARestorePoint " +

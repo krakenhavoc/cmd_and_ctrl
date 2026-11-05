@@ -14544,6 +14544,7 @@
                 "auto": true,
                 "mana_cost": "{U}",
                 "purpose": {
+                  "scry": 1,
                   "answers": [
                     "value"
                   ]

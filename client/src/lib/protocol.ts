@@ -3916,6 +3916,11 @@ export interface ActivatedAbilityView {
   // sends its mana value as `x_value` (the engine refuses any other) and
   // narrows the ability's target clause by it (`mana_value_equals_x`).
   discard_cost_mana_value_x?: boolean;
+  // #4896: "Discard three cards with different names" (Ormos, Archive
+  // Keeper). No two picks may share a name (both halves of a split card
+  // count), so the picker greys a repeat and opens even when the options
+  // number exactly `discard_cost_n`. The engine refuses a repeat.
+  discard_cost_different_names?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -4161,6 +4166,14 @@ export interface PurposeView {
   awaken_land?: number;
   // #2480: cards it exiles that its controller may play this turn.
   impulse?: number;
+  // #4978: riders beside the main effect: cards scried (CR 701.22a),
+  // learns (CR 701.48a), a discover's N (CR 701.57a), an amass's N
+  // (CR 701.47a) and temptings by the Ring (CR 701.54a). Bot data.
+  scry?: number;
+  learn?: number;
+  discover?: number;
+  amass?: number;
+  ring_tempts?: number;
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;

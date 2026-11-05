@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Study Break — Instant {1}{W} (EDHREC rank 25155):
 //
 //	"Tap up to two target creatures.
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7aae7c7b-0b31-4b48-a8d3-81c913f604cf",
 		Name:         "Study Break",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("up to two target creatures").WithCount(0, 2),
 		OnResolve: ResolveSteps(

@@ -2843,6 +2843,35 @@ that sends the card elsewhere or cancels the move means no trigger. Each
 replaced move makes its own trigger. A target clause goes on the
 `ReflexiveBody` registration; `Optional` and `Payload` are not supported.
 
+#### "Instead exile that card and create a token" (ADR 0178 amendment 2026-11-05, #4522)
+
+When the token is part of the modified event (Kalitas, Traitor of Ghet),
+not a "when you do" trigger, declare the creation on the move. Never call
+a token door inside `Replace`: the creation is an event of its own that can
+pause, and it has to land after the card moves.
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.CreateTokensAfterReplacedMoveForEffect(ev, game.TokenCreation{
+        Controller: src.Controller,
+        Source:     src.InstanceID,
+        Groups: []game.TokenGroup{{
+            Template: src.TokenThroughText(TokenCard("2/2 black Zombie")),
+            Count:    1,
+        }},
+    })
+},
+```
+
+The move's finisher lands the card, creates the tokens through the token
+pipeline (doublers apply, and each token's entry runs), then runs the
+move's own continuation, which waits if the creation or an entry asks a
+question. The controller is fixed when the replacement applies. The tokens
+are still made if a later replacement redirects or cancels the move (CR
+614.6). A creation attacking, blocking or entering together is refused.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and
@@ -12415,6 +12444,15 @@ for both the options the view and the enumerator offer and the activation's
 validation; `effects.DiscardLegendaryNamedLikeYourPermanent()` builds the
 printed clause. A new board question of this kind is a new bool there, with
 the same two readers.
+
+A rule over the whole SET of discarded cards ("Discard three cards with
+different names", Ormos, Archive Keeper, #4896) is not a `Match` either:
+`Match` judges one card. `effects.DiscardNDifferentNames(n, label, match…)`
+sets `DiscardCost.DifferentNames`, which the validator checks over the set
+(CR 201.2b, strictly: a nameless card never pays, and a split card has both
+its names), the enumerator pays with `game.DiscardDifferentNamesPaymentForEffect`,
+and the wire marks `discard_cost_different_names` for the client's picker.
+`Register` allows it on an activated ability's fixed count of two or more only.
 
 "The discarded card" of an activated ability (Land's Edge's "if the
 discarded card was a land card", Volrath's "the discarded card's mana

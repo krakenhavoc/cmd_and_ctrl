@@ -14,7 +14,7 @@ func init() {
 		OracleID:     "b9c58cfb-b7d5-4e86-a5d3-efb07192aa22",
 		Name:         "Glimmer of Genius",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Draws: 2, Energy: 2},
+		Purpose:      game.Purpose{Draws: 2, Energy: 2, Scry: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return Scry{Player: ctx.Controller(), N: 2, ThenTail: ctx.ItemTail(glimmerOfGeniusThen)}.Apply(ctx)
 		},

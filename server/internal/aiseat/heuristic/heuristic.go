@@ -718,6 +718,26 @@ type Config struct {
 	// values below this is worth bottoming.
 	ScryKeep float64
 
+	// PriceRiders prices the riders a purpose declares beside its main
+	// effect (#4978, riders.go): scry, learn, discover, amass and the
+	// Ring tempting the bot, at the weights below. Off (the zero value,
+	// BaselineConfig, and the arena's `heuristic-noriders`) prices them
+	// at nothing, as before: Preordain is Opt's draw and no more.
+	PriceRiders bool
+	// ScryWeight is one card scried, in cards in hand (Weights.Hand),
+	// up to ScryCap cards: a look that fixes the next draws.
+	ScryWeight float64
+	ScryCap    int
+	// LearnWeight is one learn, in cards in hand: the rummage it may
+	// make, or a Lesson from outside the game.
+	LearnWeight float64
+	// DiscoverPerMana is what each point of a discover's N adds to the
+	// card it finds (one Weights.Hand): the spell it casts for free.
+	DiscoverPerMana float64
+	// RingTempt is one tempting by the Ring while the bot controls a
+	// creature to bear it; half of it with none, for the Ring's level.
+	RingTempt float64
+
 	// DredgePlaySoon is what a dredged card is worth on top of its
 	// cardValue when the bot could play it this turn or next (#2390,
 	// dredge.go). A dredge trades an unknown card for a known one, and
@@ -1033,6 +1053,13 @@ func DefaultConfig() Config {
 		OwnPermanentTarget: 0.40,
 		CounterValue:       3.00,
 		ScryKeep:           1.00,
+		// #4978: the riders.
+		PriceRiders:     true,
+		ScryWeight:      0.25,
+		ScryCap:         3,
+		LearnWeight:     0.30,
+		DiscoverPerMana: 0.30,
+		RingTempt:       0.80,
 
 		DredgePlaySoon:     0.50,
 		DredgeLibraryFloor: 10,
@@ -1254,6 +1281,8 @@ func BaselineConfig() Config {
 	c.PriceSpareManaSources = false
 	c.SpareManaKeep = 0
 	c.SpareManaSourceCost = 0
+	// #4978: riders priced at nothing.
+	c.PriceRiders = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

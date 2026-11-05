@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1212cc74-ff66-479e-8e1b-504446e1c6d9",
 		Name:         "Relentless Rohirrim",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Relentless Rohirrim — the Ring tempts you", Do(TheRingTemptsYou{})),

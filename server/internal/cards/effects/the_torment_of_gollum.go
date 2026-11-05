@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // The Torment of Gollum — Sorcery {3}{B}:
 //
 //	"Target opponent reveals their hand. You choose a nonland card from
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8b70aad1-bcb1-4359-b27e-ba8b40ef2752",
 		Name:         "The Torment of Gollum",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// The Army waits for the question the choice asks (CR 608.2c, #4155).

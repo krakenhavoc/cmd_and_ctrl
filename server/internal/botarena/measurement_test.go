@@ -32,6 +32,7 @@ func TestParseContestant(t *testing.T) {
 		"heuristic-nomanasink":      {Tier: tiers.Heuristic, Variant: botarena.VariantNoManaSink},
 		"heuristic-sparetokens":     {Tier: tiers.Heuristic, Variant: botarena.VariantSpareTokens},
 		"heuristic-nosparemana":     {Tier: tiers.Heuristic, Variant: botarena.VariantNoSpareMana},
+		"heuristic-noriders":        {Tier: tiers.Heuristic, Variant: botarena.VariantNoRiders},
 	} {
 		got, err := botarena.ParseContestant(in)
 		if err != nil {
@@ -42,6 +43,10 @@ func TestParseContestant(t *testing.T) {
 		}
 		if got.Contestant() != in || got.Label() != in {
 			t.Errorf("%q round-trips as contestant %q, label %q", in, got.Contestant(), got.Label())
+		}
+		// #4978: a contestant that parses is one Validate seats.
+		if err := (botarena.Config{Seats: []botarena.SeatSpec{got, {Tier: tiers.Heuristic}}, Games: 1}).Validate(); err != nil {
+			t.Errorf("%q parses but Validate refuses it: %v", in, err)
 		}
 	}
 	_, err := botarena.ParseContestant("assisted-baseline")
@@ -54,7 +59,7 @@ func TestParseContestant(t *testing.T) {
 // the lobby and GET /bot/options read, must not know it.
 func TestBaselineIsNotATier(t *testing.T) {
 	for _, name := range []string{botarena.RampCurveContestant,
-		botarena.BaselineContestant, botarena.NoPlanContestant, botarena.NoTemporaryContestant, botarena.NoGrantsContestant, botarena.NoIdleAnswersContestant, botarena.NoReconfigureContestant, botarena.NoOutnumberContestant, botarena.NoLandOrderContestant, botarena.NoEntryCountersContestant, botarena.NoModePicksContestant, botarena.SpareTokensContestant} {
+		botarena.BaselineContestant, botarena.NoPlanContestant, botarena.NoTemporaryContestant, botarena.NoGrantsContestant, botarena.NoIdleAnswersContestant, botarena.NoReconfigureContestant, botarena.NoOutnumberContestant, botarena.NoLandOrderContestant, botarena.NoEntryCountersContestant, botarena.NoModePicksContestant, botarena.SpareTokensContestant, botarena.NoRidersContestant} {
 		if _, err := tiers.Parse(name); err == nil {
 			t.Fatalf("tiers.Parse accepts %q; it would be offered in the lobby", name)
 		}

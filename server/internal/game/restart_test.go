@@ -416,6 +416,9 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		// ADR 0208: the new game chooses its three sheets afresh as it
 		// begins (CR 103.2d).
 		"StickerSheets": true,
+		// #4973: a restarted game is a new game, so no spell has been
+		// cast in it yet (First Contact).
+		"FirstSpellCast": true,
 	}
 	typ := reflect.TypeOf(Player{})
 	for i := 0; i < typ.NumField(); i++ {
