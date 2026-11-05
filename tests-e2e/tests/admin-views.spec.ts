@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { L } from "../../client/src/lib/labels";
 import { ADMIN_TOKEN } from "./env";
 import { adminLogin, createGame } from "./lobby-api";
 import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
@@ -88,6 +89,19 @@ test.describe("admin views", () => {
           .getByRole("table", { name: "accounts" })
           .or(page.getByText("No accounts match.")),
       ).toBeVisible();
+
+      // ADR 0217 owner answer 1: the advanced-stats default sits above
+      // the accounts, off until an admin stores one. Switch it on and back
+      // off, so the run leaves the server as it found it.
+      const def = page.getByRole("checkbox", {
+        name: new RegExp(`^${L.advancedStatsDefault}`),
+      });
+      await expect(def).toBeVisible();
+      const wasOn = await def.isChecked();
+      await def.setChecked(!wasOn);
+      await expect(def).toBeChecked({ checked: !wasOn });
+      await def.setChecked(wasOn);
+      await expect(def).toBeChecked({ checked: wasOn });
     } finally {
       await closeAll(alice);
     }
