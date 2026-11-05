@@ -919,7 +919,7 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	if occurrences < 1 {
 		return
 	}
-	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
+	extra := g.triggerDoublersLocked(pass, source, lki, t, origin)
 	for n := 0; n < occurrences; n++ {
 		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
 		for _, d := range extra {

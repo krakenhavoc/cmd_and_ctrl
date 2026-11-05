@@ -43,10 +43,20 @@ type TriggerDoublingQuery struct {
 	Source     Card
 	SourceLKI  Characteristic
 	FromSpell  bool
-	Ability    *TriggeredAbility
-	Subject    uuid.UUID
-	SubjectLKI Characteristic
-	HasSubject bool
+	// SourceIsPermanent is true when the ability being doubled belongs to
+	// a permanent: it was found on the battlefield, or it is the
+	// leaves-the-battlefield ability of the permanent that just left.
+	// False for a spell's own trigger, an emblem's (CR 114.4), a card's
+	// ability that works from another zone (CR 113.6), and a delayed
+	// trigger, which is not an ability the permanent has (CR 603.2d).
+	// TriggerSuppressionQuery's field of the same name, for a doubler
+	// printed "a triggered ability of a permanent you control" whose
+	// cause is not a permanent (Krang, the All-Powerful's drawing).
+	SourceIsPermanent bool
+	Ability           *TriggeredAbility
+	Subject           uuid.UUID
+	SubjectLKI        Characteristic
+	HasSubject        bool
 }
 
 type doublerRef struct {
@@ -215,7 +225,7 @@ func (g *Game) simultaneousExitCardLocked(id uuid.UUID) (Card, bool) {
 	return Card{}, false
 }
 
-func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteristic, ability TriggeredAbility, fromSpell bool) []doublerRef {
+func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteristic, ability TriggeredAbility, origin triggerOrigin) []doublerRef {
 	if CatalogTriggerDoublers == nil {
 		return nil
 	}
@@ -238,7 +248,7 @@ func (g *Game) triggerDoublersLocked(p *harvestPass, source Card, lki Characteri
 			if doubler.ActiveWhen.IsGate() && !doubler.ActiveWhen.Active(candidate.card) {
 				continue
 			}
-			q := TriggerDoublingQuery{Event: p.ev, Doubler: candidate.card, DoublerLKI: candidate.lki, Source: source, SourceLKI: lki, FromSpell: fromSpell, Ability: &decl, Subject: p.subject, SubjectLKI: p.subjectLKI, HasSubject: p.hasSubject}
+			q := TriggerDoublingQuery{Event: p.ev, Doubler: candidate.card, DoublerLKI: candidate.lki, Source: source, SourceLKI: lki, FromSpell: origin == triggerOfSpell, SourceIsPermanent: origin == triggerOfPermanent, Ability: &decl, Subject: p.subject, SubjectLKI: p.subjectLKI, HasSubject: p.hasSubject}
 			if doubler.Applies(g, q) {
 				name := doubler.Label
 				if name == "" {
