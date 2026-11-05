@@ -56,7 +56,23 @@ type WSAuthorizer struct {
 	Admins *Admins
 	// Log receives the admin-binding audit lines. Nil: none.
 	Log *slog.Logger
+	// Tables answers whether a game is archived, so a player or
+	// spectator session minted before the archive cannot reconnect to
+	// the retired table (#4564). An admin still binds: /admin/games
+	// opens an archived table. Nil skips the check; main sets it to the
+	// lobby.
+	Tables ArchivedTables
 }
+
+// ArchivedTables is the one question WSAuthorizer asks the lobby.
+// *Lobby implements it.
+type ArchivedTables interface {
+	IsArchived(gameID uuid.UUID) bool
+}
+
+// archivedTableMessage is the refusal of an upgrade to an archived
+// table: 409, as ErrGameArchived is over HTTP.
+const archivedTableMessage = "this table has been archived"
 
 // AuthorizeUpgrade implements ws.UpgradeAuthorizer.
 func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
@@ -99,7 +115,14 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 		}
 		return a.adminBinding(p, requestedGame, requestedPlayer)
 	}
-	return bindingFor(p, requestedGame)
+	b, err := bindingFor(p, requestedGame)
+	if err != nil {
+		return ws.Binding{}, err
+	}
+	if a.Tables != nil && a.Tables.IsArchived(b.GameID) {
+		return ws.Binding{}, ws.StatusError(http.StatusConflict, archivedTableMessage)
+	}
+	return b, nil
 }
 
 // ownBinding reports whether a signed-in admin's request is just their

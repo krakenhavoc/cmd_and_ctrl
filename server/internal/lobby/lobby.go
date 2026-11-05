@@ -45,9 +45,12 @@ var (
 	ErrPlayerNotInGame = errors.New("lobby: player is not in this game")
 
 	// ErrGameArchived is returned by the operations that refuse to
-	// act on a retired table — minting or redeeming a seat-reclaim
-	// ticket. Unarchive first; the state is all still there.
-	ErrGameArchived = errors.New("lobby: game is archived")
+	// act on a retired table: every way in (a seat, a spectator, a
+	// deck, a bot, Start, a seat-reclaim ticket, #4564) and, through
+	// WSAuthorizer, a non-admin WebSocket upgrade. Unarchive first;
+	// the state is all still there. The message reaches the join page
+	// as is.
+	ErrGameArchived = errors.New("lobby: this table has been archived")
 
 	// ErrGameNotActiveForSpawn is returned by Spawn when the
 	// game has not started (or has ended). Dev-only path.
@@ -959,6 +962,11 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
+	// #4564: a retired table takes nobody new. After the invite, so
+	// only its holder learns the table was archived.
+	if entry.meta.Archived() {
+		return GameMeta{}, uuid.Nil, ErrGameArchived
+	}
 	// #2984: removed-and-blocked from this table. After the invite, which
 	// is the credential, so the refusal is only ever seen by someone who
 	// holds one.
@@ -1114,6 +1122,9 @@ func (l *Lobby) SpectateAs(id uuid.UUID, invite string, userID uuid.UUID, discor
 	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
 	}
+	if entry.meta.Archived() { // #4564
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.blockedLocked(userID, discordID, name) {
 		return GameMeta{}, ErrBlockedFromWatching
 	}
@@ -1206,6 +1217,17 @@ func (l *Lobby) FindByInvite(invite string) (uuid.UUID, error) {
 	return rec.GameID, nil
 }
 
+// IsArchived reports whether id names a table an admin has archived.
+// An unknown id is not archived: the caller's own lookup reports it
+// missing. WSAuthorizer asks it so a session minted before the archive
+// cannot reconnect (#4564).
+func (l *Lobby) IsArchived(id uuid.UUID) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	return ok && entry.meta.Archived()
+}
+
 // ErrDeckNotUploaded is returned by Start when one or more seats
 // haven't uploaded a real deck yet. The HTTP handler maps this to
 // 409 so the lobby UI can show which seats are blocking the start.
@@ -1234,6 +1256,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	entry, ok := l.games[gameID]
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
+	}
+	if entry.meta.Archived() { // #4564
+		return GameMeta{}, ErrGameArchived
 	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, ErrGameStarted
@@ -1382,6 +1407,9 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	if entry.meta.Archived() { // #4564
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.room.Game.CurrentState() == game.StateActive {
 		return copyMeta(entry.meta), nil
 	}
@@ -1517,6 +1545,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	entry, ok := l.games[id]
 	if !ok {
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
+	}
+	if entry.meta.Archived() { // #4564
+		return GameMeta{}, uuid.Nil, ErrGameArchived
 	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted

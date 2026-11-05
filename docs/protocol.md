@@ -50,6 +50,7 @@ completes:
 | 401 | missing or invalid credential |
 | 403 | session not valid for the requested game / player |
 | 404 | unknown game |
+| 409 | the table has been archived (a player or spectator session; an admin still binds, #4564) |
 | 503 | server shutting down |
 
 ### Per-connection visibility (S04)

@@ -303,7 +303,7 @@ agent seat:
 | 401 | invite token did not match |
 | 403 | the table removed and blocked this person (`code: "blocked_from_table"`, see [Moderation](#moderation-2984)) |
 | 404 | game not found |
-| 409 | game already started, game full, or the signed-in person already holds a seat at this table |
+| 409 | game already started, game full, the signed-in person already holds a seat at this table, or the table has been archived |
 | 503 | the connection cap is full: `code: "server_full"`, nothing was seated (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ---
@@ -1496,7 +1496,7 @@ and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 |---|---|
 | 403 | not a seat in this game |
 | 404 | game not found |
-| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum) |
+| 409 | the table has been archived; not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum) |
 
 ### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
 
@@ -2168,7 +2168,7 @@ is to name it, not to refuse the deck.
 | 400 | neither `deck` nor `source`, both of them, bad JSON, unknown `format` |
 | 403 | caller is neither admin nor a **seated player** at this game (a spectator's session carries the game ID and is refused here) |
 | 404 | game not found |
-| 409 | game already started, or the table is full |
+| 409 | game already started, the table is full, or the table has been archived |
 | 422 | unknown or unavailable `tier`, unknown `deck` ID, or the deck failed validation (violation list, as for `/decks`) |
 | 503 | card index not loaded, no deck catalog configured (for a `deck` request), or bot seats are not enabled on this server |
 
@@ -2497,6 +2497,14 @@ re-listed and its bots are not relaunched).
 
 This is the action for clearing old games off the lobby screen.
 `DELETE /games/{id}` is the irreversible one.
+
+An archived table takes nobody back in (#4564): a player invite
+(`POST /games/{id}/join`, the Discord sign-in join), a spectator invite
+(`POST /games/{id}/spectate`), a deck upload, a bot seat and
+`POST /games/{id}/start` all answer **409** "this table has been
+archived", and a player or spectator session minted before the archive
+is refused the WebSocket upgrade with 409. An admin can still open the
+table. Unarchiving lifts all of it.
 
 **Response 200** — the updated `GameMeta`, carrying `archived_at`.
 Invite tokens are stripped.

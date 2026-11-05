@@ -51,7 +51,7 @@ func newTestHTTPStackWithAuth(t *testing.T, idx *cards.Index, a auth.Authenticat
 	l.SetCardIndex(idx)
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a, Tables: l})
 
 	cfg := Config{
 		Lobby:      l,
@@ -590,7 +590,7 @@ func TestReplayDownloadWithDumpDir(t *testing.T) {
 	a := auth.NewMemoryAuthenticator()
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a, Tables: l})
 	cfg := Config{Lobby: l, Auth: a, AdminToken: "shared-admin-token"}
 
 	mux := http.NewServeMux()
@@ -1538,7 +1538,7 @@ func newTestHTTPStackFull(t *testing.T, idx *cards.Index, deckClient *http.Clien
 	a := auth.NewMemoryAuthenticator()
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
-	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
+	hub.SetAuthorizer(&WSAuthorizer{Auth: a, Tables: l})
 
 	cfg := Config{
 		Lobby:          l,
