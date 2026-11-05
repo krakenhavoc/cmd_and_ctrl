@@ -158,6 +158,9 @@ registered, or when this file is stale.
 | `makeNewShareLink` | `Make a new link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with a link: mints a new one, and the old one stops working |
 | `copyShareLink` | `Copy link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: copies the link just made; it is shown only once |
 | `revokeShareLink` | `Revoke link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: the link answers not found from now on (DELETE /me/stats/share-link) |
+| `deckStats` | `Deck stats` | link | text | `lib/components/decks/DeckCard.svelte` | a deck's card on #/decks: opens that deck's advanced stats page, #/stats/deck/<deck_id> (ADR 0217 §8) |
+| `statsVersionPicker` | `Deck version` | combobox | text | `routes/StatsDeck.svelte` | a deck's stats page: picks which list's games to show, since the last edit, all time or one earlier version (ADR 0217 §5) |
+| `statsAllDeckGames` | `Show all time` | button | text | `routes/StatsDeck.svelte` | a deck's stats page after an edit with no games yet: switches to every game with the deck |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |
@@ -192,7 +195,7 @@ registered, or when this file is stale.
 | `openTable` | `Open table` | button | text | `lib/tablesPage.ts`<br>`routes/Lobby.svelte` | opens a lobby table on the board: the primary for a seat held elsewhere and for the admin, otherwise a ghost button in the footer and a right-click item |
 | `inviteButton` | `Invite` | button | text | `routes/Lobby.svelte`<br>`lib/components/SeatTile.svelte` | opens a table's Invite menu: the footer's Invite ▾, and the same on each open seat (ADR 0212 §4) |
 | `inviteMenu` | `invite to <table name>` (starts with `invite to `) | menu | aria | `routes/Lobby.svelte` | a table's Invite menu: the two links, Invite by DM, #looking-for-game and Make new links (ADR 0212 §4) |
-| `copyInvite` | `Copy invite` | menuitem | text | `routes/Lobby.svelte` | copies a lobby table's player invite link, from the Invite menu and the right-click menu |
+| `copyInvite` | `Copy invite` | menuitem | text | `routes/Lobby.svelte`<br>`lib/components/PlayedWithDrawer.svelte` | copies a lobby table's player invite link, from the Invite menu and the right-click menu; a Played with row's button where the server has no bot to DM it (ADR 0213 §1) |
 | `newInviteLink` | `New invite link…` | menuitem | text | `routes/Lobby.svelte` | mints a new player invite after a confirm, then copies it; the current link stops working |
 | `copySpectatorLink` | `Copy spectator link` | menuitem | text | `routes/Lobby.svelte` | copies a table's read-only link, from the Invite menu and the right-click menu |
 | `newSpectatorLink` | `New spectator link…` | menuitem | text | `routes/Lobby.svelte` | mints a new spectator link after a confirm, then copies it; the current link stops working |
@@ -213,6 +216,8 @@ registered, or when this file is stale.
 | `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `siteMenu` | `Site menu` | button | aria | `lib/components/SiteHeader.svelte` | the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877) |
+| `playedWithButton` | `People you've played with` | button | aria | `lib/components/SiteHeader.svelte` | the site header's button for the Played with drawer, for someone signed in with Discord (ADR 0213 §9); opens the drawer, which fetches the list then and never polls |
+| `playedWith` | `Played with` | dialog | aria | `lib/components/PlayedWithDrawer.svelte` | the Played with drawer (ADR 0213 §1, §9): the people you have shared a table with, newest first, each with Invite; covers the page at tablet width |
 | `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
 | `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |
 | `tryPracticeGame` | `Try a practice game` | link | text | `routes/FrontPage.svelte`<br>`routes/RequestAccess.svelte` | the front page's and the gate page's way in without an account: #/practice, a guest practice game when signed out |

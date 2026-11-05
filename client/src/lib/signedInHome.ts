@@ -60,6 +60,7 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // in, the way it is posted in Discord. It shows only what its owner
   // chose to share.
   "statsShared",
+  "statsSharedDeck",
 ]);
 
 // isPublicRoute reports whether a signed-out visitor may open r.

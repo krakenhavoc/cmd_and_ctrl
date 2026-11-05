@@ -23,6 +23,8 @@ export interface Community {
   lfg?: boolean;
   /** A host may opt a table in to a results post in #game-results (ADR 0174 §6). */
   results?: boolean;
+  /** The server can DM a table's invite link through the bot; else Played with offers Copy invite (ADR 0213 §1). */
+  dm_invites?: boolean;
 }
 
 /** The initial value, and the value every failure resolves to. */
@@ -32,6 +34,7 @@ export const NO_COMMUNITY: Community = {
   voice: false,
   lfg: false,
   results: false,
+  dm_invites: false,
 };
 
 const store = guardedWritable<Community>(NO_COMMUNITY, "community");
@@ -52,6 +55,7 @@ export function parseCommunity(body: unknown): Community {
     voice?: unknown;
     lfg?: unknown;
     results?: unknown;
+    dm_invites?: unknown;
   };
   return {
     invite_url: inviteURL(b.invite_url),
@@ -59,6 +63,7 @@ export function parseCommunity(body: unknown): Community {
     voice: b.voice === true,
     lfg: b.lfg === true,
     results: b.results === true,
+    dm_invites: b.dm_invites === true,
   };
 }
 

@@ -38,6 +38,13 @@ type TypeCount struct {
 	Cards int    `json:"cards"`
 }
 
+// RoleCount is how many cards (copies) of a deck have one role
+// (ADR 0217 §7). A card with several roles counts under each.
+type RoleCount struct {
+	Role  string `json:"role"`
+	Cards int    `json:"cards"`
+}
+
 // ColourShare is one colour's share of the coloured mana symbols in a
 // deck's non-land costs. Symbols is fractional: a hybrid symbol counts
 // half to each of its colours. Share is nil when the deck has no
@@ -63,6 +70,9 @@ type DeckFacts struct {
 	// RolesAvailable is false while the server has no card roles
 	// (ADR 0217 §7, slice 4): composition is then card types only.
 	RolesAvailable bool `json:"roles_available"`
+	// Roles is every role in cards.AllRoles order, zeros included, when
+	// RolesAvailable; nil otherwise.
+	Roles []RoleCount `json:"roles"`
 	// ManaCurve counts non-land cards at mana value 0, 1, … 6 and 7+
 	// (CurveTop + 1 buckets). X counts as 0.
 	ManaCurve []int `json:"mana_curve"`
@@ -84,10 +94,22 @@ var wubrg = []string{"W", "U", "B", "R", "G"}
 // FactsOf computes a deck's facts from its resolved cards. unresolved
 // is the copies the caller could not resolve.
 func FactsOf(list []DeckCard, unresolved int) DeckFacts {
+	return FactsOfRoles(list, unresolved, nil)
+}
+
+// FactsOfRoles is FactsOf with card roles: rolesOf names a card's roles
+// by oracle id, and a nil rolesOf means roles are unavailable (the
+// facts then carry card types only, RolesAvailable false).
+func FactsOfRoles(list []DeckCard, unresolved int, rolesOf func(oracleID uuid.UUID) []string) DeckFacts {
 	out := DeckFacts{Unresolved: unresolved, ManaCurve: make([]int, CurveTop+1),
 		Types: make([]TypeCount, len(CardTypes)), ColourIdentity: []string{}}
 	for i, t := range CardTypes {
 		out.Types[i].Type = t
+	}
+	var roleCards map[string]int
+	if rolesOf != nil {
+		out.RolesAvailable = true
+		roleCards = map[string]int{}
 	}
 	symbols := map[string]float64{}
 	identity := map[string]bool{}
@@ -113,6 +135,11 @@ func FactsOf(list []DeckCard, unresolved int) DeckFacts {
 				out.Types[i].Cards += dc.Count
 			}
 		}
+		if rolesOf != nil && c.OracleID != uuid.Nil {
+			for _, r := range rolesOf(c.OracleID) {
+				roleCards[r] += dc.Count
+			}
+		}
 		if IsLandCard(c) {
 			continue
 		}
@@ -123,6 +150,12 @@ func FactsOf(list []DeckCard, unresolved int) DeckFacts {
 		colourSymbols(castCost(c), func(letter string, weight float64) {
 			symbols[letter] += weight * float64(dc.Count)
 		})
+	}
+	if rolesOf != nil {
+		out.Roles = make([]RoleCount, 0, len(cards.AllRoles))
+		for _, r := range cards.AllRoles {
+			out.Roles = append(out.Roles, RoleCount{Role: r, Cards: roleCards[r]})
+		}
 	}
 	if out.NonLand > 0 {
 		v := float64(mvSum) / float64(out.NonLand)

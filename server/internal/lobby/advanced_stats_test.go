@@ -6,7 +6,10 @@ package lobby
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -26,6 +29,7 @@ type advancedStack struct {
 	stats   *gamestats.SQLStore
 	library decklibrary.Store
 	oracle  map[string]uuid.UUID
+	idx     *cards.Index
 }
 
 // advancedCards is the test index: a commander, a basic land and three
@@ -36,6 +40,7 @@ func advancedCards() (*cards.Index, map[string]uuid.UUID) {
 	put := func(name, typeLine, cost string, identity ...string) {
 		c := cards.Card{ID: uuid.New(), OracleID: uuid.New(), Name: name, TypeLine: typeLine, ManaCost: cost,
 			ColorIdentity: identity, Layout: "normal", Lang: "en", SetType: "core",
+			ImageURIs:  map[string]string{"normal": "https://cards.scryfall.io/normal/" + name},
 			Legalities: map[string]string{"commander": "legal"}}
 		idx.Put(c)
 		oracle[name] = c.OracleID
@@ -61,7 +66,7 @@ func newAdvancedStack(t *testing.T) advancedStack {
 		c.DeckLibrary = library
 		c.Now = func() time.Time { return advancedNow }
 	}, statsAdminDiscordID)
-	return advancedStack{statsPrefsStack: statsPrefsStack{adminStack: s, db: d}, stats: stats, library: library, oracle: oracle}
+	return advancedStack{statsPrefsStack: statsPrefsStack{adminStack: s, db: d}, stats: stats, library: library, oracle: oracle, idx: idx}
 }
 
 // on switches the person's advanced stats on.
@@ -419,5 +424,73 @@ func TestAdvancedStatsWithNoStore(t *testing.T) {
 	}
 	if code := status(t, s.srv, "GET", "/me/stats/advanced", tok, nil); code != http.StatusForbidden {
 		t.Errorf("no store, default off: %d, want 403", code)
+	}
+}
+
+// The deck page draws its commanders and its dead cards, and composes
+// card roles when the server loaded the roles file (ADR 0217 §7, §8).
+func TestAdvancedDeckPageArtAndRoles(t *testing.T) {
+	s := newAdvancedStack(t)
+	tok, user := s.person(t, "222", "Bea")
+	s.on(t, tok)
+	d := s.saveDeck(t, user, "Atraxa", atraxaList, "Atraxa, Praetors' Voice")
+	s.seed(t, user, seededGame{daysAgo: 1, deckID: d.ID.String(), hash: s.currentHash(), result: gamestats.ResultWin,
+		others: []string{"person", "person", "person"}})
+	path := "/me/stats/decks/" + d.ID.String()
+	get := func() advancedDeckResponse {
+		t.Helper()
+		code, out := decodeInto[advancedDeckResponse](t, s.statsPrefsStack, "GET", path, tok, nil)
+		if code != http.StatusOK {
+			t.Fatalf("GET %s: %d", path, code)
+		}
+		return out
+	}
+
+	got := get()
+	cmdr, _ := s.idx.FindByName("Atraxa, Praetors' Voice")
+	if len(got.Deck.CommanderCards) != 1 || got.Deck.CommanderCards[0].ScryfallID != cmdr.ID.String() {
+		t.Errorf("commander cards %+v, want Atraxa's printing", got.Deck.CommanderCards)
+	}
+	counter, _ := s.idx.FindByName("Counterspell")
+	if len(got.DeadCards) != 1 || got.DeadCards[0].ScryfallID != counter.ID.String() {
+		t.Errorf("dead cards %+v, want Counterspell's printing", got.DeadCards)
+	}
+	if f := got.Deck.Facts; f == nil || f.RolesAvailable || f.Roles != nil {
+		t.Errorf("no roles file loaded: facts %+v", f)
+	}
+
+	// With the roles file loaded, composition carries roles in AllRoles
+	// order, and the comparison decks carry their average.
+	file := filepath.Join(t.TempDir(), "card-roles.json")
+	body := fmt.Sprintf(`{"fetched_at":"2026-11-04T00:00:00Z","roles":{%q:["ramp","mana_rock"],%q:["counterspell"]}}`,
+		s.oracle["Sol Ring"], s.oracle["Counterspell"])
+	if err := os.WriteFile(file, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.idx.LoadRoles(file); err != nil {
+		t.Fatal(err)
+	}
+	s.saveDeck(t, user, "Krenko", "Commander:\n1 Krenko, Mob Boss\n\nDeck:\n20 Forest\n", "Krenko, Mob Boss")
+	got = get()
+	f := got.Deck.Facts
+	if f == nil || !f.RolesAvailable || len(f.Roles) != len(cards.AllRoles) {
+		t.Fatalf("facts with roles: %+v", f)
+	}
+	count := func(role string) int {
+		for _, r := range f.Roles {
+			if r.Role == role {
+				return r.Cards
+			}
+		}
+		return -1
+	}
+	if count("ramp") != 1 || count("mana_rock") != 1 || count("counterspell") != 1 || count("removal") != 0 {
+		t.Errorf("role counts %+v", f.Roles)
+	}
+	if got.Deck.RolesAt != time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC).UnixMilli() {
+		t.Errorf("roles_at = %d, want the file's fetch time", got.Deck.RolesAt)
+	}
+	if got.OtherDecks == nil || len(got.OtherDecks.Roles) != len(cards.AllRoles) || got.OtherDecks.Roles[0].Average != 0 {
+		t.Errorf("other decks' roles %+v", got.OtherDecks)
 	}
 }
