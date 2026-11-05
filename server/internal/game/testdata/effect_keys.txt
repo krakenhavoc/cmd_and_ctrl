@@ -341,6 +341,7 @@ choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
+choose choose-cards/borg-cube-assimilate
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
 choose choose-cards/brazen-bluff-cast
@@ -1528,6 +1529,7 @@ tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
+tail borg-cube/assimilated
 tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
 tail brago-king-eternal/return-exiled
