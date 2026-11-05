@@ -1409,6 +1409,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		// #4680: the granted sneak's price and riders (sneak.go).
 		return grantedSneakOffer(p, card)
 	}
+	if p.AltCostKey == AltCostKeyGrantedBeamMeUp {
+		// Scotty, Miracle Worker: the granted beam me up's price, return
+		// and exile (beam_me_up.go).
+		return grantedBeamMeUpOffer(p, card)
+	}
 	out := AlternativeCost{
 		Key:            p.AltCostKey,
 		Label:          p.Label,

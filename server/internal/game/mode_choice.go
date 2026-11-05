@@ -249,6 +249,10 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 	// the re-narrowing of the ability's other open prompts never
 	// touches this one.
 	g.recordModesChosenLocked(frame.ability.Modes, ModeAbilityOf(frame.source, frame.ability.Key), modes)
+	// #4973: whoever chose the modes faced a dilemma (CR 700.2b, 700.2e).
+	if len(modes) > 0 {
+		g.emitFacedDilemmaLocked(chooserID, frame.source.InstanceID)
+	}
 	if len(modes) == 0 {
 		// A "choose up to" answered with no mode (#4617): "If no mode
 		// is chosen, the ability is removed from the stack" (CR 603.3c,
