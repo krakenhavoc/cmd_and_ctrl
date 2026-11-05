@@ -809,6 +809,8 @@ var playerFields = plan(
 	"CompletedDungeons", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
+	// #4973: the first spell cast this game (First Contact).
+	"FirstSpellCast", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.

@@ -441,6 +441,14 @@ type Player struct {
 	// Added in S13.1.
 	CommanderCasts map[uuid.UUID]int
 
+	// FirstSpellCast is the first spell this player cast this game, as
+	// the object it was on the stack (CR 400.7): First Contact's "if
+	// this spell is the first spell you've cast this game". Stamped once
+	// in CastSpell, as the cast completes (CR 601.2i); a copy is not
+	// cast (CR 707.10) and never stamps it. The zero ref is "no spell
+	// cast yet". Additive within the snapshot version (#4973).
+	FirstSpellCast ObjectRef
+
 	// Counters is the per-player named counter map (S13.2 — poison,
 	// energy, experience, rad, plus any homebrew). Distinct from the
 	// per-card Card.Counters map. The legacy single-int Player.Poison
