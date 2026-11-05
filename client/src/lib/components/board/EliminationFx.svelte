@@ -49,7 +49,6 @@
     burstShards,
     burstSparks,
     eliminatedSeats,
-    rememberCommanders,
     type Shard,
     type Spark,
   } from "../../elimination";
@@ -195,14 +194,6 @@
   $effect(() => {
     const log = view.log;
     untrack(() => frame(log));
-  });
-
-  // Remember each seat's commander while it can be seen, for the tombstone
-  // that names it once it has left with the player. This layer is mounted
-  // for the whole game, whichever way a seat is drawn (a full panel or a
-  // collapsed card), so it sees every frame the seat is still in.
-  $effect(() => {
-    for (const s of view.seats) rememberCommanders(view, s);
   });
 
   onDestroy(() => {
