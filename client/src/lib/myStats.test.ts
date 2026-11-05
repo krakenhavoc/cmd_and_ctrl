@@ -51,5 +51,24 @@ describe("the shared stats route (ADR 0217 §6)", () => {
   it("is public: a signed-out visitor is not sent to sign in", () => {
     expect(routeRedirect({ name: "statsShared", token: "t" }, null)).toBeNull();
     expect(routeRedirect({ name: "stats" }, null)).toBe("#/login");
+    expect(routeRedirect({ name: "statsSharedDeck", token: "t", id: "d" }, null)).toBeNull();
+    expect(routeRedirect({ name: "statsDeck", id: "d" }, null)).toBe("#/login");
+  });
+});
+
+describe("the deck stats routes (ADR 0217 §8)", () => {
+  it("parses #/stats/deck/<id> and the shared deck page", () => {
+    expect(parseHash("#/stats/deck/3f2a-9")).toEqual({ name: "statsDeck", id: "3f2a-9" });
+    expect(parseHash("#/stats/deck")).toEqual({ name: "stats" });
+    expect(parseHash("#/stats/shared/AbC_-123/deck/3f2a-9")).toEqual({
+      name: "statsSharedDeck",
+      token: "AbC_-123",
+      id: "3f2a-9",
+    });
+    // A shared view with no deck after "deck" is still the shared overview.
+    expect(parseHash("#/stats/shared/AbC_-123/deck")).toEqual({
+      name: "statsShared",
+      token: "AbC_-123",
+    });
   });
 });
