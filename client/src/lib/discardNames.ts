@@ -30,7 +30,11 @@ function clashes(a: string[], b: string[]): boolean {
 // Whether picking `id` beside the already `chosen` cards would repeat a
 // name. A card already chosen does not clash with itself, so it can
 // always be un-picked.
-export function discardNameRepeats(options: Named[], chosen: readonly string[], id: string): boolean {
+export function discardNameRepeats(
+  options: Named[],
+  chosen: readonly string[],
+  id: string,
+): boolean {
   if (chosen.includes(id)) return false;
   const mine = cardNameKeys(options.find((c) => c.instance_id === id));
   return options.some(

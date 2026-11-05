@@ -22,7 +22,11 @@
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
   import { exileCostSymbolTotal } from "../../exileCost";
-  import { canPickDifferentNames, discardNameRepeats, discardNamesDiffer } from "../../discardNames";
+  import {
+    canPickDifferentNames,
+    discardNameRepeats,
+    discardNamesDiffer,
+  } from "../../discardNames";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -107,7 +111,9 @@
   const ready = $derived(
     variable
       ? floorMet
-      : need > 0 && chosen.length === need && (!differentNames || discardNamesDiffer(options, chosen)),
+      : need > 0 &&
+          chosen.length === need &&
+          (!differentNames || discardNamesDiffer(options, chosen)),
   );
   const short = $derived(
     !variable &&
