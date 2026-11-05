@@ -265,6 +265,7 @@ body sakashima/return-listed-to-hand
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
 body seasoned-cryomancer/tap-and-stun
+body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shriek-treblemaker/cant-block
@@ -623,6 +624,7 @@ choose choose-cards/run-leg
 choose choose-cards/sacrifice-choice
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
+choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
@@ -711,6 +713,7 @@ choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/kefka-life-loss
+choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -942,6 +945,7 @@ drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen seasoned-cryomancer/discard-two
+drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
 drawthen the-theorist/counters-equal-to-hand
@@ -1770,6 +1774,7 @@ tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10
+tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
@@ -2140,6 +2145,7 @@ tail thunderbolts-conspiracy/hero
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
+tail transwarp-hub/after-mill
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile

@@ -52570,6 +52570,7 @@ seats[].statics[].nextSpell.followUp	string
 seats[].statics[].nextSpell.improvise	bool
 seats[].statics[].nextSpell.reduce	number:int
 seats[].statics[].nextSpell.text	string
+seats[].statics[].nextSpell.undaunted	bool
 seats[].statics[].nextSpell.withoutPayingManaCost	bool
 seats[].statics[].source	custom(uuid.UUID)
 seats[].statics[].timing	object
