@@ -82,7 +82,7 @@ func exileGrantsToSnapshot(in []GrantedAbility) []ExileGrantSnapshot {
 	}
 	out := make([]ExileGrantSnapshot, len(in))
 	for i, gr := range in {
-		out[i] = ExileGrantSnapshot{Key: gr.Key, Source: gr.Source, Activator: gr.Activator}
+		out[i] = ExileGrantSnapshot(gr)
 	}
 	return out
 }
@@ -96,7 +96,7 @@ func exileGrantsFromSnapshot(in []ExileGrantSnapshot) []GrantedAbility {
 		if s.Key == "" {
 			continue
 		}
-		out = append(out, GrantedAbility{Key: s.Key, Source: s.Source, Activator: s.Activator})
+		out = append(out, GrantedAbility(s))
 	}
 	if len(out) == 0 {
 		return nil
