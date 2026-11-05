@@ -35,7 +35,7 @@ func TestElectroduplicateMakesAHastyCopyThatSacrificesAtEndStep(t *testing.T) {
 		t.Errorf("the token should have haste: %v", token.Keywords)
 	}
 
-	// Advance to the end step; the delayed trigger sacrifices it.
+	// Advance to the end step; the token's own trigger sacrifices it.
 	advanceTo(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(token.InstanceID) {
