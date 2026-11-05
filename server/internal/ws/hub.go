@@ -1135,6 +1135,11 @@ func (c *Client) handleChat(frame protocol.Frame) {
 	}
 	if room != nil {
 		room.RecordChat(out)
+		// ADR 0211 §1: a seated person chatting keeps an unstarted
+		// table open. A spectator and an admin do not.
+		if authorID != "" && !c.admin {
+			room.noteSeatedChat(c.playerID)
+		}
 	}
 	payload, err := json.Marshal(out)
 	if err != nil {
@@ -1232,7 +1237,7 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		if c.admin && room.Game.CurrentState() == game.StateEnded {
 			caller = uuid.Nil
 		}
-		view, seq, err := room.Undo(caller)
+		view, seq, err := room.UndoBy(caller, c.admin)
 		if err != nil {
 			switch {
 			case errors.Is(err, ErrNothingToUndo):

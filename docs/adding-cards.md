@@ -1598,6 +1598,15 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   nothing else stays a plain `Landfall`. The bot prices every land it
   puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
   by what these rows pay.
+- **`SourceCounters`** goes on an activated row of the controller's own
+  that puts +1/+1 counters on its own source, to stay: Hangarback
+  Walker's "{1}, {T}: Put a +1/+1 counter on this creature." is
+  `game.Purpose{Answers: game.AnswerPump, SourceCounters: 1}`
+  ([#5083](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5083)).
+  Under `PriceSourceCounters` (off by default, [bot.md](bot.md#a-counter-on-its-own-source-5083))
+  the bot prices each counter as a point of power and toughness. A
+  counter on a target, an X amount, and an any-player row (Feral Hydra)
+  declare none; `effects.Register` refuses it off an activated row.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
@@ -11716,6 +11725,16 @@ clamps at zero. Two rules add up, a creature that loses all abilities loses
 its rule (the static is the creature's own), and the enumerator, the
 view's `crew_power` and the engine's validator all count the same
 number. The client sums `crew_power` too since #3550.
+
+**"As though his power were tripled", and station (#4974, CR 702.184c).**
+`CostPowerRule.Multiplier` multiplies the counted power before any bonus
+is added (Sulu, Heroic Helmsman's 3). `game.CostPowerStation` is the use for
+"stations Spacecraft": the station ability of a Spacecraft reads
+`Context.TappedStationPower`, which is `Card.CountedPower(CostPowerStation)`
+live, or the `PaidTap.StationPower` the exit hook froze when the creature
+has left (CR 608.2h). A Planet's station still reads the plain power,
+because the card names Spacecraft. Sulu's static is
+`crewsAndStationsAsThoughPowerTripled` (trek_b46_helpers.go).
 
 A card that makes a Pilot token passes `PilotToken()` ("This token saddles
 Mounts and crews Vehicles as though its power were 2 greater") or, for the

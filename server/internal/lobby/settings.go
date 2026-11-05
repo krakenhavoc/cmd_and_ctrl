@@ -62,6 +62,11 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 	}); err != nil {
 		return game.TableSettings{}, err
 	}
+	// ADR 0211 §1: the host's change keeps the table open; the
+	// server admin's (actor uuid.Nil) does not.
+	if actor != uuid.Nil {
+		l.touchLocked(entry)
+	}
 	// Read back rather than reconstruct from the patch: the answer is
 	// the whole struct, including the fields the patch left alone, and
 	// including any the engine is entitled to adjust on its way

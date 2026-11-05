@@ -3687,6 +3687,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
+		// and its "costs {N} more" (Zero, Incorporeal Sensate).
+		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err

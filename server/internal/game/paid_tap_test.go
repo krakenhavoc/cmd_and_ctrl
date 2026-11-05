@@ -72,7 +72,9 @@ func TestTapOthersPaymentIsRecordedOnTheStackItem(t *testing.T) {
 	g.mu.RLock()
 	epoch := findBattlefieldCard(g, bear).ObjectEpoch
 	g.mu.RUnlock()
-	want := PaidTap{ID: bear, Epoch: epoch, Power: 2}
+	// StationPower is what it counts for when it stations a Spacecraft:
+	// its plain power, with no CostPowerStation rule (Sulu, #4974).
+	want := PaidTap{ID: bear, Epoch: epoch, Power: 2, StationPower: 2}
 	if got[0] != want {
 		t.Errorf("TappedOthers[0] = %+v, want %+v", got[0], want)
 	}
