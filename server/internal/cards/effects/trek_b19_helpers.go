@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -48,4 +50,24 @@ func trekB19DifferentlyNamedLandsPT(label string) game.StaticAbility {
 			c.Power, c.Toughness = n, n
 		},
 	}
+}
+
+// eachDealsDamageEqualToItsPower is "they each deal damage equal to their
+// power to <victim>" (Terrific Team-Up, Common Goal): each source still on
+// the battlefield deals damage equal to its current power to the victim,
+// all in one damage event, each with its own deathtouch and lifelink. The
+// caller has already dropped the sources that are no longer legal targets.
+func eachDealsDamageEqualToItsPower(ctx *Context, sources []game.TargetRef, victim uuid.UUID) error {
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, s := range sources {
+			c, ok := ctx.Game.LookupCardForEffect(s.ID)
+			if !ok {
+				continue
+			}
+			if err := (DealDamage{Source: s.ID, Target: victim, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

@@ -31,6 +31,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "Federation — {G}, {T}: Target creature you control gets +X/+X until end of turn, where X is the number of creature types among non-Borg creatures you control. Activate only as a sorcery.",
+			Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:         Plus(ManaCost("{G}"), TapCost()),
 			Targets:      TargetCreature("target creature you control", YouControl()),
 			SorcerySpeed: true,
