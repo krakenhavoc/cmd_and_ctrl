@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Disrupt Decorum — Sorcery, {2}{R}{R}:
 //
 //	"Goad all creatures you don't control. (Until your next turn,
@@ -21,10 +19,6 @@ func init() {
 		OracleID:     "9b084cd4-cc21-4f3a-9ac5-1e1160a31aa6",
 		Name:         "Disrupt Decorum",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return GoadAllMatching(ctx, func(_ *game.Game, c game.Card) bool {
-				return c.Controller != ctx.Controller()
-			})
-		},
+		OnResolve:    goadAllCreaturesYourOpponentsControl,
 	})
 }

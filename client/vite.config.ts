@@ -85,6 +85,10 @@ export default defineConfig({
       // §6). Same silent failure as /config without it: Vite answers
       // with index.html and every Discord placement stays hidden.
       "/community": { target: goServer, changeOrigin: true },
+      // A stats share link's read (ADR 0217 §6, GET /stats/shared/{token}).
+      // Only the /stats/ subtree: the SPA's #/stats is a hash route
+      // requested as `/`, so it is never shadowed.
+      "/stats/": { target: goServer, changeOrigin: true },
       "/me": { target: goServer, changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the
