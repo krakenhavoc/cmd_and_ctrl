@@ -90,8 +90,6 @@ func TestTmcB2GameOverCostsTwoLessOnlyWhenAPlayerIsAtHalfLife(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	advanceToMain(t, g)
-	mine := seedBear(g, me.ID)
-	theirs := seedBear(g, opp.ID)
 	tmcB2Life(g, opp, startingLifeOf(g)/2+1)
 	tmcB2Pool(t, g, me, "{C}{B}{B}")
 	if _, err := tmcB2Cast(g, me, tmcB2GameOverCard, game.CastSpellParams{}); err == nil {
@@ -101,8 +99,8 @@ func TestTmcB2GameOverCostsTwoLessOnlyWhenAPlayerIsAtHalfLife(t *testing.T) {
 	g2 := newCatalogGame(t)
 	me2, opp2 := g2.Seats[0], g2.Seats[1]
 	advanceToMain(t, g2)
-	mine = seedBear(g2, me2.ID)
-	theirs = seedBear(g2, opp2.ID)
+	mine := seedBear(g2, me2.ID)
+	theirs := seedBear(g2, opp2.ID)
 	tmcB2Life(g2, opp2, startingLifeOf(g2)/2)
 	tmcB2Pool(t, g2, me2, "{C}{B}{B}")
 	if _, err := tmcB2Cast(g2, me2, tmcB2GameOverCard, game.CastSpellParams{}); err != nil {
