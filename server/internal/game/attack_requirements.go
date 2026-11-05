@@ -562,40 +562,52 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 	out.cands = g.attackRequirementCandidatesLocked(ap, assign)
 	cp := g.attackCapacityLocked(assign)
 	loners := g.onlyAloneAttackersLocked()
-	if len(loners) == 0 {
-		out.addition, out.witness = maxRequirementAssignment(out.cands, cp)
-		return out
-	}
-	// "Can only attack alone" (AttackLimitOnlyAlone, CR 506.5): such a
-	// creature can join only an empty declaration, and then nothing joins
-	// it. So the best addition is the better of the others without it,
-	// and it attacking alone. A declaration that already has an attacker
-	// leaves it out; one where it already attacks leaves no room
-	// (attackCapacityLocked).
-	var rest, alone []reqCandidate
-	for _, c := range out.cands {
-		if loners[c.id] {
-			alone = append(alone, c)
-		} else {
-			rest = append(rest, c)
+	best := func(cands []reqCandidate) (int, map[uuid.UUID]uuid.UUID) {
+		if len(loners) == 0 {
+			return maxRequirementAssignment(cands, cp)
 		}
-	}
-	out.addition, out.witness = maxRequirementAssignment(rest, cp)
-	if len(assign) > 0 || cp.global == 0 {
-		return out
-	}
-	for _, c := range alone {
-		for _, p := range c.pairs {
-			if r, ok := cp.perTarget[p.target]; ok && r <= 0 {
+		// "Can only attack alone" (AttackLimitOnlyAlone, CR 506.5): such
+		// a creature can join only an empty declaration, and then nothing
+		// joins it. So the best addition is the better of the others
+		// without it, and it attacking alone. A declaration that already
+		// has an attacker leaves it out; one where it already attacks
+		// leaves no room (attackCapacityLocked).
+		var rest, alone []reqCandidate
+		for _, c := range cands {
+			if loners[c.id] {
+				alone = append(alone, c)
+			} else {
+				rest = append(rest, c)
+			}
+		}
+		addition, witness := maxRequirementAssignment(rest, cp)
+		if len(assign) > 0 || cp.global == 0 {
+			return addition, witness
+		}
+		notAlone := g.notAloneSourcesLocked()
+		for _, c := range alone {
+			if notAlone[c.id] {
+				// Can only attack alone and can't attack alone: it
+				// can never attack (CR 508.1c).
 				continue
 			}
-			if p.weight > out.addition {
-				out.addition = p.weight
-				out.witness = map[uuid.UUID]uuid.UUID{c.id: p.target}
+			for _, p := range c.pairs {
+				if r, ok := cp.perTarget[p.target]; ok && r <= 0 {
+					continue
+				}
+				if p.weight > addition {
+					addition = p.weight
+					witness = map[uuid.UUID]uuid.UUID{c.id: p.target}
+				}
 			}
 		}
+		return addition, witness
 	}
-	return out
+	out.addition, out.witness = best(out.cands)
+	// "Can't attack alone" (AttackLimitNotAlone, CR 506.5): a completion
+	// whose one attacker is such a creature counts only if a companion
+	// can be declared beside it for free.
+	return g.reachWithoutLoneNotAloneLocked(ap, assign, out, best)
 }
 
 // onlyAloneAttackersLocked is every creature an active "can only attack
@@ -933,7 +945,10 @@ func (g *Game) AttackRequirementsUnmetForEffect() *AttackRequirementError {
 // Caller must hold g.mu with fresh layers. Reads only.
 func (g *Game) MustAttackForEffect() map[uuid.UUID][]uuid.UUID {
 	if g.attackRequirementsUnmetLocked() == nil {
-		return nil
+		// #4973: a declaration that is one creature that can't attack
+		// alone owes a companion while a free one could join it
+		// (attack_not_alone.go). Any of them answers it.
+		return g.attackAloneCompanionsLocked()
 	}
 	ap := g.activePlayerIDLocked()
 	before := g.currentAttackAssignmentLocked()
@@ -986,6 +1001,12 @@ func (g *Game) attackCheckpointLocked() error {
 	g.RecomputeLayersIfStaleLocked()
 	if e := g.attackRequirementsUnmetLocked(); e != nil {
 		return e
+	}
+	// #4973, CR 506.5 / 508.1c: a declaration that is one creature that
+	// can't attack alone is refused while a free companion could join
+	// it; when none can, that creature is taken out of it.
+	if err := g.attackAloneCheckpointLocked(); err != nil {
+		return err
 	}
 	g.markAttackDeclarationJudgedLocked()
 	return nil

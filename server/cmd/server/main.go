@@ -893,6 +893,7 @@ func main() {
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
 		StatsPrefs:        newStatsPrefsStore(database),
+		AdvancedStats:     newAdvancedStatsStore(database),
 		Log:               log,
 		Bots:              bots,
 		BotBudget:         botBudget,
@@ -1668,6 +1669,16 @@ func newPlaymatService(log *slog.Logger, dataDir string, database *db.DB) *playm
 // newGameStatsStore is the game statistics store (ADR 0165, migration
 // 0023), or nil with no database, which leaves recording off.
 func newGameStatsStore(database *db.DB) gamestats.Store {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
+// newAdvancedStatsStore reads a person's version-2 stats record for
+// the advanced-stats read routes (ADR 0217 slice 5), or nil with no
+// database.
+func newAdvancedStatsStore(database *db.DB) gamestats.AdvancedStore {
 	if database == nil {
 		return nil
 	}
