@@ -1561,6 +1561,7 @@ tail cori-steel-cutter/offer-attach
 tail counter/double-if-grew
 tail counter/double-plus-one
 tail counter/draw-per-counter
+tail counter/guinan-ancient-advisor-next
 tail counter/put-on-each-next
 tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
@@ -1808,6 +1809,7 @@ tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
+tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/mass-polymorph-reveal
 tail mass/oversimplify-exiled
