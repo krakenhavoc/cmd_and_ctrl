@@ -23,7 +23,13 @@ func init() {
 		Name:         "Swift Demise",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 1)), Answers: game.AnswerRemove},
+		Purpose: game.Purpose{
+			Targets: game.ForTargets(DamageToTarget(0, 1)),
+			Answers: game.AnswerRemove,
+			// "each creature you don't control that was dealt damage this
+			// turn": opponents' creatures, sparing the undamaged ones.
+			Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true},
+		},
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
 				for _, t := range ctx.LegalTargets() {
