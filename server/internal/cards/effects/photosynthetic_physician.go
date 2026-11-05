@@ -25,7 +25,6 @@ func init() {
 			Cost:         Plus(ManaCost("{G}"), ExileThis()),
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Effect:       Do(CreateToken{Template: TokenCard("1/1 red Officer"), N: 1}),
 		}},
 	})

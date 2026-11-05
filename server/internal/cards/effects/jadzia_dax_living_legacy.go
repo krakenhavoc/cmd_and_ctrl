@@ -39,7 +39,6 @@ func init() {
 			Label:   "Transfer Symbiont — {2}{G}, Discard this card: Put two +1/+1 counters on target creature.",
 			Cost:    game.AbilityCost{Mana: "{2}{G}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
-			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
