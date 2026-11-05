@@ -423,6 +423,7 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/gert-and-old-lace-search
+choose choose-cards/gift-of-perfection-assimilate
 choose choose-cards/gifts-ungiven-settle
 choose choose-cards/gilgamesh-master-at-arms-equipment
 choose choose-cards/gilgamesh-master-at-arms-samurai
@@ -940,6 +941,7 @@ drawinstead dredge-5
 drawinstead dredge-6
 drawinstead forbidden-crypt
 drawinstead necrobloom-dredge-2
+drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
 drawthen brainstorm-put-back
@@ -1074,6 +1076,7 @@ option option-pick/null-chamber-opponent
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
+option option-pick/pavel-chekov-first-posting-kind
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
@@ -1350,6 +1353,7 @@ run prompt-run/humiliate-counter
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/killmonger-sacrificed
+run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/liliana-dreadhorde-general-keep
@@ -1453,6 +1457,7 @@ steps then-steps/glint-sleeve-siphoner-draw-and-lose
 steps then-steps/gluntch-the-bestower-counters
 steps then-steps/gluntch-the-bestower-draw
 steps then-steps/hunted-by-the-family-copy
+steps then-steps/kor-cause-of-vengeance-draw-then-pump
 steps then-steps/lieutenants-of-the-guard-votes
 steps then-steps/locke-treasure-hunter-payoff
 steps then-steps/master-of-the-wild-hunt-damage
@@ -1878,6 +1883,7 @@ tail oversimplify/fractal-made
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
+tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
 tail pendant-of-prosperity/owners-half
 tail permanents-pick/sacrificed
@@ -1937,6 +1943,7 @@ tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
+tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
@@ -1965,6 +1972,7 @@ tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
 tail sinners-judgment/check
+tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
 tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
