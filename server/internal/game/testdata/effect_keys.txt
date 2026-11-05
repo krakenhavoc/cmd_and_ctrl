@@ -792,6 +792,7 @@ confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
+confirm confirm/belanna-torres-scrapper-reveal
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
@@ -1524,6 +1525,7 @@ tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
 tail beckett-mariner/promotion-check
+tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
 tail bind-to-life/after-mill
 tail blessed-reincarnation/after-exile
@@ -1776,6 +1778,7 @@ tail insidious-roots/counter-on-each-plant
 tail intuition/choose
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
+tail janice-rand-essential-aide/reveal-until-land
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters

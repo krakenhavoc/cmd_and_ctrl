@@ -1189,6 +1189,11 @@ type cardSnapshot struct {
 	// ChosenPlayer's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenPermanent *ObjectRef `json:"chosenPermanent,omitempty"`
+	// LinkedPermanent is the permanent a linked ability of this one
+	// affected (CR 607.2e) — The Best of Both Worlds' assimilated Borg.
+	// Carried for ChosenPermanent's reason: nothing can re-derive it. Old
+	// snapshots have no key and read "none".
+	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -3038,6 +3043,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
+		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4156,6 +4162,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
+		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
