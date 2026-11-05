@@ -937,6 +937,7 @@ drawinstead dredge-5
 drawinstead dredge-6
 drawinstead forbidden-crypt
 drawinstead necrobloom-dredge-2
+drawinstead ormos-archive-keeper
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
 drawthen brainstorm-put-back
@@ -1867,6 +1868,7 @@ tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
+tail ormos-archive-keeper/then-draw
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made

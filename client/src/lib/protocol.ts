@@ -3910,6 +3910,11 @@ export interface ActivatedAbilityView {
   // sends its mana value as `x_value` (the engine refuses any other) and
   // narrows the ability's target clause by it (`mana_value_equals_x`).
   discard_cost_mana_value_x?: boolean;
+  // #4896: "Discard three cards with different names" (Ormos, Archive
+  // Keeper). No two picks may share a name (both halves of a split card
+  // count), so the picker greys a repeat and opens even when the options
+  // number exactly `discard_cost_n`. The engine refuses a repeat.
+  discard_cost_different_names?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.

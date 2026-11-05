@@ -840,6 +840,13 @@ func Register(spec Spec) {
 		// make the ability free — the refusal the CR 602 discard gets,
 		// and the same "Discard your hand" exception (#1600).
 		checkDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
+		// #4896: the mana payer solves its discard as the cheapest N,
+		// with no set rule, and no printed mana ability says "with
+		// different names".
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
+				spec.Name, i))
+		}
 		checkManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
 		// ADR 0109 §7: a random discard is a CR 602 component only. No
 		// printed mana ability discards at random, and the mana payer

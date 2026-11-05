@@ -12406,6 +12406,15 @@ validation; `effects.DiscardLegendaryNamedLikeYourPermanent()` builds the
 printed clause. A new board question of this kind is a new bool there, with
 the same two readers.
 
+A rule over the whole SET of discarded cards ("Discard three cards with
+different names", Ormos, Archive Keeper, #4896) is not a `Match` either:
+`Match` judges one card. `effects.DiscardNDifferentNames(n, label, match…)`
+sets `DiscardCost.DifferentNames`, which the validator checks over the set
+(CR 201.2b, strictly: a nameless card never pays, and a split card has both
+its names), the enumerator pays with `game.DiscardDifferentNamesPaymentForEffect`,
+and the wire marks `discard_cost_different_names` for the client's picker.
+`Register` allows it on an activated ability's fixed count of two or more only.
+
 "The discarded card" of an activated ability (Land's Edge's "if the
 discarded card was a land card", Volrath's "the discarded card's mana
 value") is `ctx.DiscardedCard()` / `ctx.DiscardedManaValue()` (ADR 0109

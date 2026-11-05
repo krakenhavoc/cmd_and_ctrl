@@ -5003,6 +5003,16 @@ type ActivatedAbilityView struct {
 	// and narrows the ability's target clause by it before targets are
 	// chosen (`mana_value_equals_x`).
 	DiscardCostManaValueX bool `json:"discard_cost_mana_value_x,omitempty"`
+	// DiscardCostDifferentNames marks the "with different names" set rule
+	// on a fixed-count discard (#4896) — Ormos, Archive Keeper's "Discard
+	// three cards with different names". `discard_cost_options` still lists
+	// every card that could be one of the set (a card with no name never
+	// is, CR 201.2b); the client's picker greys a card sharing a name with
+	// one already picked (both halves of a split card count, CR 709.4),
+	// and opens even when the options number exactly `discard_cost_n`,
+	// because they may not differ. The engine refuses a `discard_ids` set
+	// whose names repeat. Public: it is the printed rule.
+	DiscardCostDifferentNames bool `json:"discard_cost_different_names,omitempty"`
 	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
 	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
 	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
@@ -13325,6 +13335,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostN = dc.N
 			v.DiscardCostCountFromX = dc.CountFromX
 			v.DiscardCostManaValueX = dc.ManaValueX
+			v.DiscardCostDifferentNames = dc.DifferentNames
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

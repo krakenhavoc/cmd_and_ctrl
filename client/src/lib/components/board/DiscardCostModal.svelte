@@ -22,6 +22,7 @@
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
   import { exileCostSymbolTotal } from "../../exileCost";
+  import { canPickDifferentNames, discardNameRepeats, discardNamesDiffer } from "../../discardNames";
 
   interface Props {
     // The spell being cast; null closes the modal.
@@ -61,6 +62,11 @@
     // again.
     symbolColor?: string;
     symbolMin?: number;
+    // #4896: "Discard three cards with different names" (Ormos, Archive
+    // Keeper): a card whose name is already picked is greyed, the confirm
+    // waits for a set whose names differ, and a hand without enough names
+    // is short however many cards it holds.
+    differentNames?: boolean;
   }
 
   const {
@@ -76,6 +82,7 @@
     variable = false,
     symbolColor,
     symbolMin,
+    differentNames = false,
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -97,8 +104,15 @@
     symbolColor ? exileCostSymbolTotal(options, chosen, symbolColor) : 0,
   );
   const floorMet = $derived(!symbolColor || !symbolMin || symbolTotal >= symbolMin);
-  const ready = $derived(variable ? floorMet : need > 0 && chosen.length === need);
-  const short = $derived(!variable && options.length < need);
+  const ready = $derived(
+    variable
+      ? floorMet
+      : need > 0 && chosen.length === need && (!differentNames || discardNamesDiffer(options, chosen)),
+  );
+  const short = $derived(
+    !variable &&
+      (options.length < need || (differentNames && !canPickDifferentNames(options, need))),
+  );
 
   function toggle(id: string): void {
     if (chosen.includes(id)) {
@@ -106,6 +120,7 @@
       return;
     }
     if (!variable && chosen.length >= need) return;
+    if (differentNames && discardNameRepeats(options, chosen, id)) return;
     chosen = [...chosen, id];
   }
 
@@ -134,10 +149,17 @@
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">{variable ? `Pick any number — ${label}` : label}</p>
+    {#if differentNames}
+      <p class="prompt-hint">The ones you pick must have different names.</p>
+    {/if}
     {#if short}
       <p class="prompt-hint error">
-        You need {need} card{need === 1 ? "" : "s"}
-        {where} to pay this cost.
+        {#if differentNames && options.length >= need}
+          You don't have {need} cards with different names {where}.
+        {:else}
+          You need {need} card{need === 1 ? "" : "s"}
+          {where} to pay this cost.
+        {/if}
       </p>
     {:else}
       <ul class="prompt-options">
@@ -148,6 +170,7 @@
               class="prompt-opt"
               class:on={chosen.includes(c.instance_id)}
               aria-pressed={chosen.includes(c.instance_id)}
+              disabled={differentNames && discardNameRepeats(options, chosen, c.instance_id)}
               onclick={() => toggle(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
