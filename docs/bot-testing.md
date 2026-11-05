@@ -798,6 +798,68 @@ and off, and Heliod's activation was taken in the same windows (3 of 140,
 and 17 of 582): on these decks the change reprices the grant and changes
 no decision. The mirror's one stall is the same game in both builds.
 
+## Triggered mana in the turn plan (#4770, S75)
+
+The turn plan's mana model read each source's `produced`, which CR 106.7
+keeps triggered mana out of, so a Swamp under Crypt Ghast counted as one
+{B} and the bot under-planned turns with two spells. The view now names
+that mana on each mana row as `trigger_adds` ([protocol.md](protocol.md)),
+from the auto-tap planner's own judge, and `PlanTriggerMana` counts it
+([bot.md](bot.md#the-mana-model)). It **ships off**: the arena below
+found no gain. `heuristic-triggermana` seats today's heuristic with it
+on. The view tests (`game/trigger_mana_view_test.go`,
+`protocol/trigger_mana_view_test.go`) and the model tests
+(`heuristic/plan_trigger_mana_internal_test.go`) hold both sides: with
+the switch on, two Swamps under Crypt Ghast and a Forest pay
+{B}{B}{B}{B}{G}, and with it off they make three mana.
+
+The 2026-11-05 UTC runs used develop `ee606a09b` plus #4770 and the
+synthetic `--decks ghast-battle` at all four seats (six Crypt Ghasts,
+four Zendikar Resurgents, BattleDeck's vanilla creatures recoloured
+black and green, twelve Swamps and twelve Forests), two seats with the
+switch on against two without, rotation and lockstep:
+
+```
+boteval arena --seats heuristic-triggermana,heuristic-triggermana,heuristic,heuristic \
+  --decks ghast-battle,ghast-battle,ghast-battle,ghast-battle \
+  --games 48 --seed 2000 --rotate --lockstep --turn-budget 60 --wall 10m --out DIR --md
+```
+
+and the same with `--seed 3000`. Every game ended with a winner and none
+stalled. The four-seat null rate is 25%.
+
+| Seeds | Switch on: wins / 96 | Switch off: wins / 96 |
+|---|---|---|
+| 2000–2047 | 19, 19.8% (13.1–28.9%) | 29, 30.2% (21.9–40.0%) |
+| 3000–3047 | 26, 27.1% (19.2–36.7%) | 22, 22.9% (15.6–32.3%) |
+| all | 45 / 192, 23.4% (18.0–29.9%) | 51 / 192, 26.6% (20.8–33.2%) |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. The two batches point
+opposite ways and the intervals overlap.
+
+The arena's Turn mana section shows what the switch changes:
+
+| Policy | Own turns | Planned windows | Plan misses | Mean unspent | Decision p99 |
+|---|---|---|---|---|---|
+| switch on | 2,057 | 460 | 31 of 446 checked (7.0%) | 1.35 | 3.35 ms, 2.39 ms |
+| switch off | 2,094 | 233 | 6 of 224 checked (2.7%) | 1.23 | 2.95 ms, 2.95 ms |
+
+With the switch on, the bot plans two or more spells about twice as
+often, and no turn in either policy ended with stranded mana and a cast
+on offer. But its plan misses rose to 7.0%, above ADR 0136 §8's 5% bar
+(P6). Decision logs of four games with the switch on at all four seats
+suggest one likely cause: the bot paid Crypt Ghast's extort {W/B} 89 times,
+and the plan does not budget for extort, so mana it planned for the
+second spell can go to the first spell's extort. Pricing extort into
+the plan, or a deck without it, is the run to make before turning the
+switch on. The view field works as specified: lands under Crypt Ghast and
+Zendikar Resurgent carried `{B}`, `{G}`, `{B}{B}` and `{B}{B}{B}`, which
+the plans counted. The labelled position suite, the gated heuristic games
+(`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
+package tests passed. With the switch off, `DefaultConfig` plays exactly
+as before. Reports and decision logs stayed on the authoring machine.
+
 ## Test knobs
 
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them; `server-test` is sharded across five runners by `scripts/ci-test-shard.sh`, the same flags on each, and `aiseat` is in the `rest` shard, #2766):

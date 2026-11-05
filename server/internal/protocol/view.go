@@ -5634,6 +5634,23 @@ type ManaAbilityView struct {
 	// Cabal Coffers), whose output only exists once computed at
 	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
+	// TriggerAdds is the mana tapping the permanent for this ability now
+	// would ALSO add through triggered mana abilities (CR 605.1b), in
+	// Produced's grammar: "{B}" for a Swamp under Crypt Ghast, "{G}" for
+	// a Forest under Mirari's Wake, "{G}{G}" under two Wild Growths
+	// (#4770, ADR 0074's amendment of 2026-10-30, owner decision 2).
+	// Produced stays what CR 106.7 says the ability "could produce",
+	// which never includes it.
+	//
+	// The auto-tap planner's own judge answers it, priced through the
+	// CR 106.12b window as the planner prices it, so it is what auto-pay
+	// counts. Absent when no trigger would fire, for an ability that does
+	// not tap, and when the extra mana depends on the colour picked
+	// (Mirari's Wake on a dual land) or the picks are past the planner's
+	// cap. Describes the board as it is now: a trigger cast later this
+	// turn shows in the next view. Stamped by stampManaTriggerAdds, the
+	// pass with a game handle.
+	TriggerAdds string `json:"trigger_adds,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -8706,6 +8723,9 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	// per-card stampers below did — made every view quadratic in the
 	// size of the board.
 	restricted := g.AnyActivationRestrictionsForEffect()
+	// #4770: the trigger-mana reader, taken once for the same reason; nil
+	// on every board with no triggered mana ability.
+	triggerMana, _ := g.TapTriggerManaLocked()
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
 		// #521: this guard used to be `c.oracleID == ""`, which
@@ -8764,6 +8784,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
+		stampManaTriggerAdds(triggerMana, card, controller, c.ManaAbilities)
 		// #1369: last, after every stamp above has written into the
 		// rows. The option lists read out of the controller's HAND go
 		// to the controller alone; every other viewer, spectators
@@ -8892,6 +8913,10 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 	stampManaIdentity(g, &card, seat, mine)
 	stampManaCounterCosts(g, &card, seat, mine)
 	stampManaChargedCost(g, &card, seat, mine)
+	// #4770: the mana its triggers would add goes to the activator's pool.
+	if tm, ok := g.TapTriggerManaLocked(); ok {
+		stampManaTriggerAdds(tm, &card, seat, mine)
+	}
 	byIndex := make(map[int]ManaAbilityView, len(mine))
 	for _, m := range mine {
 		if m.AnyPlayer {
@@ -9323,6 +9348,26 @@ func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, v
 			s := charged.String()
 			views[i].ChargedManaCost = &s
 		}
+	}
+}
+
+// stampManaTriggerAdds sets ManaAbilityView.TriggerAdds (#4770): the
+// mana a tap for each row would add through triggered mana abilities,
+// from the auto-tap planner's judge (game.TapTriggerMana). A nil reader,
+// which is every board with no triggered mana ability, stamps nothing.
+// A row is read by its published index, as stampManaConditions reads a
+// borrower's. Caller must hold g's read lock.
+func stampManaTriggerAdds(tm *game.TapTriggerMana, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if tm == nil || len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
+	for i := range views {
+		r := views[i].Index
+		if r < 0 || r >= len(raw) {
+			continue
+		}
+		views[i].TriggerAdds = tm.AddsLocked(controller, card, &raw[r])
 	}
 }
 

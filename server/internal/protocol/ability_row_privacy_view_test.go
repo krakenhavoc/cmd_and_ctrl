@@ -163,6 +163,9 @@ var manaRowScopes = map[string]rowScope{
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).
 	"ColorOptions": rowPublic, "DifferentColors": rowPublic,
+	// #4770: the triggers' judge reads the battlefield and the delayed
+	// records public spells set up.
+	"TriggerAdds":  rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
