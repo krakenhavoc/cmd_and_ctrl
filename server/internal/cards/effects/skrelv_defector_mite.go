@@ -14,8 +14,11 @@ func init() {
 		PrintedKeywords: []string{"toxic 1"},
 		Static:          []game.StaticAbility{RestrictSelf(game.CantBlock)},
 		Activated: []ActivatedAbility{{
-			Label:   "{W/P}, {T}: Choose a color. Another target creature you control gains toxic 1 and hexproof from that color until end of turn. It can't be blocked by creatures of that color this turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Label: "{W/P}, {T}: Choose a color. Another target creature you control gains toxic 1 and hexproof from that color until end of turn. It can't be blocked by creatures of that color this turn.",
+			// #4734 slice 7: hexproof from a color (protect), and toxic and
+			// evasion against that color (combat_grant): the union (ADR 0142
+			// sweep ruling 4).
+			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerCombatGrant, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0))},
 			Cost:    Plus(ManaCost("{W/P}"), TapCost()),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {

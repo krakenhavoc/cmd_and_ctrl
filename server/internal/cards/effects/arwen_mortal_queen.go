@@ -34,7 +34,10 @@ func init() {
 			Label:   "{1}, Remove an indestructible counter from Arwen: Another target creature gains indestructible until end of turn. Put a +1/+1 counter and a lifelink counter on that creature and a +1/+1 counter and a lifelink counter on Arwen.",
 			Cost:    Plus(ManaCost("{1}"), RemoveCountersFromThis(game.CounterIndestructible, 1)),
 			Targets: Another(TargetCreature("another target creature")),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			// #4734 slice 7: indestructible (survive), a +1/+1 counter (pump)
+			// and a lifelink counter (combat_grant): the union (ADR 0142 sweep
+			// ruling 4).
+			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerPump | game.AnswerCombatGrant, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible"))},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

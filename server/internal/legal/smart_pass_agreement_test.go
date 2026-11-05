@@ -356,6 +356,49 @@ func buildSmartPassFrames(t *testing.T) []smartPassFrame {
 			},
 			false, "nothing the seat holds matches, and beginning of combat is not a default stop; a player who ticks it still stops there"))
 	}
+	// Slice 7 (Q2 (a)): a targeted row may declare, and is matched by its
+	// kind. Mother of Runes, untapped and not summoning sick, declares
+	// protect. Before slice 7 its move carried only has_targets, an
+	// ability that stopped the seat at every opponent item and key
+	// window; the Murder on the seat's creature is the stop it is held
+	// for, and the other two windows now pass.
+	mother := func(s *small) uuid.UUID {
+		return battlefieldCard(s.g, s.seat, game.Card{
+			Name: "Mother of Runes", TypeLine: "Creature — Human Cleric",
+			ManaCost: "{W}", OracleID: oracleMotherOfRunes, Power: 1, Toughness: 1,
+		})
+	}
+	for _, victim := range []string{"yours", "another player's"} {
+		s := newSmall("krakenhavoc")
+		mor := mother(s)
+		advanceTo(t, s.g, game.StepPrecombatMain)
+		target, name, matches := s.bear, "targeted_protect_row_opponent_murder_on_your_creature", true
+		if victim != "yours" {
+			target, name, matches = s.otherBear, "targeted_protect_row_opponent_murder_on_other_creature", false
+		}
+		pushSpellAW(s.g, s.active, game.Card{Name: "Murder", TypeLine: "Instant", ManaCost: "{1}{B}{B}", OracleID: oracleMurder},
+			game.TargetRef{Kind: game.TargetCard, ID: target})
+		givePriority(s.g, s.seat)
+		why := "the stack threatens nothing of the seat's"
+		verdictWhy := "nothing the seat holds answers the opponent's item; before slice 7 Mother of Runes' has_targets stopped here"
+		if matches {
+			why = "an opponent's spell targets a creature of the seat's, which protection from a color answers"
+			verdictWhy = "a matched answer to an opponent's item is a response (rule 6)"
+		}
+		out = append(out, frameOf(t, s.g, s.seat, name,
+			"an opponent's Murder aimed at "+victim+" creature; the seat holds Mother of Runes, a targeted row that declares protect",
+			declared{mor: {verdict(matches), why}}, matches, verdictWhy))
+	}
+	{
+		s := newSmall("krakenhavoc")
+		mor := mother(s)
+		advanceTo(t, s.g, game.StepEnd)
+		givePriority(s.g, s.seat)
+		out = append(out, frameOf(t, s.g, s.seat, "targeted_protect_row_empty_opponent_end_step",
+			"an opponent's end step, the stack empty; the seat holds Mother of Runes, a targeted row that declares protect",
+			declared{mor: {verdict(false), "nothing threatens the seat or its permanents, and no combat involves it"}},
+			false, "nothing the seat holds matches; before slice 7 Mother of Runes' has_targets stopped at this key window"))
+	}
 	return out
 }
 
