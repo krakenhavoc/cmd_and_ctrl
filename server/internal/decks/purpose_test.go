@@ -251,6 +251,7 @@ var curatedPermanentPurposes = map[string]string{
 	"Mirkwood Bats":        "death payoff",
 	"Falkenrath Noble":     "death payoff",
 	"Vindictive Vampire":   "death payoff",
+	"Morbid Opportunist":   "death payoff",
 	// landfall payoffs, on the triggered row (#3072). Avenger of
 	// Zendikar's counters are counted at resolution and Field of the
 	// Dead's Zombie needs seven differently named lands, so neither
