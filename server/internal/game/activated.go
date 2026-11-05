@@ -2327,7 +2327,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
-	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
+	if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded

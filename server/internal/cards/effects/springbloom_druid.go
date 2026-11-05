@@ -84,7 +84,7 @@ func springbloomDruidSacrificeThenSearch(g *game.Game, item *game.StackItem) err
 // springbloomDruidSearch is "if you do, search your library for up to
 // two basic land cards, put them onto the battlefield tapped".
 var springbloomDruidSearch = game.RegisterPromptRunThen("prompt-run/springbloom-druid-search", func(g *game.Game, r game.RunDone) error {
-	// "If you do" — CR 701.17a's sacrifice really happened for this
+	// "If you do" — CR 701.21a's sacrifice really happened for this
 	// seat. A prompt withdrawn because the land left under it, or a
 	// CR 614 window that cancelled the move, searches for nothing.
 	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {

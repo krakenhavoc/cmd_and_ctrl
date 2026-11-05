@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Boseiju's blue sibling, and the same shape: an Island that is also
 // an instant-speed bounce you never have to draw into. Channel (CR
-// 702.142) is an ACTIVATED ability that functions from the hand, and
+// 207.2c) is an ACTIVATED ability that functions from the hand, and
 // `ActivatedAbility.Zones` (#660) is the slot that says so — with the
 // `DiscardSelf` cost component and the CR 108.4 "the card's owner is
 // you" rule both riding the one activation path.

@@ -264,6 +264,120 @@ func TestSocB14TwinflameSkipsATargetThatLeftAndStillCopiesTheRest(t *testing.T) 
 	}
 }
 
+// #4945: Twinflame's copies are made by one creation (CR 608.2f), so they
+// enter together and each Soul Warden copy sees the other enter (CR 603.6a).
+// The probe is token_copies_together_test.go's.
+func TestSocB14TwinflameCreatesItsCopiesAtTheSameTime(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	a := tctSoulWarden(g, me.ID)
+	b := tctSoulWarden(g, me.ID)
+	life := me.Life
+
+	castCatalogSpell(t, g, "Twinflame", "Sorcery", socB14TwinflameOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b},
+	})
+	tctSettle(t, g, me.ID)
+
+	if got := len(tctTokens(g, me.ID)); got != 2 {
+		t.Fatalf("%d tokens, want 2 (one per target)", got)
+	}
+	// Each original sees both copies enter (2 x 2), and each copy sees the
+	// other, because they enter together (2 x 1). One at a time is 5.
+	if got := me.Life - life; got != 6 {
+		t.Errorf("gained %d life, want 6: each Soul Warden copy sees the other enter (CR 603.6a)", got)
+	}
+}
+
+// #4945: "except it has haste" is part of the copying process, so haste is
+// one of the token's copiable values (CR 707.9a) and a copy of the token,
+// made by a spell with no exception of its own, has haste too. Only
+// Twinflame's token is exiled at the end step.
+func TestSocB14TwinflameHasteIsCopiedByACopyOfTheToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	orig := b12Push(g, me.ID, "Test Dragon", "Creature — Dragon", "", 3, 3)
+
+	castCatalogSpell(t, g, "Twinflame", "Sorcery", socB14TwinflameOracle, []game.TargetRef{{Kind: game.TargetCard, ID: orig}})
+	tctSettle(t, g, me.ID)
+	tokens := tctTokens(g, me.ID)
+	if len(tokens) != 1 {
+		t.Fatalf("%d tokens after Twinflame, want 1", len(tokens))
+	}
+	twin := tokens[0].InstanceID
+	if !hasKw(tokens[0].Keywords, "haste") {
+		t.Fatal("Twinflame's copy does not have haste as a copiable value")
+	}
+
+	castCatalogSpell(t, g, "Cackling Counterpart", "Instant", "9e2adca5-f39c-4a09-bcce-8238ebac2c4a", []game.TargetRef{{Kind: game.TargetCard, ID: twin}})
+	tctSettle(t, g, me.ID)
+	tokens = tctTokens(g, me.ID)
+	if len(tokens) != 2 {
+		t.Fatalf("%d tokens after Cackling Counterpart, want 2", len(tokens))
+	}
+	var copyOfCopy uuid.UUID
+	for _, tok := range tokens {
+		if tok.InstanceID != twin {
+			copyOfCopy = tok.InstanceID
+		}
+	}
+	if !hasEffectiveKeyword(t, g, copyOfCopy, "haste") {
+		t.Error("a copy of Twinflame's token has no haste (CR 707.9a)")
+	}
+
+	advanceToEndStep(t, g)
+	tctSettle(t, g, me.ID)
+	left := tctTokens(g, me.ID)
+	if len(left) != 1 || left[0].InstanceID != copyOfCopy {
+		t.Errorf("tokens after the end step %v, want only the copy of the copy", left)
+	}
+}
+
+// #4945: a copy whose entry asks a question (Adaptive Automaton's creature
+// type) pauses the creation; once it is answered, the copies are still
+// exiled at the next end step, and an undo of the answer lands the same way.
+func TestSocB14TwinflameExilesItsCopiesAfterACopysEntryChoiceAndUndo(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	const automaton = "53c730c6-2f8c-4af8-b400-b9d573a71e60"
+	a := pushCatalogPermanent(g, me.ID, "Adaptive Automaton", "Artifact Creature — Construct", automaton, false)
+	b := pushCatalogPermanent(g, me.ID, "Adaptive Automaton", "Artifact Creature — Construct", automaton, false)
+	for i := range g.Battlefield.Cards {
+		g.Battlefield.Cards[i].Power, g.Battlefield.Cards[i].Toughness = 2, 2
+	}
+
+	castCatalogSpell(t, g, "Twinflame", "Sorcery", socB14TwinflameOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b},
+	})
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceCreatureType) == nil {
+		t.Fatal("the copy's entry did not ask for its creature type")
+	}
+	snapshot := g.Clone()
+	for run := 0; run < 2; run++ {
+		if run > 0 {
+			g.WithWriteLock(func() { g.RestoreFrom(snapshot) })
+		}
+		for i := 0; i < 2 && pendingOfKind(g, game.PendingChoiceCreatureType) != nil; i++ {
+			answerCreatureType(t, g, me.ID, "Construct")
+		}
+		tokens := tctTokens(g, me.ID)
+		if len(tokens) != 2 {
+			t.Fatalf("run %d: %d tokens, want 2", run, len(tokens))
+		}
+		for _, tok := range tokens {
+			if !hasEffectiveKeyword(t, g, tok.InstanceID, "haste") {
+				t.Errorf("run %d: a copy has no haste", run)
+			}
+		}
+		advanceTo(t, g, game.StepEnd)
+		passPriorityAroundTable(t, g)
+		if left := tctTokens(g, me.ID); len(left) != 0 {
+			t.Errorf("run %d: %d copies survived the end step", run, len(left))
+		}
+	}
+}
+
 // --- Thunderclap Drake ---
 
 func TestSocB14ThunderclapDrakeDiscountsYourInstantsAndSorceries(t *testing.T) {

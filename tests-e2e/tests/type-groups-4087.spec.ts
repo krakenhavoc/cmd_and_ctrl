@@ -10,12 +10,14 @@ import { adminMoveByName, findCardOnBattlefield, openAdminClient } from "./s19-h
 // labelled, and the planeswalker and battle groups never overlap their
 // cards. Seeds the same board on every seat (four Sorins, a battle,
 // artifacts, enchantments, creatures, lands) at 2, 3 and 4 seats and at
-// 1920x1080 and 1366x768, and checks:
+// 1920x1080, 1366x768 and 1280x720, and checks:
 //   - a labelled row for each of the six types (an artifact creature,
 //     an artifact land and Dryad Arbor each appear once, where
 //     cardTypes.ts puts them);
 //   - no two cards in the planeswalker / battle rows overlap, and the
 //     point at each one's centre paints that card;
+//   - (#4946) those rows never scroll, and every card in them lies
+//     inside its row on both sides, an across-table seat's included;
 //   - each walker's loyalty pip is at least 13px and inside its card;
 //   - every group lies inside its seat's panel;
 //   - (#4090) a group's label box meets no card, badge or arrival tag
@@ -58,6 +60,7 @@ function makeDeck(): string {
 const SIZES = [
   { width: 1920, height: 1080 },
   { width: 1366, height: 768 },
+  { width: 1280, height: 720 },
 ];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -162,6 +165,12 @@ for (const seats of [2, 3, 4]) {
                 .map((e) => r(e.getBoundingClientRect()))
                 .filter((b) => b.width > 0 && b.height > 0),
               hiddenX: row.scrollWidth - row.clientWidth,
+              // #4946: the row's own box inside its border and scrollbar,
+              // which is what a card past either edge is clipped by.
+              inner: (() => {
+                const b = row.getBoundingClientRect();
+                return { left: b.left + row.clientLeft, right: b.left + row.clientLeft + row.clientWidth };
+              })(),
               cards: [...row.querySelectorAll<HTMLElement>(".card[data-instance-id]")].map((c) => {
                 const cb = c.getBoundingClientRect();
                 const hit = document.elementFromPoint(cb.x + cb.width / 2, cb.y + cb.height / 2);
@@ -275,6 +284,17 @@ for (const seats of [2, 3, 4]) {
           }
           for (const row of panel.rows.filter((r) => r.spread)) {
             expect.soft(row.hiddenX, `${where}: ${row.zone} scrolls`).toBeLessThanOrEqual(1);
+            // #4946: and no card runs past either edge of it. An
+            // across-table row is turned 180°, so what does not fit it
+            // spills past its LEFT edge, which scrollWidth never counts.
+            for (const c of row.cards) {
+              expect
+                .soft(c.box.x, `${where}: ${row.zone} card ${c.id} past the row's left edge`)
+                .toBeGreaterThanOrEqual(row.inner.left - 1);
+              expect
+                .soft(c.box.x + c.box.width, `${where}: ${row.zone} card ${c.id} past the row's right edge`)
+                .toBeLessThanOrEqual(row.inner.right + 1);
+            }
           }
           const spreadCards = panel.rows.filter((r) => r.spread).flatMap((r) => r.cards);
           const walkerIDs = new Set(

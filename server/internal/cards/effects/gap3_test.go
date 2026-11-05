@@ -136,6 +136,47 @@ func TestGap3MangaraDrawsOnceForATwoCreatureAttackAtYou(t *testing.T) {
 	}
 }
 
+// #4864: Mangara prints "attacking you and/or planeswalkers you
+// control", so two creatures at your planeswalker draw, and so do one
+// at you and one at it. Two at a battle you protect do not.
+func TestGap3MangaraCountsYourPlaneswalkersButNotYourBattles(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		at   func(me, walker, battle uuid.UUID) [2]uuid.UUID
+		want int
+	}{
+		{"two at your planeswalker draw one", func(_, w, _ uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{w, w} }, 1},
+		{"one at you and one at your planeswalker draw one", func(m, w, _ uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{m, w} }, 1},
+		{"two at a battle you protect draw nothing", func(_, _, b uuid.UUID) [2]uuid.UUID { return [2]uuid.UUID{b, b} }, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me, opp, other := g.Seats[1], g.Seats[0], g.Seats[2]
+			seedEnchantment(g, g3MangaraOracle, "Mangara, the Diplomat", "Legendary Creature — Human Cleric", me.ID)
+			walker := p1g2Planeswalker(g, me.ID, 5)
+			battle := pushBattlefieldCardWithTimestamp(g, game.Card{
+				InstanceID: uuid.New(), Name: "Test Siege", TypeLine: "Battle — Siege",
+				Owner: other.ID, Controller: other.ID, ProtectorPlayerID: me.ID,
+				Counters: map[string]int{game.CounterDefense: 5},
+			})
+			ids := []uuid.UUID{pushVanillaCreature(g, opp.ID, "Bear", 2, 2), pushVanillaCreature(g, opp.ID, "Bear", 2, 2)}
+			at := tc.at(me.ID, walker, battle)
+			before := me.Hand.Size()
+			advanceTo(t, g, game.StepDeclareAttackers)
+			for i, id := range ids {
+				if err := g.DeclareAttacker(id, at[i]); err != nil {
+					t.Fatalf("DeclareAttacker: %v", err)
+				}
+			}
+			lockInAttacks(t, g)
+			passPriorityAroundTable(t, g)
+			if got := me.Hand.Size() - before; got != tc.want {
+				t.Errorf("drew %d cards, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // --- Icetill Explorer ----------------------------------------------
 
 func TestGap3IcetillExplorerExtraLandGraveyardPlayAndMill(t *testing.T) {

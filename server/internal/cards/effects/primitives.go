@@ -231,7 +231,7 @@ type SacrificePermanent struct {
 	// sacrifice with nothing hanging off it.
 	//
 	// #993, and the same shape as ExileTarget.ThenTail (#870). A sacrifice
-	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
+	// is not itself replaceable (CR 701.21a), but the MOVE it makes is
 	// an ordinary zone change, so a replacement's window opens and the
 	// permanent is still on the battlefield while its question is open
 	// (a sacrificed commander is not one: it lands in the graveyard and

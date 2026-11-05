@@ -103,6 +103,45 @@ func TestShrinkSpellIsRemovalOnlyWhenItKills(t *testing.T) {
 	}
 }
 
+// TestDeclaredRemovalClearsTheResponseBar: #4324 item 1. A declared
+// removal spell lost the mana-value proxy in #4312 and is priced as the
+// removal less the card. On an opponent's turn, in their main phase and
+// at their attack, that still clears InstantThreshold for a 2/2 it kills,
+// so the bot does not hold Dismember or Last Gasp past a real target. A
+// 1/1 is below the bar and is left for the end step before the bot's
+// turn, where the leftover bar takes it.
+func TestDeclaredRemovalClearsTheResponseBar(t *testing.T) {
+	for _, sp := range []protocol.CardView{
+		trick(cardID(90), "Dismember", "{1}{B}{B}", "harm", &protocol.PumpView{Power: -5, Toughness: -5}),
+		trick(cardID(90), "Last Gasp", "{1}{B}", "harm", &protocol.PumpView{Power: -3, Toughness: -3}),
+	} {
+		for _, step := range []string{"precombat_main", "declare_attackers", "end"} {
+			t.Run(sp.Name+"/"+step, func(t *testing.T) {
+				bear, soldier := cardID(2), cardID(4)
+				at := []cardOpt{}
+				if step == "declare_attackers" {
+					at = append(at, attacking(0))
+				}
+				v := newView([]protocol.PlayerView{newSeat(0, withHand(sp)), newSeat(1)},
+					withBattlefield(land(cardID(91), 0), land(cardID(92), 0), land(cardID(93), 0),
+						creature(bear, 1, "Their Bear", 2, 2, at...), creature(soldier, 1, "Their Soldier", 1, 1)),
+					withTurn(5, 1, step))
+				v.Turn.PriorityHolder = 0
+				cast := func(target string) legal.Move {
+					return castMove(t, 0, sp.InstanceID, "Cast "+sp.Name, cardTarget(target))
+				}
+				if i, why := decideOn(t, heuristic.New(), v, passMove(0), cast(bear)); i != 1 {
+					t.Errorf("held %s with a 2/2 to kill: %s", sp.Name, why)
+				}
+				i, why := decideOn(t, heuristic.New(), v, passMove(0), cast(soldier))
+				if want := step == "end"; (i == 1) != want {
+					t.Errorf("on the 1/1: picked %d (%s), want a cast only in the end step before the bot's turn", i, why)
+				}
+			})
+		}
+	}
+}
+
 // --- protection as a save ------------------------------------------------
 
 // motherOfRunes is a seat-0 Mother of Runes, untapped and able to tap:
