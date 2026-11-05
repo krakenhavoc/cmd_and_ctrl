@@ -2513,6 +2513,13 @@ socket is still admitted, so an operator can look at the table.
 `POST /join` by code reads an archived table as an unknown code (401).
 Unarchiving opens every path again.
 
+`GET /games/{id}` keeps answering such a session, with `archived_at`
+set. A browser sees a refused upgrade only as a close 1006, so the
+client asks this route after a failed dial (and after the 1000 an
+archive closes sockets with) and, when `archived_at` is set, stops
+redialling and says "This table was closed." (#5082). The client shows
+the same sentence for every `game_closed` refusal above.
+
 **Response 200** — the updated `GameMeta`, carrying `archived_at`.
 Invite tokens are stripped.
 

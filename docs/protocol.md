@@ -50,7 +50,7 @@ completes:
 | 401 | missing or invalid credential |
 | 403 | session not valid for the requested game / player |
 | 404 | unknown game |
-| 409 | the table has been archived and the session is not an admin's (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md) §4); the body is `game_closed: this table was closed` |
+| 409 | the table has been archived and the session is not an admin's (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md) §4); the body is `game_closed: this table was closed`. A browser sees only close 1006, so the web client asks `GET /games/{id}` after a failed dial and stops on `archived_at` (#5082, [lobby.md](lobby.md)) |
 | 503 | server shutting down |
 
 ### Per-connection visibility (S04)
