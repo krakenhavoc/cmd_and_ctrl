@@ -572,6 +572,9 @@ func (g *Game) cloneLocked() *Game {
 	// #4361 S17: the entries frozen behind that paused prompt's action.
 	// Copy on write, so the slice is shared.
 	out.frozenEntries = g.frozenEntries
+	// #4522: the moves parked behind a token creation. Copy on write, so
+	// the slice is shared.
+	out.movesAwaitingTokens = g.movesAwaitingTokens
 	// #4012: the effect steps parked behind that paused prompt.
 	out.pausedStepWalk = cloneStepWalk(g.pausedStepWalk)
 	// #4163: what an earlier step handed a later one.
@@ -1166,6 +1169,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// this move, copied for the same reason.
 			ev.reflexiveAfterMove = append([]reflexiveMoveInstruction(nil), f.ev.reflexiveAfterMove...)
 		}
+		if len(f.ev.tokensAfterMove) > 0 {
+			// #4522: the token creations a replacement declared on this
+			// move, copied for the same reason.
+			ev.tokensAfterMove = cloneTokenMoveInstructions(f.ev.tokensAfterMove)
+		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather
 		// than the tail on the event, because the rest of what it
@@ -1416,6 +1424,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
 	g.frozenEntries = src.frozenEntries
+	g.movesAwaitingTokens = src.movesAwaitingTokens
 	g.pausedStepWalk = src.pausedStepWalk
 	g.stepRecords = src.stepRecords
 	g.pausedResolutionTail = src.pausedResolutionTail

@@ -173,3 +173,55 @@ create a 2/2 black Zombie creature token" makes the token as part of the
 modified event, not as a trigger. That is a token-creation instruction
 after a replaced move, which can pause on its own CR 616 question, and
 needs the life sequence's continuation handling rather than this one.
+
+## Amendment (2026-11-05, #4522): a token creation after a replaced move
+
+Kalitas, Traitor of Ghet: "If a nontoken creature an opponent controls would
+die, instead exile that card and create a 2/2 black Zombie creature token."
+The token is the second instruction of the modified event (CR 608.2c, CR
+614.6), not a "when you do" trigger, so nothing goes on the stack between
+the exile and the Zombie. The creation is a CR 701.7b event with its own CR
+614 window, and each token's entry has another, so either can pause on a CR
+616 question. The move's continuation has to wait for both, as it waits for
+a life change (decision 2).
+
+1. The replacement declares the creation on the move, after rewriting the
+   destination: `Game.CreateTokensAfterReplacedMoveForEffect(ev, spec)`.
+   The instruction (`tokenMoveInstruction`) is the source, the controller
+   and the token groups, fixed when the replacement applies. A creation
+   attacking, blocking or entering together is refused; no card needs one.
+2. The move's finisher (`runMoveTailLocked`) runs the declared creations
+   after the extra turns and reflexive triggers and before the life
+   instructions, then the route's continuation. Like a life change, a
+   creation survives a later redirect or cancel of the move (CR 614.6: a
+   commander moved to the command zone still leaves a Zombie), is
+   discarded with a move abandoned before it happens (CR 614.7), and is
+   skipped for a controller who has left the game (CR 800.4a). A move paid
+   as a cost creates the tokens without asking (decision 5); a token's
+   entry is not held to that, since no entry event carries the posture.
+3. A creation's continuation is a keyed tail all the way through its
+   entries (`tokenTail`, then `tokenEntryRun`), and a route cannot ride a
+   keyed tail. So the rest of the move is parked on the game while the
+   creation runs: `Game.movesAwaitingTokens`, a carrier `ReplacementEvent`
+   per parked move holding a copy of the route and the instructions not yet
+   run, under a fresh event ID. The creation's tail,
+   `engine/move-tokens-created`, names that ID, takes the carrier back on
+   every terminal outcome (tokens made, creation replaced away, prompt
+   abandoned) and goes on from a fresh copy. This is the frozen-entry
+   pattern of #4361 S17 (owner decision D4): copy on write, the carrier
+   never written after it is parked, so an undo snapshot that shares the
+   slice replays the same continuation.
+4. Snapshot: additive in v9. A move paused on a later CR 616 question with a
+   creation declared writes `replacementResume.event.tokensAfterMove`
+   under its own resume key, `replacement-resume/move-tokens`, which takes
+   precedence over every other move key, the reflexive one included. A
+   parked move is written as `GameSnapshot.MovesAwaitingTokens` through the
+   replacement-event mirror; one that is not data is counted
+   (`ChoiceResumeFrames`), as is one with no prompt open. Restore checks the
+   keys the carrier names. **Closure ratchet:** three new edges, none
+   counted: `Game.movesAwaitingTokens` keyed (its tail names it),
+   `ReplacementEvent.tokensAfterMove` and `tokenMoveInstruction.Groups`
+   rebuilt (token templates, as `ReplacementEvent.TokenGroups`).
+
+Still open: #4521, a wipe that destroys the replacement's source loses it
+for the later legs, applies to Kalitas as it does to Head of the Hunt.
