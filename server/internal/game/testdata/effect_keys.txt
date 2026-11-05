@@ -702,6 +702,7 @@ choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-cards/zimones-experiment-reveal
 choose choose-source/desperate-gambit
 choose choose-source/shield
+choose engine/outside-pick-permanent
 choose engine/outside-pick-plain
 choose grasping-tentacles/take-pick
 choose hama/exile-pick
