@@ -394,6 +394,7 @@ choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
+choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/exile-top-face-down-linked
@@ -1640,6 +1641,7 @@ tail engine/surveil-routed
 tail engine/suspend-exiled
 tail engine/value-chosen-nothing
 tail enlightened-confidant/return-top-card
+tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail espers-to-magicite/copy-a-creature-exiled

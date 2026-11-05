@@ -337,4 +337,10 @@ var tokenTable = map[string]game.Card{
 	"2/1 red Klingon Warrior with haste": {Name: "Klingon Warrior", TypeLine: "Token Creature — Klingon Warrior", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	// #4973 batch 11: Star Trek's Officer (Georgiou, Terran Emperor).
 	"1/1 red Officer": {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
+
+	// #4973: Star Trek's Officer (Excalbian Gamemaster).
+
+	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
+	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
+	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }

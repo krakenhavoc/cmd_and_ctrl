@@ -364,9 +364,14 @@ type Lobby struct {
 	away awayState
 	// gameStats, when non-nil, keeps each stored game's statistics
 	// record (ADR 0165); recordStatsLocked writes it when the game ends.
-	// statsWG counts the writes still running (WaitGameStats).
-	gameStats gamestats.Store
-	statsWG   sync.WaitGroup
+	// statsWG counts the writes still queued or running (WaitGameStats).
+	// statsQueue is the one stats worker's queue (ADR 0217 §1), under
+	// its own statsMu, and statsRunning says the worker is up.
+	gameStats    gamestats.Store
+	statsWG      sync.WaitGroup
+	statsMu      sync.Mutex
+	statsQueue   []statsJob
+	statsRunning bool
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.

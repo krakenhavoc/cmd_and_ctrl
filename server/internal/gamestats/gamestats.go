@@ -4,10 +4,16 @@
 // tokens, mulligans and commanders; per seat and card, how often it was
 // cast.
 //
+// Version 2 (ADR 0217) adds how the game was won and how each seat left,
+// turn order, the deck's content hash, the spread of aggression across
+// opponents and, from the replay's frames (Input.Frames), each seat's
+// land drops, screw, flood and colour screw, its attacks against the
+// creatures that could have attacked, and the cards it held.
+//
 // A record is computed, never entered: Compute reads the game's final
 // omniscient view and its whole log (protocol.FullLogOf at game end, or
-// a merge of the replay log's frames for an older game) and nothing
-// else. Version names the definitions; when one changes, Version moves
+// a merge of the replay log's frames for an older game), the replay's
+// frames, and the card index. Version names the definitions; when one changes, Version moves
 // and old records are computed again. The record holds no names of
 // people and no user ids: a seat's person is seats.user_id, through the
 // join on (game_id, seat).
@@ -22,9 +28,10 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// Version is the version of the definitions below (ADR 0165 §1). Bump it
-// when any of them changes, so the backfill computes older records again.
-const Version = 1
+// Version is the version of the definitions below (ADR 0165 §1, ADR 0217
+// §1). Bump it when any of them changes, so the backfill computes older
+// records again.
+const Version = 2
 
 // Source says what a record was derived from.
 type Source string
@@ -62,6 +69,17 @@ type Game struct {
 	// was none.
 	StartingSeat *int
 	ComputedAt   time.Time
+
+	// FramesComplete is true when the replay was read whole (ADR 0217
+	// §1). Without it the seats' Play is nil, or, for a replay cut short,
+	// covers only the frames read.
+	FramesComplete bool
+	// WinKind is how the game was won (ADR 0217 §3); "" for a draw or no
+	// outcome. WinTurn is the turn the last opponent left. ComboRule is
+	// the part of the combo rule that fired, "" otherwise.
+	WinKind   Kind
+	WinTurn   *int
+	ComboRule ComboRule
 	// Seats is one entry per seat, in seat order.
 	Seats []Seat
 }
@@ -98,6 +116,37 @@ type Seat struct {
 	Commanders []string
 	// Cards is one entry per card name the seat cast, by name.
 	Cards []Card
+
+	// Version 2 (ADR 0217), from the log and the final view.
+
+	// TurnPosition is 1–4, the seat's place in turn order from the
+	// starting seat; nil when the game had no first turn.
+	TurnPosition *int
+	// DeckHash is DeckHash over the cards the seat owned; "" without a
+	// card index.
+	DeckHash string
+	// OutKind is how the seat left, in the win kinds; "" if it did not.
+	// OutBySeat is the seat whose source dealt the last damage or loss
+	// before it left.
+	OutKind                Kind
+	OutBySeat              *int
+	CommanderCasts         int
+	CommanderFirstCastTurn *int
+	LifeLostToCombat       int
+	// Targets is one entry per opponent seat, in seat order.
+	Targets []TargetStat
+	// Play is the frame-derived record; nil when the replay was not read.
+	Play *Play
+}
+
+// TargetStat is one row of seat_target_stats: what a seat did to one
+// opponent seat. It names a seat number, never a person.
+type TargetStat struct {
+	TargetSeat      int
+	Attacks         int
+	Damage          int
+	CombatDamage    int
+	CommanderDamage int
 }
 
 // Card is how often a seat cast one card.
@@ -123,6 +172,12 @@ type Input struct {
 	Source      Source
 	LogComplete bool
 	Now         time.Time
+	// Frames is the game's replay (ReplayFile), read once; nil when there
+	// is none, which leaves every seat's Play nil (ADR 0217 §1).
+	Frames Frames
+	// Cards is the card index for the deck hash and mana sources; nil is
+	// allowed.
+	Cards CardIndex
 }
 
 // Compute derives a game's record. It never fails: a fact the inputs do
@@ -165,6 +220,17 @@ func Compute(in Input) Game {
 
 	var eliminated []int // seat numbers, in the order they left
 	cast := make(map[int]map[string]*Card)
+	type seatTurn struct{ seat, turn int }
+	turnDamage, turnSpells := map[seatTurn]int{}, map[seatTurn]int{}
+	targets := map[[2]int]*TargetStat{} // (seat, opponent seat)
+	target := func(from, to int) *TargetStat {
+		t := targets[[2]int{from, to}]
+		if t == nil {
+			t = &TargetStat{TargetSeat: to}
+			targets[[2]int{from, to}] = t
+		}
+		return t
+	}
 	for _, e := range in.Log {
 		out.Turns = max(out.Turns, e.Turn)
 		out.Rounds = max(out.Rounds, e.Round)
@@ -175,7 +241,14 @@ func Compute(in Input) Game {
 				continue
 			}
 			s.SpellsCast++
+			turnSpells[seatTurn{n, e.Turn}]++
 			c, ok := cards[e.CardID]
+			if ok && c.IsCommander && s.CommanderFirstCastTurn == nil {
+				if o, ok := seatOfPlayer[c.Owner]; ok && o == n {
+					turn := e.Turn
+					s.CommanderFirstCastTurn = &turn
+				}
+			}
 			if !ok || c.Name == "" {
 				continue
 			}
@@ -206,17 +279,27 @@ func Compute(in Input) Game {
 			if e.TargetSeat == nil {
 				continue // damage to a permanent
 			}
+			if hit, ok := at[*e.TargetSeat]; ok && e.Combat {
+				hit.LifeLostToCombat += e.Amount
+			}
 			s, n := seatFor(e)
 			if s == nil || n == *e.TargetSeat {
 				continue // damage to yourself is not damage to players
 			}
 			s.DamageToPlayers += e.Amount
+			turnDamage[seatTurn{n, e.Turn}] += e.Amount
+			t := target(n, *e.TargetSeat)
+			t.Damage += e.Amount
 			if e.Combat {
 				s.CombatDamageToPlayers += e.Amount
+				t.CombatDamage += e.Amount
 			}
 		case protocol.LogAttack:
-			if s, _ := seatFor(e); s != nil {
+			if s, n := seatFor(e); s != nil {
 				s.Attacks++
+				if e.TargetSeat != nil && *e.TargetSeat != n {
+					target(n, *e.TargetSeat).Attacks++
+				}
 			}
 		case protocol.LogToken:
 			if s, _ := seatFor(e); s != nil {
@@ -252,8 +335,12 @@ func Compute(in Input) Game {
 			if c, ok := cards[id]; ok {
 				if n, ok := seatOfPlayer[c.Owner]; ok && n != p.Seat {
 					at[n].CommanderDamageDealt += dmg
+					target(n, p.Seat).CommanderDamage += dmg
 				}
 			}
+		}
+		for _, casts := range p.CommanderCasts {
+			at[p.Seat].CommanderCasts += casts
 		}
 	}
 	for _, c := range cards {
@@ -277,6 +364,65 @@ func Compute(in Input) Game {
 	}
 
 	placeAndResult(out.Seats, at, eliminated, in.Outcome, in.WinnerSeat)
+
+	// Version 2: how the game was won and how each seat left (ADR 0217
+	// §3), turn order, the deck hash and the spread across opponents.
+	nameOf := func(id string) string { return cards[id].Name }
+	facts := readLogFacts(in.Log, seatFor, nameOf)
+	out.WinKind, out.WinTurn, out.ComboRule = facts.winKind(in.Outcome, in.WinnerSeat)
+	if out.WinKind == "" {
+		out.WinTurn, out.ComboRule = nil, ""
+	}
+	first := -1 // the starting seat's index in players
+	for i, p := range players {
+		if out.StartingSeat != nil && p.Seat == *out.StartingSeat {
+			first = i
+		}
+	}
+	for i, p := range players {
+		s := &out.Seats[i]
+		if first >= 0 {
+			// Turns pass in seat order, from the starting seat.
+			s.TurnPosition = ptr((i-first+len(players))%len(players) + 1)
+		}
+		s.DeckHash = seatDeckHash(p.ID, cards, in.Cards)
+		s.OutKind, s.OutBySeat = facts.outKind(p.Seat, in.WinnerSeat)
+		s.Targets = []TargetStat{}
+		for _, q := range players {
+			if q.Seat == p.Seat {
+				continue
+			}
+			if t := targets[[2]int{p.Seat, q.Seat}]; t != nil {
+				s.Targets = append(s.Targets, *t)
+			} else {
+				s.Targets = append(s.Targets, TargetStat{TargetSeat: q.Seat})
+			}
+		}
+	}
+
+	// The replay's frames (ADR 0217 §1, §4).
+	if in.Frames != nil {
+		smp := newSampler(in.Cards)
+		out.FramesComplete = in.Frames(func(v *protocol.GameView) bool {
+			smp.observe(v)
+			return true
+		})
+		if smp.frames > 0 {
+			seats := make([]int, len(players))
+			for i, p := range players {
+				seats[i] = p.Seat
+			}
+			plays := smp.play(seats, func(seat, turn int) (int, int) {
+				k := seatTurn{seat, turn}
+				return turnDamage[k], turnSpells[k]
+			}, cast)
+			for i := range out.Seats {
+				out.Seats[i].Play = plays[out.Seats[i].Seat]
+			}
+		} else {
+			out.FramesComplete = false
+		}
+	}
 	return out
 }
 
