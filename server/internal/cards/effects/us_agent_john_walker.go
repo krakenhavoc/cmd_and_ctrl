@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // U.S.Agent, John Walker — {3}{W/B} Legendary Creature — Human Soldier Hero
 // 3/2 (Marvel Super Heroes, #4455):
@@ -55,18 +51,5 @@ func printedSturdyShieldToken() tokenTemplate {
 // usAgentCreateShield creates the token, then attaches it to the ability's
 // source.
 func usAgentCreateShield(g *game.Game, item *game.StackItem) error {
-	if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
-		return CreateToken{Template: SturdyShieldEquipmentToken(), N: 1}.Apply(NewContext(g, item))
-	}
-	ctx := NewContext(g, item)
-	tail := ctx.Tail(roleAttachToHost)
-	tail.Carry = []uuid.UUID{item.SourceCardID}
-	return g.CreateTokensKeyedForEffect(game.TokenCreation{
-		Controller: item.Controller,
-		Source:     item.SourceCardID,
-		Groups: []game.TokenGroup{{
-			Template: ctx.TextToken(SturdyShieldEquipmentToken()),
-			Count:    1,
-		}},
-	}, tail)
+	return createTokenAttachedToSource(g, item, SturdyShieldEquipmentToken())
 }

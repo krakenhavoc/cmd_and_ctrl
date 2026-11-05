@@ -50205,6 +50205,7 @@ seats[].emblems.owner	custom(uuid.UUID)
 seats[].endStepTurn	number:int
 seats[].enduringStory	bool
 seats[].energy	number:int
+seats[].extraTurnsBegun	number:int
 seats[].graveyard	object
 seats[].graveyard.cards	array
 seats[].graveyard.cards[]	object
