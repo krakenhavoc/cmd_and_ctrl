@@ -12,7 +12,10 @@ import (
 // pumpAndGrantFirstTarget is "Target creature gets +P/+T and gains
 // <keywords> until end of turn" as an ability's whole body: the still-
 // legal target (CR 608.2b) gets the boost and the keywords, nothing if
-// it left in response.
+// it left in response. Every printed card so far gives +1 power; the
+// power stays a parameter so each call site reads as its printed text.
+//
+//nolint:unparam // the printed boost, kept at the call site
 func pumpAndGrantFirstTarget(power, toughness int, label string, keywords ...string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)

@@ -640,6 +640,9 @@ func deepenCard(out *Card) {
 	if len(out.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
+	if len(out.ExileGrants) > 0 {
+		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
+	}
 	if len(out.ManaAbilities) > 0 {
 		out.ManaAbilities = append([]ManaAbilityShape(nil), out.ManaAbilities...)
 	}
@@ -754,6 +757,7 @@ func clonePlayer(p *Player) *Player {
 		Poison:            p.Poison,
 		Energy:            p.Energy,
 		TurnsBegun:        p.TurnsBegun,
+		ExtraTurnsBegun:   p.ExtraTurnsBegun,
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),

@@ -834,6 +834,10 @@ type playerSnapshot struct {
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
 	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// ExtraTurnsBegun is Player.ExtraTurnsBegun (#4973). Additive within
+	// v9: a file written before it restores with 0, which reads as "has
+	// begun no extra turn this game".
+	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -1415,6 +1419,12 @@ type cardSnapshot struct {
 	// shows the card as automated again, which is cosmetic, not a
 	// rules change.
 	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+
+	// ExileGrants is Card.ExileGrants (ADR 0219, #4973): abilities a
+	// resolved effect gave an exiled card. Additive within the version:
+	// absent from every earlier file, which restores as "has only its
+	// printed abilities", the state before the field existed.
+	ExileGrants []ExileGrantSnapshot `json:"exileGrants,omitempty"`
 }
 
 // AbilityCounts is how many catalog abilities of each kind a card
@@ -3000,6 +3010,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -3101,6 +3112,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
+		ExtraTurnsBegun:       p.ExtraTurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -4115,6 +4127,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4248,6 +4261,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
+		ExtraTurnsBegun:    p.ExtraTurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),

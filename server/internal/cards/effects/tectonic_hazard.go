@@ -21,14 +21,7 @@ func init() {
 		Name:         "Tectonic Hazard",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				for _, opp := range ctx.Opponents() {
-					if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return damageEachMatching(ctx, And(Creature(), OpponentControls()), 1)
-			})
+			return damageEachOpponentAndEachCreatureTheyControl(ctx, 1)
 		},
 	})
 }
