@@ -117,6 +117,13 @@ const (
 // corpusBoards is the generated half of the corpus. A board added here
 // is written as a NEW file in the current version's set, or in the next
 // version's; a file already written is never touched.
+//
+// #4943: a spell cast or a land played as a player's own action opens its
+// own event batch now (CR 601.2a, 116.2a), so every board that casts or
+// plays one logs later batch numbers than the file it wrote: a history
+// this engine no longer makes. Each such board's earlier file stays and is
+// still restored; the same board is a new file, named with the suffix
+// _cast_batch.
 func corpusBoards() []corpusBoard {
 	return []corpusBoard{
 		{"fresh", func(t *testing.T) *game.Game { return newCorpusGame(t) }},
@@ -126,12 +133,12 @@ func corpusBoards() []corpusBoard {
 		{"face_down", corpusFaceDown},
 		{"attached", corpusAttached},
 		{"combat", corpusCombat},
-		{"clone", corpusClone},
+		{"clone_cast_batch", corpusClone},
 		// v7 (#1497): ADR 0041 phase 3's data-backed scoped effects.
 		{"control", corpusControl},
 		{"amass", corpusAmass},
 		{"scoped_effect_kinds", corpusScopedEffectKinds},
-		{"mass_diminish", corpusMassDiminish},
+		{"mass_diminish_cast_batch", corpusMassDiminish},
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
 		{"earthbend", corpusEarthbend},
 		// #3942: the board that wrote suspend_haste.json logged a counter
@@ -152,7 +159,7 @@ func corpusBoards() []corpusBoard {
 		{"fired_arcane_denial", corpusFiredArcaneDenial},
 		// v7, added by tier 3a (#1497) as new files: until-end-of-turn
 		// effects, which only became restore points with it.
-		{"until_eot_pump", corpusUntilEOTPump},
+		{"until_eot_pump_cast_batch", corpusUntilEOTPump},
 		{"crewed_vehicle", corpusCrewedVehicleAsFrozen},
 		// Added by #3545 (ADR 0186 §2) as a new file: the same crew
 		// activation, now that the payment loop also emits
@@ -161,7 +168,7 @@ func corpusBoards() []corpusBoard {
 		{"crewed_vehicle_event", corpusCrewedVehicle},
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
-		{"duration_grants", corpusDurationGrants},
+		{"duration_grants_cast_batch", corpusDurationGrants},
 		// v7, added by tier 4-0 (#1497) as a new file: a CR 603.12
 		// reflexive trigger on the stack, its target already chosen —
 		// a keyed stack item whose clause is re-derived from its Body
@@ -179,20 +186,20 @@ func corpusBoards() []corpusBoard {
 		// information, which the snapshot carries from this slice on.
 		{"activated_on_stack", corpusActivatedOnStack},
 		{"granted_activated_on_stack", corpusGrantedActivatedOnStack},
-		{"countered_spell_lki", corpusCounteredSpellLKI},
+		{"countered_spell_lki_cast_batch", corpusCounteredSpellLKI},
 		// v7, added by tier 3b-1 (#1497) as new files: replacement
 		// effects a spell creates, which only became restore points with
 		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
 		// seq, amount and then on disk.
-		{"fog", corpusFog},
+		{"fog_cast_batch", corpusFog},
 		// #2047: the board that wrote mending_hands_partial.json prevented damage
 		// without announcing it; a prevention that prevents something
 		// now emits EventDamagePrevented (CR 615.13), one more event in
 		// the log. The file stays and is still restored; the same board
 		// is a new file.
-		{"mending_hands_partial_announced", corpusMendingHandsPartial},
+		{"mending_hands_partial_announced_cast_batch", corpusMendingHandsPartial},
 		{"whip_redirect", corpusWhipRedirect},
-		{"cosmic_intervention", corpusCosmicIntervention},
+		{"cosmic_intervention_cast_batch", corpusCosmicIntervention},
 		// v7, added by tier 3b-2 (#1497) as new files: block-rule
 		// effects a spell or ability creates, which only became restore
 		// points with it — the cantBeBlockedExceptBy and
@@ -202,7 +209,7 @@ func corpusBoards() []corpusBoard {
 		// v7, added by #1650 as a new file: a restriction whose
 		// affected set is a live rule — addRestrictions under the
 		// creaturesWithoutFlying scope on disk.
-		{"falter", corpusFalter},
+		{"falter_cast_batch", corpusFalter},
 		// v7, added by #1651: a hexproof waiver under the live
 		// opponentsAndTheirCreatures scope, and a cantHaveKeywords record
 		// pinned to an opponent's creature. Written by #1707's v7
@@ -215,16 +222,16 @@ func corpusBoards() []corpusBoard {
 		// a token's, an emblem's, a modal one, one whose clause is
 		// built from the trigger context, and a storm trigger over a
 		// countered spell's last-known information.
-		{"etb_trigger_on_stack", corpusETBTriggerOnStack},
-		{"granted_dies_trigger", corpusGrantedDiesTrigger},
+		{"etb_trigger_on_stack_cast_batch", corpusETBTriggerOnStack},
+		{"granted_dies_trigger_cast_batch", corpusGrantedDiesTrigger},
 		{"token_trigger", corpusTokenTrigger},
 		{"emblem_trigger", corpusEmblemTrigger},
-		{"modal_trigger", corpusModalTrigger},
+		{"modal_trigger_cast_batch", corpusModalTrigger},
 		{"targets_from_trigger", corpusTargetsFromTrigger},
-		{"storm_after_counter", corpusStormAfterCounter},
+		{"storm_after_counter_cast_batch", corpusStormAfterCounter},
 		// Tier 4-0's prowess/pump body, which merged while 4-2 was open:
 		// an engine trigger with no catalog row, keyed by its body.
-		{"prowess_on_stack", corpusProwessOnStack},
+		{"prowess_on_stack_cast_batch", corpusProwessOnStack},
 		// v7, added by #1805 (ADR 0106 §3) as a new file: an evolve
 		// trigger — the second engine keyword trigger, keyed by its
 		// evolve/grow body — waiting on the stack, carrying the entered
@@ -256,7 +263,7 @@ func corpusBoards() []corpusBoard {
 		// under a Cytoshaped Clone. Written by #1712, alongside the
 		// regeneration of gingerbrute.json and whip_redirect.json that
 		// unblocked it (ADR 0044's 2026-09-28 #1712 amendment).
-		{"duration_copy", corpusDurationCopy},
+		{"duration_copy_cast_batch", corpusDurationCopy},
 		// v7, added by ADR 0101 (#1753) as a new file: keyword counters
 		// and their CR 613.7c timestamps (counterStampedAt), one older and
 		// one newer than a "loses all abilities" record on the same
@@ -273,23 +280,23 @@ func corpusBoards() []corpusBoard {
 		// no longer makes (delve's exile is a cost of the spell, so it
 		// names the caster and the spell). The file stays and is still
 		// restored; the same board is a new file.
-		{"delved_spell_on_stack_cost_cause", corpusDelvedSpellOnStack},
+		{"delved_spell_on_stack_cost_cause_cast_batch", corpusDelvedSpellOnStack},
 		// v7, added by ADR 0100 sub-PR 3 as a new file: an either/or
 		// spell on the stack — PaidCost.CostBranch and
 		// PaidCost.Discarded on disk.
-		{"either_or_spell_on_stack", corpusEitherOrSpellOnStack},
+		{"either_or_spell_on_stack_cast_batch", corpusEitherOrSpellOnStack},
 		// v7, added by ADR 0103 as a new file: a Room on the battlefield
 		// with one door unlocked (Card.Unlocked on disk) and a Room spell
 		// on the stack cast as its RIGHT half (ActiveFace 1 on a split
 		// card whose catalog key stays bare).
-		{"room_doors", corpusRoomDoors},
+		{"room_doors_cast_batch", corpusRoomDoors},
 		// v7, added by ADR 0104 (#1745) as a new file: control of a
 		// spell — a setController record pinned to a spell on the stack
 		// (affected onStack/epoch, duration PinnedOnStack/PinnedEpoch,
 		// StackItem.baseController), and a stolen permanent spell that
 		// has resolved, its record re-pinned to the permanent by epoch
 		// and its baseController the caster.
-		{"stolen_spell", corpusStolenSpell},
+		{"stolen_spell_cast_batch", corpusStolenSpell},
 		// v7, added by ADR 0100 sub-PR 2 as a new file: the CR 607.2q
 		// delve link on a permanent (CastProvenance.Delved) and on a
 		// departed one's last-known information (PermanentInfo.Delved).
@@ -306,40 +313,40 @@ func corpusBoards() []corpusBoard {
 		// #4281: the delve exiles on that board carried no cause at all;
 		// they are a cost of the spell and name it now. Same board, a
 		// new file.
-		{"delve_linked_permanents_cost_cause", corpusDelveLinkedPermanents},
+		{"delve_linked_permanents_cost_cause_cast_batch", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
 		// on the stack with two marks (StackItem.CantBeCountered), one
 		// from a spent promise and one from Vexing Shusher.
-		{"counter_shields", corpusCounterShields},
+		{"counter_shields_cast_batch", corpusCounterShields},
 		// v7, added by ADR 0107 PR 3 (#1854) as new files: rebound as
 		// data — a rebound card in exile with its upkeep delayed
 		// trigger queued (body rebound/cast, the exiled object in
 		// Params.Object), the same trigger fired and waiting on the
 		// stack, and the free cast granted after "yes" (a CastPermission
 		// whose LapseOnPass is "exile").
-		{"rebound_waiting", corpusReboundWaiting},
-		{"rebound_on_stack", corpusReboundOnStack},
+		{"rebound_waiting_cast_batch", corpusReboundWaiting},
+		{"rebound_on_stack_cast_batch", corpusReboundOnStack},
 		// #4250: the board that wrote rebound_free_cast_grant.json
 		// stamped the grant after "yes" and let the trigger finish
 		// resolving, a history this engine no longer makes (the grant
 		// is stamped under a resolution_cast prompt that holds the
 		// trigger's resolution open, CR 608.2g). That file stays and is
 		// still restored; the board as it is now built is a new file.
-		{"rebound_free_cast_offered_during_resolution", corpusReboundFreeCastGrant},
+		{"rebound_free_cast_offered_during_resolution_cast_batch", corpusReboundFreeCastGrant},
 		// v7, added by ADR 0107 PR 6 (#1853, #1880) as a new file: the
 		// rules gates as data — a resolved Skullcrack's
 		// damageCantBePrevented and cantGainLife turn grants, Flames of
 		// the Blood Hand's gainNoLife replacement, a pinned
 		// damageCantBePrevented + damageCantBeRedirected pair (Whippoorwill's
 		// shape) and a rest-of-the-game cantGainLife on one player.
-		{"rules_gates", corpusRulesGates},
+		{"rules_gates_cast_batch", corpusRulesGates},
 		// v7, added by ADR 0107 PR 4 (#1854) as a new file: a spell
 		// GIVEN rebound — a ScopedEffect pinned to the spell on the
 		// stack with an addKeywords mod, the record Taigam's trigger
 		// writes, with a Taigam on the battlefield as its source.
-		{"granted_rebound_on_stack", corpusGrantedReboundOnStack},
+		{"granted_rebound_on_stack_cast_batch", corpusGrantedReboundOnStack},
 		// v7, added by ADR 0107 PR 7 (#1860) as a new file: the next-damage
 		// shield as data — a chosen source with a colour recheck and a
 		// follow-up body protecting a player and their creatures, already
@@ -358,13 +365,13 @@ func corpusBoards() []corpusBoard {
 		// Malicious Eclipse), a pinned cantBeRegenerated (Incinerate),
 		// and Whippoorwill's "when the creature dies this turn" delayed
 		// trigger waiting on its object.
-		{"exile_if_dies", corpusExileIfDies},
+		{"exile_if_dies_cast_batch", corpusExileIfDies},
 		// v7, added by ADR 0108 PR 3 (#1823) as a new file: a resolved
 		// Yawgmoth's Will — the exileInsteadOfYourGraveyard record (a
 		// game-wide replacement naming one player) and the stored
 		// ScopeStanding graveyard cast permission written beside it, with
 		// the Will itself already exiled by its own replacement.
-		{"yawgmoths_will", corpusYawgmothsWill},
+		{"yawgmoths_will_cast_batch", corpusYawgmothsWill},
 		// v7, added by ADR 0108 PR 2 (#1890) as a new file: the
 		// multiplyDamage kind in each of its shapes — Insult's "your
 		// sources" (a resolved Insult, beside its can't-be-prevented
@@ -372,7 +379,7 @@ func corpusBoards() []corpusBoard {
 		// Lightning's "that player and their permanents" until your next
 		// turn, Blind Fury's combat-only creature-to-creature, and a
 		// pinned "next time" multiplier already spent by its instance.
-		{"multiply_damage", corpusMultiplyDamage},
+		{"multiply_damage_cast_batch", corpusMultiplyDamage},
 		// v7, added by ADR 0108 PR 2 (#1890) as a new file: Impulsive
 		// Maneuvers' losing flip — a preventNextCombatFromSource shield on
 		// an attacking creature, its own kind so that a binary from before
@@ -384,7 +391,7 @@ func corpusBoards() []corpusBoard {
 		// naming the one banned player) beside a standing Territorial
 		// Dispute, whose land-play restriction is catalog data and so adds
 		// nothing to the file but the permanent.
-		{"cant_play_lands", corpusCantPlayLands},
+		{"cant_play_lands_cast_batch", corpusCantPlayLands},
 		// v7, added by #2039 (ADR 0096 amendment) as a new file: Jared
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
@@ -399,7 +406,7 @@ func corpusBoards() []corpusBoard {
 		// file: a Null Summoner's revealed-hand pick waiting on the
 		// controller, whose exile is linked to the Summoner object
 		// (pickExiledWith).
-		{"revealed_hand_pick_exile_linked", corpusRevealedHandPickExileLinked},
+		{"revealed_hand_pick_exile_linked_cast_batch", corpusRevealedHandPickExileLinked},
 		// v8, added by #2928 (ADR 0146 amendment 2026-10-13) as a new
 		// file: a vote over cards in a graveyard (Custodi Squire's
 		// councilVote.zone) waiting on a ballot that Illusion of Choice
@@ -482,7 +489,7 @@ func corpusBoards() []corpusBoard {
 		// per slot; an activation is one production now, so the ids
 		// minted after it moved. The file stays and is still restored;
 		// the same board is a new file.
-		{"granted_mana_spent_readers_one_production", corpusGrantedManaSpentReaders},
+		{"granted_mana_spent_readers_one_production_cast_batch", corpusGrantedManaSpentReaders},
 		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
 		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
 		// of Faith's charged shield with its Then, partly spent; Vengeful
@@ -500,7 +507,7 @@ func corpusBoards() []corpusBoard {
 		// to-and-by record over two creatures (Mod.AndDealtBy, an
 		// affected set of two), Redeem's one record protecting two, and
 		// Brace for Impact's pinned shield with its counters follow-up.
-		{"to_and_by_shields", corpusToAndByShields},
+		{"to_and_by_shields_cast_batch", corpusToAndByShields},
 		// v7, added by ADR 0108 PR 9 (#1905) as a new file: the
 		// redirectDamage kind in each of its shapes — Beacon of Destiny's
 		// "next time" from a chosen source to a permanent, spent by an
@@ -515,7 +522,7 @@ func corpusBoards() []corpusBoard {
 		// stack after its cost was paid — paid.sacrificedObjects naming
 		// the creature it sacrificed, and that creature's last-known
 		// record beside it.
-		{"sacrifice_cost_objects", corpusSacrificeCostObjects},
+		{"sacrifice_cost_objects_cast_batch", corpusSacrificeCostObjects},
 		// v7, added by ADR 0113 §3 (#2074) as a new file: a player's
 		// "no maximum hand size for the rest of the game" grant with its
 		// CR 613.7b timestamp (players[].maxHandSizeAt), and a Null
@@ -600,7 +607,7 @@ func corpusBoards() []corpusBoard {
 		// (seats[].manaPool[].count): a long run from one source and a
 		// restricted run of {C}. And a spell on the stack paid partly
 		// out of the long run (stackMeta[].paid.Mana[]).
-		{"mana_pool_runs", corpusManaPoolRuns},
+		{"mana_pool_runs_cast_batch", corpusManaPoolRuns},
 		// v9, added by #3275 as a new file: a creature that "can't be
 		// sacrificed this turn" — the cantBeSacrificed rule kind,
 		// pinned to the creature (a new vocabulary value an older
@@ -611,13 +618,13 @@ func corpusBoards() []corpusBoard {
 		// waiting, its body keyed and its two objects, the target and
 		// the card the cost sacrificed, each with its CR 400.7 epoch in
 		// the graveyard (delayedTriggers[].params.objects).
-		{"delayed_trigger_objects", corpusDelayedTriggerObjects},
+		{"delayed_trigger_objects_cast_batch", corpusDelayedTriggerObjects},
 		// v9, added by #1987 (ADR 0066 amendment 2026-10-16) as a new
 		// file: a resolved Shaman's Trance — the cantPlayFromOwnGraveyard
 		// record (a game-scope rule kind, one mod per other player) and
 		// the caster's stored standing permissions, one per other seat's
 		// graveyard (castPermissions[].zoneOwner over a graveyard).
-		{"shamans_trance", corpusShamansTrance},
+		{"shamans_trance_cast_batch", corpusShamansTrance},
 		// v9, added by #1986 (ADR 0109 §4 amendment 2026-10-23) as a new
 		// file: a Damping Engine whose controller has ignored it by
 		// sacrificing a permanent — the ignoreEffect record (a game-scope
@@ -632,7 +639,7 @@ func corpusBoards() []corpusBoard {
 		// question, its frame carrying the resolving spell
 		// (replacementResume.event.stackItem).
 		{"dredge_offer", corpusDredgeOffer},
-		{"riot_entry", corpusRiotEntry},
+		{"riot_entry_cast_batch", corpusRiotEntry},
 		// v9, added by #4253 slice 2 (ADR 0013 amendment 2026-10-24) as
 		// new files: a counter placement and a life change paused on a
 		// CR 616 ordering prompt (the event mirror's counter and life
@@ -641,7 +648,7 @@ func corpusBoards() []corpusBoard {
 		// the prompt kind).
 		{"counter_order", corpusCounterOrder},
 		{"life_order", corpusLifeOrder},
-		{"entry_sacrifice", corpusEntrySacrifice},
+		{"entry_sacrifice_cast_batch", corpusEntrySacrifice},
 		// v9, added by #4253 slice 3 (ADR 0013 amendment 2026-10-24) as
 		// new files: CR 616 prompts whose event carries a continuation
 		// that is now data. A fetched shockland's question with the rest
@@ -661,33 +668,33 @@ func corpusBoards() []corpusBoard {
 		{"monstrosity_order", corpusMonstrosityOrder},
 		{"drain_order", corpusDrainOrder},
 		{"face_down_exile_leg", corpusFaceDownExileLeg},
-		{"preordain_scry", corpusPreordainScry},
+		{"preordain_scry_cast_batch", corpusPreordainScry},
 		// #4253 slice 4: a card's own registered tail on a battlefield
 		// search (entryTail.search.thenTail), one that carries the asking
 		// item (KeyedTail.asked), and a surveil's that does.
-		{"cultivate_fetch", corpusCultivateFetch},
-		{"hour_of_promise_fetch", corpusHourOfPromiseFetch},
+		{"cultivate_fetch_cast_batch", corpusCultivateFetch},
+		{"hour_of_promise_fetch_cast_batch", corpusHourOfPromiseFetch},
 		{"eye_of_jace_surveil", corpusEyeOfJaceSurveil},
 		// #4253 slice 6: a single permanent's return keeps its tail on the
 		// entry (entryTail.keyed), and an amass's token creation carries the
 		// keyword action's data and the card's own tail (keyed tail word and
 		// next).
-		{"it_doesnt_add_up_clone", corpusItDoesntAddUpClone},
-		{"amass_army_order", corpusAmassArmyOrder},
+		{"it_doesnt_add_up_clone_cast_batch", corpusItDoesntAddUpClone},
+		{"amass_army_order_cast_batch", corpusAmassArmyOrder},
 		// #4253 slice 5: the library-search prompt itself, written as data
 		// (pendingChoices[].searchPrompt, its marker on pickThen). Myriad
 		// Landscape's, whose set rule is registered (searchPrompt.rule);
 		// and Assassin's Trophy's "you may search", asked before it begins
 		// (searchPrompt.undecided).
 		{"myriad_landscape_search", corpusMyriadLandscapeSearch},
-		{"trophy_search_undecided", corpusTrophySearchUndecided},
+		{"trophy_search_undecided_cast_batch", corpusTrophySearchUndecided},
 		// #4253 slice 9: a route batch paused on its second card with the
 		// rest of the batch as data (zoneRoute.batchLegs), a discard leg
 		// (zoneRoute.discardLegs, the discard's own event fields), and a
 		// discard a replacement turned into an entry (entryTail.batch.discard).
-		{"crypt_incursion_exile_leg", corpusCryptIncursionExileLeg},
-		{"mind_rot_discard_leg", corpusMindRotDiscardLeg},
-		{"obstinate_baloth_discard_entry", corpusObstinateBalothDiscardEntry},
+		{"crypt_incursion_exile_leg_cast_batch", corpusCryptIncursionExileLeg},
+		{"mind_rot_discard_leg_cast_batch", corpusMindRotDiscardLeg},
+		{"obstinate_baloth_discard_entry_cast_batch", corpusObstinateBalothDiscardEntry},
 		// v9, added by #4691 as a new file: the loseAllCreatureTypes kind
 		// (layer 4, CR 613.1d), made by the card that writes it. Two
 		// resolved Nameless Inversions, each one record until end of turn
@@ -695,7 +702,7 @@ func corpusBoards() []corpusBoard {
 		// and one on a changeling (CR 702.73a), whose every-creature-type
 		// marking goes too while it keeps the keyword. A new vocabulary
 		// value an older binary must refuse rather than read as nothing.
-		{"lose_all_creature_types", corpusLoseAllCreatureTypes},
+		{"lose_all_creature_types_cast_batch", corpusLoseAllCreatureTypes},
 	}
 }
 
