@@ -1,5 +1,5 @@
 import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
-import { deckArt, type DeckArt } from "./deckGrid";
+import { deckArt, deckIdentity, type DeckArt } from "./deckGrid";
 import { COMMANDER_JOIN, sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
 import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
@@ -147,6 +147,8 @@ export interface SeatTileText {
   what: string;
   second: string;
   colors: string[];
+  /** The commanders are known and colourless: the pips draw {C} (#4847). */
+  colorless?: boolean;
   ready: boolean;
 }
 
@@ -184,6 +186,9 @@ export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): Sea
       what,
       second,
       colors: orderedColors(botDeck?.colors ?? p.color_identity),
+      colorless: botDeck?.colors
+        ? orderedColors(botDeck.colors).length === 0
+        : deckIdentity(p)?.length === 0,
       ready: true,
     };
   }
@@ -194,6 +199,7 @@ export function seatTileText(p: SeatInfo, botDeck: BotDeckInfo | undefined): Sea
       what: commander,
       second: deck && !sameName(deck, commander) ? deck : "",
       colors: orderedColors(p.color_identity),
+      colorless: deckIdentity(p)?.length === 0,
       ready: true,
     };
   }
