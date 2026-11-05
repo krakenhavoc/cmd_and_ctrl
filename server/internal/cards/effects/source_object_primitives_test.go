@@ -676,6 +676,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		// "Put Approach of the Second Sun into its owner's library
 		// seventh from the top." (#3654)
 		"approach_of_the_second_sun.go": true,
+		// "Exile The Needs of the Many." (#4973)
+		"the_needs_of_the_many.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)
