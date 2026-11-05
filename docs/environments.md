@@ -1287,6 +1287,25 @@ so everyone who had added one adds it again in Settings › AI opponents.
 `TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
 forward.
 
+Migration 0031 (ADR 0211, closing idle tables, #4562) adds two nullable
+columns, `games.last_active_at` and `games.closed_reason`. An older binary
+refuses the v31 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN closed_reason; ALTER TABLE games DROP COLUMN last_active_at; DELETE FROM schema_migrations WHERE version = 31;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the idle clocks: every table's clock starts again when the
+newer binary next loads it, and a table the sweep closed stays archived
+(the older binary has no idle sweep, so nothing more is closed). Its
+reason is lost, so My games and the admin views show it as an ordinary
+archive. `TestMigration0031RollbackByHand` runs exactly this sequence and
+then rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,

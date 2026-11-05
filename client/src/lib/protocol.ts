@@ -1253,6 +1253,11 @@ export type LogKind =
   // seat; `seat` who decided (NoSeat for the admin); `amount` the
   // minutes the seat had been offline.
   | "away_seat"
+  // ADR 0211 §4, §6: the server closed the table, or warned that it
+  // will, because nobody used it. `label` is "idle_lobby", "idle_game",
+  // "idle_bots" or "idle_warning"; `amount` the hours idle (minutes for
+  // "idle_bots"); on a warning, `call` is when the game closes.
+  | "idle_close"
   // ADR 0075 §2.4: the host or the admin put cards or tokens on the
   // table from nowhere. `label` is the card or token name, `amount`
   // the count, `new_zone` where they went and `target_seat` whose

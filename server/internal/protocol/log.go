@@ -50,6 +50,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -444,6 +445,13 @@ const (
 	// seat, the actor who decided (no seat for the server admin), and
 	// `Amount` the whole minutes the seat had been offline.
 	LogAwaySeat LogKind = "away_seat"
+	// LogIdleClose — the server closed the table, or warned that it
+	// will, because nobody used it (ADR 0211 §4, §6). `Label` is
+	// "idle_lobby", "idle_game" or "idle_bots" for a close and
+	// "idle_warning" for the warning; `Amount` the hours idle (minutes
+	// for "idle_bots"); on a warning, `Call` is when the game closes
+	// (RFC 3339). No seat did it.
+	LogIdleClose LogKind = "idle_close"
 	// LogSpawn — the host or the admin put cards or tokens onto the
 	// table from nowhere (ADR 0075 §2.4). `Label` is the card or
 	// token name, `Amount` the count, `NewZone` where they went and
@@ -2112,6 +2120,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventIdleClose:
+		base.Kind = LogIdleClose
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		base.Call = ev.Call
+		return base, true
+
 	case game.EventAwaySeat:
 		base.Kind = LogAwaySeat
 		base.Label = ev.Label
@@ -3383,6 +3398,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return renderSettingsText(*e)
 	case LogAwaySeat:
 		return renderAwaySeatText(*e, actor, target)
+	case LogIdleClose:
+		return renderIdleCloseText(*e)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
 	case LogStorm:
@@ -3635,6 +3652,38 @@ func renderAwaySeatText(e LogEvent, actor, target string) string {
 		return fmt.Sprintf("%s took their seat back", target)
 	}
 	return fmt.Sprintf("%s moved %s's seat on", actor, target)
+}
+
+// renderIdleCloseText words an idle close or its warning (ADR 0211
+// §4, §6): "Closed: no moves for 48 hours." The closing time of a
+// warning is in UTC, the one zone every reader of a replay shares.
+func renderIdleCloseText(e LogEvent) string {
+	switch e.Label {
+	case game.IdleCloseLobby:
+		return fmt.Sprintf("Closed: no activity for %s.", idleHours(e.Amount))
+	case game.IdleCloseGame:
+		return fmt.Sprintf("Closed: no moves for %s.", idleHours(e.Amount))
+	case game.IdleCloseBots:
+		if e.Amount == 60 {
+			return "Closed: only bots left for an hour."
+		}
+		return fmt.Sprintf("Closed: only bots left for %d minutes.", e.Amount)
+	case game.IdleCloseWarning:
+		when := "soon"
+		if at, err := time.Parse(time.RFC3339, e.Call); err == nil {
+			when = at.UTC().Format("at 15:04 UTC on Monday")
+		}
+		return fmt.Sprintf("No one has moved for %s. This game closes %s unless someone makes a move.", idleHours(e.Amount), when)
+	}
+	return "Closed: nobody was using the table."
+}
+
+// idleHours words a whole number of hours: "1 hour", "36 hours".
+func idleHours(n int) string {
+	if n == 1 {
+		return "1 hour"
+	}
+	return fmt.Sprintf("%d hours", n)
 }
 
 // renderSpawnText words a spawn (ADR 0075 §2.4): who did it, under

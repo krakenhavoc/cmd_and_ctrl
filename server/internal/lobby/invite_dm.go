@@ -163,6 +163,11 @@ func inviteDM(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := c.DiscordBot.SendDM(r.Context(), c.DiscordHTTPClient, recipient, content); err != nil {
 		return dmSendError(c, err)
 	}
+	// ADR 0211 §1: inviting someone keeps the table open; the admin's
+	// invite (the bot's /c2-invite) does not.
+	if !admin {
+		c.Lobby.TouchTable(id)
+	}
 	return writeJSON(w, http.StatusOK, dmInviteResponse{
 		Sent:        true,
 		UserID:      body.UserID,

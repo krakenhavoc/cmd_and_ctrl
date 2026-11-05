@@ -94,6 +94,7 @@ func (l *Lobby) SetVoiceRoom(id uuid.UUID, enabled bool) (GameMeta, error) {
 	// capture carries the change.
 	broadcast, err := l.applyLocked(id, entry, func() error { return nil })
 	l.persistGameLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1
 	meta := copyMeta(entry.meta)
 	l.mu.Unlock()
 	if err == nil {

@@ -169,6 +169,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // the spine of the log, not a whisper in it.
   settings: "tone-step",
   away_seat: "tone-step",
+  // ADR 0211: the table closing for want of players ends the spine.
+  idle_close: "tone-step",
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",
