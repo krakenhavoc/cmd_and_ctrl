@@ -146,6 +146,7 @@ var reviewedNotAWipe = map[string]string{
 	"Trailblazer's Torch":                      "2 damage only to the creatures blocking the equipped creature",
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",
 	"Ugin, the Spirit Dragon":                  "the -X sweep is not registered (its caveat says so)",
+	"V'Ger, the Intruder":                      "-1/-0 to opponents' creatures kills nothing",
 	"Vault 11: Voter's Dilemma":                "destroys only the creatures with the most votes, one per voter at most: removal, not a wipe",
 	"Volcanic Torrent":                         "damage equal to spells cast this turn, to opposing creatures and planeswalkers: no fixed amount or X for a sweep to declare",
 	"Watchdog":                                 "-1/-0 to attackers kills nothing",
