@@ -1884,8 +1884,10 @@ type Event struct {
 	// move. Empty when nothing was recorded. "A spell or ability you
 	// control exiles one or more permanents" (Ranar the Ever-Watchful)
 	// reads it — see move_cause.go and ExiledBySpellOrAbilityOf.
-	// Engine-internal: protocol/log.go does not project it. Added with
-	// #1320.
+	// Engine-internal: protocol/log.go does not project it, except that an
+	// EventSacrifice paid as a cost carries Cause "cost" (#4427,
+	// announceSacrificeLocked; its payer is the event's Actor), which the
+	// log's `sacrifice` line says. Added with #1320.
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
@@ -1899,6 +1901,12 @@ type Event struct {
 	// event, on an entry no ability made (a land played, a spell
 	// resolving into a permanent, a sandbox move), and on an entry made
 	// by a spell's effect, which has no catalog row of its own.
+	//
+	// On an EventSacrifice paid as an activated ability's cost (a mana
+	// ability's included), CauseSource is that ability's source object,
+	// and CauseAbility is nil (#4427): equal to CardID when a permanent
+	// was sacrificed for its own ability (a fetch land, a Treasure).
+	// NotPutByThisAbility reads EventETB alone, so it never sees one.
 	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
 	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
 

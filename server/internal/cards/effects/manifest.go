@@ -8,7 +8,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// manifest.go — #1194 / ADR 0082: manifest (CR 701.34), cloak
+// manifest.go — #1194 / ADR 0082: manifest (CR 701.40), cloak
 // (CR 701.58), and the ward {2} disguise and cloak give the object
 // they make (CR 702.168a, CR 701.58a).
 //
@@ -23,13 +23,13 @@ import (
 // anything else, which stays face down for as long as it is on the
 // battlefield.
 
-// Manifest is CR 701.34a: "manifest the top card of your library" —
+// Manifest is CR 701.40a: "manifest the top card of your library" —
 // put it onto the battlefield face down as a 2/2 creature under
 // `Player`'s control, or the resolving item's controller when that is
 // zero, as every other primitive in this package spells "you".
 //
 // `N` is how many cards, taken one at a time from the top, which is
-// what "manifest the top two cards of your library" means: CR 701.34b
+// what "manifest the top two cards of your library" means: CR 701.40e
 // makes each its own manifest, so each one re-reads the top and each
 // one opens its own CR 614 entry window. Zero or fewer manifests
 // nothing.

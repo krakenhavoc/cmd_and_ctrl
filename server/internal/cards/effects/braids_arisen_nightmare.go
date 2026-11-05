@@ -35,7 +35,7 @@ import (
 //     lets Braids sacrifice a battle, the one permanent type the card
 //     predates and does not name.
 //  3. Once the sacrifice has actually happened (SacrificeAllKeyedForEffect's
-//     `sacrificed` list, not the pick itself — CR 701.17a's own
+//     `sacrificed` list, not the pick itself — CR 701.21a's own
 //     "sacrifice is not replaceable" still opens a CR 903.9 window on
 //     the MOVE for a sacrificed commander), each opponent in turn
 //     order gets a PickOption: sacrifice a permanent that shares a

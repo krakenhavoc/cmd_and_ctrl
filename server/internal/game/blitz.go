@@ -21,7 +21,7 @@ import "github.com/google/uuid"
 //   - The SACRIFICE is a CR 603.7 delayed trigger at the next end step.
 //     It sacrifices the creature only if it is still the object that was
 //     blitzed (CR 400.7) and the trigger's controller still controls it
-//     (CR 701.17a: a player can sacrifice only a permanent they control).
+//     (CR 701.21a: a player can sacrifice only a permanent they control).
 //
 // The same pair is printed outside the keyword — Jaxis, the
 // Troublemaker's token "gains haste and 'When this token dies, draw a

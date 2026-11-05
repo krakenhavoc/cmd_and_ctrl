@@ -578,6 +578,31 @@ func TestHobA3LandrovalCountsHerselfAmongTheAttackers(t *testing.T) {
 	}
 }
 
+// #4864: Landroval counts only creatures whose attack target is the
+// player. One at the player and one at their planeswalker, or two at a
+// battle they protect, are not two creatures attacking a player.
+func TestHobA3LandrovalCountsOnlyAttackersAtThePlayer(t *testing.T) {
+	for _, tc := range hornAttackCases {
+		t.Run(tc.name, func(t *testing.T) {
+			g, me, opp, _ := hobA3LandrovalTable(t)
+			other := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+			walker, battle := hornAttackTargets(g, opp.ID, other.ID)
+			at := tc.at(opp.ID, walker, battle)
+			ids := [2]uuid.UUID{pushSizedCreature(g, me.ID, "Ground A", 2, 2), pushSizedCreature(g, me.ID, "Ground B", 2, 2)}
+			advanceTo(t, g, game.StepDeclareAttackers)
+			for i, id := range ids {
+				if err := g.DeclareAttacker(id, at[i]); err != nil {
+					t.Fatalf("DeclareAttacker %d: %v", i, err)
+				}
+			}
+			lockInAttacks(t, g)
+			if got := latestPickTarget(g, me.ID) != nil; got != tc.want {
+				t.Errorf("Landroval triggered = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func hobA3LandrovalSpec(t *testing.T) Spec {
 	t.Helper()
 	spec, ok := Lookup(hobA3LandrovalOracle)

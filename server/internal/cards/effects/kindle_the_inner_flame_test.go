@@ -109,6 +109,49 @@ func TestKindleTheInnerFlameFlashbackBeholdsThreeElementals(t *testing.T) {
 	}
 }
 
+// #4950: the front half is Electroduplicate's, with Kindle's own grant. The
+// token carries "At the beginning of the end step, sacrifice this token." as
+// a copiable value (CR 707.9a), so a token copy of it made by Cackling
+// Counterpart has the trigger too, and both are sacrificed at the end step.
+// The card is Full: no caveat is left.
+func TestKindleTheInnerFlameCopyOfTheTokenIsSacrificedAtEndStep(t *testing.T) {
+	spec, ok := Lookup(kindleOracle)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Kindle is registered %v as %v with caveats %v, want Full with none", ok, spec.Completeness, spec.Caveats)
+	}
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	smoke := apaPush(g, me.ID, me.ID, game.Card{Name: "Smoke Elemental", TypeLine: elementalType, Power: 3, Toughness: 3})
+	castCatalogSpell(t, g, kindleName, kindleTypeLine, kindleOracle, []game.TargetRef{{Kind: game.TargetCard, ID: smoke}})
+	passPriorityAroundTable(t, g)
+	tokens, _ := copiesOnBattlefield(g, "Smoke Elemental")
+	if len(tokens) != 1 {
+		t.Fatalf("%d token copies, want 1", len(tokens))
+	}
+	token := tokens[0].InstanceID
+	if want := game.GrantKey(kindleTheInnerFlameGrant); len(tokens[0].GrantedAbilities) != 1 || tokens[0].GrantedAbilities[0] != want {
+		t.Fatalf("the token's granted abilities are %v, want [%s]", tokens[0].GrantedAbilities, want)
+	}
+
+	castCatalogSpell(t, g, "Cackling Counterpart", "Instant", cacklingCounterpartOracle, []game.TargetRef{{Kind: game.TargetCard, ID: token}})
+	passPriorityAroundTable(t, g)
+	tokens, _ = copiesOnBattlefield(g, "Smoke Elemental")
+	if len(tokens) != 2 {
+		t.Fatalf("%d Smoke Elemental tokens after the second copy, want 2", len(tokens))
+	}
+
+	advanceTo(t, g, game.StepEnd)
+	passThroughEndStepTriggers(t, g)
+	for _, c := range tokens {
+		if onBattlefieldByID(g, c.InstanceID) || !sacrificedInLog(g, c.InstanceID) {
+			t.Errorf("token %v was not sacrificed at the end step", c.InstanceID)
+		}
+	}
+	if !onBattlefieldByID(g, smoke) {
+		t.Error("the original Elemental was sacrificed")
+	}
+}
+
 // All three from the battlefield, and all three from the hand, pay it too.
 func TestKindleTheInnerFlameFlashbackFromOneZone(t *testing.T) {
 	b := newKindleBoard(t)

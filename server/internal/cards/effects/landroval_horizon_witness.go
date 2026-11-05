@@ -14,7 +14,7 @@ import (
 //	 attacking creature without flying gains flying until end of turn."
 //
 // Horn of the Mark's trigger with a target (#4454). It is one trigger per
-// defending player, not one per attacker: EventAttack fires per creature,
+// attacked player, not one per attacker: EventAttack fires per creature,
 // so the ability is OncePerBatchPerPlayer, and the COUNT is read off the
 // board at the lock-in (b41AttackersAgainst), where Landroval herself
 // counts if she attacks. The pick is made as the trigger goes on the stack,
@@ -42,15 +42,18 @@ func init() {
 // twoOrMoreOfYourCreaturesAttackThatPlayer is the condition of "Whenever
 // two or more creatures you control attack a player": the declaring player
 // is the source's controller and at least two of their creatures, the
-// source among them if it attacks, are attacking the defender this
-// declaration names.
+// source among them if it attacks, are attacking the player this
+// declaration names. Attackers are grouped by the player they attack
+// (CR 508.3a): one aimed at that player's planeswalker or at a battle
+// they protect is not attacking them, so it neither triggers this nor
+// counts toward the two (#4864).
 func twoOrMoreOfYourCreaturesAttackThatPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Actor != source.Controller {
 		return false
 	}
-	defender := b17DefendingPlayer(g, ev)
-	if defender == uuid.Nil {
+	player := attackedPlayer(g, ev)
+	if player == uuid.Nil {
 		return false
 	}
-	return b41AttackersAgainst(g, source.Controller, defender) >= 2
+	return b41AttackersAgainst(g, source.Controller, player) >= 2
 }

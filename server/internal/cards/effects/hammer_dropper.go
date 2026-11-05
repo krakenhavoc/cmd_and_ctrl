@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Mentor (Whenever this creature attacks, put a +1/+1 counter on
 //	 target attacking creature with lesser power.)"
 //
-// Mentor (CR 702.136) is the shared Mentor() trigger: its clause is
+// Mentor (CR 702.134) is the shared Mentor() trigger: its clause is
 // relative to the mentor (#2146), so the target's power is compared
 // with the mentor's as the trigger goes on the stack and again as it
 // resolves, and the trigger is dropped when no attacker has lesser

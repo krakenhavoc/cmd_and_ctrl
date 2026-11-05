@@ -14,6 +14,7 @@ import {
   overrideStale,
   rowDemand,
   scaleForLines,
+  settleScale,
   stripContent,
   stripOpen,
   tappedRoom,
@@ -333,5 +334,43 @@ describe("lineHeight", () => {
     expect(allocateRowHeights(500, [label, back])[1]).toBeGreaterThan(
       allocateRowHeights(500, [one, back])[1],
     );
+  });
+});
+
+// #4946: a walker row is as wide as its cards, so once they shrink the
+// back row gives it less room than it had at full size. The row fits
+// the room it has at the size it is drawn at.
+describe("settleScale", () => {
+  // Four 74px walkers and three 8px gaps; the row has 260px at full
+  // size and its min-width, 208px, once its cards are much smaller.
+  const natural = 4 * 74;
+  const fixed = 3 * 8;
+  const floor = 0.5;
+  const room = (s: number): number => Math.max(208, 112 + 148 * s);
+
+  it("walks down to a share that fits the room it gets at that share", () => {
+    const start = fitScale(natural, fixed, 260, floor);
+    const { scale, available } = settleScale(start, 260, natural, fixed, floor, room);
+    expect(scale).toBeLessThan(start);
+    expect(natural * scale + fixed).toBeLessThanOrEqual(room(scale) + 0.5);
+    expect(available).toBeCloseTo(room(scale), 0);
+  });
+
+  it("keeps the full-size fit when the row keeps its room", () => {
+    const start = fitScale(natural, fixed, 260, floor);
+    const same = settleScale(start, 260, natural, fixed, floor, () => 260);
+    expect(same).toEqual({ scale: start, available: 260 });
+  });
+
+  it("never goes under the floor", () => {
+    const { scale } = settleScale(0.6, 260, natural, fixed, floor, () => 100);
+    expect(scale).toBe(floor);
+  });
+
+  it("asks nothing of a row at full size", () => {
+    let asked = 0;
+    const r = settleScale(1, 400, natural, fixed, floor, () => (asked++, 100));
+    expect(r).toEqual({ scale: 1, available: 400 });
+    expect(asked).toBe(0);
   });
 });
