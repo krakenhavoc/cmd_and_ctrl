@@ -186,6 +186,21 @@ type Config struct {
 	// one more source is not what stands between a Commander deck and
 	// its hand.
 	RampWantCap int
+	// PriceRampCurve prices the lands a row that sacrifices its own
+	// source puts onto the battlefield (Burnished Hart, Sakura-Tribe
+	// Elder) by the turn as well as the hand (#5084, ramp_curve.go):
+	// while the round is below RampWantCap, each land is ramp up to the
+	// mana a deck on curve wants RampCurveLead turns from now, and the
+	// flat tapped-blocker charge the row's creature already paid for in
+	// its sacrifice is not charged again. Off (the zero value,
+	// DefaultConfig and BaselineConfig) prices those lands by the hand's
+	// deficit alone: in #5084's thopter-battle arena the seats with the
+	// curve won no more, so it ships off and the arena's
+	// `heuristic-rampcurve` turns it on (docs/bot-testing.md).
+	PriceRampCurve bool
+	// RampCurveLead is how many turns ahead of the round the curve's
+	// mana is wanted: round 4 wants six mana at a lead of two.
+	RampCurveLead int
 
 	// PricePurposes turns on ADR 0126 §6's prices (purpose.go): a
 	// spell, mode, alternative cost or own activated row that declares
@@ -538,6 +553,21 @@ type Config struct {
 	// price lost head-to-head, so it ships off and the arena's
 	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
 	PriceSourceCounters bool
+	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
+	// cost at SpareManaSourceCost rather than its board value as a mana
+	// source (#5085, spare_mana.go): a rock is spare when the bot's other
+	// sources still make the mana its hand and commander want, and at
+	// least SpareManaKeep. So Mind Stone's "{1}, {T}, Sacrifice: Draw a
+	// card" is cashed in late, with mana to spare, and kept early. Off
+	// (the zero value, BaselineConfig and the arena's
+	// `heuristic-nosparemana`) charges the rock's whole board value (1.00
+	// untapped), and a card (1.20) never cleared PassThreshold beside it.
+	PriceSpareManaSources bool
+	// SpareManaKeep is the least mana a turn the bot's other sources must
+	// still make for a rock to be spare under PriceSpareManaSources.
+	SpareManaKeep int
+	// SpareManaSourceCost is what a spare rock costs when it is given up.
+	SpareManaSourceCost float64
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -884,6 +914,9 @@ func DefaultConfig() Config {
 		ActivateBase:   0.50,
 		RampPerMana:    1.00,
 		RampWantCap:    7,
+		// #5084: the curve for a self-sacrificing land search stays off
+		// (it won no more in the arena); two turns' lead when it is on.
+		RampCurveLead: 2,
 
 		PricePurposes:       true,
 		NetLandSwaps:        true,
@@ -968,6 +1001,11 @@ func DefaultConfig() Config {
 		SpareTokenKeep: 2,
 		// #5083: PriceSourceCounters stays off (the price lost in the
 		// arena); `heuristic-sourcecounters` turns it on.
+		// #5085: a spare mana rock costs what is left of it, so Mind
+		// Stone is cashed in for a card late and kept early.
+		PriceSpareManaSources: true,
+		SpareManaKeep:         5,
+		SpareManaSourceCost:   0.50,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -1061,6 +1099,9 @@ func BaselineConfig() Config {
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
 	c.RampWantCap = 0
+	// #5084: the hand's deficit alone priced a land search.
+	c.PriceRampCurve = false
+	c.RampCurveLead = 0
 	// §3, permanents by what they do (PR 4).
 	c.Weights.PermanentPerMana = 0
 	c.Weights.RowTriggered = 0
@@ -1198,6 +1239,10 @@ func BaselineConfig() Config {
 	c.SpareTokenKeep = 0
 	// #5083: a row's counter on its own source was the flat ActivateBase.
 	c.PriceSourceCounters = false
+	// #5085: every sacrificed mana rock cost its board value.
+	c.PriceSpareManaSources = false
+	c.SpareManaKeep = 0
+	c.SpareManaSourceCost = 0
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

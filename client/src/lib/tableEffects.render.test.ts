@@ -40,6 +40,7 @@ import {
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
   EFFECT_STILL_HOLD_MS,
+  FIZZLE_MOTES,
   TOKEN_STAGGER_MS,
   WIPE_FIRST_CARD_MS,
   busyScale,
@@ -524,6 +525,79 @@ describe("the effects layer", () => {
     // Each card goes into the board's one void, not a void of its own.
     for (const c of cards) expect(c.querySelector(".void")).toBeNull();
     advance(EFFECT_CAP_MS + 200);
+    expect(effects()).toHaveLength(0);
+  });
+});
+
+describe("a spell or ability fizzles (#4450)", () => {
+  const fizzle = (extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "fizzle",
+    seat: 1,
+    card_id: "bolt",
+    stack_item_id: "item-1",
+    batch: 8,
+    text: "Lightning Bolt fizzled: no legal targets",
+    ...extra,
+  });
+
+  it("dissolves over the stack item's last box, with no palm and no glass, and plays one sound", () => {
+    deliver([fizzle()]);
+    const [cue] = effects("fizzle");
+    expect(cue).toBeTruthy();
+    expect(effects("counter")).toHaveLength(0);
+    // item-1's centre: left 40 + 75, top 200 + 105.
+    expect(cue.style.left).toBe("115px");
+    expect(cue.style.top).toBe("305px");
+    expect(cue.querySelector(".fmist")).toBeTruthy();
+    expect(cue.querySelector(".fedge")).toBeTruthy();
+    expect(cue.querySelectorAll(".fmote")).toHaveLength(FIZZLE_MOTES);
+    expect(cue.querySelector(".palm")).toBeNull();
+    expect(cue.querySelector(".glass")).toBeNull();
+    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(playSound).toHaveBeenCalledWith("fizzle", { volume: 1, batch: "g1:8" });
+    // Every part of it ends inside its own 0.8 s.
+    const ends = runEnds();
+    expect(ends.length).toBeGreaterThan(0);
+    for (const ms of ends) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.fizzle + 1e-6);
+    advance(EFFECT_BASE_MS.fizzle + 200);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it("Short plays the same dissolve, and speed scales it", () => {
+    updateSettings("animations", "effects", "short");
+    updateSettings("animations", "speed", 2);
+    deliver([fizzle()]);
+    expect(effects("fizzle")).toHaveLength(1);
+    expect(Math.max(...runEnds())).toBeLessThanOrEqual(EFFECT_BASE_MS.fizzle * 2 + 1e-6);
+    expect(Math.max(...runEnds())).toBeGreaterThan(EFFECT_BASE_MS.fizzle);
+  });
+
+  it("an optional trigger that lapsed draws nothing and plays nothing", () => {
+    deliver([fizzle({ call: "condition" })]);
+    expect(effects()).toHaveLength(0);
+    expect(playSound).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["reduced motion", () => updateSettings("accessibility", "reduceMotion", true)],
+    ["Off", () => updateSettings("animations", "effects", "off")],
+  ])("still (%s): nothing is drawn, no badge of its own, and the sound plays once", (_, still) => {
+    still();
+    deliver([fizzle()]);
+    // The stack linger's "Fizzled" badge says it.
+    expect(effects()).toHaveLength(0);
+    expect(badges()).toHaveLength(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(playSound).toHaveBeenCalledWith("fizzle", expect.anything());
+  });
+
+  it("a skip clears the dissolve", () => {
+    deliver([fizzle()]);
+    expect(effects("fizzle")).toHaveLength(1);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    flushSync();
     expect(effects()).toHaveLength(0);
   });
 });
