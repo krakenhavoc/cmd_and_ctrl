@@ -1241,6 +1241,7 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			AttachedTo: c.AttachedTo,
 			TextBox:    c.TextBox,
 			TextWords:  c.TextWords.entries(),
+			FaceDown:   leavingFaceDownKind(c),
 		}
 		// #1218: The Ozolith's "if it had counters on it" — snapshotted
 		// here, before MoveCard's battlefield-exit cleanup zeroes
@@ -1257,6 +1258,16 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 		}
 		return
 	}
+}
+
+// leavingFaceDownKind is the CR 708.2 permanent state a departing
+// permanent is in, for its trigger identity (#4845), or FaceDownNone
+// for a face-up one.
+func leavingFaceDownKind(c *Card) FaceDownKind {
+	if c.faceDownPermanent() {
+		return c.FaceDownKind
+	}
+	return FaceDownNone
 }
 
 // findCardByIDLocked finds the card with the given

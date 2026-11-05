@@ -16,6 +16,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // diedCreature), and it is still findable because tokens only cease
 // to exist at the next state check.
 //
+// The row declares DeathPayoff (ADR 0126 §6), as Mirkwood Bats' token
+// sacrifice does, so the bot keeps it in play and sacrifices tokens
+// around it (#4990). The bot adds a death payoff to every creature it
+// sacrifices, and only a token's sacrifice pays here; the same reading
+// Mirkwood Bats already takes.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -23,10 +29,10 @@ func init() {
 		Name:         "Nadier's Nightblade",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && IsToken(c) && leftUnderControlOf(ev, c) == source.Controller
-			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
+			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

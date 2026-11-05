@@ -74,6 +74,10 @@ type statsPrefsResponse struct {
 	SetBy string `json:"set_by,omitempty"`
 	// Default is the server's default, which "default" follows.
 	Default bool `json:"default"`
+	// ShareLinkAt is when the caller's share link was made (ADR 0217
+	// §6), Unix ms, absent while they have none. The link itself is
+	// shown once, when it is made: only its hash is kept.
+	ShareLinkAt int64 `json:"share_link_at,omitempty"`
 }
 
 // advancedStatsFor is userID's setting and the server's default. A
@@ -96,11 +100,12 @@ func (c Config) advancedStatsFor(ctx context.Context, userID uuid.UUID) (gamesta
 
 func (c Config) statsPrefsResponseOf(p gamestats.Prefs, def gamestats.DefaultSetting) statsPrefsResponse {
 	return statsPrefsResponse{
-		Available: c.StatsPrefs != nil,
-		Advanced:  p.Effective(def.Advanced),
-		Choice:    statsChoice(p),
-		SetBy:     string(p.SetBy),
-		Default:   def.Advanced,
+		Available:   c.StatsPrefs != nil,
+		Advanced:    p.Effective(def.Advanced),
+		Choice:      statsChoice(p),
+		SetBy:       string(p.SetBy),
+		Default:     def.Advanced,
+		ShareLinkAt: millisOrZero(p.ShareLinkAt),
 	}
 }
 

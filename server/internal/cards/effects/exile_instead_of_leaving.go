@@ -12,7 +12,7 @@ import (
 //
 // Two cards print the clause and both got it from a reanimation that
 // is meant to be temporary: Whip of Erebos (#296) and every unearth
-// card (CR 702.82a). It was written inline on the first; the second
+// card (CR 702.84a). It was written inline on the first; the second
 // would have been a second copy of a clause whose failure mode is
 // silent — an omitted `NewZone != ZoneExile` guard is an infinite
 // loop, and a missed event kind is a creature that can be sacrificed

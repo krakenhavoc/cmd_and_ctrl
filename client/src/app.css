@@ -434,6 +434,36 @@ body {
   --identity-g: #35a866;
   --identity-c: #94a3b3;
 }
+/* Chart colours (ADR 0217 §8): the categorical inks of the stats charts
+   (place 1st…, win kinds, the attack and damage lines, the mana trouble
+   trends). They carry meaning only beside a label, never alone, and are
+   not seat colours, which mean a seat at the table. The bare block is
+   every dark skin; Light and High contrast retune them for their
+   ground. DESIGN.md §2 lists them. */
+:root {
+  --chart-1: #4ea8f5;
+  --chart-2: #f2a33a;
+  --chart-3: #43c59e;
+  --chart-4: #e8708f;
+  --chart-5: #a68cf0;
+  --chart-6: #c2bd6a;
+}
+:root[data-theme="light"] {
+  --chart-1: #1f6fc4;
+  --chart-2: #b05f00;
+  --chart-3: #0f7f66;
+  --chart-4: #b8365e;
+  --chart-5: #6448c4;
+  --chart-6: #77731c;
+}
+:root[data-theme="high-contrast"] {
+  --chart-1: #6cc4ff;
+  --chart-2: #ffb000;
+  --chart-3: #3cf0b0;
+  --chart-4: #ff7ab8;
+  --chart-5: #c8a8ff;
+  --chart-6: #f0f080;
+}
 @media (max-width: 819px) {
   :root {
     --page-gutter: 20px;

@@ -1312,15 +1312,28 @@
                   {#if isFresh("gameplay.respondUntargetedAbilities")}<span class="saved">✓</span
                     >{/if}
                 </label>
+                <!-- #2861: the special actions, split. Turning a creature
+                     face up can answer a spell; the rest answer nothing. -->
                 <label>
                   <input
                     type="checkbox"
-                    checked={$settings.gameplay.respondSpecialActions}
+                    checked={$settings.gameplay.respondTurnFaceUp}
                     onchange={(e) =>
-                      change("gameplay", "respondSpecialActions", e.currentTarget.checked)}
+                      change("gameplay", "respondTurnFaceUp", e.currentTarget.checked)}
                   />
-                  Special actions (foretell, suspend, face-up)
-                  {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
+                  {L.respondTurnFaceUpToggle}
+                  {#if isFresh("gameplay.respondTurnFaceUp")}<span class="saved">✓</span>{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondOtherSpecialActions}
+                    onchange={(e) =>
+                      change("gameplay", "respondOtherSpecialActions", e.currentTarget.checked)}
+                  />
+                  {L.respondOtherSpecialActionsToggle}
+                  {#if isFresh("gameplay.respondOtherSpecialActions")}<span class="saved">✓</span
+                    >{/if}
                 </label>
                 <p class="help">
                   Auto-pass stops for an opponent's spell, an attack or an opponent's end step only

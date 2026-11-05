@@ -99,7 +99,7 @@
           <span class="dname">{t.name}</span>
           <span class="dsub">{t.sub}</span>
           <span class="drow">
-            <IdentityPips colors={t.colors} />
+            <IdentityPips colors={t.colors} colorless={t.identity?.length === 0} />
             {#if t.flag}
               <span class="gapflag" title={t.flagTitle}><Icon name="warn" size={11} />{t.flag}</span
               >

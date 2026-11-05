@@ -276,8 +276,8 @@ func TestAdvancedOverviewFilters(t *testing.T) {
 	if lib.AvgManaValue == nil || lib.AvgManaValueGames != 5 || *lib.AvgManaValue < 2.33 || *lib.AvgManaValue > 2.34 {
 		t.Errorf("avg mana value %v over %d", lib.AvgManaValue, lib.AvgManaValueGames)
 	}
-	if len(all.MostCast) != 1 || all.MostCast[0].Games != 6 {
-		t.Errorf("most cast %+v", all.MostCast)
+	if len(all.MostCast) != 1 || all.MostCast[0].Games != 6 || all.MostCast[0].ScryfallID == "" {
+		t.Errorf("most cast %+v; want Sol Ring with a printing to draw it", all.MostCast)
 	}
 	if len(all.Commander.ByCommander) != 1 || all.Commander.ByCommander[0].Tally.Games != 6 {
 		t.Errorf("by commander %+v", all.Commander.ByCommander)

@@ -780,7 +780,6 @@ var stepsSkipped = map[string]string{
 	"Urza's Bauble":           "no prompt: a random pick from a hand, and a private look",
 	"Deadbridge Chant":        "no prompt: the card is picked at random",
 	"Twist Reality":           "exclusive arms of one mode switch",
-	"Path of Discovery":       "exclusive arms: the explore by object, or by id",
 	"Vexing Radgull":          "exclusive arms: the rad counters, or the proliferate",
 	"Shelinda, Yevon Acolyte": "exclusive arms: the counter goes on the smaller of the two",
 	"Ravenous Tyrannosaurus":  "one batch: the damage and its excess to the controller are one instruction (CR 120.4a)",
