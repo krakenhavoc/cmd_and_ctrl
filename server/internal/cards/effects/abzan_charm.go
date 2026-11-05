@@ -50,12 +50,7 @@ func init() {
 				}
 				return ExileTarget{Target: item.Targets[0].ID}.Apply(ctx)
 			}),
-			Instruction(func(ctx *Context) error {
-				if !ctx.HasMode(1) {
-					return nil
-				}
-				return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
-			}),
+			youDrawIfMode(1, 2),
 			Instruction(func(ctx *Context) error {
 				if !ctx.HasMode(1) {
 					return nil

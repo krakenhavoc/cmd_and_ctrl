@@ -188,7 +188,11 @@
       <span class="what" class:muted={!ready && !preview}>{text?.what ?? ""}</span>
       {#if text?.second}<span class="second">{text.second}</span>{/if}
       <span class="srow">
-        <span class="ident"><IdentityPips colors={text?.colors} /><DeckPowerBadge {power} /></span>
+        <span class="ident"
+          ><IdentityPips colors={text?.colors} colorless={text?.colorless} /><DeckPowerBadge
+            {power}
+          /></span
+        >
         {#if preview}
           <span class="pending">Not seated yet</span>
         {:else if ready}

@@ -86,7 +86,9 @@ function gatesFor(view: GameView, me: string, strip = false): AutopassGates {
     valueInstant: gp.respondValueInstants,
     ability: gp.respondAbilities,
     untargeted: gp.respondUntargetedAbilities,
-    special: gp.respondSpecialActions,
+    // #2861: turning a creature face up, and the other special actions.
+    faceUp: gp.respondTurnFaceUp,
+    special: gp.respondOtherSpecialActions,
   };
   const v = strip ? withoutVerdicts(view) : view;
   const step = v.turn?.step;
