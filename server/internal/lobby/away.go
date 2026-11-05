@@ -448,6 +448,11 @@ func (l *Lobby) AnswerAway(id uuid.UUID, caller auth.Principal, admin bool, seat
 	l.mu.Lock()
 	if e, ok := l.games[id]; ok {
 		t = awayTableLocked(e)
+		// ADR 0211 §1: a present player's answer is a move; the
+		// server admin's is not.
+		if !admin {
+			l.touchLocked(e)
+		}
 	}
 	l.mu.Unlock()
 	l.refreshMovable(p, t, now)
@@ -605,6 +610,8 @@ func (l *Lobby) TakeBack(id, seat uuid.UUID) (GameMeta, error) {
 	entry.meta.Players[idx].StandInSince = nil
 	entry.room.ClearStandIn(seat)
 	l.persistSeatsLocked(entry)
+	// ADR 0211 §1: a take-back is the player's own move.
+	l.touchLocked(entry)
 	view, seq, err := entry.room.ApplyExternal(func() error {
 		return entry.room.Game.NoteAwaySeat(seat, seat, game.AwayTakeBack, 0)
 	})
