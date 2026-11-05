@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Set Phasers to . . . — Instant {W} (Star Trek, #4973):
 //
 //	"Choose one —
@@ -21,17 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			ModeDoing("Stun — Tap target creature and put a stun counter on it.",
-				TargetCreature("target creature"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetCard {
-						return nil
-					}
-					if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					return AddCounter{Target: t.ID, Kind: game.CounterStun, N: 1}.Apply(ctx)
-				}),
+				TargetCreature("target creature"), trekB9TapAndStunTheModesTarget),
 			ModeDoing("Kill — This spell deals 3 damage to target attacking creature.",
 				TargetCreature("target attacking creature", AttackingCreature()),
 				DealFixedDamageToModesTarget(3)),
