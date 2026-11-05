@@ -21,6 +21,7 @@ Clockwork Droid | scry | on a triggered row that is not the card's enters effect
 Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Corsairs of Umbar | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Crystal Grotto | scry | a land's enters effect; a land play is not priced by its purpose
+Data, Exploring Humanity | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Deep-Fried Plague Myr | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Digsite Conservator | discover | the text makes it conditional or optional
 Down, Down to Goblin-town | amass | on a triggered row that is not the card's enters effect, which nothing prices
@@ -99,6 +100,7 @@ Tidings of War | amass | the text makes it conditional or optional
 Took Reaper | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Torch the Tower | scry | the text makes it conditional or optional
 Trained Arynx | scry | on a triggered row that is not the card's enters effect, which nothing prices
+U.S.S. Discovery, at Black Alert | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Viscera Seer | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Wakandan Tusker | scry | on a triggered row that is not the card's enters effect, which nothing prices
 War of the Last Alliance | ring | on a triggered row that is not the card's enters effect, which nothing prices

@@ -2364,6 +2364,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		p.CommanderCasts[cardID]++
 	}
+	// #4973: the first spell this player has cast this game, as the
+	// object it is on the stack (First Contact).
+	if p.FirstSpellCast.ID == uuid.Nil {
+		for i := range g.Stack.Cards {
+			if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
+				p.FirstSpellCast = ObjectRef{ID: cardID, Epoch: sc.ObjectEpoch}
+				break
+			}
+		}
+	}
 	// S19 sub-PR 6: per-turn cast tally, bumped BEFORE EventCast so
 	// "first noncreature spell each turn" predicates see this spell
 	// counted (Noncreature == 1 means "this is the first").

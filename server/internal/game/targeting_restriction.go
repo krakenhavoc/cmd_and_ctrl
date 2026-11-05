@@ -58,6 +58,12 @@ type TargetingQuery struct {
 	// Source is the permanent contributing the restriction; its
 	// Controller is the "you" of the ABILITY.
 	Source Card
+
+	// By is the spell or ability choosing the target, whole: what it is
+	// (By.Characteristics) and whether it is a spell (By.IsSpell), for a
+	// clause about the targeting object rather than its controller —
+	// "abilities from artifact sources" (Species 8472, #4973).
+	By TargetSource
 }
 
 // TargetingRestriction is one "<these> can't be the targets of spells or
@@ -167,7 +173,7 @@ func (rs targetingRestrictions) refuses(g *Game, c *Card, zone ZoneKind, src Tar
 		if !b.r.covers(zone) {
 			continue
 		}
-		if b.r.Forbids(TargetingQuery{Game: g, Card: *c, Zone: zone, Controller: src.Controller, Source: *b.source}) {
+		if b.r.Forbids(TargetingQuery{Game: g, Card: *c, Zone: zone, Controller: src.Controller, Source: *b.source, By: src}) {
 			return true
 		}
 	}

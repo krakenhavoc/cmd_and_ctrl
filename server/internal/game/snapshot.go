@@ -932,6 +932,10 @@ type playerSnapshot struct {
 	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
 	// within v7: a file without it restores as no speed.
 	Speed int `json:"speed,omitempty"`
+	// FirstSpellCast is Player.FirstSpellCast (#4973). Additive within
+	// the version: a file without it restores a player who has cast no
+	// spell yet.
+	FirstSpellCast *ObjectRef `json:"firstSpellCast,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -3177,6 +3181,10 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
+	if p.FirstSpellCast.ID != uuid.Nil {
+		first := p.FirstSpellCast
+		out.FirstSpellCast = &first
+	}
 	// ADR 0018's eighth amendment (#3016): the remembered trigger orders.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.LifeHistory) > 0 {
@@ -4330,6 +4338,9 @@ func restorePlayer(p *playerSnapshot) *Player {
 	}
 	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
+	if p.FirstSpellCast != nil {
+		out.FirstSpellCast = *p.FirstSpellCast
+	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
 	// play a land again. Nothing in the catalog sets an allowance of
