@@ -814,6 +814,17 @@ func Handler(c Config) http.Handler {
 	advancedStatsLimit := newLimiter(2, 10)
 	mux.Handle("GET /me/stats/advanced", auth.Middleware(c.Auth)(perCallerLimit(advancedStatsLimit, handlerFunc(c, myAdvancedStats))))
 	mux.Handle("GET /me/stats/decks/{deck_id}", auth.Middleware(c.Auth)(perCallerLimit(advancedStatsLimit, handlerFunc(c, myAdvancedDeckStats))))
+	// The share link (ADR 0217 §6, slice 6): mint (or rotate) and
+	// revoke on the setting's bucket. The shared view needs no sign-in
+	// (owner answer 6), so it is limited per address, 1 a second with a
+	// burst of 10: a viewer changing filters is one read each. /stats is
+	// a top-level prefix, so it is in deploy/Caddyfile's @api matcher,
+	// the Vite proxy and the service worker's API_PATH; the SPA's own
+	// #/stats is a hash route requested as `/`.
+	mux.Handle("POST /me/stats/share-link", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, postMyStatsShareLink))))
+	mux.Handle("DELETE /me/stats/share-link", auth.Middleware(c.Auth)(perCallerLimit(statsPrefsLimit, handlerFunc(c, deleteMyStatsShareLink))))
+	sharedStatsLimit := newLimiter(1, 10)
+	mux.Handle("GET /stats/shared/{token}", sharedStatsLimit.Middleware(handlerFunc(c, sharedStats)))
 	// The cards an ended game's opponents cast, for the shop links
 	// after a game (ADR 0179 §7). Under /me/, so already in the proxies.
 	mux.Handle("GET /me/games/{id}/cards", auth.Middleware(c.Auth)(handlerFunc(c, myGameCards)))

@@ -260,6 +260,7 @@ body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rowan-kenrith/creatures-attack-this-turn
 body sacrifice/listed-cards
+body sacrifice/listed-objects-you-control
 body sakashima/return-listed-to-hand
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
@@ -293,6 +294,7 @@ body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
+body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body time-to-feed/gain-three-life
 body tolarian-kraken/tap-or-untap
@@ -661,6 +663,7 @@ choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
+choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/torment-of-hailfire-punisher-discarded
@@ -742,6 +745,7 @@ condition clone-saga/named-creature-combat-damage-to-player
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
+condition combat/the-wrath-of-khan-next-beginning-of-combat
 condition combat/your-creature-hit-the-player
 condition damage/each-creature-dealt-damage
 condition damage/that-creature-combat-to-opponent
@@ -1956,6 +1960,7 @@ tail the-gitrog-ravenous-ride/sacrificed
 tail the-invincible-iron-man/attach-equipment
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
+tail the-wrath-of-khan/draw-if-exiled
 tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
@@ -2124,6 +2129,7 @@ tail thunderbolts-conspiracy/hero
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
+tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
@@ -2148,6 +2154,7 @@ tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
 tail will-of-the-sultai/after-mill
 tail will-of-the-sultai/counters-and-trample
+tail will-riker/rest-on-bottom-then-sacrifice-those-lands
 tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
 tail worlds-within-worlds/return
