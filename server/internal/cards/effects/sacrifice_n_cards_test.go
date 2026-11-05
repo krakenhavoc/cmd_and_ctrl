@@ -133,6 +133,20 @@ func TestSaiSacrificesTwoArtifactsToDraw(t *testing.T) {
 	}
 }
 
+// #4991: Sai's draw row declares the card it draws (ADR 0126 §6), so
+// the bot prices it at a card in hand rather than the flat
+// ActivateBase, and keeps its `value` answer (ADR 0142).
+func TestSaiDrawRowDeclaresItsDraw(t *testing.T) {
+	spec, ok := Lookup(b07SaiMasterThopteristOracle)
+	if !ok || len(spec.Activated) != 1 {
+		t.Fatalf("Sai, Master Thopterist: registered %v, activated rows %d, want one", ok, len(spec.Activated))
+	}
+	p := spec.Activated[0].Purpose
+	if p.Draws != 1 || p.Answers != game.AnswerValue {
+		t.Errorf("Sai's draw row declares %+v, want draws 1 and answers value", p)
+	}
+}
+
 func TestMagdaTheHoardmasterSacrificesThreeTreasuresForADragon(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
