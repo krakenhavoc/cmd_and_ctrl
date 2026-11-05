@@ -19,6 +19,7 @@ import {
   offlineSendMessage,
   usesFreezeVocabulary,
 } from "./connectionBanner";
+import { L } from "./labels";
 import type { ConnectionStatus } from "./ws";
 
 const ALL_STATUSES: ConnectionStatus[] = [
@@ -27,6 +28,7 @@ const ALL_STATUSES: ConnectionStatus[] = [
   "reconnecting",
   "disconnected",
   "session_ended",
+  "table_closed",
 ];
 
 describe("boardIsStale", () => {
@@ -113,7 +115,12 @@ describe("connectionBanner", () => {
   });
 
   it("tells the player what they are looking at in every stale state", () => {
-    for (const status of ["reconnecting", "disconnected", "session_ended"] as const) {
+    for (const status of [
+      "reconnecting",
+      "disconnected",
+      "session_ended",
+      "table_closed",
+    ] as const) {
       expect(connectionBanner(status, 1)?.detail).toContain(STALE_BOARD_SENTENCE);
     }
   });
@@ -141,6 +148,38 @@ describe("connectionBanner — session_ended", () => {
 
   it("defaults to the guest link when signedIn is omitted", () => {
     expect(connectionBanner("session_ended", 0)?.link?.href).toBe("#/login");
+  });
+});
+
+// #5082, ADR 0211 §4: an archived table refuses the socket for good, so
+// the banner says so in the same words the lobby's refusals use, and
+// sends the player back to Tables instead of offering a retry.
+describe("connectionBanner — table_closed", () => {
+  it("says the table was closed and offers no retry", () => {
+    const banner = connectionBanner("table_closed", 4);
+    expect(banner?.tone).toBe("ended");
+    expect(banner?.headline).toBe(L.gameClosed);
+    expect(banner?.headline).toBe("This table was closed.");
+    expect(banner?.retryLabel).toBeFalsy();
+    expect(banner?.detail).not.toContain("Retrying");
+  });
+
+  it("links to Tables, signed in or not", () => {
+    for (const signedIn of [false, true]) {
+      expect(connectionBanner("table_closed", 0, signedIn)?.link).toEqual({
+        href: "#/lobby",
+        label: "Tables",
+      });
+    }
+  });
+
+  it("is stale, and is not the server-full banner", () => {
+    expect(boardIsStale("table_closed")).toBe(true);
+    expect(connectionBanner("table_closed", 0, false, true)?.headline).toBe(L.gameClosed);
+  });
+
+  it("is announced in the same words", () => {
+    expect(connectionAnnouncement("table_closed", 0)).toContain(L.gameClosed);
   });
 });
 

@@ -5057,3 +5057,43 @@ closure ratchet does not move. Clone, undo and a restore re-derive the answer fr
 Khan, Vengeful Heart (Full). A sweep of the checked-in Scryfall oracle fixtures (8,666 faces), the Star Trek batch data and the
 rest of the repository finds no other card whose text has the standalone line; the 33 other fixture hits are rebound
 reminder text.
+
+## Amendment (2026-11-05, #4973): one use a turn shared across two zones, and a standing permission over outside the game
+
+The Holodeck: "Once during each of your turns, you may play a permanent card you own from outside the game or from your
+graveyard." A permission has one `Zone`, and two independent permissions would give two plays a turn, which is stronger than
+printed. Before this amendment the outside-the-game right (`OutsidePlayRightPermission`, Wish) existed only as a stored
+one-shot an effect grants.
+
+### Decision 1 — the shared use is the per-type budget's key, which names the object and not the zone
+
+A derived budget is kept in `TurnTally.PermissionTypes` under (holder, granting object, type) (the 2026-10-09 amendment).
+The zone is not in the key. So two standing permissions declared by ONE card, each with
+`PerType: []string{PermissionTypePermanent}` (Serra Paragon's single-use pseudo-type), are ONE use: the first land played
+or permanent spell cast through either one spends the use of both. This was already true of the code. The amendment makes it
+a stated contract rather than an accident, so a later change that adds the zone to the key would break a card. No field is
+added. A second copy of the card is a second object and brings a use of its own (CR 400.7); the tally empties as each turn
+begins, which is "once during each of your turns".
+
+### Decision 2 — a catalog permission may be over `ZoneOutside`
+
+`Spec.CastPermissions` may declare `Zone: ZoneOutside`. Such a permission is derived for its controller off the battlefield
+like any other standing permission, and reaches only the holder's own container (CR 400.11a: "Cards in a player's sideboard
+are outside the game."). `CastableZones` still refuses `ZoneOutside`: a card can't open outside the game for ITSELF, which is
+the #3955 rule, and is a different statement from a permanent opening it for its controller.
+
+The cast path, the view's sideboard stamps and the bot enumerator already ask the one permission lookup, which includes
+standing permissions, so they needed no change. The database pool's naming action (`outside_play`) did:
+`OutsidePlayRightLocked` now also answers with a derived standing permission over the container that has a use left
+(`derivedUseLeft`) and whose `TimingYourTurnOnly`, if it has it, is satisfied. A right whose filter is `PermanentOnly` names
+from a keyed pick that offers only permanent cards (`engine/outside-pick-permanent`, a new on-disk key). A Wish right still
+names from every card.
+
+### Snapshot, clone, closure
+
+Nothing new is stored. The spent use is the existing `TurnTally.PermissionTypes` entry, which snapshots, clones and restores
+already carry. No snapshot key, no `Card` or `Player` field, no func reachable from `Game`; the closure ratchet does not move.
+
+### Cards
+
+The Holodeck (Full).

@@ -192,3 +192,53 @@ func TestArchivedTableRefusesAWebSocketUpgradeButNotAnAdmin(t *testing.T) {
 		t.Errorf("seat after unarchive: %d, want 101", got)
 	}
 }
+
+// A browser cannot read the 409 of a refused upgrade, only a 1006, so
+// the client asks GET /games/{id} after a failed dial whether the table
+// was closed (#5082). That read must keep answering a seat and a
+// spectator whose sessions outlived the archive, with archived_at set,
+// and must not carry it for a table that is still open.
+func TestArchivedTableStillAnswersGetGameWithArchivedAt(t *testing.T) {
+	srv, l, _ := newTestHTTPStack(t)
+	meta, _ := l.Create("Closed table")
+
+	resp := postJSON(t, srv, "/games/"+meta.ID.String()+"/join", "",
+		joinRequest{InviteToken: meta.InviteToken, Name: "Alice"})
+	var seat sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&seat)
+	resp.Body.Close()
+	resp = postJSON(t, srv, "/games/"+meta.ID.String()+"/spectate", "",
+		spectateRequest{InviteToken: meta.SpectatorInvite, Name: "watcher"})
+	var spec sessionResponse
+	_ = json.NewDecoder(resp.Body).Decode(&spec)
+	resp.Body.Close()
+	if seat.Token == "" || spec.Token == "" {
+		t.Fatalf("setup: seat=%q spectator=%q", seat.Token, spec.Token)
+	}
+
+	read := func(token string) (int, GameMeta) {
+		t.Helper()
+		resp := doGet(t, srv, "/games/"+meta.ID.String(), token)
+		defer resp.Body.Close()
+		var got GameMeta
+		_ = json.NewDecoder(resp.Body).Decode(&got)
+		return resp.StatusCode, got
+	}
+	tokens := map[string]string{"seat": seat.Token, "spectator": spec.Token}
+
+	for name, token := range tokens {
+		if status, got := read(token); status != http.StatusOK || got.Archived() {
+			t.Errorf("%s before the archive: %d archived=%v, want 200, not archived",
+				name, status, got.Archived())
+		}
+	}
+	if _, err := l.SetArchived(meta.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	for name, token := range tokens {
+		if status, got := read(token); status != http.StatusOK || !got.Archived() {
+			t.Errorf("%s on an archived table: %d archived=%v, want 200 with archived_at",
+				name, status, got.Archived())
+		}
+	}
+}

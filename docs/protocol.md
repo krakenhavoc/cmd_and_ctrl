@@ -50,7 +50,7 @@ completes:
 | 401 | missing or invalid credential |
 | 403 | session not valid for the requested game / player |
 | 404 | unknown game |
-| 409 | the table has been archived and the session is not an admin's (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md) §4); the body is `game_closed: this table was closed` |
+| 409 | the table has been archived and the session is not an admin's (#4564, [ADR 0211](decisions/0211-closing-idle-tables.md) §4); the body is `game_closed: this table was closed`. A browser sees only close 1006, so the web client asks `GET /games/{id}` after a failed dial and stops on `archived_at` (#5082, [lobby.md](lobby.md)) |
 | 503 | server shutting down |
 
 ### Per-connection visibility (S04)
@@ -1150,6 +1150,35 @@ The answer is narrated as `choose_option` ("chose chapter III for The
 Cruelty of Gix"). A Saga with one chapter is not asked, and an entry
 that cannot pause starts on chapter I. Like every prompt that pauses an
 entry, it blocks the table.
+
+### `entry_attack_target` — what a creature entering attacking attacks (CR 508.4)
+
+`pending_choices` may carry `kind: "entry_attack_target"`. It is CR
+508.4's "its controller chooses which defending player, planeswalker a
+defending player controls, or battle a defending player protects it's
+attacking", asked of the entering creature's would-be controller before
+it enters (CR 614.12a) when a replacement makes it enter tapped and
+attacking: Kira Nerys, Firebrand's "If a creature you control would
+enter while you control an attacking creature, instead it enters tapped
+and attacking". `source` is the replacement's source.
+
+- **The options are the defenders.** They ride `pick_options`, the one
+  the chooser's attack is already pointed at first. A player's option
+  has `player` set; a planeswalker's or battle's has the permanent as
+  its one entry in `cards`. Labels read "Attack Bob".
+- **The answer is `resolve_choice { choice_id, option_index }`**, the
+  payload `option_pick` and `entry_controller` take. Every offered
+  defender is a legal answer: one that has gone since the prompt opened
+  leaves the creature tapped and not attacking (CR 508.4a).
+- **It was never declared.** The creature triggers no "whenever ~
+  attacks" ability (CR 508.4), and one entering after blockers are
+  declared is unblocked (CR 508.4d).
+
+The answer is narrated as `choose_option` ("chose attacking Bob for
+…"). With one defender the creature is not asked, and an entry that
+cannot pause takes the first one. An effect that already names what the
+creature attacks (a token created attacking, ninjutsu) is not asked
+either. Like every prompt that pauses an entry, it blocks the table.
 
 ### `retarget` — changing a spell's or ability's target (#1196, CR 115.7)
 
