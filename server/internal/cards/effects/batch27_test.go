@@ -929,6 +929,39 @@ func TestB27RevengeOfRavensDrainsPerAttacker(t *testing.T) {
 	}
 }
 
+// #4864, CR 508.3a: "attacks you or a planeswalker you control". A
+// creature attacking your planeswalker drains; one attacking a battle
+// you protect does not, though you are its defending player.
+func TestB27RevengeOfRavensCountsYourPlaneswalkerButNotYourBattle(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	b21Push(g, me.ID, "Revenge of Ravens", "Enchantment", b27RevengeOfRavensOracle, 0, 0)
+	walker := p1g2Planeswalker(g, me.ID, 5)
+	battle := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Test Siege", TypeLine: "Battle — Siege",
+		Owner: other.ID, Controller: other.ID, ProtectorPlayerID: me.ID,
+		Counters: map[string]int{game.CounterDefense: 5},
+	})
+	a := pushVanillaCreature(g, opp.ID, "Raider A", 1, 1)
+	b := pushVanillaCreature(g, opp.ID, "Raider B", 1, 1)
+	advanceToMainOf(t, g, 1)
+	meBefore, oppBefore := me.Life, opp.Life
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, d := range []struct{ id, at uuid.UUID }{{a, walker}, {b, battle}} {
+		if err := g.DeclareAttacker(d.id, d.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	if opp.Life != oppBefore-1 {
+		t.Errorf("attacker's controller lost %d, want 1 (the planeswalker attack only)", oppBefore-opp.Life)
+	}
+	if me.Life != meBefore+1 {
+		t.Errorf("you gained %d, want 1", me.Life-meBefore)
+	}
+}
+
 func TestB27HeadlessRiderSpawnsForNontokenZombieDeaths(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

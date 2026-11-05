@@ -219,7 +219,11 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		val  reflect.Value
 		skip map[string]bool
 	}{
-		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true}},
+		// #4427: CostOf is read once, by the sacrifice's announcement,
+		// before the move's CR 614 window opens, and a cost sacrifice
+		// settles without pausing (MustSettleNow), so a paused frame has
+		// no use for it and the mirror does not carry it.
+		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true, "CostOf": true}},
 		// #4361 S9: a mill cost's read-back pointer, dropped on a restore
 		// as tokenTail.report is (the door has returned by then).
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"report": true}},

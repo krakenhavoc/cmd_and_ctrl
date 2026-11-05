@@ -264,7 +264,7 @@ const (
 	SpendPreserveColors ManaSpendStrategy = iota
 
 	// SpendDistinctColors pays the generic half with a colour it has
-	// not spent yet whenever it can. Converge (CR 702.86) and
+	// not spent yet whenever it can. Converge (CR 207.2c) and
 	// sunburst (CR 702.44) count the COLOURS spent, so the ordinary
 	// instinct is exactly backwards for them: a Painful Truths paid
 	// out of a five-colour pool should spend five colours, not three

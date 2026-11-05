@@ -12,13 +12,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Whenever an opponent casts their second spell each turn, draw a
 //	 card."
 //
-// Trouble in Pairs' attack and cast clauses, through the same two
-// shared conditions (opponentAttackedYouWithAtLeast and
+// Trouble in Pairs' attack and cast clauses, through the shared
+// conditions (opponentAttackedYouOrYourPlaneswalkersWithAtLeast and
 // opponentCastTheirSecondSpellThisTurn) and the same once-per-batch
 // guard on the attack half: the engine emits one attack event per
 // declared attacker, so without it a five-creature alpha strike would
-// draw four cards. An attack at your planeswalker counts as an attack
-// at you.
+// draw four cards. Unlike Trouble in Pairs, a creature attacking a
+// planeswalker you control counts, as printed. One attacking a battle
+// you protect does not (#4864).
 //
 // No simplification.
 func init() {
@@ -40,7 +41,7 @@ const (
 )
 
 func mangaraOpponentAttackedYouWithTwo(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return opponentAttackedYouWithAtLeast(ev, source, g, 2, mangaraAttackLabel)
+	return opponentAttackedYouOrYourPlaneswalkersWithAtLeast(ev, source, g, 2, mangaraAttackLabel)
 }
 
 func mangaraOpponentCastTheirSecond(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

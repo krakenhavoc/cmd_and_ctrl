@@ -53,7 +53,7 @@ func opponentCastTheirSecondSpellThisTurn(ev game.Event, source *game.Card, g *g
 
 // opponentAttackedYouWithAtLeast is "whenever an opponent attacks YOU
 // with N or more creatures" — Firemane Commando's shape with the
-// defender pinned to the source's controller.
+// attacked player pinned to the source's controller.
 //
 // The engine emits one EventAttack per declared attacker, so the
 // ability fires on the declaration that brings the attacking player
@@ -62,13 +62,29 @@ func opponentCastTheirSecondSpellThisTurn(ev game.Event, source *game.Card, g *g
 // only the active player declares attackers, so one attacking seat
 // per turn.
 //
-// An attack at your planeswalker or battle counts as an attack at
-// you, because the defender is read through
-// DefendingPlayerForAttackForEffect rather than off AttackingTarget
-// directly.
+// "Attacks you" is CR 508.3e: only creatures declared attacking you
+// yourself count. A creature attacking your planeswalker or a battle you
+// protect is not attacking you (#4864), so AttackingTarget is compared
+// with you directly rather than read through the defending player.
 //
 // Caller holds g.mu.
 func opponentAttackedYouWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
+	return opponentAttackedWithAtLeast(ev, source, g, n, label, false)
+}
+
+// opponentAttackedYouOrYourPlaneswalkersWithAtLeast is Mangara, the
+// Diplomat's "if two or more of those creatures are attacking you
+// and/or planeswalkers you control": opponentAttackedYouWithAtLeast
+// with your planeswalkers counted too. A battle you protect still is
+// not (#4864).
+//
+// Caller holds g.mu.
+func opponentAttackedYouOrYourPlaneswalkersWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
+	return opponentAttackedWithAtLeast(ev, source, g, n, label, true)
+}
+
+// opponentAttackedWithAtLeast is the shared body of the two above.
+func opponentAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string, planeswalkers bool) bool {
 	if ev.Kind != game.EventAttack || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -78,7 +94,8 @@ func opponentAttackedYouWithAtLeast(ev game.Event, source *game.Card, g *game.Ga
 		if !ok {
 			continue
 		}
-		if g.DefendingPlayerForAttackForEffect(c.AttackingTarget) == source.Controller {
+		if c.AttackingTarget == source.Controller ||
+			(planeswalkers && attacksYouOrYourPlaneswalker(g, c.AttackingTarget, source.Controller)) {
 			at++
 		}
 	}

@@ -773,6 +773,7 @@ func clonePlayer(p *Player) *Player {
 		LastTurnCastOrPut: p.LastTurnCastOrPut,
 		Eliminated:        p.Eliminated,
 		LossCause:         p.LossCause,
+		FinalBoard:        cloneFinalBoard(p.FinalBoard),
 		Removed:           p.Removed,
 		HandKept:          p.HandKept,
 		MulliganDecided:   p.MulliganDecided,

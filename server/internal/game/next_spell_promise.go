@@ -82,6 +82,14 @@ type NextSpellPromise struct {
 	// as Reduce, so tapping an artifact for mana still counted it.
 	AffinityFor string `json:"affinityFor,omitempty"`
 
+	// Undaunted is "has undaunted" (CR 702.125a): the spell costs {1}
+	// less for each opponent the caster has as they cast it, players who
+	// have left the game not counted (CR 702.125b). Counted when the
+	// spell is priced, in the same CR 601.2f reduction as Reduce (Võx,
+	// Child of the Collective). Two promises that both give one spell
+	// undaunted both apply (CR 702.125c).
+	Undaunted bool `json:"undaunted,omitempty"`
+
 	// CounterKind and Counters are "that creature enters with N
 	// additional <kind> counters on it". Zero Counters is no rider.
 	CounterKind string `json:"counterKind,omitempty"`
@@ -211,10 +219,13 @@ func (g *Game) nextSpellCostModifiersLocked(player uuid.UUID, card Card) []bound
 	var out []boundCostModifier
 	for _, s := range p.Statics {
 		np := s.NextSpell
-		if (np.Reduce <= 0 && np.AffinityFor == "") || !g.livePromise(s) || !np.Filter.Matches(card) {
+		if (np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted) || !g.livePromise(s) || !np.Filter.Matches(card) {
 			continue
 		}
 		n := np.Reduce + g.affinityCountLocked(player, np.AffinityFor)
+		if np.Undaunted {
+			n += g.undauntedCountLocked(player)
+		}
 		if n <= 0 {
 			continue
 		}
@@ -245,6 +256,21 @@ func (g *Game) affinityCountLocked(player uuid.UUID, cardType string) int {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.Controller == player && characteristicHasType(SourceCharacteristics(c), cardType) {
+			n++
+		}
+	}
+	return n
+}
+
+// undauntedCountLocked is the number of opponents `player` has, for
+// undaunted (CR 702.125a): every other seat still in the game
+// (CR 702.125b).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) undauntedCountLocked(player uuid.UUID) int {
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil && !p.Eliminated && p.ID != player {
 			n++
 		}
 	}

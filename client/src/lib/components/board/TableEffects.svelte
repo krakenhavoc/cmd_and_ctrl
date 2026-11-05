@@ -37,6 +37,30 @@
   // and this layer adds the clasp's spark (Equipment) or a soft ring of
   // light (Aura) over the host.
   //
+  // Cards milled or discarded into a graveyard (#4445) have left a library
+  // or a hand the board draws as a pile or a fan, so what moves is a copy
+  // again: each card slides from the owner's library pile (turning face up
+  // on the way) or is tossed from their hand onto their graveyard pile, a
+  // stagger apart, and five or more go as one sweep.
+  //
+  // A card returned from a graveyard (#4446) is the mirror image: a copy
+  // rises out of its owner's graveyard pile in a dark-green glow and goes
+  // to where it went, its tile on the battlefield (which waits hidden until
+  // the copy lands, effectCueMotion.ts riseArrive, cancelled with the cue)
+  // or its owner's hand.
+  //
+  // A library searched (#4447) riffles: a few card backs flick up off that
+  // library's pile and settle, over a cool light. They are backs only:
+  // nothing about what the library holds, or what the search found, is
+  // drawn, and a search that finds nothing looks the same.
+  //
+  // A double-faced permanent that transforms (#4448) flips on its own
+  // vertical axis from the face it was to the face it is, as a copy over
+  // its tile, which waits hidden until the copy settles (effectCueMotion.ts
+  // flipHold, cancelled with the cue). The game becoming day or night
+  // washes the table in the sky's tint, and the werewolves it turns over
+  // flip a beat later.
+  //
   // Every rule (which entry is which cue, what a board wipe is, the
   // timing and its cap, the three motion gates) is in lib/tableEffects.ts,
   // pure and unit-tested. This file measures, draws and plays.
@@ -107,6 +131,7 @@
     EFFECT_CUE_CAP,
     SACRIFICE_KNIFE_SOUND,
     counterBurst,
+    crackPlan,
     cueSound,
     cueTiming,
     deckedFlings,
@@ -129,13 +154,26 @@
     wipeTiming,
     type DeckedFling,
     type DeckedWisp,
+    pileShown,
+    PILE_SWEEP_MIN,
+    RIFFLE_CARDS,
     type CounterTone,
+    type CrackKind,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
-  import { attachSlide, commandArrive, cueMotion, tokenPop } from "../../effectCueMotion";
+  import {
+    attachSlide,
+    commandArrive,
+    cueMotion,
+    flipHold,
+    pileLandAt,
+    riseArrive,
+    tokenPop,
+    type PilePath,
+  } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -208,6 +246,27 @@
     // tile starts, in the tile's own px; the cue is centred on the host,
     // and `seam` is where the two meet, from that centre.
     seam?: { x: number; y: number };
+    // Cards milled or discarded (#4445): each copy's art (null: its back),
+    // in order, and whether they go as one sweep.
+    slides?: (string | null)[];
+    sweep?: boolean;
+    // Cards returned from a graveyard (#4446): where each went, each one's
+    // own way from its graveyard pile, whether it turns face down on the
+    // way (into a hand this viewer cannot see), and the battlefield tile
+    // that waits hidden for it (null: none).
+    reanimateTo?: "battlefield" | "hand";
+    paths?: PilePath[];
+    flips?: boolean[];
+    tileIDs?: (string | null)[];
+    // A library searched (#4447): whose library pile riffles, a seat ID.
+    library?: string;
+    // A permanent that transforms (#4448): the face it turns from (`src`
+    // is the face it turns to). The game becoming day or night: which.
+    from?: string;
+    sky?: "day" | "night";
+    // A permanent sacrificed for its own ability (#4427): what it was,
+    // for the colour of the dust off its crack.
+    crack?: CrackKind;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -426,6 +485,24 @@
     // And an attachment (#4444): the board draws it under its host.
     attach_equip: null,
     attach_aura: null,
+    // And a mill or a discard (#4445): the cards are in the graveyard,
+    // where the board shows them, and the log names them.
+    mill: null,
+    discard: null,
+    // And a card returned from a graveyard (#4446): it is where it went,
+    // where the board shows it, and the log names it.
+    reanimate: null,
+    // And a library searched (#4447): the log says who searched whose
+    // library, and the board shows where whatever was found went.
+    library_search: null,
+    // And a permanent that transforms, or the game becoming day or night
+    // (#4448): the board shows the new face, the dock shows day or night,
+    // and the log says both.
+    transform: null,
+    day_night: null,
+    // And a permanent sacrificed for its own ability (#4427): it plays
+    // several times a game, the log says it, and the mana is in the pool.
+    crack: null,
   };
 
   function add(f: Omit<Fx, "key">): void {
@@ -494,6 +571,27 @@
       add({ ...base, x: box.x, y: box.y, width: box.w, height: box.h });
       return;
     }
+    // A mill names its cards only when the server says which (#4445).
+    if (cue.kind === "mill" || cue.kind === "discard") {
+      placePile(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "reanimate") {
+      placeReanimate(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "library_search") {
+      placeRiffle(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "day_night") {
+      placeSky(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "transform") {
+      placeTransform(cue, base, motion, b);
+      return;
+    }
     const cardID = cue.cardID;
     if (!cardID) return;
     if (cue.kind === "token_create") {
@@ -512,6 +610,14 @@
       placeAttach(cue, base, motion, b);
       return;
     }
+    // #4427: a permanent sacrificed for its own ability snaps where it
+    // stood, drawn from its last tile. Still, it draws nothing (no badge:
+    // it plays several times a game, and the log says it); its sound plays.
+    if (cue.kind === "crack") {
+      if (motion === "still") return;
+      place(cue, { ...base, crack: cue.crackOf ?? "other" }, motion, b);
+      return;
+    }
     // A planeswalker that just entered is still in its entrance pop (the
     // tile is scaled down and fading in), so its box is read once that
     // has settled, not when the frame arrives. A leaver is drawn at once
@@ -519,11 +625,17 @@
     if (cue.kind === "pw_enter") {
       const tile = boardEl ? findCardAnchor(boardEl, cardID, { accept: hasSize }) : null;
       if (!tile) return;
-      void settled(tile).then(() => {
-        if (destroyed) return;
-        const now = boardSize();
-        if (now) place(cue, base, motion, now);
-      });
+      const arrive = () =>
+        void settled(tile).then(() => {
+          if (destroyed) return;
+          const now = boardSize();
+          if (now) place(cue, base, motion, now);
+        });
+      // One that rose out of a graveyard (#4446) follows its rise, whose
+      // cue mounts after this frame's cues are placed and holds the tile
+      // hidden until its copy lands: it waits for that too.
+      if (cue.follows) later(arrive, 0);
+      else arrive();
       return;
     }
     place(cue, base, motion, b, vortex);
@@ -861,6 +973,324 @@
     });
   }
   const ATT_SPARKS = [0, 1, 2, 3, 4, 5];
+
+  // ---- Cards milled or discarded into a graveyard (#4445) ----
+
+  // A card copy's size when no pile on the board gives one.
+  const PILE_CARD = { w: 46, h: 64 };
+
+  // Whose graveyard a card is in now, as a seat ID.
+  function graveyardOwner(id: string): string | null {
+    for (const s of view.seats ?? []) {
+      if (s.graveyard?.cards.some((c) => c.instance_id === id)) return s.id;
+    }
+    return null;
+  }
+
+  function graveyardCard(id: string): CardView | null {
+    for (const s of view.seats ?? []) {
+      const c = s.graveyard?.cards.find((g) => g.instance_id === id);
+      if (c) return c;
+    }
+    return null;
+  }
+
+  // A pile's top card, where a copy lands or leaves from, else the pile.
+  function pileBox(zone: "graveyard" | "library", owner: string, b: DOMRect): CmdBox | null {
+    const sel = pileSelector(zone, owner);
+    return liveBox(`${sel} .thumb`, b) ?? liveBox(sel, b);
+  }
+
+  // A discarded card's own tile in its owner's hand, while the hand lets
+  // it go (the viewer's own hand; an opponent's shows only backs), never
+  // the graveyard pile's thumbnail of it; else the hand.
+  function inHand(id: string | undefined, owner: string, b: DOMRect): CmdBox | null {
+    if (!boardEl) return null;
+    const hand = `[data-hand-owner="${owner.replace(/["\\]/g, "\\$&")}"]`;
+    const el = id
+      ? findCardAnchor(boardEl, id, {
+          accept: (e) =>
+            cmdLive(e) && e.closest(hand) !== null && e.closest("[data-pile]") === null,
+        })
+      : null;
+    return el ? cmdBox(el, b) : liveBox(hand, b);
+  }
+
+  // The cards slide from the owner's library pile (a mill) or hand (a
+  // discard) to their graveyard pile, at the size of the graveyard's top
+  // card. With no graveyard pile on the board they go to the owner's
+  // seat, and with no start they drop onto it from just above; with
+  // neither end, or a still cue, nothing is drawn and the sound plays.
+  function placePile(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const ids = cue.cardIDs ?? [];
+    const owner =
+      (ids.length > 0 ? graveyardOwner(ids[0]) : null) ?? view.seats?.[cue.seat ?? -1]?.id ?? "";
+    if (!owner) return;
+    const to = pileBox("graveyard", owner, b.rect) ?? seatBox(owner, b.rect);
+    if (!to) return;
+    const from = (cue.kind === "mill"
+      ? pileBox("library", owner, b.rect)
+      : inHand(ids[0], owner, b.rect)) ?? { ...to, y: to.y - 90 };
+    const count = Math.max(1, cue.count ?? ids.length);
+    const sweep = count >= PILE_SWEEP_MIN;
+    const shown = pileShown(count);
+    // The pile's top card is card-sized; a seat is not.
+    const card = to.h > to.w * 1.2 ? { w: to.w, h: to.h } : PILE_CARD;
+    const slides: (string | null)[] = [];
+    for (let i = 0; i < shown; i++) {
+      const c = ids[i] ? graveyardCard(ids[i]) : null;
+      slides.push(c && !showsCardBack(c) ? cardImageURL(c, "small") : null);
+    }
+    add({
+      ...base,
+      cardID: ids[0] ?? "",
+      x: from.x,
+      y: from.y,
+      width: card.w,
+      height: card.h,
+      fly: { x: to.x - from.x, y: to.y - from.y },
+      count,
+      slides,
+      sweep,
+    });
+  }
+
+  // ---- A card returned from a graveyard (#4446) ----
+
+  // Every graveyard card this player saw, by instance ID, with whose
+  // graveyard it was in, as of this frame and the one before: a card that
+  // left for a hand is not in it any more, and an opponent's hand shows
+  // only backs, so its owner and its face are read from the frame before.
+  type InGrave = { owner: string; card: CardView };
+  let graveNow = new Map<string, InGrave>();
+  let graveBefore = new Map<string, InGrave>();
+
+  function graveyardCards(v: GameView): Map<string, InGrave> {
+    const out = new Map<string, InGrave>();
+    for (const s of v.seats ?? []) {
+      for (const c of s.graveyard?.cards ?? []) out.set(c.instance_id, { owner: s.id, card: c });
+    }
+    return out;
+  }
+
+  // A card in a hand this player sees (their own), and whose hand it is.
+  function handCard(id: string): { card: CardView; seat: string } | null {
+    for (const s of view.seats ?? []) {
+      const card = s.hand?.cards.find((c) => c.instance_id === id);
+      if (card) return { card, seat: s.id };
+    }
+    return null;
+  }
+
+  // A permanent's own tile on the battlefield, never a pile's thumbnail.
+  const fieldTile = (el: HTMLElement) => cmdLive(el) && el.closest("[data-pile]") === null;
+
+  // Each card rises out of its owner's graveyard pile (else their seat)
+  // and goes to where it went: its tile on the battlefield, at the tile's
+  // size (else its controller's seat), or its card in the viewer's own
+  // hand (else the owner's hand, else their seat), turning face down on
+  // the way into a hand this player cannot see. A card with neither end,
+  // or a still cue, draws nothing; the sound plays.
+  function placeReanimate(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const ids = cue.cardIDs ?? [];
+    const count = Math.max(1, cue.count ?? ids.length);
+    const sweep = count >= PILE_SWEEP_MIN;
+    const toHand = cue.reanimateTo === "hand";
+    const slides: (string | null)[] = [];
+    const flips: boolean[] = [];
+    const paths: PilePath[] = [];
+    const tileIDs: (string | null)[] = [];
+    let origin: CmdBox | null = null;
+    let card: { w: number; h: number } | null = null;
+    for (const id of ids.slice(0, pileShown(count))) {
+      const onField = toHand ? null : view.battlefield.cards.find((c) => c.instance_id === id);
+      const held = toHand ? handCard(id) : null;
+      const before = graveBefore.get(id);
+      const owner =
+        onField?.owner ?? before?.owner ?? held?.seat ?? view.seats?.[cue.seat ?? -1]?.id ?? "";
+      if (!owner) continue;
+      const pile = pileBox("graveyard", owner, b.rect);
+      // The pile's top card is card-sized; a seat is not.
+      card ??= pile && pile.h > pile.w * 1.2 ? { w: pile.w, h: pile.h } : PILE_CARD;
+      let to: CmdBox | null = null;
+      let scale = 1;
+      let tile: string | null = null;
+      if (onField) {
+        const el = findCardAnchor(boardEl, id, { accept: fieldTile });
+        if (el) {
+          // Mid-way through its entrance pop: the centre from the box, the
+          // size from the layout, which no transform changes.
+          const r = el.getBoundingClientRect();
+          to = {
+            x: r.left + r.width / 2 - b.rect.left,
+            y: r.top + r.height / 2 - b.rect.top,
+            w: el.offsetWidth || r.width,
+            h: el.offsetHeight || r.height,
+          };
+          scale = to.w / Math.max(1, card.w);
+          // An Aura returned attached keeps its own slide onto its host
+          // in sight (the attach cue); any other tile waits for its copy.
+          if (!onField.attached_to) tile = id;
+        }
+        to ??= seatBox(onField.controller || owner, b.rect);
+      } else if (toHand) {
+        to = inHand(id, owner, b.rect);
+        if (to && held) scale = to.w / Math.max(1, card.w);
+        to ??= seatBox(owner, b.rect);
+      }
+      let from: CmdBox | null = pile ?? seatBox(owner, b.rect);
+      if (!from && !to) continue;
+      if (!from && to) from = { ...to, y: to.y + 90 };
+      if (!from) continue;
+      if (!to) to = { ...from, y: from.y - 90 };
+      origin ??= from;
+      paths.push({
+        x: from.x - origin.x,
+        y: from.y - origin.y,
+        dx: to.x - from.x,
+        dy: to.y - from.y,
+        s: Math.min(3, Math.max(0.3, scale)),
+      });
+      // Its face: as the board shows it now, or, on its way into a hand
+      // this player cannot see, as the graveyard showed it, turning over.
+      const face = onField ?? held?.card ?? before?.card ?? null;
+      slides.push(face && !showsCardBack(face) ? cardImageURL(face, "small") : null);
+      flips.push(toHand && !held && face !== null);
+      tileIDs.push(tile);
+    }
+    if (!origin || !card || paths.length === 0) return;
+    add({
+      ...base,
+      cardID: ids[0] ?? "",
+      x: origin.x,
+      y: origin.y,
+      width: card.w,
+      height: card.h,
+      fly: { x: paths[0].dx, y: paths[0].dy },
+      count,
+      slides,
+      sweep,
+      reanimateTo: cue.reanimateTo,
+      paths,
+      flips,
+      tileIDs,
+    });
+  }
+  // ---- A library searched (#4447) ----
+
+  // The riffled card backs, one each.
+  const RIFFLE = Array.from({ length: RIFFLE_CARDS }, (_, i) => i);
+
+  // The searched library's pile riffles, at the size of its top card (a
+  // back); with no library pile on the board, its owner's seat does, at a
+  // card's size. With neither, or a still cue, nothing is drawn and the
+  // sound plays.
+  function placeRiffle(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const owner = view.seats?.[cue.librarySeat ?? -1]?.id ?? "";
+    if (!owner) return;
+    const at = pileBox("library", owner, b.rect) ?? seatBox(owner, b.rect);
+    if (!at) return;
+    // The pile's top card is card-sized; a seat is not.
+    const card = at.h > at.w * 1.2 ? { w: at.w, h: at.h } : PILE_CARD;
+    add({
+      ...base,
+      x: at.x,
+      y: at.y,
+      width: card.w,
+      height: card.h,
+      count: RIFFLE_CARDS,
+      library: owner,
+    });
+  }
+
+  // ---- A double-faced card transforms, or day and night (#4448) ----
+
+  // `src` as the face `face` of its card, at the size of `like`: an image
+  // URL built by cardImage.ts ("/cards/{id}/image?size=…&face=N", face 0
+  // with no face).
+  function imageAs(src: string, like: string, face?: number): string {
+    const [path, query = ""] = src.split("?");
+    const q = new URLSearchParams(query);
+    const size = new URLSearchParams(like.split("?")[1] ?? "").get("size");
+    if (size) q.set("size", size);
+    if (face !== undefined) {
+      if (face > 0) q.set("face", String(face));
+      else q.delete("face");
+    }
+    const out = q.toString();
+    return out ? `${path}?${out}` : path;
+  }
+
+  // The permanent flips over its own tile, from the face it was to the
+  // face its tile shows now, at the tile's size and turn. The face it was
+  // is its other face, or, for a melded permanent, its first card's front
+  // (its tile has just entered, so its size is the layout's, which its
+  // entrance pop does not change). A permanent already gone, one with no
+  // art, or a still cue draws nothing, and the sound plays.
+  function placeTransform(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const id = cue.cardID ?? "";
+    if (motion === "still" || !boardEl || !onBattlefieldNow().has(id)) return;
+    const card = view.battlefield.cards.find((c) => c.instance_id === id);
+    const el = findCardAnchor(boardEl, id, { accept: fieldTile });
+    if (!card || !el || showsCardBack(card)) return;
+    const to =
+      el.querySelector<HTMLImageElement>("img")?.getAttribute("src") ?? cardImageURL(card, "small");
+    if (!to) return;
+    const first = card.melded_from?.[0]?.image;
+    let from: string | null = null;
+    if (cue.melded) from = first ? imageAs(first, to) : null;
+    else if ((card.faces?.length ?? 0) >= 2) {
+      from = imageAs(to, to, (card.active_face ?? 0) === 0 ? 1 : 0);
+    }
+    if (!from) return;
+    const now = tileOf(el, b.rect, b.size);
+    add({
+      ...base,
+      x: now.box.x,
+      y: now.box.y,
+      width: cue.melded ? el.offsetWidth || now.width : now.width,
+      height: cue.melded ? el.offsetHeight || now.height : now.height,
+      rot: now.rot,
+      src: to,
+      from,
+    });
+  }
+
+  // The sky's wash covers the whole table. A still cue draws nothing, and
+  // the sound plays.
+  function placeSky(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still") return;
+    add({ ...base, width: b.size.w, height: b.size.h, sky: cue.sky ?? "night" });
+  }
+
   // Where an Aura's glints twinkle, as shares of the host's box from its centre.
   const ATT_GLINTS = [
     [-0.44, -0.34],
@@ -885,6 +1315,8 @@
     seenNow = new Map();
     const shown = visibleCards(view);
     for (const c of shown) seenNow.set(c.instance_id, c);
+    graveBefore = graveNow;
+    graveNow = graveyardCards(view);
     signatures.notice(shown);
     // A signature's tint lasts until the turn ends (fx/tints.ts).
     syncTableTints(view.id, view.turn?.number ?? 0);
@@ -912,6 +1344,10 @@
       isPlaneswalker: isPW,
       combatMotion: strikes,
       isCommander: isCommanderNow,
+      // #4427: a permanent sacrificed for its own ability has just left,
+      // so its type line is the one it had before it went.
+      typeLineOf: (id) =>
+        (lastViews.get(id) ?? view.battlefield.cards.find((c) => c.instance_id === id))?.type_line,
     });
     // Signatures take the batches they name, once their scene has loaded.
     const found = planSignatures(r.fresh, { sceneOf: sceneOfCard });
@@ -958,8 +1394,9 @@
       delay: number,
       volume: number,
       batch: number | null,
+      soundKey?: string,
     ) => {
-      const fire = () => play(name, { volume, batch: soundBatch(gameID, batch) });
+      const fire = () => play(name, { volume, batch: soundBatch(gameID, batch, soundKey) });
       if (delay <= 0) fire();
       else
         later(() => {
@@ -997,7 +1434,7 @@
         cueTiming(cue, motion, speed);
       const snd = cueSound(cue);
       if (snd && !sp.silencedCues.has(cue.id)) {
-        sound(snd.name, t.delayMs, snd.volume, cue.batch);
+        sound(snd.name, t.delayMs, snd.volume, cue.batch, cue.soundKey);
         // A sacrifice's knife has a sound of its own, as it lands.
         if (cue.kind === "sacrifice") {
           const knife =
@@ -1369,6 +1806,33 @@
           cancelTree(node);
         },
       };
+    } else if (f.kind === "transform") {
+      // #4448: the permanent's own tile waits, hidden, under its flip;
+      // only this run is cancelled with the cue.
+      const tile = boardEl ? findCardAnchor(boardEl, f.cardID, { accept: fieldTile }) : null;
+      const held = tile ? flipHold(tile, f) : null;
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          held?.cancel();
+          cancelTree(node);
+        },
+      };
+    } else if (f.kind === "reanimate") {
+      // #4446: each returned card's own tile waits, hidden, for its copy
+      // to land; only these runs are cancelled with the cue.
+      const ids = f.tileIDs ?? [];
+      const held = ids.flatMap((id, i) => {
+        const tile = id && boardEl ? findCardAnchor(boardEl, id, { accept: fieldTile }) : null;
+        return tile ? [riseArrive(tile, f, pileLandAt(ids.length, i, f.sweep === true))] : [];
+      });
+      cueMotion(node, f);
+      return {
+        destroy: () => {
+          for (const h of held) h.cancel();
+          cancelTree(node);
+        },
+      };
     } else {
       cueMotion(node, f);
     }
@@ -1417,6 +1881,10 @@
       rot: f.rot,
       light: f.light || f.kind === "exile",
     });
+  }
+  // A permanent sacrificed for its own ability: its crack and its halves (#4427).
+  function crackOf(f: Fx) {
+    return crackPlan(f.cardID || f.seed, f.width, f.height, f.rot);
   }
   function motesOf(f: Fx) {
     return voidMotes(f.seed, f.width, f.height, f.light);
@@ -1778,6 +2246,190 @@
           ></i>
         {/each}
       </div>
+    {:else if f.kind === "mill" || f.kind === "discard"}
+      <!-- #4445: the cards slide from the library (turning face up) or are
+           tossed from the hand onto the graveyard pile, a stagger apart;
+           five or more go as one sweep, with a streak behind them. -->
+      {@const path = reachOf(f)}
+      <div
+        class="fx m"
+        data-effect={f.kind}
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-count={f.count}
+        data-effect-sweep={f.sweep ? "" : undefined}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#if f.sweep}
+          <div
+            class="pile-streak"
+            data-kind={f.kind}
+            style:width={`${Math.max(12, f.width * 0.5)}px`}
+            style:height={`${path.len}px`}
+            style:rotate={`${path.turn}deg`}
+          ></div>
+        {/if}
+        {#each f.slides ?? [] as src, i (i)}
+          <div class="copy pile-card">
+            {#if f.kind === "mill" && src}
+              <div class="flip">
+                <div class="face" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+                  <img {src} alt="" decoding="async" draggable="false" />
+                </div>
+                <div
+                  class="face back"
+                  style:width={`${f.width}px`}
+                  style:height={`${f.height}px`}
+                ></div>
+              </div>
+            {:else}
+              <div
+                class="face"
+                class:back-only={!src}
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+              >
+                {#if src}<img {src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+        <div
+          class="pile-dust"
+          data-kind={f.kind}
+          style:left={`${f.fly.x}px`}
+          style:top={`${f.fly.y}px`}
+          style:width={`${f.width * 1.7}px`}
+          style:height={`${f.height * 1.1}px`}
+        ></div>
+      </div>
+    {:else if f.kind === "reanimate"}
+      <!-- #4446: each card rises out of its graveyard pile in a dark-green
+           glow and goes to where it went, a stagger apart; five or more
+           go as one sweep. -->
+      <div
+        class="fx m"
+        data-effect="reanimate"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-effect-count={f.count}
+        data-effect-to={f.reanimateTo}
+        data-effect-sweep={f.sweep ? "" : undefined}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#each f.paths ?? [] as p, i (i)}
+          <div
+            class="rise-glow"
+            style:left={`${p.x}px`}
+            style:top={`${p.y}px`}
+            style:width={`${f.width * 1.9}px`}
+            style:height={`${f.height * 1.25}px`}
+          ></div>
+        {/each}
+        {#each f.paths ?? [] as p, i (i)}
+          {@const src = f.slides?.[i] ?? null}
+          <div class="copy pile-card" style:left={`${p.x}px`} style:top={`${p.y}px`}>
+            <div
+              class="rise-aura"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+            ></div>
+            {#if f.flips?.[i] && src}
+              <div class="flip" data-flip="down">
+                <div class="face" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+                  <img {src} alt="" decoding="async" draggable="false" />
+                </div>
+                <div
+                  class="face back"
+                  style:width={`${f.width}px`}
+                  style:height={`${f.height}px`}
+                ></div>
+              </div>
+            {:else}
+              <div
+                class="face"
+                class:back-only={!src}
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+              >
+                {#if src}<img {src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {:else if f.kind === "library_search"}
+      <!-- #4447: a few card backs flick up off the searched library's pile
+           one after another and settle, over a cool light. Backs only. -->
+      <div
+        class="fx m"
+        data-effect="library_search"
+        data-effect-motion={f.motion}
+        data-effect-library={f.library}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div
+          class="riffle-glow"
+          style:width={`${f.width * 2}px`}
+          style:height={`${f.height * 1.5}px`}
+        ></div>
+        {#each RIFFLE.slice(0, f.count) as i (i)}
+          <div class="copy riffle-card" style:transform-origin={`0px ${f.height / 2}px`}>
+            <div
+              class="face back-only"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+            ></div>
+          </div>
+        {/each}
+      </div>
+    {:else if f.kind === "transform"}
+      <!-- #4448: the card flips on its own vertical axis to its other face,
+           over its tile, which waits hidden under it. -->
+      <div
+        class="fx m"
+        data-effect="transform"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="turn" style:rotate={`${f.rot}deg`}>
+          <div
+            class="turn-rim"
+            style:width={`${f.width + 10}px`}
+            style:height={`${f.height + 10}px`}
+          ></div>
+          <div class="turn-card">
+            <div class="face turn-from" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+              {#if f.from}<img src={f.from} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+            <div class="face turn-to" style:width={`${f.width}px`} style:height={`${f.height}px`}>
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        </div>
+      </div>
+    {:else if f.kind === "day_night"}
+      <!-- #4448: the table takes the sky's tint as it becomes day or night. -->
+      <div
+        class="sky m"
+        data-effect="day_night"
+        data-effect-motion={f.motion}
+        data-sky={f.sky}
+        use:motionOf={f}
+      >
+        <div class="sky-tint"></div>
+        <div class="sky-band" style:width={`${Math.max(160, f.board.w * 0.45)}px`}></div>
+        <div class="sky-orb" style:left={`${f.board.w / 2}px`}></div>
+      </div>
     {:else if f.kind === "pw_enter"}
       <div
         class="fx m"
@@ -1797,6 +2449,50 @@
           style:width={`${f.width + 10}px`}
           style:height={`${f.height + 10}px`}
         ></div>
+      </div>
+    {:else if f.kind === "crack"}
+      <!-- #4427: snapped along a crack like a dry branch, and fallen away; no altar. -->
+      {@const ck = crackOf(f)}
+      <div
+        class="fx m"
+        data-effect="crack"
+        data-effect-motion={f.motion}
+        data-effect-card={f.cardID}
+        data-crack={f.crack ?? "other"}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        {#each ck.halves as h, i (i)}
+          <div
+            class="copy crack-half"
+            data-dx={h.dx}
+            data-dy={h.dy}
+            data-rot={h.rot}
+            style:transform-origin={`${h.ox}px ${h.oy}px`}
+          >
+            <div
+              class="face"
+              style:width={`${f.width}px`}
+              style:height={`${f.height}px`}
+              style:--fx-rot={`${f.rot}deg`}
+              style:clip-path={h.clip}
+            >
+              {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+            </div>
+          </div>
+        {/each}
+        <svg
+          class="crack-line"
+          viewBox={`0 0 ${f.width} ${f.height}`}
+          width={f.width}
+          height={f.height}
+          style:--fx-rot={`${f.rot}deg`}
+        >
+          <path class="under" d={ck.path} pathLength="1" />
+          <path class="over" d={ck.path} pathLength="1" />
+        </svg>
+        <div class="crack-puff" style:width={`${Math.max(f.width, f.height) * 0.9}px`}></div>
       </div>
     {:else}
       {@const broken = breaks(f.kind) || (f.kind === "exile" && f.fromDestroy)}
@@ -2252,6 +2948,78 @@
   }
   .crk path.rim.over {
     stroke-width: 0.9;
+  }
+
+  /* #4427, a permanent sacrificed for its own ability: two halves of its
+     art either side of a crack, which fall away. A dry, pale split with a
+     dark edge, not the shatter's ember: nothing died. */
+  .crack-half .face {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+  }
+  .crack-line {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg));
+  }
+  .crack-line path {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .crack-line path.under {
+    stroke: rgba(14, 10, 6, 0.85);
+    stroke-width: 3;
+  }
+  .crack-line path.over {
+    stroke: #f4ead2;
+    stroke-width: 1.1;
+    filter: drop-shadow(0 0 2px rgba(255, 236, 200, 0.8));
+  }
+  .crack-puff {
+    position: absolute;
+    left: 0;
+    top: 0;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle,
+      rgba(206, 186, 150, 0.7) 0%,
+      rgba(150, 128, 96, 0.35) 40%,
+      rgba(120, 100, 70, 0) 70%
+    );
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* The dust off the crack is what was spent: a Treasure's gold, a
+     Clue's paper, a Food's crumbs; a land's is earth. */
+  .fx[data-crack="treasure"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(255, 226, 140, 0.8) 0%,
+      rgba(214, 170, 60, 0.4) 40%,
+      rgba(180, 130, 30, 0) 70%
+    );
+  }
+  .fx[data-crack="clue"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(240, 240, 232, 0.75) 0%,
+      rgba(190, 196, 206, 0.35) 40%,
+      rgba(160, 168, 180, 0) 70%
+    );
+  }
+  .fx[data-crack="food"] .crack-puff {
+    background: radial-gradient(
+      circle,
+      rgba(232, 176, 110, 0.75) 0%,
+      rgba(184, 120, 60, 0.35) 40%,
+      rgba(150, 90, 40, 0) 70%
+    );
   }
   .flare {
     position: absolute;
@@ -2741,6 +3509,190 @@
     background: #fbf4ff;
     clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
     filter: drop-shadow(0 0 4px rgba(200, 160, 255, 0.95));
+    opacity: 0;
+  }
+
+  /* Cards milled or discarded (#4445): plain card copies, a card back
+     where the art is not known, a soft puff of dust where they land on
+     the graveyard pile (parchment for a mill, ash for a discard), and a
+     sweep's faint streak. */
+  .face.back-only {
+    background:
+      url("/card-back-small.jpg") center / cover no-repeat,
+      radial-gradient(ellipse at 50% 50%, #5a3a22 0%, #2b1a10 60%, #160d08 100%);
+  }
+  .pile-dust {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(238, 226, 200, 0.55) 0%,
+      rgba(214, 198, 166, 0.28) 40%,
+      transparent 70%
+    );
+    filter: blur(2px);
+    opacity: 0;
+  }
+  .pile-dust[data-kind="discard"] {
+    background: radial-gradient(
+      ellipse,
+      rgba(214, 214, 222, 0.5) 0%,
+      rgba(160, 162, 176, 0.24) 40%,
+      transparent 70%
+    );
+  }
+  .pile-streak {
+    position: absolute;
+    left: 0;
+    top: 0;
+    /* Its foot on the start, pointing at the graveyard (the inline rotate). */
+    translate: -50% -100%;
+    transform-origin: 50% 100%;
+    border-radius: 999px;
+    background: linear-gradient(to top, rgba(230, 216, 186, 0) 0%, rgba(236, 226, 204, 0.5) 100%);
+    filter: blur(3px);
+    opacity: 0;
+  }
+  .pile-streak[data-kind="discard"] {
+    background: linear-gradient(to top, rgba(190, 192, 204, 0) 0%, rgba(206, 208, 220, 0.45) 100%);
+  }
+
+  /* A card returned from a graveyard (#4446): a dark-green glow, the
+     Toxic Deluge stain's green (FxTint.svelte) lit from within, about the
+     copy as it rises, and a bloom of it from the pile it leaves. */
+  .rise-aura {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 9px;
+    box-shadow:
+      0 0 0 2px rgba(120, 196, 104, 0.85),
+      0 0 18px 6px rgba(48, 132, 46, 0.8),
+      0 0 40px 14px rgba(22, 64, 20, 0.7);
+    opacity: 0;
+  }
+  .rise-glow {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(132, 206, 112, 0.6) 0%,
+      rgba(40, 112, 40, 0.42) 38%,
+      rgba(20, 58, 22, 0.22) 58%,
+      transparent 72%
+    );
+    filter: blur(3px);
+    opacity: 0;
+  }
+
+  /* A permanent that transforms (#4448): two faces back to back, turned
+     with a tapped card, so the flip is about the card's own vertical axis;
+     a pale rim lights it as it turns edge-on. */
+  .turn {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+  }
+  .turn-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+  }
+  .turn-card .face {
+    backface-visibility: hidden;
+    transform: translate(-50%, -50%);
+  }
+  .turn-card .face.turn-to {
+    transform: translate(-50%, -50%) rotateY(180deg);
+  }
+  .turn-rim {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 2px rgba(226, 232, 255, 0.85),
+      0 0 22px 6px rgba(178, 192, 255, 0.55);
+    opacity: 0;
+  }
+
+  /* The game becomes day or night (#4448): the sky's tint over the table,
+     a band of its light crossing it, and the moon or the sun at the top. */
+  .sky {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    --sky-tint: rgba(18, 28, 84, 0.34);
+    --sky-light: rgba(150, 172, 255, 0.22);
+  }
+  .sky[data-sky="day"] {
+    --sky-tint: rgba(255, 196, 96, 0.2);
+    --sky-light: rgba(255, 236, 180, 0.3);
+  }
+  .sky-tint {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, var(--sky-tint) 0%, transparent 85%);
+    opacity: 0;
+  }
+  .sky-band {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(90deg, transparent, var(--sky-light), transparent);
+    filter: blur(8px);
+    opacity: 0;
+  }
+  .sky-orb {
+    position: absolute;
+    top: 18px;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
+    border-radius: 50%;
+    background: #eef1ff;
+    /* A crescent: the dark of the night sky over most of the disc. */
+    box-shadow:
+      inset -9px -3px 0 1px rgba(30, 38, 90, 0.95),
+      0 0 18px 4px rgba(190, 204, 255, 0.55);
+    opacity: 0;
+  }
+  .sky[data-sky="day"] .sky-orb {
+    background: radial-gradient(circle, #fff6d6 0%, #ffd56a 60%, #ffb63a 100%);
+    box-shadow: 0 0 26px 10px rgba(255, 206, 110, 0.6);
+  }
+
+  /* A library searched (#4447): card backs riffled off the pile, which
+     start hidden (the motion shows each while it moves), and a cool,
+     moonlit light under the pile while it is looked through. */
+  .riffle-card {
+    opacity: 0;
+  }
+  .riffle-card .face {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+  .riffle-glow {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse,
+      rgba(214, 228, 255, 0.75) 0%,
+      rgba(136, 164, 228, 0.42) 40%,
+      rgba(74, 96, 160, 0.16) 60%,
+      transparent 72%
+    );
+    filter: blur(3px);
     opacity: 0;
   }
 

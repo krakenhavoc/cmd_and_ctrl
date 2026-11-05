@@ -103,6 +103,14 @@ var knownUnmatchedTokens = map[string]string{
 	// so no printing matches; the template follows the card's oracle text
 	// (#4893).
 	"2/2 white Unicorn": "no 2/2 white Unicorn token card was ever printed; Blessed Sanctuary's oracle text says 2/2 white",
+
+	// U.S.S. Stargazer, Here and There (Star Trek Commander) creates "a
+	// tapped and attacking 4/3 colorless Spacecraft Illusion artifact
+	// creature token with flying". Its only printing is on the ttrc token
+	// sheet, which the pool's single-faced "token" layout filter does not
+	// read, so no record matches; the template follows the card's oracle
+	// text (#4974 batch 43).
+	"4/3 colorless Spacecraft Illusion artifact with flying": "the Spacecraft Illusion is printed only on the Star Trek Commander token sheet, which the single-faced token pool does not read; U.S.S. Stargazer's oracle text says 4/3 colorless with flying",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

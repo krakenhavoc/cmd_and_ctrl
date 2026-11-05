@@ -41,7 +41,7 @@
 //
 // # What the catalog can and cannot support
 //
-// Eight decks in eight archetypes:
+// Twelve decks in eleven archetypes:
 //
 //   - aggro, ramp-stompy (Simic), control (Esper) — the three the
 //     sprint planned for. The aggro deck was Izzet (izzet-aggro) until
@@ -65,6 +65,19 @@
 //     decision 8: the one built-in deck with a five-colour commander,
 //     so the one that can carry Jegantha, the Wellspring as its
 //     companion. Every card in it also fits Jegantha's condition.
+//
+//   - artifacts (mono-blue), spellslinger (Izzet), a second
+//     aristocrats deck (Orzhov) and +1/+1 counters (Gruul) — added by
+//     #554's second round for the gaps its 2026-10-16 status comment
+//     listed: no mono-blue deck, no second control or aristocrats
+//     option, and no precon-style theme such as spellslinger. Four,
+//     which takes the picker from eight to twelve, each in a colour
+//     pair or colour no other deck uses. Selesnya, Dimir and Azorius
+//     were left alone because the Jumpstart deck requests (#4892–#4894)
+//     cover them. All four are held to the same bar as the three above:
+//     72 of 72 (Thopter Swarm), 79 of 79 (Spell Echo), 78 of 78 (Grave
+//     Dividends) and 80 of 80 (Growing Pains) graded full, and every
+//     instant in them declares what it answers.
 //
 // Voltron was held back for a count problem rather than a missing
 // mechanic: the attachment relation shipped (#374, game/attach.go), and
@@ -240,6 +253,10 @@ var all = []Deck{
 	monoWhiteWeenie,
 	borosVoltron,
 	dragonHoard,
+	monoBlueArtifacts,
+	izzetSpellslinger,
+	orzhovAristocrats,
+	gruulCounters,
 }
 
 // All returns every curated deck, in a stable picker order. The

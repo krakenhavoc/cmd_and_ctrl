@@ -17,7 +17,7 @@ import (
 //	 counters are modifications.)"
 //
 // The move is Simic Fluxmage's (the counter lands first, then leaves the
-// Closet only if it was put on, CR 701.34). "Modified" is read as the
+// Closet only if it was put on, CR 122.5). "Modified" is read as the
 // creature last existed on the battlefield (CR 603.10a): its last-known
 // counters, plus an Equipment or an Aura its controller controlled that
 // was attached to it. The Closet may leave with the creature (the

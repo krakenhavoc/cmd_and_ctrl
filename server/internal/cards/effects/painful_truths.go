@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     pool (#3855), so ctx.ColorsSpentCount() counts every colour
 //     they paid.
 //
-// CR 702.86 makes converge an ability word, so the counting lives on
+// CR 207.2c makes converge an ability word, so the counting lives on
 // the card; the drawing and the life loss are one instruction, so a
 // player who converges for five at four life draws five and then dies
 // to the CR 704.5a state-based check, as printed.

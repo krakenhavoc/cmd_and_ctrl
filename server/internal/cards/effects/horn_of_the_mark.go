@@ -24,7 +24,7 @@ import (
 // defensive coding:
 //
 //   - "TWO OR MORE creatures … attack a PLAYER" is one trigger per
-//     defending player, not one per attacker. EventAttack fires per
+//     attacked player, not one per attacker. EventAttack fires per
 //     creature (a three-creature swing is three events), so the
 //     ability is OncePerBatchPerPlayer: the CR 603.2c key with the
 //     defender as its second dimension, so an attack split across two
@@ -68,10 +68,13 @@ func init() {
 // attack a player" count, measured against combat state rather than
 // against the event stream.
 //
-// An attack at a planeswalker or a battle that player controls counts
-// as attacking them (CR 506.2, CR 508.1d), which is what
-// DefendingPlayerForAttackForEffect resolves and what keeps the count
-// agreeing with the trigger's own per-player key.
+// Only a creature whose attack target is the player itself counts.
+// "[A creature] attacks [a player]" is CR 508.3a: declared as an
+// attacker attacking that player. No rule makes an attack on a
+// planeswalker the player controls, or on a battle they protect, an
+// attack on that player, so those attackers are left out (#4864), and
+// AttackingTarget is compared with the player directly rather than read
+// through DefendingPlayerForAttackForEffect.
 //
 // It counts BOARD state (AttackingTarget), which does not distinguish a
 // declared attacker from one PUT onto the battlefield attacking (CR
@@ -90,7 +93,7 @@ func b41AttackersAgainst(g *game.Game, attacker, player uuid.UUID) int {
 		if !ok {
 			continue
 		}
-		if g.DefendingPlayerForAttackForEffect(c.AttackingTarget) == player {
+		if c.AttackingTarget == player {
 			n++
 		}
 	}

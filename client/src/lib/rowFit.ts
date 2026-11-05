@@ -327,6 +327,62 @@ function roomOf(node: HTMLElement): number {
   return room;
 }
 
+/**
+ * roomAtScale is the width a row's card list has with its cards drawn
+ * `w` by `h` px and no overlap. #4946: roomOf reads the room at full
+ * size, but a back-row zone is as wide as its cards, so once they
+ * shrink the back row gives it less: a crowded four-seat panel's walker
+ * row, sized for full-size cards, got its min-width instead, and its
+ * last walker ran past the row's edge (past its left edge on a turned,
+ * across-table panel, where no scroll reaches). Like roomOf, the
+ * override is put back in the same task.
+ */
+function roomAtScale(node: HTMLElement, w: number, h: number): number {
+  const ow = node.style.getPropertyValue("--card-w");
+  const oh = node.style.getPropertyValue("--card-h");
+  const oo = node.style.getPropertyValue("--fit-overlap");
+  node.style.setProperty("--card-w", `${w}px`);
+  node.style.setProperty("--card-h", `${h}px`);
+  node.style.setProperty("--fit-overlap", "0px");
+  const room = node.clientWidth;
+  if (ow) node.style.setProperty("--card-w", ow);
+  else node.style.removeProperty("--card-w");
+  if (oh) node.style.setProperty("--card-h", oh);
+  else node.style.removeProperty("--card-h");
+  if (oo) node.style.setProperty("--fit-overlap", oo);
+  else node.style.removeProperty("--fit-overlap");
+  return room;
+}
+
+/**
+ * settleScale is the card share a row that never overlaps (`spread`)
+ * draws at so it fits the room it has AT that share, not the room it
+ * had at full size (#4946). `room(s)` is the list's width with the
+ * cards at share s; it only falls as s does, so walking down from
+ * `start` (the fit at full-size room) settles in a few steps on the
+ * largest share that fits. Returns the share and the room it fits.
+ */
+export function settleScale(
+  start: number,
+  available: number,
+  natural: number,
+  fixed: number,
+  minScale: number,
+  room: (s: number) => number,
+): { scale: number; available: number } {
+  let s = start;
+  let avail = available;
+  for (let i = 0; i < 8 && s < 1; i++) {
+    const r = room(s);
+    if (r >= avail - 0.5) break;
+    avail = r;
+    const next = fitScale(natural, fixed, avail, minScale);
+    if (next >= s - 1e-4) break;
+    s = next;
+  }
+  return { scale: s, available: avail };
+}
+
 /** The options BattlefieldRow passes fitRow. */
 export interface FitRowOptions {
   /** The land strip: piles overlap by design and never wrap. */
@@ -395,7 +451,7 @@ export function fitRow(
     const piles = [...node.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
     const style = getComputedStyle(node);
     const gap = parseFloat(style.columnGap) || 0;
-    const available = strip ? node.clientWidth : roomOf(node);
+    let available = strip ? node.clientWidth : roomOf(node);
     // The land strip (#2960): the content width with the overlap fully
     // off (spread) and fully on (packed), read straight from layout.
     // The piles' own widths do not depend on it, only their margins do.
@@ -460,11 +516,20 @@ export function fitRow(
     const wrap =
       !strip && baseW > 0 && baseH > 0 ? fitWrap(shape, opts.budget ?? 0, minScale) : null;
     node.toggleAttribute("data-wrap", !!wrap);
-    const next = wrap
+    let next = wrap
       ? wrap.scale
       : baseW > 0 && baseH > 0
         ? fitScale(natural, fixed, available, minScale)
         : 1;
+    // #4946: a row that never overlaps has nothing else to fit with, so
+    // it fits the room it gets at the size it is drawn at.
+    if (opts.spread && !wrap && next < 1) {
+      const settled = settleScale(next, available, natural, fixed, minScale, (s) =>
+        roomAtScale(node, baseW * s, baseH * s),
+      );
+      next = settled.scale;
+      available = settled.available;
+    }
     // The strip never wraps: it asks for its one line, as drawn.
     const stripH = pad + lineH * next;
     const demand: RowReport = {

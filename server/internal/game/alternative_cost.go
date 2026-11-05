@@ -1436,6 +1436,9 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 // triggered ability; warp's exile happens at a later step, so it is
 // a CR 603.7 delayed trigger. Neither gets a bespoke loop.
 //
+// The token a copy of such a spell becomes gets the same clauses (CR
+// 707.10, #4783): runSpellCopyTokenAltCostTail calls this for it.
+//
 // No-op for a spell cast for its mana cost, and for an alternative
 // cost that carries neither clause. Caller must hold g.mu.
 func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {

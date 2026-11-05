@@ -21,6 +21,7 @@ Clockwork Droid | scry | on a triggered row that is not the card's enters effect
 Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Corsairs of Umbar | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Crystal Grotto | scry | a land's enters effect; a land play is not priced by its purpose
+Data, Exploring Humanity | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Deep-Fried Plague Myr | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Digsite Conservator | discover | the text makes it conditional or optional
 Down, Down to Goblin-town | amass | on a triggered row that is not the card's enters effect, which nothing prices

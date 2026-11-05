@@ -390,6 +390,46 @@ func TestTroubleInPairsDrawsOnceForATwoCreatureAttackAtYou(t *testing.T) {
 	})
 }
 
+// #4864, CR 508.3e: "attacks you" counts only creatures attacking you
+// yourself. Two at your planeswalker draw nothing, and one at you with
+// one at your planeswalker is one creature attacking you.
+func TestTroubleInPairsIgnoresCreaturesAttackingYourPlaneswalker(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		atYou int
+	}{
+		{"two at your planeswalker draw nothing", 0},
+		{"one at you and one at your planeswalker draw nothing", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me, opp := g.Seats[1], g.Seats[0]
+			seedEnchantment(g, troubleInPairsOracle, "Trouble in Pairs", "Enchantment", me.ID)
+			walker := p1g2Planeswalker(g, me.ID, 5)
+			a := pushVanillaCreature(g, opp.ID, "Bear A", 2, 2)
+			b := pushVanillaCreature(g, opp.ID, "Bear B", 2, 2)
+			before := me.Hand.Size()
+
+			advanceTo(t, g, game.StepDeclareAttackers)
+			at := []uuid.UUID{walker, walker}
+			if tc.atYou == 1 {
+				at[0] = me.ID
+			}
+			for i, id := range []uuid.UUID{a, b} {
+				if err := g.DeclareAttacker(id, at[i]); err != nil {
+					t.Fatalf("DeclareAttacker: %v", err)
+				}
+			}
+			lockInAttacks(t, g)
+			passPriorityAroundTable(t, g)
+
+			if got := me.Hand.Size() - before; got != 0 {
+				t.Errorf("drew %d cards, want 0: a creature attacking your planeswalker is not attacking you", got)
+			}
+		})
+	}
+}
+
 // e7Draw draws one card for a player outside their own draw step.
 func e7Draw(t *testing.T, g *game.Game, p *game.Player) {
 	t.Helper()

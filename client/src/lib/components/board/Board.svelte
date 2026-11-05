@@ -88,6 +88,8 @@
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
+  import FinalBoardModal from "./FinalBoardModal.svelte";
+  import { closeFinalBoard, finalBoardViewer, hasFinalBoard } from "../../finalBoard";
   import { zoneBrowser, closeZoneBrowser, openZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
@@ -387,6 +389,14 @@
   // #3379: each avatar's life popup names what moved the total, from
   // this frame's log and the cards this viewer can see.
   provideLifeCauses(() => view);
+  // #4912: the final board viewer closes when its seat no longer has a
+  // final board (an undo of the elimination), and when the page leaves
+  // the table, so it never reopens on its own.
+  $effect(() => {
+    const open = $finalBoardViewer;
+    if (open && !hasFinalBoard(view.seats.find((s) => s.id === open.seatID))) closeFinalBoard();
+  });
+  onDestroy(closeFinalBoard);
   $effect(() => {
     void beatsPrimeKey;
     untrack(() => combatCues.requestReprime());
@@ -4985,6 +4995,14 @@
       {legal}
       {legalGate}
     />
+  {/if}
+  {#if $finalBoardViewer}
+    <!-- #4912: an eliminated player's final board, opened from their
+         tombstone. Read only. -->
+    {@const finalSeat = view.seats.find((s) => s.id === $finalBoardViewer?.seatID)}
+    {#if finalSeat && hasFinalBoard(finalSeat)}
+      <FinalBoardModal seat={finalSeat} onClose={closeFinalBoard} />
+    {/if}
   {/if}
   <!-- #2960: where a card's ability menu is moved to (menuPlacement.ts):
        out of the card's transform and the lands row's scroll, so it is

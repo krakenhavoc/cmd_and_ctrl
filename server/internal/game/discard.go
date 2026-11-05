@@ -130,7 +130,7 @@ type discardOptions struct {
 //
 // This is sacrificedThisWayLocked's shape with the hand in place of
 // the battlefield, and the two rules have the same form because
-// CR 701.9a and CR 701.17a do: both name the keyword action as a move
+// CR 701.9a and CR 701.21a do: both name the keyword action as a move
 // OUT of a zone. Destroy is the odd one out (CR 701.8a defines it by
 // the graveyard it arrives in — destroyedThisWayLocked).
 //

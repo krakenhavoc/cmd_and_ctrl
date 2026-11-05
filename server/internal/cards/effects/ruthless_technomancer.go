@@ -33,7 +33,7 @@ import (
 // Treasures never came, for a sacrifice that landed a beat later. The
 // clause hangs off SacrificePermanent.Then now, so the engine answers
 // it after the move has settled: a commander that takes the command
-// zone was still sacrificed (CR 701.17a — the keyword action is the
+// zone was still sacrificed (CR 701.21a — the keyword action is the
 // move OFF the battlefield; only where it went was replaced), and a
 // sacrifice the window cancelled outright pays nothing.
 //

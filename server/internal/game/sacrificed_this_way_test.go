@@ -14,7 +14,7 @@ import (
 // fired and forgot and God-Eternal Bontu drew a card for a commander
 // whose owner was still being ASKED about the command zone.
 //
-// Sacrifice itself is not replaceable (CR 701.17a — it is not a
+// Sacrifice itself is not replaceable (CR 701.21a — it is not a
 // destruction, so nothing that replaces destruction touches it), but
 // the MOVE it makes is an ordinary zone change: the CR 614 window
 // opens over it, an optional replacement's prompt can pause a leg, and a
@@ -63,7 +63,7 @@ func TestSacrificeAllThenReportsWhatLeftTheBattlefield(t *testing.T) {
 	}
 	for _, id := range []uuid.UUID{first, second} {
 		if !me.Graveyard.Contains(id) {
-			t.Error("a sacrificed permanent goes to its owner's graveyard (CR 701.17a)")
+			t.Error("a sacrificed permanent goes to its owner's graveyard (CR 701.21a)")
 		}
 		if !hasEvent(g, EventSacrifice, id) {
 			t.Error("every leg of the batch announces its own EventSacrifice")
@@ -101,7 +101,7 @@ func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 
 			if !idsEqual(*got, []uuid.UUID{commander, bear}) {
 				t.Errorf("sacrificed this way = %v, want both — the commander was sacrificed "+
-					"whichever zone it went to (CR 701.17a)", *got)
+					"whichever zone it went to (CR 701.21a)", *got)
 			}
 			landed := me.Graveyard
 			if tc.commandZone {
@@ -121,7 +121,7 @@ func TestASacrificedCommanderIsStillSacrificed(t *testing.T) {
 // parts company with destroy, stated on its own because it is a
 // judgement rather than an obvious bug. CR 701.8a defines a
 // DESTRUCTION by the graveyard, so a permanent sent to exile instead
-// was not destroyed; CR 701.17a's sacrifice is the controller's move
+// was not destroyed; CR 701.21a's sacrifice is the controller's move
 // OFF the battlefield, and Rest in Peace taking the card does not undo
 // it.
 func TestASacrificeAReplacementExiledIsStillSacrificed(t *testing.T) {

@@ -215,13 +215,16 @@
   const held = $derived(hold && cards.length === 0);
 
   // #4087: the least width a spread row asks of the back row: every card
-  // at the smallest size a row shrinks to (rowFit MIN_CARD_H, 5:7), a
-  // gap between them, and the row's padding. A crowded back row shrinks
-  // the other zones before it takes that from walkers, which never
-  // overlap and so cannot give up more. An inline min-width, because the
-  // panel's flipped layout sets its own on every zone.
+  // at the smallest size a row shrinks to (rowFit MIN_CARD_H, 5:7) and a
+  // gap between them. A crowded back row shrinks the other zones before
+  // it takes that from walkers, which never overlap and so cannot give
+  // up more. An inline min-width, because the panel's flipped layout
+  // sets its own on every zone. #4946: the row's box is content-box, so
+  // its padding is on top of this; counted in it as well, a few small
+  // walkers sat in a row wider than they needed, apart from the groups
+  // beside it.
   const spreadMin = (n: number): number =>
-    Math.ceil((MIN_CARD_H * 5) / 7) * n + 12 * Math.max(0, n - 1) + 12;
+    Math.ceil((MIN_CARD_H * 5) / 7) * n + 12 * Math.max(0, n - 1);
 
   // ADR 0120 §3: the surface this row is drawn on, table or expanded.
   const surface = popoverSurface();
