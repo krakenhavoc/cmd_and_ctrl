@@ -229,6 +229,9 @@ var gameFields = plan(
 	// #4361 S17: an entry frozen behind its discard or sacrifice, as
 	// FrozenEntries; one that is not data is counted instead.
 	"frozenEntries", carried, "",
+	// #4522: a move parked behind its token creation, as
+	// MovesAwaitingTokens; one that is not data is counted instead.
+	"movesAwaitingTokens", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
 	// #4163: what an earlier step handed a later one.

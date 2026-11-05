@@ -577,6 +577,13 @@ type GameSnapshot struct {
 	// counted, not written. Additive within v9.
 	FrozenEntries []replacementResumeSnapshot `json:"frozenEntries,omitempty"`
 
+	// MovesAwaitingTokens is Game.movesAwaitingTokens (#4522,
+	// move_tokens.go): a replaced move whose declared token creation has
+	// paused, as a carrier event holding its route and the instructions
+	// not yet run. The creation's keyed tail names it by event ID. One
+	// that is not data is counted, not written. Additive within v9.
+	MovesAwaitingTokens []replacementEventSnapshot `json:"movesAwaitingTokens,omitempty"`
+
 	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
 	// multi-seat instructions in flight whose continuation is a
 	// registered key, each with its outstanding count, ask order, what
@@ -2649,6 +2656,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		if s.FrozenEntries = g.snapshotFrozenEntriesLocked(cen); len(s.FrozenEntries) > 0 {
 			keyedFrames = true
 		}
+		// #4522: the moves parked behind a token creation one of these
+		// prompts is pausing.
+		if s.MovesAwaitingTokens = g.snapshotMovesAwaitingTokensLocked(cen); len(s.MovesAwaitingTokens) > 0 {
+			keyedFrames = true
+		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
 			// #4389: staged tokens are written only here, and none is
@@ -2679,6 +2691,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		// restart rewinds rather than guessing.
 		cen.ChoiceResumeFrames++
 		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
+	} else if len(g.movesAwaitingTokens) > 0 {
+		// #4522: likewise a move parked behind a token creation.
+		cen.ChoiceResumeFrames++
+		cen.note("a move parked behind its token creation with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
 	// damage-assignment prompts. #4362: written as data, and each open
@@ -4023,6 +4039,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 		// #4361 S17: after the serials, like the frames.
 		g.frozenEntries = append(g.frozenEntries, g.rebuildFrozenEntryLocked(&s.FrozenEntries[i]))
 	}
+	// #4522: the moves parked behind a token creation.
+	g.restoreMovesAwaitingTokensLocked(s.MovesAwaitingTokens)
 	return g
 }
 

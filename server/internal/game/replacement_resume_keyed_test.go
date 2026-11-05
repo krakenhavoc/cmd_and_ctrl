@@ -173,6 +173,12 @@ func keyedFrameSample() *ReplacementEvent {
 			Source: id("rs"), SourceObject: ObjectRef{ID: id("rs"), Epoch: 2}, Controller: id("rc"),
 			Zone: ZoneExile, Label: "When you do", Body: "rb", Params: EffectParams{Amount: 2},
 		}},
+		// #4522: a token creation a replacement declared on the move.
+		tokensAfterMove: []tokenMoveInstruction{{
+			Source: id("tms"), Controller: id("tmc"),
+			Groups: []TokenGroup{{Template: Card{Name: "Zombie"}, Count: 1, Entry: TokenEntryOptions{Tapped: true},
+				CreatedWith: PermissionCardRef{ID: id("tmw"), Epoch: 3}}},
+		}},
 		asCommanderMove: true,
 		commanderAnswer: commanderZoneDecline,
 		// #4253: a damage event's fields and its tail's data half.

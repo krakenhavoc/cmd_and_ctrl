@@ -53,14 +53,8 @@ func init() {
 				YourSpell(), ColoredSpell("B")),
 		},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if !rfOpponentCreatureWouldDie(ev, g, src) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && !c.IsToken()
-			},
+			Watches:   []game.EventKind{game.EventZoneMove},
+			AppliesTo: opponentNontokenCreatureWouldDie,
 			Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 				ev.NewZone = game.ZoneExile
 				ev.NewZoneOwner = uuid.Nil

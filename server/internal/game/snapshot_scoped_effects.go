@@ -307,6 +307,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	for i := range s.FrozenEntries {
 		unknown = append(unknown, unknownReplacementEventKeys(&s.FrozenEntries[i].Event)...)
 	}
+	// #4522: so does a move parked behind its token creation.
+	for i := range s.MovesAwaitingTokens {
+		unknown = append(unknown, unknownReplacementEventKeys(&s.MovesAwaitingTokens[i])...)
+	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

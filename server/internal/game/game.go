@@ -1022,6 +1022,14 @@ type Game struct {
 	// after it is frozen. Clone and the persisted snapshot carry them.
 	frozenEntries []*replacementResumeFrame
 
+	// movesAwaitingTokens are the replaced moves whose declared token
+	// creation is still settling (#4522, move_tokens.go): each is a
+	// carrier event holding what is left of the move, its route and the
+	// instructions not yet run, by event ID, until the creation's keyed
+	// tail takes it back. Copy on write, and a carrier is never written
+	// after it is parked. Clone and the persisted snapshot carry them.
+	movesAwaitingTokens []*ReplacementEvent
+
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the

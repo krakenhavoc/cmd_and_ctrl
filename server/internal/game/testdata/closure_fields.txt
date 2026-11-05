@@ -63,6 +63,7 @@
 # 2026-10-27 (#4361 S15): the copy new-targets walk written as data (pendingChoices[].copyWalk); 4 lines keyed, copyFrame.src to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S18): ChoiceResumeFrames 39 → 0 and its ceiling entry deleted (owner decision D8). The CR 616 frame and the tails under it to keyed (10 lines: replacementFrameKeyable writes them, rebuildReplacementResumeLocked rebuilds them); the gathered effects to rebuilt (11 lines, gathered again by ReplacementEffectID) and the token templates to rebuilt (3 lines, D1); activeReplacement.source, zoneRoute.simultaneousExit and Game.enteringTokens to census:IntrinsicAbilityCards (D1), and the 12 stack-clause lines too (P11, D2: their other route is Game.StackMeta). census:IntrinsicAbilityCards 59 → 74, the raise Ian approved for #4361 only.
 # 2026-11-04 (#4870, ADR 0216 slice 1): Game.PlanarDeck and Game.PlanarFaceUp, the Planechase communal planar deck and its face-up planes, to census:IntrinsicAbilityCards like Player.AttractionDeck. census:IntrinsicAbilityCards 74 → 76, the raise Ian approved on 2026-11-04 for these two routes.
+# 2026-11-05 (#4522, ADR 0178 amendment): a move parked behind its declared token creation (Game.movesAwaitingTokens, keyed: the creation's tail names it, GameSnapshot.MovesAwaitingTokens writes it) and the declared creation's token templates (rebuilt, as ReplacementEvent.TokenGroups). No counter moves.
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
@@ -111,6 +112,7 @@ Game.enteringTokens                          census:IntrinsicAbilityCards       
 Game.frozenEntries                           keyed                              # Game.frozenEntries
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
+Game.movesAwaitingTokens                     keyed                              # Game.movesAwaitingTokens
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
 Game.pausedResolutionTail                    keyed                              # Game.pausedResolutionTail
 Game.pausedStepWalk                          keyed                              # Game.pausedStepWalk
@@ -158,6 +160,7 @@ ReplacementEvent.TokenGroups                 rebuilt                            
 ReplacementEvent.entryTail                   keyed                              # Game.frozenEntries.ev.entryTail
 ReplacementEvent.keywordAction               keyed                              # Game.frozenEntries.ev.keywordAction
 ReplacementEvent.stackItem                   keyed                              # Game.frozenEntries.ev.stackItem
+ReplacementEvent.tokensAfterMove             rebuilt                            # Game.movesAwaitingTokens.tokensAfterMove
 ReplacementEvent.zoneRoute                   keyed                              # Game.frozenEntries.ev.zoneRoute
 ReturnToHandCost.Filter                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ReturnToHand.Filter
 StackItem.Effect                             census:IntrinsicAbilityCards       # Game.StackMeta.Effect
@@ -212,6 +215,7 @@ settledCreation.Chosen                       rebuilt                            
 settledCreation.Groups                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Groups
 stepWalk.item                                keyed                              # Game.pausedStepWalk.item
 stepWalk.outer                               keyed                              # Game.pausedStepWalk.outer
+tokenMoveInstruction.Groups                  rebuilt                            # Game.movesAwaitingTokens.tokensAfterMove.Groups
 triggerResumeFrame.ability                   keyed                              # Game.PendingChoices.triggerResume.ability
 triggerResumeFrame.source                    census:IntrinsicAbilityCards       # Game.PendingChoices.triggerResume.source
 zoneRoute.simultaneousExit                   census:IntrinsicAbilityCards       # Game.frozenEntries.ev.zoneRoute.simultaneousExit
