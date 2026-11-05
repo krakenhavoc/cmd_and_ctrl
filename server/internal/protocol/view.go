@@ -263,6 +263,16 @@ type GameView struct {
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
 	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
+	// LegalPromptCuts is the enumerator's cut report for the prompts in
+	// LegalMoves (ADR 0122 §6.2, #4765): each count cap that left
+	// answers to a pending choice, or to the cleanup discard, out of the
+	// list, with the choice and, for a prompt a card raised, the card. A
+	// card's own cuts ride its LegalActions entry instead, but a frame
+	// whose only moves answer a prompt has no digest, so these ride here,
+	// on every frame and whatever the 48-move cap did. Absent when no
+	// prompt was cut, which is nearly every frame. OWN SEAT ONLY,
+	// projected out of legalPromptCutsBySeat exactly as LegalMoves is.
+	LegalPromptCuts []LegalCutView `json:"legal_prompt_cuts,omitempty"`
 	// LegalActions is a per-card digest of the same enumeration
 	// (ADR 0105 §1, #1789): for each card the viewer's seat may do
 	// something with, which kinds of move, which ability rows (by
@@ -299,6 +309,9 @@ type GameView struct {
 	// legalTruncatedBySeat names the seats whose wire list
 	// capLegalMoves degraded, keyed and projected as legalBySeat is.
 	legalTruncatedBySeat map[string]bool
+	// legalPromptCutsBySeat is LegalPromptCuts per viewer seat, keyed
+	// and projected as legalBySeat is.
+	legalPromptCutsBySeat map[string][]LegalCutView
 	// controlledLegalActionsBySeat is ControlledLegalActions per
 	// viewer seat, keyed and projected as legalBySeat is.
 	controlledLegalActionsBySeat map[string]map[string]*LegalActionsView
@@ -5920,7 +5933,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
 		stampCrewedAndSaddledBy(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat, view.legalPromptCutsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
 		// #4154: public, who chooses the attackers and blockers.
@@ -5974,11 +5987,17 @@ func ViewOfGame(g *game.Game) GameView {
 // same way: the seat's own moves make its legal_actions, and each
 // controlled seat's make an entry of the fourth map,
 // controlled_legal_actions.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView) {
+//
+// The fifth map is the cut report's prompt cuts (#4765), which the
+// digest does not carry: a frame of prompt answers has no digest. Like
+// the move list, it covers the prompts of the seats the viewer plays
+// for too.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView, map[string][]LegalCutView) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
 	var truncated map[string]bool
 	var controlled map[string]map[string]*LegalActionsView
+	var promptCuts map[string][]LegalCutView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
@@ -6010,6 +6029,12 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			}
 			controlled[p.ID.String()][grp[0].Player.String()] = d
 		}
+		if pc := promptCutViews(rep.Cuts); pc != nil {
+			if promptCuts == nil {
+				promptCuts = make(map[string][]LegalCutView, len(g.Seats))
+			}
+			promptCuts[p.ID.String()] = pc
+		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
 		}
@@ -6022,7 +6047,7 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			truncated[p.ID.String()] = true
 		}
 	}
-	return out, digests, truncated, controlled
+	return out, digests, truncated, controlled, promptCuts
 }
 
 // splitMovesByPlayer separates seat's own moves from the moves it makes
@@ -11353,6 +11378,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		LegalMoves:            legalMovesFor(v.legalBySeat, viewerID),
 		// ADR 0122 §6.1: the flag for the same list, under the same rule.
 		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
+		// #4765: the cut report's prompt cuts, under the same rule.
+		LegalPromptCuts: legalPromptCutsFor(v.legalPromptCutsBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
 		// ADR 0167 §7: the digests of the turns the viewer plays, under

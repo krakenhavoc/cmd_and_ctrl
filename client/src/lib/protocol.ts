@@ -597,6 +597,10 @@ export interface GameView {
   // legal_moves that the cap loses (legalActions.ts), so it only needs
   // to know.
   legal_moves_truncated?: boolean;
+  // #4765: the enumerator's cuts in the prompts legal_moves answers (a
+  // search, a discard), each with its `choice`. Own seat only. The
+  // browser reads none of it: it is for a seat that plays from the list.
+  legal_prompt_cuts?: LegalCutView[];
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
