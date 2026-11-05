@@ -333,6 +333,7 @@ choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/as-enters-permanent
+choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/aziza-mage-tower-captain-tap-three
@@ -1371,6 +1372,7 @@ run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-legend-of-yangchen-exile
+run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/time-wipe-return-and-destroy
@@ -1906,6 +1908,7 @@ tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
+tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
