@@ -210,8 +210,11 @@ const CantBlockDeckID = "cantblock-battle"
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
 // monolith-battle, answers-battle, tricks-battle, thopter-battle and
 // ghast-battle, and xpumps-battle (#4976). cantblock-battle (#4977) is
-// one too.
+// one too. haste-battle (#4981) is one too.
 func IsSynthetic(id string) bool {
+	if id == HasteDeckID {
+		return true
+	}
 	if id == XPumpsDeckID {
 		return true
 	}
@@ -451,6 +454,61 @@ const (
 	oracleMotherOfRunes = "60433b48-d27f-413c-905c-43839b1943f1"
 	oracleCenterSoul    = "686b44ec-3446-4e1f-a15f-9d8557db6d70"
 	oracleRoguesPassage = "f29dc596-2121-4421-8463-15f6c2e8b9b3"
+)
+
+// HasteDeckID is the arena deck id of HasteBattleDeck: `--decks
+// haste-battle`. Synthetic, so it needs no Scryfall dump.
+const HasteDeckID = "haste-battle"
+
+// HasteBattleDeck is BattleDeck with haste grants and creatures whose
+// value is a {T} ability, for #4981's arena measurement of #4324's
+// PriceHasteTapRows: six Expedite ("Target creature gains haste until
+// end of turn. Draw a card.") and four Hanweir Battlements ("{R}, {T}:
+// Target creature gains haste until end of turn.") beside four
+// Frostwielders and four Goblin Sharpshooters ("{T}: deals 1 damage to
+// any target") and four Fervent Paincasters ("{T}: deals 1 damage to
+// target player or planeswalker"). A summoning-sick creature can't pay a
+// {T} cost and haste lifts that (CR 302.6, 702.10c), so each pinger cast
+// is a window for a grant. No curated deck holds a haste grant. Dealt by
+// oracle ID so the catalog gives each card its abilities; the printed
+// costs and stats are the cards' own.
+func HasteBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	drop := map[string]int{"Bear": 8, "Ogre": 4, "Drake": 4, "Mountain": 4, "Lightning Bolt": 2}
+	for _, c := range deck {
+		if drop[c.Name] > 0 {
+			drop[c.Name]--
+			continue
+		}
+		out = append(out, c)
+	}
+	add := func(n int, name, oracle, typeLine, cost string, power, toughness int) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			if cost != "" {
+				c.Colors = []string{"R"}
+			}
+			c.Power, c.Toughness = power, toughness
+			out = append(out, c)
+		}
+	}
+	add(6, "Expedite", oracleExpedite, "Instant", "{R}", 0, 0)
+	add(4, "Hanweir Battlements", oracleHanweirBattlements, "Land", "", 0, 0)
+	add(4, "Frostwielder", oracleFrostwielder, "Creature — Human Shaman", "{2}{R}{R}", 1, 2)
+	add(4, "Goblin Sharpshooter", oracleGoblinSharpshooter, "Creature — Goblin", "{2}{R}", 1, 1)
+	add(4, "Fervent Paincaster", oracleFerventPaincaster, "Creature — Human Wizard", "{2}{R}", 3, 1)
+	return out
+}
+
+// The haste deck's catalog keys.
+const (
+	oracleExpedite           = "3501a839-eef5-44e4-8637-b5754780454e"
+	oracleHanweirBattlements = "0e735ba6-7fd1-4d12-b20c-21525dc1e2b5"
+	oracleFrostwielder       = "f895ec2e-7481-4280-a5c0-38b58c440faf"
+	oracleGoblinSharpshooter = "d81285b7-a718-411a-8be3-ecc0cfe0bcb0"
+	oracleFerventPaincaster  = "1d569df1-23cf-4e01-8ef9-a1a8b815f11e"
 )
 
 // AnswersBattleDeck is BattleDeck with ten Basalt Gargoyles and eight
