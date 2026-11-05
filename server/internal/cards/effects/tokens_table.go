@@ -214,6 +214,8 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Robot artifact":                                     {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 2, Toughness: 2},
 	"2/2 colorless Robot Villain artifact":                             {Name: "Robot Villain", TypeLine: "Token Artifact Creature — Robot Villain", Power: 2, Toughness: 2},
 	"1/1 colorless Robot Hero artifact with flying":                    {Name: "Robot Hero", TypeLine: "Token Artifact Creature — Robot Hero", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"1/1 colorless Borg artifact":                                      {Name: "Borg", TypeLine: "Token Artifact Creature — Borg", Power: 1, Toughness: 1},
+	"1/1 red Officer":                                                  {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"3/3 blue Illusion Villain":                                        {Name: "Illusion Villain", TypeLine: "Token Creature — Illusion Villain", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/1 colorless Robot Hero artifact with flying":                    {Name: "Robot Hero", TypeLine: "Token Artifact Creature — Robot Hero", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
 	"1/1 white Clown Robot artifact":                                   {Name: "Clown Robot", TypeLine: "Token Artifact Creature — Clown Robot", Power: 1, Toughness: 1, Colors: []string{"W"}},
@@ -333,11 +335,15 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Insect Warrior with flying": {Name: "Insect Warrior", TypeLine: "Token Creature — Insect Warrior", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	// #4457 batch 3: Foot Mystic's Ninja.
 	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
 	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
 	"2/1 red Klingon Warrior with haste": {Name: "Klingon Warrior", TypeLine: "Token Creature — Klingon Warrior", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
+	// #4973: Star Trek's Officer (Excalbian Gamemaster).
+
+	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
+
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
-	"1/1 red Officer": {Name: "Officer", TypeLine: "Token Creature — Officer", Power: 1, Toughness: 1, Colors: []string{"R"}},
 
 	// #4973: Star Trek's Officer (Excalbian Gamemaster).
 

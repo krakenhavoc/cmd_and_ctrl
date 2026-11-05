@@ -78,6 +78,7 @@ body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-payload-creature
 body curse-of-the-werefox/fight
 body cyclops-superconductor/damage
+body dahar-master/damage
 body dain-ironfoot/attach-axe
 body dalkovan-encampment/warriors
 body damage/that-much-to-each-other-opponent
@@ -108,6 +109,7 @@ body eden/return-from-graveyard
 body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
+body erica-ortegas/return-a-land-you-control
 body espers-to-magicite/copy
 body evoke/sacrifice
 body evolve/grow
@@ -342,6 +344,7 @@ choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
 choose choose-cards/caparocti-sunborn-tap-two
+choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
@@ -1107,6 +1110,7 @@ option venture/room
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
+payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
@@ -1277,6 +1281,7 @@ run prompt-run/chitterspitter-acorn
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cycle-of-renewal-fetch
+run prompt-run/dahar-master-sacrifice
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
@@ -1552,6 +1557,7 @@ tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
 tail currency-converter/token-for-graveyarded-card
 tail curse-of-the-swine/boar-per-exiled
 tail cyclonus/connive
+tail d-7-battle-cruiser/sacrifice-at-end
 tail dack-fayden-helping-hand/shuffle-goad-and-give
 tail dain-ironfoot/axe-created
 tail damage-steps/next
@@ -1577,6 +1583,7 @@ tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
+tail dominion-infiltration/haste-and-exile-copies
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
 tail dredge/return-then-draw
@@ -1648,6 +1655,7 @@ tail enlightened-confidant/return-top-card
 tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
+tail erica-ortegas/return-a-land-at-end
 tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
@@ -1662,6 +1670,7 @@ tail exile-until/record-return
 tail exile/grant-permission-over-landed
 tail exile/grant-permission-then-offer
 tail exile/kefka-dancing-mad-grant
+tail exploratory-mission/play-nonland-then-mana
 tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
 tail eye-of-jace/graveyard-check
@@ -1868,6 +1877,7 @@ tail roving-actuator/copy-exiled
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
+tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
