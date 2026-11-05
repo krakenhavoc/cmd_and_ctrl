@@ -138,6 +138,15 @@ type Purpose struct {
 	// creature-enter payoff". Refused on every other slot. A pointer so
 	// Purpose stays comparable.
 	CreatureEnterPayoff *CreatureEnterPayoff
+	// LifeGainPayoff is set on a TRIGGERED row that pays out whenever
+	// its controller gains life ("whenever you gain life": Heliod,
+	// Sun-Crowned's +1/+1 counter, Ajani's Pridemate's), and says what
+	// it pays for EACH life-gain event, not each point of life
+	// (CR 119.9; two lifelink sources dealing damage at once are two
+	// events, CR 702.15e) (#4979). Nil is "not a lifegain payoff".
+	// Refused on every other slot, and one that itself gains life.
+	// A pointer so Purpose stays comparable.
+	LifeGainPayoff *LifeGainPayoff
 
 	// The fields below were added for exert (ADR 0130 §9 and its
 	// amendment of 2026-10-07). The heuristic reads them on a row the
@@ -612,6 +621,12 @@ type LandfallPayoff struct {
 // resolution.
 type CreatureEnterPayoff LandfallPayoff
 
+// LifeGainPayoff is what a row pays its controller for each life-gain
+// event of theirs, in LandfallPayoff's units and with the same rules
+// (#4979): printed amounts only. Its LifeGain is always zero: a row that
+// gained life whenever its controller gained life would trigger itself.
+type LifeGainPayoff LandfallPayoff
+
 // IsZero reports whether nothing is declared.
 func (p Purpose) IsZero() bool {
 	return p == Purpose{}
@@ -782,6 +797,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		OnOpponentDiscard:         p.OnOpponentDiscard,
 		LandfallPayoff:            p.LandfallPayoff,
 		CreatureEnterPayoff:       p.CreatureEnterPayoff,
+		LifeGainPayoff:            p.LifeGainPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
 		ExtraTurns:                p.ExtraTurns + o.ExtraTurns,
@@ -829,6 +845,9 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.CreatureEnterPayoff == nil {
 		out.CreatureEnterPayoff = o.CreatureEnterPayoff
+	}
+	if out.LifeGainPayoff == nil {
+		out.LifeGainPayoff = o.LifeGainPayoff
 	}
 	targets := append([]TargetPurpose(nil), p.Targets.List()...)
 	for _, t := range o.Targets.List() {

@@ -3700,6 +3700,7 @@ Every field is omitted when zero.
 | `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
 | `landfall_payoff` | on a triggered row: it pays out whenever a land enters under its controller's control; see below ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)) | Tatyova, Benthic Druid |
 | `creature_enter_payoff` | on a triggered row: it pays out whenever a creature enters under its controller's control; the same fields as `landfall_payoff`, per creature (#3165) | Purphoros, God of the Forge |
+| `life_gain_payoff` | on a triggered row: it pays out whenever its controller gains life; the same fields as `landfall_payoff`, per life-gain event, not per point (CR 119.9), and never `life_gain` (#4979) | Heliod, Sun-Crowned |
 | `pump` | on a triggered or activated row: `{power, toughness, keywords, cant_be_blocked}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
 | `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
 | `extra_turns` | extra turns its controller takes after this one (CR 500.7). The caster's own turns; "target player takes an extra turn" is a [target entry](#target-entries-adr-0126-amendment-of-2026-10-08). Left off a card whose extra turn ends in a loss ([ADR 0188](decisions/0188-skipped-turns-and-turn-bound-effects.md) Decision 10, #3566) | Capture of Jingzhou 1 |

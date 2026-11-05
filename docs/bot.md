@@ -1379,6 +1379,21 @@ matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
 and Zack Fair are exempt, each for a reason the test names). The arena's
 `heuristic-notemporary` is today's heuristic with the switch off.
 
+**A lifelink grant is worth the counters its life makes**
+([#4979](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4979),
+`PriceLifeGainPayoffs`, `lifegain_payoff.go`). A "whenever you gain life"
+row declares a `life_gain_payoff` (landfall's fields, per life-gain
+event): Heliod, Sun-Crowned's and Ajani's Pridemate's +1/+1 counter. Such
+a trigger fires once per event, not per point (CR 119.9), and one lifelink
+source's damage is one event (CR 702.15b, 702.15e). A grant that passes
+`spareCombatGrant` and gives lifelink to a creature of the bot's that
+lacks it and has power is worth one event of the bot's own payoffs more
+per such creature, a counter at `Power` + `Toughness`. Before attacks, and
+with mana a later cast needs, the grant keeps #4302's price, so it still
+waits for combat and for spare mana. The attack of a creature that
+already has lifelink, and life a spell or a trigger gains, are not
+repriced.
+
 **Spells declare it too**
 ([#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)).
 Giant Growth's "+3/+3 until end of turn", Dismember's -5/-5, Blossoming

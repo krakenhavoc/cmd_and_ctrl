@@ -36,6 +36,8 @@ import (
 //     amendment of 2026-10-06);
 //   - a LandfallPayoff anywhere but a triggered row, or one that pays
 //     nothing or a negative amount (#3072);
+//   - a LifeGainPayoff anywhere but a triggered row, one that pays
+//     nothing or a negative amount, or one that gains life (#4979);
 //   - a Pump or PreventCombatDamageToSelf anywhere but a triggered or
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
@@ -152,6 +154,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.CreatureEnterPayoff != nil && slot != purposeOnTriggered {
 		fail("sets CreatureEnterPayoff off a triggered row — it is a \"whenever a creature you control enters\" trigger (#3165)")
 	}
+	if p.LifeGainPayoff != nil && slot != purposeOnTriggered {
+		fail("sets LifeGainPayoff off a triggered row — it is a \"whenever you gain life\" trigger (#4979)")
+	}
 	if p.CreatureTokens > p.Tokens {
 		fail("declares more CreatureTokens than Tokens (#3165)")
 	}
@@ -184,6 +189,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		l := game.LandfallPayoff(*c)
 		checkLandfallPayoff(&l, fail)
 	}
+	checkLifeGainPayoff(p.LifeGainPayoff, fail)
 	checkSweep(p.Sweep, fail)
 	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
@@ -280,6 +286,20 @@ func checkLandfallPayoff(l *game.LandfallPayoff, fail func(string)) {
 	}
 	if *l == (game.LandfallPayoff{}) {
 		fail("is a landfall payoff that pays nothing — leave it nil, or set what each land pays")
+	}
+}
+
+// checkLifeGainPayoff is checkPurpose's half for a declared
+// LifeGainPayoff (#4979): checkLandfallPayoff's rules, and no LifeGain,
+// which would be the row paying for its own payout.
+func checkLifeGainPayoff(g *game.LifeGainPayoff, fail func(string)) {
+	if g == nil {
+		return
+	}
+	l := game.LandfallPayoff(*g)
+	checkLandfallPayoff(&l, fail)
+	if g.LifeGain != 0 {
+		fail("is a lifegain payoff that gains life — it would trigger itself; leave LifeGain out (#4979)")
 	}
 }
 
@@ -769,4 +789,13 @@ func LandfallPaying(label string, pays game.LandfallPayoff, effect Effect) game.
 //		game.CreatureEnterPayoff{DamageEachOpponent: 2})
 func CreatureEnterPaying(t game.TriggeredAbility, pays game.CreatureEnterPayoff) game.TriggeredAbility {
 	return TriggerWithPurpose(t, game.Purpose{CreatureEnterPayoff: &pays})
+}
+
+// LifeGainPaying is a "whenever you gain life" row with what it pays for
+// each life-gain event declared (#4979): the purpose the heuristic reads
+// when it prices a lifelink attack. Ajani's Pridemate is
+//
+//	LifeGainPaying(WheneverYouGainLife(...), game.LifeGainPayoff{Counters: 1})
+func LifeGainPaying(t game.TriggeredAbility, pays game.LifeGainPayoff) game.TriggeredAbility {
+	return TriggerWithPurpose(t, game.Purpose{LifeGainPayoff: &pays})
 }

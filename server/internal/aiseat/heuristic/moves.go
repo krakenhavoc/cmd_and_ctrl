@@ -55,6 +55,8 @@ const suicideValue = eliminatedStrength
 // arithmetic and a fifth one forgotten.
 func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	v, reason := p.payoffOf(st, m)
+	// #4979: a lifelink grant's counters (lifegain_payoff.go).
+	v += p.lifelinkGrantPayoff(st, m)
 	if m.Cost == nil {
 		return v, reason
 	}

@@ -529,6 +529,13 @@ type Config struct {
 	// zero value) prices a token by TokenWeight alone, and Krenko's
 	// activation at the flat ActivateBase.
 	PriceTokenPayoffs bool
+	// PriceLifeGainPayoffs adds, to a lifelink grant on the bot's
+	// creature in combat made with spare mana, what its own declared
+	// lifegain payoffs pay for the life-gain event that creature's damage
+	// makes (#4979, lifegain_payoff.go): Heliod, Sun-Crowned's and Ajani's
+	// Pridemate's +1/+1 counter. Off (the zero value) prices the grant by
+	// its life alone.
+	PriceLifeGainPayoffs bool
 	// PriceSpareTokens prices a spare creature token sacrificed to pay a
 	// cost at the blocker it is rather than its body (#4991,
 	// spare_token.go): a token is spare when the bot still controls
@@ -996,6 +1003,7 @@ func DefaultConfig() Config {
 		PriceLandfallCasts:     true,
 		PriceFetchLandfall:     true,
 		PriceTokenPayoffs:      true,
+		PriceLifeGainPayoffs:   true,
 		// #4991: spare tokens stay at their board value (the price lost
 		// in the arena); two copies kept when it is turned on.
 		SpareTokenKeep: 2,
@@ -1234,6 +1242,8 @@ func BaselineConfig() Config {
 	c.PriceFetchLandfall = false
 	// #3165: creature-enter payoffs on tokens.
 	c.PriceTokenPayoffs = false
+	// #4979: lifegain payoffs on a lifelink attack.
+	c.PriceLifeGainPayoffs = false
 	// #4991: every sacrificed token cost its board value.
 	c.PriceSpareTokens = false
 	c.SpareTokenKeep = 0
