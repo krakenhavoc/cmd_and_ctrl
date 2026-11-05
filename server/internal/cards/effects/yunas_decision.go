@@ -39,17 +39,7 @@ func init() {
 				}),
 			ModeDoing("Find Another Way — Return one or two target permanent cards from your graveyard to your hand.",
 				TargetCardInGraveyard("one or two target permanent cards from your graveyard", Permanent(), YouOwn()).WithCount(1, 2),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				ReturnTheModesTargetsToHand),
 		),
 	})
 }

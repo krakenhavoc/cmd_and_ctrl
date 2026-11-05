@@ -1236,6 +1236,7 @@ pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
+pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
