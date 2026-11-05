@@ -9,7 +9,7 @@ import (
 )
 
 // graveyard_keywords_test.go — the catalog half of #1221: unearth
-// (CR 702.82), scavenge (CR 702.96), embalm (CR 702.128) and
+// (CR 702.84), scavenge (CR 702.97), embalm (CR 702.128) and
 // eternalize (CR 702.129). The engine half — the zone dimension on
 // the activation path, the ExileSelf cost component, the enumerator's
 // walk — is in game/other_zone_ability_test.go and
@@ -122,7 +122,7 @@ func TestDregscapeZombieUnearthsWithHaste(t *testing.T) {
 	}
 }
 
-// CR 702.82a's second sentence: the unearthed creature is exiled at
+// CR 702.84a's second sentence: the unearthed creature is exiled at
 // the beginning of the next end step, not put back in the graveyard
 // for a second unearth.
 func TestUnearthedCreatureIsExiledAtTheNextEndStep(t *testing.T) {

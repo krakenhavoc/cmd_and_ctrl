@@ -226,6 +226,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"2/2 green Wolf":                                                   {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
@@ -281,6 +282,8 @@ var tokenTable = map[string]game.Card{
 	"4/4 red Scorpion Dragon with flying and haste":                    {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
 	"3/3 blue Angel with flying":                                       {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"3/3 green Legendary Dog named Mowu":                               {Name: "Mowu", TypeLine: "Token Legendary Creature — Dog", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel Warrior with flying":                              {Name: "Angel Warrior", TypeLine: "Token Creature — Angel Warrior", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -336,6 +339,7 @@ var tokenTable = map[string]game.Card{
 	// #4457 batch 3: Foot Mystic's Ninja.
 	"1/1 black Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	// #4973 batch 5: Star Trek's Officer (U.S.S. Enterprise-A, Free Spirit).
+
 	// #4973 batch 10: Star Trek's Klingon Warrior (Cha'DIch Investigator).
 	"2/1 red Klingon Warrior with haste": {Name: "Klingon Warrior", TypeLine: "Token Creature — Klingon Warrior", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
@@ -351,5 +355,8 @@ var tokenTable = map[string]game.Card{
 	// #4973 batch 5: Star Trek's Romulan (Cloak and Phaser).
 	"2/2 black Romulan": {Name: "Romulan", TypeLine: "Token Creature — Romulan", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	// #4973 batch 20: Star Trek's Illusion (Holo-Engineer).
-	"3/3 colorless Illusion artifact": {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
+
+	// #4973 batch 21: Star Trek's Illusion (Hologram Stalker).
+	// #4973 batch 21: Star Trek's Murf (Rok-Tahk, Budding Scientist).
+	"0/1 green Legendary Ooze Slug named Murf with indestructible": {Name: "Murf", TypeLine: "Token Legendary Creature — Ooze Slug", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"indestructible"}},
 }
