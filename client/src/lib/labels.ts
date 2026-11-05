@@ -1863,6 +1863,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/ShortcutsOverlay.svelte"],
     doc: "the keymap overlay (?), named by its heading",
   }),
+  gameClosed: label({
+    name: "This table was closed.",
+    kind: "text",
+    role: "status",
+    owners: ["lib/gameClosed.ts", "lib/connectionBanner.ts"],
+    doc: "ADR 0211 §4, #5082: what a refused join, spectate, start, deck, bot or setup says for the server's `game_closed` code, and the connection banner's headline once a failed redial finds the table archived",
+  }),
 
   // -- Automatic answers (ADR 0127) --
   rememberThisAnswer: label({

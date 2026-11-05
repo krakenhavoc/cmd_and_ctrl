@@ -232,6 +232,15 @@ type Purpose struct {
 	// ends, so a reader prices it by whether it can be.
 	Impulse int
 
+	// SourceCounters is how many +1/+1 counters an activated row puts on
+	// its own source, to stay (#5083): Hangarback Walker's "{1}, {T}: Put
+	// a +1/+1 counter on this creature." 1. A counter put on a target is
+	// not here, and neither is a pump that ends with the turn (Pump).
+	// Refused off an activated row of its controller's own: an
+	// any-player row grows whoever controls the source, not the
+	// activator.
+	SourceCounters int
+
 	// Targets is what happens TO each target the statement names, one
 	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
 	// answer 1). Every amount above is its controller's; an entry's are

@@ -149,6 +149,7 @@ func (l *Lobby) SetResults(id uuid.UUID, enabled bool) (GameMeta, error) {
 	if entry.meta.Results != enabled {
 		entry.meta.Results = enabled
 		l.persistGameLocked(entry)
+		l.touchLocked(entry) // ADR 0211 §1
 	}
 	return copyMeta(entry.meta), nil
 }

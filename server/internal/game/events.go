@@ -1543,6 +1543,16 @@ const (
 	// a spawn into a hand or a library — see protocol.projectEvent.
 	// Added in S35 (#1032).
 	EventSpawned EventKind = "spawned"
+
+	// EventIdleClose — the server closed the table, or warned that it
+	// will, because nobody used it (ADR 0211 §4, §6). Label is
+	// IdleCloseLobby, IdleCloseGame or IdleCloseBots for a close, and
+	// IdleCloseWarning for the warning before a started game is closed;
+	// Amount is the whole hours the table had been idle (the minutes,
+	// for IdleCloseBots); on a warning, Call is when the game will close
+	// (RFC 3339, UTC). No Actor: nobody did it. Public. Nothing in the
+	// rules reads it.
+	EventIdleClose EventKind = "idle_close"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
