@@ -3321,8 +3321,10 @@ type CardView struct {
 	FaceDownKind string `json:"face_down_kind,omitempty"`
 	// FaceVisible is whether THIS viewer may look at the face of a
 	// face-down object — the controller of a CR 708.5 permanent, the
-	// owner of a foretold card (CR 702.143d), nobody for a plain
-	// face-down exile (CR 406.3). Stamped per-viewer by
+	// owner of a foretold card (CR 702.143d), the holder of a look
+	// grant for a face-down creature someone else controls (#5251,
+	// `lookers`), nobody for a plain face-down exile (CR 406.3).
+	// Stamped per-viewer by
 	// FilterViewFor beside KnownByYou and never trusted from the
 	// input; it is exactly `face_down && known_by_you`, on the wire
 	// rather than derived client-side because it is the rules
@@ -3367,6 +3369,18 @@ type CardView struct {
 	// the wire — the only consumer is the in-process per-viewer
 	// projection. Added in S13.5.
 	knowers map[string]bool
+
+	// lookers is the seats that may look at this face-down creature
+	// through a look grant right now (#5251: Found Footage's static,
+	// Lumbering Laundry's until end of turn), stamped per frame by
+	// stampFaceDownLooks from game.FaceDownLookGrantsLocked. Apart from
+	// knowers on purpose: a grant is a permission to one player, not a
+	// reveal to the table, so it makes THAT seat (and a player
+	// controlling it, CR 723.4) a knower and never counts toward a
+	// spectator's "every seat knows it". Unexported, like knowers, and
+	// cleared by redactCardForViewer, so it never reaches the wire, a
+	// replay or the log.
+	lookers map[string]bool
 
 	// libraryTop marks the card the CR 401.5 standing visibility rule
 	// currently applies to — the top of its owner's library, under a
@@ -6007,6 +6021,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLibraryTop(g, view.Seats)
 		stampHandRevealed(view.Seats)
+		stampFaceDownLooks(g, &view.Battlefield)
 		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
@@ -11343,13 +11358,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		case "":
 			return true
 		case SpectatorViewerID:
+			// #5251: never c.lookers. A look grant is one seat's
+			// permission, not public information.
 			return knownToEverySeat(c, seatIDs)
 		}
-		if c.knowers[viewerID] {
+		if c.knowers[viewerID] || c.lookers[viewerID] {
 			return true
 		}
 		for _, id := range controlled {
-			if c.knowers[id] {
+			if c.knowers[id] || c.lookers[id] {
 				return true
 			}
 		}
@@ -12147,6 +12164,7 @@ func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool, playingFor 
 func redactCardForViewer(c CardView, known bool) CardView {
 	out := c
 	out.knowers = nil
+	out.lookers = nil
 	out.KnownByYou = known
 	// #671: stamped afterwards, on the owner's own hand only, never
 	// trusted from the input.
@@ -13167,6 +13185,45 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 		}
 		for _, k := range knowers {
 			top.knowers[k.String()] = true
+		}
+	}
+}
+
+// stampFaceDownLooks marks each face-down creature on the battlefield
+// with the seats a look grant lets look at it right now (#5251,
+// game/face_down_look.go): Found Footage's "you may look at face-down
+// creatures your opponents control any time" and Lumbering Laundry's
+// until-end-of-turn form.
+//
+// Into `lookers`, not `knowers`, and not into Card.KnownBy: the view
+// runs under a READ lock, the set of creatures a grant covers changes
+// without any of them moving, and the grant ends the moment its source
+// leaves or the turn's cleanup runs. Re-deriving it per frame is what
+// makes the card hidden again the frame after, with nothing to take
+// back. FilterViewFor makes a looker a knower for that seat alone.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampFaceDownLooks(g *game.Game, bf *ZoneView) {
+	grants := g.FaceDownLookGrantsLocked()
+	if len(grants) == 0 {
+		return
+	}
+	for ci := range bf.Cards {
+		cv := &bf.Cards[ci]
+		if !cv.FaceDown {
+			continue
+		}
+		id, err := uuid.Parse(cv.InstanceID)
+		if err != nil {
+			continue
+		}
+		seats := grants[id]
+		if len(seats) == 0 {
+			continue
+		}
+		cv.lookers = make(map[string]bool, len(seats))
+		for _, s := range seats {
+			cv.lookers[s.String()] = true
 		}
 	}
 }

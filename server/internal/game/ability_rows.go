@@ -311,6 +311,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
 	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
+	{field: "LooksAtFaceDownCreatures", label: boolRow("You may look at face-down creatures your opponents control any time.")},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in

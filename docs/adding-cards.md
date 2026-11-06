@@ -13347,6 +13347,30 @@ g.PermanentEnteredFaceDownThisTurn(you) || g.TurnedPermanentFaceUpThisTurn(you) 
   `SpecialActionParams`, the enumerator or the client's row), so Aurelia's
   Vindicator is left out.
 
+### "You may look at face-down creatures you don't control" (#5251)
+
+```go
+LooksAtFaceDownCreatures: true,                                        // Found Footage's static
+ctx.Game.LookAtFaceDownCreaturesThisTurnForEffect(source, you, label)  // Lumbering Laundry's "{2}: until end of turn"
+```
+
+- **The static** is `Spec.LooksAtFaceDownCreatures`, read from the battlefield
+  through `CatalogAbilityKey` (`game/face_down_look.go`), so a source that has
+  lost its abilities grants nothing and the look ends the frame the source
+  leaves. "Your opponents control" and "you don't control" are the same set
+  here: the engine has no teams (CR 806.1).
+- **The until-end-of-turn form** is a `game.ModLookAtFaceDownCreatures`
+  scoped record naming the activator, swept at cleanup (CR 514.2) and kept by
+  a restore point. It lasts whether or not its source stays (CR 611.2a).
+- **Never stamp `KnownBy` for either.** The view asks
+  `g.FaceDownLookGrantsLocked()` every frame and makes the holder's seat
+  alone a knower of each face-down CREATURE on the battlefield it covers
+  (`protocol.stampFaceDownLooks`, the unexported `lookers` set). A spectator
+  never counts a grant toward "every seat knows it", so a two-player table
+  with a Found Footage does not show the spectator the card. A face-down spell,
+  a face-down card in exile and a face-down permanent that is not a creature
+  (Yedora's Forest) are not covered.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`
