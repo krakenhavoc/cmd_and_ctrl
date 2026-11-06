@@ -23,9 +23,7 @@ func init() {
 			TargetCreature("target creature"),
 			TargetCreature("up to one target creature token", IsTokenPredicate()).WithCount(0, 1),
 		),
-		Purpose: game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 6), DamageToTarget(1, 2)), Answers: game.AnswerRemove},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return damageEachClauseTarget(ctx, 6, 2)
-		},
+		Purpose:   game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 6), DamageToTarget(1, 2)), Answers: game.AnswerRemove},
+		OnResolve: damageEachClauseTarget(6, 2),
 	})
 }

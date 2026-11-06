@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Arc Trail — Sorcery for {1}{R}:
 //
 //	"Arc Trail deals 2 damage to any target and 1 damage to any
@@ -21,8 +19,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      Clauses(TargetAny(), Distinct(TargetAny())),
 		Purpose:      ForTargets(DamageToTarget(0, 2), DamageToTarget(1, 1)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return damageEachClauseTarget(ctx, 2, 1)
-		},
+		OnResolve:    damageEachClauseTarget(2, 1),
 	})
 }

@@ -284,6 +284,9 @@ type OtherSeatRecord struct {
 	// name when the seat has one, else the name stored on the seat.
 	Name string
 	Bot  bool
+	// UserID is the seat's account, "" for a guest or a bot. It never
+	// leaves the server: GET /me/games turns it into MySeat.Friend.
+	UserID string
 }
 
 // memoryStore is the no-database Store. See the file comment.

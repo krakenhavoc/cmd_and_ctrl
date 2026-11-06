@@ -269,11 +269,12 @@ var curatedPermanentPurposes = map[string]string{
 	"Mirkwood Bats":        "death payoff",
 	"Falkenrath Noble":     "death payoff",
 	"Vindictive Vampire":   "death payoff",
-	// #4990: its draw row is a death payoff too. Cruel Celebrant,
-	// Nadier's Nightblade and Elas il-Kor declare theirs as well; they
-	// join this list with the first curated deck that carries them, and
-	// cards/effects' TestDeathPayoffDeclarations holds them until then.
-	"Morbid Opportunist": "death payoff",
+	// #4990: Morbid Opportunist's draw row is a death payoff too. The
+	// other three came in with Grave Dividends (#5000).
+	"Morbid Opportunist":            "death payoff",
+	"Cruel Celebrant":               "death payoff",
+	"Nadier's Nightblade":           "death payoff",
+	"Elas il-Kor, Sadistic Pilgrim": "death payoff",
 	// landfall payoffs, on the triggered row (#3072). Avenger of
 	// Zendikar's counters are counted at resolution and Field of the
 	// Dead's Zombie needs seven differently named lands, so neither

@@ -68,8 +68,10 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "{3}, {T}, Exile this land: Target legendary creature gains hexproof and indestructible until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible")),
+			Label: "{3}, {T}, Exile this land: Target legendary creature gains hexproof and indestructible until end of turn.",
+			// #4734 slice 7: hexproof (protect) and indestructible (survive),
+			// declared both, as Bulwark Ox is.
+			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))},
 			Cost:    Plus(ManaCost("{3}"), TapCost(), ExileThis()),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

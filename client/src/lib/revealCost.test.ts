@@ -33,6 +33,7 @@ describe("reveal and behold branches", () => {
     expect(castRevealCost(vanquisher(), { costBranch: 0 })).toEqual({
       label: "Reveal an Elf card from your hand",
       behold: false,
+      exile: false,
       options: ["elf"],
     });
     expect(castRevealCost(vanquisher(), { costBranch: 1 })).toBeUndefined();
@@ -86,6 +87,7 @@ describe("optional behold offers", () => {
     expect(castRevealCost(hyperion(["hero", "scout"]), { optionalCosts: [0] })).toEqual({
       label: "Behold a Hero",
       behold: true,
+      exile: false,
       options: ["hero", "scout"],
     });
   });
@@ -100,5 +102,39 @@ describe("optional behold offers", () => {
     applyCastChoices(sent, { optionalCosts: [0], revealIDs: ["hero"] });
     expect(sent.optional_costs).toEqual([0]);
     expect(sent.reveal_ids).toEqual(["hero"]);
+  });
+});
+
+// #4687: the Champions' mandatory "behold a Kithkin and exile it" is the
+// card's own additional cost, with no branches: every cast asks for the
+// one card, and the prompt says it is exiled.
+function champion(options: string[]): CardView {
+  return {
+    instance_id: "cc",
+    name: "Champion of the Clachan",
+    owner: "p0",
+    controller: "p0",
+    additional_cost: {
+      label: "Behold a Kithkin and exile it",
+      reveal: true,
+      behold: true,
+      behold_exile: true,
+      reveal_options: { cards: options, min: 1, max: 1 },
+    },
+  } as CardView;
+}
+
+describe("behold-and-exile costs", () => {
+  it("asks for a card on every cast, marked as exiled", () => {
+    expect(castRevealCost(champion(["kithkin", "token"]), undefined)).toEqual({
+      label: "Behold a Kithkin and exile it",
+      behold: true,
+      exile: true,
+      options: ["kithkin", "token"],
+    });
+  });
+
+  it("offers nothing when there is nothing to behold", () => {
+    expect(castRevealCost(champion([]), undefined)?.options).toEqual([]);
   });
 });

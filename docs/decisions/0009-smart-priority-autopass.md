@@ -1559,6 +1559,12 @@ Slices 3 and 4 can run in parallel, and so can 5, 7 and 9. A player sees
 the change only with slice 3; the seat, with slice 4. Ranger-Captain is
 quiet from slice 3, and Flawless Maneuver from slices 3 and 5.
 
+Slice 7's guard and its six protective rows are
+[ADR 0142's amendment of 2026-11-05](0142-declared-answers-on-catalog-abilities.md#amendment-2026-11-05--a-targeted-row-may-declare-4734-q2--accepted).
+Mother of Runes, untapped, now stops you for an opponent's item that
+threatens you or yours, and not at an empty opponent end step. The
+targeted pumps and prevents are still to declare.
+
 ### Back-out
 
 Reading the verdict is the whole change for a player and for the seat. Drop

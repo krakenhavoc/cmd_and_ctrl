@@ -583,6 +583,9 @@ var cardFields = plan(
 	// Fence's). A player's choice, so nothing can rebuild it.
 	"ChosenPermanent", carried, "",
 	"LinkedPermanent", carried, "",
+	// ADR 0155's 2026-11-05 amendment: Koh's last chosen card. A
+	// player's choice, so nothing can rebuild it.
+	"ChosenCard", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.

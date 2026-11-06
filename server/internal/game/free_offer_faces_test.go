@@ -184,7 +184,7 @@ func TestFreePlayFromTopStillSendsNoSpellToHand(t *testing.T) {
 }
 
 // spellFrontLandBackMDFC is the Zendikar Rising shape: a mana value 7
-// sorcery front face and a land back face (CR 712.11c).
+// sorcery front face and a land back face (CR 712.12).
 func spellFrontLandBackMDFC(owner uuid.UUID) Card {
 	return mdfcFixture(owner,
 		Face{Name: "Fixture Awakening", TypeLine: "Sorcery", ManaCost: "{5}{G}{G}", Colors: []string{"G"}},

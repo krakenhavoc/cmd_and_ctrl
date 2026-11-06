@@ -79,6 +79,33 @@ export function stripOpen(spread: number, packed: number, available: number): nu
 }
 
 /**
+ * stripScrolls is whether the land strip's piles, at rest and overlapped
+ * by `k` (stripOpen), are wider than `available`, so the strip must
+ * scroll sideways to reach them (#4725). The width is linear in the
+ * overlap, from `spread` at 0 to `packed` at 1.
+ *
+ * BattlefieldRow lets the strip scroll (and so draw a sideways
+ * scrollbar) only then. The answer reads the piles' layout boxes, never
+ * their painted ones: a hovered pile's spread is a translate (#4422), and
+ * a scrollbar takes the strip's height, not its width, so neither can
+ * change it. Scrolling on overflow of any kind (`overflow-x: auto`), a
+ * hovered pile at the strip's end spread past it, grew a scrollbar, which
+ * on a top-row panel moved the pile out from under the pointer; the
+ * hover ended, the bar went, the pile came back under the pointer, and
+ * the strip flashed every few frames.
+ */
+export function stripScrolls(
+  spread: number,
+  packed: number,
+  available: number,
+  k: number,
+): boolean {
+  if (available <= 0 || spread <= 0) return false;
+  const rest = spread + (packed - spread) * Math.min(1, Math.max(0, k));
+  return rest > available + 0.5;
+}
+
+/**
  * stripContent is the width of the land strip's piles from the list's
  * own left edge: from the first pile's left edge less its left margin,
  * to the last pile's right edge, plus the list's right padding. #4122:
@@ -584,6 +611,12 @@ export function fitRow(
       // one.
       const row = node.parentElement;
       if (row) {
+        // #4725: the strip scrolls only when its piles at rest do not fit
+        // (stripScrolls). The piles were measured at `was`.
+        row.toggleAttribute(
+          "data-scrolls",
+          stripScrolls(spread * ratio, packed * ratio, available, k),
+        );
         if (scale >= 1 && was >= 1 && spread > 0) {
           const rowPad =
             (parseFloat(rowStyle?.paddingLeft ?? "0") || 0) +

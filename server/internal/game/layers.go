@@ -263,7 +263,9 @@ type StaticAbility struct {
 	// Register refuses it in any other layer, beside RemovesAbilities,
 	// GrantAbilities or an Apply, and inside a granted bundle (a bundle
 	// that lends abilities would put a borrow inside a borrow). Build one
-	// with effects.HasActivatedAbilitiesOf.
+	// with effects.HasActivatedAbilitiesOf. AbilityBorrow.Triggered also
+	// lends triggered abilities (ADR 0155's 2026-11-05 amendment,
+	// borrowed_triggers.go).
 	Borrows *AbilityBorrow
 
 	// DependsOnHandSize declares that this ability's OUTPUT changes

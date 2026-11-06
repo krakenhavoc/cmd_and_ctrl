@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // final_board.go is #4912: what an eliminated player had when they left
 // the game, kept as plain data so the table can still look at it.
@@ -16,6 +20,17 @@ import "github.com/google/uuid"
 // controlled, with counters, tapped state and what each attachment was
 // on), their hand, graveyard, exile and command zone. Never their library:
 // its order and contents stay hidden for good.
+//
+// #4547: it also names the player's commanders, wherever each was, for
+// the tombstone's commander line. The zones alone do not: a commander an
+// opponent had stolen is on nobody's record (the battlefield is what the
+// player controlled), one being cast is on the stack, one shuffled away
+// is in the library, and an opponent's commander the player had stolen
+// IS on the record, with no owner to tell it apart. The card keeps its
+// commander designation in every zone (CR 903.3), and it is public from
+// the start of the game, which puts it face up into the command zone
+// (CR 903.6), so naming one that is in the library tells the table
+// nothing it did not know.
 //
 // Every card is recorded face up. CR 708.9 reveals a face-down permanent
 // as it leaves the battlefield, every face-down permanent the leaving
@@ -42,6 +57,10 @@ type FinalBoard struct {
 	Graveyard   []FinalCard `json:"graveyard,omitempty"`
 	Exile       []FinalCard `json:"exile,omitempty"`
 	Command     []FinalCard `json:"command,omitempty"`
+	// Commanders is the names of the commanders the player owned, each
+	// once, wherever it was (#4547, commanderNamesLocked). Absent for a
+	// player with none, and on a record written before #4547.
+	Commanders []string `json:"commanders,omitempty"`
 }
 
 // FinalCard is one card of a FinalBoard: what it looked like, nothing it
@@ -104,7 +123,34 @@ func (g *Game) recordFinalBoardLocked(p *Player, revealed bool) {
 			}
 		}
 	}
+	fb.Commanders = g.commanderNamesLocked(p)
 	p.FinalBoard = fb
+}
+
+// commanderNamesLocked is the names of the commanders p owns, each once:
+// those in the command zone first, then the battlefield, the stack, the
+// graveyard, exile, the hand and the library. The name is the card's
+// printed name (the face that is up), not what a copy effect made it.
+//
+// Caller must hold g.mu.
+func (g *Game) commanderNamesLocked(p *Player) []string {
+	var names []string
+	add := func(z *Zone) {
+		if z == nil {
+			return
+		}
+		for i := range z.Cards {
+			c := &z.Cards[i]
+			if !c.IsCommander || c.Owner != p.ID || c.Name == "" || slices.Contains(names, c.Name) {
+				continue
+			}
+			names = append(names, c.Name)
+		}
+	}
+	for _, z := range []*Zone{p.Command, g.Battlefield, g.Stack, p.Graveyard, g.Exile, p.Hand, p.Library} {
+		add(z)
+	}
+	return names
 }
 
 // finalCardsLocked records every card of one of the player's own zones.
@@ -200,5 +246,6 @@ func cloneFinalBoard(fb *FinalBoard) *FinalBoard {
 		Graveyard:   cp(fb.Graveyard),
 		Exile:       cp(fb.Exile),
 		Command:     cp(fb.Command),
+		Commanders:  slices.Clone(fb.Commanders),
 	}
 }

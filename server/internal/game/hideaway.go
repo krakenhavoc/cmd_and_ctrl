@@ -200,7 +200,7 @@ func (g *Game) CanPlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) 
 
 // CanPlayLandFaceDuringResolutionForEffect is the same gate for one face
 // of the card (#4697): a modal double-faced card whose back face is a
-// land is played as that face (CR 712.11c), so the face is the one
+// land is played as that face (CR 712.12), so the face is the one
 // judged. A face below zero is the card as it is in its zone; a face the
 // card does not offer to be played (CastableFaces: a transforming card's
 // back, an Adventure's own half) is never a land play.
@@ -265,7 +265,7 @@ func (g *Game) PlayLandDuringResolutionForEffect(playerID, cardID uuid.UUID) (bo
 
 // PlayLandFaceDuringResolutionForEffect is PlayLandDuringResolutionForEffect
 // as one face of the card (#4697): a modal double-faced card's land back
-// face (CR 712.11c). A face below zero plays the card as it is. The face
+// face (CR 712.12). A face below zero plays the card as it is. The face
 // is stamped on the card in its zone before the replacement pipeline
 // runs, as castSpellLocked's land branch does (ADR 0034: the pipeline and
 // a paused entry's resume find the card by ID), and put back when the

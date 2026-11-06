@@ -706,11 +706,14 @@ type manaModel struct {
 	// classes, with Config.PlanRestrictedMana, numbers the restricted
 	// rows the model counts. Nil leaves every restricted row out.
 	classes *manaClasses
+	// triggerMana is Config.PlanTriggerMana: a row's tap also makes the
+	// mana its trigger_adds names (manaSourceOf, #4770).
+	triggerMana bool
 }
 
 // manaModel is the mana model p plans with in st.
 func (p *Policy) manaModel(st *state) manaModel {
-	mm := manaModel{filterLands: p.cfg.PlanFilterLands}
+	mm := manaModel{filterLands: p.cfg.PlanFilterLands, triggerMana: p.cfg.PlanTriggerMana}
 	if p.cfg.PlanRestrictedMana {
 		mm.classes = st.restrictionClasses()
 	}
@@ -895,8 +898,16 @@ func (st *state) manaAvailable(mm manaModel) []manaUnit {
 // counted only with mm.classes (Config.PlanRestrictedMana), and then
 // only for the casts its restriction admits (restrictedOverlay). Without
 // it the row is left out.
+//
+// With mm.triggerMana (Config.PlanTriggerMana, #4770) an unrestricted
+// row's tap also makes what its trigger_adds names: the mana triggered
+// mana abilities add when the source is tapped (Crypt Ghast's {B} on a
+// Swamp, Mirari's Wake's), which CR 106.7 keeps out of `produced`. Two
+// rows whose trigger mana differs are not merged, since a unit mask
+// cannot say which row's trigger comes with which colour.
 func manaSourceOf(c *protocol.CardView, mm manaModel) (manaSource, bool) {
 	var best, filter manaSource
+	var bestTrigger string
 	found, haveFilter := false, false
 	var rest []manaUnit
 	var restClass int
@@ -929,6 +940,11 @@ func manaSourceOf(c *protocol.CardView, mm manaModel) (manaSource, bool) {
 		}
 		src := manaSource{units: abilityUnits(ab), input: manaValue(cost, 0)}
 		src.in = manaCost{generic: src.input}
+		var trigger string
+		if mm.triggerMana && ab.TriggerAdds != "" {
+			trigger = ab.TriggerAdds
+			src.units = append(src.units, producedUnits(trigger, nil)...)
+		}
 		if ab.LifeCost > 0 || strings.Contains(strings.ToLower(ab.Label), "damage to you") {
 			for k := range src.units {
 				src.units[k] |= manaPain
@@ -940,8 +956,8 @@ func manaSourceOf(c *protocol.CardView, mm manaModel) (manaSource, bool) {
 		}
 		switch {
 		case !found || src.net() > best.net() || (src.net() == best.net() && src.input < best.input):
-			best, found = src, true
-		case src.net() == best.net() && src.input == best.input && len(src.units) == len(best.units):
+			best, bestTrigger, found = src, trigger, true
+		case src.net() == best.net() && src.input == best.input && len(src.units) == len(best.units) && trigger == bestTrigger:
 			// Either row: the colours of both, and painless if either is
 			// (a painland's {C} is).
 			for k := range best.units {
@@ -1029,26 +1045,33 @@ func colouredAny(units []manaUnit) bool {
 // view cannot size (Exotic Orchard, Cabal Coffers) is one mana of the
 // colours color_options names, or of no colour.
 func abilityUnits(ab *protocol.ManaAbilityView) []manaUnit {
+	return producedUnits(ab.Produced, ab.ColorOptions)
+}
+
+// producedUnits is abilityUnits for a production string and the
+// color_options lists that narrow its picks (nil for none): a row's
+// `produced`, or its trigger_adds (#4770).
+func producedUnits(produced string, colorOptions [][]string) []manaUnit {
 	slot := 0
 	optionMask := func() manaUnit {
-		if slot >= len(ab.ColorOptions) {
+		if slot >= len(colorOptions) {
 			return 0
 		}
 		var m manaUnit
-		for _, l := range ab.ColorOptions[slot] {
+		for _, l := range colorOptions[slot] {
 			m |= colorMask(l)
 		}
 		slot++
 		return m
 	}
-	if ab.Produced == "" {
+	if produced == "" {
 		if m := optionMask(); m != 0 {
 			return []manaUnit{m}
 		}
 		return []manaUnit{manaC}
 	}
 	var units []manaUnit
-	for _, sym := range manaSymbols(ab.Produced) {
+	for _, sym := range manaSymbols(produced) {
 		// #2558: "{W|U|B|R|G:2}" is two mana of different colors — one
 		// unit per mana, each from its own color_options list. A unit
 		// mask cannot say "different", so two such units read as one

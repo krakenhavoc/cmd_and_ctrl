@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # scryfall-refresh.sh — download the Scryfall "default_cards" bulk dump
-# into $CMDCTRL_DATA_DIR/scryfall/default-cards.json.
+# into $CMDCTRL_DATA_DIR/scryfall/default-cards.json, and Scryfall's set
+# list (GET /sets) into $CMDCTRL_DATA_DIR/scryfall/sets.json.
+#
+# sets.json names each set's parent (parent_set_code), which the dump
+# does not carry; the catalogue's set picker folds subsets into their
+# parent with it (#4790). It is optional to the server, so a failed
+# sets download warns and keeps the last good copy instead of failing
+# the run.
 #
 # The default-cards dataset is the one every card (most recent printing)
 # dump; it's what the server's cards.Index loads on boot to resolve
@@ -46,9 +53,33 @@ done
 DATA_DIR="${CMDCTRL_DATA_DIR:-./data}"
 SCRYFALL_DIR="$DATA_DIR/scryfall"
 TARGET="$SCRYFALL_DIR/default-cards.json"
+SETS_TARGET="$SCRYFALL_DIR/sets.json"
 STAMP="$SCRYFALL_DIR/last-refresh"
 
 mkdir -p "$SCRYFALL_DIR"
+
+# fetch_sets downloads Scryfall's set list (a few hundred KB, one
+# unpaginated list object) to sets.json, atomically like the dump. Any
+# failure — curl, a maintenance page, a JSON error object — leaves the
+# last good sets.json in place and only warns: the server treats the
+# file as optional (#4790).
+fetch_sets() {
+  local sets_tmp
+  sets_tmp="$(mktemp "$SCRYFALL_DIR/sets.XXXXXX.json.tmp")"
+  echo "scryfall-refresh: downloading https://api.scryfall.com/sets"
+  if curl --fail --silent --show-error --max-time 60 \
+       -H 'Accept: application/json' -A 'cmd_and_ctrl-scryfall-refresh/1.0' \
+       --output "$sets_tmp" \
+       "https://api.scryfall.com/sets" \
+     && jq -e '.object == "list" and (.data | type == "array") and (.data | length > 0)' \
+       "$sets_tmp" >/dev/null 2>&1; then
+    mv -f "$sets_tmp" "$SETS_TARGET"
+    echo "scryfall-refresh: wrote $SETS_TARGET ($(jq '.data | length' "$SETS_TARGET") sets)"
+  else
+    rm -f "$sets_tmp"
+    echo "scryfall-refresh: WARNING: sets list download failed; keeping the last good $SETS_TARGET (if any)" >&2
+  fi
+}
 
 # Freshness check — skip the download when the last refresh was under
 # 24h ago and the dump is still present. last-refresh holds a UTC
@@ -64,6 +95,10 @@ if [[ "$FORCE" -ne 1 && -s "$TARGET" && -f "$STAMP" ]]; then
   age=$(( now_epoch - last_epoch ))
   if [[ "$last_epoch" -gt 0 && "$age" -ge 0 && "$age" -lt 86400 ]]; then
     echo "scryfall-refresh: $TARGET refreshed ${age}s ago (<24h); skipping. Use --force to refresh anyway."
+    # A dump that predates sets.json still gets the set list.
+    if [[ ! -s "$SETS_TARGET" ]]; then
+      fetch_sets
+    fi
     exit 0
   fi
 fi
@@ -123,3 +158,5 @@ date -u +'%Y-%m-%dT%H:%M:%SZ' > "$STAMP"
 
 size="$(stat --format='%s' "$TARGET" 2>/dev/null || stat -f '%z' "$TARGET")"
 echo "scryfall-refresh: wrote $TARGET ($size bytes)"
+
+fetch_sets

@@ -92,6 +92,8 @@ var activatedRowScopes = map[string]rowScope{
 	// battlefield, the ability's own activation record.
 	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "PowerUpUsed": rowPublic, "BoastBlocked": rowPublic,
 	"CantActivate": rowPublic, "TimingClosed": rowPublic,
+	// #4980: the row's resolutions this turn, which every player saw.
+	"ResolvedThisTurn": rowPublic,
 	// Option lists read off the BATTLEFIELD, which every viewer can
 	// count for themselves.
 	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "CrewPower": rowPublic, "ReturnOptions": rowPublic,
@@ -163,6 +165,9 @@ var manaRowScopes = map[string]rowScope{
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).
 	"ColorOptions": rowPublic, "DifferentColors": rowPublic,
+	// #4770: the triggers' judge reads the battlefield and the delayed
+	// records public spells set up.
+	"TriggerAdds":  rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,

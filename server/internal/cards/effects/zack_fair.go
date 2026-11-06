@@ -45,6 +45,11 @@ func init() {
 			Label:   "{1}, Sacrifice Zack Fair: Target creature you control gains indestructible until end of turn. Put Zack Fair's counters on that creature and attach an Equipment that was attached to Zack Fair to that creature.",
 			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Targets: TargetCreature("target creature you control", YouControl()),
+			// #4734 slice 7: indestructible (survive) and Zack's counters,
+			// a +1/+1 counter at least as he enters (pump): the union (ADR
+			// 0142 sweep ruling 4). Sacrificing Zack himself is owner
+			// answer 4's, read from the game, so it needs no sac_outlet.
+			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerPump},
 			Effect: Do(
 				// The Equipment moves after a prompt a counter asks (CR 608.2c, #4155).
 				// Zack's counters and Equipment are read from the payment record.

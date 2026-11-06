@@ -64,7 +64,16 @@ func (p *Policy) manaSink(st *state, m legal.Move) bool {
 		row.CrewCost > 0 || row.EnergyCost > 0 || row.EnergyCostX {
 		return false
 	}
-	return row.ManaCost != "" && (manaValue(row.ManaCost, 0) > 0 || ap.XValue > 0)
+	if row.ManaCost == "" || (manaValue(row.ManaCost, 0) <= 0 && ap.XValue <= 0) {
+		return false
+	}
+	// #4980: a run to a resolution that returns more mana than it costs
+	// makes mana for the casts rather than spending what they leave
+	// (resolution_mana.go).
+	if _, ok := p.resolutionManaValue(st, m); ok {
+		return false
+	}
+	return true
 }
 
 // graveyardExileValue prices a pick its entry declares it exiles from a
