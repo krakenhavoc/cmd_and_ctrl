@@ -266,6 +266,7 @@
   import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
+  import { specialActionNeedsX, withX, type SpecialActionXRow } from "../../specialActionX";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -375,8 +376,29 @@
   // slips past this guard is surfaced, not swallowed.
   const guardedSendAction: ActionSender = (type, params, player) => {
     if (disabled) return;
+    // #5249 (CR 107.3d): a special action whose cost has an {X} asks
+    // for X first, whichever menu sent it; the picker's confirm sends
+    // the payload with x_value.
+    if (type === "special_action") {
+      const needsX = specialActionNeedsX(view, params);
+      if (needsX) {
+        xSpecialPrompt = { ...needsX, params, player };
+        return;
+      }
+    }
     sendAction(type, params, player);
   };
+
+  // #5249: the special action waiting on its X, and what it will send.
+  let xSpecialPrompt = $state<
+    (SpecialActionXRow & { params: ActionPayload["params"]; player?: string }) | null
+  >(null);
+  function confirmSpecialX(x: number): void {
+    const p = xSpecialPrompt;
+    xSpecialPrompt = null;
+    if (!p || disabled) return;
+    sendAction("special_action", withX(p.params, x), p.player);
+  }
 
   // ADR 0134 §1: one combat damage clock for the whole board. The arrows'
   // beat cues and the strike layer's lunges both listen to it, and every
@@ -4936,6 +4958,19 @@
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
+  />
+  <!-- #5249: and for a special action's {X} (CR 107.3d), held under the
+       server's own ceiling for the row. -->
+  <XCostModal
+    gameID={view.id}
+    card={xSpecialPrompt?.card ?? null}
+    suggestedMax={xSpecialPrompt?.row.x_max ?? 0}
+    costLabel={xSpecialPrompt?.row.cost}
+    maxX={xSpecialPrompt?.row.x_max ?? 0}
+    maxXUnit="mana"
+    confirmVerb={L.xPickerTurnFaceUp}
+    onConfirm={confirmSpecialX}
+    onCancel={() => (xSpecialPrompt = null)}
   />
   <!-- CR 107.4f (#916): how many Phyrexian symbols the CAST pays
        with 2 life each. Between the X picker and the convoke picker,

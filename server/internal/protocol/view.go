@@ -4642,6 +4642,18 @@ type SpecialActionView struct {
 	// whose card also prints morph or disguise lists two rows, which
 	// can cost the same. Empty for every other kind.
 	Route string `json:"route,omitempty"`
+	// DemandsX marks a row whose cost has an {X} the player chooses as
+	// they take the action (CR 107.3d, #5249): Aurelia's Vindicator's
+	// "Turn face up {X}{3}{W}". The client asks for X before it sends
+	// the payload, which then carries `x_value`. Absent on every row
+	// whose cost has no {X}.
+	DemandsX bool `json:"demands_x,omitempty"`
+	// XMax is the largest X the viewer can pay for right now, from the
+	// floating pool and an auto-tap plan together, priced as the engine
+	// charges it (game.SpecialActionXCeilingForEffect). The legal move
+	// offers the same X. A pointer, because 0 is a real ceiling ("only
+	// X = 0 is payable"); nil beside DemandsX means not even X = 0 is.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -9305,6 +9317,14 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			if charged, err := g.SpecialActionManaCostForEffect(owner, card, sa.Kind, sa); err == nil {
 				s := charged.String()
 				view.ChargedCost = &s
+			}
+		}
+		// #5249: a cost with an {X} asks for X, under the ceiling the
+		// engine would let the viewer pay (CR 107.3d).
+		if game.SpecialActionDemandsX(sa) {
+			view.DemandsX = true
+			if x, ok := g.SpecialActionXCeilingForEffect(owner, card, sa); ok {
+				view.XMax = &x
 			}
 		}
 		out = append(out, view)

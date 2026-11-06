@@ -3641,6 +3641,15 @@ export interface SpecialActionView {
   // cost, and this is what tells them apart. Absent on every other
   // kind.
   route?: "mana_cost" | "morph" | "disguise";
+  // #5249 (CR 107.3d): the row's cost has an {X} the player chooses as
+  // they take the action — Aurelia's Vindicator's "Turn face up
+  // {X}{3}{W}". The client asks for X before sending, and the payload
+  // carries it as `x_value`. Absent on every other row.
+  demands_x?: boolean;
+  // The largest X the viewer can pay for right now, from the pool and
+  // auto-tap together. Absent beside demands_x when not even X = 0 is
+  // payable.
+  x_max?: number;
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
