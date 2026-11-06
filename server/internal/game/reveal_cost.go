@@ -44,6 +44,16 @@ type RevealCost struct {
 	// branch (RevealCardCost) still names a Subtype and no colour.
 	// ADR 0020's 2026-10-08 amendment (#2598).
 	Color string
+	// Exile is "behold a <type> AND EXILE IT" (#4687, ADR 0100's
+	// 2026-11-05 amendment): the Lorwyn Eclipsed Champions' mandatory
+	// additional cost. The one card named on RevealIDs — a matching
+	// permanent the caster controls or a matching card in their hand —
+	// is exiled with the spell on the stack (CR 601.2h), linked to the
+	// spell object (Card.ExiledWith), and the link moves to the permanent
+	// the spell becomes (CR 607.2q, relinkCostExilesLocked), so its
+	// "return the exiled card" reads it. Behold only, on the mandatory
+	// slot only: effects.Register refuses it anywhere else.
+	Exile bool
 }
 
 // matches reports whether `c` satisfies the clause's quality: the
@@ -151,21 +161,28 @@ func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayme
 // not revealed, because choosing it shows nothing the battlefield did
 // not. Validated at announce.
 //
+// An exiling behold (#4687, RevealCost.Exile) is paid by
+// payBeholdExileLocked instead: the card is exiled, not shown.
+//
 // Caller must hold g.mu.
-func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID) {
+func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	rc := planReveal(plan)
 	if rc == nil || len(ids) != 1 {
-		return
+		return nil
+	}
+	if rc.Exile {
+		return g.payBeholdExileLocked(playerID, castID, ids[0], answers)
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil || !p.Hand.Contains(ids[0]) {
-		return
+		return nil
 	}
 	reason := "reveal a " + rc.Subtype + " card from hand"
 	if c, ok := g.LookupCardForEffect(castID); ok {
 		reason = c.Name + " — " + reason
 	}
 	g.RevealForEffect(RevealSpec{Player: playerID, Source: castID, Reason: reason, Cards: ids})
+	return nil
 }
 
 // validateBeholdPaymentLocked checks the objects named to an alternative

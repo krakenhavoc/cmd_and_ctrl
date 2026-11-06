@@ -158,6 +158,9 @@ registered, or when this file is stale.
 | `makeNewShareLink` | `Make a new link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with a link: mints a new one, and the old one stops working |
 | `copyShareLink` | `Copy link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: copies the link just made; it is shown only once |
 | `revokeShareLink` | `Revoke link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: the link answers not found from now on (DELETE /me/stats/share-link) |
+| `deckStats` | `Deck stats` | link | text | `lib/components/decks/DeckCard.svelte` | a deck's card on #/decks: opens that deck's advanced stats page, #/stats/deck/<deck_id> (ADR 0217 §8) |
+| `statsVersionPicker` | `Deck version` | combobox | text | `routes/StatsDeck.svelte` | a deck's stats page: picks which list's games to show, since the last edit, all time or one earlier version (ADR 0217 §5) |
+| `statsAllDeckGames` | `Show all time` | button | text | `routes/StatsDeck.svelte` | a deck's stats page after an edit with no games yet: switches to every game with the deck |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
 | `gamesTable` | `games` | table | aria | `lib/components/admin/GamesList.svelte` | the admin view's list of tables |
 | `accountsTable` | `accounts` | table | aria | `lib/components/admin/AccountsList.svelte` | the admin view's list of accounts |

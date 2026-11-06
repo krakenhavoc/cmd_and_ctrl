@@ -18,8 +18,8 @@ package lobby
 // caller's advanced-stats setting is off (slice 3's setting). They
 // read only the caller's own seats; another seat is never named.
 //
-// Card roles (§7, slice 4) are not here yet: composition is card types
-// only, with roles_available false.
+// Composition is card types, plus card roles (§7, slice 4) when the
+// server loaded the roles file; roles_available says which.
 
 import (
 	"context"
@@ -34,6 +34,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
@@ -199,6 +200,26 @@ func (c Config) advancedOverview(ctx context.Context, user uuid.UUID, makeup gam
 	out.Library = c.advancedLibraryOf(decks, seats)
 	out.MostCast = withPrintings(c.Cards, out.MostCast)
 	return out, nil
+}
+
+// printingOf is a printing with an image for a card name, "" when the
+// index does not know it or no printing has an image.
+func printingOf(idx *cards.Index, name string) string {
+	if idx == nil {
+		return ""
+	}
+	card, ok := idx.FindByName(name)
+	if !ok {
+		return ""
+	}
+	if !cardHasImage(card) {
+		alt, found := idx.FindByOracleID(card.OracleID)
+		if !found || !cardHasImage(alt) {
+			return ""
+		}
+		card = alt
+	}
+	return card.ID.String()
 }
 
 // withPrintings names a printing for each card, so the page can draw
@@ -382,6 +403,8 @@ type deckFactsKey struct {
 	updated int64
 	source  uint64
 	index   int64
+	// roles is the card-roles file's fetch time, 0 without one.
+	roles int64
 }
 
 // deckFactsCacheMax bounds the cache; past it, the cache starts over.
@@ -403,6 +426,14 @@ func deckFactsFor(idx *cards.Index, d decklibrary.Deck) (savedDeckFacts, bool) {
 	source := fnv.New64a()
 	_, _ = source.Write([]byte(d.SourceText))
 	key := deckFactsKey{id: d.ID, updated: d.UpdatedAt.UnixMilli(), source: source.Sum64(), index: idx.LoadedAt().UnixMilli()}
+	// Roles are read at the same time as the facts (ADR 0217 §7 "Drift"),
+	// so a refreshed roles file is a new entry. Without a file there are
+	// no roles and the facts say so.
+	var rolesOf func(uuid.UUID) []string
+	if at, ok := idx.RolesLoaded(); ok {
+		key.roles = at.UnixMilli()
+		rolesOf = func(o uuid.UUID) []string { return effects.CardRoles(idx, o) }
+	}
 	deckFactsCache.Lock()
 	f, hit := deckFactsCache.m[key]
 	deckFactsCache.Unlock()
@@ -414,7 +445,7 @@ func deckFactsFor(idx *cards.Index, d decklibrary.Deck) (savedDeckFacts, bool) {
 		return savedDeckFacts{}, false
 	}
 	list, unresolved := resolveForStats(idx, entries)
-	f = savedDeckFacts{facts: gamestats.FactsOf(list, unresolved)}
+	f = savedDeckFacts{facts: gamestats.FactsOfRoles(list, unresolved, rolesOf)}
 	seen := map[uuid.UUID]bool{}
 	for _, dc := range list {
 		c := dc.Card
@@ -477,6 +508,13 @@ type advancedDeckInfo struct {
 	Name       string   `json:"name"`
 	UpdatedAt  int64    `json:"updated_at"` // Unix ms
 	Commanders []string `json:"commanders"`
+	// CommanderCards is each commander with a printing to draw its art
+	// (as GET /me/decks), omitted without a card index.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+	// RolesAt is when the card-roles file was fetched, Unix ms, for the
+	// credit line "Card roles from Scryfall Tagger, updated <date>"
+	// (ADR 0217 §7); absent without a roles file.
+	RolesAt int64 `json:"roles_at,omitempty"`
 	// Facts is nil when the stored list no longer parses or the server
 	// has no card index.
 	Facts *gamestats.DeckFacts `json:"facts"`
@@ -489,10 +527,20 @@ type typeAverage struct {
 	Average float64 `json:"average"`
 }
 
+// roleAverage is a card role's mean count over the caller's other
+// saved decks.
+type roleAverage struct {
+	Role    string  `json:"role"`
+	Average float64 `json:"average"`
+}
+
 // otherDecksAverage is composition over the caller's other decks.
 type otherDecksAverage struct {
 	Decks int           `json:"decks"`
 	Types []typeAverage `json:"types"`
+	// Roles is the mean per role, in cards.AllRoles order, when every
+	// one of those decks has roles; nil otherwise.
+	Roles []roleAverage `json:"roles,omitempty"`
 }
 
 // Deck page versions: "current" (since last edit) and "all".
@@ -519,6 +567,18 @@ type advancedDeckResponse struct {
 	OtherDecks *otherDecksAverage   `json:"other_decks"`
 }
 
+// deckVersionParam reads ?version=: "current" when absent.
+func deckVersionParam(r *http.Request) (string, error) {
+	version := r.URL.Query().Get("version")
+	switch {
+	case version == "":
+		return deckVersionCurrent, nil
+	case version == deckVersionCurrent, version == deckVersionAll, deckHashRe.MatchString(version):
+		return version, nil
+	}
+	return "", httpError(http.StatusBadRequest, "version must be current, all or a version hash")
+}
+
 // myAdvancedDeckStats is GET /me/stats/decks/{deck_id}.
 func myAdvancedDeckStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	user, err := c.advancedCaller(r)
@@ -529,40 +589,53 @@ func myAdvancedDeckStats(c Config, w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	version := r.URL.Query().Get("version")
-	switch {
-	case version == "":
-		version = deckVersionCurrent
-	case version == deckVersionCurrent, version == deckVersionAll, deckHashRe.MatchString(version):
-	default:
-		return httpError(http.StatusBadRequest, "version must be current, all or a version hash")
+	version, err := deckVersionParam(r)
+	if err != nil {
+		return err
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), statsTimeout)
 	defer cancel()
+	out, err := c.advancedDeck(ctx, user, r.PathValue("deck_id"), version, makeup, rng)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	return writeJSON(w, http.StatusOK, out)
+}
 
+// advancedDeck is the body of a deck page: GET /me/stats/decks/{deck_id}
+// and, for a share link, GET /stats/shared/{token}/decks/{deck_id}.
+// An error is an *httpStatusError ready to answer.
+func (c Config) advancedDeck(ctx context.Context, user uuid.UUID, deckID, version string, makeup gamestats.MakeupFilter, rng gamestats.Range) (advancedDeckResponse, error) {
 	// Only a saved deck of the caller's: anyone else's, or no deck, is
 	// a 404, so an id reveals nothing. A deleted deck's seats lose their
 	// deck id (migration 0008), so its games group by name on the
 	// overview and have no deck page.
-	saved, err := ownedLibraryDeckByID(ctx, c, user, r.PathValue("deck_id"))
+	saved, err := ownedLibraryDeckByID(ctx, c, user, deckID)
 	if err != nil {
 		var se *httpStatusError
 		if errors.As(err, &se) {
-			return err
+			return advancedDeckResponse{}, err
 		}
-		return advancedStatsFailed(c, err)
+		return advancedDeckResponse{}, advancedStatsFailed(c, err)
 	}
 	seats, err := c.AdvancedStats.AdvancedSeats(ctx, user.String(), func(s *gamestats.SeatRow) bool {
 		return s.DeckID == saved.ID.String()
 	})
 	if err != nil {
-		return advancedStatsFailed(c, err)
+		return advancedDeckResponse{}, advancedStatsFailed(c, err)
 	}
 
 	out := advancedDeckResponse{Makeup: makeup, Range: rng, Versions: []deckVersion{}, DeadCards: []gamestats.DeadCard{}}
 	out.Deck = advancedDeckInfo{ID: saved.ID.String(), Name: saved.Name, UpdatedAt: saved.UpdatedAt.UnixMilli(),
 		Commanders: nonNil(saved.Commanders)}
 	current := ""
+	out.Deck.CommanderCards, _ = libraryCommanders(c.Cards, saved.Commanders, libraryCommanderPrintings(c.Cards, saved))
+	if c.Cards != nil {
+		if at, ok := c.Cards.RolesLoaded(); ok {
+			out.Deck.RolesAt = at.UnixMilli()
+		}
+	}
 	if f, ok := deckFactsFor(c.Cards, saved); ok {
 		facts := f.facts
 		out.Deck.Facts = &facts
@@ -570,7 +643,7 @@ func myAdvancedDeckStats(c Config, w http.ResponseWriter, r *http.Request) error
 	}
 	decks, err := c.libraryStore().List(ctx, user)
 	if err != nil {
-		return advancedStatsFailed(c, err)
+		return advancedDeckResponse{}, advancedStatsFailed(c, err)
 	}
 	out.OtherDecks = otherDecksAverageOf(c.Cards, decks, saved.ID)
 	out.Versions = deckVersionsOf(seats, current)
@@ -618,8 +691,10 @@ func myAdvancedDeckStats(c Config, w http.ResponseWriter, r *http.Request) error
 		}
 	}
 	out.DeadCards = gamestats.DeadCards(kept, isLand)
-	w.Header().Set("Cache-Control", "no-store")
-	return writeJSON(w, http.StatusOK, out)
+	for i := range out.DeadCards {
+		out.DeadCards[i].ScryfallID = printingOf(c.Cards, out.DeadCards[i].Name)
+	}
+	return out, nil
 }
 
 // deckVersionsOf lists each version the seats played, last played
@@ -657,6 +732,8 @@ func deckVersionsOf(seats []gamestats.SeatRow, current string) []deckVersion {
 // caller's saved decks other than except, nil when there are none.
 func otherDecksAverageOf(idx *cards.Index, decks []decklibrary.Deck, except uuid.UUID) *otherDecksAverage {
 	sums := make([]int, len(gamestats.CardTypes))
+	roleSums := make([]int, len(cards.AllRoles))
+	roles := true
 	n := 0
 	for _, d := range decks {
 		if d.ID == except {
@@ -670,6 +747,13 @@ func otherDecksAverageOf(idx *cards.Index, decks []decklibrary.Deck, except uuid
 		for i, t := range f.facts.Types {
 			sums[i] += t.Cards
 		}
+		if !f.facts.RolesAvailable || len(f.facts.Roles) != len(roleSums) {
+			roles = false
+			continue
+		}
+		for i, r := range f.facts.Roles {
+			roleSums[i] += r.Cards
+		}
 	}
 	if n == 0 {
 		return nil
@@ -677,6 +761,12 @@ func otherDecksAverageOf(idx *cards.Index, decks []decklibrary.Deck, except uuid
 	out := &otherDecksAverage{Decks: n, Types: make([]typeAverage, len(gamestats.CardTypes))}
 	for i, t := range gamestats.CardTypes {
 		out.Types[i] = typeAverage{Type: t, Average: float64(sums[i]) / float64(n)}
+	}
+	if roles {
+		out.Roles = make([]roleAverage, len(roleSums))
+		for i, r := range cards.AllRoles {
+			out.Roles[i] = roleAverage{Role: r, Average: float64(roleSums[i]) / float64(n)}
+		}
 	}
 	return out
 }

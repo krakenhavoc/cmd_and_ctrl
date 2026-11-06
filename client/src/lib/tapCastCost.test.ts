@@ -124,6 +124,44 @@ describe("castTapCost — a replicate cost that taps", () => {
   });
 });
 
+// #4690: conspire (granted by Raiding Schemes) — one payment taps two
+// creatures that share a colour with the spell, on the same picker.
+describe("castTapCost — conspire", () => {
+  const plot: CardView = {
+    ...newBlood,
+    name: "Lightning Bolt",
+    type_line: "Instant",
+    additional_cost: undefined,
+    optional_costs: [
+      {
+        index: 0,
+        key: "conspire",
+        label: "Conspire",
+        max_times: 1,
+        tap_others_label: "two untapped creatures you control that share a color with it",
+        tap_others_options: { cards: ["red1", "red2", "red3"], min: 2, max: 2 },
+      },
+    ],
+  };
+
+  it("asks for two creatures when conspire is paid", () => {
+    expect(castTapCost(plot, { optionalCosts: [0] })).toEqual({
+      label: "two untapped creatures you control that share a color with it",
+      count: 2,
+      min: 2,
+      options: ["red1", "red2", "red3"],
+    });
+    expect(castTapCost(plot, {})).toBeUndefined();
+  });
+
+  it("greys the offer when only one creature shares a colour", () => {
+    const offer = plot.optional_costs![0];
+    expect(
+      optionalCostPayOptions({ ...offer, tap_others_options: { cards: ["red1"], min: 2, max: 2 } }),
+    ).toEqual([]);
+  });
+});
+
 describe("the tapped permanents' wire list", () => {
   it("ride cast_spell as teamwork_ids, and the auto-tap preview keeps them out of the mana", () => {
     const params: Record<string, unknown> = {};

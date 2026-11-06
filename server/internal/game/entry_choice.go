@@ -558,6 +558,12 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	// resolving spell, and writes nothing. See cast_provenance.go.
 	g.stampCastProvenanceLocked(entered, ev.stackItem)
 	moved.Provenance = g.CastProvenanceForEffect(entered)
+	// CR 607.2q (#4687): a card exiled to pay for this spell (the
+	// Champions' "behold a Kithkin and exile it") was linked to the spell
+	// object; it is linked to the permanent from now on, before EventETB.
+	if srcKind == ZoneStack && ev.stackItem != nil {
+		g.relinkCostExilesLocked(PermissionCardRef{ID: ev.CardID, Epoch: stackEpoch}, entered)
+	}
 	// ADR 0141, CR 702.103b: a bestowed spell becomes a bestowed Aura.
 	// After the CR 400.7 reset, and before the Aura attach and
 	// EventETB in announceEntryLocked, so the attach finds an Aura and

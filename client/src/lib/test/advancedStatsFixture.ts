@@ -3,7 +3,7 @@
 // (tests-e2e/tests/stats-pages-4880.spec.ts imports it). It imports only
 // types, so the e2e package can import it too.
 
-import type { AdvancedOverview, SharedStats } from "../advancedStats";
+import type { AdvancedDeck, AdvancedOverview, SharedStats } from "../advancedStats";
 
 const rate = (n: number, of: number) => ({ n, of, rate: of >= 3 ? n / of : null });
 
@@ -85,6 +85,11 @@ export function overviewFixture(): AdvancedOverview {
       screw: rate(3, 14),
       flood: rate(2, 14),
       colour_screw: rate(4, 14),
+      land_curve: Array.from({ length: 7 }, (_, i) => ({
+        n: i + 1,
+        hit: rate(Math.max(3, 14 - i * 2), 14),
+        controlled: rate(Math.max(3, 14 - i), 14),
+      })),
       trend: Array.from({ length: 13 }, (_, i) => ({
         screw: i % 5 === 0,
         flood: i % 6 === 3,
@@ -99,6 +104,7 @@ export function overviewFixture(): AdvancedOverview {
     most_played_deck: { name: "Atraxa Superfriends", games: 9 },
     decks: [
       {
+        deck_id: "11111111-2222-4333-8444-555555555555",
         name: "Atraxa Superfriends",
         record: { games: 9, wins: 4, losses: 5, draws: 0, avg_place: 2 },
         last: ["win", "loss", "win", "loss", "loss", "win", "loss", "win", "loss"],
@@ -145,5 +151,124 @@ export function sharedFixture(): SharedStats {
       top_cards: [],
     },
     overview: overviewFixture(),
+  };
+}
+
+/** One deck's page, as GET /me/stats/decks/{id} answers it. */
+export function deckFixture(): AdvancedDeck {
+  const o = overviewFixture();
+  const roles = [
+    "removal",
+    "board_wipe",
+    "counterspell",
+    "fog",
+    "ramp",
+    "mana_rock",
+    "mana_dork",
+    "draw",
+    "tutor",
+    "protection",
+    "recursion",
+    "graveyard_hate",
+    "burn",
+    "lifegain",
+    "token_maker",
+    "sacrifice_outlet",
+    "wincon",
+  ].map((role, i) => ({ role, cards: i % 4 === 0 ? 6 : i % 4 === 1 ? 2 : 0 }));
+  return {
+    makeup: "all",
+    range: "all",
+    coverage: o.coverage,
+    record: { games: 9, wins: 4, losses: 5, draws: 0, avg_place: 2 },
+    win_rate: rate(4, 9),
+    places: o.places,
+    win_kinds: o.win_kinds,
+    combo_rules: o.combo_rules,
+    out_kinds: o.out_kinds,
+    turn_order: o.turn_order,
+    length: o.length,
+    mulligans: o.mulligans,
+    commander: o.commander,
+    aggression: o.aggression,
+    mana: o.mana,
+    most_cast: o.most_cast,
+    deck: {
+      id: "11111111-2222-4333-8444-555555555555",
+      name: "Atraxa Superfriends",
+      updated_at: Date.UTC(2026, 10, 1),
+      commanders: ["Atraxa, Praetors' Voice"],
+      commander_cards: [
+        {
+          name: "Atraxa, Praetors' Voice",
+          scryfall_id: "22222222-2222-4222-8222-222222222222",
+          color_identity: ["W", "U", "B", "G"],
+        },
+      ],
+      roles_at: Date.UTC(2026, 10, 4),
+      facts: {
+        hash: "1f0c9a7d2b3e4f50",
+        cards: 100,
+        unresolved: 2,
+        types: [
+          { type: "land", cards: 37 },
+          { type: "creature", cards: 21 },
+          { type: "artifact", cards: 12 },
+          { type: "enchantment", cards: 6 },
+          { type: "instant", cards: 10 },
+          { type: "sorcery", cards: 8 },
+          { type: "planeswalker", cards: 4 },
+          { type: "battle", cards: 0 },
+        ],
+        roles_available: true,
+        roles,
+        mana_curve: [2, 9, 14, 16, 10, 6, 4, 2],
+        nonland: 63,
+        avg_mana_value: 3.2,
+        colour_share: [
+          { colour: "W", symbols: 18.5, share: 0.27 },
+          { colour: "U", symbols: 17, share: 0.25 },
+          { colour: "B", symbols: 12.5, share: 0.18 },
+          { colour: "R", symbols: 0, share: 0 },
+          { colour: "G", symbols: 20, share: 0.3 },
+        ],
+        colour_identity: ["W", "U", "B", "G"],
+      },
+    },
+    version: "current",
+    no_games_since_edit: false,
+    versions: [
+      {
+        hash: "1f0c9a7d2b3e4f50",
+        current: true,
+        first: Date.UTC(2026, 10, 2),
+        last: Date.UTC(2026, 10, 4),
+        games: 6,
+      },
+      {
+        hash: "0f0f0f0f0f0f0f0f",
+        current: false,
+        first: Date.UTC(2026, 9, 10),
+        last: Date.UTC(2026, 9, 20),
+        games: 3,
+      },
+    ],
+    dead_cards: [
+      {
+        name: "Craterhoof Behemoth",
+        dead: rate(4, 5),
+        could_afford: false,
+        scryfall_id: "33333333-3333-4333-8333-333333333333",
+      },
+      { name: "Swords to Plowshares", dead: rate(3, 6), could_afford: true },
+    ],
+    other_decks: {
+      decks: 3,
+      types: [
+        { type: "land", average: 36.3 },
+        { type: "creature", average: 28 },
+      ],
+      roles: roles.map((r) => ({ role: r.role, average: r.cards > 0 ? 5 : 0 })),
+    },
   };
 }

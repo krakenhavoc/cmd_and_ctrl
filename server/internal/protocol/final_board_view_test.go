@@ -60,6 +60,7 @@ func TestEliminatedSeatCarriesItsFinalBoardForEveryViewer(t *testing.T) {
 		b.Hand.PushTop(game.NewCard("B's Last Card", b.ID))
 		b.Graveyard.PushTop(game.NewCard("B's Grave Card", b.ID))
 		b.Library.Cards[0].Name = libraryCard
+		b.Command.PushTop(game.NewCommander("B's Commander", b.ID))
 	})
 
 	// While B plays, nobody's seat has a final board.
@@ -88,6 +89,10 @@ func TestEliminatedSeatCarriesItsFinalBoardForEveryViewer(t *testing.T) {
 		}
 		if _, ok := finalCardNamed(fb.Graveyard, "B's Grave Card"); !ok {
 			t.Errorf("viewer %q: final graveyard %+v", viewer, fb.Graveyard)
+		}
+		// #4547: the tombstone's commander line, the same for every viewer.
+		if len(fb.Commanders) != 1 || fb.Commanders[0] != "B's Commander" {
+			t.Errorf("viewer %q: final board commanders %q, want B's Commander", viewer, fb.Commanders)
 		}
 		for _, zone := range [][]FinalCardView{fb.Battlefield, fb.Hand, fb.Graveyard, fb.Exile, fb.Command} {
 			if _, ok := finalCardNamed(zone, libraryCard); ok {

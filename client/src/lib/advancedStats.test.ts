@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   aggressionCaption,
   coloursCaption,
+  commanderCaption,
+  compositionCaption,
+  deckStatsHref,
   filterAnnouncement,
   filterQuery,
   kindText,
+  landCurveCaption,
   landNumberText,
   missedCaption,
   NOT_ENOUGH,
@@ -18,6 +22,7 @@ import {
   sortedKinds,
   spreadCaption,
   turnOrderCaption,
+  versionText,
   winKindsCaption,
   type AdvancedSummary,
 } from "./advancedStats";
@@ -98,6 +103,7 @@ describe("advancedStats words", () => {
       flood: { n: 0, of: 0, rate: null },
       colour_screw: { n: 0, of: 0, rate: null },
       trend: [],
+      land_curve: [],
     };
     expect(missedCaption(mana)).toBe("You miss your 4th land drop most often: 3 times.");
     expect(landNumberText(6)).toBe("6th or later");
@@ -131,5 +137,73 @@ describe("advancedStats words", () => {
     expect(SHARE_REVEALS.split(". ").length).toBe(1);
     expect(SHARE_REVEALS).toMatch(/deck names, commanders/);
     expect(SHARE_REVEALS).toMatch(/never shows the other players/);
+  });
+});
+
+describe("the deck page's words (ADR 0217 §4, §5 and §8)", () => {
+  const rate = (n: number, of: number) => ({ n, of, rate: of >= 3 ? n / of : null });
+
+  it("links a deck page, inside a shared view or not", () => {
+    expect(deckStatsHref("d 1")).toBe("#/stats/deck/d%201");
+    expect(deckStatsHref("d1", "tok_-1")).toBe("#/stats/shared/tok_-1/deck/d1");
+  });
+
+  it("says how often the 4th land drop was hit, or asks for games", () => {
+    const pts = [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+      n,
+      hit: rate(10 - n, 10),
+      controlled: rate(10, 10),
+    }));
+    expect(landCurveCaption(pts)).toBe("You had hit land drop 4 by turn 4 in 60%, 6 of 10 games.");
+    expect(landCurveCaption(pts.map((p) => ({ ...p, hit: rate(1, 2) })))).toBe(
+      "Play 3 games with this deck to see its land curve.",
+    );
+    expect(landCurveCaption([])).toBe("Play 3 games with this deck to see its land curve.");
+  });
+
+  it("names a version by its list and dates", () => {
+    const day = Date.UTC(2026, 10, 3, 12);
+    expect(versionText({ hash: "a", current: true, first: day, last: day, games: 1 })).toMatch(
+      /^Current list, .+ \(1 game\)$/,
+    );
+    const text = versionText({
+      hash: "b",
+      current: false,
+      first: day,
+      last: day + 9 * 864e5,
+      games: 5,
+    });
+    expect(text).toMatch(/^Earlier list, .+ to .+ \(5 games\)$/);
+  });
+
+  it("captions the commander and the composition", () => {
+    expect(
+      commanderCaption({
+        casts_per_game: 1.5,
+        first_cast_turn: { median: 4, p25: 3, p75: 5 },
+        by_turn_5: rate(3, 4),
+        later: rate(0, 3),
+      }),
+    ).toBe("You cast your commander 1.5 times a game, first on turn 4 at the median.");
+    expect(
+      commanderCaption({
+        casts_per_game: null,
+        first_cast_turn: { median: null, p25: null, p75: null },
+        by_turn_5: rate(0, 0),
+        later: rate(0, 0),
+      }),
+    ).toBe("No commander casts recorded yet.");
+    expect(
+      compositionCaption([
+        { label: "Creatures", value: 30, tick: 24 },
+        { label: "Lands", value: 36, tick: 36.5 },
+      ]),
+    ).toBe(
+      "Creatures stand out: 30 here against 24.0 in your other decks on average, more than usual.",
+    );
+    expect(compositionCaption([{ label: "Lands", value: 36 }])).toBe("How this deck is built.");
+    expect(compositionCaption([{ label: "Lands", value: 36, tick: 35.5 }])).toBe(
+      "This deck is built much like your other decks.",
+    );
   });
 });

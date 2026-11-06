@@ -852,6 +852,8 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 		}
 		// #3245: casualty's copy is the engine's, read off the record.
 		g.harvestCasualtyLocked(pass, card, lki)
+		// #4690: and conspire's, the same way.
+		g.harvestConspireLocked(pass, card, lki)
 		return
 	}
 }
