@@ -173,6 +173,7 @@ body heroic-sacrifice/its-counters-and-draw
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body immortal-coil/exile-per-prevented
+body incinerator-of-the-guilty/damage
 body initiative/take
 body initiative/venture
 body inkshield/inklings
@@ -450,6 +451,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
+choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-top-face-down-linked
 choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expressive-iteration-bottom
@@ -481,6 +483,7 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
+choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
@@ -699,6 +702,7 @@ choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/surtland-elementalist-cast
+choose choose-cards/surveillance-monitor-collect-evidence
 choose choose-cards/sylvan-library-chosen
 choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
@@ -906,6 +910,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
@@ -1058,6 +1063,7 @@ number number/die-young-minus-one-for-each
 number number/expel-the-interlopers-destroy-power-at-least
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
+number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/necrodominance-draw-that-many

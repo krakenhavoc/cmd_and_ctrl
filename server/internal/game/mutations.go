@@ -2402,6 +2402,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		g.noteForageLocked(playerID, cardID)
 	}
+	// #5223, CR 701.59a: an announced "you may collect evidence N" has
+	// been paid with the exiles above, so the caster has collected
+	// evidence — announced for "whenever you collect evidence", with the
+	// spell on the stack below the triggers.
+	if planCollectsEvidence(costPlan) {
+		g.noteCollectEvidenceLocked(playerID, cardID, params.ExileIDs)
+	}
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {
