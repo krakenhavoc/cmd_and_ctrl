@@ -210,6 +210,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedNoncreatureCastWizardToken,
 	printedFableGoblinShamanToken,
 	printedFirebendingDragonToken,
+	printedFirebendingSoldierToken,
 	printedReefWormFishToken,
 	printedReefWormWhaleToken,
 	printedDragonEggToken,

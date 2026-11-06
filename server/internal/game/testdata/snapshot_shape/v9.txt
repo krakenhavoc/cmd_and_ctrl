@@ -2004,6 +2004,7 @@ followUpParks[].then.permission.filter.nonLandPermanentOnly	bool
 followUpParks[].then.permission.filter.noncreatureOnly	bool
 followUpParks[].then.permission.filter.noncreatureOrCreatureType	string
 followUpParks[].then.permission.filter.notOwnedByHolder	bool
+followUpParks[].then.permission.filter.notSubtype	string
 followUpParks[].then.permission.filter.ownedByHolder	bool
 followUpParks[].then.permission.filter.permanentOnly	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
@@ -2614,6 +2615,7 @@ frozenEntries[].event.counterTail.then.permission.filter.nonLandPermanentOnly	bo
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.counterTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.counterTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -3203,6 +3205,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -3783,6 +3786,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -4534,6 +4538,7 @@ frozenEntries[].event.damageTail.then.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -5231,6 +5236,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.nonLan
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -5885,6 +5891,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -6465,6 +6472,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -7077,6 +7085,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.nonLandPe
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -7677,6 +7686,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.nonLandPermanentOn
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -8673,6 +8683,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.nonLandPermanentO
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9275,6 +9286,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9858,6 +9870,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -11228,6 +11241,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.nonLandPermanentOnly	b
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.run.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -11806,6 +11820,7 @@ frozenEntries[].event.millTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -13308,6 +13323,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.tokenTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -15098,6 +15114,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -15710,6 +15727,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -16288,6 +16306,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -16886,6 +16905,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -17549,6 +17569,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -19984,6 +20005,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.nonLandPermanentOnly	bo
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -20573,6 +20595,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -21153,6 +21176,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -21904,6 +21928,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -22601,6 +22626,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.nonLan
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -23255,6 +23281,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -23835,6 +23862,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -24447,6 +24475,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.nonLandPe
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -25047,6 +25076,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.nonLandPermanentOn
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -26043,6 +26073,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.nonLandPermanentO
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -26645,6 +26676,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -27228,6 +27260,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -28598,6 +28631,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.nonLandPermanentOnly	b
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -29176,6 +29210,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -30678,6 +30713,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -32468,6 +32504,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -33080,6 +33117,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -33658,6 +33696,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34256,6 +34295,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34919,6 +34959,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -38058,6 +38099,7 @@ pendingChoices[].attackSplit.tail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].attackSplit.tail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].attackSplit.tail.permission.filter.notSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.ownedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.permanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
@@ -40022,6 +40064,7 @@ pendingChoices[].diceRoll.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].diceRoll.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].diceRoll.then.permission.filter.notSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.ownedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.permanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -40979,6 +41022,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.each.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -41559,6 +41603,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.then.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42145,6 +42190,7 @@ pendingChoices[].libraryOrder.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].libraryOrder.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].libraryOrder.then.permission.filter.notSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.ownedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.permanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42781,6 +42827,7 @@ pendingChoices[].nameThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].nameThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].nameThen.permission.filter.notSubtype	string
 pendingChoices[].nameThen.permission.filter.ownedByHolder	bool
 pendingChoices[].nameThen.permission.filter.permanentOnly	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -43820,6 +43867,7 @@ pendingChoices[].pickTail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].pickTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].pickTail.permission.filter.notSubtype	string
 pendingChoices[].pickTail.permission.filter.ownedByHolder	bool
 pendingChoices[].pickTail.permission.filter.permanentOnly	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -44444,6 +44492,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.nonL
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -45033,6 +45082,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -45613,6 +45663,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -46364,6 +46415,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.nonLa
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -47061,6 +47113,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -47715,6 +47768,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -48295,6 +48349,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.nonLa
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -48907,6 +48962,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -49507,6 +49563,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -50503,6 +50560,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51105,6 +51163,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.no
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51688,6 +51747,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -53058,6 +53118,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.non
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -53636,6 +53697,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -55138,6 +55200,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.nonLan
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -56928,6 +56991,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -57540,6 +57604,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -58118,6 +58183,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -58716,6 +58782,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -59379,6 +59446,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -60381,6 +60449,7 @@ pendingChoices[].scryThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].scryThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].scryThen.permission.filter.notSubtype	string
 pendingChoices[].scryThen.permission.filter.ownedByHolder	bool
 pendingChoices[].scryThen.permission.filter.permanentOnly	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -61006,6 +61075,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.nonLandPermanentOn
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -66086,6 +66156,7 @@ seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.noncreatureOrCreatureType	string
 seats[].castPermissions[].filter.notOwnedByHolder	bool
+seats[].castPermissions[].filter.notSubtype	string
 seats[].castPermissions[].filter.ownedByHolder	bool
 seats[].castPermissions[].filter.permanentOnly	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
@@ -69499,6 +69570,7 @@ seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOrCreatureType	string
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
+seats[].statics[].cantBeCountered.filter.notSubtype	string
 seats[].statics[].cantBeCountered.filter.ownedByHolder	bool
 seats[].statics[].cantBeCountered.filter.permanentOnly	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
@@ -69538,6 +69610,7 @@ seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.noncreatureOrCreatureType	string
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
+seats[].statics[].castBan.filter.notSubtype	string
 seats[].statics[].castBan.filter.ownedByHolder	bool
 seats[].statics[].castBan.filter.permanentOnly	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
@@ -69626,6 +69699,7 @@ seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOrCreatureType	string
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
+seats[].statics[].nextSpell.filter.notSubtype	string
 seats[].statics[].nextSpell.filter.ownedByHolder	bool
 seats[].statics[].nextSpell.filter.permanentOnly	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
@@ -69670,6 +69744,7 @@ seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.noncreatureOrCreatureType	string
 seats[].statics[].timing.filter.notOwnedByHolder	bool
+seats[].statics[].timing.filter.notSubtype	string
 seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.permanentOnly	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int

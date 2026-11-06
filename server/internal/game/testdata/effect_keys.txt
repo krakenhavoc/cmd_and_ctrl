@@ -37,6 +37,7 @@ anyplayer any-player/soul-strings-return
 anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
+body aang-at-the-crossroads/transform
 body agathas-soul-cauldron/counter
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
@@ -171,6 +172,7 @@ body initiative/take
 body initiative/venture
 body inkshield/inklings
 body invisible-woman/pump
+body iroh-tea-master/ally
 body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
@@ -420,6 +422,7 @@ choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
+choose choose-cards/elemental-teachings-settle
 choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
@@ -729,6 +732,7 @@ choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/yorion-sky-nomad-exile
+choose choose-cards/yue-the-moon-spirit-cast
 choose choose-cards/yuffie-materia-hunter-attach
 choose choose-cards/yunas-decision-put
 choose choose-cards/zack-fair-move-equipment
@@ -858,6 +862,7 @@ confirm confirm/explore-graveyard
 confirm confirm/fabricate
 confirm confirm/farrels-mantle-damage
 confirm confirm/farrels-zealot-damage
+confirm confirm/firebender-ascension-copy
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
@@ -871,6 +876,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
 confirm confirm/killmonger-sacrifice
@@ -1067,6 +1073,7 @@ option option-pick/development-opponent-round-3
 option option-pick/dinas-guidance-placed
 option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
+option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
 option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
@@ -1681,6 +1688,7 @@ tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
 tail eerie-gravestone/after-mill
+tail elemental-teachings/choose
 tail elkin-lair/may-play-exiled
 tail elven-passage/behold-an-elf
 tail emergent-ultimatum/choose
@@ -2072,6 +2080,7 @@ tail the-invincible-iron-man/attach-equipment
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
 tail the-wrath-of-khan/draw-if-exiled
+tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
