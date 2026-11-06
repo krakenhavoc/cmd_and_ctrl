@@ -36,25 +36,32 @@ func init() {
 				}
 				return AddCounter{Target: id, Kind: game.CounterPlusOne, N: ctx.X()}.Apply(ctx)
 			}),
-			Instruction(func(ctx *Context) error {
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				c, found := ctx.Game.LookupCardForEffect(id)
-				if !found || !c.IsCreature() || c.CurrentPower() <= 0 {
-					return nil
-				}
-				power := c.CurrentPower()
-				return ctx.Game.DamageInstanceForEffect(func() error {
-					for _, other := range MatchingBattlefield(ctx, And(Creature(), NotSelf(id))) {
-						if err := (DealDamage{Source: id, Target: other.InstanceID, Amount: power}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				})
-			}),
+			Instruction(targetDealsItsPowerToEachOtherCreature),
 		),
+	})
+}
+
+// targetDealsItsPowerToEachOtherCreature is "It deals damage equal to its
+// power to each other creature", where "it" is the spell's still-legal
+// target creature: one damage event, the target as the source (so its
+// deathtouch and lifelink apply), its power read as the instruction runs.
+// Nova Flame and Nibelheim Aflame share it.
+func targetDealsItsPowerToEachOtherCreature(ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	c, found := ctx.Game.LookupCardForEffect(id)
+	if !found || !c.IsCreature() || c.CurrentPower() <= 0 {
+		return nil
+	}
+	power := c.CurrentPower()
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, other := range MatchingBattlefield(ctx, And(Creature(), NotSelf(id))) {
+			if err := (DealDamage{Source: id, Target: other.InstanceID, Amount: power}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
