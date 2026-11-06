@@ -262,6 +262,7 @@ body rad/mill
 body ratchet-field-medic/return
 body rebound/cast
 body rebound/the-spell-you-just-cast
+body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
 body renown/grow
@@ -818,6 +819,7 @@ condition damage/your-creature-combat-damage-to-a-player
 condition dies/a-creature
 condition dies/another-creature-than-the-source
 condition dies/each-creature
+condition dies/reckless-blaze-that-creature-under-your-control
 condition dies/that-creature
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
@@ -952,6 +954,7 @@ confirm confirm/search-named-library-or-graveyard
 confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
+confirm confirm/smellerbee-rebel-fighter-discard-hand
 confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
 confirm confirm/spm-cheering-crowd
@@ -1610,7 +1613,10 @@ tail avatar-b24/put-n-counters-on-each-next
 tail avatar-b30/bison-whistle-after-bison
 tail avatar-b30/cracked-earth-gain-life
 tail avatar-b30/cracked-earth-second-earthbend
+tail avatar-b34/then-draw-n
+tail avatar-b34/then-spirit-token
 tail avatar-destiny/after-mill
+tail avatar-kyoshi-earthbender/untap-that-land
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
@@ -1814,6 +1820,7 @@ tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
+tail fang-rokus-companion/spirit
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
@@ -1972,6 +1979,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
+tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
@@ -2000,6 +2008,7 @@ tail primal-amulet/transform
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
+tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
@@ -2017,6 +2026,7 @@ tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
+tail recipient/reckless-blaze-watch-death
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
