@@ -330,6 +330,63 @@ func TestTheOwnerLeavingPassesThePodToWhoJoinedFirst(t *testing.T) {
 	}
 }
 
+// TestATiedJoinTimePassesThePodToTheEarlierRow is #5216: joined_at is in
+// milliseconds, so two joins can share one. The tie goes to the member
+// row written first (its rowid), for a leave and an account deletion
+// alike, and the pod's page lists the members in that order. The rows
+// go in against user_id order (zed, then bea), which the old tie-break
+// used.
+func TestATiedJoinTimePassesThePodToTheEarlierRow(t *testing.T) {
+	for _, how := range []string{"leave", "delete the account"} {
+		t.Run(how, func(t *testing.T) {
+			f := newFixture(t, "ann", "bea", "zed")
+			pod := f.create(t, "ann", "P")
+			at := ms(f.now.Add(time.Minute))
+			for _, w := range []string{"zed", "bea"} {
+				if _, err := f.d.Exec(`INSERT INTO pod_members (pod_id, user_id, joined_at) VALUES (?, ?, ?)`,
+					pod, w, at); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := strings.Join(f.members(t, pod), ","); got != "ann,zed,bea" {
+				t.Fatalf("members = %s, want ann,zed,bea", got)
+			}
+			if how == "leave" {
+				r, err := f.s.RemoveMember(ctx, "ann", pod, "ann", false)
+				if err != nil || r.NewOwnerID != "zed" {
+					t.Fatalf("the owner leaves: %+v %v; want zed, whose row went in first", r, err)
+				}
+			} else {
+				tx, err := f.d.BeginTx(ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := ForgetAccount(ctx, tx, "ann", f.now); err != nil {
+					_ = tx.Rollback()
+					t.Fatal(err)
+				}
+				if err := tx.Commit(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if f.owner(t, pod) != "zed" {
+				t.Errorf("owner = %s, want zed, whose row went in first", f.owner(t, pod))
+			}
+			d, err := f.s.Get(ctx, "bea", pod)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var names []string
+			for _, m := range d.Members {
+				names = append(names, m.UserID)
+			}
+			if got := strings.Join(names, ","); got != "zed,bea" {
+				t.Errorf("the pod's page lists %s, want zed,bea", got)
+			}
+		})
+	}
+}
+
 func TestForgetAccountPassesOnOrDeletesOwnedPodsAndRemovesEveryRow(t *testing.T) {
 	f := newFixture(t, "ann", "bea", "cal")
 	shared := f.create(t, "ann", "Shared")
