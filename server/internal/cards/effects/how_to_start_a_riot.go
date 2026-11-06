@@ -21,6 +21,7 @@ func init() {
 			TargetCreature("target creature"),
 			TargetPlayer("target player"),
 		),
+		Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "menace")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
 				if err := (GrantKeywordUntilEOT{
