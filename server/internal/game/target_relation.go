@@ -40,6 +40,16 @@ const (
 	// does nothing with them, because an illegal player performs no action
 	// (the Memory's Journey ruling).
 	TargetInTargetPlayersGraveyard TargetRelationKind = "players_graveyard"
+	// TargetSharesCreatureType is "that share a creature type", where the
+	// other is the earlier target permanent (Secret Tunnel's "two target
+	// creatures you control that share a creature type"): judged on the
+	// creature types both have after the layers (SharesCreatureType, so a
+	// changeling shares with anything that has a creature type, and land or
+	// artifact subtypes never count). An anchor that has left the
+	// battlefield answers with the creature types it had as it last existed
+	// (CR 608.2h, the Secret Tunnel ruling), so the creature still here is
+	// still a legal target as long as it shares one of them.
+	TargetSharesCreatureType TargetRelationKind = "shares_creature_type"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -95,6 +105,19 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&
 			len(SharedCardTypes([]Card{*a, *c})) > 0
+	case TargetSharesCreatureType:
+		if anchor.Kind != TargetCard || z.Kind != ZoneBattlefield {
+			return false
+		}
+		if a := findBattlefieldCard(g, anchor.ID); a != nil {
+			return SharesCreatureType(a, c)
+		}
+		info, ok := g.LastKnownPermanentForEffect(anchor.ID)
+		if !ok {
+			return false
+		}
+		last := info.Characteristic
+		return SharesCreatureType(&Card{effective: &last}, c)
 	}
 	return false
 }
