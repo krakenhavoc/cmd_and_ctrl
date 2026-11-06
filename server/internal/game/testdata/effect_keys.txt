@@ -705,6 +705,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vow-to-erebor-attach
@@ -2209,6 +2210,7 @@ tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil
 tail then/valakut-exploration-damage
+tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
