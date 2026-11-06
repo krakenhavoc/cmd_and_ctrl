@@ -230,6 +230,7 @@ body phelia/return
 body phyrexian-hydra/minus-counters-per-prevented
 body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
+body pit-automaton/copy-exhaust
 body planechase/planeswalk
 body portent/draw
 body power-pack/cast-exiled-free
@@ -846,6 +847,7 @@ condition loki-laufeyson/next-cast
 condition ltb/the-listed-object
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
@@ -1356,6 +1358,7 @@ payunless pay-unless/wolfbat-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
+pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/salt-vampire-draw
@@ -2018,6 +2021,7 @@ tail ostrich-horse/after-mill
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made
+tail oviya-automech-artisan/two-counters-on-an-artifact
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
@@ -2040,6 +2044,7 @@ tail prishes-wanderings/searched
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
+tail push-the-limit/sacrifice-animate-haste
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
