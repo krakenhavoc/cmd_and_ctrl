@@ -136,6 +136,18 @@ var Inventory = join(
 		"user_id", "blocked_user_id", "created_at"),
 	cols("social_prefs", Deleted, "the person's two social settings: who sees what they are doing, and who can send them friend requests (ADR 0213 §5)",
 		"user_id", "presence", "requests", "updated_at"),
+	// ADR 0220 §12 (slice 2, migration 0033): pods. The pod belongs to
+	// the group, like a table name; the person's place in it goes.
+	cols("pods", Kept, "a pod belongs to its members, like a table name: its id, name, invite link hash and dates stay while anyone is in it, and it is deleted with its last member",
+		"id", "name", "invite_hash", "invite_expires_at", "created_at", "updated_at"),
+	cols("pods", Deleted, "a pod the person owns passes to the member who joined first, or is deleted with its members and invites if they were the last (ADR 0220 §2)",
+		"owner_id"),
+	cols("pod_members", Deleted, "every pod the person is in, and when they joined",
+		"pod_id", "user_id", "joined_at"),
+	cols("pod_invites", Deleted, "every pod invite the person was sent or sent, and whether they declined one",
+		"pod_id", "user_id", "invited_by", "created_at", "declined_at"),
+	cols("pod_suggestion_dismissals", Deleted, "the person's Not now on a suggested pod; another person's row holds only a one-way hash of a set that included them, names nobody and goes in 180 days",
+		"user_id", "group_key", "dismissed_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 

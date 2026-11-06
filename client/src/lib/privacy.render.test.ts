@@ -158,6 +158,18 @@ describe("the privacy page", () => {
     expect(text).toContain("Deleting your account deletes all of it, on both sides");
   });
 
+  it("says what pods keep, who sees it, and what happens on leaving (ADR 0220 §12, slice 2)", () => {
+    const { container } = render(Privacy as never, {} as never);
+    const entry = [...container.querySelectorAll("h3")].find((h) => h.textContent === "Pods");
+    expect(entry).toBeDefined();
+    const text = entry!.parentElement!.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain("we keep its name, who is in it and who owns it");
+    expect(text).toContain(`they expire after ${PRIVACY_FACTS.podInviteDays} days`);
+    expect(text).toContain("whether you share your stats with it");
+    expect(text).toContain("your membership is gone at once");
+    expect(text).toContain("it passes to the member who joined first");
+  });
+
   it("is a public route and is reachable by its hash", async () => {
     session.set(null);
     navigate(PRIVACY_HASH);

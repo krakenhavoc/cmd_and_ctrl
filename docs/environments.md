@@ -1326,6 +1326,24 @@ to tablemates only, with no blocks to apply.
 `TestMigration0032RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0033 (ADR 0220 slice 2, pods, #4880) adds four tables, `pods`,
+`pod_members`, `pod_invites` and `pod_suggestion_dismissals`. An older
+binary refuses the v33 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE pod_suggestion_dismissals; DROP TABLE pod_invites; DROP TABLE pod_members; DROP TABLE pods; DELETE FROM schema_migrations WHERE version = 33;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every pod, membership, pending invite and dismissal: rolling
+forward again recreates the tables empty, so people make their pods
+again. `stats_prefs.share_pods` stays and does nothing until then.
+`TestMigration0033RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,
