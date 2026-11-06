@@ -1147,6 +1147,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #5251: Lumbering Laundry's look at face-down creatures, read by
+	// the view (face_down_look.go).
+	ModLookAtFaceDownCreatures: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},

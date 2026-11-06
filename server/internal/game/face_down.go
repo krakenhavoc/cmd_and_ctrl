@@ -1173,6 +1173,13 @@ func FaceDownBody(kind FaceDownKind) (Characteristic, bool) {
 // and the Necropotence one. Returns nothing for a card that is not
 // face down.
 //
+// One more viewer of a face-down CREATURE is not in this table and is
+// never written into KnownBy: a player holding a look grant (Found
+// Footage's static, Lumbering Laundry's until end of turn, #5251). That
+// answer changes without the object moving, so it is derived per frame
+// by FaceDownLookGrantsLocked and the view reads it beside KnownBy; see
+// face_down_look.go.
+//
 // Caller must hold g.mu.
 func (g *Game) faceDownViewersLocked(c Card) []uuid.UUID {
 	if !c.FaceDown {

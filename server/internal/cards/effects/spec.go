@@ -1723,6 +1723,15 @@ type Spec struct {
 	// every query (ADR 0206, game/attack_direction.go).
 	AttackOnlyNearestOpponentInChosenDirection bool
 
+	// LooksAtFaceDownCreatures declares "you may look at face-down
+	// creatures your opponents control any time" (Found Footage, #5251).
+	// Not a `Static` entry, for HandsRevealed's reason: it is a fact
+	// about what a player may see, derived from the battlefield on every
+	// frame and never stored (game/face_down_look.go). For the
+	// until-end-of-turn form a resolved ability calls
+	// game.LookAtFaceDownCreaturesThisTurnForEffect.
+	LooksAtFaceDownCreatures bool
+
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
 	// card while it sits in a hand: game.DiscardByOpponentBattlefield
