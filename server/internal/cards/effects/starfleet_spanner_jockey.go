@@ -22,20 +22,12 @@ func init() {
 		Name:            "Starfleet Spanner Jockey",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"defender"},
-		Static: []game.StaticAbility{{
-			Label: "As long as you've cast a noncreature spell this turn, this creature can attack as though it didn't have defender.",
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.IsCreature() && selfOnly(target, g, source) &&
-					mscM13CastNoncreatureSpellThisTurn(g, source.Controller)
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-				w := game.DefenderWaiver{}
-				if source != nil {
-					w.Source, w.SourceName = source.InstanceID, source.Name
-				}
-				c.DefenderWaivers = append(c.DefenderWaivers, w)
-			},
-		}},
+		Static: []game.StaticAbility{
+			avB18CanAttackAsThoughNoDefenderWhile(
+				"As long as you've cast a noncreature spell this turn, this creature can attack as though it didn't have defender.",
+				func(g *game.Game, source *game.Card) bool {
+					return mscM13CastNoncreatureSpellThisTurn(g, source.Controller)
+				}),
+		},
 	})
 }

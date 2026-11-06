@@ -42,6 +42,11 @@ const (
 	// AbilityCostBranchDiscard discards Count cards from the activator's
 	// hand: nonland cards only when Nonland is set.
 	AbilityCostBranchDiscard AbilityCostBranchKind = "discard"
+	// AbilityCostBranchExileGraveyard exiles Count cards from the
+	// activator's graveyard (#5184): forage's "exile three cards from
+	// your graveyard" (ForageAbilityBranches). Folded into ExileCards,
+	// so the graveyard walk, validator and payer are the plain clause's.
+	AbilityCostBranchExileGraveyard AbilityCostBranchKind = "exile_graveyard"
 )
 
 // AbilityCostBranch is one way to pay an either/or part of an activated
@@ -55,7 +60,8 @@ type AbilityCostBranch struct {
 	// nonland card".
 	Label string
 	// Of narrows a sacrifice ("an artifact"). The zero value is any
-	// permanent. Unused by a discard.
+	// permanent. Unused by a discard and a graveyard exile, which takes
+	// any card.
 	Of PermanentQuery
 	// Nonland narrows a discard to nonland cards. Unused by a
 	// sacrifice.
@@ -98,6 +104,8 @@ func ChosenAbilityCost(c AbilityCost, branch *int) (AbilityCost, error) {
 		out.SacrificeOther = b.sacrificeClause()
 	case AbilityCostBranchDiscard:
 		out.DiscardCards = b.discardClause()
+	case AbilityCostBranchExileGraveyard:
+		out.ExileCards = &ExileCost{N: b.count(), Label: b.Label, From: ZoneGraveyard}
 	default:
 		return c, ErrAbilityCostBranch
 	}
@@ -148,6 +156,8 @@ func (b AbilityCostBranch) BranchLabel() string {
 		return "Sacrifice " + b.Label
 	case AbilityCostBranchDiscard:
 		return "Discard " + b.Label
+	case AbilityCostBranchExileGraveyard:
+		return "Exile " + b.Label + " from your graveyard"
 	}
 	return b.Label
 }

@@ -346,6 +346,15 @@ type Characteristic struct {
 	// can see. power_floor.go.
 	AttackBlockPowerFloor int `json:",omitempty"`
 
+	// AttackBlockNeedsOtherPower, when above zero, is "this creature
+	// can't attack or block unless you control another creature with
+	// power N or greater" (Tiger-Dillo, #4459, CR 508.1c, 509.1b).
+	// AttackBlockPowerFloor's sibling for a condition on ANOTHER
+	// creature's finished power, which no layer-6 effect can see either:
+	// a layer-6 self static writes it and foldPowerFloorLocked reads it
+	// once every layer has run (CR 613.11). power_floor.go.
+	AttackBlockNeedsOtherPower int `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all

@@ -698,6 +698,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}CrewCostModal.svelte`],
     doc: "ADR 0186 Decision 6 (#3550): the crew or saddle picker's note on a creature that counts for something other than its power on this cost",
   }),
+  facePickerOmen: label({
+    name: "omen · CR 720.3",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}FacePickerModal.svelte`],
+    doc: "#5191: the face picker's source tag on an omen card (CR 720.3: cast it normally or as an Omen), which Scryfall lays out as an adventure; known by the Omen spell type on its second half's type line",
+  }),
   selectTarget: dynamicLabel({
     stem: "Select target for ",
     match: "prefix",

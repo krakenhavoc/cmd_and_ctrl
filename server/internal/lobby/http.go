@@ -38,6 +38,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
@@ -271,6 +272,11 @@ type Config struct {
 	// the DM route have no friends to add and no blocks to apply.
 	Social *social.Store
 
+	// Pods is ADR 0220's pods (migration 0033, slice 2): /me/pods,
+	// /pods/*, /me/pod-invites/* and the two admin routes. Nil (no
+	// database): those routes answer 503.
+	Pods *pods.Store
+
 	// AdvancedStats reads a person's version-2 stats record (ADR 0217
 	// slice 5) for GET /me/stats/advanced and GET
 	// /me/stats/decks/{deck_id}. Nil (no database): both answer 503 to
@@ -484,6 +490,14 @@ func Handler(c Config) http.Handler {
 		c.IdentityTTL = identityTTL
 	}
 	mux := metrics.NewServeMux()
+
+	// ADR 0213 §3: a host's personal block keeps the blocked person out
+	// of the host's tables. Wired here because Config.Social is a
+	// concrete store that may be nil, and a nil *Store must not become a
+	// non-nil interface.
+	if c.Lobby != nil && c.Social != nil {
+		c.Lobby.SetPersonalBlocks(c.Social)
+	}
 
 	// Dev / e2e knob: with CMDCTRL_DEV_RELAX_RATE_LIMITS set (truthy),
 	// every limiter constructed here becomes effectively unlimited so
@@ -865,6 +879,38 @@ func Handler(c Config) http.Handler {
 	mux.Handle("DELETE /me/blocks/{user_id}", socialRoute(deleteBlock))
 	mux.Handle("GET /me/social", auth.Middleware(c.Auth)(handlerFunc(c, mySocial)))
 	mux.Handle("PUT /me/social", socialRoute(putMySocial))
+	// Pods (ADR 0220 slice 2, pods_http.go). The writes share a
+	// per-person bucket shaped like statsPrefsLimit (1 a second, burst
+	// 5) and the reads one like advancedStatsLimit (2 a second, burst
+	// 10), ADR 0220 §5. New invites and new pods have their own caps in
+	// pods.Store. /pods is a top-level prefix, so it is in
+	// deploy/Caddyfile's @api matcher, the Vite proxy and the service
+	// worker's API_PATH; the SPA's #/pods is a hash route requested as
+	// `/`. /pods/join/{token} and /pods/{id}/link would conflict as
+	// patterns, so GET and POST /pods/{id}/{action} dispatch both.
+	podWrite := newLimiter(1, 5)
+	podReadLimit := newLimiter(2, 10)
+	podWriteRoute := func(h func(Config, http.ResponseWriter, *http.Request) error) http.Handler {
+		return auth.Middleware(c.Auth)(perCallerLimit(podWrite, handlerFunc(c, h)))
+	}
+	podReadRoute := func(h func(Config, http.ResponseWriter, *http.Request) error) http.Handler {
+		return auth.Middleware(c.Auth)(perCallerLimit(podReadLimit, handlerFunc(c, h)))
+	}
+	mux.Handle("GET /me/pods", podReadRoute(myPods))
+	mux.Handle("POST /pods", podWriteRoute(postPod))
+	mux.Handle("GET /pods/{id}", podReadRoute(getPod))
+	mux.Handle("PATCH /pods/{id}", podWriteRoute(patchPod))
+	mux.Handle("DELETE /pods/{id}", podWriteRoute(deletePod))
+	mux.Handle("PUT /pods/{id}/owner", podWriteRoute(putPodOwner))
+	mux.Handle("GET /pods/{id}/{action}", podReadRoute(podRead))
+	mux.Handle("POST /pods/{id}/{action}", podWriteRoute(podAction))
+	mux.Handle("DELETE /pods/{id}/link", podWriteRoute(deletePodLink))
+	mux.Handle("DELETE /pods/{id}/invites/{user_id}", podWriteRoute(deletePodInvite))
+	mux.Handle("DELETE /pods/{id}/members/{user_id}", podWriteRoute(deletePodMember))
+	mux.Handle("POST /me/pod-invites/{pod_id}/accept", podWriteRoute(acceptPodInvite))
+	mux.Handle("POST /me/pod-invites/{pod_id}/decline", podWriteRoute(declinePodInvite))
+	mux.Handle("PUT /admin/pods/{id}/name", requireAdmin(c, handlerFunc(c, adminRenamePod)))
+	mux.Handle("DELETE /admin/pods/{id}", requireAdmin(c, handlerFunc(c, adminDeletePod)))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
 	// Renewal on use and the saved identity's reinstall (ADR 0110 §1
 	// items 5 and 6, session_renew.go). A signed-in person only; the
@@ -1888,7 +1934,14 @@ func previewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	meta, kind, err := c.Lobby.Preview(id, r.URL.Query().Get("t"))
+	// The session is optional here: the invite is the credential. A
+	// signed-in person's account is what a host's block is matched on
+	// (ADR 0213 §3).
+	var userID uuid.UUID
+	if p, ok := optionalSession(c, r); ok && isSignedInPerson(p) {
+		userID = p.UserID
+	}
+	meta, kind, err := c.Lobby.PreviewAs(id, r.URL.Query().Get("t"), userID)
 	if err != nil {
 		return err
 	}

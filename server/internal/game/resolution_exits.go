@@ -30,6 +30,9 @@ import "github.com/google/uuid"
 //   - BUYBACK (CR 702.27a): put it into its owner's hand.
 //   - THE ADVENTURE EXILE (CR 715.3d): exile it, and its controller may
 //     cast the creature later (adventure.go).
+//   - THE OMEN SHUFFLE (CR 720.3d): shuffle it into its owner's library
+//     (omen.go). An omen card's spell half is never also an Adventure,
+//     so the two never both apply.
 //
 // Each sends the card somewhere other than a graveyard, so once one is
 // applied the others no longer apply (CR 616.1f): one choice, never
@@ -69,6 +72,7 @@ const (
 	resolutionExitBuyback       = "buyback"
 	resolutionExitWithCounter   = "exile-with-counter"
 	resolutionExitAdventure     = "adventure"
+	resolutionExitOmen          = "omen"
 )
 
 // apply rewrites the route the way this exit replaces it, and returns
@@ -101,14 +105,25 @@ func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 		}
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		return KeyedTail{Ref: adventureExiledTail, Player: controller, Carry: []uuid.UUID{cardID}}
+	case resolutionExitOmen:
+		// CR 720.3d: "its controller shuffles it into its owner's
+		// library". The card goes to the top of the OWNER's library and
+		// the tail shuffles that library, whatever the route did with
+		// the card (CR 701.24c).
+		if controller == uuid.Nil {
+			controller = e.owner
+		}
+		r.Dst, r.DstOwner, r.Actor = ZoneLibrary, e.owner, controller
+		return KeyedTail{Ref: omenShuffledTail, Player: e.owner, Carry: []uuid.UUID{cardID}}
 	}
 	return KeyedTail{}
 }
 
 // The exits' continuations as registered tails (#4361 S11b). Player is
 // the stack item's controller (the Adventure's: its owner when it had
-// none) and Carry the spell's card; the exile with a counter's Word is
-// the counter kind. On-disk keys: never renamed, never reused.
+// none; the Omen's shuffle: the card's owner) and Carry the spell's
+// card; the exile with a counter's Word is the counter kind. On-disk
+// keys: never renamed, never reused.
 var (
 	// reboundExiledTail: CR 702.88a's delayed trigger, about the card IN
 	// EXILE, created once it is there.
@@ -137,13 +152,20 @@ var (
 		g.grantAdventureCastFromExileLocked(o.Tail.Carry[0], o.Tail.Player)
 		return nil
 	})
+	// omenShuffledTail: CR 720.3d's shuffle of the card's OWNER's
+	// library (Player), once the card has been routed there. It runs
+	// whether or not the card arrived: CR 701.24c shuffles the library
+	// even when an effect moved the card elsewhere (omen.go).
+	omenShuffledTail = RegisterTail("engine/omen-shuffled", func(g *Game, o TailOutcome) error {
+		return g.ShuffleLibraryForEffect(o.Tail.Player)
+	})
 )
 
 // resolutionExitsLocked lists the replacements that apply to a spell
 // that has just RESOLVED, in the order they are offered: the granted
 // cast's exile, rebound, buyback, the exile with a counter, the
-// Adventure exile. Empty for an ordinary spell, which goes to its
-// owner's graveyard.
+// Adventure exile, the Omen shuffle. Empty for an ordinary spell, which
+// goes to its owner's graveyard.
 //
 // Caller must hold g.mu.
 func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
@@ -192,6 +214,12 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 		// on a CR 903.9 prompt finishes later, and the grant has to land
 		// when it does. See adventure.go.
 		out = append(out, exit("Adventure — exile it, and you may cast the creature later", resolutionExitAdventure))
+	}
+	if castAsOmen(c) {
+		// CR 720.3d, and the shuffle rides the route's continuation for
+		// the Adventure grant's reason: a route that paused on a CR
+		// 903.9b prompt finishes later. See omen.go.
+		out = append(out, exit("Omen — shuffle it into its owner's library", resolutionExitOmen))
 	}
 	return out
 }

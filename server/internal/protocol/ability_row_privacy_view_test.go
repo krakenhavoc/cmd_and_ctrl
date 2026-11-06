@@ -125,6 +125,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #4455's any-number form (Baron Helmut Zemo): the printed flag and
 	// the printed symbol floor.
 	"ExileCostAnyNumber": rowPublic, "ExileCostSymbolColor": rowPublic, "ExileCostSymbolMin": rowPublic,
+	// #5193's collect evidence floor: the printed N.
+	"ExileCostManaValueMin": rowPublic,
 	// ADR 0109 §7: the printed random flag, the printed counts of the
 	// two library components and the put's words.
 	"DiscardCostRandom": rowPublic, "DiscardCostCountFromX": rowPublic, "DiscardCostManaValueX": rowPublic, "TopCostN": rowPublic, "TopCostLabel": rowPublic,

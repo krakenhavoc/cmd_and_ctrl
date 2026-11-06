@@ -21,7 +21,7 @@
   import type { CardView } from "../../protocol";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
-  import { exileCostSymbolTotal } from "../../exileCost";
+  import { exileCostManaValueTotal, exileCostSymbolTotal } from "../../exileCost";
   import {
     canPickDifferentNames,
     discardNameRepeats,
@@ -66,6 +66,11 @@
     // again.
     symbolColor?: string;
     symbolMin?: number;
+    // #5193: collect evidence N — a variable pick that is enough once the
+    // picked cards' total mana value reaches `manaValueMin`. The confirm
+    // waits for it and the header shows the running total; the server
+    // checks it again.
+    manaValueMin?: number;
     // #4896: "Discard three cards with different names" (Ormos, Archive
     // Keeper): a card whose name is already picked is greyed, the confirm
     // waits for a set whose names differ, and a hand without enough names
@@ -86,6 +91,7 @@
     variable = false,
     symbolColor,
     symbolMin,
+    manaValueMin,
     differentNames = false,
   }: Props = $props();
 
@@ -107,7 +113,11 @@
   const symbolTotal = $derived(
     symbolColor ? exileCostSymbolTotal(options, chosen, symbolColor) : 0,
   );
-  const floorMet = $derived(!symbolColor || !symbolMin || symbolTotal >= symbolMin);
+  const manaValueTotal = $derived(manaValueMin ? exileCostManaValueTotal(options, chosen) : 0);
+  const floorMet = $derived(
+    (!symbolColor || !symbolMin || symbolTotal >= symbolMin) &&
+      (!manaValueMin || manaValueTotal >= manaValueMin),
+  );
   const ready = $derived(
     variable
       ? floorMet
@@ -145,7 +155,9 @@
     count={variable
       ? symbolColor && symbolMin
         ? `${chosen.length} picked · ${symbolTotal} / ${symbolMin} ${symbolColor} symbols`
-        : `${chosen.length} picked`
+        : manaValueMin
+          ? `${chosen.length} picked · mana value ${manaValueTotal} / ${manaValueMin}`
+          : `${chosen.length} picked`
       : need > 1
         ? `${chosen.length} / ${need} picked`
         : undefined}

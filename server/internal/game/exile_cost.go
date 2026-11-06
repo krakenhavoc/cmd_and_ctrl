@@ -260,6 +260,43 @@ type ExileCost struct {
 	// their printed mana costs. Plain data (no func) so the clause adds no
 	// closure route to Game. Nil with AnyNumber is "any number, no floor".
 	SymbolTotal *ManaSymbolTotal
+
+	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
+	// the chosen cards' total mana value must be this or more. It is
+	// collect evidence N (CR 701.59a, #5193: "exile any number of cards
+	// from your graveyard with total mana value N or greater"), so a
+	// clause that is payable only when the pile's whole total reaches N
+	// (CR 701.59b). Each card's mana value is the one it has in the
+	// graveyard: its printed cost (CR 202.3), a modal double-faced card's
+	// front face (CR 712.8a, the face it has there) and an Adventurer
+	// card's main characteristics (CR 715.4). Plain data, so the floor adds
+	// no closure route to Game. Zero is no mana-value floor.
+	ManaValueAtLeast int
+}
+
+// TotalManaValue is the sum of `cards`' mana values as they sit in a
+// hand or a graveyard (Card.ManaValue: the printed cost, which for a
+// card in one of those zones is the front face's). The total collect
+// evidence reads (CR 701.59a).
+func TotalManaValue(cards []Card) int {
+	n := 0
+	for _, c := range cards {
+		n += c.ManaValue()
+	}
+	return n
+}
+
+// FloorMet reports whether `cards` reach an AnyNumber clause's floors:
+// its mana-symbol total (ManaSymbolTotal) and its total mana value
+// (ManaValueAtLeast, collect evidence). The ONE test the validator, the
+// payable check, the bot's pick and an effect's collect evidence prompt
+// (effects.CollectEvidence) read, so they cannot disagree (#544). A nil
+// clause, or one with neither floor, is met by anything.
+func (e *ExileCost) FloorMet(cards []Card) bool {
+	if e == nil {
+		return true
+	}
+	return e.SymbolTotal.Met(cards) && TotalManaValue(cards) >= e.ManaValueAtLeast
 }
 
 // ManaSymbolTotal is "<N> or more <colour> mana symbols among their mana
@@ -382,7 +419,8 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 
 // ExileCostPayableForEffect reports whether the cards ExileCostOptionsForEffect
 // offers can pay the clause at all: at least N of them, or, for an AnyNumber
-// clause, enough to reach its symbol floor. The view reads it for the
+// clause, enough to reach its floor (a symbol total, or collect evidence's
+// total mana value, CR 701.59b). The view reads it for the
 // "can't activate" reason and the bot enumerator for whether to offer the
 // ability. CALLER MUST ALREADY HOLD g.mu (read or write).
 func (g *Game) ExileCostPayableForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) bool {
@@ -393,7 +431,7 @@ func (g *Game) ExileCostPayableForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	if !cost.AnyNumber {
 		return cost.CountFromX || len(ids) >= cost.N
 	}
-	return cost.SymbolTotal.Met(g.exileCostCardsLocked(playerID, cost, ids))
+	return cost.FloorMet(g.exileCostCardsLocked(playerID, cost, ids))
 }
 
 // exileCostCardsLocked resolves ids out of the pile the clause reads.
@@ -417,7 +455,7 @@ func (g *Game) ExileCostCheapestSufficientForEffect(playerID uuid.UUID, cost *Ex
 	var out []uuid.UUID
 	var cards []Card
 	for _, id := range ordered {
-		if cost.SymbolTotal.Met(cards) {
+		if cost.FloorMet(cards) {
 			break
 		}
 		for _, c := range g.exileCostCardsLocked(playerID, cost, []uuid.UUID{id}) {
@@ -425,7 +463,7 @@ func (g *Game) ExileCostCheapestSufficientForEffect(playerID uuid.UUID, cost *Ex
 			cards = append(cards, c)
 		}
 	}
-	return out, cost.SymbolTotal.Met(cards)
+	return out, cost.FloorMet(cards)
 }
 
 // validateExileCardsCostLocked checks an ExileCards component without
@@ -485,9 +523,10 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		named = append(named, *c)
 	}
 	// "Any number of … with N or more <colour> mana symbols among their
-	// mana costs": the cards named must reach the floor, or the cost is
-	// not paid (CR 601.2h, 602.2b).
-	if cost.AnyNumber && !cost.SymbolTotal.Met(named) {
+	// mana costs", and collect evidence's "with total mana value N or
+	// greater" (CR 701.59a): the cards named must reach the floor, or the
+	// cost is not paid (CR 601.2h, 602.2b).
+	if cost.AnyNumber && !cost.FloorMet(named) {
 		return nil, ErrInvalidParam
 	}
 	return append([]uuid.UUID(nil), chosen...), nil

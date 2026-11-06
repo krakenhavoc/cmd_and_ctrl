@@ -14,7 +14,8 @@ export function abilityCostBranches(a: ActivatedAbilityView | null | undefined) 
 }
 
 // withCostBranch is the row with branch `k` folded in: the branch's
-// sacrifice or discard clause on the row's own fields, and no branches
+// sacrifice, discard or graveyard-exile (forage, #5184) clause on the
+// row's own fields, and no branches
 // left, so the rest of the chain cannot tell it from a row that prints
 // that clause alone. The row unchanged when `k` is out of range.
 export function withCostBranch(a: ActivatedAbilityView, k: number): ActivatedAbilityView {
@@ -29,6 +30,12 @@ export function withCostBranch(a: ActivatedAbilityView, k: number): ActivatedAbi
     out.discard_cost_n = b.discard_cost_n;
     out.discard_cost_label = b.discard_cost_label;
     out.discard_cost_options = b.discard_cost_options;
+  }
+  if (b.exile_cost_n) {
+    out.exile_cost_n = b.exile_cost_n;
+    out.exile_cost_label = b.exile_cost_label;
+    out.exile_cost_options = b.exile_cost_options;
+    out.exile_cost_zone = b.exile_cost_zone;
   }
   return out;
 }

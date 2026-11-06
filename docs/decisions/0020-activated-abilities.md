@@ -4102,3 +4102,58 @@ nothing with two names and an accepted payment with three, the Register refusals
 draw, draw five off a two-card library for fifteen counters, and the ordering prompt holding the next draw),
 `protocol/discard_different_names_view_test.go`, and the client's `discardNames.test.ts` and
 `discardDifferentNames.render.test.ts`.
+
+## Amendment 2026-11-06 ([#5193](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5193)): collect evidence N
+
+Murders at Karlov Manor prints collect evidence N (CR 701.59a: "exile any number of cards from your graveyard with
+total mana value N or greater") in three places: an optional additional cost to cast ("As an additional cost to cast
+this spell, you may collect evidence 6"), part of an activation cost (Forensic Researcher's "{T}, Collect evidence 3:"),
+and an effect ("you may collect evidence 4. If you do, …"). CR text checked against the 2026-09-25 edition (CR 118.3,
+400.7d, 601.2b, 601.2f, 607.2i, 701.59a-c, 712.8a, 715.4).
+
+### Decision 80: collect evidence is the graveyard exile cost with a total mana value floor
+
+`game.ExileCost` gains `ManaValueAtLeast`, the second floor an `AnyNumber` clause may read beside Baron Helmut Zemo's
+`ManaSymbolTotal`. `game.CollectEvidenceCost(n, label)` builds the clause, and `ExileCost.FloorMet` is the one test
+the validator, `ExileCostPayableForEffect` (CR 701.59b: a graveyard whose whole total is below N can't collect),
+`ExileCostCheapestSufficientForEffect` (the bot's pick) and the effect form's set rule (`game.CollectEvidenceMet`)
+read. A card's mana value is `Card.ManaValue` as it sits in the graveyard, so a modal double-faced card counts its
+front face (CR 712.8a) and an adventurer card its normal characteristics (CR 715.4). No new component, no new wire
+list: the picks ride `exile_ids` on both a cast and an activation.
+
+The optional additional cost is an `AdditionalCost` keyed `game.CollectEvidenceKey` whose only component is the
+clause (`effects.OptionalCollectEvidence`). It joins the cast's payment plan like any announced optional cost, so
+`planExileCards` finds it, the cards are exiled with the spell on the stack, and the record is `PaidCost.Exiled` plus
+the index on `PaidCost.OptionalCosts`; "if evidence was collected" (CR 701.59c, 607.2i) reads the announcement, and a
+permanent reads `Card.Provenance.OptionalCosts` (CR 400.7d, `game.CardEvidenceCollected`). `effects.Register` allows
+an optional graveyard exile only under that key, at most one per card, and never beside a mandatory or branch
+graveyard exile, which would share `exile_ids`. `game.CostQuery.OptionalCosts` carries the announcement to a spell's
+own cost modifier at CR 601.2f (Bite Down on Crime's "{2} less if evidence was collected"), filled by the one pricer
+and by the enumerator.
+
+The effect form is `effects.RegisterCollectEvidence(key, n, then)`: a keyed choose_cards prompt over
+`Game.CollectEvidenceOptionsForEffect` (nothing asked below N), any number, none included, whose registered set rule
+refuses a pick that falls short, so a restored prompt keeps the floor.
+
+### Cards
+
+Analyze the Pollen, Behind the Mask, Bite Down on Crime, Crimestopper Sprite, Extract a Confession, Forensic
+Researcher, Hedge Whisperer, Izoni, Center of the Web, Polygraph Orb, Sample Collector and Vitu-Ghazi Inspector ship
+Full. Not built: "whenever you collect evidence" (Evidence Examiner, Surveillance Monitor), collect evidence X
+(Incinerator of the Guilty, Urgent Necropsy), a mana ability that collects evidence (Cryptex), ward with a collect
+evidence cost (Axebane Ferox), collect evidence as an alternative cost for every spell (Conspiracy Unraveler), and
+the other text of Deadly Cover-Up, Kylox's Voltstrider, Lamplight Phoenix and Tenth District Hero.
+
+### Snapshot, closure and ledger
+
+The floor and the key are catalog data and never persisted; the payment is the existing `PaidCost.Exiled` and
+`PaidCost.OptionalCosts`. No snapshot change. The clause is an int, so no `Game` route to a func is added and the
+closure counts do not move. The new prompt continuations, tail and reflexive body are on-disk keys in the ledger.
+
+### Tests
+
+`game/collect_evidence_test.go` (exactly N and more than N, a short graveyard and a short pick refused with nothing
+moved, cards named without the offer refused, declining, an MDFC and an adventurer counted at their front faces, the
+effect form's walk), `cards/effects/mkm_collect_evidence_cards_test.go` (each card, both branches of "if evidence was
+collected", the Register refusals, the view row and the enumerator reading the gate), and the client's
+`collectEvidence.test.ts`.

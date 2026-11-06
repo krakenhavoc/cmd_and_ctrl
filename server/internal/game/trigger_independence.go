@@ -110,6 +110,10 @@ const (
 	// controller's hand from the battlefield this turn (Miles O'Brien,
 	// Transporter Ops). The turn's tally only rises.
 	FootprintCondPermanentReturned FootprintCond = "permanent_returned"
+	// FootprintCondCelebration: N or more nonland permanents entered the
+	// battlefield under the item's controller's control this turn
+	// (celebration, #5164). The turn's entry tally only rises.
+	FootprintCondCelebration FootprintCond = "celebration"
 	// FootprintCondCitysBlessing: the item's controller has the city's
 	// blessing, which is never lost once had (CR 702.131c).
 	FootprintCondCitysBlessing FootprintCond = "citys_blessing"
@@ -134,6 +138,10 @@ const (
 	// read through the layers (a creature with power 4 or greater, three
 	// artifacts, seven land names, thirty counters).
 	FootprintCondBoard FootprintCond = "board"
+	// FootprintCondGraveyard: a fact about the cards in the item's
+	// controller's graveyard (Walltop Sentries' "if there's a Lesson card
+	// in your graveyard").
+	FootprintCondGraveyard FootprintCond = "graveyard"
 	// FootprintCondAttacked: the item's controller declared an attacker
 	// this turn (raid: Fire Nation Raider).
 	FootprintCondAttacked FootprintCond = "attacked"
@@ -280,7 +288,12 @@ type triggerAccess struct {
 	// monarchRead is set when the item's intervening "if" asks whether
 	// its controller is the monarch (#3033).
 	monarchRead bool
-	emits       map[EventKind]bool
+	// graveyardReads is set when the item's intervening "if" reads its
+	// controller's graveyard (FootprintCondGraveyard): another item that
+	// moves a card between zones or changes a permanent (which can put it
+	// there) can change whether the item does anything.
+	graveyardReads bool
+	emits          map[EventKind]bool
 }
 
 // writesAnything reports whether the item changes any game state a
@@ -642,6 +655,9 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 	if b.boardReads && boardConditionSees(a, statics) {
 		return triggerOrderWhy{reason: TriggerOrderReasonCondition, card: g.whyCardNameLocked(b.source)}
 	}
+	if b.graveyardReads && graveyardConditionSees(a) {
+		return triggerOrderWhy{reason: TriggerOrderReasonCondition, card: g.whyCardNameLocked(b.source)}
+	}
 	// A tie on one object asks, whatever the two do to it.
 	for _, id := range sortedIDs(a.writes) {
 		if b.writes[id] || b.reads[id] {
@@ -674,7 +690,7 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// first. Another loss of life is the same either way.
 		// A player who leaves takes their permanents with them (CR
 		// 800.4a), which a board condition sees.
-		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] || b.boardReads {
+		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] || b.boardReads || b.graveyardReads {
 			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 		if g.touchesObjectsOfLocked(b, p) {
@@ -707,11 +723,25 @@ func boardConditionSees(a *triggerAccess, statics func() layerStatics) bool {
 	return len(a.cards) > 0 && statics().anyCards
 }
 
+// graveyardConditionSees reports whether what a does can change a
+// graveyard condition (FootprintCondGraveyard) another item reads: a
+// card it moves between zones (a mill, a surveil, an exile, a token's
+// entry is declared as a zone move too), a permanent it changes or pumps
+// (which can die, CR 704.5f), or the rules. A gain, a drain, a draw, a
+// scry and energy put nothing into a graveyard and take nothing out.
+func graveyardConditionSees(a *triggerAccess) bool {
+	if len(a.writes) > 0 || len(a.pumped) > 0 || a.rules || a.pumpRules {
+		return true
+	}
+	return a.emits[EventZoneMove] || a.emits[EventLTB] || a.emits[EventMill]
+}
+
 // addConditionReadLocked adds what an intervening "if" reads, or reports
 // that the check cannot say (#3033). Each condition is argued here:
 //
 //   - A tally that only rises this turn (life gained, life lost, a
-//     creature died, a permanent returned to hand) and a designation that is never lost (the city's
+//     creature died, a permanent returned to hand, nonland permanents
+//     entered) and a designation that is never lost (the city's
 //     blessing) cannot be made false: once it holds, it holds until the
 //     batch has resolved, since a turn cannot end with the batch still on
 //     the stack. So a condition that holds now reads nothing the batch
@@ -730,6 +760,8 @@ func boardConditionSees(a *triggerAccess, statics func() layerStatics) bool {
 //   - The source: a read of the item's source object, as a counter on
 //     it is.
 //   - The board: boardReads, which boardConditionSees conflicts with.
+//   - The controller's graveyard: graveyardReads, which
+//     graveyardConditionSees conflicts with.
 //
 // Caller must hold g.mu.
 func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s FootprintStep) bool {
@@ -749,6 +781,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
 	case FootprintCondPermanentReturned:
 		return tally.PermanentsReturnedToHand > 0
+	case FootprintCondCelebration:
+		return tally.NonlandPermanentsEntered >= atLeast
 	case FootprintCondCitysBlessing:
 		return g.CitysBlessingForEffect(you)
 	case FootprintCondNoSpellsCast:
@@ -765,6 +799,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.reads[t.SourceCardID] = true
 	case FootprintCondBoard:
 		a.boardReads = true
+	case FootprintCondGraveyard:
+		a.graveyardReads = true
 	default:
 		return false
 	}

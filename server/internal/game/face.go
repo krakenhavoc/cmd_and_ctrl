@@ -164,7 +164,9 @@ const (
 	// the Adventure half is an instant or sorcery and never becomes
 	// one. See adventure.go for the rest of the lifecycle: the
 	// Adventure spell exiles as it resolves and its owner may cast
-	// the creature from exile for as long as it stays there.
+	// the creature from exile for as long as it stays there. An omen
+	// card (CR 720) has this layout too; its Omen half is shuffled
+	// into its owner's library instead (omen.go).
 	LayoutAdventure = "adventure"
 
 	// LayoutSplit and LayoutPrepare carry a joined top-level cost.
@@ -299,7 +301,8 @@ func (c Card) FaceCount() int {
 //	                   CR 715.4's exile grant names the creature face
 //	                   and an impulse grant over the same card names
 //	                   none, so a zone rule here would be wrong for
-//	                   one of them.
+//	                   one of them. An omen card shares the layout
+//	                   and the rule (CR 720.3).
 //	transform          front only (CR 712.11). The back is reached by
 //	                   transforming the permanent, not by casting it.
 //	split              both — CR 709.3: the player chooses which half

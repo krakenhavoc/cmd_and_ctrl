@@ -25,3 +25,18 @@ func damageEachClauseTarget(amounts ...int) func(*game.StackItem, *Context) erro
 		})
 	}
 }
+
+// damageTheClauseTarget is the step "deals n damage to <the pick of
+// clause slot>" in a ResolveSteps body, the damage from the spell. A pick
+// that has become illegal (CR 608.2b) is dealt nothing. Searing Blood and
+// Blooming Blast deal their first sentence with it, so their second waits
+// for any prompt the damage asks (CR 608.2c, #4155).
+func damageTheClauseTarget(slot, n int) Instruction {
+	return func(ctx *Context) error {
+		t, ok := ctx.ClauseTarget(slot)
+		if !ok {
+			return nil
+		}
+		return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}.Apply(ctx)
+	}
+}

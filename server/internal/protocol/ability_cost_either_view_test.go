@@ -82,3 +82,50 @@ func TestCostBranchesHideTheDiscardBranchFromOtherSeats(t *testing.T) {
 		t.Errorf("the controller's discard branch %+v lost its options", mine)
 	}
 }
+
+// #5184: a forage cost ships its two ways — exile three cards from your
+// graveyard (with the graveyard as the picker) and sacrifice a Food —
+// each payable only when the graveyard holds three cards or a Food is
+// on the battlefield. A graveyard is public, so every seat sees the
+// exile options.
+func TestForageCostViewCarriesBothWays(t *testing.T) {
+	g := buildActiveGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	src := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: src, Name: "Forager", TypeLine: "Creature — Squirrel",
+		OracleID: "00000000-0000-0000-0000-000000005184",
+		Owner:    me.ID, Controller: me.ID, Power: 2, Toughness: 2,
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label: "{2}, Forage: grow",
+			Cost:  game.AbilityCost{Mana: "{2}", Either: game.ForageAbilityBranches(), Forage: true},
+		}},
+	})
+	g.WithWriteLock(func() {
+		me.Graveyard.Cards = nil
+		me.Graveyard.PushTop(game.NewCard("Old Card", me.ID))
+		me.Graveyard.PushTop(game.NewCard("Older Card", me.ID))
+	})
+	a := controllerFrameCard(t, g, src).ActivatedAbilities[0]
+	if len(a.CostBranches) != 2 {
+		t.Fatalf("cost_branches = %+v, want two", a.CostBranches)
+	}
+	exile, food := a.CostBranches[0], a.CostBranches[1]
+	if exile.Label != "Exile three cards from your graveyard" || exile.Payable || exile.ExileCostN != 3 ||
+		exile.ExileCostZone != "graveyard" || len(exile.ExileCostOptions) != 2 {
+		t.Errorf("exile branch %+v: want unpayable with two cards in the graveyard", exile)
+	}
+	if food.Label != "Sacrifice a Food" || food.Payable {
+		t.Errorf("food branch %+v: want unpayable with no Food", food)
+	}
+
+	g.WithWriteLock(func() { me.Graveyard.PushTop(game.NewCard("Third Card", me.ID)) })
+	g.Battlefield.PushTop(game.Card{InstanceID: uuid.New(), Name: "Food", TypeLine: "Token Artifact — Food", Owner: me.ID, Controller: me.ID})
+	a = controllerFrameCard(t, g, src).ActivatedAbilities[0]
+	if !a.CostBranches[0].Payable || !a.CostBranches[1].Payable {
+		t.Errorf("branches %+v: want both payable with three cards and a Food", a.CostBranches)
+	}
+	if b := frameCard(t, g, them.ID.String(), src).ActivatedAbilities[0].CostBranches[0]; len(b.ExileCostOptions) != 3 {
+		t.Errorf("another seat's exile branch %+v: the graveyard is public", b)
+	}
+}
