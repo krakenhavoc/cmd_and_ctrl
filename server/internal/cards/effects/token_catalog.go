@@ -331,8 +331,6 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
 	printedTrekB33TribbleToken,
 
-	// Cruel Administrator's Soldier with firebending 1 (Avatar, #4459).
-	printedAvB16SoldierFirebendingToken,
 	// Lita, Mechanical Engineer's Zeppelin: flying, crew 3 (#5075).
 	printedAvB24ZeppelinToken,
 }

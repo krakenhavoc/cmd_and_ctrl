@@ -96,29 +96,10 @@ func avB16PlusOneCountersOnLandsYouControl(g *game.Game, you uuid.UUID) int {
 }
 
 // avB16SoldierFirebendingToken is the 2/2 red Soldier with firebending 1
-// (Cruel Administrator).
+// (Cruel Administrator): the catalog's `token:soldier-firebending`, the
+// same printed token Firebender Ascension makes.
 func avB16SoldierFirebendingToken() game.Card {
-	return tokenFromCatalog(printedAvB16SoldierFirebendingToken)
-}
-
-// printedAvB16SoldierFirebendingToken is that Soldier as PRINTED (the
-// ttla token card). Firebending is a triggered ability, so it rides the
-// catalog slot (ADR 0083), as Avatar Roku's Dragon's does.
-func printedAvB16SoldierFirebendingToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "soldier-firebending-1",
-		Card: game.Card{
-			Name:      "Soldier",
-			TypeLine:  "Token Creature — Soldier",
-			Power:     2,
-			Toughness: 2,
-			Colors:    []string{"R"},
-		},
-		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Soldier — firebending 1", Do(firebending(1))),
-		},
-		Text: "Firebending 1 (Whenever this token attacks, add {R}. This mana lasts until end of combat.)",
-	}
+	return tokenFromCatalog(printedFirebendingSoldierToken)
 }
 
 // avB16Earthbend is a triggered ability's whole effect when it is
