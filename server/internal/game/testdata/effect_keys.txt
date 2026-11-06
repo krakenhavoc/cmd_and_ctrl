@@ -930,6 +930,7 @@ confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
 confirm confirm/myriad-copy
 confirm confirm/mystic-remora-draw
+confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/ogre-head-helm-sacrifice
