@@ -232,6 +232,14 @@ const VariantXPumps = "xpumps"
 // XPumpsContestant is an arena name only.
 const XPumpsContestant = string(tiers.Heuristic) + "-" + VariantXPumps
 
+// VariantNoTeamPumps disables only #4320's team-pump price
+// (Config.PriceTeamPumps false): a row that pumps every creature its
+// controller controls until end of turn keeps the flat ActivateBase.
+const VariantNoTeamPumps = "noteampumps"
+
+// NoTeamPumpsContestant is an arena name only.
+const NoTeamPumpsContestant = string(tiers.Heuristic) + "-" + VariantNoTeamPumps
+
 // VariantCantBlock turns on #4977's price of "can't block this turn" by
 // the attack it opens (Config.PriceCantBlock), which DefaultConfig leaves
 // off: there such a pick is priced as removal.
@@ -252,6 +260,7 @@ const CantBlockContestant = string(tiers.Heuristic) + "-" + VariantCantBlock
 // `heuristic-noresolutionmana` (#4980) is one too.
 // `heuristic-triggermana` (#4770) is one too.
 // `heuristic-xpumps` (#4976) is one too.
+// `heuristic-noteampumps` (#4320) is one too.
 // `heuristic-cantblock` (#4977) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
@@ -295,13 +304,15 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoSpareMana}, nil
 	case NoRidersContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoRiders}, nil
+	case NoTeamPumpsContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTeamPumps}, nil
 	case NoResolutionManaContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoResolutionMana}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant, NoManaSinkContestant, NoModePicksContestant, SpareTokensContestant, RampCurveContestant, SourceCountersContestant, NoRidersContestant,
-			CantBlockContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant, NoManaSinkContestant, NoModePicksContestant, SpareTokensContestant, RampCurveContestant, SourceCountersContestant, NoRidersContestant,
+			CantBlockContestant, NoTeamPumpsContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -494,7 +505,7 @@ func knownVariant(v string) bool {
 		return true
 	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure, VariantNoOutnumber, VariantNoLandOrder, VariantNoEntryCounters, VariantNoManaSink, VariantNoModePicks, VariantSpareTokens, VariantNoRiders:
 		return true
-	case VariantSourceCounters, VariantNoSpareMana:
+	case VariantSourceCounters, VariantNoSpareMana, VariantNoTeamPumps:
 		return true
 	case VariantNoResolutionMana, VariantTriggerMana:
 		return true
@@ -1022,6 +1033,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantXPumps:
 		h := heuristic.DefaultConfig()
 		h.PriceXPumps = true
+		opt.Heuristic = &h
+	case VariantNoTeamPumps:
+		h := heuristic.DefaultConfig()
+		h.PriceTeamPumps = false
 		opt.Heuristic = &h
 	case VariantCantBlock:
 		h := heuristic.DefaultConfig()

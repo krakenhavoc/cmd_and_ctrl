@@ -483,6 +483,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				}
 				v += cv
 			}
+			// #4320: a pump of every creature the bot controls until end
+			// of turn (team_pump.go), worth the attack it adds this turn,
+			// in place of the flat ActivateBase.
+			if tv, ok := p.teamPumpValue(st, src, row); ok {
+				if !purposed {
+					v, reason, purposed = 0, "activate (team pump)", true
+				}
+				v += tv
+			}
 			// #4980: the mana the run's last resolution returns, which
 			// the bot's hand can spend (resolution_mana.go).
 			if rmOK {

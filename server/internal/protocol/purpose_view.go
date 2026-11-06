@@ -132,6 +132,11 @@ type PurposeView struct {
 	// controller's own puts on its own source, to stay (#5083):
 	// Hangarback Walker's {1}, {T} row 1.
 	SourceCounters int `json:"source_counters,omitempty"`
+	// TeamPump is what an activated row of the controller's own gives
+	// each creature its controller controls until end of turn, with no
+	// target (#4320): Purphoros, God of the Forge's {2}{R} row
+	// {power: 1}. Pump is what a row gives its own source.
+	TeamPump *PumpView `json:"team_pump,omitempty"`
 	// ResolutionMana is the mana an activated row of the controller's
 	// own adds on one numbered resolution of it this turn (#4980):
 	// Soulbright Seeker's {Resolution: 3, Mana: "{R}{R}{R}{R}"}. Such a
@@ -459,6 +464,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 		v.Pump.CantBlock = pm.CantBlock // #4977
+	}
+	if pm := p.TeamPump; pm != nil {
+		v.TeamPump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{
