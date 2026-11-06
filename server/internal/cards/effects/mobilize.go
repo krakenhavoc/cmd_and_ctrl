@@ -39,6 +39,32 @@ func Mobilize(name string, n int) game.TriggeredAbility {
 	})
 }
 
+// MobilizeX is "Mobilize X, where X is …" (Avenger of the Fallen): the
+// same trigger, with X counted by `count` as the trigger RESOLVES. The
+// reminder text's "create X … tokens" is an instruction of the resolving
+// ability, so the number is the one on the battlefield and in the zones
+// at that moment, not as the attack was declared (CR 608.2h). X of 0 or
+// less creates nothing.
+//
+//	Triggered: []game.TriggeredAbility{MobilizeX("Avenger of the Fallen", creatureCardsInYourGraveyard)},
+func MobilizeX(name string, count func(g *game.Game, item *game.StackItem) int) game.TriggeredAbility {
+	return WheneverThisAttacks(name+" — mobilize X", func(g *game.Game, item *game.StackItem) error {
+		n := count(g, item)
+		if n <= 0 {
+			return nil
+		}
+		return CreateTokensAttackingYourChoice{
+			Template:    TokenCard("1/1 red Warrior"),
+			RuleDefined: true,
+			N:           n,
+			Tapped:      true,
+			Prefer:      triggerAttackTarget(item),
+			Label:       name,
+			Tail:        game.KeyedTail{Ref: mobilizeSacrificeAtEndStep},
+		}.Apply(NewContext(g, item))
+	})
+}
+
 // mobilizeSacrificeAtEndStep is the Warriors' tail, keyed (#4294): the
 // end step trigger that sacrifices them.
 var mobilizeSacrificeAtEndStep = AttackingTokensThen("attacking-tokens/mobilize-sacrifice-the-warriors",
