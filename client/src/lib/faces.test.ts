@@ -4,6 +4,7 @@ import {
   cardAsFace,
   castableFaceIndex,
   castableFaces,
+  isOmenCard,
   isOneSidedLayout,
   isSidewaysArt,
   needsFacePicker,
@@ -132,6 +133,33 @@ describe("needsFacePicker", () => {
   it("is false for a modal_dfc that somehow arrived without faces", () => {
     const broken: CardView = { ...seaGate(), faces: undefined };
     expect(needsFacePicker(broken)).toBe(false);
+  });
+});
+
+// #5191: an omen card (CR 720) shares the adventure layout; the Omen
+// spell type (CR 205.3k) on its second half is what tells them apart.
+describe("isOmenCard", () => {
+  const twoHalves = (second: string): CardView => ({
+    ...seaGate(),
+    layout: "adventure",
+    faces: [
+      { name: "Bloomvine Regent", type_line: "Creature — Dragon", mana_cost: "{3}{G}{G}" },
+      { name: "Claim Territory", type_line: second, mana_cost: "{2}{G}" },
+    ],
+  });
+
+  it("is true for an adventure-layout card whose second half is an Omen", () => {
+    expect(isOmenCard(twoHalves("Sorcery — Omen"))).toBe(true);
+  });
+
+  it("is false for an adventurer card", () => {
+    expect(isOmenCard(twoHalves("Instant — Adventure"))).toBe(false);
+  });
+
+  it("is false for another layout, or with no subtype on the second half", () => {
+    expect(isOmenCard({ ...twoHalves("Sorcery — Omen"), layout: "modal_dfc" })).toBe(false);
+    expect(isOmenCard(twoHalves("Sorcery"))).toBe(false);
+    expect(isOmenCard({ ...seaGate(), layout: "adventure", faces: undefined })).toBe(false);
   });
 });
 
