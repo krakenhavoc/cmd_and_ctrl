@@ -535,3 +535,84 @@ copiable values recorded before departure (CR 608.2h, 707.2). A departing
 Clone therefore still produces copies of the creature it copied; a new
 object with the same card ID is not substituted for the old attacker.
 This LKI data is cloned and included in the schema-v8 shape.
+
+## Amendment — 2026-11-05: a creation of several tokens enters them together by default (S79, #4867)
+
+**Decision.** Every token creation instruction that, once its CR 701.7b window
+has settled, makes more than one token enters them as ONE simultaneous entry.
+That is the default of the creation path (`applyResolvedTokenCreationLocked`),
+not something a caller asks for: `CreateTokenForEffect(…, n)`,
+`CreateTokensForEffect`, `CreateTokensKeyedForEffect`, `CreateToken{N: n}`,
+`CreateTokenCopy{N: n}` and every other door reach it. A creation that makes
+exactly one token enters it on its own, as before; a one-member batch is the
+same entry, and keeping that path keeps its frame.
+
+**Why.** CR 701.7a: to create tokens is to "put the specified number of tokens
+with the specified characteristics onto the battlefield", one action of one
+instruction, and CR 608.2f processes an action taken on several objects
+simultaneously. CR 603.6a then checks every permanent on the battlefield, the
+newcomers included, once for the event that put them there. Entering the tokens
+one at a time (the "Sequencing" tradeoff above) made a Soul Warden token see
+only the tokens created after it, and a token copy of a "whenever another
+creature enters" creature miss its siblings. #4594 fixed the "for each" copiers
+with an opt-in (`CreateTokenCopiesTogether`, `TokenCreation.Together`, the
+2026-10-12 amendment's batch); this amendment makes the batch the rule, so a
+card cannot get it wrong by choosing the wrong door.
+
+**What does not change.**
+
+- The creation instruction is still ONE `RepEventCreateTokens` window
+  (decision 1). A doubler (Doubling Season, Parallel Lives, Anointed Procession)
+  multiplies the instruction's counts and Academy Manufactor rewrites its kinds
+  before anything is minted, so their extra tokens are part of the one entry. A
+  myriad or "your choice" attack split (#2033, #2727) is settled after the
+  window and before the entry, as before; its groups enter together.
+- Every token still takes the ordinary entry pipeline (decision 2), now through
+  the simultaneous entry batch (`entry_batch.go`): each token's CR 614 window is
+  run against the board as it was before any of them entered (CR 614.12), then
+  every token lands, then every arrival is announced, then the entry hooks run.
+  A window that asks a question pauses the whole creation before any token
+  lands; the batch is data (#4404, `ReplacementResumeMoveTokenBatch`), so the
+  question is a restore point.
+- "One or more" triggers still see one occurrence (CR 603.2c). They already did
+  for a sequential creation inside one resolution (`event_batch.go`); what
+  changes is that a per-object trigger on one of the NEW tokens now sees the
+  others.
+- A keyed tail is told the tokens that landed, in creation order; a synchronous
+  door's report reads the same list.
+
+**What the batch had to learn.** The batch took a token's entry clause only
+for "tapped", the counters and what it attacks. A token entering on its own also
+takes the host an Aura token is created attached to
+(`TokenEntryOptions.AttachedTo`, a copy of an Aura spell, #3158); a batch
+member's entry now takes it as its fixed aura host, from the
+`tokenEntry.attachedTo` the batch already wrote. A token member's entry event
+also carries `NewZoneOwner`, as a single token's did.
+
+**The one exception: tokens created blocking.** `TokenGroup.Blocking`
+(Brimaz, King of Oreskos, under a token doubler) still enters its tokens one
+at a time. A paused simultaneous entry's members (`entryBatchMemberSnapshot`)
+have no field for the attacker a token blocks. Adding one is additive on disk,
+but a binary from before it would restore the paused batch and land the tokens
+not blocking, which `SnapshotSchemaVersion` does not allow without a bump. The
+cost of the exception is small: a Cat Soldier has no ability that would see its
+sibling enter, and a "one or more" trigger already counts the resolution once.
+Moving it into the batch is a later change that takes a frame key of its own,
+as #4404 did for token members.
+
+**Snapshots.** No shape change: a creation of several tokens that pauses is
+written as the batch frame #4404 already keys (`ReplacementResumeMoveTokenBatch`),
+and every member field it reads was already written. `TokenCreation.Together` and the creation event's
+`tokenTogether` stay: they are written to disk and still mean "enter together",
+which is now also what a creation of several tokens does without them. The
+sequential frame (`tokenEntryRun`, `entryTail.tokens`) stays for a single token
+and for a file written before this change, which restores and finishes as it
+was paused.
+
+**Not in this amendment.** Encore ("for each opponent, create a token copy that
+attacks that opponent") and Fractured Identity ("each other player creates a
+token copy") still make one creation per player. Encore binds each token to its
+opponent from the IDs its creation reports, which a single creation with a
+doubler in its window could not split back by opponent without a tail told the
+landed IDs per group; Fractured Identity's copies are created by different
+players, and `TokenCreation` has one controller. Each needs that seam first.

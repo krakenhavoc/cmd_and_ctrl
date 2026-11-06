@@ -82,7 +82,7 @@
       {#if data.advanced && data.overview}
         <StatsFilters {makeup} {range} onchange={onFilters} disabled={loading} />
         <div class:stale={loading}>
-          <AdvancedOverview overview={data.overview} shared />
+          <AdvancedOverview overview={data.overview} shared {token} />
         </div>
       {:else}
         <p class="muted small">

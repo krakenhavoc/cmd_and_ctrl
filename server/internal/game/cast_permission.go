@@ -1818,7 +1818,11 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // `claim` is the one the cast uses. Any other claim out of a zone a
 // stored or standing permission opens is cast under the first such
 // permission at the printed cost, if there is one (#4971), and
-// otherwise, like no claim, gets CastPermissionForLocked's answer. The
+// otherwise gets the first permission. No claim out of such a zone is
+// cast under the first permission that admits a cast claiming nothing
+// (#5081), skipping one whose price is a claimable offer of its own
+// (Green Goblin's mayhem ahead of Muldrotha), and otherwise under the
+// first permission. The
 // cast path, its price and its preview all ask this with the claim
 // they were handed, so all three judge the cast under the same
 // permission; CastOffersForLocked
@@ -2000,6 +2004,24 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 			}); perm != nil {
 				return perm
 			}
+		}
+	}
+	if claim == "" && zone != ZoneCommand && zone != ZoneHand && !card.PrepareCopy && !card.IsLand() {
+		// #5081: a cast that claims nothing is made under the first
+		// permission that lets one be made (permissionClaimOK): one at the
+		// printed cost (Muldrotha) or one with a flat price that charges
+		// itself (a {0} exile, airbend's {2}). One whose price is a
+		// claimable offer (Green Goblin's mayhem, Underworld Breach's
+		// escape) is claimed under its key and refuses a cast that claims
+		// nothing, so handing it this one refused the printed cast
+		// Muldrotha beside it allows, whenever it happened to come first.
+		// Only those are skipped: a flat-priced permission keeps its place,
+		// so its free cast is never traded for the printed cost. A land is
+		// played, not cast, and keeps the first permission.
+		if perm := g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+			return permissionClaimOK(card, nil, perm) && acceptsPermission(accept, perm)
+		}); perm != nil {
+			return perm
 		}
 	}
 	return g.castPermissionLocked(playerID, card, zone, accept)

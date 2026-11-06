@@ -253,6 +253,7 @@
             aria-label={`sideboard of ${deck.name}`}
             disabled={busy || sideboardOpen}>Sideboard</button
           >
+          <a class="btn sm" href={`#/stats/deck/${encodeURIComponent(deck.id)}`}>{L.deckStats}</a>
           {#if deck.coverage}
             <button type="button" class="btn sm" onclick={onReport} aria-expanded={reportOpen}>
               {reportOpen ? "Hide report" : "Coverage report"}

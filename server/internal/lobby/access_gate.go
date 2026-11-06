@@ -257,6 +257,12 @@ type communityResponse struct {
 	// Results is whether a host may opt a table in to a results post in
 	// the community server's #game-results channel (ADR 0174 §6).
 	Results bool `json:"results"`
+	// DMInvites is whether this server can DM a table's invite link
+	// through the bot (POST /games/{id}/invites/dm): the bot token and a
+	// public origin for the link. Where it is false (every environment
+	// but production) the Played with list offers Copy invite instead
+	// (ADR 0213 §1).
+	DMInvites bool `json:"dm_invites"`
 }
 
 // community is GET /community: public, no session, cacheable for five
@@ -269,5 +275,6 @@ func community(c Config, w http.ResponseWriter, _ *http.Request) error {
 		Voice:     c.DiscordVoice.Enabled(),
 		LFG:       c.Lobby.LFGEnabled(),
 		Results:   c.Lobby.ResultsEnabled(),
+		DMInvites: c.DiscordBot.Enabled() && c.InviteBaseURL != "",
 	})
 }

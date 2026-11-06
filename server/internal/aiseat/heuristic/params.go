@@ -68,6 +68,11 @@ type castParams struct {
 	// ExileFromHandIDs are the hand cards a March's additional cost exiles
 	// for its discount (#3175) — lost from hand as a discarded card is.
 	ExileFromHandIDs []string `json:"exile_from_hand_ids"`
+	// RevealIDs is the one card a reveal or behold cost names. It costs
+	// nothing unless the behold EXILES it (#4687, the Champions'
+	// "behold a Kithkin and exile it"), when it is priced as an exiled
+	// permanent or hand card is (castBeholdExiles).
+	RevealIDs []string `json:"reveal_ids"`
 	// ExileIDs are the graveyard cards a mandatory exile-N-cards
 	// additional cost spends (#3536) — the same resource escape's exiled
 	// graveyard and delve are, priced the same way.

@@ -8,54 +8,44 @@
   import ChartFigure from "./ChartFigure.svelte";
   import BarChart from "./BarChart.svelte";
   import StackedBar from "./StackedBar.svelte";
-  import LineChart from "./LineChart.svelte";
   import Histogram from "./Histogram.svelte";
   import Sparkline from "./Sparkline.svelte";
   import StatTile from "./StatTile.svelte";
-  import TrendStrip from "./TrendStrip.svelte";
-  import { scryfallImageURL } from "../../cardImage";
+  import PlacesFigure from "./PlacesFigure.svelte";
+  import WinKindsFigure from "./WinKindsFigure.svelte";
+  import AggressionFigure from "./AggressionFigure.svelte";
+  import ManaTroubles from "./ManaTroubles.svelte";
+  import CardGrid from "./CardGrid.svelte";
   import { avgPlaceText, placeText, recordText, winRateText } from "../../myStats";
   import type { ChartBar } from "../../statsCharts";
   import { evennessWord } from "../../statsCharts";
   import {
-    aggressionCaption,
     COLOUR_TEXT,
-    COMBO_RULE_TEXT,
     coloursCaption,
+    deckStatsHref,
     kindText,
-    landNumberText,
     lengthCaption,
     medianLengthText,
-    missedCaption,
     NOT_ENOUGH,
     oneDecimal,
     outKindsCaption,
     pctText,
-    placesCaption,
     rateText,
     sortedKinds,
     spreadCaption,
     turnOrderCaption,
-    winKindsCaption,
     type AdvancedOverview,
-    type ManaGame,
   } from "../../advancedStats";
 
   interface Props {
     overview: AdvancedOverview;
     /** A shared view: no card images (they need a session) and no owner-only links. */
     shared?: boolean;
+    /** A shared view's token, so a deck row opens its shared deck page. */
+    token?: string;
   }
-  const { overview: o, shared = false }: Props = $props();
+  const { overview: o, shared = false, token }: Props = $props();
 
-  const PLACE_TONES = [
-    "var(--chart-1)",
-    "var(--chart-2)",
-    "var(--chart-3)",
-    "var(--chart-4)",
-    "var(--chart-5)",
-    "var(--chart-6)",
-  ];
   const IDENTITY: Record<string, string> = {
     W: "var(--identity-w)",
     U: "var(--identity-u)",
@@ -64,11 +54,15 @@
     G: "var(--identity-g)",
   };
 
-  const winKinds = $derived(sortedKinds(o.win_kinds));
   const outKinds = $derived(sortedKinds(o.out_kinds));
-  const comboRules = $derived(sortedKinds(o.combo_rules));
-  const kindBars = (kinds: { kind: string; games: number }[], tone: string): ChartBar[] =>
-    kinds.map((k) => ({ label: kindText(k.kind), value: k.games, text: `${k.games}`, tone }));
+  const outBars = $derived<ChartBar[]>(
+    outKinds.map((k) => ({
+      label: kindText(k.kind),
+      value: k.games,
+      text: `${k.games}`,
+      tone: "var(--chart-4)",
+    })),
+  );
 
   const turnBars = $derived<ChartBar[]>(
     o.turn_order.map((r) => ({
@@ -84,12 +78,6 @@
   );
 
   const lengthCats = $derived(o.length.by_turns.map((b) => `${b.value}`));
-  const overTurnCats = $derived(
-    o.aggression.over_turns.map((t) => (t.own_turn >= 12 ? "12+" : `${t.own_turn}`)),
-  );
-
-  const missed = $derived(o.mana.missed_by_land);
-  const missedCats = $derived(missed.map((m) => (m.land >= 6 ? "6+" : `${m.land}`)));
 
   const colourBars = $derived<ChartBar[]>(
     o.colours.map((c) => ({
@@ -103,29 +91,6 @@
       tone: IDENTITY[c.colour],
     })),
   );
-
-  const troubles: { key: keyof ManaGame; title: string; tone: string; def: string }[] = [
-    {
-      key: "screw",
-      title: "Screwed games",
-      tone: "var(--chart-4)",
-      def: "2 or more missed land drops with no land in hand, in your first 6 turns.",
-    },
-    {
-      key: "flood",
-      title: "Flooded games",
-      tone: "var(--chart-2)",
-      def: "3 or more turns with more lands than spells in hand, while still hitting drops.",
-    },
-    {
-      key: "colour_screw",
-      title: "Colour-screwed games",
-      tone: "var(--chart-5)",
-      def: "2 or more turns with a spell you could pay for in amount but not colour, at the start of your main phase.",
-    },
-  ];
-  const troubleRate = (k: keyof ManaGame) =>
-    k === "screw" ? o.mana.screw : k === "flood" ? o.mana.flood : o.mana.colour_screw;
 
   const partial = $derived(o.coverage.games - o.coverage.frames);
 </script>
@@ -164,51 +129,9 @@
 <div class="sections">
   <section class="card" aria-labelledby="sec-results" data-testid="stats-results">
     <h2 id="sec-results">Results</h2>
-    <ChartFigure
-      id="cap-places"
-      title="Finishing place"
-      caption={placesCaption(o.places)}
-      columns={["Table size", "Games", "1st", "2nd", "3rd", "4th"]}
-      rows={o.places.map((p) => [
-        `${p.players} players`,
-        p.games,
-        ...[0, 1, 2, 3].map((i) => (i < p.players ? (p.places[i] ?? 0) : "-")),
-      ])}
-    >
-      {#snippet children(id)}
-        <div class="stack-rows" role="img" aria-labelledby={id}>
-          {#each o.places as p (p.players)}
-            <StackedBar
-              label={`${p.players} players, ${p.games} ${p.games === 1 ? "game" : "games"}`}
-              parts={p.places.slice(0, p.players)}
-              names={p.places.slice(0, p.players).map((_, i) => placeText(i + 1))}
-              tones={PLACE_TONES}
-            />
-          {:else}
-            <p class="empty">No finished games in this filter.</p>
-          {/each}
-        </div>
-      {/snippet}
-    </ChartFigure>
+    <PlacesFigure places={o.places} />
 
-    <ChartFigure
-      id="cap-win-kinds"
-      title="How you win"
-      caption={winKindsCaption(o.win_kinds)}
-      columns={["Kind", "Wins"]}
-      rows={winKinds.map((k) => [kindText(k.kind), k.games])}
-      note={comboRules.length > 0
-        ? `Combo wins came by ${comboRules.map((r) => `${COMBO_RULE_TEXT[r.kind] ?? r.kind} (${r.games})`).join(", ")}.`
-        : undefined}
-    >
-      {#snippet children(id)}
-        {#if winKinds.length > 0}
-          <BarChart labelledby={id} bars={kindBars(winKinds, "var(--chart-1)")} />
-        {:else}
-          <p class="empty">No wins yet in this filter.</p>
-        {/if}
-      {/snippet}
-    </ChartFigure>
+    <WinKindsFigure winKinds={o.win_kinds} comboRules={o.combo_rules} />
 
     <ChartFigure
       id="cap-out-kinds"
@@ -219,7 +142,7 @@
     >
       {#snippet children(id)}
         {#if outKinds.length > 0}
-          <BarChart labelledby={id} bars={kindBars(outKinds, "var(--chart-4)")} />
+          <BarChart labelledby={id} bars={outBars} />
         {:else}
           <p class="empty">You haven't gone out in this filter.</p>
         {/if}
@@ -277,49 +200,7 @@
 
   <section class="card" aria-labelledby="sec-play" data-testid="stats-play">
     <h2 id="sec-play">Play</h2>
-    <ChartFigure
-      id="cap-aggression"
-      title="Attacks over turns"
-      caption={aggressionCaption(o.aggression)}
-      columns={["Your turn", "Turns", "Attackers a turn", "Damage a turn"]}
-      rows={o.aggression.over_turns.map((t, i) => [
-        overTurnCats[i],
-        t.turns,
-        oneDecimal(t.attacks_per_turn),
-        oneDecimal(t.damage_per_turn),
-      ])}
-    >
-      {#snippet children(id)}
-        {#if o.aggression.over_turns.length > 0}
-          <LineChart
-            labelledby={id}
-            categories={overTurnCats}
-            series={[
-              {
-                name: "Attacking creatures a turn",
-                values: o.aggression.over_turns.map((t) => t.attacks_per_turn),
-                tone: "var(--chart-1)",
-              },
-            ]}
-            xLabel="Your turn number"
-          />
-          <p class="panel-title">Damage to players a turn</p>
-          <LineChart
-            labelledby={id}
-            categories={overTurnCats}
-            series={[
-              {
-                name: "Damage to players a turn",
-                values: o.aggression.over_turns.map((t) => t.damage_per_turn),
-                tone: "var(--chart-2)",
-              },
-            ]}
-          />
-        {:else}
-          <p class="empty">No turns recorded yet.</p>
-        {/if}
-      {/snippet}
-    </ChartFigure>
+    <AggressionFigure aggression={o.aggression} />
 
     <ChartFigure
       id="cap-spread"
@@ -357,49 +238,7 @@
 
   <section class="card" aria-labelledby="sec-mana" data-testid="stats-mana">
     <h2 id="sec-mana">Mana</h2>
-    <ChartFigure
-      id="cap-missed"
-      title="Missed land drops"
-      caption={missedCaption(o.mana)}
-      columns={["Land drop", "Missed"]}
-      rows={missed.map((m) => [landNumberText(m.land), m.missed])}
-      note="A missed drop is one of your turns with no land played. The early ones hurt most."
-    >
-      {#snippet children(id)}
-        {#if missed.length > 0}
-          <Histogram
-            labelledby={id}
-            categories={missedCats}
-            values={missed.map((m) => m.missed)}
-            muted={missed.map((m) => m.land >= 6)}
-            tone="var(--chart-4)"
-            xLabel="Land drop you were going for"
-          />
-        {:else}
-          <p class="empty">No land drops recorded yet.</p>
-        {/if}
-      {/snippet}
-    </ChartFigure>
-
-    <div class="trouble-tiles">
-      {#each troubles as t (t.key)}
-        {@const r = troubleRate(t.key)}
-        {@const marks = o.mana.trend.map((g) => g[t.key])}
-        <StatTile
-          label={t.title}
-          value={r.rate == null ? "-" : pctText(r.rate)}
-          sub={rateText(r)}
-          testid={`trouble-${t.key}`}
-        >
-          <TrendStrip
-            {marks}
-            tone={t.tone}
-            label={`Last ${marks.length} games: ${marks.filter(Boolean).length} ${t.title.toLowerCase()}`}
-          />
-          <span class="def">{t.def}</span>
-        </StatTile>
-      {/each}
-    </div>
+    <ManaTroubles mana={o.mana} />
   </section>
 
   <section class="card" aria-labelledby="sec-cards" data-testid="stats-cards">
@@ -408,27 +247,14 @@
     {#if o.most_cast.length === 0}
       <p class="empty">No spells cast in this filter.</p>
     {:else}
-      <ul class="card-grid" class:names-only={shared}>
-        {#each o.most_cast.slice(0, 12) as c (c.name)}
-          <li>
-            {#if !shared && c.scryfall_id}
-              <img
-                src={scryfallImageURL(c.scryfall_id, "normal")}
-                alt={c.name}
-                loading="lazy"
-                width="146"
-                height="204"
-              />
-            {/if}
-            <span class="cname">{c.name}</span>
-            <span class="cmeta"
-              >{c.casts}
-              {c.casts === 1 ? "cast" : "casts"} in {c.games}
-              {c.games === 1 ? "game" : "games"}</span
-            >
-          </li>
-        {/each}
-      </ul>
+      <CardGrid
+        names={shared}
+        cards={o.most_cast.slice(0, 12).map((c) => ({
+          name: c.name,
+          scryfallId: c.scryfall_id,
+          meta: `${c.casts} ${c.casts === 1 ? "cast" : "casts"} in ${c.games} ${c.games === 1 ? "game" : "games"}`,
+        }))}
+      />
     {/if}
     <h3 class="sub">In the most of your decks</h3>
     {#if !o.library.card_index}
@@ -490,7 +316,13 @@
           <tbody>
             {#each o.decks as d (d.deck_id ?? `name:${d.name}`)}
               <tr>
-                <th scope="row" class="name">{d.name}</th>
+                <th scope="row" class="name">
+                  {#if d.deck_id && (!shared || token)}
+                    <a href={deckStatsHref(d.deck_id, shared ? token : undefined)}>{d.name}</a>
+                  {:else}
+                    {d.name}
+                  {/if}
+                </th>
                 <td class="num">{d.record.games}</td>
                 <td class="num">{recordText(d.record)}</td>
                 <td class="num">{winRateText(d.record)}</td>
@@ -551,57 +383,9 @@
     color: var(--fg-muted);
     font-size: 0.9rem;
   }
-  .stack-rows {
-    display: grid;
-    gap: 14px;
-  }
-  .panel-title {
-    margin: 12px 0 2px;
-    font-size: 0.82rem;
-    color: var(--fg-muted);
-  }
   .evenness {
     margin: 8px 0 0;
     font-size: 0.85rem;
-  }
-  .trouble-tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-  }
-  .trouble-tiles :global(.tile) {
-    background: var(--surface-raised);
-  }
-  .def {
-    margin-top: 4px;
-    color: var(--fg-muted);
-    font-size: 0.76rem;
-    line-height: 1.35;
-  }
-  .card-grid {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-    gap: 12px;
-  }
-  .card-grid.names-only {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-  .card-grid li {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-  .card-grid img {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 488 / 680;
-    border-radius: 5%;
-    background: var(--surface-sunken);
-    margin-bottom: 4px;
   }
   .cname {
     font-weight: 600;
@@ -654,6 +438,14 @@
   th.name {
     font-weight: 600;
     min-width: 12ch;
+  }
+  th.name a {
+    color: inherit;
+    text-decoration-color: var(--border-strong, var(--border));
+    text-underline-offset: 3px;
+  }
+  th.name a:hover {
+    color: var(--accent);
   }
   .num {
     text-align: right;
