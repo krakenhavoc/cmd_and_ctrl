@@ -32,13 +32,7 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				t, ok := ctx.ClauseTarget(0)
-				if !ok {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}.Apply(ctx)
-			}),
+			damageTheClauseTarget(0, 2),
 			Instruction(func(ctx *Context) error {
 				t, ok := ctx.ClauseTarget(0)
 				if !ok || !onBattlefield(ctx.Game, t.ID) {
