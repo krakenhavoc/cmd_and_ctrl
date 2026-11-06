@@ -16,7 +16,9 @@ import (
 // that copy out of its zone through the copy's own permission
 // (castMovesFromZone, the walk the seat's priority moves use), so every
 // way of casting it the engine would take is offered, each naming the
-// prompt. The other answer, "cast no more of them", is always legal.
+// prompt. The other answer, "cast no more of them", is always legal. A
+// combined free-play offer (#4697) also takes a land play of each land
+// face of its card that can be played now (resolutionLandPlays).
 
 // resolutionCastExpansion is the cap on one copy's casts: every target
 // and mode of the one card is a choice the caster is owed.
@@ -53,6 +55,42 @@ func resolutionCastCasts(g *game.Game, chooser, card uuid.UUID, opts Options) []
 	return e.out
 }
 
+// resolutionLandPlays is the land plays a combined free-play offer
+// (#4697, game.MayCastKeywordPlayOrFreeOrHand) takes besides its casts:
+// one per face of the card that can be played as a land now (CR 305.2b,
+// 712.12), each a cast_spell of that face from where the card is. None
+// for any other prompt. Caller must hold g.mu.
+func resolutionLandPlays(g *game.Game, c *game.PendingChoice, card uuid.UUID) []Move {
+	if c.MayCastKeyword != game.MayCastKeywordPlayOrFreeOrHand {
+		return nil
+	}
+	cc, zone, ok := g.ResolutionCastCandidateLocked(c.Chooser, card)
+	if !ok {
+		return nil
+	}
+	var out []Move
+	for _, face := range cc.CastableFaces() {
+		if !g.CanPlayLandFaceDuringResolutionForEffect(c.Chooser, card, face) {
+			continue
+		}
+		f := cc
+		f.SetFace(face)
+		out = append(out, Move{
+			Type:   TypeCastSpell,
+			Player: c.Chooser,
+			Kind:   KindLand,
+			Label:  "Play " + f.Name,
+			Source: card,
+			Params: mustJSON(castParams{
+				InstanceID: card.String(),
+				FromZone:   string(zone),
+				Face:       face,
+			}),
+		})
+	}
+	return out
+}
+
 // resolutionCastMoves answers a resolution_cast prompt c owed by e's
 // seat: the casts of each copy it offers, each naming the prompt, and
 // the decline.
@@ -62,7 +100,7 @@ func (e *enumerator) resolutionCastMoves(c *game.PendingChoice) {
 		reason = "Cast the copy"
 	}
 	for _, id := range c.DiscardOptions {
-		for _, m := range resolutionCastCasts(e.g, c.Chooser, id, e.opts) {
+		for _, m := range append(resolutionLandPlays(e.g, c, id), resolutionCastCasts(e.g, c.Chooser, id, e.opts)...) {
 			var params map[string]any
 			if err := json.Unmarshal(m.Params, &params); err != nil {
 				continue

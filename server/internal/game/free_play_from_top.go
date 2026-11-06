@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // free_play_from_top.go — #3801: "look at the top card of your library.
 // You may play a land from the top of your library or cast a spell with
@@ -33,13 +37,17 @@ import "github.com/google/uuid"
 //     so "if you don't" is already true.
 //
 // #4697: the spell branch judges the face being cast, not the front face
-// (OffersASpell on the permission it stamps). The land branch plays a
-// modal DFC's land back face (CR 712.11c) when no face is a spell that
-// fits. Still open: one prompt offers either the land play or the cast,
-// never both, so a Town (land // sorcery Adventure) whose land can be
-// played is offered as the land play only, and a modal DFC with a spell
-// face that fits and a land back face is offered as the cast only. A
-// pathway (land // land) is offered as its front face.
+// (OffersASpell on the permission it stamps), and the land branch plays
+// a modal DFC's land back face (CR 712.12) when no face is a spell that
+// fits. A card that gives the player more than one answer — a Town (land
+// // sorcery Adventure) with a land drop left, a modal DFC with a spell
+// face that fits and a land face, a pathway (land // land) — is asked
+// one combined prompt instead: the spell offer's resolution_cast and
+// capped permission, under MayCastKeywordPlayOrFreeOrHand, which also
+// takes a land play of each face that can be played now
+// (playLandForResolutionChoiceLocked). One answer is chosen, and
+// declining puts the card into the hand. Outside an open resolution,
+// which no catalog card reaches, the single offers below stand.
 //
 // The look is private (CR 701.20): only the looker is marked a knower of
 // the card. The land's may_cast is marked private so its words, which
@@ -98,15 +106,22 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	if !ok {
 		return nil
 	}
+	spellPerm := g.freeCastFromTopPermissionLocked(o)
+	// #4697: more than one answer (a land face and a spell face that
+	// fits, or two land faces) is one prompt that offers each of them.
+	if lands := g.freePlayLandFacesLocked(o, c); len(lands) > 0 &&
+		(len(lands) > 1 || spellPerm.OffersASpell(c)) &&
+		g.resolutionOpen && g.playerInGameLocked(o.Player) {
+		return g.offerFreePlayOrCastLocked(o, id)
+	}
 	// A land the player can play as the card is, its front face, is the
-	// land offer (a Town, a pathway's front).
+	// land offer (a plain land; a Town whose Adventure does not fit).
 	if c.IsLand() && o.Land && g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
 		return g.offerFreePlayLandLocked(o, id, c.Name, freePlayLandOrHand)
 	}
-	spellPerm := g.freeCastFromTopPermissionLocked(o)
 	// #4697: a modal DFC whose back face is a land is played as that face
-	// (CR 712.11c). It is offered when no face is a spell that fits: one
-	// prompt cannot yet offer both the land play and the cast.
+	// (CR 712.12). Offered alone when no face is a spell that fits; with
+	// one that fits, the combined offer above asks both.
 	if o.Land && !spellPerm.OffersASpell(c) && c.FaceCount() > 1 &&
 		g.CanPlayLandFaceDuringResolutionForEffect(o.Player, id, 1) {
 		back := c
@@ -127,20 +142,145 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	if !g.grantFreeCastFromTopLocked(o, id) {
 		return g.putLibraryCardIntoHandLocked(o, id)
 	}
+	g.queueFreeCastFromTopOfferLocked(o, id, MayCastKeywordFreeOrHand, "Cast it free")
+	return nil
+}
+
+// MayCastKeywordPlayOrFreeOrHand is the resolution_cast keyword of the
+// combined offer (#4697): "you may play a land or cast a spell with mana
+// value N or less from the top of your library without paying its mana
+// cost. If you don't, put that card into your hand", over a card that
+// gives the player more than one of those answers. Its cast is
+// free_or_hand's, capped on the face cast (CR 601.3e, 712.11c, 715.3a).
+// It also takes a land play of each land face that can be played now
+// (CR 305.2b, 712.12), sent as a cast_spell naming the prompt and the
+// face. An on-disk value, never renamed.
+const MayCastKeywordPlayOrFreeOrHand = "play_or_free_or_hand"
+
+// freePlayLandFacesLocked is the faces of c, the top card, that o.Player
+// could play as a land now (CR 712.12: a modal DFC is played as one of
+// its land faces; a Town's land is its card face). None when the clause
+// allows no land. Caller must hold g.mu.
+func (g *Game) freePlayLandFacesLocked(o FreePlayFromTop, c Card) []int {
+	if !o.Land {
+		return nil
+	}
+	var faces []int
+	for _, face := range c.CastableFaces() {
+		if g.CanPlayLandFaceDuringResolutionForEffect(o.Player, c.InstanceID, face) {
+			faces = append(faces, face)
+		}
+	}
+	return faces
+}
+
+// offerFreePlayOrCastLocked is the combined offer: the spell offer's
+// capped permission over the top card, and its resolution_cast under
+// MayCastKeywordPlayOrFreeOrHand, which also takes the land plays.
+//
+// Caller must hold g.mu (write), inside an open resolution.
+func (g *Game) offerFreePlayOrCastLocked(o FreePlayFromTop, id uuid.UUID) error {
+	if !g.grantFreeCastFromTopLocked(o, id) {
+		return g.putLibraryCardIntoHandLocked(o, id)
+	}
+	if g.queueFreeCastFromTopOfferLocked(o, id, MayCastKeywordPlayOrFreeOrHand, "Play or cast it") == uuid.Nil {
+		// Not reached (the caller checked): no prompt to hold the land
+		// play, so the offer is withdrawn, which sends the card to the
+		// hand.
+		g.withdrawCardCopyOffersLocked(o.Player, []uuid.UUID{id}, nil)
+	}
+	return nil
+}
+
+// queueFreeCastFromTopOfferLocked raises the resolution_cast over the
+// top card under keyword. Answers its id, or uuid.Nil when no resolution
+// is open (the permission alone is then the offer).
+//
+// Caller must hold g.mu (write).
+func (g *Game) queueFreeCastFromTopOfferLocked(o FreePlayFromTop, id uuid.UUID, keyword, accept string) uuid.UUID {
 	reason := o.SourceName
 	if reason == "" {
 		reason = "Cast it free"
 	}
-	g.queueResolutionCastOfferLocked(resolutionCastOffer{
+	return g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      o.Player,
 		Source:       o.Source,
 		Reason:       reason,
 		Candidates:   []uuid.UUID{id},
-		Keyword:      MayCastKeywordFreeOrHand,
-		AcceptLabel:  "Cast it free",
+		Keyword:      keyword,
+		AcceptLabel:  accept,
 		DeclineLabel: "Put it into your hand",
 	})
-	return nil
+}
+
+// playLandForResolutionChoiceLocked is the combined offer's land play
+// (#4697): a cast_spell through a MayCastKeywordPlayOrFreeOrHand prompt
+// whose face is a land plays the card as that face during the
+// resolution, with that face up and spending the land drop (CR 305.2b,
+// 712.12), as the land offer's "Play it" does. It reports handled false
+// for anything else (a spell face, another prompt), which
+// castForResolutionChoiceLocked casts as before. A face that cannot be
+// played now is refused with the prompt left open. Once the land is
+// played the offer is spent and the prompt answered; a play the rules
+// end up ignoring is a decline, so the card goes into the hand.
+//
+// Caller must hold g.mu (write).
+func (g *Game) playLandForResolutionChoiceLocked(choiceID, caster, cardID uuid.UUID, face int) (bool, error) {
+	i := g.choiceIndexLocked(choiceID)
+	if i < 0 || g.PendingChoices[i].MayCastKeyword != MayCastKeywordPlayOrFreeOrHand {
+		return false, nil
+	}
+	card, _, ok := g.ResolutionCastCandidateLocked(caster, cardID)
+	if !ok || !slices.Contains(card.CastableFaces(), face) {
+		return false, nil
+	}
+	card.SetFace(face)
+	if !card.IsLand() {
+		return false, nil
+	}
+	if !g.CanPlayLandFaceDuringResolutionForEffect(caster, cardID, face) {
+		return true, ErrLandDropUnavailable
+	}
+	c := g.PendingChoices[i]
+	played, err := g.PlayLandFaceDuringResolutionForEffect(caster, cardID, face)
+	if err != nil {
+		return true, err
+	}
+	if !played {
+		// "If you don't, put that card into your hand": withdrawing the
+		// offer lapses its permission to the hand.
+		if j := g.choiceIndexLocked(choiceID); j >= 0 {
+			g.dequeueChoiceLocked(j)
+		}
+		g.finishResolutionCastLocked(c, c.DiscardOptions)
+		g.runStateChecksLocked()
+		return true, nil
+	}
+	// The play is made (its entry may still wait on a prompt, the card
+	// where it was), so the permission goes without its lapse to the
+	// hand, and the prompt is answered.
+	g.dropCardPermissionsLocked(caster, cardID)
+	g.settleResolutionCastLocked(choiceID, cardID)
+	g.runStateChecksLocked()
+	return true, nil
+}
+
+// dropCardPermissionsLocked removes holder's ScopeCards permissions that
+// name cardID, with no lapse. A fresh slice, for the reason
+// lapsePassClosedGrantsLocked gives. Caller must hold g.mu (write).
+func (g *Game) dropCardPermissionsLocked(holder, cardID uuid.UUID) {
+	p := g.playerByIDLocked(holder)
+	if p == nil || len(p.CastPermissions) == 0 {
+		return
+	}
+	var kept []CastPermission
+	for _, perm := range p.CastPermissions {
+		if perm.Scope == ScopeCards && slices.ContainsFunc(perm.Cards, func(r PermissionCardRef) bool { return r.ID == cardID }) {
+			continue
+		}
+		kept = append(kept, perm)
+	}
+	p.CastPermissions = kept
 }
 
 // freePlayLandOrHand is the land offer's answer (#4361): accepting plays
@@ -154,7 +294,7 @@ var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", 
 
 // freePlayBackLandOrHand is freePlayLandOrHand for a modal DFC whose
 // back face is the land on offer (#4697): accepting plays the card as
-// its back face (CR 712.11c). An on-disk key: never renamed, never
+// its back face (CR 712.12). An on-disk key: never renamed, never
 // reused.
 var freePlayBackLandOrHand = RegisterMayCastThen("may-cast/free-play-back-land-or-hand", func(g *Game, r MayCastAnswer) error {
 	return g.freePlayLandFaceOrHandLocked(r, 1)

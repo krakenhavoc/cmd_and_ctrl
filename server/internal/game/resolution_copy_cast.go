@@ -424,6 +424,9 @@ func (g *Game) resolutionCastChoiceForCardLocked(chooser, card uuid.UUID) int {
 //   - a cast the engine refuses (whatever castSpellLocked returns: a
 //     cost that can't be paid, an illegal target).
 //
+// Under MayCastKeywordPlayOrFreeOrHand (#4697) a land face in params.Face
+// is played rather than cast (playLandForResolutionChoiceLocked).
+//
 // Caller must NOT hold g.mu.
 func (g *Game) CastForResolutionChoice(caller, choiceID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
@@ -451,6 +454,11 @@ func (g *Game) CastForResolutionChoice(caller, choiceID, cardID uuid.UUID, param
 // auto-tapper free to use any of the caster's mana sources but the
 // ones locked out. Caller must hold g.mu.
 func (g *Game) castForResolutionChoiceLocked(choiceID, caster, cardID uuid.UUID, params CastSpellParams) error {
+	// #4697: the combined free-play offer also takes a land play of the
+	// card, as one of its land faces.
+	if handled, err := g.playLandForResolutionChoiceLocked(choiceID, caster, cardID, params.Face); handled {
+		return err
+	}
 	params.ForceCast = false
 	params.PaperPayment = nil
 	params.Strict = true
