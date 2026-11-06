@@ -1147,6 +1147,7 @@ option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
 option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
+option option-pick/manifold-mouse-keyword
 option option-pick/memories-returning-opponent
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
