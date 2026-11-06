@@ -330,6 +330,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedTrekB16NewPlanetToken,
 	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
 	printedTrekB33TribbleToken,
+
+	// Lita, Mechanical Engineer's Zeppelin: flying, crew 3 (#5075).
+	printedAvB24ZeppelinToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

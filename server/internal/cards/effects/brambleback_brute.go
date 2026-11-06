@@ -30,7 +30,7 @@ func init() {
 			Label:        "{1}{R}, Remove a counter from this creature: Target creature can't block this turn. Activate only as a sorcery.",
 			Cost:         Plus(ManaCost("{1}{R}"), RemoveCountersFromThis("", 1)),
 			Targets:      TargetCreature("target creature"),
-			Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
+			Purpose:      ForTargets(CantBlockUntilEOT(0, 0, 0)),
 			SorcerySpeed: true,
 			Effect:       targetCreatureCantBlockThisTurn(label),
 		}},

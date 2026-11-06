@@ -2428,6 +2428,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
 			}
+			// Momo, Friendly Flier's "first non-Lemur creature spell with
+			// flying" (#5075).
+			if characteristicHasType(ch, "Creature") && HasKeyword(sc, "flying") {
+				tally = tally.withFlyingCreatureSpell(ch)
+			}
 			// Lattice Library's "first spell with {X} in its mana cost".
 			if strings.Contains(manaCostForValue(*sc), "{X}") {
 				tally.XSpells++

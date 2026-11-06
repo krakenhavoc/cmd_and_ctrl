@@ -55,6 +55,11 @@ const (
 	// ManaPoolBecomesColorless — the mana that would be lost becomes
 	// colourless and stays (Kruphix). Colors is unused.
 	ManaPoolBecomesColorless
+	// ManaPoolBecomesRed — the mana that would be lost becomes red and
+	// stays (Ozai, the Phoenix King). Red mana stays red, so it is kept
+	// too. Colors is unused. Like Kruphix's, the conversion keeps the
+	// token's restrictions and riders (the Ozai ruling).
+	ManaPoolBecomesRed
 )
 
 // ManaPoolStatic is ONE printed static over a player's mana pool.
@@ -87,7 +92,10 @@ var CatalogManaPool func(oracleID string) []ManaPoolStatic
 type manaPoolRules struct {
 	keepAll    bool
 	keepColors map[string]bool
-	convert    bool
+	// convertTo is the colour mana that would be lost becomes ("C" for
+	// Kruphix, "R" for Ozai); empty converts nothing. With two converting
+	// statics live, the first on the battlefield wins.
+	convertTo string
 }
 
 func (r manaPoolRules) keeps(color string) bool {
@@ -103,7 +111,13 @@ func (g *Game) manaPoolRulesLocked(p *Player, endOfTurn bool) manaPoolRules {
 	add := func(s ManaPoolStatic) {
 		switch s.Kind {
 		case ManaPoolBecomesColorless:
-			r.convert = true
+			if r.convertTo == "" {
+				r.convertTo = "C"
+			}
+		case ManaPoolBecomesRed:
+			if r.convertTo == "" {
+				r.convertTo = "R"
+			}
 		case ManaPoolKeep:
 			if len(s.Colors) == 0 {
 				r.keepAll = true
@@ -233,8 +247,8 @@ func (g *Game) sweepManaPoolLocked(p *Player) int {
 		switch {
 		case rules.keeps(t.Color):
 			kept = append(kept, t)
-		case rules.convert:
-			t.Color = "C"
+		case rules.convertTo != "":
+			t.Color = rules.convertTo
 			kept = append(kept, t)
 		default:
 			lost += t.N()
