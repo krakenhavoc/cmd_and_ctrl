@@ -209,6 +209,7 @@ body narset-of-the-ancient-way/damage
 body necropotence/deliver-exiled
 body new-way-forward/prevented
 body new-way-forward/strike-back
+body nightmares-and-daydreams/target-player-mills
 body nine-lives/incarnation-counter
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
@@ -263,6 +264,7 @@ body rad/mill
 body ratchet-field-medic/return
 body rebound/cast
 body rebound/the-spell-you-just-cast
+body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
 body renown/grow
@@ -348,6 +350,8 @@ castfollowup msc6/helmut-zemo-mastermind-counter
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
+choose avatar-b30/azula-experience-after-discard
+choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aegis-sculptor-exile-two
@@ -817,6 +821,7 @@ condition damage/your-creature-combat-damage-to-a-player
 condition dies/a-creature
 condition dies/another-creature-than-the-source
 condition dies/each-creature
+condition dies/reckless-blaze-that-creature-under-your-control
 condition dies/that-creature
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
@@ -832,6 +837,8 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
+confirm avatar-b30/bison-whistle-take-creature
+confirm avatar-b30/bison-whistle-to-graveyard
 confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
@@ -949,6 +956,7 @@ confirm confirm/search-named-library-or-graveyard
 confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
+confirm confirm/smellerbee-rebel-fighter-discard-hand
 confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
 confirm confirm/spm-cheering-crowd
@@ -1004,10 +1012,12 @@ drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
 drawthen discard-two-unless-creature
 drawthen discard-unless-attacked
+drawthen discard-unless-three-lessons
 drawthen discard:
 drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
 drawthen discard:Depth Defiler — discard a card
+drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
@@ -1208,6 +1218,7 @@ payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
+payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
@@ -1410,6 +1421,7 @@ run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
 run prompt-run/fatal-grudge-draw
 run prompt-run/final-showdown-indestructible
+run prompt-run/fire-lord-ozai-add-red
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/garruk-the-veil-cursed-tutor
@@ -1607,7 +1619,13 @@ tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail augusta-order-returned/after-exile
 tail avatar-b24/put-n-counters-on-each-next
+tail avatar-b30/bison-whistle-after-bison
+tail avatar-b30/cracked-earth-gain-life
+tail avatar-b30/cracked-earth-second-earthbend
+tail avatar-b34/then-draw-n
+tail avatar-b34/then-spirit-token
 tail avatar-destiny/after-mill
+tail avatar-kyoshi-earthbender/untap-that-land
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
@@ -1813,6 +1831,7 @@ tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
+tail fang-rokus-companion/spirit
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
@@ -1971,6 +1990,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nita-forum-conciliator/after-exile
 tail now-for-wrath/vigilance-and-temptation
+tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
@@ -1999,6 +2019,7 @@ tail primal-amulet/transform
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
+tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
@@ -2016,6 +2037,7 @@ tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
+tail recipient/reckless-blaze-watch-death
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
@@ -2043,6 +2065,7 @@ tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans

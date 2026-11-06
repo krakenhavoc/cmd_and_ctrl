@@ -1130,6 +1130,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// prices what the cast gives up (sacrificeCost), and priced
 			// per payment below as a variable clause is.
 			sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, sacrifice)}
+		} else if addCost != nil && addCost.SacrificeHalfRoundedUp && addCost.Sacrifice == sacrifice {
+			// #5075: "sacrifice half, rounded up" has one count, the
+			// engine's; one payment of it, cheapest fuel first. Nothing
+			// is offered when the seat can't sacrifice that many.
+			n := g.SacrificeHalfCountForEffect(e.seat, sacrifice)
+			ordered := g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
+			if n > len(ordered) {
+				return
+			}
+			sacrificeSets = [][]uuid.UUID{ordered[:n:n]}
 		} else if varSac {
 			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
 			sacrificeSets = e.castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)

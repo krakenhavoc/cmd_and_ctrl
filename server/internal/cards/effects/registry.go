@@ -908,6 +908,7 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	checkSacrificeAllCost(spec)
+	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A

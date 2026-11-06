@@ -240,6 +240,16 @@ func ManaRestrictNotType(types ...string) string {
 	return "nottype:" + strings.Join(types, "|")
 }
 
+// ManaRestrictNotSubtype builds a NEGATED subtype clause about a spell
+// being cast — "a non-Human creature spell" (Animal Attendant) is
+// ManaRestrictCast, ManaRestrictType("Creature") and
+// ManaRestrictNotSubtype("Human"). Like ManaRestrictNotType it admits
+// only a cast, and several subtypes mean none of them. A changeling
+// spell has every creature type (CR 702.73a), so it is never "non-" one.
+func ManaRestrictNotSubtype(subtypes ...string) string {
+	return "notsubtype:" + strings.Join(subtypes, "|")
+}
+
 // ManaRestrictSubtype builds a "the object has this subtype" tag —
 // ManaRestrictSubtype("Eldrazi") for Eldrazi Temple.
 func ManaRestrictSubtype(t string) string { return "subtype:" + t }
@@ -724,6 +734,18 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		}
 		for _, alt := range strings.Split(value, "|") {
 			if alt == "" || containsFold(ctx.Types, alt) {
+				return false
+			}
+		}
+		return true
+	}
+	if key == "notsubtype" {
+		// A negated subtype is about a spell being cast, as nottype is.
+		if ctx.Purpose != SpendPurposeCast {
+			return false
+		}
+		for _, alt := range strings.Split(value, "|") {
+			if alt == "" || ctx.matchesKeyed("subtype", alt) {
 				return false
 			}
 		}
