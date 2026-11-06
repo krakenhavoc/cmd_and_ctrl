@@ -342,9 +342,11 @@ choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aegis-sculptor-exile-two
+choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
+choose choose-cards/alpharael-discard-two-unless-artifact
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/archon-of-cruelty-payout
@@ -358,6 +360,7 @@ choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
+choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/borg-cube-assimilate
@@ -972,6 +975,7 @@ drawinstead ormos-archive-keeper
 drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
+drawthen alpharael-discard-two-unless-artifact
 drawthen brainstorm-put-back
 drawthen brainsurge-put-back
 drawthen development-after-draw
@@ -1182,6 +1186,7 @@ payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
+payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
@@ -1826,6 +1831,7 @@ tail hofri-ghostforge/copy
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
+tail if-it-was/consuming-ashes-surveil
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/feral-appetite-pest
 tail if-it-was/lion-sash-counter

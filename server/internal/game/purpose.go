@@ -479,7 +479,8 @@ type TargetPurpose struct {
 	// power and toughness it adds (negative for a harm's -N/-N), the
 	// keywords a benefit grants, lowercase as the wire's `abilities`
 	// spells them ("protection" for protection from a quality chosen at
-	// resolution), and "can't be blocked this turn" (#4312). Nil for an
+	// resolution), and "can't be blocked this turn" (#4312). A harm's
+	// "can't block this turn" is Pump.CantBlock (#4977). Nil for an
 	// amount counted at resolution (+X/+X) with nothing else printed.
 	// Declared only beside UntilEndOfTurn. A pointer so TargetPurpose
 	// stays comparable.
@@ -596,6 +597,13 @@ type Pump struct {
 	// reads it as the `cant_be_blocked` restriction the creature will
 	// have.
 	CantBeBlocked bool
+	// CantBlock is "can't block this turn" on a harm's target entry
+	// (#4977): Daring Discovery, Untimely Malfunction's third mode. Not
+	// removal, so a reader may price it by the attack it opens before
+	// the defender's blocks, as the bot's opt-in PriceCantBlock does,
+	// reading it as the `cant_block` restriction the creature will have.
+	// Refused on a benefit and on a row's pump of its own source.
+	CantBlock bool
 }
 
 // Saves is the permanents a `survive` or `protect` row covers besides, or
