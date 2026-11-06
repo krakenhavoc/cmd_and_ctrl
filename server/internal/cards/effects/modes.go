@@ -293,6 +293,18 @@ func DestroyTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 	return DestroyTarget{Target: t.ID}.Apply(ctx)
 }
 
+// ExileTheModesTarget is "exile target <thing>" as a modal bullet's body —
+// shared by Dominion Assault Force's graveyard bullet and Archenemy's
+// Charm's creature-or-planeswalker bullet, which differ only in the
+// clause on the option. A pick that is not a card does nothing.
+func ExileTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetCard {
+		return nil
+	}
+	return ExileTarget{Target: t.ID}.Apply(ctx)
+}
+
 // TapTheModesTarget is "tap target <thing>" as a modal bullet's body —
 // Three Bowls of Porridge's and Tiller Engine's tap bullets differ only
 // in the clause on the option.
