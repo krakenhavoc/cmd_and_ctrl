@@ -5634,6 +5634,23 @@ type ManaAbilityView struct {
 	// Cabal Coffers), whose output only exists once computed at
 	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
+	// TriggerAdds is the mana tapping the permanent for this ability now
+	// would ALSO add through triggered mana abilities (CR 605.1b), in
+	// Produced's grammar: "{B}" for a Swamp under Crypt Ghast, "{G}" for
+	// a Forest under Mirari's Wake, "{G}{G}" under two Wild Growths
+	// (#4770, ADR 0074's amendment of 2026-10-30, owner decision 2).
+	// Produced stays what CR 106.7 says the ability "could produce",
+	// which never includes it.
+	//
+	// The auto-tap planner's own judge answers it, priced through the
+	// CR 106.12b window as the planner prices it, so it is what auto-pay
+	// counts. Absent when no trigger would fire, for an ability that does
+	// not tap, and when the extra mana depends on the colour picked
+	// (Mirari's Wake on a dual land) or the picks are past the planner's
+	// cap. Describes the board as it is now: a trigger cast later this
+	// turn shows in the next view. Stamped by stampManaTriggerAdds, the
+	// pass with a game handle.
+	TriggerAdds string `json:"trigger_adds,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -7410,9 +7427,18 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// #1012's price list, read here so the gate below can judge the
 	// face the cast would put on the stack (castGateFace). It is
 	// stamped further down.
+	//
+	// #5081: each with the permission a cast claiming it is made under,
+	// which is not always `grant` (Green Goblin's granted mayhem beside
+	// Muldrotha): the timing and per-type stamps below judge each offer
+	// under its own, as CastSpell and the bot enumerator do.
+	var offerGrants []game.OfferGrant
 	var offers []*game.AlternativeCost
 	if haveLive {
-		offers = g.CastOffersForLocked(caster, live, kind, grant)
+		offerGrants = g.CastOfferGrantsForLocked(caster, live, kind, grant)
+		for _, og := range offerGrants {
+			offers = append(offers, og.Offer)
+		}
 	}
 	gated := castGateFace(live, offers)
 	if haveLive && !live.IsLand() {
@@ -7485,11 +7511,11 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 			out.PrintedCostTimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(nil))
 		}
 		for i := range out.AlternativeCosts {
-			for _, o := range offers {
-				if o != nil && o.Key == out.AlternativeCosts[i].Key {
+			for _, og := range offerGrants {
+				if o := og.Offer; o != nil && o.Key == out.AlternativeCosts[i].Key {
 					// ADR 0107 §4: a disturb offer is timed as the back
 					// face it casts, as CastSpell times it.
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, grant.ForClaim(o), o)
+					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, og.Permission.ForClaim(o), o)
 					break
 				}
 			}
@@ -7532,8 +7558,9 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	typesOK := true
 	if haveLive {
 		typesOK = false
-		for _, o := range offers {
-			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, grant, o)
+		for _, og := range offerGrants {
+			o := og.Offer
+			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, og.Permission, o)
 			if !ok {
 				continue
 			}
@@ -7553,7 +7580,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	case game.ZoneGraveyard, game.ZoneLibrary, game.ZoneOutside:
 		// ZoneOutside (#3955): the owner's sideboard card under a cast
 		// permission, the one way it is ever a cast surface.
-		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
 		if kind == game.ZoneOutside && haveLive {
 			// The sideboard tab's price tag, as the exile strip's.
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
@@ -7564,7 +7591,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	case game.ZoneCommand:
@@ -7662,7 +7689,7 @@ func phyrexianSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, g
 //     ErrLandDropUnavailable.
 //
 // Caller must hold g.mu.
-func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []*game.AlternativeCost) bool {
+func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, cantCast string, offers []game.OfferGrant) bool {
 	// #1474: a card an effect has paused on its way out — a commander
 	// Bojuka Bog is exiling while its owner answers CR 903.9 — is
 	// neither cast nor played until the answer is in. The same gate
@@ -7693,13 +7720,14 @@ func castableNow(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneK
 // window is open for the cast as a whole, or for one of its offers
 // that carries its own "as though it had flash" (CR 601.3c, Primal
 // Prayers) or sneak's declare-blockers window (CR 702.190a, #4586),
-// judged as CastSpell would judge that claim.
-func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []*game.AlternativeCost) bool {
+// judged as CastSpell would judge that claim: under the permission that
+// claim is made under (game.OfferGrant, #5081).
+func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind, grant *game.CastPermission, offers []game.OfferGrant) bool {
 	if g.CastTimingOpenLocked(caster, card, kind, grant) {
 		return true
 	}
-	for _, o := range offers {
-		if o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, grant.ForClaim(o), o) {
+	for _, og := range offers {
+		if o := og.Offer; o.OpensOwnCastWindow() && g.CastTimingForOfferOpenLocked(caster, card, kind, og.Permission.ForClaim(o), o) {
 			return true
 		}
 	}
@@ -7707,8 +7735,8 @@ func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, k
 	// Reduction's teamwork) makes the card castable here for the caster
 	// who announces it; the announce path holds the cast to it.
 	if game.AnyOptionalCostOpensCastWindow(payableOpeningCosts(g, caster, card)) {
-		for _, o := range offers {
-			if g.CastTimingForCastOpenLocked(caster, card, kind, grant.ForClaim(o), o, true) {
+		for _, og := range offers {
+			if g.CastTimingForCastOpenLocked(caster, card, kind, og.Permission.ForClaim(og.Offer), og.Offer, true) {
 				return true
 			}
 		}
@@ -8695,6 +8723,9 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	// per-card stampers below did — made every view quadratic in the
 	// size of the board.
 	restricted := g.AnyActivationRestrictionsForEffect()
+	// #4770: the trigger-mana reader, taken once for the same reason; nil
+	// on every board with no triggered mana ability.
+	triggerMana, _ := g.TapTriggerManaLocked()
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
 		// #521: this guard used to be `c.oracleID == ""`, which
@@ -8753,6 +8784,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
+		stampManaTriggerAdds(triggerMana, card, controller, c.ManaAbilities)
 		// #1369: last, after every stamp above has written into the
 		// rows. The option lists read out of the controller's HAND go
 		// to the controller alone; every other viewer, spectators
@@ -8881,6 +8913,10 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 	stampManaIdentity(g, &card, seat, mine)
 	stampManaCounterCosts(g, &card, seat, mine)
 	stampManaChargedCost(g, &card, seat, mine)
+	// #4770: the mana its triggers would add goes to the activator's pool.
+	if tm, ok := g.TapTriggerManaLocked(); ok {
+		stampManaTriggerAdds(tm, &card, seat, mine)
+	}
 	byIndex := make(map[int]ManaAbilityView, len(mine))
 	for _, m := range mine {
 		if m.AnyPlayer {
@@ -9312,6 +9348,26 @@ func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, v
 			s := charged.String()
 			views[i].ChargedManaCost = &s
 		}
+	}
+}
+
+// stampManaTriggerAdds sets ManaAbilityView.TriggerAdds (#4770): the
+// mana a tap for each row would add through triggered mana abilities,
+// from the auto-tap planner's judge (game.TapTriggerMana). A nil reader,
+// which is every board with no triggered mana ability, stamps nothing.
+// A row is read by its published index, as stampManaConditions reads a
+// borrower's. Caller must hold g's read lock.
+func stampManaTriggerAdds(tm *game.TapTriggerMana, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if tm == nil || len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
+	for i := range views {
+		r := views[i].Index
+		if r < 0 || r >= len(raw) {
+			continue
+		}
+		views[i].TriggerAdds = tm.AddsLocked(controller, card, &raw[r])
 	}
 }
 

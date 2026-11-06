@@ -15,7 +15,6 @@ vi.mock("./sounds", () => ({ play: vi.fn() }));
 import Board from "./components/board/Board.svelte";
 import Tombstone from "./components/board/Tombstone.svelte";
 import { L } from "./labels";
-import { resetCommanderMemory } from "./elimination";
 import {
   closeFinalBoard,
   finalBattlefieldOrder,
@@ -120,7 +119,6 @@ beforeEach(() => {
   );
   vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
   resetSettings();
-  resetCommanderMemory();
 });
 
 afterEach(() => {
@@ -129,7 +127,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   resetSettings();
-  resetCommanderMemory();
 });
 
 describe("the final board's order and notes", () => {

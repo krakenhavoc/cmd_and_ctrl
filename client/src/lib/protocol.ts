@@ -4804,6 +4804,13 @@ export interface FinalBoardView {
   graveyard?: FinalCardView[];
   exile?: FinalCardView[];
   command?: FinalCardView[];
+  /**
+   * #4547: the names of the commanders the player owned, each once,
+   * wherever each was when they left (one an opponent had stolen, one on
+   * the stack, one in the library). The tombstone's commander line. Absent
+   * for a player with none, and on a record written before #4547.
+   */
+  commanders?: string[];
 }
 
 /**

@@ -67369,6 +67369,8 @@ seats[].finalBoard.command[].scryfallId	string
 seats[].finalBoard.command[].tapped	bool
 seats[].finalBoard.command[].toughness	number:int
 seats[].finalBoard.command[].typeLine	string
+seats[].finalBoard.commanders	array
+seats[].finalBoard.commanders[]	string
 seats[].finalBoard.exile	array
 seats[].finalBoard.exile[]	object
 seats[].finalBoard.exile[].activeFace	number:int

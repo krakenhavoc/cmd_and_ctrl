@@ -16,7 +16,6 @@ import EliminationFx from "./components/board/EliminationFx.svelte";
 import Tombstone from "./components/board/Tombstone.svelte";
 import { play as playSound } from "./sounds";
 import { L } from "./labels";
-import { resetCommanderMemory } from "./elimination";
 import type { CardView, GameView, LogEvent, PlayerView } from "./protocol";
 import { resetSettings, updateSettings } from "./settings";
 import { cleanup, render } from "./test/render.svelte";
@@ -61,12 +60,21 @@ function seatView(n: number, out: boolean, commanderShown: boolean): PlayerView 
     library: zone("library", id),
     hand: zone("hand", id),
     graveyard: zone("graveyard", id),
-    // An eliminated player's objects have left the game with them.
+    // An eliminated player's objects have left the game with them; their
+    // final board names the commander (#4547).
     command: zone("command", id, commanderShown ? [commanderOf(id, COMMANDERS[n])] : []),
     commander_damage: {},
     life_history: [],
     mana_pool: [],
-    ...(out ? { eliminated: true } : {}),
+    ...(out
+      ? {
+          eliminated: true,
+          final_board: {
+            command: [{ ...commanderOf(id, COMMANDERS[n]) }],
+            commanders: [COMMANDERS[n]],
+          },
+        }
+      : {}),
   } as unknown as PlayerView;
 }
 
@@ -164,7 +172,6 @@ beforeEach(() => {
   updateSettings("animations", "speed", 1);
   updateSettings("accessibility", "reduceMotion", false);
   vi.mocked(playSound).mockClear();
-  resetCommanderMemory();
   stubOSReduceMotion(false);
 });
 
@@ -307,7 +314,7 @@ describe("the tombstone", () => {
     const first = gameView();
     const r = mount(first, 1);
     flushSync();
-    // The commander was seen while Bob was in; the frame he left in shows none.
+    // The frame he left in shows no commander in his zones; the record does.
     const after = gameView([1]);
     r.setProps({ seat: after.seats[1], view: after } as never);
     flushSync();
@@ -328,8 +335,20 @@ describe("the tombstone", () => {
     expect(stone()?.querySelector(".who")?.textContent).toBe("Robert");
   });
 
-  it("omits the commander line when no commander was ever seen", () => {
+  it("names the commander on a page opened after the player left (#4547)", () => {
+    // A spectator or a fresh device: no earlier frame showed Bob's
+    // commander, and nothing was remembered. His final board names it.
+    sessionStorage.clear();
+    mount(gameView([1]), 1);
+    flushSync();
+    const el = stone()!;
+    expect(el.querySelector(".commander")?.textContent).toContain("Kenrith");
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("omits the commander line when the seat's record names none", () => {
     const v = gameView([2]);
+    delete (v.seats[2] as { final_board?: unknown }).final_board;
     mount(v, 2);
     expect(stone()!.querySelector(".commander")).toBeNull();
     expect(stone()!.textContent).toContain("Cat");
@@ -466,7 +485,7 @@ describe("on the board", () => {
     expect(el).not.toBeNull();
     expect(el.closest(".avatar-card")).not.toBeNull();
     expect(el.textContent).toContain(L.tombstoneRip);
-    // The card was mounted before Cat left, so it knew her commander.
+    // Her final board names her commander.
     expect(el.textContent).toContain("Edea");
     expect(soundCalls()).toHaveLength(1);
   });

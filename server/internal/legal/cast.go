@@ -295,7 +295,13 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			e.landPlayMove(card, kind, from, speed, landOwed, perm)
 			continue
 		}
-		for _, offer := range g.CastOffersForLocked(e.seat, card, kind, perm) {
+		// #5081: each offer under the permission a cast claiming it is
+		// made under (game.CastOfferGrantsForLocked), which is not always
+		// the face's: Green Goblin's granted mayhem beside Muldrotha is
+		// priced and timed under Goblin Formula, and spends none of
+		// Muldrotha's types, whichever came first.
+		for _, og := range g.CastOfferGrantsForLocked(e.seat, card, kind, perm) {
+			offer, under := og.Offer, og.Permission
 			// The bot POLICY on top of the rule, and the only thing
 			// this package adds to the engine's answer: CR 119.4 lets
 			// a player pay life down to exactly zero, the next
@@ -309,7 +315,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			// casts, one per type, and one with none left is no cast.
 			// The engine's own list, ranked, so the first move spends
 			// the type the permission's other cards need least.
-			types, ok := g.PermissionTypeOptionsLocked(e.seat, card, kind, perm, offer)
+			types, ok := g.PermissionTypeOptionsLocked(e.seat, card, kind, under, offer)
 			if !ok {
 				continue
 			}
@@ -317,7 +323,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 				if len(types) > 1 {
 					e.permType = t
 				}
-				e.castMovesForCard(card, from, kind, perm, offer)
+				e.castMovesForCard(card, from, kind, under, offer)
 			}
 			e.permType = ""
 		}
