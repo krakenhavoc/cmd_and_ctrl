@@ -1374,3 +1374,33 @@ func ASourceYouControlDealtNoncombatDamageToAnOpponent(ev game.Event, source *ga
 	controller, ok := b34DamageSourceController(ev, g)
 	return ok && controller == source.Controller
 }
+
+// ADetectiveEnteredOrWasTurnedFaceUp is "whenever [this creature or]
+// another Detective you control enters and whenever a Detective you
+// control is turned face up" (Perimeter Enforcer, Projektor Inspector),
+// one ability on two event kinds (OnAny over EventETB and
+// EventTurnedFaceUp). `self` admits this permanent's own entry, whatever
+// its types ("this creature or another Detective"). A face-down permanent
+// has no creature types (CR 708.2a), so a disguised Detective entering
+// does not count and turning it face up does: the permanent is face up
+// by the time that event is emitted (CR 708.8). "Detective" is a word of
+// the source's text (CR 612.2).
+func ADetectiveEnteredOrWasTurnedFaceUp(self bool) When {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		var (
+			c  game.Card
+			ok bool
+		)
+		switch ev.Kind {
+		case game.EventETB:
+			if ev.CardID == source.InstanceID {
+				return self
+			}
+			c, ok = enteredUnderYourControl(ev, source, g, true)
+		case game.EventTurnedFaceUp:
+			c, ok = g.LookupCardForEffect(ev.CardID)
+			ok = ok && c.Controller == source.Controller
+		}
+		return ok && c.HasSubtype(source.TextSubtype("Detective"))
+	}
+}
