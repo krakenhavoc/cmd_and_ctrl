@@ -55,6 +55,8 @@ import (
 //   - TeamPump anywhere but an activated row of the controller's own,
 //     one that gives nothing, or one that takes power or toughness away
 //     (#4320);
+//   - ResolutionMana anywhere but an activated row of the controller's
+//     own, or one with no resolution or no fixed mana (#4980);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -197,8 +199,38 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	checkLifeGainPayoff(p.LifeGainPayoff, fail)
 	checkSweep(p.Sweep, fail)
 	checkRiders(p, slot, fail)
+	checkResolutionMana(p.ResolutionMana, slot, fail)
 	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
+	}
+}
+
+// checkResolutionMana is the guard for Purpose.ResolutionMana (#4980):
+// the mana an activated row of its controller's own adds on one
+// numbered resolution of it in a turn (Soulbright Seeker's third). It is
+// refused off such a row, on a resolution before the first, and on mana
+// that is not one or more fixed symbols ({W}{U}{B}{R}{G}{C}): a generic
+// number, an X, a hybrid or a Phyrexian symbol would let the reader
+// count mana the card does not add.
+func checkResolutionMana(rm *game.ResolutionMana, slot purposeSlot, fail func(string)) {
+	if rm == nil {
+		return
+	}
+	if slot != purposeOnActivated {
+		fail("sets ResolutionMana off an activated row of its controller's own — it is the mana a row adds on its nth resolution in a turn (#4980)")
+	}
+	if rm.Resolution < 1 {
+		fail("sets ResolutionMana with a resolution before the first (#4980)")
+	}
+	notFixed := fmt.Sprintf("sets ResolutionMana's mana to %q, which is not one or more fixed mana symbols (#4980)", rm.Mana)
+	c, err := game.ParseCost(rm.Mana)
+	if err != nil || len(c.Required) == 0 || c.Generic != 0 || c.XSlots != 0 {
+		fail(notFixed)
+	}
+	for _, r := range c.Required {
+		if len(r.Options) != 1 || r.Snow || r.Phyrexian || r.HasNumericAlt {
+			fail(notFixed)
+		}
 	}
 }
 
