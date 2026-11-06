@@ -2099,16 +2099,16 @@ var items = []Item{
 	{
 		Slug: "targets-from-one-graveyard", Name: "Targets that must share a graveyard", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells and abilities that target several cards \"from a single graveyard\" make you pick them all from one player's graveyard, like Digsite Conservator and Decompose.",
-		Missing:  "A few of these cards also do something that isn't supported yet: an Omen that shuffles itself away, and casting a copy of a card in exile.",
+		Missing:  "One of these cards also does something that isn't supported yet: casting a copy of a card in exile.",
 		Rules:    []string{"601.2c", "608.2b"},
 		Issue:    1807,
 		ADR:      "0106-five-small-seams-from-the-s50-rechecks.md",
 		Printed:  printedWords("from a single graveyard"),
 		Examples: []string{"Digsite Conservator", "Decompose"},
 		Waiting: []string{
-			"Feral Deathgorger", "Spellweaver Helix",
+			"Spellweaver Helix",
 		},
-		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). **Still open:** two cards of the family are held for their OTHER text, each with no seam row of its own yet: Feral Deathgorger // Dusk Sight (an Omen, CR 720 — Scryfall lays it out as an Adventure, the Adventure path always exiles the resolved half, and CR 720.3d shuffles an Omen into its owner's library instead) and Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
+		EngineNotes: "**The rule shipped** (ADR 0106 §5, #1807): `TargetSpec.Same *game.TargetSameness`, the opposite of `TargetDifference` — every pick of the clause shares one key, the card's owner (`game.TargetShareOwner`, CR 400.3), built with `effects.FromASingleGraveyard()` / `UpToCardsFromASingleGraveyard`. The key is a closed enum rather than a func, so the ADR 0041 closure ratchet gains no route. The announce gate refuses a set with two keys, the CR 608.2b re-check judges the survivors, `fillableCountLocked` answers the largest group (so Pestilent Cauldron's exact four is offered only when one graveyard holds four), the retarget offer narrows to the staying slots' graveyard while the gate judges the final set (CR 115.7e), the enumerator builds sets inside one group, and the view ships `same: {label, keys}` for the picker. 21 cards shipped. Qutrub Forayer shipped afterwards (its \"dealt damage this turn\" half arrived with Covert Cutpurse). Feral Deathgorger // Dusk Sight shipped once its Omen half could be shuffled away (CR 720.3d, #5175). **Still open:** one card of the family is held for its OTHER text, with no seam row of its own yet: Spellweaver Helix (\"copy the other. … cast the copy\" — casting a copy of a card in exile). Night Soil and Jötun Grunt pay a COST from a single graveyard, which ADR 0106 leaves out of scope.",
 	},
 	{
 		Slug: "keyword-counters", Name: "Keyword counters", Kind: KindSeam, Status: StatusImplemented,

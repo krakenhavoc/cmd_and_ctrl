@@ -58,10 +58,12 @@ Jace's Sanctum | scry | on a triggered row that is not the card's enters effect,
 Lifecrafter's Bestiary | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lita, Little Orphan Amphibian | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
 Lothlórien Lookout | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Merfolk Coralsmith | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Mirrormere Guardian | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Misty Mountains Raider | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Model of Unity | scry | the text makes it conditional or optional
 Moria Scavenger | amass | the text makes it conditional or optional
+Neva, Stalked by Nightmares | scry | on a triggered row that is not the card's enters effect, which nothing prices
 One Ring to Rule Them All | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Origin of the Avengers | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Overgrown Arch | learn | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)

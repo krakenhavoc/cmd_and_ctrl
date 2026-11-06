@@ -1451,6 +1451,7 @@ run prompt-run/pox-plague-sacrifice
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
+run prompt-run/provisions-merchant-sacrifice-pump
 run prompt-run/reactor-raid-draw
 run prompt-run/return-chosen-permanent-to-hand
 run prompt-run/rhovanion-rampager-sacrifice
@@ -1667,6 +1668,7 @@ tail cease/gain-and-draw
 tail charming-prince/after-exile
 tail chrome-dome/haste-and-sacrifice-copy
 tail claim-jumper/repeat
+tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
@@ -1780,6 +1782,7 @@ tail engine/manifest-dread-finished
 tail engine/meld-entered
 tail engine/meld-exiled
 tail engine/move-tokens-created
+tail engine/omen-shuffled
 tail engine/opening-hand-entered
 tail engine/ordered-picks-sacrificed
 tail engine/paid-cast-or-else-exiled
@@ -2064,6 +2067,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
+tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
