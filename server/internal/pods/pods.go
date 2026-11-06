@@ -376,9 +376,16 @@ func isMember(ctx context.Context, q querier, pod, user string) (bool, error) {
 }
 
 // memberIDs is everyone in pod, the member who joined first first.
+//
+// "Joined first" is joined_at, then the member row's rowid. joined_at is
+// in milliseconds, so two joins can share one; SQLite hands out a rowid
+// in insertion order, so the tie goes to the row written first, the
+// member whose join was committed first (#5216). Ordering on user_id
+// instead picked between two random UUIDs. Get's member list uses the
+// same order, so the page lists the next owner first.
 func memberIDs(ctx context.Context, q querier, pod string) ([]string, error) {
 	rows, err := q.QueryContext(ctx,
-		`SELECT user_id FROM pod_members WHERE pod_id = ? ORDER BY joined_at, user_id`, pod)
+		`SELECT user_id FROM pod_members WHERE pod_id = ? ORDER BY joined_at, rowid`, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -608,7 +615,7 @@ func (s *Store) Get(ctx context.Context, viewer, pod string) (Detail, error) {
 		`SELECT m.user_id, u.display_name, COALESCE(u.avatar_url, ''), m.joined_at, COALESCE(sp.share_pods, 0)
 		 FROM pod_members m JOIN users u ON u.id = m.user_id
 		 LEFT JOIN stats_prefs sp ON sp.user_id = m.user_id
-		 WHERE m.pod_id = ? ORDER BY m.joined_at, m.user_id`, pod)
+		 WHERE m.pod_id = ? ORDER BY m.joined_at, m.rowid`, pod) // memberIDs' order
 	if err != nil {
 		return Detail{}, err
 	}
@@ -839,7 +846,7 @@ func (s *Store) RemoveMember(ctx context.Context, actor, pod, target string, new
 
 // settle runs in tx once leaving's member row in pod is gone. With nobody
 // left the pod is deleted; if leaving owned it, the member who joined
-// first takes it. It answers the new owner's id, or whether the pod was
+// first takes it, in memberIDs' order, ties included. It answers the new owner's id, or whether the pod was
 // deleted. It is the one place the owner passes on, for a leave and for
 // an account deletion alike (§2).
 func settle(ctx context.Context, tx *sql.Tx, pod, leaving string, now time.Time) (string, bool, error) {
