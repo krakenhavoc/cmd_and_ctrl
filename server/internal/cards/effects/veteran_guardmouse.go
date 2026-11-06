@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Valiant(label, Do(
 				Instruction(func(ctx *Context) error {
-					return socB27ThisGetsAndGains(ctx, 1, 0, "first strike", label)
+					return socB27ThisGetsAndGains(ctx, 1, "first strike", label)
 				}),
 				Scry{N: 1},
 			)),
