@@ -2302,6 +2302,7 @@ tail trek-b31/commander-spock-draw-if-on-top
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
+tail tune-up/vehicle-becomes-artifact-creature
 tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
