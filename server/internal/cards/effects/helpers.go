@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -1233,11 +1234,13 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 // one that left in response is skipped (CR 608.2b). Curtains' Call's
 // "two target creatures" and Wear Down's gift-promised "two target
 // artifacts and/or enchantments" — and the one-target unpromised Wear
-// Down, which is the same loop over one slot.
+// Down, which is the same loop over one slot. A permanent chosen for two
+// of the spell's "target" words (CR 115.3, Urgent Necropsy's artifact
+// creature) is destroyed once.
 func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) {
+		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) || slices.Contains(ids, t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)

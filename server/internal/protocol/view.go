@@ -1666,6 +1666,17 @@ type AdditionalCostView struct {
 	// is then the only announcement). The server refuses a larger X.
 	ExileCostX    bool `json:"exile_cost_x,omitempty"`
 	ExileCostXMax int  `json:"exile_cost_x_max,omitempty"`
+	// ExileCostFromTargets marks "collect evidence X, where X is the total
+	// mana value of the permanents this spell targets" (#5240, Urgent
+	// Necropsy, CR 701.59a): any number of ExileCostOptions (none included)
+	// whose total mana value reaches X, and X is only known once the
+	// targets are chosen (CR 601.2c before 601.2f), so the client asks for
+	// the cards AFTER targeting. ExileCostTargetManaValues is each
+	// permanent's mana value as the engine reads it, keyed by instance ID:
+	// X is the sum over the distinct permanents picked as targets, and a
+	// pick whose cards fall short of it is refused. ExileCostN is absent.
+	ExileCostFromTargets      bool           `json:"exile_cost_from_targets,omitempty"`
+	ExileCostTargetManaValues map[string]int `json:"exile_cost_target_mana_values,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -8511,6 +8522,21 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if ec.CountFromX {
 			out.ExileCostX = true
 			out.ExileCostXMax = g.ExileCardsXCeilingForEffect(caster, castID, ec)
+		}
+	}
+	if ec := ac.ExileCards; ec.IsCollectEvidenceFromTargets() {
+		// #5240: the same walk, and the mana values the engine sums for
+		// the floor (CollectEvidenceTargetsFloorForEffect), so the client's
+		// X is the engine's (#544).
+		out.ExileCostLabel = ec.Label
+		out.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, castID, ec))
+		out.ExileCostZone = string(ec.Zone())
+		out.ExileCostFromTargets = true
+		if mvs := g.PermanentManaValuesForEffect(); len(mvs) > 0 {
+			out.ExileCostTargetManaValues = make(map[string]int, len(mvs))
+			for id, mv := range mvs {
+				out.ExileCostTargetManaValues[id.String()] = mv
+			}
 		}
 	}
 	if ac.BlightX {

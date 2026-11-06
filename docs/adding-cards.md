@@ -4680,11 +4680,20 @@ var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", 
 	func(ctx *Context, x int, _ []uuid.UUID) error { … })             // "you may collect evidence X. When you do, …"
 ```
 
-Not built yet: collect evidence X as a cost whose X is set by the spell's
-targets (Urgent Necropsy: the cast's pickers and the bot settle the costs
-before the targets), a mana ability that collects evidence, ward with a
-collect evidence cost and collect evidence as an alternative cost (the
-roadmap's `collect-evidence` row names the cards).
+- **Collect evidence X sized by the spell's targets** ("As an additional
+  cost to cast this spell, collect evidence X, where X is the total mana value
+  of the permanents this spell targets", Urgent Necropsy; #5240, ADR 0021
+  amendment 2026-11-06) is `AdditionalCost: CollectEvidenceFromTargetsCost()`.
+  CastSpell fixes X from the announced targets (CR 601.2c before 601.2f), each
+  permanent counted once, and checks `exile_ids` against it; X = 0 needs no
+  cards. The client asks for the cards after targeting, and the bot pays from
+  the graveyard per target set. Register allows it only alone on the mandatory
+  slot of a spell whose every target clause is "up to" (`WithCount(0, 1)`), so
+  X = 0 is always a legal cast.
+
+Not built yet: a mana ability that collects evidence, ward with a collect
+evidence cost and collect evidence as an alternative cost (the roadmap's
+`collect-evidence` row names the cards).
 
 ### Adding a block-rule card (S37+, #750)
 

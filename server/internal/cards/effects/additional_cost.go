@@ -735,6 +735,14 @@ func checkForageBranches(name string, ac *game.AdditionalCost) {
 // count or the X form ("exile X cards"), which has no printed count of
 // its own (ExileCost.CountFromX, N zero).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
+	// #5240: collect evidence X sized by the targets is the one any-number
+	// clause a cast may print (checkCollectEvidenceFromTargets holds where).
+	if ec.ManaValueFromTargets {
+		if !ec.IsCollectEvidenceFromTargets() {
+			panic(fmt.Sprintf("effects.Register: %q %s is a malformed target-sized collect evidence clause — build it with CollectEvidenceFromTargetsCost (#5240)", name, where))
+		}
+		return
+	}
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
 	}
