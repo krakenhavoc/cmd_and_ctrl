@@ -608,6 +608,7 @@ choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
+choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
 choose choose-cards/plargg-and-nassari-picked
@@ -1916,6 +1917,7 @@ tail now-for-wrath/vigilance-and-temptation
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
+tail ostrich-horse/after-mill
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made
