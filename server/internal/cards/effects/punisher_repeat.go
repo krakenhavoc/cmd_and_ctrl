@@ -3,6 +3,7 @@ package effects
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -46,6 +47,25 @@ import (
 type punisherRepeat struct {
 	Name string
 	Life int
+	// Creature is "or sacrifice a CREATURE" in place of a nonland
+	// permanent (Polygraph Orb, #5193).
+	Creature bool
+}
+
+// sacrificeLabel and sacrificeCandidates are the sacrifice branch's words
+// and the victim's permanents that can pay it.
+func (p punisherRepeat) sacrificeLabel() string {
+	if p.Creature {
+		return punisherSacrificeCreatureLabel
+	}
+	return punisherSacrificeLabel
+}
+
+func (p punisherRepeat) sacrificeCandidates(g *game.Game, victim uuid.UUID) []uuid.UUID {
+	if p.Creature {
+		return creaturesControlledByPlayer(g, victim)
+	}
+	return NonlandPermanentsControlledBy(g, victim)
 }
 
 // start builds the whole run of questions — `times` repetitions × the
@@ -111,8 +131,8 @@ func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOpt
 		Label:    "Lose " + strconv.Itoa(p.Life) + " life",
 		LifeCost: p.Life,
 	}}
-	if len(NonlandPermanentsControlledBy(ctx.Game, victim)) > 0 {
-		options = append(options, game.ChoiceOption{Label: punisherSacrificeLabel})
+	if len(p.sacrificeCandidates(ctx.Game, victim)) > 0 {
+		options = append(options, game.ChoiceOption{Label: p.sacrificeLabel()})
 	}
 	if pl := ctx.Game.PlayerByIDForEffect(victim); pl != nil && pl.Hand != nil && pl.Hand.Size() > 0 {
 		options = append(options, game.ChoiceOption{Label: punisherDiscardLabel})
@@ -122,8 +142,9 @@ func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOpt
 
 // The two branch labels; the first option is the life, always.
 const (
-	punisherSacrificeLabel = "Sacrifice a nonland permanent"
-	punisherDiscardLabel   = "Discard a card"
+	punisherSacrificeLabel         = "Sacrifice a nonland permanent"
+	punisherSacrificeCreatureLabel = "Sacrifice a creature"
+	punisherDiscardLabel           = "Discard a card"
 )
 
 // punisherKeys are one card's two registered continuations (#4253): the
@@ -141,6 +162,7 @@ var punisherKeysOf = map[string]punisherKeys{}
 func init() {
 	registerPunisher(tormentOfHailfire, "torment-of-hailfire")
 	registerPunisher(rottenmouthViper, "rottenmouth-viper")
+	registerPunisher(polygraphOrbPunisher, "polygraph-orb")
 }
 
 // registerPunisher registers a punisher's continuations under keys that
@@ -169,11 +191,11 @@ func registerPunisher(p punisherRepeat, slug string) {
 			return next(ctx, rest)
 		}
 		switch r.Option.Label {
-		case punisherSacrificeLabel:
+		case punisherSacrificeLabel, punisherSacrificeCreatureLabel:
 			return SacrificeChoice{
 				Player:     victim,
-				Candidates: NonlandPermanentsControlledBy(ctx.Game, victim),
-				Question:   p.Name + " — sacrifice a nonland permanent",
+				Candidates: p.sacrificeCandidates(ctx.Game, victim),
+				Question:   p.Name + " — " + strings.ToLower(p.sacrificeLabel()[:1]) + p.sacrificeLabel()[1:],
 				ThenTail:   withCarry(ctx.Tail(keys.sacrifice), rest...),
 			}.Apply(ctx)
 		case punisherDiscardLabel:

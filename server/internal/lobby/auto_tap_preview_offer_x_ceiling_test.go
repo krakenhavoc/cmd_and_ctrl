@@ -12,7 +12,7 @@ import (
 // X ceiling of the cast it is pricing, so the alternative cost the
 // player claimed before the X picker opened bounds the picker: Silver
 // Scrutiny's flash offer ("as though it had flash if X is 3 or less",
-// CR 601.3c) reports x_max 3, the cast for the printed cost reports none.
+// CR 601.3b) reports x_max 3, the cast for the printed cost reports none.
 func TestAutoTapPreviewReportsTheClaimedOffersXCeiling(t *testing.T) {
 	f := newPreviewFixture(t)
 	f.mainPhase()

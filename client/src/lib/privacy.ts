@@ -115,8 +115,16 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * and blocks" row names them, with the 30-day request expiry and the
  * friends cap; account deletion deletes every row with the person on
  * either side.
+ *
+ * 33 (#4880, ADR 0220 slice 2) adds pods, pod_members, pod_invites and
+ * pod_suggestion_dismissals: the pods a person made or joined (a pod's
+ * name, its owner and the SHA-256 of its invite link), who is in each,
+ * the invites they sent and were sent (with whether they declined one),
+ * and, from slice 4, their Not now on a suggested pod. The new "Pods"
+ * row names them, with the 30-day invite expiry; account deletion passes
+ * a pod they own to the member who joined first and deletes their rows.
  */
-export const PRIVACY_SCHEMA_VERSION = 32;
+export const PRIVACY_SCHEMA_VERSION = 33;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -157,6 +165,14 @@ export const PRIVACY_FACTS = {
   friendRequestDays: 30,
   /** social.MaxFriends: friends one person can have. */
   friendCap: 200,
+  /** pods.InviteTTL, in days: an unanswered pod invite is deleted after this long. */
+  podInviteDays: 30,
+  /** pods.DismissTTL, in days: how long a Not now on a suggested pod is kept. */
+  podDismissDays: 180,
+  /** pods.MaxMembers: people one pod can hold. */
+  podMemberCap: 12,
+  /** pods.MaxPodsPerPerson: pods one person can be in. */
+  podsPerPerson: 10,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */
   logDays: 30,
   /** scripts/backup-offsite.sh: restic keeps this many daily snapshots. */

@@ -92,6 +92,7 @@ registered, or when this file is stale.
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
 | `discard` | `Discard <N> card(s)` (starts with `Discard `) | dialog | aria | `lib/components/board/DiscardPromptModal.svelte` | the discard request (cleanup or an effect) |
 | `crewCountsAs` | `counts as <N>` (starts with `counts as `) | generic | text | `lib/components/board/CrewCostModal.svelte` | ADR 0186 Decision 6 (#3550): the crew or saddle picker's note on a creature that counts for something other than its power on this cost |
+| `facePickerOmen` | `omen · CR 720.3` | generic | text | `lib/components/board/FacePickerModal.svelte` | #5191: the face picker's source tag on an omen card (CR 720.3: cast it normally or as an Omen), which Scryfall lays out as an adventure; known by the Omen spell type on its second half's type line |
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `targetPlayersLead` | `Players →` | generic | text | `lib/targetingDock.ts` | #4435: the lead of the targeting request's row of legal players, so a player a dialog or a hand covers on the board is still one press away |
 | `targetPlayer` | `Target <player>` (starts with `Target `) | button | aria | `lib/targetingDock.ts` | #4435: the targeting request's button for one legal player (a seat-colour dot and the name); it picks that player exactly as a click on their avatar does |

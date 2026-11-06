@@ -1315,3 +1315,22 @@ func modifiedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card,
 	dealer, ok := g.LookupCardForEffect(ev.Source)
 	return ok && b07IsModified(g, dealer)
 }
+
+// AnotherCreatureWithPower2OrLessEnteredUnderYourControl is "whenever
+// another creature you control with power 2 or less enters" (Marketwatch
+// Phantom, Neighborhood Guardian; Mentor of the Meek's condition). The
+// power is the entering creature's as it enters, so a face-down 2/2
+// counts whatever its front face's power is (CR 708.2a).
+func AnotherCreatureWithPower2OrLessEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := enteredUnderYourControl(ev, source, g, true)
+	return ok && c.IsCreature() && c.CurrentPower() <= 2
+}
+
+// ACreatureYouControlWasTurnedFaceUp is "whenever this creature or
+// another creature you control is turned face up" (Pyrotechnic
+// Performer). The permanent is face up by the time the event is emitted
+// (CR 708.8), so its type is its front face's.
+func ACreatureYouControlWasTurnedFaceUp(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.Controller == source.Controller && c.IsCreature()
+}

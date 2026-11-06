@@ -69,13 +69,20 @@ func init() {
 // attacking a planeswalker drains its controller. The key is the card
 // name and the clause: a trigger key is an on-disk identity.
 func attackDrainTrigger(cardName string) game.TriggeredAbility {
+	return attackDrainTriggerWhen(cardName, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return attackDeclaredByYou(ev, source.Controller)
+	})
+}
+
+// attackDrainTriggerWhen is attackDrainTrigger's body for any attack
+// condition: "Whenever this creature attacks, defending player loses 1
+// life and you gain 1 life" (Agate-Blade Assassin) passes ThisAttacked.
+func attackDrainTriggerWhen(cardName string, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
 	label := cardName + " — defending player loses 1 life and you gain 1 life"
 	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventAttack},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return attackDeclaredByYou(ev, source.Controller)
-		},
-		Key: label,
+		Watches:   []game.EventKind{game.EventAttack},
+		AppliesTo: applies,
+		Key:       label,
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
 			item.Params.Player = b17DefendingPlayer(g, ev)

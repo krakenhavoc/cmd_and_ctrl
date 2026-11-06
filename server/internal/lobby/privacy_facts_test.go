@@ -23,6 +23,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -76,6 +77,10 @@ func TestPrivacyNoticeNumbersMatchTheServer(t *testing.T) {
 	check("chatRecentLines", ws.RecentChatLimit, "ws.RecentChatLimit")
 	check("friendRequestDays", int(social.RequestTTL/day), "social.RequestTTL")
 	check("friendCap", social.MaxFriends, "social.MaxFriends")
+	check("podInviteDays", int(pods.InviteTTL/day), "pods.InviteTTL")
+	check("podDismissDays", int(pods.DismissTTL/day), "pods.DismissTTL")
+	check("podMemberCap", pods.MaxMembers, "pods.MaxMembers")
+	check("podsPerPerson", pods.MaxPodsPerPerson, "pods.MaxPodsPerPerson")
 
 	// Backups: scripts/backup-offsite.sh is the source.
 	script := readRepoFile(t, "scripts/backup-offsite.sh")

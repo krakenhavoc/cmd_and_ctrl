@@ -319,8 +319,13 @@ Tests: `cards/effects/cav_b_dash_test.go`, `cav_b_test.go` (flash surcharge, fre
 
 ## Amendment (2026-10-13, [#3225](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3225)): a per-offer X ceiling, for "as though it had flash if X is N or less"
 
-Silver Scrutiny prints "You may cast this spell as though it had flash if X is 3 or less." CR 601.3c lets the caster
-BEGIN the cast at instant speed and then requires the announced X to satisfy the condition. The two "as though it had
+**Corrected:** 2026-11-06 ([#5212](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5212)). This amendment first
+cited CR 601.3c, which is the flash that needs an alternative or additional cost paid. A condition on a choice made while
+casting, such as X, is CR 601.3b. The citation below is corrected in place. No decision and no behaviour changes.
+
+Silver Scrutiny prints "You may cast this spell as though it had flash if X is 3 or less." CR 601.3b lets the caster
+BEGIN the cast at instant speed, since the X they will announce could make the permission apply, and then requires the
+announced X to satisfy the condition. The two "as though it had
 flash" shapes the engine had could not express that: a flat grant (`CastKindAsThoughFlash`) opens the window for every X,
 and the offer that opens it for one claim (`AlternativeCost.AsThoughFlash`, `FlashForMore`) bounded nothing. Shipping
 either would let a player draw ten cards at instant speed, which is stronger than printed, so the card shipped as a

@@ -3331,6 +3331,14 @@ export interface OptionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #5193: "you may collect evidence N" (CR 701.59a) — exile any number of
+  // cards from your graveyard with total mana value `collect_evidence` or
+  // greater. `evidence_options` is your graveyard cards that could be
+  // exiled; present-and-empty means the whole graveyard is short and the
+  // offer cannot be taken (CR 701.59b). Taken, the picks ride cast_spell as
+  // `exile_ids`; the server refuses a set whose total falls short.
+  collect_evidence?: number;
+  evidence_options?: LegalTargetsView;
   // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
   // cast's tap cost: the board opens the tap picker from it and sends
   // the picks as `tap_ids` (lib/targeting.ts tapCostFor).
@@ -3463,7 +3471,7 @@ export interface AlternativeCostView {
   timing_closed?: boolean;
   // #3225: the largest X the viewer may announce while claiming THIS
   // offer — "you may cast this spell as though it had flash if X is 3
-  // or less" (CR 601.3c) — already folded with the card's printed
+  // or less" (CR 601.3b) — already folded with the card's printed
   // `x_max`. The server refuses a larger X under the claim; the cast for
   // the printed cost is not bound by it. Present only on an offer that
   // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
@@ -3543,6 +3551,12 @@ export interface AbilityCostBranchView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #5184: forage's "exile three cards from your graveyard" branch — the
+  // count, the words, the graveyard cards that could pay and their pile.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
 }
 
 export interface PayOptionView {
@@ -4005,6 +4019,9 @@ export interface ActivatedAbilityView {
   exile_cost_any_number?: boolean;
   exile_cost_symbol_color?: string;
   exile_cost_symbol_min?: number;
+  // #5193: collect evidence N's floor — an `exile_cost_any_number` pick is
+  // enough once the picked cards' total mana value reaches this.
+  exile_cost_mana_value_min?: number;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -4226,6 +4243,15 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4320: on an activated row of its controller's own, what it gives
+  // each creature its controller controls until end of turn, with no
+  // target (Purphoros, God of the Forge's {2}{R} row: power 1).
+  team_pump?: {
+    power?: number;
+    toughness?: number;
+    keywords?: string[];
+    cant_be_blocked?: boolean;
+  };
   // #4980: on an activated row of its controller's own, the mana it adds
   // on one numbered resolution of it this turn (Soulbright Seeker: the
   // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.

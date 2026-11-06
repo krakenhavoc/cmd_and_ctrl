@@ -244,3 +244,56 @@ func TestLeftGraveyardSpiritOfResilienceOffersTheCastCard(t *testing.T) {
 		t.Errorf("the copy choice %v does not offer Gravecrawler, the card cast from your graveyard", c.ChooseCards)
 	}
 }
+
+// #4943: two departures made by two separate actions are two events, even
+// with nothing resolving between them. Casting a spell (CR 601.2a moves the
+// card to the stack) and playing a land (CR 116.2a) are each their own
+// event, so a "one or more" trigger triggers once for each (CR 603.2c),
+// not once for the priority window both happened in.
+
+func TestLeftGraveyardTwoFlashbackCastsInOneWindowTriggerTwice(t *testing.T) {
+	for _, tc := range leftGraveyardCards {
+		if tc.creatureOnly {
+			continue // neither card is a creature card
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			g, me, _, src := leftGraveyardTable(t, tc)
+			looting := seedGraveyardCard(t, g, "Faithless Looting", "Sorcery", "3d6fa57a-aa53-4b5c-b8af-a7612c823117")
+			if err := g.CastSpell(me.ID, looting, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+				t.Fatalf("flashback Faithless Looting: %v", err)
+			}
+			// An instant, so it can be cast in the same window, on top of the
+			// Looting and the trigger it caused, with nothing resolved.
+			iteration := seedGraveyardCard(t, g, "Galvanic Iteration", "Instant", galvanicIterationOracle)
+			if err := g.CastSpell(me.ID, iteration, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+				t.Fatalf("flashback Galvanic Iteration: %v", err)
+			}
+			if got := leftGraveyardTriggers(g, src); got != 2 {
+				t.Errorf("%d triggers for two flashback casts in one priority window, want 2", got)
+			}
+		})
+	}
+}
+
+func TestLeftGraveyardALandPlayThenACastInOneWindowTriggerTwice(t *testing.T) {
+	for _, tc := range leftGraveyardCards {
+		if tc.creatureOnly {
+			continue // neither card is a creature card
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			g, me, _, src := leftGraveyardTable(t, tc)
+			pushCatalogPermanent(g, me.ID, "Crucible of Worlds", "Artifact", crucibleOfWorldsOracle, false)
+			land := pushGraveyardCardWithTypeLineID(me, "Forest", "Basic Land — Forest")
+			if err := g.CastSpell(me.ID, land, game.CastSpellParams{FromZone: "graveyard"}); err != nil {
+				t.Fatalf("play a land from the graveyard: %v", err)
+			}
+			iteration := seedGraveyardCard(t, g, "Galvanic Iteration", "Instant", galvanicIterationOracle)
+			if err := g.CastSpell(me.ID, iteration, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+				t.Fatalf("flashback Galvanic Iteration: %v", err)
+			}
+			if got := leftGraveyardTriggers(g, src); got != 2 {
+				t.Errorf("%d triggers for a land play and a flashback cast in one priority window, want 2", got)
+			}
+		})
+	}
+}

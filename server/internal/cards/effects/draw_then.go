@@ -45,6 +45,7 @@ var drawThenDiscardQuestions = []string{
 	"Anvil of Bogardan — discard a card",
 	"Arni, Humble Scribe — discard a card",
 	"Depth Defiler — discard a card",
+	"Whirlwind Technique — discard a card",
 }
 
 func init() {

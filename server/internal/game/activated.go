@@ -669,15 +669,25 @@ type AbilityCost struct {
 	// a cost is announced). Nil means no such part, which is every other
 	// ability.
 	//
-	// A branch is plain data (AbilityCostBranch): a sacrifice or a
-	// discard, and the rest of the cost carries neither clause, which
-	// effects.Register enforces. ChosenAbilityCost builds the announced
+	// A branch is plain data (AbilityCostBranch): a sacrifice, a
+	// discard or (forage's, #5184) a graveyard exile, and the rest of the
+	// cost carries none of those clauses, which effects.Register enforces. ChosenAbilityCost builds the announced
 	// branch into the ordinary clause, so the validator, the payer, the
 	// enumerator and the view all see one ordinary cost
 	// (ability_cost_either.go). Data rather than a nested AbilityCost,
 	// whose clauses hold predicate funcs: no new route from Game to a
 	// closure (ADR 0041).
 	Either []AbilityCostBranch
+
+	// Forage marks Either as the forage keyword action (CR 701.61a,
+	// #5184): Camellia, the Seedmiser's "{2}, Forage:". Either is then
+	// ForageAbilityBranches — exile three cards from your graveyard, or
+	// sacrifice a Food — built by effects.Forage, and the activation,
+	// once it has paid the branch, records PaidCost.Foraged and emits
+	// EventForage (forage.go). ChosenAbilityCost keeps the mark on the
+	// folded cost. A cost may have only one either/or part, so a
+	// forage sits beside no other OrCost.
+	Forage bool
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -2469,6 +2479,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Milled = append(paid.Milled, milled...)
+	// #5184, CR 701.61a: a forage branch has been paid with the rest —
+	// the three cards are in exile or the Food is in the graveyard — so
+	// the player has foraged: "if you foraged" reads the record, and
+	// "whenever you forage" sees the event (forage.go).
+	if ab.Cost.Forage {
+		paid.Foraged = true
+		g.noteForageLocked(playerID, cardID)
+	}
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()

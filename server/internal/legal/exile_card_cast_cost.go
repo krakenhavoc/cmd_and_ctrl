@@ -21,14 +21,36 @@ import (
 // announces, which is not known yet, so this returns EVERY candidate,
 // cheapest fuel first; exileCardsForX cuts it to the announced X when the
 // move is built, and exileXCeiling caps the X search at its length.
-func (e *enumerator) exileCardsCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost) (ids []uuid.UUID, ok bool) {
-	if mandatory == nil || mandatory.ExileCards == nil {
+//
+// #5193: an announced optional "you may collect evidence N" names its
+// cards on the same list, through the same walk and floor
+// (exileCardsPayment's any-number arm). A set of optional costs the
+// graveyard cannot pay drops the move (CR 701.59b); declining it is
+// always a move of its own.
+func (e *enumerator) exileCardsCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, ok bool) {
+	ec := exileCardsCostOf(mandatory, optional, chosen)
+	if ec == nil {
 		return nil, true
 	}
-	if mandatory.ExileCards.CountFromX {
-		return e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, castID, mandatory.ExileCards)), true
+	if ec.CountFromX {
+		return e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, castID, ec)), true
 	}
-	return e.exileCardsPayment(mandatory.ExileCards, castID, nil)
+	return e.exileCardsPayment(ec, castID, nil)
+}
+
+// exileCardsCostOf is the graveyard exile clause a cast's plan pays: the
+// mandatory cost's, or an announced optional cost's (collect evidence,
+// #5193). effects.Register keeps the two apart, so there is at most one.
+func exileCardsCostOf(mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) *game.ExileCost {
+	if mandatory != nil && mandatory.ExileCards != nil {
+		return mandatory.ExileCards
+	}
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) && optional[i].ExileCards != nil {
+			return optional[i].ExileCards
+		}
+	}
+	return nil
 }
 
 // exileXCeiling is the largest X an "exile X cards from your graveyard"

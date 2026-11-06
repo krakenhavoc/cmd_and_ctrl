@@ -1861,6 +1861,17 @@ type OptionalCostView struct {
 	Behold        bool              `json:"behold,omitempty"`
 	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
 
+	// CollectEvidence is the N of "you may collect evidence N" (CR
+	// 701.59a, #5193): exile any number of cards from your graveyard with
+	// total mana value N or greater. EvidenceOptions is the viewer's
+	// graveyard cards that could be exiled for it, in pile order (min 1,
+	// max all of them); present-and-empty when the whole graveyard's total
+	// is below N, so the offer cannot be taken (CR 701.59b). Taking it, the
+	// caster names cards whose mana values add up to N or more on
+	// cast_spell's `exile_ids`; the engine refuses a set that falls short.
+	CollectEvidence int               `json:"collect_evidence,omitempty"`
+	EvidenceOptions *LegalTargetsView `json:"evidence_options,omitempty"`
+
 	// TapCost is the waterbend clause of a "you may waterbend {N}" offer
 	// (CR 701.67, #3999): the TapCostView a hand card's own waterbend
 	// ships, sized at the offer's {N}. Taking the offer makes it the
@@ -2105,7 +2116,7 @@ type AlternativeCostView struct {
 	// XMax is the largest X the viewer may announce while claiming THIS
 	// offer, set only for an offer that carries a ceiling of its own
 	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
-	// less", CR 601.3c) and already folded with the card's printed
+	// less", CR 601.3b) and already folded with the card's printed
 	// `x_max` — the same number CastSpell refuses above. The X picker
 	// reads it for the claimed offer; the card's own `x_max` still
 	// bounds the cast for the printed cost. Absent for every other offer.
@@ -5108,6 +5119,12 @@ type ActivatedAbilityView struct {
 	ExileCostAnyNumber   bool   `json:"exile_cost_any_number,omitempty"`
 	ExileCostSymbolColor string `json:"exile_cost_symbol_color,omitempty"`
 	ExileCostSymbolMin   int    `json:"exile_cost_symbol_min,omitempty"`
+	// ExileCostManaValueMin is collect evidence N's floor (CR 701.59a,
+	// #5193; Forensic Researcher's "{T}, Collect evidence 3"): an
+	// exile_cost_any_number pick is enough once the picked cards' total
+	// mana value is this or more. The engine refuses a pick below it; the
+	// client shows the running total.
+	ExileCostManaValueMin int `json:"exile_cost_mana_value_min,omitempty"`
 	// ReturnLabel / ReturnOptions describe a "Return a permanent you
 	// control to its owner's hand" cost component (#1213) — Quirion
 	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
@@ -8410,6 +8427,12 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
 			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
 		}
+		if ac.SacrificeHalfRoundedUp && out.SacrificeOptions != nil {
+			// #5075: "half the lands you control, rounded up" — the
+			// caster's pick, of exactly the number CastSpell demands.
+			n := g.SacrificeHalfCountForEffect(caster, ac.Sacrifice)
+			out.SacrificeOptions.Min, out.SacrificeOptions.Max = n, n
+		}
 	}
 	if ec := ac.ExilePermanents; !ec.Empty() {
 		// #3402: the activation's own walk and view, so the picker offers
@@ -8552,6 +8575,18 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			v.Reveal = true
 			v.Behold = oc.Reveal.Behold
 			v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
+		}
+		// #5193: "you may collect evidence N" — the engine's own walk and
+		// gate (ExileCostPayableForEffect), with the spell itself excluded,
+		// so the offer is open exactly when the validator can accept it.
+		if ec := oc.ExileCards; ec.IsCollectEvidence() {
+			v.CollectEvidence = ec.ManaValueAtLeast
+			v.EvidenceOptions = &LegalTargetsView{Min: 1}
+			if g.ExileCostPayableForEffect(caster, castID, ec) {
+				opts := g.ExileCostOptionsForEffect(caster, castID, ec)
+				v.EvidenceOptions.Max = len(opts)
+				v.EvidenceOptions.Cards = cardIDStrings(opts)
+			}
 		}
 		// #3999: "you may waterbend {N}" — the picker the offer opens.
 		if !oc.Waterbend.Empty() {
@@ -13471,6 +13506,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 				v.ExileCostSymbolColor = st.Color
 				v.ExileCostSymbolMin = st.AtLeast
 			}
+			v.ExileCostManaValueMin = ec.ManaValueAtLeast
 			if v.CantActivate == "" && !g.ExileCostPayableForEffect(caster, c.InstanceID, ec) {
 				v.CantActivate = "Your graveyard does not hold enough to exile for this cost."
 			}

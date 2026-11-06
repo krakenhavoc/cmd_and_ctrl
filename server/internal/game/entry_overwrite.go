@@ -87,6 +87,10 @@ type EntersAs struct {
 	// AddTypes ["Artifact"] with CreatureTypes ["Borg"]. Beside AddTypes
 	// only; an overwrite that sets Types names its subtypes in Subtypes.
 	CreatureTypes []string `json:"creatureTypes,omitempty"`
+	// Name, when set, is the name the effect gives it (layer 3, CR
+	// 612.8): Princess Yue's "She's a land named Moon." Empty keeps the
+	// card's own.
+	Name string `json:"name,omitempty"`
 }
 
 // EntersAsPT is an entry overwrite's base power and toughness.
@@ -99,6 +103,9 @@ type EntersAsPT struct {
 // record so they share one timestamp and are one effect (CR 613.7).
 func (e *EntersAs) mods() []Mod {
 	var mods []Mod
+	if e.Name != "" {
+		mods = append(mods, SetNameMod(e.Name))
+	}
 	if len(e.Types) > 0 {
 		mods = append(mods, SetTypesMod(e.Types, e.Subtypes))
 	}
@@ -158,7 +165,7 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 	}
 	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
 		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords),
-		CreatureTypes: copyStrings(e.CreatureTypes)}
+		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name}
 	if e.BasePT != nil {
 		pt := *e.BasePT
 		out.BasePT = &pt

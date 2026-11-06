@@ -483,3 +483,62 @@ Tests: `TestMsc4707FlyingDroneCostsOnlyTapAfterAnotherFlierEntersUnderYourContro
 A card arriving in a graveyard is announced by exactly one event of one of three kinds: `EventDiscardCard` (a discard), `EventMill` (a mill) or `EventZoneMove` (every other route, with the zone pair stamped; a death is also an `EventLTB`, which carries no `OldZone`). #2809 read the library route only. `graveyardArrivals` (`cards/effects/graveyard_arrival.go`) generalises it, as plain data beside a card filter: the source zones, the zones it must not have come from, and whether the batch read keeps only cards still there. `When()` is the trigger's per-event test and `InBatch(g, batch, owner)` is the owner's arrivals in one event batch, read as the ability resolves. The batch is this ADR's: everything one resolution or one turn-based action emits (CR 603.2c). Two creature cards discarded by one spell, or a creature that dies beside a creature card milled by the same resolution, are one occurrence; the next resolution is the next.
 
 Three rules fix what it counts. A token is not a card (CR 108.2b, 111.6), so a card clause never counts one. A token is still put into the graveyard before it ceases to exist (CR 111.7, 704.5d), so a clause that says "an artifact is put into your graveyard from the battlefield" reads the leaves-the-battlefield event instead and counts a token artifact (`WhenAnotherArtifactIsPutIntoYourGraveyard`). A card is judged by what it is in the graveyard, because "from anywhere" is never a leaves-the-battlefield ability (CR 603.6c). A clause without "one or more" is one trigger per object and uses no batch (Ultron's Auxiliary). The batch count includes a card that has left the graveyard since, because it was put there; the library reader keeps its older "still there" filter (`Present`). No snapshot field, no effect key.
+
+## Amendment (2026-11-05, #4943): a cast and a land play are batch boundaries too
+
+*Closes [#4943](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4943).*
+
+The #1341 amendment above stopped one short again. A "whenever one or
+more cards leave your graveyard" trigger (Tormod, the Desecrator;
+Desecrated Tomb; both Quintorius cards) fired once for two flashback casts
+made back to back, because casting a spell and playing a land opened no
+batch: both departures fell into the window's one batch, and a "one or
+more" trigger counts a batch once. CR 601.2a makes each cast its own event
+(the card moves to the stack as it begins), and CR 116.2a makes a land play
+a special action, the very thing #1341 made a boundary, except that it
+reaches the engine through the cast verb rather than
+`PerformSpecialAction`. CR 603.2c counts each.
+
+- **`castSpellLocked` opens a batch** through
+  `beginActionEventBatchLocked`, at the point where the cast is actually
+  made: after every announce-time refusal and every question a cast parks
+  on (an opponent's target, CR 903.9, assist), before the auto-tap, the
+  cost payments and the move to the stack. A land play opens it after the
+  land-drop and "can't play lands" gates, before the entry's replacement
+  pipeline. So a refused cast opens nothing, a parked cast opens its batch
+  on the resume that makes it, and everything one cast emits (a delve's
+  exiles, a discard, the mana spent, `EventCast`) is one occurrence.
+- **A cast inside a resolution opens nothing.** While `resolutionOpen`
+  (or a resolution function is on the Go stack), a cast is one the
+  resolution makes or offers (CR 608.2g: a copy-cast offer, Word of
+  Command's play, a "you may cast it" prompt). Its events stay in the
+  resolution's batch, which keeps "everything one resolution emits is one
+  batch" and keeps the resolving slot, which the boundary clears, readable
+  for the resolution's own prompts.
+- **Existing "one or more" cards.** Nothing that one resolution, one step
+  or one turn-based action emits changes batch. What changes is that the
+  events of two separate casts or land plays in one window, which were one
+  occurrence, are two: a cast's own triggers ("whenever you cast", the
+  cast's cost payments) and a land's entry (landfall-style "one or more
+  lands enter") are now each their own occurrence, as the rules count them.
+- **Snapshots and the log.** No new state and no schema change:
+  `Game.eventBatch` and `oncePerBatchFired` already persist, and a batch
+  paused on a prompt mid-cast resumes with the counter it was paused at.
+  The log's and the wire's `batch` field still means "the same occurrence";
+  two casts simply no longer share one, so the client's per-batch cue
+  plays once per cast. The fixture corpus follows its own rule: the 49
+  scripted boards that cast a spell or play a land now log later batch
+  numbers than the files they wrote, a history this engine no longer
+  makes, so each earlier file stays and is still restored, and the same
+  board writes a new file with the suffix `_cast_batch`. No fixture was
+  edited.
+- **Not changed:** an activated ability (CR 602) still opens no batch, so
+  two activations in one window whose costs exile cards from a graveyard
+  still share one. The sandbox-manual gap (two `move_card`s in a row) is
+  unchanged, for the reason given above.
+- **Proof:** `cards/effects/left_graveyard_test.go`
+  (`TestLeftGraveyardTwoFlashbackCastsInOneWindowTriggerTwice`,
+  `TestLeftGraveyardALandPlayThenACastInOneWindowTriggerTwice`) and
+  `game/cast_event_batch_test.go`, beside
+  `TestLeftGraveyardTwoCardsExiledAtOnceKeepBatchSemantics`, which pins the
+  boundary that did not move.

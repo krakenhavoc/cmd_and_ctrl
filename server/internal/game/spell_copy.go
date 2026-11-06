@@ -703,6 +703,8 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// original — so a copied Grab the Prize asks about the card the
 	// original discarded.
 	meta.Paid.CostBranch = item.Paid.CostBranch
+	// #5184: and whether that branch foraged.
+	meta.Paid.Foraged = item.Paid.Foraged
 	if len(item.Paid.Discarded) > 0 {
 		meta.Paid.Discarded = append([]uuid.UUID(nil), item.Paid.Discarded...)
 	}

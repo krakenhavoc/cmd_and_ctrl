@@ -19,7 +19,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}: Creatures you control get +1/+1 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Toughness: 1}, Answers: game.AnswerPump},
 			Cost:    ManaCost("{4}{W}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return BoostUntilEOT{

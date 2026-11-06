@@ -19,12 +19,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // costs the printed {2}{U}{U} plus {2} and opens the instant-speed
 // window for that cast only.
 //
-// No simplification.
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the {2} is an additional cost and the flash a timing
+// permission (CR 601.3c), so it could. Declared as the caveat.
 func init() {
 	Register(Spec{
-		OracleID:         "0a0a051c-59ed-4286-b842-a34da7ef15d5",
-		Name:             "Asinine Antics",
-		Completeness:     CompletenessFull,
+		OracleID:     "0a0a051c-59ed-4286-b842-a34da7ef15d5",
+		Name:         "Asinine Antics",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Paying {2} more to cast this at instant speed can't be combined with another alternative cost.",
+		},
 		AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var hosts []game.Card

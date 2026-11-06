@@ -229,6 +229,11 @@ type PayAction struct {
 	// Mana is a PayActionMana branch's cost ("{2}"), parsed when it is
 	// paid (#4566). Unused by every other kind.
 	Mana string `json:",omitempty"`
+	// Forage marks an Either as the forage keyword action (CR 701.61a,
+	// #5184; ForagePayAction): paying either branch is a forage, so the
+	// answer emits EventForage once the payment is made. Unused by every
+	// other payment.
+	Forage bool `json:",omitempty"`
 }
 
 // PayActionPhrase is the verb phrase for one payment when its card gives

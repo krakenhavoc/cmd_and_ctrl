@@ -45,15 +45,7 @@ func init() {
 		Name:         "Party Dude",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Party Dude — each player creates a Food token", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, p := range seatsFromActive(g) {
-					if err := (CreateToken{Controller: p, Template: FoodToken(), N: 1}).Apply(ctx.asGroupMember()); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			WhenThisEnters("Party Dude — each player creates a Food token", avB30cEachPlayerCreatesAFood),
 			AtLevel(2, On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !b23ArtifactPutIntoGraveyardFromBattlefield(ev, g) {
 					return false

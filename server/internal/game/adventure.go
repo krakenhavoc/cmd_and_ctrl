@@ -92,8 +92,13 @@ const adventureCreatureFace = 0
 // creature half is an ordinary creature spell and takes the ordinary
 // route to the battlefield, and one cast as its Adventure is an
 // instant or sorcery whichever cost paid for it.
+//
+// An Omen half (CR 720, omen.go) shares the layout and is not one: it
+// is shuffled into its owner's library instead, and its card is never
+// castable from exile.
 func castAsAdventure(c Card) bool {
-	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace && !isVengeanceHalf(c)
+	return c.Layout == LayoutAdventure && c.ActiveFace == adventureSpellFace &&
+		!isVengeanceHalf(c) && !castAsOmen(c)
 }
 
 // isVengeanceHalf reports whether `c`, as materialised, is the Vengeance
@@ -114,6 +119,15 @@ func castAsAdventure(c Card) bool {
 // says it; the layout and face index narrow it to the second half of an
 // adventure card, which is the only shape Vengeance has been printed in.
 func isVengeanceHalf(c Card) bool {
+	return adventureSpellHalfHasSubtype(c, "Vengeance")
+}
+
+// adventureSpellHalfHasSubtype reports whether `c`, as materialised, is
+// the second half of an adventure-layout card whose type line carries
+// the word `sub`: a Vengeance half, an Omen half (omen.go). The layout
+// and face index narrow it, and the name check makes sure that face is
+// the one materialised.
+func adventureSpellHalfHasSubtype(c Card, sub string) bool {
 	if c.Layout != LayoutAdventure || c.ActiveFace != adventureSpellFace || len(c.Faces) <= adventureSpellFace {
 		return false
 	}
@@ -122,7 +136,7 @@ func isVengeanceHalf(c Card) bool {
 		return false
 	}
 	for _, w := range strings.Fields(strings.ReplaceAll(f.TypeLine, "—", " ")) {
-		if strings.EqualFold(w, "Vengeance") {
+		if strings.EqualFold(w, sub) {
 			return true
 		}
 	}

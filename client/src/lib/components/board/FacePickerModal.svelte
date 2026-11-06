@@ -30,8 +30,10 @@
     castableFaceIndex,
     displayName,
     faceOptions,
+    isOmenCard,
     isSidewaysArt,
   } from "../../faces";
+  import { L } from "../../labels";
   import { hasSatisfiableTargets } from "../../timing";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
@@ -130,14 +132,18 @@
   // and an adventure card ask the same question — "which half?" — out
   // of two different rules, and the caption is the only place the
   // modal says which one it is looking at.
+  // An omen card (CR 720) is laid out as an adventure but is not one: it
+  // is known by the Omen spell type on its second half (#5191).
   const provenance = $derived(
-    card?.layout === LAYOUT_ADVENTURE
-      ? "adventure · CR 715.3"
-      : card?.layout === LAYOUT_SPLIT
-        ? card.fused
-          ? "split, fuse · CR 709.3, 702.102"
-          : "split · CR 709.3"
-        : "modal double-faced · CR 712.12",
+    card && isOmenCard(card)
+      ? L.facePickerOmen
+      : card?.layout === LAYOUT_ADVENTURE
+        ? "adventure · CR 715.3"
+        : card?.layout === LAYOUT_SPLIT
+          ? card.fused
+            ? "split, fuse · CR 709.3, 702.102"
+            : "split · CR 709.3"
+          : "modal double-faced · CR 712.12",
   );
 </script>
 

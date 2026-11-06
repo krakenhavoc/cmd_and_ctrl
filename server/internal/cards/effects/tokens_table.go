@@ -72,6 +72,8 @@ var tokenTable = map[string]game.Card{
 	"1/1 green and white Human Citizen":                                {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                      {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                      {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"1/1 green and white Elf Warrior":                                  {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"3/3 blue Serpent named Koma's Coil":                               {Name: "Koma's Coil", TypeLine: "Token Creature — Serpent", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"1/1 blue Faerie Dragon with flying":                               {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Faerie with flying":                                      {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Djinn Monk with flying":                                  {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
@@ -155,6 +157,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 red Monk with prowess":                                        {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 white Monk with prowess":                                      {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
 	"1/1 white Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Dog":                                                    {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Cat Soldier with vigilance":                             {Name: "Cat Soldier", TypeLine: "Token Creature — Cat Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 white Cat Beast":                                              {Name: "Cat Beast", TypeLine: "Token Creature — Cat Beast", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Unicorn":                                                {Name: "Unicorn", TypeLine: "Token Creature — Unicorn", Power: 2, Toughness: 2, Colors: []string{"W"}},
@@ -184,6 +187,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Warrior with vigilance":                                 {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"1/1 white Zombie":                                                 {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"2/1 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"reach"}},
+	"2/1 black and green Spider with menace and reach":                 {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B", "G"}, Keywords: []string{"menace", "reach"}},
 	"1/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 1, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"1/2 blue Moonfolk with flying":                                    {Name: "Moonfolk", TypeLine: "Token Creature — Moonfolk", Power: 1, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/2 white Moogle with lifelink":                                   {Name: "Moogle", TypeLine: "Token Creature — Moogle", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
@@ -192,6 +196,7 @@ var tokenTable = map[string]game.Card{
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
+	"2/2 red Soldier":                                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
 	"2/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 2, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
 	"1/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}}, // Secrets of Strixhaven (#4456)
@@ -210,6 +215,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Spawn artifact":                                     {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
 	"2/2 white Alien":                                                  {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)
 	"2/2 white Knight":                                                 {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight Ally":                                            {Name: "Knight Ally", TypeLine: "Token Creature — Knight Ally", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight with vigilance":                                  {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
@@ -262,6 +268,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 white and blue Golem artifact":                                {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4, Colors: []string{"W", "U"}},
 	"3/3 colorless Phyrexian Wurm artifact":                            {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 3, Toughness: 3},
 	"3/3 green Dinosaur with trample":                                  {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	"3/3 green Dinosaur":                                               {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Elephant":                                               {Name: "Elephant", TypeLine: "Token Creature — Elephant", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/4 green Treefolk with reach":                                    {Name: "Treefolk", TypeLine: "Token Creature — Treefolk", Power: 3, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"3/3 red Ogre":                                                     {Name: "Ogre", TypeLine: "Token Creature — Ogre", Power: 3, Toughness: 3, Colors: []string{"R"}},
@@ -281,6 +288,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Beast with trample":                                     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"4/4 green Phyrexian Beast":                                        {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+	"4/4 red Dinosaur Dragon with flying":                              {Name: "Dinosaur Dragon", TypeLine: "Token Creature — Dinosaur Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Scorpion Dragon with flying and haste":                    {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
 	"3/3 blue Angel with flying":                                       {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"flying"}},
@@ -288,6 +296,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"3/3 white Knight":                                                 {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 3, Colors: []string{"W"}},
 	"4/4 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel Warrior with flying":                              {Name: "Angel Warrior", TypeLine: "Token Creature — Angel Warrior", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Avatar with flying":                                     {Name: "Avatar", TypeLine: "Token Creature — Avatar", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -371,4 +380,6 @@ var tokenTable = map[string]game.Card{
 
 	// #4459 batch 8: Avatar's Ballistic Boulder (Fire Navy Trebuchet, TTLA 13).
 	"2/1 colorless Construct artifact with flying named Ballistic Boulder": {Name: "Ballistic Boulder", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
+
+	// #5075 batch 34: Avatar Eternal's plain Soldier (Fire Nation Archers, TTLE).
 }

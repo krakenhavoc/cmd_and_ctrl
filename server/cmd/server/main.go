@@ -224,6 +224,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/modelkeys"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
@@ -856,6 +857,17 @@ func main() {
 		log.Info("mod log off; set "+discord.ModLogChannelEnv+" to enable", "var", discord.ModLogChannelEnv)
 	}
 
+	// Friends and blocks (ADR 0213), and pods (ADR 0220), which read
+	// friendships and blocks through the same store. Pod invites last
+	// 30 days, a link 7 and a dismissal 180; the reads skip what has
+	// expired, and this sweep deletes it on a quiet server, as the
+	// privacy notice says.
+	socialStore := newSocialStore(database)
+	podStore := newPodStore(database, socialStore)
+	if podStore != nil {
+		go pods.RunSweeper(ctx, podStore, log, pods.SweepEvery)
+	}
+
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
@@ -907,7 +919,8 @@ func main() {
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
 		StatsPrefs:        newStatsPrefsStore(database),
-		Social:            newSocialStore(database),
+		Social:            socialStore,
+		Pods:              podStore,
 		AdvancedStats:     newAdvancedStatsStore(database),
 		Log:               log,
 		Bots:              bots,
@@ -1717,6 +1730,15 @@ func newSocialStore(database *db.DB) *social.Store {
 		return nil
 	}
 	return social.NewStore(database)
+}
+
+// newPodStore is ADR 0220's pods (migration 0033), or nil with no
+// database, where nobody is signed in to be in one.
+func newPodStore(database *db.DB, s *social.Store) *pods.Store {
+	if database == nil {
+		return nil
+	}
+	return pods.NewStore(database, s)
 }
 
 func newTableSetupStore(database *db.DB) tablesetups.Store {
