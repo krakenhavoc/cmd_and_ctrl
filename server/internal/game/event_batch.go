@@ -25,7 +25,7 @@ import "github.com/google/uuid"
 // # The boundary
 //
 // A batch is every event the engine emits between two points where
-// PLAY MOVES ON — and there are exactly three such points:
+// PLAY MOVES ON — and there are exactly four such points:
 //
 //   - a stack item begins to resolve (resolveTopOfStackLocked), and
 //   - the turn cursor enters a new step (advanceCursorLocked), plus
@@ -37,7 +37,29 @@ import "github.com/google/uuid"
 //     permanent up — its own event with no stack and no priority
 //     pass around it, so it is a third point where play moves on:
 //     two foretells taken back to back, before anything resolves,
-//     are two occurrences (CR 603.2c), not one.
+//     are two occurrences (CR 603.2c), not one, and
+//   - a player casts a spell or plays a land as their own action
+//     (castSpellLocked, #4943). CR 601.2a moves the card to the stack
+//     as the cast begins, and CR 116.2a makes a land play a special
+//     action that reaches the engine through the cast verb rather
+//     than PerformSpecialAction, so each is its own event for the
+//     same reason a foretell is: two flashback casts in one priority
+//     window, or a land played from the graveyard and then a spell
+//     cast from it, are two departures from the graveyard and two
+//     triggers of Tormod, the Desecrator, not one. The batch opens
+//     once the cast has passed its announce-time gates and any
+//     question it parks on has been answered (a parked cast opens it
+//     on the resume that makes it), so everything the cast emits —
+//     its auto-tap, its cost payments (a delve's exiles, a discard),
+//     the move to the stack and EventCast — is one occurrence. A cast
+//     or land play made INSIDE a resolution (CR 608.2g: a copy a
+//     resolution offers, Word of Command's play) is part of that
+//     resolution's occurrence and opens nothing; see
+//     beginActionEventBatchLocked.
+//
+// An activated ability (CR 602) does not open one yet: two
+// activations in one window whose costs exile cards from a graveyard
+// share a batch, as two casts did before #4943.
 //
 // The step half used to carry a second exception. The first-strike
 // and regular combat damage steps are TWO combat damage steps
@@ -51,9 +73,9 @@ import "github.com/google/uuid"
 //
 // Nothing else opens a batch. That is deliberate, and the two
 // consequences below are unchanged by the special-action point added
-// in #1341 — a special action is never inside a resolution or a
-// turn-based action, so it only ever adds a boundary, never removes
-// one:
+// in #1341 and the cast point added in #4943 — neither is ever inside
+// a resolution or a turn-based action, so each only ever adds a
+// boundary, never removes one:
 //
 //   - Everything one resolution emits is one batch. A Cyclonic Rift
 //     that bounces four creatures is one occurrence, and Dour
@@ -95,11 +117,14 @@ import "github.com/google/uuid"
 // again for this one.
 //
 // Called from resolveTopOfStackLocked, advanceCursorLocked,
-// repeatCleanupStepLocked and PerformSpecialAction — a resolution
+// repeatCleanupStepLocked, PerformSpecialAction and (through
+// beginActionEventBatchLocked) castSpellLocked — a resolution
 // beginning, the cursor entering a step, the one step that begins
-// again without the cursor moving (CR 514.3a), and a special action
-// being taken (CR 116.2, #1341). Together they are "play moved on".
-// See the file comment for why those and nothing else.
+// again without the cursor moving (CR 514.3a), a special action
+// being taken (CR 116.2, #1341), and a spell cast or a land played as
+// a player's own action (CR 601.2a, 116.2a, #4943). Together they are
+// "play moved on". See the file comment for why those and nothing
+// else.
 //
 // It is also where the RESOLVING-ITEM slot is cleared (#920,
 // resolving_item.go). The two are the same question asked twice: a
@@ -131,6 +156,29 @@ func (g *Game) beginEventBatchLocked() {
 	// still waiting on its prompt.
 	g.dropShieldDivisionsLocked(0)
 	g.dropRedirectOrdersLocked(0)
+}
+
+// beginActionEventBatchLocked opens the batch a cast or a land play is
+// when a player makes it as their own action (#4943, CR 601.2a,
+// 116.2a), and does nothing when it is made inside a resolution.
+//
+// A resolution is open (resolutionOpen) from the moment its item begins
+// to resolve until the CR 704.3 boundary after it, which waits for every
+// prompt the resolution queued. A cast made in that span is one the
+// resolution makes, or lets a player make as its answer (CR 608.2g: a
+// resolution's copy offer, a "you may cast it" prompt, Word of Command
+// playing the controlled player's card), and its events belong to the
+// resolution's batch: everything one resolution emits is one occurrence,
+// and the resolving slot the batch boundary clears is still being read.
+// resolutionDepth is the same answer for a resolution function still on
+// the Go stack.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) beginActionEventBatchLocked() {
+	if g.resolutionOpen || g.resolutionDepth > 0 {
+		return
+	}
+	g.beginEventBatchLocked()
 }
 
 // BeginEventBatchForTest opens a new event batch from outside the package:
