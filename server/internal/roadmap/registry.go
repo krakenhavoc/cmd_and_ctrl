@@ -1813,6 +1813,15 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#3402): `game.AdditionalCost.ExilePermanents` is the activated ability's `ExilePermanentsCost` on a cast's mandatory slot, built with `effects.ExileCreatureYouControlCost()` / `ExilePermanentCost(label, cardType)`, so the candidate walk, the clause check and the payer are the activation's own. The caster names the permanent on `cast_spell`'s `exile_permanent_ids` (`CastSpellParams.ExilePermanentIDs`); it is validated at announce (one permanent pays one component, so a creature also named to a sacrifice is refused) and exiled with the spell on the stack, so a leaves-the-battlefield trigger lands above the spell and nothing dies. The payment is recorded on `PaidCost.Exiled` and `ExiledObjects` (the battlefield object, CR 400.7) and read at resolution as last-known information through `ctx.ExiledPermanents()` (CR 608.2h); a CR 707.10 copy keeps it. The view ships `additional_cost.exile_permanent_options`, the client reuses the sacrifice picker with the verb \"Exile\", the cast gate greys a spell with nothing to exile, and the enumerator offers one payment (the policy's cheapest fuel) named in the move label. `Register` refuses the component on an optional cost, an either/or branch and the craft forms. The auto-tapper never taps the exiled creature for mana. **Still open:** a variable count, \"another\" and a graveyard form on a spell's cost.",
 	},
 	{
+		// #5247. Closed; history in Closed seams.
+		Slug: "return-permanent-additional-cost", Name: "Returning a permanent you control as an additional cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Spells that ask you to return a permanent you control to its owner's hand as an additional cost to cast them, such as Fear of Isolation.",
+		Rules:       []string{"601.2b", "601.2h", "118.3", "400.3"},
+		Issue:       5247,
+		Examples:    []string{"Fear of Isolation"},
+		EngineNotes: "**Shipped** (#5247): `game.AdditionalCost.ReturnToHand` is the activated ability's `ReturnToHandCost` on a cast's mandatory slot, built with `effects.ReturnPermanentToHandCost(label, preds...)`, so the candidate walk, the clause check and the payer are the activation's own. The caster names the permanent on `cast_spell`'s `return_ids` (`CastSpellParams.ReturnIDs`); it is validated at announce (one permanent pays one component) and returned with the spell on the stack to its owner's hand, a commander's owner being asked CR 903.9b first. Nothing to return makes the spell uncastable; the enumerator names one payment and the view ships `additional_cost.return_options`.",
+	},
+	{
 		// #3175. Closed; history in Closed seams.
 		Slug: "hand-exile-costs-tied-to-x-or-a-count", Name: "Hand-exile costs tied to X or to a variable count", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells you can pay for by exiling a card from your hand whose mana value is X, or by exiling any number of cards from your hand to make them cheaper, such as Shining Shoal and March of Swirling Mist.",

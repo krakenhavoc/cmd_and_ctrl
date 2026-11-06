@@ -3186,6 +3186,13 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #5247: a "return a permanent you control to its owner's hand"
+  // additional cost (Fear of Isolation). `return_options` lists the
+  // permanents that could pay it, in payment order, min / max the clause's
+  // count; the picks ride cast_spell as `return_ids`. Fewer cards than
+  // `min` means the cost cannot be paid right now.
+  return_label?: string;
+  return_options?: LegalTargetsView;
   // #3868: a "tap an untapped Vampire you control" additional cost (New
   // Blood), on the cost or on one of its branches. `tap_others_options`
   // lists the untapped permanents that could pay it, in payment order,

@@ -5611,6 +5611,17 @@ on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
 
+**Return a permanent you control as an additional cost (#5247):** "As an
+additional cost to cast this spell, return a permanent you control to its
+owner's hand" is `AdditionalCost: ReturnPermanentToHandCost("a permanent
+you control")`, with predicates for a narrower clause (`Creature()` for "a
+creature you control"): the activated ability's `ReturnToHandCost` on a
+cast, so the walk, the validator and the payer are the ability's. The
+caster names it on `return_ids`; it goes to its owner's hand with the spell
+on the stack, and with nothing to return the spell is not castable (Fear of
+Isolation). Mandatory slot only; Register refuses it in an optional cost
+and an either/or branch.
+
 **Behold a creature type and exile it (#4687, CR 701.4a, CR 607.2q, ADR
 0100 amendment 2026-11-05):** the Lorwyn Eclipsed Champions' "As an
 additional cost to cast this spell, behold a Kithkin and exile it" and "When

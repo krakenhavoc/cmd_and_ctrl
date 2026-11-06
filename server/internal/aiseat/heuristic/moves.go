@@ -926,6 +926,12 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// #3402: and the permanent an exile-a-permanent additional cost
 	// gives up leaves the board as surely.
 	v -= p.sacrificeCost(st, cp.ExilePermanentIDs)
+	// #5247: a permanent returned to pay the cost comes back as a card in
+	// hand, so it costs part of what it is worth, and all of a token (CR
+	// 111.7) — the price an ability's returned source pays.
+	for _, id := range cp.ReturnIDs {
+		v -= st.selfReturnCost(st.bf[id])
+	}
 	// #3175: a hand card exiled to a March is a card lost from hand, as a
 	// discarded one is, without a discard's payoffs (it is not a discard).
 	if p.cfg.DiscardCostByCard {

@@ -1607,6 +1607,18 @@ type AdditionalCostView struct {
 	// a hexproof creature you control is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ReturnLabel / ReturnOptions describe a "return a permanent you
+	// control to its owner's hand" additional cost (#5247, Fear of
+	// Isolation): the activated ability's fields of the same names, off
+	// the same engine walk (game.ReturnToHandOptionsForEffect). min / max
+	// are the clause's count, the cards come in payment order, and the
+	// picks ride back on cast_spell as `return_ids`. Absent when the cost
+	// has no such component; fewer cards than `min` means it cannot be
+	// paid right now, which makes the spell uncastable (CR 118.3). Not a
+	// target list: a hexproof permanent you control is on it, and so is a
+	// tapped one (CR 601.2h).
+	ReturnLabel   string            `json:"return_label,omitempty"`
+	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
 	// TapOthersLabel / TapOthersOptions describe a "tap an untapped
 	// Vampire you control" additional cost (#3868, New Blood): the
 	// activated ability's two fields of the same names, off the same
@@ -8450,6 +8462,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if out.ExilePermanentOptions == nil {
 			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
+	}
+	if rc := ac.ReturnToHand; !rc.Empty() {
+		// #5247: the activation's own walk and view, with the spell as the
+		// source — it is on no battlefield, so it is never a pick — so the
+		// picker offers exactly the permanents the validator accepts (#544).
+		out.ReturnLabel = rc.Label
+		out.ReturnOptions = returnCostOptions(g, caster, castID, rc)
 	}
 	if tc := ac.TapOthers; !tc.Empty() {
 		// #3868: the activation's own walk and view, with no source — the
