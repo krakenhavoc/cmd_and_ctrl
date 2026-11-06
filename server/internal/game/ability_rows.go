@@ -428,6 +428,10 @@ func additionalLandPlayRows(v reflect.Value) []string {
 func conditionalLandPlayRows(v reflect.Value) []string {
 	cp, _ := v.Interface().(ConditionalLandPlays)
 	switch {
+	case cp.EachPlayer && cp.Plays == 1:
+		return []string{"Each player may play an additional land on each of their turns."}
+	case cp.EachPlayer && cp.Plays > 1:
+		return []string{fmt.Sprintf("Each player may play %d additional lands on each of their turns.", cp.Plays)}
 	case cp.Plays == 1:
 		return []string{fmt.Sprintf("As long as you control another %s, you may play an additional land on each of your turns.", cp.Another)}
 	case cp.Plays > 1:

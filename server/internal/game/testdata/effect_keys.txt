@@ -208,6 +208,7 @@ body narset-of-the-ancient-way/damage
 body necropotence/deliver-exiled
 body new-way-forward/prevented
 body new-way-forward/strike-back
+body nightmares-and-daydreams/target-player-mills
 body nine-lives/incarnation-counter
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
@@ -1010,10 +1011,12 @@ drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
 drawthen discard-two-unless-creature
 drawthen discard-unless-attacked
+drawthen discard-unless-three-lessons
 drawthen discard:
 drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
 drawthen discard:Depth Defiler — discard a card
+drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
@@ -1414,6 +1417,7 @@ run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
 run prompt-run/fatal-grudge-draw
 run prompt-run/final-showdown-indestructible
+run prompt-run/fire-lord-ozai-add-red
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/garruk-the-veil-cursed-tutor
@@ -2054,6 +2058,7 @@ tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans

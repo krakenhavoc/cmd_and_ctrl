@@ -1575,6 +1575,14 @@ type Spec struct {
 	// play, so the extra drop comes and goes with the other creature.
 	AdditionalLandPlaysNeedsAnother string
 
+	// AdditionalLandPlaysForEachPlayer makes AdditionalLandPlays count
+	// for EVERY player, not only the controller: Rites of Flourishing's
+	// "each player may play an additional land on each of their turns".
+	// Read by EffectiveLandDropsLocked through ConditionalLandPlays'
+	// EachPlayer, so it lasts exactly as long as the permanent stays.
+	// Not combined with AdditionalLandPlaysNeedsAnother.
+	AdditionalLandPlaysForEachPlayer bool
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard
