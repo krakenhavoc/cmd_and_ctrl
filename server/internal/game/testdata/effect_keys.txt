@@ -269,6 +269,7 @@ body sacrifice/listed-objects-you-control
 body sakashima/return-listed-to-hand
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
+body searing-blood/3-to-its-controller
 body seasoned-cryomancer/tap-and-stun
 body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
@@ -689,6 +690,7 @@ choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
+choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/transpose-after-discard
 choose choose-cards/turtles-forever-outside
@@ -1551,6 +1553,7 @@ tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail augusta-order-returned/after-exile
+tail avatar-b24/put-n-counters-on-each-next
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
@@ -1951,6 +1954,7 @@ tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
+tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
 tail replicating-ring/check
 tail rex-cyber-hound/after-exile
@@ -2181,6 +2185,7 @@ tail then/shuffle-if-it-went
 tail then/shuffle-then-draw-n
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorin-lord-of-innistrad-return
+tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
@@ -2220,6 +2225,7 @@ tail thunderbolts-conspiracy/hero
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
+tail toph-hardheaded-teacher/lesson-counter
 tail transwarp-hub/after-mill
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail trek-b27/deep-space-9-put-permanents

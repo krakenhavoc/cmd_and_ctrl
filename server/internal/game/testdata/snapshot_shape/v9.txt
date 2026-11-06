@@ -69733,6 +69733,7 @@ spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
+spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
