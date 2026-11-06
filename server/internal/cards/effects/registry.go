@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -83,6 +84,7 @@ func Register(spec Spec) {
 	checkBoast(spec)
 	checkPowerUp(spec)
 	checkPowerUpExtras(spec)
+	checkOnlyOnce(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
@@ -2391,6 +2393,52 @@ func checkPowerUp(spec Spec) {
 		if a.Cost.Mana == "" {
 			panic(fmt.Sprintf("effects.Register: %q activated ability %d is a power-up ability with no mana in its cost", spec.Name, i))
 		}
+	}
+}
+
+// onlyOnceClause finds "only once" in an ability label, and the word
+// after it when that word makes it a per-turn limit ("only once each
+// turn").
+var onlyOnceClause = regexp.MustCompile(`(?i)\bonly once( each\b)?`)
+
+// printsActivateOnlyOnce reports whether an ability label prints "Activate
+// only once" with no "each turn" after it.
+func printsActivateOnlyOnce(label string) bool {
+	for _, m := range onlyOnceClause.FindAllStringSubmatch(label, -1) {
+		if m[1] == "" {
+			return true
+		}
+	}
+	return false
+}
+
+// checkOnlyOnce is the boot-time contract of a plain "Activate only once"
+// (CR 602.5b, #5221), for checkPowerUp's reasons: the label and the bit
+// agree in both directions (a printed "Activate only once." without the
+// bit could be activated every turn, and a bit without the printed clause
+// is a rule the player cannot read), two such abilities on one card may
+// not share a label (the record is keyed by it), and the bit is never
+// beside Exhaust or PowerUp, which already carry the limit.
+func checkOnlyOnce(spec Spec) {
+	seen := map[string]bool{}
+	for i, a := range spec.Activated {
+		printed := printsActivateOnlyOnce(a.Label)
+		if a.OnlyOnce && !printed {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets OnlyOnce but its label does not print \"Activate only once\"", spec.Name, i))
+		}
+		if printed && !a.OnlyOnce && !a.Exhaust && !a.PowerUp {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Activate only once\" and does not set OnlyOnce: true — without the bit it can be activated again", spec.Name, i))
+		}
+		if !a.OnlyOnce {
+			continue
+		}
+		if a.Exhaust || a.PowerUp {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets OnlyOnce beside Exhaust or PowerUp — the keyword already carries the limit", spec.Name, i))
+		}
+		if seen[a.Label] {
+			panic(fmt.Sprintf("effects.Register: %q has two only-once abilities labelled %q — the activation record is keyed by the label, so they would share one use", spec.Name, a.Label))
+		}
+		seen[a.Label] = true
 	}
 }
 

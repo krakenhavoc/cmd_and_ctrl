@@ -1029,6 +1029,14 @@ export const LABEL_SPECS = {
     doc: "the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover",
   }),
 
+  onceUsed: label({
+    name: "already activated",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/contextMenu.logic.ts"],
+    doc: "the reason on an ability row the server marked once_used (#5221, CR 602.5b: activate only once, without the exhaust keyword), in the card menu",
+  }),
+
   rulings: label({
     name: "Rulings",
     kind: "text",
