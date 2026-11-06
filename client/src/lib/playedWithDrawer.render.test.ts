@@ -4,6 +4,11 @@
 // it opens and never again, offers Invite on each row (a Discord DM where
 // the server has a bot, Copy invite where it has not), and the invite goes
 // to one of your lobby tables with an empty seat or to a New table.
+//
+// Slice 3 makes it the friends drawer: Requests (Accept, Ignore) and
+// Friends above Played with, Add friend on each Played with row, and a
+// link to #/friends. With no friends store (GET /me/friends refused) it is
+// Played with alone, which is what the slice 2 cases below run against.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { writable } from "svelte/store";
@@ -51,6 +56,9 @@ let calls: Call[] = [];
 let dmInvites = true;
 let dmStatus = 200;
 let mates: unknown[] = [];
+// GET /me/friends' body, or null for a server with no friends store.
+let friendsBody: unknown = null;
+let askOutcome = "sent";
 
 const lobbyTable = {
   id: "g-lobby",
@@ -89,6 +97,17 @@ function stubServer(): void {
       if (input === "/community")
         return reply(200, { invite_url: "", gate: false, dm_invites: dmInvites });
       if (input === "/me/tablemates") return reply(200, { tablemates: mates });
+      if (input === "/me/friends") {
+        return friendsBody
+          ? reply(200, friendsBody)
+          : reply(503, { error: "friends are not available on this server" });
+      }
+      if (input === "/me/friends/requests" && method === "POST")
+        return reply(200, { outcome: askOutcome, user_id: body?.user_id, display_name: "Bob" });
+      if (input.startsWith("/me/friends/requests/") && input.endsWith("/accept"))
+        return reply(200, { outcome: "friends" });
+      if (input.startsWith("/me/friends/requests/") && input.endsWith("/ignore"))
+        return reply(204, null);
       if (input === "/games" && method === "GET")
         return reply(200, { games: [lobbyTable, fullTable] });
       if (input === "/games" && method === "POST") {
@@ -137,6 +156,8 @@ beforeEach(async () => {
   calls = [];
   dmInvites = true;
   dmStatus = 200;
+  friendsBody = null;
+  askOutcome = "sent";
   mates = [
     {
       user_id: BOB,
@@ -194,10 +215,11 @@ describe("the Played with drawer", () => {
     expect(reads()).toHaveLength(2);
   });
 
-  it("is a dialog named Played with", async () => {
+  it("is a dialog named Friends list, with a Played with section", async () => {
     const { container } = await open();
     const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog?.getAttribute("aria-label")).toBe(L.playedWith);
+    expect(dialog?.getAttribute("aria-label")).toBe(L.friendsDrawer);
+    expect(container.querySelector("#fr-played")?.textContent).toBe(L.playedWith);
     expect(dialog?.getAttribute("aria-modal")).toBe("true");
   });
 
@@ -324,9 +346,9 @@ describe("the Played with drawer", () => {
   });
 });
 
-describe("the site header's People you've played with button", () => {
+describe("the site header's Friends button", () => {
   function button(c: HTMLElement): HTMLButtonElement | null {
-    return c.querySelector<HTMLButtonElement>(`button[aria-label="${L.playedWithButton}"]`);
+    return c.querySelector<HTMLButtonElement>(`button[aria-label="${L.friendsButton}"]`);
   }
 
   it("is offered to someone signed in with Discord, and opens the drawer without fetching first", async () => {
@@ -335,7 +357,9 @@ describe("the site header's People you've played with button", () => {
     expect(calls.some((c) => c.path === "/me/tablemates")).toBe(false);
     click(button(container)!);
     await settle();
-    expect(container.querySelector(`[role="dialog"][aria-label="${L.playedWith}"]`)).not.toBeNull();
+    expect(
+      container.querySelector(`[role="dialog"][aria-label="${L.friendsDrawer}"]`),
+    ).not.toBeNull();
     expect(calls.some((c) => c.path === "/me/tablemates")).toBe(true);
   });
 
@@ -347,5 +371,110 @@ describe("the site header's People you've played with button", () => {
       expect(button(container), s?.principal.role ?? "signed out").toBeNull();
       destroy();
     }
+  });
+});
+
+describe("friends in the drawer (ADR 0213 slice 3)", () => {
+  const DEV = "8b2e4f60-1c3d-4e5f-9a7b-6c5d4e3f2a10";
+  const EVE = "9c3f5a71-2d4e-4f60-8b8c-7d6e5f4a3b21";
+
+  beforeEach(() => {
+    friendsBody = {
+      friends: [{ user_id: DEV, display_name: "Dev", since: Date.now() - 5 * 86_400_000 }],
+      incoming: [{ user_id: EVE, display_name: "Eve", since: Date.now() }],
+      outgoing: [],
+    };
+    mates = [
+      ...mates,
+      { user_id: DEV, display_name: "Dev", last_played_at: Date.now(), friend: true },
+      { user_id: EVE, display_name: "Eve", last_played_at: Date.now(), request: "incoming" },
+    ];
+  });
+
+  function section(c: HTMLElement, id: string): HTMLElement {
+    return c.querySelector<HTMLElement>(`#${id}`)!.closest("section")!;
+  }
+  function named(root: HTMLElement, text: string): HTMLButtonElement | undefined {
+    return [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent?.trim() === text,
+    );
+  }
+
+  it("lists Requests, then Friends, then Played with, each person once", async () => {
+    const { container } = await open();
+    const heads = [...container.querySelectorAll("h3")].map((h) => h.id);
+    expect(heads).toEqual(["fr-requests", "fr-friends", "fr-played"]);
+    const names = (id: string) =>
+      [...section(container, id).querySelectorAll(".name")].map((n) => n.textContent);
+    expect(names("fr-requests")).toEqual(["Eve"]);
+    expect(names("fr-friends")).toEqual(["Dev"]);
+    expect(names("fr-played")).toEqual(["Bob", "Cara"]);
+    expect(section(container, "fr-friends").textContent).toContain("friends since 5 days ago");
+    const manage = [...container.querySelectorAll("a")].find(
+      (a) => a.textContent?.trim() === L.manageFriends,
+    );
+    expect(manage?.getAttribute("href")).toBe("#/friends");
+  });
+
+  it("a friend can be invited like anyone you played with", async () => {
+    const { container } = await open();
+    click(inviteButton(container, "Dev"));
+    flushSync();
+    click(choice(container, "Friday Pod")!);
+    await settle();
+    expect(calls.find((c) => c.path.endsWith("/invites/dm"))?.body).toEqual({ user_id: DEV });
+  });
+
+  it("Accept answers the request and reads the lists again", async () => {
+    const { container } = await open();
+    const before = calls.filter((c) => c.path === "/me/friends").length;
+    click(named(section(container, "fr-requests"), L.acceptFriend)!);
+    await settle();
+    expect(
+      calls.some((c) => c.method === "POST" && c.path === `/me/friends/requests/${EVE}/accept`),
+    ).toBe(true);
+    expect(calls.filter((c) => c.path === "/me/friends").length).toBe(before + 1);
+  });
+
+  it("Ignore takes the request off the list without telling anyone", async () => {
+    const { container } = await open();
+    click(named(section(container, "fr-requests"), L.ignoreFriend)!);
+    await settle();
+    expect(calls.some((c) => c.path === `/me/friends/requests/${EVE}/ignore`)).toBe(true);
+    expect(container.querySelector("#fr-requests")).toBeNull();
+  });
+
+  it("Add friend on a Played with row sends a request and says so", async () => {
+    const { container } = await open();
+    const played = section(container, "fr-played");
+    const bobRow = [...played.querySelectorAll<HTMLElement>(".mate")].find((r) =>
+      r.textContent?.includes("Bob"),
+    )!;
+    click(named(bobRow, L.addFriend)!);
+    await settle();
+    expect(calls.find((c) => c.path === "/me/friends/requests")?.body).toEqual({ user_id: BOB });
+    const after = [...section(container, "fr-played").querySelectorAll<HTMLElement>(".mate")].find(
+      (r) => r.textContent?.includes("Bob"),
+    )!;
+    expect(after.textContent).toContain("Friend request sent to Bob");
+    expect(after.textContent).toContain("Request sent");
+    expect(named(after, L.addFriend)).toBeUndefined();
+  });
+
+  it("says so when you have no friends yet", async () => {
+    friendsBody = { friends: [], incoming: [], outgoing: [] };
+    const { container } = await open();
+    expect(section(container, "fr-friends").textContent).toContain("No friends yet");
+    expect(container.querySelector("#fr-requests")).toBeNull();
+  });
+
+  it("with no friends store it is Played with alone, with no Add friend", async () => {
+    friendsBody = null;
+    const { container } = await open();
+    expect(container.querySelector("#fr-friends")).toBeNull();
+    expect(named(container, L.addFriend)).toBeUndefined();
+    expect(
+      [...container.querySelectorAll("a")].some((a) => a.textContent?.includes(L.manageFriends)),
+    ).toBe(false);
   });
 });

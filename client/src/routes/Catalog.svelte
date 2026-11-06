@@ -21,6 +21,7 @@
   import Page from "../lib/components/Page.svelte";
   import ShopLinks from "../lib/components/ShopLinks.svelte";
   import ShopNote from "../lib/components/ShopNote.svelte";
+  import SetPicker from "../lib/components/SetPicker.svelte";
   import { cardArt } from "../lib/cardArt";
   import { route } from "../lib/router";
   import { L } from "../lib/labels";
@@ -32,7 +33,6 @@
     removeChip,
     toggle,
     findSet,
-    setOptionLabel,
     setSummary,
     catalogImageURL,
     COLOR_FILTERS,
@@ -175,12 +175,7 @@
   {#if sets.length > 0}
     <fieldset class="facet">
       <legend>Set</legend>
-      <select class="set-select" aria-label={L.filterCatalogueBySet} bind:value={setCode}>
-        <option value="">All sets</option>
-        {#each sets as s (s.code)}
-          <option value={s.code}>{setOptionLabel(s)}</option>
-        {/each}
-      </select>
+      <SetPicker {sets} bind:value={setCode} />
     </fieldset>
   {/if}
 
@@ -540,11 +535,6 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--fg-dim);
-  }
-  .set-select {
-    width: 100%;
-    box-sizing: border-box;
-    text-overflow: ellipsis;
   }
   .setline {
     display: flex;

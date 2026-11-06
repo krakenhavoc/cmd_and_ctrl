@@ -132,6 +132,11 @@ type PurposeView struct {
 	// controller's own puts on its own source, to stay (#5083):
 	// Hangarback Walker's {1}, {T} row 1.
 	SourceCounters int `json:"source_counters,omitempty"`
+	// ResolutionMana is the mana an activated row of the controller's
+	// own adds on one numbered resolution of it this turn (#4980):
+	// Soulbright Seeker's {Resolution: 3, Mana: "{R}{R}{R}{R}"}. Such a
+	// row carries resolved_this_turn, the engine's count so far.
+	ResolutionMana *ResolutionManaView `json:"resolution_mana,omitempty"`
 	// The riders (#4978, ADR 0126's amendment of 2026-11-05): keyword
 	// actions it does for its controller beside its main effect, as
 	// printed amounts. Scry is the cards it scries (Preordain 2), Learn
@@ -359,6 +364,14 @@ type CreatureEnterPayoffView LandfallPayoffView
 // LandfallPayoffView's fields. Its life_gain is always absent.
 type LifeGainPayoffView LandfallPayoffView
 
+// ResolutionManaView is game.ResolutionMana on the wire (#4980): which
+// resolution of the row this turn adds mana, counting the one resolving,
+// and the printed symbols it adds.
+type ResolutionManaView struct {
+	Resolution int    `json:"resolution"`
+	Mana       string `json:"mana"`
+}
+
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
 // purpose was declared on any-player rows alone. Kept so a reader of
 // that ADR finds the type.
@@ -474,6 +487,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	if g := p.LifeGainPayoff; g != nil {
 		pay := LifeGainPayoffView(*g)
 		v.LifeGainPayoff = &pay
+	}
+	if rm := p.ResolutionMana; rm != nil {
+		v.ResolutionMana = &ResolutionManaView{Resolution: rm.Resolution, Mana: rm.Mana}
 	}
 	if ts := p.Targets.List(); len(ts) > 0 {
 		out := make([]TargetPurposeView, len(ts))

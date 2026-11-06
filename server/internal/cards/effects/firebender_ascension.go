@@ -95,20 +95,3 @@ var firebenderAscensionCopyAnswer = MayYes("confirm/firebender-ascension-copy", 
 // firebendingSoldierToken is Firebender Ascension's 2/2 red Soldier with
 // firebending 1.
 func firebendingSoldierToken() game.Card { return tokenFromCatalog(printedFirebendingSoldierToken) }
-
-func printedFirebendingSoldierToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "soldier-firebending",
-		Card: game.Card{
-			Name:      "Soldier",
-			TypeLine:  "Token Creature — Soldier",
-			Power:     2,
-			Toughness: 2,
-			Colors:    []string{"R"},
-		},
-		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Soldier — firebending 1", Do(firebending(1))),
-		},
-		Text: "Firebending 1 (Whenever this token attacks, add {R}. This mana lasts until end of combat.)",
-	}
-}

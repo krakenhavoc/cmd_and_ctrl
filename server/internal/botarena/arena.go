@@ -208,6 +208,14 @@ const VariantNoRiders = "noriders"
 // NoRidersContestant is an arena name only.
 const NoRidersContestant = string(tiers.Heuristic) + "-" + VariantNoRiders
 
+// VariantNoResolutionMana disables only #4980's price of the mana a row
+// adds on a numbered resolution (Config.PriceResolutionMana false):
+// Soulbright Seeker's third activation priced as a trample grant alone.
+const VariantNoResolutionMana = "noresolutionmana"
+
+// NoResolutionManaContestant is an arena name only.
+const NoResolutionManaContestant = string(tiers.Heuristic) + "-" + VariantNoResolutionMana
+
 // VariantTriggerMana turns on #4770's count of triggered mana in the turn
 // plan's mana model (Config.PlanTriggerMana), which DefaultConfig leaves
 // off.
@@ -233,6 +241,7 @@ const XPumpsContestant = string(tiers.Heuristic) + "-" + VariantXPumps
 // It also reads `heuristic-nosparemana` (#5085).
 // `heuristic-sourcecounters` (#5083) is one too.
 // `heuristic-noriders` (#4978) is one too.
+// `heuristic-noresolutionmana` (#4980) is one too.
 // `heuristic-triggermana` (#4770) is one too.
 // `heuristic-xpumps` (#4976) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
@@ -275,6 +284,8 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoSpareMana}, nil
 	case NoRidersContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoRiders}, nil
+	case NoResolutionManaContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoResolutionMana}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
@@ -473,7 +484,7 @@ func knownVariant(v string) bool {
 		return true
 	case VariantSourceCounters, VariantNoSpareMana:
 		return true
-	case VariantTriggerMana:
+	case VariantNoResolutionMana, VariantTriggerMana:
 		return true
 	case VariantXPumps:
 		return true
@@ -985,6 +996,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoRiders:
 		h := heuristic.DefaultConfig()
 		h.PriceRiders = false
+		opt.Heuristic = &h
+	case VariantNoResolutionMana:
+		h := heuristic.DefaultConfig()
+		h.PriceResolutionMana = false
 		opt.Heuristic = &h
 	case VariantTriggerMana:
 		h := heuristic.DefaultConfig()

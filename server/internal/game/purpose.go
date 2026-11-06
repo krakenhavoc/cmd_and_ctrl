@@ -250,6 +250,18 @@ type Purpose struct {
 	// activator.
 	SourceCounters int
 
+	// ResolutionMana is the mana an activated row of its controller's
+	// own adds on one numbered resolution of it in a turn (#4980):
+	// Soulbright Seeker's "If this is the third time this ability has
+	// resolved this turn, add {R}{R}{R}{R}" is {Resolution: 3, Mana:
+	// "{R}{R}{R}{R}"}. The count is the engine's Game.ResolvedThisTurn
+	// for the row's label on its source, per object (CR 400.7), which is
+	// what the card's own effect reads; the view stamps it on the row as
+	// `resolved_this_turn`. Refused off an activated row of its
+	// controller's own. Nil is "declares none". A pointer so Purpose
+	// stays comparable.
+	ResolutionMana *ResolutionMana
+
 	// The riders below are keyword actions a spell or an ability does
 	// for its controller beside its main effect (#4978, ADR 0126's
 	// amendment of 2026-11-05): Preordain's scry 2 before its draw,
@@ -658,6 +670,19 @@ type LandfallPayoff struct {
 // and with the same rules (#3165): printed amounts only, none counted at
 // resolution.
 type CreatureEnterPayoff LandfallPayoff
+
+// ResolutionMana is Purpose.ResolutionMana: the mana a row adds on one
+// numbered resolution of it this turn (#4980). Printed amounts, like
+// every amount in a Purpose.
+type ResolutionMana struct {
+	// Resolution is which of the row's resolutions this turn adds it,
+	// counting the one resolving: Soulbright Seeker's "the third time"
+	// is 3.
+	Resolution int
+	// Mana is the mana it adds, as printed symbols: "{R}{R}{R}{R}". It
+	// empties at the end of the step (CR 106.4).
+	Mana string
+}
 
 // LifeGainPayoff is what a row pays its controller for each life-gain
 // event of theirs, in LandfallPayoff's units and with the same rules

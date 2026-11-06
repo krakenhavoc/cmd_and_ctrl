@@ -1306,6 +1306,26 @@ reason is lost, so My games and the admin views show it as an ordinary
 archive. `TestMigration0031RollbackByHand` runs exactly this sequence and
 then rolls forward.
 
+Migration 0032 (ADR 0213 slice 3, friends and blocks, #3313) adds four
+tables, `friendships`, `friend_requests`, `user_blocks` and
+`social_prefs`. An older binary refuses the v32 schema. Drop them by
+hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE social_prefs; DROP TABLE user_blocks; DROP TABLE friend_requests; DROP TABLE friendships; DELETE FROM schema_migrations WHERE version = 32;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every friendship, pending request, personal block and social
+setting: rolling forward again recreates the tables empty, so people
+ask again and block again. The older binary's DM invite route goes back
+to tablemates only, with no blocks to apply.
+`TestMigration0032RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,

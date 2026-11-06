@@ -1388,8 +1388,10 @@ So Heliod's lifelink goes on the bot's own attacker, once, with mana the
 turn does not need, and a cast that develops the board comes first.
 `TestUntilEndOfTurnRowsDeclareTheirDirection` holds every catalog activated
 row whose text changes a target until end of turn to a direction that
-matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
-and Zack Fair are exempt, each for a reason the test names). The arena's
+matches its words (#4302 declared 74 rows; Liliana of the Dark Realms and
+Zack Fair are exempt, each for a reason the test names; Soulbright
+Seeker, exempt until #4980, now declares its direction beside its
+`resolution_mana`). The arena's
 `heuristic-notemporary` is today's heuristic with the switch off.
 
 **A lifelink grant is worth the counters its life makes**
@@ -1848,6 +1850,39 @@ bot gets for nothing one window later. So the row keeps `ActivateBase`
 in `DefaultConfig` and `BaselineConfig`, and the Walker grows in the end
 step before the bot's untap, as before. `heuristic-sourcecounters` turns
 the price on in the arena.
+
+### Mana on a counted resolution (#4980)
+
+Soulbright Seeker's "{R}: Target creature you control gains trample
+until end of turn. If this is the third time this ability has resolved
+this turn, add {R}{R}{R}{R}." declares the trample as a benefit on its
+target and `resolution_mana: {resolution: 3, mana: "{R}{R}{R}{R}"}` on
+the row, and the view stamps that row with `resolved_this_turn`, the
+engine's own count (`Game.ResolvedThisTurn`, the one the card reads, per
+object). The policy adds the row's activations still on the stack, which
+have not resolved yet, so the move on offer is resolution
+resolved + pending + 1.
+
+With `PriceResolutionMana` on (`resolution_mana.go`; on by default), an
+activation on the way to that resolution, or the one that makes it, is
+priced in the bot's own main phase when the rest of the run can be paid
+from its untapped mana and pool, the mana added is more than the run
+still costs, and the hand and command zone can spend more mana after the
+run than without it (a subset sum of their mana values, colours not
+counted). It is then worth `SpellPerMana` (0.60) for each mana they can
+spend after it, in place of the trample's price, and it is not a mana
+sink (`SinkManaLast`): the run only adds mana, so the casts follow it.
+With three Mountains and a four-drop in hand the bot activates the Seeker
+three times and casts the four-drop. Anywhere else (another player's
+turn, a run it cannot pay for, mana the hand cannot spend, an activation
+past the third) the row is the trample grant it is for every other card,
+and a repeat on a creature that has trample is below a pass. An instant
+the mana could pay for outside a main phase is not priced.
+
+It ships on because the position tests show it adds value only where
+the mana comes back and is spent. No arena deck holds the Seeker, so no
+arena run measured it. `heuristic-noresolutionmana` turns the price off
+in the arena.
 
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
@@ -2813,7 +2848,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink`, `heuristic-sparetokens` or `heuristic-noriders`. `heuristic-noriders` disables only #4978's rider prices (`PriceRiders`: scry, learn, discover, amass and the Ring). `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-triggermana` turns ON #4770's count of triggered mana in the turn plan's mana model (`PlanTriggerMana`, [The mana model](#the-mana-model)), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). `heuristic-xpumps` turns ON #4976's price of a pump of the announced X (`PriceXPumps`), which today's heuristic ships with off. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink`, `heuristic-sparetokens` or `heuristic-noriders`. `heuristic-noriders` disables only #4978's rider prices (`PriceRiders`: scry, learn, discover, amass and the Ring). `heuristic-noresolutionmana` disables only #4980's price of the mana a row adds on a counted resolution (`PriceResolutionMana`, Soulbright Seeker's third). `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-triggermana` turns ON #4770's count of triggered mana in the turn plan's mana model (`PlanTriggerMana`, [The mana model](#the-mana-model)), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). `heuristic-xpumps` turns ON #4976's price of a pump of the announced X (`PriceXPumps`), which today's heuristic ships with off. Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s, and `ghast-battle` is a black-green deck with six Crypt Ghasts and four Zendikar Resurgents, for [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770)'s, and `xpumps-battle` is the battle deck in red and green with Tyvar's Stand, Mishra's Command, Primal Might and two Kessig Wolf Runs, for [#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |

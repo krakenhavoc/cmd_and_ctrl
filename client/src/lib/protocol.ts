@@ -1579,7 +1579,10 @@ export interface PendingChoiceView {
     // the one real card on offer (in exile, or for free_or_hand off the top
     // of the chooser's library, where the knower filter keeps it from
     // every other viewer), with `may_cast_keyword` naming the rule and
-    // `accept_label` / `decline_label` the two answers. Answered by one of
+    // `accept_label` / `decline_label` the two answers. Under
+    // play_or_free_or_hand (#4697) a land face of the top card may be
+    // played instead: a cast_spell naming the prompt and that `face`.
+    // Answered by one of
     // the legal moves naming it
     // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
     // the prompt's id and no priority needed, or {choice_id, card_ids: []},
@@ -3801,6 +3804,11 @@ export interface ActivatedAbilityView {
   // charged_mana_cost already carries the keyword's reduction by the
   // permanent's mana cost the turn it entered.
   power_up_used?: boolean;
+  // #4980: on a row whose purpose declares resolution_mana, how many
+  // times this permanent's row has resolved this turn (the engine's own
+  // count; an activation still on the stack is not in it). Bot data; the
+  // client does not read it.
+  resolved_this_turn?: number;
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -4218,6 +4226,10 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4980: on an activated row of its controller's own, the mana it adds
+  // on one numbered resolution of it this turn (Soulbright Seeker: the
+  // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.
+  resolution_mana?: { resolution: number; mana: string };
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
