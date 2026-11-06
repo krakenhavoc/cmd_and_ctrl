@@ -624,6 +624,16 @@ func (c *Context) PaidCostBranch(key string) bool {
 	return c.Item.Paid.PaidCostBranch(game.CatalogKey(card), key)
 }
 
+// Foraged reports whether the item's cost foraged (CR 701.61a, #5184):
+// an activated ability's "Forage" cost, or a spell's forage branch of
+// "forage or pay …" — "if you foraged". Which way is in the ordinary
+// records: Exiled for the three cards, SacrificedPermanents for the Food.
+// A "you may forage" effect does not set it; its "if you do" is the
+// may-pay's own paid branch.
+func (c *Context) Foraged() bool {
+	return c.Paid().Foraged
+}
+
 // Discarded is the cards the spell's additional cost discarded, in the
 // order named (ADR 0100, owner decision 6) — "the discarded card" of
 // Grab the Prize. A fact about the ANNOUNCEMENT, read back the way

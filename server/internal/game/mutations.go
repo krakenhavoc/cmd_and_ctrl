@@ -2366,6 +2366,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// ADR 0202, CR 702.47a-b: the spliced cards are revealed, all at once,
 	// and stay in the hand.
 	g.revealSplicesLocked(playerID, cardID, card.Name, spliced)
+	// #5184, CR 701.61a: the branch paid above was a forage (Feed the
+	// Cycle), so the caster has foraged — recorded for "if you foraged"
+	// and announced for "whenever you forage", with the spell on the
+	// stack below the triggers.
+	if addCost != nil && addCost.Forage {
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.Foraged = true
+		}
+		g.noteForageLocked(playerID, cardID)
+	}
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {

@@ -4514,6 +4514,44 @@ creature on the battlefield. The card file declares nothing else; the
 view, the client's picker, the enumerator and the bot's price come with
 the component.
 
+### Forage (#5184, CR 701.61a)
+
+To forage is to exile three cards from your graveyard or sacrifice a Food.
+It is an either/or over two payments that already exist, so each owner
+writes it with its own either/or, marked as a forage
+([forage.go](../server/internal/cards/effects/forage.go)):
+
+```go
+Cost: Plus(ManaCost("{2}"), Forage()),          // Camellia: "{2}, Forage:"
+AdditionalCost: ForageOrPay("{B}"),               // Feed the Cycle: "forage or pay {B}"
+MayForage(ctx, question, mayPayDrawACard)         // Treetop Sentries: "you may forage. If you do, draw a card"
+WheneverYouForage(label, plusOneCountersOnThis(1)) // Corpseberry Cultivator
+```
+
+- `Forage()` is an `OrCost` over `game.ForageAbilityBranches` (branch 0
+  exiles three cards from the graveyard, folded into `ExileCards`; branch 1
+  sacrifices a Food), announced as `cost_branch` with `exile_ids` or
+  `sacrifice_ids`. `ForageOrPay` is three branches of the spell's
+  `EitherCost`, keyed `forage-exile`, `forage-food` and `mana`. `MayForage`
+  is a `MayPay` whose payment is `game.ForagePayAction`, answered with
+  `pay_option`. "When you do" is a `WhenYouDo` applied from its `Then`
+  (Curious Forager).
+- A forage is payable when either way is: three cards in your graveyard,
+  or a Food you control (a token, an artifact or an artifact creature, read
+  off its effective subtypes). Each way is greyed, refused and left out of
+  the bot's moves through the walk its plain clause already uses, so with
+  fewer than three cards and no Food the ability can't be activated, the
+  spell's forage branches are unpayable, and a "you may forage" asks
+  nobody (CR 118.3).
+- Paying a forage, whichever owner, emits `game.EventForage`, which
+  `WheneverYouForage` watches. A cost or a spell branch also records
+  `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
+  the cards are on `ctx.Exiled()` and the Food on
+  `ctx.SacrificedPermanents()`.
+- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
+  two mana"), which has no either/or cost, and "cast … by foraging in
+  addition to paying their other costs" (Osteomancer Adept).
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
@@ -5407,9 +5445,10 @@ empty, optional, repeating or nested branch, a variable sacrifice in a
 branch, and components on the branched cost itself. Reveal and behold
 branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
 `OptionalBehold` (#4642), and a mandatory "behold a Kithkin and exile it"
-is `BeholdAndExileCost` (#4687, below). "tap an untapped artifact", "exile two cards from your graveyard" and
-forage have no branch component yet: leave those cards out (the
-Either/or additional costs registry row lists them).
+is `BeholdAndExileCost` (#4687, below). "Tap an untapped artifact" is
+`TapUntappedCost` in a branch (#3868), "exile two cards from your
+graveyard" is `ExileFromGraveyardCost` in a branch (#1948), and "forage or
+pay {B}" is `ForageOrPay("{B}")` (#5184, see "Forage" below).
 
 **Exile a creature you control as an additional cost (#3402):** "As an
 additional cost to cast this spell, exile a creature you control" is

@@ -81,6 +81,7 @@ body copy/the-spell-you-just-cast-twice
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-payload-creature
+body curious-forager/return-from-graveyard
 body curse-of-the-werefox/fight
 body cyclops-superconductor/damage
 body dahar-master/damage
@@ -1212,6 +1213,7 @@ payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bullseye-death-dealer-damage
+payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
@@ -1221,6 +1223,7 @@ payunless pay-unless/contract-hero-pump
 payunless pay-unless/counter-guarded
 payunless pay-unless/cradle-of-vitality-counters
 payunless pay-unless/cumulative-upkeep-flip-coins
+payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/divert-change-target
@@ -1240,6 +1243,7 @@ payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
+payunless pay-unless/forage-only
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-vandal-destroy-artifact
