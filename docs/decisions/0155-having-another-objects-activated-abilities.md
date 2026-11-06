@@ -1,6 +1,7 @@
 # ADR 0155 — Having another object's activated abilities: a layer-6 borrow that names the lent row
 
 **Status:** Accepted (owner decisions 2026-10-13) · proposed 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first)
+**Amended:** 2026-11-05 · Branch `feat/koh-borrowed-triggers` — borrowed TRIGGERED abilities and a "last chosen card" lender (Koh, the Face Stealer, [#4459](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4459)); see [the amendment](#amendment-2026-11-05-borrowed-triggered-abilities)
 **Issue:** [#1557](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1557) (seam: "has all activated abilities of …").
 Registry row: `all-activated-abilities-of` in `server/internal/roadmap/registry.go`, already pointed at #1557.
 **Numbering:** assigned by the S53 orchestrator. `origin/develop` (`d66aec82`) has no `0155`, and no remote
@@ -476,3 +477,95 @@ The owner accepted every recommendation on 2026-10-13. Each answer is recorded u
    **Recommendation: (a).** The gate exists (Pithing Needle's shape), and the cards are unfair without it.
 
    **Decision:** (a). The activation gate ships with each of the three cards, with no caveat.
+
+## Amendment 2026-11-05: borrowed triggered abilities
+
+**Card:** Koh, the Face Stealer (TLA, oracle `2bbb33e3-7d03-457c-92bb-b0c943615fa1`): "When Koh enters, exile up to
+one other target creature. Whenever another nontoken creature dies, you may exile it. Pay 1 life: Choose a creature
+card exiled with Koh. Koh has all activated and triggered abilities of the last chosen card."
+
+"Out of scope" above left triggered abilities to ADR 0093's "has all the abilities of" bundle. Koh is neither: its
+lent set is "whatever the chosen card has right now", like every borrow here, but it includes triggered abilities.
+The first alternative this ADR rejected (compose the lender's key into the borrower's `CatalogAbilityKey`) is still
+wrong, because it would also lend statics, replacements and cost modifiers. So the borrow grows instead.
+
+### The rules (checked against the 20260925 text)
+
+- **CR 113.10 / CR 613.1f:** still a layer-6 ability-adding effect. Decision 4's ordering is unchanged.
+- **CR 113.3c:** a triggered ability triggers whenever its trigger event occurs. CR 605.1b makes some triggered
+  abilities mana abilities, and those are triggered abilities too.
+- **CR 113.6:** an object's abilities usually function only on the battlefield. A lent "when this card is put into
+  a graveyard from anywhere" or an exile-zone trigger is lent and never fires from Koh.
+- **CR 113.7a:** once triggered, an ability exists on the stack apart from its source.
+- **CR 603.10a:** leaves-the-battlefield abilities look back in time, so Koh dying has the lent "when this creature
+  dies" it had while on the battlefield.
+- **CR 201.5b:** the lent ability's name for its source means Koh.
+- **CR 400.7:** a card that leaves exile is a new object; a Koh that leaves the battlefield is a new object.
+- **CR 607.2a:** "a creature card exiled with Koh" means a card Koh's OWN exile abilities exiled. A card exiled by
+  an ability Koh borrowed is linked to that ability (CR 607.5), not to Koh's choice.
+- **CR 607.5a:** a lent ability that refers to a choice its source made is "undefined" on Koh, and that part does
+  nothing. Koh's own `Chosen*` fields are empty, so the engine reads it that way with no code.
+- **CR 702.147a:** decayed is a static ability and a triggered ability; only the trigger is lent.
+
+### Decisions
+
+**A1. `AbilityBorrow.Triggered bool` lends triggered abilities too.** `effects.HasActivatedAndTriggeredAbilitiesOf`
+sets it. Every other card in the family leaves it false, so nothing else changes.
+
+**A2. A lent trigger is one more `BorrowedAbility` entry, named by the lender's catalog row.** The borrow step
+(`lentTriggerRowsOf`, `game/borrowed_triggers.go`) writes, beside the activated and mana rows:
+
+| Lent | Slot | Kind | Key / Index |
+|---|---|---|---|
+| a catalog trigger row | `triggered` | `LentCatalog` | the row's catalog stamp (`IdentifyCatalogRows`): the card's own key or a bundle's `GrantKey`, and its index |
+| a triggered mana ability (CR 605.1b) | `mana-trigger` | `LentCatalog` | the lender's ability key and the row's index in `ManaTriggers` |
+| a triggered keyword the engine derives from the ability list (prowess, evolve, exalted, decayed, melee, annihilator N, renown N, undying, persist, modular N) | `triggered` | `LentKeyword` (new) | the token |
+
+Every other triggered keyword (ward, echo, cumulative upkeep, exploit, …) is already a catalog trigger row and is
+lent as one. The lender's designation gate and CR 613.1f removals are settled when the entry is written (Decision 2).
+A face-down lender lends nothing (CR 708.2a). A battlefield lender's own lent triggers are re-lent as they are.
+
+**A3. Readers.** `triggersOf` and `manaTriggersOf` gain a second half after the object's own (`borrowedTriggersOf`,
+`borrowedManaTriggersOf`), so the per-event harvest, the simultaneous-exit walk, the state-trigger walk (its
+pre-filter also asks the lent keys) and every view see a lent trigger as an ability of the borrower. `harvestLTB`
+adds `borrowedLTBTriggersOf`, read off the LAST-KNOWN characteristic (CR 603.10a). No other reader changes. A board
+with no borrower pays one nil test per call.
+
+**A4. Identity on the stack and across a restore.** `CatalogTriggers(Key)[Index]` is the lender's row with the
+lender's catalog stamp, so the harvested item is stamped `AbilityRef{Key: <lender's key>, Slot: triggered, Ref:
+own:<i> | grant:<b>:<i>:0, Name: <row Key>}`. That is the row `resolveTriggeredAbilityRef` already reads, as
+Decision 5 does for a lent activated row. `SourceCardID` is Koh, so "this creature" is Koh (Decision 6). Restore, a
+trigger frame (#4361 S14a) and the boot report need no lender (CR 113.7a). A keyword trigger is the engine's own row,
+keyed or not exactly as the lender's own would be. **No new snapshot field for the rows:** `BorrowedAbilities` is
+already `carried`, and `LentKeyword` is a new value of an existing field (additive within v9).
+
+**A5. When it stops.** The entries are layer-6 output rebuilt every pass, so the borrower stops having a trigger
+the pass after its lender stops being one: a new choice (`SetChosenCardForEffect` bumps the layer version) or the
+card leaving exile (`DependsOnExile`). An instance already triggered, waiting or on the stack, is unaffected
+(CR 113.7a). CR 113.6 is enforced by the harvests that already exist: every battlefield harvest skips a row that
+declared another zone (`TriggerWatchesFromZone`).
+
+**A6. The last-chosen lender is plain data on the permanent.** `Card.ChosenCard ObjectRef` is the card an ability
+of this permanent chose last, as the object it was (with its CR 400.7 epoch). It has `ChosenPermanent`'s lifecycle:
+per instance, carried by the snapshot (`chosenCard`, additive) and by clone, cleared when the permanent leaves the
+battlefield, not a copiable value (CR 707.2). It is written only by `Game.SetChosenCardForEffect`, through
+`Game.QueueChooseExiledCardForEffect` (one candidate is chosen without a prompt; several ask a keyed choose-cards
+pick, `choose-cards/last-chosen-exiled-card`, an on-disk key). Each choice replaces the last. With no candidate
+nothing is chosen and the last choice stands. `effects.LastChosenExiledCardLender()` reads it through
+`Game.ChosenExiledCardOf`: the card while it is still in exile as that object.
+
+**A7. When the chosen card leaves exile** it is a new object nobody chose (CR 400.7). Koh lends nothing from it,
+and does not fall back to an earlier choice: "the last chosen card" no longer exists. It lends nothing even if the
+card comes back to exile, until Koh's ability chooses again. Koh's candidates are read with
+`Game.ExiledWithRowForEffect` over Koh's two exile rows, so they are exactly CR 607.2a's linked cards.
+
+### Consequences
+
+- Koh, the Face Stealer ships Full with no caveats.
+- `Characteristic.BorrowedAbilities` can carry triggered entries; the activated and mana accessors filter by slot
+  and are unchanged.
+- The closure ratchet does not move: `AbilityBorrow` is catalog data reached through the static, and the new state
+  is an `ObjectRef` and plain entries.
+- Not addressed: a lent trigger's stack line keeps the lender's row label for its text; the effect reads Koh as its
+  source (CR 201.5b) and the line shows Koh as the source.
+

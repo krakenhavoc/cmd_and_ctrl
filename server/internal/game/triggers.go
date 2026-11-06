@@ -1149,6 +1149,12 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if oracle != "" {
 		triggers = append(triggers, TriggersForKey(oracle, source)...)
 	}
+	// ADR 0155's 2026-11-05 amendment: the triggered abilities a borrow
+	// had lent it, read off the same snapshot (CR 603.10a) — Koh with a
+	// chosen card's "when this creature dies" has it as Koh dies.
+	if ok {
+		triggers = append(triggers, borrowedLTBTriggersOf(lki)...)
+	}
 	if len(triggers) == 0 {
 		return
 	}
