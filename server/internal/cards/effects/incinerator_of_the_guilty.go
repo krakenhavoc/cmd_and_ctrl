@@ -35,10 +35,14 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisDealsCombatDamageToAPlayer("Incinerator of the Guilty — you may collect evidence X; when you do, it deals X damage to each creature and planeswalker that player controls",
-				func(g *game.Game, item *game.StackItem) error {
-					return incineratorEvidence.Ask(NewContext(g, item), "Incinerator of the Guilty — collect evidence X (exile cards from your graveyard, then choose X up to their total mana value) to deal X damage to each creature and planeswalker that player controls?")
-				}),
+			// A one-sided damage sweep of X (ADR 0126): the player dealt
+			// combat damage is an opponent, and X is chosen as it resolves.
+			TriggerWithPurpose(
+				WheneverThisDealsCombatDamageToAPlayer("Incinerator of the Guilty — you may collect evidence X; when you do, it deals X damage to each creature and planeswalker that player controls",
+					func(g *game.Game, item *game.StackItem) error {
+						return incineratorEvidence.Ask(NewContext(g, item), "Incinerator of the Guilty — collect evidence X (exile cards from your graveyard, then choose X up to their total mana value) to deal X damage to each creature and planeswalker that player controls?")
+					}),
+				game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, OpponentsOnly: true}}),
 		},
 	})
 }
