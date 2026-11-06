@@ -177,6 +177,7 @@ body incinerator-of-the-guilty/damage
 body initiative/take
 body initiative/venture
 body inkshield/inklings
+body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
 body jace-reality-sculptor/attacker-gets-minus-five
