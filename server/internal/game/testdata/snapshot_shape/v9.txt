@@ -4861,6 +4861,7 @@ frozenEntries[].event.entersAs.grants[]	string
 frozenEntries[].event.entersAs.keywords	array
 frozenEntries[].event.entersAs.keywords[]	string
 frozenEntries[].event.entersAs.label	string
+frozenEntries[].event.entersAs.name	string
 frozenEntries[].event.entersAs.subtypes	array
 frozenEntries[].event.entersAs.subtypes[]	string
 frozenEntries[].event.entersAs.types	array
@@ -5576,6 +5577,7 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.grants[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.label	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.name	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.types	array
@@ -22278,6 +22280,7 @@ movesAwaitingTokens[].entersAs.grants[]	string
 movesAwaitingTokens[].entersAs.keywords	array
 movesAwaitingTokens[].entersAs.keywords[]	string
 movesAwaitingTokens[].entersAs.label	string
+movesAwaitingTokens[].entersAs.name	string
 movesAwaitingTokens[].entersAs.subtypes	array
 movesAwaitingTokens[].entersAs.subtypes[]	string
 movesAwaitingTokens[].entersAs.types	array
@@ -22993,6 +22996,7 @@ movesAwaitingTokens[].entryTail.batch.opts.entersAs.grants[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.label	string
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.name	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.types	array
@@ -46801,6 +46805,7 @@ pendingChoices[].replacementResume.event.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entersAs.keywords	array
 pendingChoices[].replacementResume.event.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entersAs.label	string
+pendingChoices[].replacementResume.event.entersAs.name	string
 pendingChoices[].replacementResume.event.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entersAs.subtypes[]	string
 pendingChoices[].replacementResume.event.entersAs.types	array
@@ -47516,6 +47521,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants[]	
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.label	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.name	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types	array
@@ -70830,6 +70836,7 @@ turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
+turnTally.players{}.creaturesLeft	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.equipActivations	number:int
 turnTally.players{}.landsEntered	number:int

@@ -32,7 +32,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:        ctx.Controller(),
-				Predicate:     func(c game.Card) bool { return c.IsCreature() && c.HasSubtype("Ally") },
+				Predicate:     func(c game.Card) bool { return c.IsCreature() && c.HasSubtype(ctx.TextSubtype("Ally")) },
 				Dest:          game.ZoneHand,
 				Limit:         1,
 				Reveal:        true,

@@ -41,6 +41,11 @@ func init() {
 					return err
 				}
 			}
+			// "Exile Uncle's Musings." — only the spell's own card, not a
+			// copy, and not a card that already became a new object.
+			if item.IsCopy || sourceIsNewObject(ctx.Game, item) {
+				return nil
+			}
 			return ctx.Game.ExileCardForEffect(item.SourceCardID)
 		},
 	})
