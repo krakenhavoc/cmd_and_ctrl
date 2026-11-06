@@ -25,6 +25,12 @@
   // cards at once (Etali's exiled cards, a hand for Buster Sword). With more
   // than one on offer the heading names "a spell from among them" rather
   // than the first card.
+  //
+  // #4697: Ziatora's Envoy's offer over a card with more than one answer
+  // (`play_or_free_or_hand`: a Town, a modal DFC with a spell face and a
+  // land face, a pathway) is this sheet too. Its moves are a land play of
+  // each face that can be played and the free cast of each spell face that
+  // fits, so the sheet says "play or cast" and lists them.
 
   import type { ActionType, GameView, LegalMoveView } from "../../protocol";
   import Card from "./Card.svelte";
@@ -97,9 +103,14 @@
   const subject = $derived(
     copies.length > 1 && words?.many ? words.many : (copies[0]?.name ?? "it"),
   );
+  // #4697: "play or cast" for an offer that also takes a land play.
+  const verb = $derived(words?.verb ?? "cast");
+  const hintLead = $derived(
+    `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${subject} now, or don't.`,
+  );
   const heading = $derived(
     words
-      ? `${source}: you may cast ${subject} ${words.how}`
+      ? `${source}: you may ${verb} ${subject} ${words.how}`
       : `${source}: you may cast ${copies.length === 1 ? `the copy of ${copies[0].name}` : "the copies"}`,
   );
 </script>
@@ -116,8 +127,7 @@
   >
     <p class="prompt-hint">
       {#if words}
-        {source} is still resolving. Cast {subject} now, or don't. If you don't,
-        {words.ifNot}.
+        {source} is still resolving. {hintLead} If you don't, {words.ifNot}.
       {:else}
         {source} is still resolving. Cast {copies.length === 1 ? "the copy" : "any of the copies"} now,
         or don't. A copy you don't cast stops existing.
@@ -143,7 +153,7 @@
         </ul>
       {:else if casts.length === 0 && decline}
         <p class="prompt-hint">
-          There is no way to cast {copies.length === 1 ? "it" : "them"} now.
+          There is no way to {verb + (copies.length === 1 ? " it" : " them")} now.
         </p>
       {/if}
     </div>

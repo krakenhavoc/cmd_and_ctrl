@@ -67,6 +67,9 @@ battlefield.cards[].catalogAbilities.mana	number:int
 battlefield.cards[].catalogAbilities.replacements	number:int
 battlefield.cards[].catalogAbilities.static	number:int
 battlefield.cards[].catalogAbilities.triggered	number:int
+battlefield.cards[].chosenCard	object
+battlefield.cards[].chosenCard.epoch	number:int
+battlefield.cards[].chosenCard.id	custom(uuid.UUID)
 battlefield.cards[].chosenColor	string
 battlefield.cards[].chosenName	string
 battlefield.cards[].chosenNumber	number:int
@@ -606,6 +609,9 @@ enteringTokens[].catalogAbilities.mana	number:int
 enteringTokens[].catalogAbilities.replacements	number:int
 enteringTokens[].catalogAbilities.static	number:int
 enteringTokens[].catalogAbilities.triggered	number:int
+enteringTokens[].chosenCard	object
+enteringTokens[].chosenCard.epoch	number:int
+enteringTokens[].chosenCard.id	custom(uuid.UUID)
 enteringTokens[].chosenColor	string
 enteringTokens[].chosenName	string
 enteringTokens[].chosenNumber	number:int
@@ -1102,6 +1108,9 @@ exile.cards[].catalogAbilities.mana	number:int
 exile.cards[].catalogAbilities.replacements	number:int
 exile.cards[].catalogAbilities.static	number:int
 exile.cards[].catalogAbilities.triggered	number:int
+exile.cards[].chosenCard	object
+exile.cards[].chosenCard.epoch	number:int
+exile.cards[].chosenCard.id	custom(uuid.UUID)
 exile.cards[].chosenColor	string
 exile.cards[].chosenName	string
 exile.cards[].chosenNumber	number:int
@@ -2004,6 +2013,7 @@ followUpParks[].then.permission.filter.nonLandPermanentOnly	bool
 followUpParks[].then.permission.filter.noncreatureOnly	bool
 followUpParks[].then.permission.filter.noncreatureOrCreatureType	string
 followUpParks[].then.permission.filter.notOwnedByHolder	bool
+followUpParks[].then.permission.filter.notSubtype	string
 followUpParks[].then.permission.filter.ownedByHolder	bool
 followUpParks[].then.permission.filter.permanentOnly	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
@@ -2614,6 +2624,7 @@ frozenEntries[].event.counterTail.then.permission.filter.nonLandPermanentOnly	bo
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.counterTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.counterTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -3203,6 +3214,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -3783,6 +3795,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -4084,6 +4097,7 @@ frozenEntries[].event.damageTail.sourceLki.Abilities[]	string
 frozenEntries[].event.damageTail.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
@@ -4533,6 +4547,7 @@ frozenEntries[].event.damageTail.then.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -5230,6 +5245,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.nonLan
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -5884,6 +5900,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -6464,6 +6481,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -7076,6 +7094,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.nonLandPe
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -7676,6 +7695,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.nonLandPermanentOn
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -8008,6 +8028,9 @@ frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.mana	number:i
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.static	number:int
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard	object
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard.epoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.chosenColor	string
 frozenEntries[].event.keywordActionTail.armyToken.chosenName	string
 frozenEntries[].event.keywordActionTail.armyToken.chosenNumber	number:int
@@ -8672,6 +8695,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.nonLandPermanentO
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9274,6 +9298,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9857,6 +9882,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -10177,6 +10203,9 @@ frozenEntries[].event.millTail.run.planned[].catalogAbilities.mana	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.replacements	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.static	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.triggered	number:int
+frozenEntries[].event.millTail.run.planned[].chosenCard	object
+frozenEntries[].event.millTail.run.planned[].chosenCard.epoch	number:int
+frozenEntries[].event.millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].chosenColor	string
 frozenEntries[].event.millTail.run.planned[].chosenName	string
 frozenEntries[].event.millTail.run.planned[].chosenNumber	number:int
@@ -10570,6 +10599,9 @@ frozenEntries[].event.millTail.run.seen[].catalogAbilities.mana	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.replacements	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.static	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.triggered	number:int
+frozenEntries[].event.millTail.run.seen[].chosenCard	object
+frozenEntries[].event.millTail.run.seen[].chosenCard.epoch	number:int
+frozenEntries[].event.millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].chosenColor	string
 frozenEntries[].event.millTail.run.seen[].chosenName	string
 frozenEntries[].event.millTail.run.seen[].chosenNumber	number:int
@@ -11227,6 +11259,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.nonLandPermanentOnly	b
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.run.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -11805,6 +11838,7 @@ frozenEntries[].event.millTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -12125,6 +12159,7 @@ frozenEntries[].event.sourceLki.Abilities[]	string
 frozenEntries[].event.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
@@ -12648,6 +12683,9 @@ frozenEntries[].event.tokenGroups[].template.catalogAbilities.mana	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.replacements	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.static	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.triggered	number:int
+frozenEntries[].event.tokenGroups[].template.chosenCard	object
+frozenEntries[].event.tokenGroups[].template.chosenCard.epoch	number:int
+frozenEntries[].event.tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.chosenColor	string
 frozenEntries[].event.tokenGroups[].template.chosenName	string
 frozenEntries[].event.tokenGroups[].template.chosenNumber	number:int
@@ -13306,6 +13344,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.tokenTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -13640,6 +13679,9 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.mana	
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard	object
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenColor	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenName	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -14046,6 +14088,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.mana	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -14439,6 +14484,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.mana	numb
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -15096,6 +15144,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -15708,6 +15757,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -16286,6 +16336,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -16884,6 +16935,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -17547,6 +17599,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -17862,6 +17915,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.mana	number:
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenColor	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenName	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -18248,6 +18304,7 @@ heldCombatDamage.answers[].frame.SourceLKI.Abilities[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AdditionalBlocks	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
 heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackBlockNeedsOtherPower	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
@@ -18424,6 +18481,7 @@ lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
+lastKnownBattlefield{}.AttackBlockNeedsOtherPower	number:int
 lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
@@ -18604,6 +18662,7 @@ lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
+lastKnownPermanents{}[].characteristic.AttackBlockNeedsOtherPower	number:int
 lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
@@ -18862,6 +18921,9 @@ lastKnownStack[].card.catalogAbilities.mana	number:int
 lastKnownStack[].card.catalogAbilities.replacements	number:int
 lastKnownStack[].card.catalogAbilities.static	number:int
 lastKnownStack[].card.catalogAbilities.triggered	number:int
+lastKnownStack[].card.chosenCard	object
+lastKnownStack[].card.chosenCard.epoch	number:int
+lastKnownStack[].card.chosenCard.id	custom(uuid.UUID)
 lastKnownStack[].card.chosenColor	string
 lastKnownStack[].card.chosenName	string
 lastKnownStack[].card.chosenNumber	number:int
@@ -19979,6 +20041,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.nonLandPermanentOnly	bo
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -20568,6 +20631,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -21148,6 +21212,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -21449,6 +21514,7 @@ movesAwaitingTokens[].damageTail.sourceLki.Abilities[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
@@ -21898,6 +21964,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -22595,6 +22662,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.nonLan
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -23249,6 +23317,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -23829,6 +23898,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -24441,6 +24511,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.nonLandPe
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -25041,6 +25112,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.nonLandPermanentOn
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -25373,6 +25445,9 @@ movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.mana	number:i
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.static	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard	object
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard.epoch	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenColor	string
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenName	string
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenNumber	number:int
@@ -26037,6 +26112,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.nonLandPermanentO
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -26639,6 +26715,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -27222,6 +27299,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -27542,6 +27620,9 @@ movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.mana	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.static	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].millTail.run.planned[].chosenCard	object
+movesAwaitingTokens[].millTail.run.planned[].chosenCard.epoch	number:int
+movesAwaitingTokens[].millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].chosenColor	string
 movesAwaitingTokens[].millTail.run.planned[].chosenName	string
 movesAwaitingTokens[].millTail.run.planned[].chosenNumber	number:int
@@ -27935,6 +28016,9 @@ movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.mana	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.static	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].millTail.run.seen[].chosenCard	object
+movesAwaitingTokens[].millTail.run.seen[].chosenCard.epoch	number:int
+movesAwaitingTokens[].millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].chosenColor	string
 movesAwaitingTokens[].millTail.run.seen[].chosenName	string
 movesAwaitingTokens[].millTail.run.seen[].chosenNumber	number:int
@@ -28592,6 +28676,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.nonLandPermanentOnly	b
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -29170,6 +29255,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -29490,6 +29576,7 @@ movesAwaitingTokens[].sourceLki.Abilities[]	string
 movesAwaitingTokens[].sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
@@ -30013,6 +30100,9 @@ movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.mana	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.static	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].tokenGroups[].template.chosenCard	object
+movesAwaitingTokens[].tokenGroups[].template.chosenCard.epoch	number:int
+movesAwaitingTokens[].tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.chosenColor	string
 movesAwaitingTokens[].tokenGroups[].template.chosenName	string
 movesAwaitingTokens[].tokenGroups[].template.chosenNumber	number:int
@@ -30671,6 +30761,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -31005,6 +31096,9 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.mana	
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard	object
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenColor	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenName	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -31411,6 +31505,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.mana	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -31804,6 +31901,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.mana	numb
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -32461,6 +32561,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -33073,6 +33174,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -33651,6 +33753,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34249,6 +34352,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34912,6 +35016,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -35227,6 +35332,9 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.mana	number:
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenName	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -36977,6 +37085,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.mana	num
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard	object
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.chosenColor	string
 pendingChoices[].attackSplit.settled.chosen[].template.chosenName	string
 pendingChoices[].attackSplit.settled.chosen[].template.chosenNumber	number:int
@@ -37389,6 +37500,9 @@ pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.mana	num
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard	object
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.chosenColor	string
 pendingChoices[].attackSplit.settled.groups[].template.chosenName	string
 pendingChoices[].attackSplit.settled.groups[].template.chosenNumber	number:int
@@ -38051,6 +38165,7 @@ pendingChoices[].attackSplit.tail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].attackSplit.tail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].attackSplit.tail.permission.filter.notSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.ownedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.permanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
@@ -38362,6 +38477,9 @@ pendingChoices[].attackSplit.template.catalogAbilities.mana	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.template.chosenCard	object
+pendingChoices[].attackSplit.template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.chosenColor	string
 pendingChoices[].attackSplit.template.chosenName	string
 pendingChoices[].attackSplit.template.chosenNumber	number:int
@@ -39118,6 +39236,9 @@ pendingChoices[].copyWalk.src.catalogAbilities.mana	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.replacements	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.static	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.triggered	number:int
+pendingChoices[].copyWalk.src.chosenCard	object
+pendingChoices[].copyWalk.src.chosenCard.epoch	number:int
+pendingChoices[].copyWalk.src.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.chosenColor	string
 pendingChoices[].copyWalk.src.chosenName	string
 pendingChoices[].copyWalk.src.chosenNumber	number:int
@@ -39542,6 +39663,7 @@ pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
@@ -40014,6 +40136,7 @@ pendingChoices[].diceRoll.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].diceRoll.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].diceRoll.then.permission.filter.notSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.ownedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.permanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -40350,6 +40473,7 @@ pendingChoices[].divideShield.staged[].lki.Abilities[]	string
 pendingChoices[].divideShield.staged[].lki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
@@ -40515,6 +40639,7 @@ pendingChoices[].divideShield.staged[].sourceLki.Abilities[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
@@ -40969,6 +41094,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.each.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -41549,6 +41675,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.then.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42135,6 +42262,7 @@ pendingChoices[].libraryOrder.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].libraryOrder.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].libraryOrder.then.permission.filter.notSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.ownedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.permanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42771,6 +42899,7 @@ pendingChoices[].nameThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].nameThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].nameThen.permission.filter.notSubtype	string
 pendingChoices[].nameThen.permission.filter.ownedByHolder	bool
 pendingChoices[].nameThen.permission.filter.permanentOnly	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -43810,6 +43939,7 @@ pendingChoices[].pickTail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].pickTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].pickTail.permission.filter.notSubtype	string
 pendingChoices[].pickTail.permission.filter.ownedByHolder	bool
 pendingChoices[].pickTail.permission.filter.permanentOnly	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -44434,6 +44564,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.nonL
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -45023,6 +45154,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -45603,6 +45735,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -45904,6 +46037,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
@@ -46353,6 +46487,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.nonLa
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -47050,6 +47185,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -47704,6 +47840,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -48284,6 +48421,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.nonLa
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -48896,6 +49034,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -49496,6 +49635,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -49828,6 +49968,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbil
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenColor	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenName	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenNumber	number:int
@@ -50492,6 +50635,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51094,6 +51238,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.no
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51677,6 +51822,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51997,6 +52143,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenColor	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenName	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenNumber	number:int
@@ -52390,6 +52539,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.ma
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenColor	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenName	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenNumber	number:int
@@ -53047,6 +53199,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.non
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -53625,6 +53778,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -53945,6 +54099,7 @@ pendingChoices[].replacementResume.event.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
@@ -54468,6 +54623,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenColor	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenName	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenNumber	number:int
@@ -55126,6 +55284,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.nonLan
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -55460,6 +55619,9 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.cat
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard	object
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenColor	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenName	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -55866,6 +56028,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].cata
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -56259,6 +56424,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalog
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -56916,6 +57084,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -57528,6 +57697,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -58106,6 +58276,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -58704,6 +58875,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -59367,6 +59539,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -59682,6 +59855,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbi
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -60369,6 +60545,7 @@ pendingChoices[].scryThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].scryThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].scryThen.permission.filter.notSubtype	string
 pendingChoices[].scryThen.permission.filter.ownedByHolder	bool
 pendingChoices[].scryThen.permission.filter.permanentOnly	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -60994,6 +61171,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.nonLandPermanentOn
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -61535,6 +61713,7 @@ pendingChoices[].targetWalk.frame.lki.Abilities[]	string
 pendingChoices[].targetWalk.frame.lki.AdditionalBlocks	number:int
 pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
 pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].targetWalk.frame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
@@ -61716,6 +61895,9 @@ pendingChoices[].targetWalk.frame.source.catalogAbilities.mana	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.replacements	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.static	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.triggered	number:int
+pendingChoices[].targetWalk.frame.source.chosenCard	object
+pendingChoices[].targetWalk.frame.source.chosenCard.epoch	number:int
+pendingChoices[].targetWalk.frame.source.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.chosenColor	string
 pendingChoices[].targetWalk.frame.source.chosenName	string
 pendingChoices[].targetWalk.frame.source.chosenNumber	number:int
@@ -62224,6 +62406,7 @@ pendingChoices[].triggerFrame.lki.Abilities[]	string
 pendingChoices[].triggerFrame.lki.AdditionalBlocks	number:int
 pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
 pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].triggerFrame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
@@ -62405,6 +62588,9 @@ pendingChoices[].triggerFrame.source.catalogAbilities.mana	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.replacements	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.static	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.triggered	number:int
+pendingChoices[].triggerFrame.source.chosenCard	object
+pendingChoices[].triggerFrame.source.chosenCard.epoch	number:int
+pendingChoices[].triggerFrame.source.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.chosenColor	string
 pendingChoices[].triggerFrame.source.chosenName	string
 pendingChoices[].triggerFrame.source.chosenNumber	number:int
@@ -63247,6 +63433,9 @@ phasedOut.cards[].catalogAbilities.mana	number:int
 phasedOut.cards[].catalogAbilities.replacements	number:int
 phasedOut.cards[].catalogAbilities.static	number:int
 phasedOut.cards[].catalogAbilities.triggered	number:int
+phasedOut.cards[].chosenCard	object
+phasedOut.cards[].chosenCard.epoch	number:int
+phasedOut.cards[].chosenCard.id	custom(uuid.UUID)
 phasedOut.cards[].chosenColor	string
 phasedOut.cards[].chosenName	string
 phasedOut.cards[].chosenNumber	number:int
@@ -63643,6 +63832,9 @@ planechase.deck.cards[].catalogAbilities.mana	number:int
 planechase.deck.cards[].catalogAbilities.replacements	number:int
 planechase.deck.cards[].catalogAbilities.static	number:int
 planechase.deck.cards[].catalogAbilities.triggered	number:int
+planechase.deck.cards[].chosenCard	object
+planechase.deck.cards[].chosenCard.epoch	number:int
+planechase.deck.cards[].chosenCard.id	custom(uuid.UUID)
 planechase.deck.cards[].chosenColor	string
 planechase.deck.cards[].chosenName	string
 planechase.deck.cards[].chosenNumber	number:int
@@ -64039,6 +64231,9 @@ planechase.faceUp.cards[].catalogAbilities.mana	number:int
 planechase.faceUp.cards[].catalogAbilities.replacements	number:int
 planechase.faceUp.cards[].catalogAbilities.static	number:int
 planechase.faceUp.cards[].catalogAbilities.triggered	number:int
+planechase.faceUp.cards[].chosenCard	object
+planechase.faceUp.cards[].chosenCard.epoch	number:int
+planechase.faceUp.cards[].chosenCard.id	custom(uuid.UUID)
 planechase.faceUp.cards[].chosenColor	string
 planechase.faceUp.cards[].chosenName	string
 planechase.faceUp.cards[].chosenNumber	number:int
@@ -64663,6 +64858,9 @@ resolving.card.catalogAbilities.mana	number:int
 resolving.card.catalogAbilities.replacements	number:int
 resolving.card.catalogAbilities.static	number:int
 resolving.card.catalogAbilities.triggered	number:int
+resolving.card.chosenCard	object
+resolving.card.chosenCard.epoch	number:int
+resolving.card.chosenCard.id	custom(uuid.UUID)
 resolving.card.chosenColor	string
 resolving.card.chosenName	string
 resolving.card.chosenNumber	number:int
@@ -65623,6 +65821,9 @@ seats[].attractionDeck.cards[].catalogAbilities.mana	number:int
 seats[].attractionDeck.cards[].catalogAbilities.replacements	number:int
 seats[].attractionDeck.cards[].catalogAbilities.static	number:int
 seats[].attractionDeck.cards[].catalogAbilities.triggered	number:int
+seats[].attractionDeck.cards[].chosenCard	object
+seats[].attractionDeck.cards[].chosenCard.epoch	number:int
+seats[].attractionDeck.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].chosenColor	string
 seats[].attractionDeck.cards[].chosenName	string
 seats[].attractionDeck.cards[].chosenNumber	number:int
@@ -66072,6 +66273,7 @@ seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.noncreatureOrCreatureType	string
 seats[].castPermissions[].filter.notOwnedByHolder	bool
+seats[].castPermissions[].filter.notSubtype	string
 seats[].castPermissions[].filter.ownedByHolder	bool
 seats[].castPermissions[].filter.permanentOnly	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
@@ -66149,6 +66351,9 @@ seats[].command.cards[].catalogAbilities.mana	number:int
 seats[].command.cards[].catalogAbilities.replacements	number:int
 seats[].command.cards[].catalogAbilities.static	number:int
 seats[].command.cards[].catalogAbilities.triggered	number:int
+seats[].command.cards[].chosenCard	object
+seats[].command.cards[].chosenCard.epoch	number:int
+seats[].command.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].command.cards[].chosenColor	string
 seats[].command.cards[].chosenName	string
 seats[].command.cards[].chosenNumber	number:int
@@ -66547,6 +66752,9 @@ seats[].companion.cards[].catalogAbilities.mana	number:int
 seats[].companion.cards[].catalogAbilities.replacements	number:int
 seats[].companion.cards[].catalogAbilities.static	number:int
 seats[].companion.cards[].catalogAbilities.triggered	number:int
+seats[].companion.cards[].chosenCard	object
+seats[].companion.cards[].chosenCard.epoch	number:int
+seats[].companion.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].companion.cards[].chosenColor	string
 seats[].companion.cards[].chosenName	string
 seats[].companion.cards[].chosenNumber	number:int
@@ -66954,6 +67162,9 @@ seats[].emblems.cards[].catalogAbilities.mana	number:int
 seats[].emblems.cards[].catalogAbilities.replacements	number:int
 seats[].emblems.cards[].catalogAbilities.static	number:int
 seats[].emblems.cards[].catalogAbilities.triggered	number:int
+seats[].emblems.cards[].chosenCard	object
+seats[].emblems.cards[].chosenCard.epoch	number:int
+seats[].emblems.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].emblems.cards[].chosenColor	string
 seats[].emblems.cards[].chosenName	string
 seats[].emblems.cards[].chosenNumber	number:int
@@ -67355,6 +67566,8 @@ seats[].finalBoard.command[].scryfallId	string
 seats[].finalBoard.command[].tapped	bool
 seats[].finalBoard.command[].toughness	number:int
 seats[].finalBoard.command[].typeLine	string
+seats[].finalBoard.commanders	array
+seats[].finalBoard.commanders[]	string
 seats[].finalBoard.exile	array
 seats[].finalBoard.exile[]	object
 seats[].finalBoard.exile[].activeFace	number:int
@@ -67446,6 +67659,9 @@ seats[].graveyard.cards[].catalogAbilities.mana	number:int
 seats[].graveyard.cards[].catalogAbilities.replacements	number:int
 seats[].graveyard.cards[].catalogAbilities.static	number:int
 seats[].graveyard.cards[].catalogAbilities.triggered	number:int
+seats[].graveyard.cards[].chosenCard	object
+seats[].graveyard.cards[].chosenCard.epoch	number:int
+seats[].graveyard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].graveyard.cards[].chosenColor	string
 seats[].graveyard.cards[].chosenName	string
 seats[].graveyard.cards[].chosenNumber	number:int
@@ -67840,6 +68056,9 @@ seats[].hand.cards[].catalogAbilities.mana	number:int
 seats[].hand.cards[].catalogAbilities.replacements	number:int
 seats[].hand.cards[].catalogAbilities.static	number:int
 seats[].hand.cards[].catalogAbilities.triggered	number:int
+seats[].hand.cards[].chosenCard	object
+seats[].hand.cards[].chosenCard.epoch	number:int
+seats[].hand.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].hand.cards[].chosenColor	string
 seats[].hand.cards[].chosenName	string
 seats[].hand.cards[].chosenNumber	number:int
@@ -68239,6 +68458,9 @@ seats[].junkyard.cards[].catalogAbilities.mana	number:int
 seats[].junkyard.cards[].catalogAbilities.replacements	number:int
 seats[].junkyard.cards[].catalogAbilities.static	number:int
 seats[].junkyard.cards[].catalogAbilities.triggered	number:int
+seats[].junkyard.cards[].chosenCard	object
+seats[].junkyard.cards[].chosenCard.epoch	number:int
+seats[].junkyard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].junkyard.cards[].chosenColor	string
 seats[].junkyard.cards[].chosenName	string
 seats[].junkyard.cards[].chosenNumber	number:int
@@ -68642,6 +68864,9 @@ seats[].library.cards[].catalogAbilities.mana	number:int
 seats[].library.cards[].catalogAbilities.replacements	number:int
 seats[].library.cards[].catalogAbilities.static	number:int
 seats[].library.cards[].catalogAbilities.triggered	number:int
+seats[].library.cards[].chosenCard	object
+seats[].library.cards[].chosenCard.epoch	number:int
+seats[].library.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].library.cards[].chosenColor	string
 seats[].library.cards[].chosenName	string
 seats[].library.cards[].chosenNumber	number:int
@@ -69077,6 +69302,9 @@ seats[].sideboard.cards[].catalogAbilities.mana	number:int
 seats[].sideboard.cards[].catalogAbilities.replacements	number:int
 seats[].sideboard.cards[].catalogAbilities.static	number:int
 seats[].sideboard.cards[].catalogAbilities.triggered	number:int
+seats[].sideboard.cards[].chosenCard	object
+seats[].sideboard.cards[].chosenCard.epoch	number:int
+seats[].sideboard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].sideboard.cards[].chosenColor	string
 seats[].sideboard.cards[].chosenName	string
 seats[].sideboard.cards[].chosenNumber	number:int
@@ -69483,6 +69711,7 @@ seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOrCreatureType	string
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
+seats[].statics[].cantBeCountered.filter.notSubtype	string
 seats[].statics[].cantBeCountered.filter.ownedByHolder	bool
 seats[].statics[].cantBeCountered.filter.permanentOnly	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
@@ -69522,6 +69751,7 @@ seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.noncreatureOrCreatureType	string
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
+seats[].statics[].castBan.filter.notSubtype	string
 seats[].statics[].castBan.filter.ownedByHolder	bool
 seats[].statics[].castBan.filter.permanentOnly	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
@@ -69610,6 +69840,7 @@ seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOrCreatureType	string
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
+seats[].statics[].nextSpell.filter.notSubtype	string
 seats[].statics[].nextSpell.filter.ownedByHolder	bool
 seats[].statics[].nextSpell.filter.permanentOnly	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
@@ -69654,6 +69885,7 @@ seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.noncreatureOrCreatureType	string
 seats[].statics[].timing.filter.notOwnedByHolder	bool
+seats[].statics[].timing.filter.notSubtype	string
 seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.permanentOnly	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int
@@ -69733,6 +69965,7 @@ spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
+spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
@@ -69777,6 +70010,9 @@ stack.cards[].catalogAbilities.mana	number:int
 stack.cards[].catalogAbilities.replacements	number:int
 stack.cards[].catalogAbilities.static	number:int
 stack.cards[].catalogAbilities.triggered	number:int
+stack.cards[].chosenCard	object
+stack.cards[].chosenCard.epoch	number:int
+stack.cards[].chosenCard.id	custom(uuid.UUID)
 stack.cards[].chosenColor	string
 stack.cards[].chosenName	string
 stack.cards[].chosenNumber	number:int

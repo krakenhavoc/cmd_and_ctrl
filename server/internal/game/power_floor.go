@@ -30,7 +30,9 @@ package game
 
 // foldPowerFloorLocked adds CantAttack | CantBlock to every permanent
 // whose finished power (layers and P/T counters, unclamped, as
-// PowerForComparison reads it) is below its AttackBlockPowerFloor.
+// PowerForComparison reads it) is below its AttackBlockPowerFloor, and
+// to every permanent with an AttackBlockNeedsOtherPower whose controller
+// controls no other creature with that much power (Tiger-Dillo).
 //
 // Caller must hold g.mu in write mode (the layer pass).
 func (g *Game) foldPowerFloorLocked() {
@@ -39,7 +41,13 @@ func (g *Game) foldPowerFloorLocked() {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.effective == nil || c.effective.AttackBlockPowerFloor <= 0 {
+		if c.effective == nil {
+			continue
+		}
+		if n := c.effective.AttackBlockNeedsOtherPower; n > 0 && !g.controlsAnotherCreatureWithPowerLocked(c, n) {
+			c.effective.Restrictions |= CantAttackOrBlock
+		}
+		if c.effective.AttackBlockPowerFloor <= 0 {
 			continue
 		}
 		// Counters are not in effective.Power: they are added at read
@@ -48,4 +56,26 @@ func (g *Game) foldPowerFloorLocked() {
 			c.effective.Restrictions |= CantAttackOrBlock
 		}
 	}
+}
+
+// controlsAnotherCreatureWithPowerLocked is Tiger-Dillo's condition:
+// does c's controller control a creature other than c whose finished
+// power (layers and P/T counters, as foldPowerFloorLocked reads it) is
+// n or greater? The fold only writes restriction bits, never power or
+// types, so every other permanent's finished values are already final
+// when it runs, whatever the order.
+//
+// Caller must hold g.mu in write mode (the layer pass).
+func (g *Game) controlsAnotherCreatureWithPowerLocked(c *Card, n int) bool {
+	for i := range g.Battlefield.Cards {
+		o := &g.Battlefield.Cards[i]
+		if o.InstanceID == c.InstanceID || o.Controller != c.Controller || o.effective == nil ||
+			!typeListHas(o.effective.Types, "Creature") {
+			continue
+		}
+		if power, _ := ptWithCounters(*o.effective, o.Counters); power >= n {
+			return true
+		}
+	}
+	return false
 }

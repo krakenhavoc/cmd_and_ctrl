@@ -31,6 +31,13 @@ func TestUntilEndOfTurnGuard(t *testing.T) {
 		{"a harm alone", Spec{Targets: creature(), Purpose: entries(HarmUntilEOT(0, 0, 0))}, ""},
 		{"can't be blocked", Spec{Targets: creature(), Purpose: entries(CantBeBlockedUntilEOT(0, 0, 0))}, ""},
 		{"can't be blocked with a pump", Spec{Targets: creature(), Purpose: entries(CantBeBlockedUntilEOT(0, 2, 0))}, ""},
+		{"can't block", Spec{Targets: creature(), Purpose: entries(CantBlockUntilEOT(0, 0, 0))}, ""},
+		{"can't block with a shrink", Spec{Targets: creature(), Purpose: entries(CantBlockUntilEOT(0, -2, 0))}, ""},
+		{"a benefit that can't block", Spec{Targets: creature(), Purpose: entries(game.TargetPurpose{
+			UntilEndOfTurn: game.TargetBenefit, Pump: &game.Pump{CantBlock: true}})}, "that is a harm"},
+		{"a self pump that can't block", Spec{Activated: []ActivatedAbility{
+			{Label: "a", Purpose: game.Purpose{Pump: &game.Pump{Power: 2, CantBlock: true}}},
+		}}, "own source"},
 		{"a harm that makes it unblockable", Spec{Targets: creature(), Purpose: entries(game.TargetPurpose{
 			UntilEndOfTurn: game.TargetHarm, Pump: &game.Pump{CantBeBlocked: true}})}, "unblockability"},
 		{"on an activated row", Spec{Activated: []ActivatedAbility{
@@ -82,10 +89,6 @@ var untilEndOfTurnRow = regexp.MustCompile(`(?i)\btarget\b[^.:]*\b(gains?|gets|l
 var untilEndOfTurnExempt = map[string]string{
 	// "+X/+X or -X/-X": the controller picks the sign at resolution.
 	"Liliana of the Dark Realms": "the sign is chosen at resolution",
-	// The third resolution in a turn adds {R}{R}{R}{R}: repeating the
-	// grant is the point, and a direction would price the repeats at
-	// nothing.
-	"Soulbright Seeker": "its repeats add mana",
 	// Moves Zack Fair's counters and Equipment onto the creature for good.
 	"Zack Fair": "part of what it does lasts",
 }
@@ -166,6 +169,14 @@ func checkDeclaredChange(t *testing.T, where, text string, harm bool, e *game.Ta
 	unblockable := strings.Contains(lower, "can't be blocked this turn") && !strings.Contains(lower, "except")
 	if unblockable && !harm && !pm.CantBeBlocked {
 		t.Errorf("%s says \"can't be blocked this turn\" and does not declare CantBeBlocked (#4312)", where)
+	}
+	// #4977: "can't block" is declared as CantBlock, so it is priced by
+	// the attack it opens and not as removal.
+	if pm.CantBlock && !strings.Contains(lower, "can't block") {
+		t.Errorf("%s declares CantBlock, which its text does not say (#4977)", where)
+	}
+	if harm && strings.Contains(lower, "can't block") && !pm.CantBlock {
+		t.Errorf("%s says \"can't block\" and does not declare CantBlock (#4977)", where)
 	}
 }
 

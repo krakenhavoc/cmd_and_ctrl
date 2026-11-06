@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Lobby from "../routes/Lobby.svelte";
 import App from "../App.svelte";
+import { L } from "./labels";
 import type { MyGame } from "./myGames";
 import { parseHash } from "./router";
 import { currentSession, setSession, type Session } from "./session";
@@ -206,10 +207,11 @@ describe("History (§1 item 3)", () => {
     expect(buttonNamed(history, /more/)).toBeUndefined();
   });
 
-  it("filters Won, With friends and Archived in the client", async () => {
+  it("filters Won, With people, With friends and Archived in the client", async () => {
     mine = [
       myGame(1, { name: "Won it", winner_seat: 0 }),
       myGame(2, { name: "With Bob", others: [{ seat: 1, name: "Bob" }] }),
+      myGame(4, { name: "With Cara", others: [{ seat: 1, name: "Cara", friend: true }] }),
       myGame(3, { name: "Put away", archived_at: Date.now() - DAY }),
     ];
     stubServer();
@@ -223,13 +225,15 @@ describe("History (§1 item 3)", () => {
 
     click(buttonNamed(history, /^Won$/)!);
     expect(names()).toEqual(["Won it"]);
-    click(buttonNamed(history, /^With friends$/)!);
-    expect(names()).toEqual(["With Bob"]);
+    click(buttonNamed(history, new RegExp(`^${L.historyWithPeople}$`))!);
+    expect(names()).toEqual(["With Bob", "With Cara"]);
+    click(buttonNamed(history, new RegExp(`^${L.historyWithFriends}$`))!);
+    expect(names()).toEqual(["With Cara"]);
     click(buttonNamed(history, /^Archived$/)!);
     expect(names()).toEqual(["Put away"]);
     expect(history.querySelector(".result.archived")?.textContent).toBe("Archived");
     click(buttonNamed(history, /^All$/)!);
-    expect(names()).toHaveLength(3);
+    expect(names()).toHaveLength(4);
     expect(calls()).toBe(before);
   });
 });

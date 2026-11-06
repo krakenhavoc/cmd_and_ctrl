@@ -23,8 +23,10 @@ func init() {
 				Do(GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "{1}, {T}, Discard a card: Another target creature or planeswalker you control gains hexproof until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof")),
+			Label: "{1}, {T}, Discard a card: Another target creature or planeswalker you control gains hexproof until end of turn.",
+			// #4734 slice 7: hexproof keeps the target out of reach of what
+			// targets it.
+			Purpose: game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof"))},
 			Cost:    Plus(ManaCost("{1}"), TapCost(), DiscardACard()),
 			Targets: Another(TargetPermanent("another target creature or planeswalker you control", Or(Creature(), Planeswalker()), YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {

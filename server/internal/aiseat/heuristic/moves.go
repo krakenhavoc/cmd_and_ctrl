@@ -200,6 +200,12 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	return v, false
 }
 
+// castBeholdExiles reports whether c's mandatory additional cost exiles
+// the card its behold names (#4687): `additional_cost.behold_exile`.
+func castBeholdExiles(c *protocol.CardView) bool {
+	return c != nil && c.AdditionalCost != nil && c.AdditionalCost.BeholdExile
+}
+
 // castTapsPermanents reports whether a cast of c pays a mandatory "tap an
 // untapped <permanent> you control" additional cost (#3868): the card's
 // own cost, or the either/or branch the cast names (Disruption Protocol's
@@ -409,9 +415,15 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && p.repeatsFreeActivation(st, m) {
 			return freeRepeat, "free activation already made this turn"
 		}
+		// #4980: a run to the resolution that adds mana
+		// (resolution_mana.go) repeats its grant on purpose.
+		rmV, rmOK := 0.0, false
+		if !across {
+			rmV, rmOK = p.resolutionManaValue(st, m)
+		}
 		// #4302: a no-amount grant the row already gave the same
 		// creature this turn (temporary_effect.go).
-		if !across && p.repeatsTemporaryGrant(st, m) {
+		if !across && !rmOK && p.repeatsTemporaryGrant(st, m) {
 			return redundantGrant, "grant already made this turn"
 		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
@@ -428,7 +440,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		targetV, targetsPriced := p.pricedTargetsHarm(st, cp.Targets, func(t targetRef) bool {
 			return rowHarmful(src, cp.AbilityIndex, t)
 		}, func(t targetRef) *protocol.TargetPurposeView {
-			return entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue)
+			return entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue, p.cfg.PriceXPumps)
 		}, nil, src)
 		if !across {
 			var ps purposeSet
@@ -470,6 +482,18 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 					v, reason, purposed = 0, "activate (counter on its source)", true
 				}
 				v += cv
+			}
+			// #4980: the mana the run's last resolution returns, which
+			// the bot's hand can spend (resolution_mana.go).
+			if rmOK {
+				if !purposed {
+					v, purposed = 0, true
+				}
+				v += rmV
+				reason = "activate (mana on a counted resolution)"
+				if targetV < 0 && st.ownPicksOnly(cp.Targets) {
+					targetV = 0
+				}
 			}
 			// #4978: a rider on a row that declares nothing else priced
 			// is added to ActivateBase (riders.go), and such a row pays
@@ -729,8 +753,13 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	targetV, targetsPriced := p.pricedTargetsHarm(st, targets, func(t targetRef) bool {
 		return castHarmful(card, cp, t)
 	}, func(t targetRef) *protocol.TargetPurposeView {
-		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue), len(cp.TeamworkIDs))
+		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue, p.cfg.PriceXPumps), len(cp.TeamworkIDs))
 	}, card, card)
+	// #4977: an "up to" can't-block cast that names no creature is
+	// priced by its purpose (cant_block.go), not the mana-value proxy.
+	if !targetsPriced && len(targets) == 0 && p.declaresCantBlock(castEntryFor(card, cp, targetRef{})) {
+		targetsPriced = true
+	}
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).
 	if p.isBestowCast(cp) {
@@ -897,7 +926,30 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	} else {
 		v -= st.w.Hand * float64(len(cp.ExileFromHandIDs))
 	}
+	// #4687: the card a "behold a Kithkin and exile it" exiles is gone
+	// until the permanent leaves, priced as the two exile costs above
+	// price a permanent and a hand card. A plain behold or reveal keeps
+	// its card and costs nothing.
+	if castBeholdExiles(card) {
+		for _, id := range cp.RevealIDs {
+			if st.bf[id] != nil {
+				v -= p.sacrificeCost(st, []string{id})
+				continue
+			}
+			if p.cfg.DiscardCostByCard {
+				v -= p.discardCost(st, id, cp.InstanceID, cp.RevealIDs)
+			} else {
+				v -= st.w.Hand
+			}
+		}
+	}
 	v += targetV
+	// #4976: Hatred's X is paid in life and is the +X/+0 priced above.
+	if life, refuse := p.pumpXLifeCost(st, card, cp, targets); refuse {
+		return suicideValue, "cast declined: the life its X pays would take it below the floor"
+	} else {
+		v -= life
+	}
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
 		// {2} more (CR 903.8); the tax is already in the score, this

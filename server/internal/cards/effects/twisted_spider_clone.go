@@ -17,7 +17,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Twisted Spider-Clone — +1/+1 counter on each creature you control with a +1/+1 counter",
-				putCountersOnEachYouControlThat(game.CounterPlusOne, 1, Not(b13WithoutPlusOneCounter()))),
+				putPlusOneCountersOnEachYouControlThat(1, Not(b13WithoutPlusOneCounter()))),
 		},
 	})
 }

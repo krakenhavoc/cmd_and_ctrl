@@ -9,6 +9,122 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## "Can't block" priced by the attack it opens (#4977, S75)
+
+"Can't block this turn" was declared as a bare harm, the same as Tragic
+Slip's -X/-X, so each pick was priced as removal: Daring Discovery at
+three 4/4s was 22.08, against 3.90 for the attack its three creatures
+open (`TestDaringDiscoveryIsWorthTheAttacksItOpens`). The four
+can't-block cards now declare `cant_block`, and `PriceCantBlock`
+([bot.md](bot.md#purposes-what-a-spell-or-an-ability-does)) prices a move's can't-block picks by
+the swing they open before blockers and by nothing after. It **ships
+off**: the arena below found the price a loss. `heuristic-cantblock`
+seats today's heuristic with it on. The position tests
+(`heuristic/cant_block_test.go`) and the whole-engine test
+(`aiseat/cant_block_bot_test.go`, the real Daring Discovery at both of an
+opponent's 4/4s before the bot's two 3/3s swing for six) hold the price
+itself: one blocker of three opens nothing, all three open the attack,
+after blockers or on an opponent's turn it is worth nothing, it adds
+`LethalBonus` when it opens the kill, and Tragic Slip and Duel Tactics'
+kill keep their price with it on or off.
+
+No curated deck holds a can't-block card, so the 2026-11-05 UTC runs
+used develop `ee606a09` plus #4977 and the synthetic `--decks
+cantblock-battle` (BattleDeck with four Daring Discovery and four
+Untimely Malfunction in place of six Bears and two Ogres) at all four
+seats, rotation and lockstep. Every game ended with a winner and none
+stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy:
+
+| Policy | Daring Discovery taken / offered | Untimely Malfunction taken / offered | Stranded own turns | Mean turns |
+|---|---|---|---|---|
+| price on | 46 / 166 | 68 / 2,057 | 70 of 786 (8.9%) | 15.5 |
+| price off (today) | 61 / 63 | 79 / 194 | 14 of 758 (1.8%) | 14.1 |
+
+Then one head-to-head with decision logs: two seats with the price on
+against two without, seeds 2000–2047 (48 games). The four-seat null rate
+is 25%.
+
+| Policy | Wins / 96 seat-games | 95% CI | Daring Discovery cast at 0 / 1 / 2 / 3 creatures | Untimely Malfunction's third mode |
+|---|---|---|---|---|
+| price on (`heuristic-cantblock`) | 19, 19.8% | 13.1–28.9% | 11 / 73 / 0 / 0 | 40, 2 of them at declare attackers |
+| price off (today's `heuristic`) | 29, 30.2% | 21.9–40.0% | 0 / 22 / 43 / 4 | 101 |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative; they overlap, so the
+loss is a direction, not a result. Two of the decision logs' lines were
+truncated and are not counted. The removal price casts Daring Discovery
+in the first main phase it can, at the two or three biggest creatures
+the enumerator offers; the attack price waits for a board where the
+picks open a swing and then, among the twelve target sets the enumerator
+offers (`legal.MaxExpansionPerSource`), most often finds one creature
+whose absence lets an attacker through. It also holds Untimely
+Malfunction, which sits in hand on most turns (the stranded mana above).
+A swing priced across opponents, or a target-set walk that keeps the
+pair a can't-block spell needs, is the next thing to measure before
+turning the switch on. The heuristic, aiseat, botarena, protocol and
+effects package tests and docsguard passed. Reports and decision logs
+stayed on the authoring machine.
+
+## A pump of the announced X (#4976, S75)
+
+Tyvar's Stand, Hatred and Mishra's Command's last bullet now declare that
+their +X/+X or +X/+0 is the announced X (`pump_power_is_x`,
+`pump_toughness_is_x`), and so do Primal Might, Bionic Blow, Kessig Wolf
+Run, Martyr of Spores, Secluded Starforge and Tovolar's back face.
+`PriceXPumps` reads the move's X into the pump, so Tyvar's Stand at X=3 on
+an attacker before blocks is priced as a printed +3/+3 with hexproof and
+indestructible, and charges Hatred's X life
+([bot.md](bot.md), [ADR 0126](decisions/0126-bots-that-play-their-decks.md)'s
+amendment for #4976). It **ships off**: the arena below found no gain.
+`heuristic-xpumps` seats today's heuristic with it on. The position tests
+(`heuristic/pump_x_test.go`) and the real-engine Hatred test
+(`aiseat/hatred_x_bot_test.go`) hold the price itself.
+
+No curated deck holds these cards, so the runs use the synthetic
+`--decks xpumps-battle`: BattleDeck in red and green with four Tyvar's
+Stand, four Mishra's Command, two Primal Might, two Kessig Wolf Runs and
+ten Forests in place of eight Bears, four Ogres and ten Mountains. All
+four seats, rotation and lockstep, on develop `ee606a09` plus #4976, on
+2026-11-05 UTC. Every game ended with a winner and none stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy, and decision logs. "Taken" counts decision windows
+that cast or activated the card, out of the windows that offered it.
+
+| | price on | price off (today) |
+|---|---|---|
+| mean turns | 14.3 | 16.7 |
+| Tyvar's Stand | 56 of 1714, all in the first main phase | 39 of 3942: 35 first main, 4 declare attackers |
+| Kessig Wolf Run's pump | 35 of 745: 34 first main, 1 declare blockers | 43 of 1409: 35 declare attackers, 7 declare blockers, 1 first main |
+| Primal Might | 40 of 60 | 46 of 76 |
+| Mishra's Command | 74 of 92 (the pump bullet in 5) | 82 of 99 (the pump bullet in 1) |
+
+With the price on, the pump is worth the attack it adds before attackers
+are declared, so it clears the bar in the first main phase and is cast
+there, before the bot knows which attackers are blocked. With it off the
+same cards wait for combat, where `CombatGrant` and the keywords price
+them. The games are shorter with the price on.
+
+Then one head-to-head: two seats with the price on against two without,
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games | 95% CI |
+|---|---|---|
+| price on (`heuristic-xpumps`) | 23, 24.0% | 16.5–33.4% |
+| price off (today's `heuristic`) | 25, 26.0% | 18.3–35.6% |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. The difference is noise,
+and there is no evidence the price helps, so the switch stays off. A
+price that keeps the pump for combat when the attack does not need it to
+be declared, or that compares the main-phase cast with the same cast
+after blocks, is the next thing to measure before turning it on. The
+package tests passed. Reports and decision logs stayed on the authoring
+machine.
+
 ## Burnished Hart's land search by the turn (#5084, S75)
 
 Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library for
@@ -204,8 +320,10 @@ four Thopters after combat trade two for a card and keep two; three
 Thopters, Thopters before they attack, nontoken artifacts and a copy
 with a counter are kept; with it off the bot passes.
 
-The curated deck was not run: it needs a Scryfall dump, and the
-authoring sandbox could not reach Scryfall. The 2026-11-05 UTC runs used
+The first runs used a synthetic deck: the curated deck needs a Scryfall
+dump, and the authoring sandbox could not reach Scryfall. The curated
+deck's run is in [its own section](#the-curated-deck-mono-blue-artifacts-4991).
+The 2026-11-05 UTC runs used
 develop `a2035a940` plus #4991 and the synthetic `--decks thopter-battle`
 at all four seats (Sai, eight Ornithopters, six Memnites, four Hangarback
 Walkers, four Burnished Harts, four Mind Stones and vanilla blue
@@ -249,11 +367,65 @@ independent and the intervals are conservative. At every keep the seats
 that cashed in Thopters did no better, and at the default keep of two
 they did worse. On this deck the draws are vanilla creatures and lands,
 and the Thopters are its evasion, so the board price was right. The
-curated deck draws better cards, and is the run to make before turning
-the switch on. The labelled position suite, the gated heuristic games
+curated deck draws better cards, so it was the run to make before
+turning the switch on (below). The labelled position suite, the gated heuristic games
 (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
 package tests passed. Reports and decision logs stayed on the authoring
 machine.
+
+### The curated deck: mono-blue-artifacts (#4991)
+
+The 2026-11-05 UTC runs used develop `ee606a09b` (the switch off in
+`DefaultConfig`), Scryfall's default-cards dump of that day, and the
+curated `mono-blue-artifacts` deck (Thopter Swarm, #5000), with rotation
+and lockstep. Sai is its commander, so it is on offer in every game.
+
+First, curated-arena.sh's shape: the nightly's four decks
+(`mono-blue-artifacts,izzet-spellslinger,orzhov-aristocrats,gruul-counters`),
+16 games, seeds 1000–1015, all four seats on one policy, and decision
+logs. Every game ended with a winner and none stalled.
+
+| Policy | Sai activations (windows offered) | Seat-games used (of offered) | Thopter Swarm wins / 16 |
+|---|---|---|---|
+| price on (`heuristic-sparetokens`) | 20 (1,170) | 5 of 13 | 1, 6.2% (1.1–28.3%) |
+| price off (today's `heuristic`) | 0 (1,090), `never` | 0 of 13 | 2, 12.5% (3.5–36.0%) |
+
+With the price on, the decision logs show 18 activations after combat
+on the bot's own turn, one before combat (paid with a Thopter and a Myr,
+with five Thopters out) and one in declare blockers with two Thopters
+that were dying anyway. Nineteen were paid with two Thopters. Sai was
+never activated with exactly three Thopters (313 windows) and was
+activated in 19 of 346 windows with four or more. With it off, Sai's
+draw was the `never` card it was in the issue's run. The other three
+decks' wins moved by one at most (gruul-counters 3 and 3,
+izzet-spellslinger 5 and 5, orzhov-aristocrats 7 and 6, on and off).
+
+Then head-to-head: `mono-blue-artifacts` at all four seats, two seats
+with the price on against two without
+(`heuristic-sparetokens,heuristic,heuristic-sparetokens,heuristic`),
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 92 decided seat-games | Sai activations (windows offered) | Seat-games used (of offered) |
+|---|---|---|---|
+| price on | 22, 23.9% (16.4–33.6%) | 162 (12,819) | 50 of 90 |
+| price off | 24, 26.1% (18.2–35.9%) | 14 (13,246) | 8 of 86 |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. Two wins in 92 is well
+inside the noise: on the curated deck the trade neither wins nor loses
+measurably, and it did not win, so **the switch stays off**. The bot now
+takes Sai's draw with spare Thopters when the switch is on, which is
+the issue's behaviour; whether to ship a price that does not move the
+win rate, or to try a different one, is the owner's call on #4991.
+
+Two of the 48 head-to-head games stalled (seeds 2001 and 2007), both in
+the end step of a two-player endgame. In each, the stalled seat was an
+off seat (today's heuristic), the server logged "automatic passing is
+suspended by the loop breaker (CR 732)" for it just before, and it held
+priority with Sai's draw, its mana and other abilities on offer. Neither
+stall involves the switch; they are reported here rather than fixed.
+The 46 decided games are the ones counted above. Reports and decision
+logs stayed on the authoring machine.
 
 ## Spare mana rocks for Mind Stone's draw (#5085, S75)
 
@@ -741,6 +913,68 @@ Every game ended on the same turn with the same winner with the switch on
 and off, and Heliod's activation was taken in the same windows (3 of 140,
 and 17 of 582): on these decks the change reprices the grant and changes
 no decision. The mirror's one stall is the same game in both builds.
+
+## Triggered mana in the turn plan (#4770, S75)
+
+The turn plan's mana model read each source's `produced`, which CR 106.7
+keeps triggered mana out of, so a Swamp under Crypt Ghast counted as one
+{B} and the bot under-planned turns with two spells. The view now names
+that mana on each mana row as `trigger_adds` ([protocol.md](protocol.md)),
+from the auto-tap planner's own judge, and `PlanTriggerMana` counts it
+([bot.md](bot.md#the-mana-model)). It **ships off**: the arena below
+found no gain. `heuristic-triggermana` seats today's heuristic with it
+on. The view tests (`game/trigger_mana_view_test.go`,
+`protocol/trigger_mana_view_test.go`) and the model tests
+(`heuristic/plan_trigger_mana_internal_test.go`) hold both sides: with
+the switch on, two Swamps under Crypt Ghast and a Forest pay
+{B}{B}{B}{B}{G}, and with it off they make three mana.
+
+The 2026-11-05 UTC runs used develop `ee606a09b` plus #4770 and the
+synthetic `--decks ghast-battle` at all four seats (six Crypt Ghasts,
+four Zendikar Resurgents, BattleDeck's vanilla creatures recoloured
+black and green, twelve Swamps and twelve Forests), two seats with the
+switch on against two without, rotation and lockstep:
+
+```
+boteval arena --seats heuristic-triggermana,heuristic-triggermana,heuristic,heuristic \
+  --decks ghast-battle,ghast-battle,ghast-battle,ghast-battle \
+  --games 48 --seed 2000 --rotate --lockstep --turn-budget 60 --wall 10m --out DIR --md
+```
+
+and the same with `--seed 3000`. Every game ended with a winner and none
+stalled. The four-seat null rate is 25%.
+
+| Seeds | Switch on: wins / 96 | Switch off: wins / 96 |
+|---|---|---|
+| 2000–2047 | 19, 19.8% (13.1–28.9%) | 29, 30.2% (21.9–40.0%) |
+| 3000–3047 | 26, 27.1% (19.2–36.7%) | 22, 22.9% (15.6–32.3%) |
+| all | 45 / 192, 23.4% (18.0–29.9%) | 51 / 192, 26.6% (20.8–33.2%) |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. The two batches point
+opposite ways and the intervals overlap.
+
+The arena's Turn mana section shows what the switch changes:
+
+| Policy | Own turns | Planned windows | Plan misses | Mean unspent | Decision p99 |
+|---|---|---|---|---|---|
+| switch on | 2,057 | 460 | 31 of 446 checked (7.0%) | 1.35 | 3.35 ms, 2.39 ms |
+| switch off | 2,094 | 233 | 6 of 224 checked (2.7%) | 1.23 | 2.95 ms, 2.95 ms |
+
+With the switch on, the bot plans two or more spells about twice as
+often, and no turn in either policy ended with stranded mana and a cast
+on offer. But its plan misses rose to 7.0%, above ADR 0136 §8's 5% bar
+(P6). Decision logs of four games with the switch on at all four seats
+suggest one likely cause: the bot paid Crypt Ghast's extort {W/B} 89 times,
+and the plan does not budget for extort, so mana it planned for the
+second spell can go to the first spell's extort. Pricing extort into
+the plan, or a deck without it, is the run to make before turning the
+switch on. The view field works as specified: lands under Crypt Ghast and
+Zendikar Resurgent carried `{B}`, `{G}`, `{B}{B}` and `{B}{B}{B}`, which
+the plans counted. The labelled position suite, the gated heuristic games
+(`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
+package tests passed. With the switch off, `DefaultConfig` plays exactly
+as before. Reports and decision logs stayed on the authoring machine.
 
 ## Test knobs
 

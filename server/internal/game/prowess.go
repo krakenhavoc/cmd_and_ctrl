@@ -145,9 +145,16 @@ func resolveProwess(g *Game, item *StackItem) error {
 // abilities and the zone harvesters skip them, exactly as they skip a
 // catalog trigger that did not declare their zone.
 func keywordTriggersFor(c *Card) []TriggeredAbility {
+	return keywordTriggersOver(func(fn func(string) bool) { forEachAbilityToken(c, fn) })
+}
+
+// keywordTriggersOver is keywordTriggersFor over any walk of ability
+// tokens: the object's own, or the triggered keywords a borrow lent it
+// (borrowedTriggersOf, ADR 0155's 2026-11-05 amendment).
+func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 	prowess, evolve, exalted, decayed, melee := 0, 0, 0, 0, 0
 	var annihilator, renown []int
-	forEachAbilityToken(c, func(a string) bool {
+	walk(func(a string) bool {
 		switch a {
 		case KeywordProwess:
 			prowess++

@@ -132,6 +132,11 @@ type PurposeView struct {
 	// controller's own puts on its own source, to stay (#5083):
 	// Hangarback Walker's {1}, {T} row 1.
 	SourceCounters int `json:"source_counters,omitempty"`
+	// ResolutionMana is the mana an activated row of the controller's
+	// own adds on one numbered resolution of it this turn (#4980):
+	// Soulbright Seeker's {Resolution: 3, Mana: "{R}{R}{R}{R}"}. Such a
+	// row carries resolved_this_turn, the engine's count so far.
+	ResolutionMana *ResolutionManaView `json:"resolution_mana,omitempty"`
 	// The riders (#4978, ADR 0126's amendment of 2026-11-05): keyword
 	// actions it does for its controller beside its main effect, as
 	// printed amounts. Scry is the cards it scries (Preordain 2), Learn
@@ -273,6 +278,12 @@ type TargetPurposeView struct {
 	// Absent for an amount counted at resolution or a change that is not
 	// a pump. A pointer so TargetPurposeView stays comparable.
 	Pump *PumpView `json:"pump,omitempty"`
+	// PumpPowerIsX / PumpToughnessIsX: beside a "benefit", the power or
+	// the toughness the change adds is the announced X (#4976): Tyvar's
+	// Stand's +X/+X sends both, Hatred's +X/+0 the power alone. `pump`
+	// then carries no amount on that side.
+	PumpPowerIsX     bool `json:"pump_power_is_x,omitempty"`
+	PumpToughnessIsX bool `json:"pump_toughness_is_x,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -303,6 +314,9 @@ type PumpView struct {
 	// CantBeBlocked: the change makes the creature unblockable this turn
 	// (#4312).
 	CantBeBlocked bool `json:"cant_be_blocked,omitempty"`
+	// CantBlock: a harm's change says the creature can't block this turn
+	// (#4977).
+	CantBlock bool `json:"cant_block,omitempty"`
 }
 
 // DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
@@ -352,6 +366,14 @@ type CreatureEnterPayoffView LandfallPayoffView
 // its controller for each life-gain event of theirs (#4979), in
 // LandfallPayoffView's fields. Its life_gain is always absent.
 type LifeGainPayoffView LandfallPayoffView
+
+// ResolutionManaView is game.ResolutionMana on the wire (#4980): which
+// resolution of the row this turn adds mana, counting the one resolving,
+// and the printed symbols it adds.
+type ResolutionManaView struct {
+	Resolution int    `json:"resolution"`
+	Mana       string `json:"mana"`
+}
 
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
 // purpose was declared on any-player rows alone. Kept so a reader of
@@ -436,6 +458,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
+		v.Pump.CantBlock = pm.CantBlock // #4977
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{
@@ -469,6 +492,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		pay := LifeGainPayoffView(*g)
 		v.LifeGainPayoff = &pay
 	}
+	if rm := p.ResolutionMana; rm != nil {
+		v.ResolutionMana = &ResolutionManaView{Resolution: rm.Resolution, Mana: rm.Mana}
+	}
 	if ts := p.Targets.List(); len(ts) > 0 {
 		out := make([]TargetPurposeView, len(ts))
 		for i, t := range ts {
@@ -480,7 +506,10 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			}
 			if pm := t.Pump; pm != nil {
 				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
+				out[i].Pump.CantBlock = pm.CantBlock // #4977
 			}
+			// #4976: a pump of the announced X.
+			out[i].PumpPowerIsX, out[i].PumpToughnessIsX = t.PumpPowerIsX, t.PumpToughnessIsX
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{
 					CreatureTokens: r.CreatureTokens, TokenPower: r.TokenPower, TokenToughness: r.TokenToughness,

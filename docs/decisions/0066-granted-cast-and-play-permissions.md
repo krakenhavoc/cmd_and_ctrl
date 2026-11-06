@@ -4829,7 +4829,16 @@ since #1173, so a modal DFC whose land back face is the face Oracle of Mul Daya 
   the Envoy's land offer reads the front face, so a modal DFC whose back face is a land is never offered as a land play, and a
   Town whose land can be played is offered only as the land. Both need a land play of a chosen face during a resolution
   (`PlayLandDuringResolutionForEffect` and the `play_or_hand` prompt carry no face) and a prompt that offers the land play and
-  the cast together. Tests: `game/free_offer_faces_test.go`, `cards/effects/free_offer_faces_4697_test.go`.
+  the cast together. Tests: `game/free_offer_faces_test.go`, `cards/effects/free_offer_faces_4697_test.go`. **Land half
+  closed by #4697 (2026-11-05):** a modal DFC whose back face is a land, and no face of which is a spell that fits, is
+  offered as a play of that face (`may-cast/free-play-back-land-or-hand`, CR 712.12). A card that gives more than one
+  answer (a Town with a land drop left and an Adventure that fits, a modal DFC with a spell face that fits and a land face,
+  a pathway) is one `resolution_cast` under the keyword `play_or_free_or_hand`: the spell offer's capped permission and
+  prompt, which also take a `cast_spell` naming a land face as that face's land play during the resolution
+  (`playLandForResolutionChoiceLocked`, CR 305.2b). Declining puts the card into the hand. No new prompt kind, no new
+  snapshot field. Tests: `game/free_offer_combined_test.go`, `cards/effects/free_offer_combined_4697_test.go`,
+  `protocol/free_play_combined_view_test.go`, `aiseat/free_play_combined_bot_test.go`,
+  `client/src/lib/resolutionCast.render.test.ts`.
 
 **Tests.** `game/permission_spell_face_test.go`, `cards/effects/permission_spell_face_4509_test.go`,
 `protocol/permission_spell_face_view_test.go`, `client/src/lib/libraryTop.test.ts`. Back-out: making `judgesSpell` answer false

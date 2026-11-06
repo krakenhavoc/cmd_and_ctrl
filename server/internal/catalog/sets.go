@@ -81,6 +81,66 @@ func countsInSet(c cards.Card) bool {
 	return !strings.HasPrefix(c.TypeLine, "Basic ")
 }
 
+// pickerOwnSetTypes are the set types that keep their own picker entry
+// even when Scryfall gives them a parent: a Commander precon or an
+// eternal product is something people pick as itself (#4790).
+var pickerOwnSetTypes = map[string]bool{
+	"commander": true,
+	"eternal":   true,
+}
+
+// pickerHiddenSetTypes are the set types a parentless set is left out of
+// the picker for: promos, Secret Lair ("box"), joke sets, memorabilia,
+// tokens, minigames, Alchemy and treasure chests are not sets a player
+// looks for by name. Their cards stay in the catalogue; they just bring
+// no picker entry (#4790).
+var pickerHiddenSetTypes = map[string]bool{
+	"promo":          true,
+	"box":            true,
+	"funny":          true,
+	"memorabilia":    true,
+	"token":          true,
+	"minigame":       true,
+	"alchemy":        true,
+	"treasure_chest": true,
+}
+
+// maxSetChain bounds the walk up parent_set_code links, so a cycle in the
+// sets file cannot hang the catalogue. Scryfall's chains are two deep.
+const maxSetChain = 8
+
+// pickerSet is the picker entry a printing in set code is counted under,
+// and whether it has one at all (#4790). With no set table loaded it is
+// the code itself, as before the table existed. Otherwise a subset folds
+// into its root parent, stopping at a commander or eternal set, and a
+// parentless set of a pickerHiddenSetTypes type has none. A code the
+// table does not know is its own entry.
+func pickerSet(idx *cards.Index, code string) (string, bool) {
+	if !idx.SetsLoaded() {
+		return code, true
+	}
+	info, ok := idx.Set(code)
+	if !ok {
+		return code, true
+	}
+	for range maxSetChain {
+		if pickerOwnSetTypes[info.SetType] {
+			return info.Code, true
+		}
+		if info.ParentSetCode == "" {
+			return info.Code, !pickerHiddenSetTypes[info.SetType]
+		}
+		parent, ok := idx.Set(info.ParentSetCode)
+		if !ok {
+			// The parent is not in the table: the set stands for
+			// itself rather than fold into a name we cannot show.
+			return info.Code, true
+		}
+		info = parent
+	}
+	return info.Code, true
+}
+
 // setAcc accumulates one set while the dump is walked.
 type setAcc struct {
 	name   string
@@ -90,6 +150,11 @@ type setAcc struct {
 
 // attachSets walks the index's printings once, fills resp.Sets, and gives
 // each catalogued entry the codes of the sets it was printed in.
+//
+// When the index holds Scryfall's set table, subsets fold into their
+// parent and promo-like sets drop out (pickerSet): Entry.Sets then
+// carries the parent's code, once, and a set's counts are its unique
+// cards across it and its subsets.
 //
 // A nil idx leaves the response as build made it: no dump, no sets.
 func attachSets(resp *Response, idx *cards.Index) {
@@ -102,12 +167,17 @@ func attachSets(resp *Response, idx *cards.Index) {
 		if !countsInSet(c) {
 			return
 		}
-		a := sets[c.SetCode]
+		code, ok := pickerSet(idx, c.SetCode)
+		if !ok {
+			return
+		}
+		a := sets[code]
 		if a == nil {
 			a = &setAcc{dates: map[string]int{}, oracle: map[uuid.UUID]struct{}{}}
-			sets[c.SetCode] = a
+			sets[code] = a
 		}
-		if a.name == "" {
+		// A folded printing's set name is its subset's, not the entry's.
+		if a.name == "" && code == c.SetCode {
 			a.name = c.SetName
 		}
 		if c.ReleasedAt != "" {
@@ -131,6 +201,16 @@ func attachSets(resp *Response, idx *cards.Index) {
 			Name:     a.name,
 			Released: commonDate(a.dates),
 			Total:    len(a.oracle),
+		}
+		// The set table, when loaded, names and dates the entry: a
+		// folded entry's printings carry their subsets' dates.
+		if info, ok := idx.Set(code); ok {
+			if info.Name != "" {
+				s.Name = info.Name
+			}
+			if info.ReleasedAt != "" {
+				s.Released = info.ReleasedAt
+			}
 		}
 		if s.Name == "" {
 			s.Name = strings.ToUpper(code)

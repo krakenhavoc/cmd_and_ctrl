@@ -1599,6 +1599,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #4687: an exiling behold spends its card, so it may not also pay
+	// another component of this cast (CR 118.3).
+	if err := validateBeholdExileSpent(costPlan, params.RevealIDs, castSpentObjects(params)); err != nil {
+		slog.Warn("cast_spell rejected: the beheld card also pays another cost",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): and each
 	// revealed splice card's cost that is not mana, with every object the
 	// rest of this cast already spends (CR 118.3).
@@ -1898,6 +1908,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #4055: and every object a splice card's cost spends.
 	spliceSpent := spliceObjectsOf(params.SplicePayments)
 	moving = append(moving, spliceSpent...)
+	// #4687: and the card an exiling behold takes.
+	moving = append(moving, beholdExileMoving(costPlan, params.RevealIDs)...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -2330,8 +2342,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// ADR 0100 amendment 2026-10-07: a revealed card is shown with the
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
-	// with. Nothing moves.
-	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
+	// with. Nothing moves — unless the behold exiles its card (#4687, the
+	// Champions): it is exiled here, linked to the spell (CR 607.2q).
+	if err := g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs, params.commanderAnswers); err != nil {
+		slog.Error("cast_spell: behold-and-exile cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): the splice
 	// costs that are not mana, in the order the cards were revealed, with
 	// the spell on the stack like every other cost of the cast.
@@ -2407,6 +2427,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
+			}
+			// Momo, Friendly Flier's "first non-Lemur creature spell with
+			// flying" (#5075).
+			if characteristicHasType(ch, "Creature") && HasKeyword(sc, "flying") {
+				tally = tally.withFlyingCreatureSpell(ch)
 			}
 			// Lattice Library's "first spell with {X} in its mana cost".
 			if strings.Contains(manaCostForValue(*sc), "{X}") {
