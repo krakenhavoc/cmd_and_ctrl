@@ -58,12 +58,14 @@ func (t TurnFaceUp) Apply(ctx *Context) error {
 
 // canTurnFaceUpByEffect reads the permanent `id` right now and asks
 // the engine's one rule for it (game.CanTurnFaceUpForEffect). False for
-// a permanent that is gone, is face up, or is a manifested non-creature
-// card. A card that offers a CHOICE (Staff Room) asks this before it
-// asks the question, so it never offers a turn that would do nothing.
+// a permanent that is gone, is face up, is a manifested non-creature
+// card, or that a "can't be turned face up" static holds down (Karlov
+// Watchdog, #5241). A card that offers a CHOICE (Staff Room) asks this
+// before it asks the question, so it never offers a turn that would do
+// nothing.
 func canTurnFaceUpByEffect(g *game.Game, id uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(id)
-	return ok && game.CanTurnFaceUpForEffect(c)
+	return ok && game.CanTurnFaceUpForEffect(c) && !g.TurnFaceUpForbiddenForEffect(c)
 }
 
 // faceDownPermanentsThatCanTurnUp lists, in battlefield order, the
@@ -72,7 +74,7 @@ func canTurnFaceUpByEffect(g *game.Game, id uuid.UUID) bool {
 func faceDownPermanentsThatCanTurnUp(g *game.Game, player uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && game.CanTurnFaceUpForEffect(c) {
+		if c.Controller == player && game.CanTurnFaceUpForEffect(c) && !g.TurnFaceUpForbiddenForEffect(c) {
 			out = append(out, c.InstanceID)
 		}
 	}

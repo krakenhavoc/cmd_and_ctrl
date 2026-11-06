@@ -376,8 +376,15 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Priority is the dispatcher's requirePriorityHolder, and
 		// whether the permanent is face down and the actor's to turn
 		// is SpecialActionOffered's answer and PerformSpecialAction's
-		// re-check. Nothing left for the window itself to say.
-		return true
+		// re-check.
+		//
+		// #5241: the one thing the window does say is a "can't"
+		// (CR 101.2) — Karlov Watchdog's "permanents your opponents
+		// control can't be turned face up during your turn", which is a
+		// matter of whose turn it is. Asked here so the engine refuses
+		// it, the enumerator never offers it and the view greys the row
+		// (turn_face_up_gate.go).
+		return !g.turnFaceUpForbiddenLocked(&card)
 
 	case SpecialActionPlot:
 		// CR 702.170a: "any time you have priority during your main
