@@ -50,7 +50,7 @@ func avatarB6AnotherShrineEnteredUnderYourControl(ev game.Event, source *game.Ca
 
 // avatarB6ThreeLessonsInYourGraveyard is "if there are three or more
 // Lesson cards in your graveyard" (Serpent of the Pass), read as the
-// cast begins (CR 601.3c).
+// cast begins (CR 601.3).
 func avatarB6ThreeLessonsInYourGraveyard(g *game.Game, you uuid.UUID) bool {
 	return len(b42CardsInGraveyardOf(g, you, isLessonCard)) >= 3
 }
