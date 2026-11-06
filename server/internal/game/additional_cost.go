@@ -324,6 +324,17 @@ type AdditionalCost struct {
 	// cost is mandatory: CR 601.2b asks only which branch.
 	Either []AdditionalCost
 
+	// Forage marks a branch of Either as one way to forage (CR 701.61a,
+	// #5184): Feed the Cycle's "forage or pay {B}" is three branches —
+	// exile three cards from your graveyard, sacrifice a Food, pay {B} —
+	// and the first two are marked (effects.ForageOrPay). It is not a
+	// component: the branch's exile or sacrifice is what is paid, and a
+	// cast that pays a marked branch records PaidCost.Foraged and emits
+	// EventForage (forage.go). Only on a branch; effects.Register refuses
+	// it elsewhere and on a branch that neither exiles three cards from
+	// the graveyard nor sacrifices a Food.
+	Forage bool
+
 	// Reveal is "reveal a <type> card from your hand" or "behold a
 	// <type>" (CR 701.20, ADR 0100 amendment 2026-10-07): the caster
 	// names one card on CastSpellParams.RevealIDs and paying shows it to

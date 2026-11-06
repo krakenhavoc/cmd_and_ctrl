@@ -609,6 +609,17 @@ const (
 	// triggers (CR 508.1j, 508.1m).
 	EventExert EventKind = "exert"
 
+	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
+	// cards from their graveyard or sacrificed a Food, as a cost, an
+	// additional cost or an effect's "you may forage". Actor is the
+	// player who foraged, Source the card whose cost or effect it paid.
+	// The exiles and the sacrifice emit their own events first; this one
+	// is the keyword action, which "whenever you forage" (Corpseberry
+	// Cultivator) watches.
+	//
+	// Emitted only by noteForageLocked (forage.go).
+	EventForage EventKind = "forage"
+
 	// EventBecomesTarget — an object or player became the target of
 	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the

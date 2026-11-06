@@ -345,6 +345,33 @@ func ExileFromGraveyardCost(n int, label string, match func(game.Card) bool) *ga
 	}
 }
 
+// ForageOrPay is "As an additional cost to cast this spell, forage or pay
+// <mana>" (CR 701.61a, #5184) — Feed the Cycle's "forage or pay {B}".
+// Forage is itself an either/or, so the cost is three branches in
+// printed order, keyed "forage-exile" (exile three cards from your
+// graveyard), "forage-food" (sacrifice a Food) and "mana", the first two
+// marked Forage: paying either records PaidCost.Foraged (ctx.Foraged) and
+// emits game.EventForage. Each forage branch is the plain clause's
+// (ExileFromGraveyardCost, SacrificeCost), so its candidates, `payable`
+// and payment are theirs, and with fewer than three cards in the
+// graveyard and no Food only the mana is offered (CR 118.3).
+func ForageOrPay(mana string) *game.AdditionalCost {
+	exile := ExileFromGraveyardCost(game.ForageExileCount, "three cards", nil).Keyed(ForageExileKey)
+	exile.Forage = true
+	food := SacrificeCost("a Food", HasSubtype("Food")).Keyed(ForageFoodKey)
+	food.Forage = true
+	out := EitherCost(exile, food, ManaAdditionalCost(mana).Keyed("mana"))
+	out.Label = "Forage or pay " + mana
+	return out
+}
+
+// ForageExileKey and ForageFoodKey are the branch keys of ForageOrPay's
+// two ways to forage, read back through ctx.PaidCostBranch.
+const (
+	ForageExileKey = "forage-exile"
+	ForageFoodKey  = "forage-food"
+)
+
 // ExileXFromGraveyardCost is "As an additional cost to cast this spell,
 // exile X cards from your graveyard" (Skeletal Scrying, Harvest Pyre;
 // "X creature cards", Chill Haunting, Haunting Misery — #1948, ADR 0189's
@@ -539,7 +566,7 @@ func checkEitherCost(spec Spec) {
 		if oc.ExileCards != nil {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536)", spec.Name, oc.Key))
 		}
-		if oc.PayLife != 0 || len(oc.Either) > 0 {
+		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Forage {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
 		}
 		// An optional reveal is only the behold cost (#4642); checkOptionalBehold
@@ -552,6 +579,7 @@ func checkEitherCost(spec Spec) {
 	if ac == nil {
 		return
 	}
+	checkForageBranches(spec.Name, ac)
 	if ec := ac.ExilePermanents; ec != nil {
 		checkExilePermanentsClause(spec.Name, "additional cost", ec)
 		if ec.FromGraveyard || ec.GraveyardOnly || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0 || ec.Count < 1 {
@@ -643,6 +671,31 @@ func checkEitherCost(spec Spec) {
 		if b.ExileCards != nil {
 			checkCastExileCardsClause(spec.Name, where, b.ExileCards)
 		}
+	}
+}
+
+// checkForageBranches holds the Forage mark (#5184) to a branch of the
+// mandatory either/or cost that is one of forage's two ways: exile three
+// cards from your graveyard, or sacrifice a Food. Build them with
+// ForageOrPay.
+func checkForageBranches(name string, ac *game.AdditionalCost) {
+	if ac.Forage {
+		panic(fmt.Sprintf("effects.Register: %q marks its additional cost Forage — the mark is a branch's (ForageOrPay)", name))
+	}
+	forages := 0
+	for i, b := range ac.Either {
+		if !b.Forage {
+			continue
+		}
+		forages++
+		exile := b.ExileCards != nil && b.ExileCards.N == game.ForageExileCount && b.ExileCards.Match == nil && b.Sacrifice == nil
+		food := b.Sacrifice != nil && b.Sacrifice.Label == "a Food" && b.ExileCards == nil
+		if (!exile && !food) || b.ManaCost != "" || b.DiscardCards != 0 || b.PayLife != 0 || b.Blight != 0 || b.Reveal != nil {
+			panic(fmt.Sprintf("effects.Register: %q either/or branch %d (%q) is marked Forage but is not one of forage's two ways (ForageOrPay)", name, i, b.Key))
+		}
+	}
+	if forages != 0 && forages != 2 {
+		panic(fmt.Sprintf("effects.Register: %q has %d forage branch(es) — forage is both ways or neither (ForageOrPay)", name, forages))
 	}
 }
 

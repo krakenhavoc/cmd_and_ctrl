@@ -4652,6 +4652,10 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		// runBranch would).
 		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, payUnlessPaidTailOf(choice)); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
+		} else if frame.action != nil && frame.action.Forage {
+			// #5184, CR 701.61a: either branch of a forage, once paid, is
+			// the player foraging ("whenever you forage").
+			g.noteForageLocked(chooserID, choice.Source)
 		}
 		g.runStateChecksLocked()
 		return

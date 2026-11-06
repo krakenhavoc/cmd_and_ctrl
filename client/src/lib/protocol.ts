@@ -3543,6 +3543,12 @@ export interface AbilityCostBranchView {
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
+  // #5184: forage's "exile three cards from your graveyard" branch — the
+  // count, the words, the graveyard cards that could pay and their pile.
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
 }
 
 export interface PayOptionView {
