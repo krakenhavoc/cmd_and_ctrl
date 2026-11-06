@@ -1610,8 +1610,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #3536: and the exile-cards-from-your-graveyard cost, with every card
 	// another component of this cast already spends (CR 118.3).
+	// #5240: a collect evidence X sized by the targets reads them here,
+	// chosen above (CR 601.2c) and fixed for the payment below (CR 601.2f).
 	if err := g.validateCastExileCardsLocked(playerID, cardID, costPlan, params.ExileIDs,
-		castExileAlsoSpent(params), params.XValue); err != nil {
+		castExileAlsoSpent(params), params.XValue, allTargets); err != nil {
 		slog.Warn("cast_spell rejected: bad exile-cards payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

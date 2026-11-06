@@ -66,6 +66,90 @@ func (e *ExileCost) IsCollectEvidence() bool {
 		e.Match == nil && e.N == 0 && !e.CountFromX && e.Zone() == ZoneGraveyard
 }
 
+// CollectEvidenceFromTargetsCost is the ExileCost clause "collect evidence
+// X, where X is the total mana value of the permanents this spell targets"
+// is (Urgent Necropsy, #5240): collect evidence's clause with no printed
+// floor, the floor read off the cast's targets (ManaValueFromTargets). The
+// label is the printed words, with the X left in.
+func CollectEvidenceFromTargetsCost(label string) *ExileCost {
+	return &ExileCost{
+		AnyNumber:            true,
+		Label:                label,
+		From:                 ZoneGraveyard,
+		ManaValueFromTargets: true,
+	}
+}
+
+// IsCollectEvidenceFromTargets reports whether `e` is the target-sized
+// collect evidence clause (CollectEvidenceFromTargetsCost) and nothing
+// else. Nil-safe.
+func (e *ExileCost) IsCollectEvidenceFromTargets() bool {
+	return e != nil && e.ManaValueFromTargets && e.AnyNumber && e.ManaValueAtLeast == 0 &&
+		e.SymbolTotal == nil && e.Match == nil && e.N == 0 && !e.CountFromX && e.Zone() == ZoneGraveyard
+}
+
+// CollectEvidenceTargetsFloorForEffect is the X of "collect evidence X,
+// where X is the total mana value of the permanents this spell targets":
+// the sum of the mana values of the distinct permanents among `targets`
+// (PermanentManaValueForEffect). A player, a card in another zone and a
+// spell are not permanents and add nothing, and a permanent chosen for two
+// of the spell's "target" words is one permanent the spell targets (CR
+// 115.3), so it is counted once. No targets is X = 0, which any cards pay,
+// none included (CR 701.59a).
+//
+// CastSpell reads it once, after the targets are chosen (CR 601.2c) and as
+// the total cost is determined (CR 601.2f), so the number is fixed for the
+// payment that follows; the view's per-permanent values and the bot read the
+// same function, so the three agree (#544).
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) CollectEvidenceTargetsFloorForEffect(targets []TargetRef) int {
+	seen := make(map[uuid.UUID]bool, len(targets))
+	total := 0
+	for _, t := range targets {
+		if t.Kind != TargetCard || seen[t.ID] {
+			continue
+		}
+		seen[t.ID] = true
+		if mv, ok := g.PermanentManaValueForEffect(t.ID); ok {
+			total += mv
+		}
+	}
+	return total
+}
+
+// PermanentManaValueForEffect is the mana value of the permanent `id` as
+// the engine reads it (ManaValueForEffect: a face-down permanent's is 0, CR
+// 708.2a and 202.3a), and ok false when `id` is not on the battlefield or
+// its cost can't be read.
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) PermanentManaValueForEffect(id uuid.UUID) (int, bool) {
+	c := g.findBattlefieldCardLocked(id)
+	if c == nil {
+		return 0, false
+	}
+	return g.ManaValueForEffect(*c)
+}
+
+// PermanentManaValuesForEffect is every permanent's mana value
+// (PermanentManaValueForEffect), keyed by instance ID: what the view ships
+// beside a target-sized collect evidence cost, so the client sums the
+// numbers the engine will. Caller must hold g.mu.
+func (g *Game) PermanentManaValuesForEffect() map[uuid.UUID]int {
+	if g.Battlefield == nil {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(g.Battlefield.Cards))
+	for i := range g.Battlefield.Cards {
+		c := g.Battlefield.Cards[i]
+		if mv, ok := g.ManaValueForEffect(c); ok {
+			out[c.InstanceID] = mv
+		}
+	}
+	return out
+}
+
 // CollectEvidenceOptionsForEffect lists the cards in `playerID`'s
 // graveyard an effect's "you may collect evidence N" may exile, or nil
 // when the whole graveyard's total mana value is below N (CR 701.59b: the
@@ -173,11 +257,13 @@ func (g *Game) NoteCollectEvidenceForEffect(player, source uuid.UUID, cards []uu
 }
 
 // planCollectsEvidence reports whether a cast's payment plan pays a collect
-// evidence clause (an announced OptionalCollectEvidence), so the cast path
-// emits EventCollectEvidence for the cards it exiled.
+// evidence clause (an announced OptionalCollectEvidence, or a mandatory
+// target-sized one, #5240), so the cast path emits EventCollectEvidence for
+// the cards it exiled. The target-sized one is paid on every cast, collect
+// evidence 0 included.
 func planCollectsEvidence(plan []costPayment) bool {
 	for _, pay := range plan {
-		if pay.cost.ExileCards.IsCollectEvidence() {
+		if ec := pay.cost.ExileCards; ec.IsCollectEvidence() || ec.IsCollectEvidenceFromTargets() {
 			return true
 		}
 	}

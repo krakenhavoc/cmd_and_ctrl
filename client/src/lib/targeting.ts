@@ -1740,6 +1740,10 @@ export interface ClaimedExileCardsCost {
   // #5193: a ticked "you may collect evidence N" offer: any number of the
   // options (count 0), enough once their total mana value reaches this.
   manaValueMin?: number;
+  // #5240: collect evidence X where X is the total mana value of the
+  // targeted permanents (Urgent Necropsy): the picker opens after
+  // targeting, sized by exileCostForTargets.
+  fromTargets?: boolean;
 }
 
 // castExileCardsCost is the exile-cards cost a cast pays, if any: the
@@ -1770,6 +1774,17 @@ export function castExileCardsCost(
   }
   const cost = castAdditionalCost(card, choices);
   if (!cost) return undefined;
+  if (cost.exile_cost_from_targets) {
+    return {
+      label:
+        cost.exile_cost_label ?? "cards from your graveyard with total mana value X or greater",
+      count: 0,
+      options: cost.exile_cost_options ?? [],
+      cost,
+      fromX: false,
+      fromTargets: true,
+    };
+  }
   if (cost.exile_cost_x) {
     const x = choices?.xValue ?? 0;
     return {
@@ -1787,6 +1802,38 @@ export function castExileCardsCost(
     options: cost.exile_cost_options ?? [],
     cost,
     fromX: false,
+  };
+}
+
+// targetsManaValue is the X of "collect evidence X, where X is the total
+// mana value of the permanents this spell targets" (#5240): the sum of the
+// server's mana value for each distinct card picked, so a permanent picked
+// for two clauses counts once. A player, or a card the map does not name,
+// adds nothing — the server sums the same numbers.
+export function targetsManaValue(cost: AdditionalCostView, targets: TargetRef[]): number {
+  const values = cost.exile_cost_target_mana_values ?? {};
+  const seen = new Set<string>();
+  let x = 0;
+  for (const t of targets) {
+    if (t.kind !== "card" || seen.has(t.id)) continue;
+    seen.add(t.id);
+    x += values[t.id] ?? 0;
+  }
+  return x;
+}
+
+// exileCostForTargets sizes a target-sized collect evidence cost by the
+// picked targets: the floor is their total mana value, and the "X" in its
+// label is that number. X = 0 has one answer, no cards, which `exileIDs`
+// carries so the chain asks nothing (exactly as exileXChoice answers X = 0).
+export function exileCostForTargets(
+  cost: ClaimedExileCardsCost,
+  targets: TargetRef[],
+): { cost: ClaimedExileCardsCost; exileIDs?: string[] } {
+  const x = targetsManaValue(cost.cost, targets);
+  if (x <= 0) return { cost: { ...cost, manaValueMin: 0 }, exileIDs: [] };
+  return {
+    cost: { ...cost, manaValueMin: x, label: cost.label.replace(/\bX\b/, String(x)) },
   };
 }
 

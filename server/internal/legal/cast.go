@@ -1375,6 +1375,12 @@ modeLoop:
 			// can't target it -- and the life it does pay is held back
 			// from every other use of the life total: the Phyrexian
 			// symbols, and the "pay X life" ceiling.
+			// #5240: a collect evidence X sized by the targets is paid
+			// from the graveyard, and a set whose X the graveyard can't
+			// reach is a cast the engine refuses (CR 118.3).
+			if _, ok := e.exileCardsForTargets(addCost, exileCardIDs, targets); !ok {
+				continue
+			}
 			taxLife := e.g.CastTargetTaxForEffect(e.seat, card, targets)
 			setReserved, setLifeCeiling := lifeReserved, xLifeCeiling
 			if taxLife > 0 {
@@ -1749,6 +1755,13 @@ func (e *enumerator) castMoveEmitter(
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
+		// #5240: or the cards a collect evidence X sized by these targets
+		// exiles. The target loop has already dropped a set the graveyard
+		// cannot pay for.
+		exileCardIDs, ok := e.exileCardsForTargets(paying, exileCardIDs, targets)
+		if !ok {
+			return
+		}
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
