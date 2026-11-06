@@ -199,7 +199,8 @@ func TestAvatarB30ScarringMemoriesRefusesToTargetYou(t *testing.T) {
 func TestAvatarB30ScarringMemoriesHasFlashOnlyWithAnAttackingLegend(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], avB30aOpp(g)
-	legend := b12Creature(g, me.ID, "Legendary Bear", "Legendary Creature — Bear", 2, 2)
+	// A legendary creature you control that is not attacking grants no flash.
+	b12Creature(g, me.ID, "Legendary Bear", "Legendary Creature — Bear", 2, 2)
 	bear := b12Creature(g, me.ID, "Plain Bear", "Creature — Bear", 2, 2)
 	targets := []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
 	advanceTo(t, g, game.StepDeclareAttackers)
@@ -215,7 +216,7 @@ func TestAvatarB30ScarringMemoriesHasFlashOnlyWithAnAttackingLegend(t *testing.T
 
 	g = newCatalogGame(t)
 	me, opp = g.Seats[g.Turn.ActiveSeat], avB30aOpp(g)
-	legend = b12Creature(g, me.ID, "Legendary Bear", "Legendary Creature — Bear", 2, 2)
+	legend := b12Creature(g, me.ID, "Legendary Bear", "Legendary Creature — Bear", 2, 2)
 	targets = []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
 	advanceTo(t, g, game.StepDeclareAttackers)
 	if err := g.DeclareAttacker(legend, opp.ID); err != nil {
