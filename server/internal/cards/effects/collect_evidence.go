@@ -42,6 +42,69 @@ func OptionalCollectEvidence(n int) game.AdditionalCost {
 	}
 }
 
+// CollectEvidenceFromTargetsCost is "As an additional cost to cast this
+// spell, collect evidence X, where X is the total mana value of the
+// permanents this spell targets" (Urgent Necropsy, #5240, CR 701.59a): the
+// mandatory slot's graveyard exile with its floor read off the targets the
+// cast announces (CR 601.2c), as the total cost is determined (CR 601.2f).
+// The caster names any number of graveyard cards on cast_spell's exile_ids;
+// CastSpell refuses a set whose total mana value is below X, and with no
+// targets X is 0 and none is a payment. Every cast collects evidence, so
+// "whenever you collect evidence" sees it, collect evidence 0 included.
+//
+// Register holds it to a spell whose every target clause is "up to", so X
+// = 0 is always a legal announcement and the spell's cast gate needs no
+// target search (checkCollectEvidenceFromTargets).
+func CollectEvidenceFromTargetsCost() *game.AdditionalCost {
+	return &game.AdditionalCost{
+		ExileCards: game.CollectEvidenceFromTargetsCost("cards from your graveyard with total mana value X or greater"),
+		Label:      "Collect evidence X, where X is the total mana value of the permanents this spell targets",
+	}
+}
+
+// checkCollectEvidenceFromTargets refuses the shapes of a target-sized
+// collect evidence cost (CollectEvidenceFromTargetsCost) the cast path does
+// not pay as printed: anywhere but alone on the mandatory slot (an optional
+// cost, an either/or branch and an ability have no targets to read it
+// from, or none settled before their cost), on a spell with no target
+// clause (X would always be 0), or on one with a clause that must be
+// filled (the cast gate would then have to search the targets for a
+// payable set).
+func checkCollectEvidenceFromTargets(spec Spec) {
+	for _, oc := range spec.OptionalCosts {
+		if oc.ExileCards != nil && oc.ExileCards.ManaValueFromTargets {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q collects evidence sized by the targets — the mandatory slot's only (#5240)", spec.Name, oc.Key))
+		}
+	}
+	ac := spec.AdditionalCost
+	if ac == nil {
+		return
+	}
+	for i, b := range ac.Either {
+		if b.ExileCards != nil && b.ExileCards.ManaValueFromTargets {
+			panic(fmt.Sprintf("effects.Register: %q either/or branch %d collects evidence sized by the targets — the mandatory slot's only (#5240)", spec.Name, i))
+		}
+	}
+	ec := ac.ExileCards
+	if ec == nil || !ec.ManaValueFromTargets {
+		return
+	}
+	rest := *ac
+	rest.ExileCards, rest.Label = nil, ""
+	if !ec.IsCollectEvidenceFromTargets() || !rest.Empty() || rest.Key != "" || rest.Targets != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares a malformed target-sized collect evidence cost — build it with CollectEvidenceFromTargetsCost, alone on the mandatory slot (#5240)", spec.Name))
+	}
+	clauses := spec.Targets.Clauses()
+	if len(clauses) == 0 || spec.Modes != nil {
+		panic(fmt.Sprintf("effects.Register: %q sizes a collect evidence cost by its targets but has no card-level target clause (#5240)", spec.Name))
+	}
+	for i, c := range clauses {
+		if c.Min != 0 || c.CountFromX {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d must be filled, but a target-sized collect evidence cost needs X = 0 to be reachable (every clause \"up to\", #5240)", spec.Name, i))
+		}
+	}
+}
+
 // CollectEvidenceN is "Collect evidence N" inside a CR 602 activated
 // ability's cost, composed with Plus: "{T}, Collect evidence 3: Tap target
 // creature you don't control" (Forensic Researcher). The activator names

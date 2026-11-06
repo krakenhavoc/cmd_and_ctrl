@@ -313,6 +313,9 @@ func Register(spec Spec) {
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
 	checkCostOpensFlash(spec)
+	// #5240: a collect evidence X sized by the targets, before the
+	// either/or and optional checks so its own refusal is the one read.
+	checkCollectEvidenceFromTargets(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
@@ -2647,6 +2650,12 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.ManaValueFromTargets {
+		// #5240: a floor read off a cast's targets exists on a spell's
+		// mandatory slot only (checkCastExileCardsClause).
+		panic(fmt.Sprintf("effects.Register: %q %s collects evidence sized by the targets — a cast's additional cost only (#5240)",
+			name, where))
 	}
 	if ec.CountFromX {
 		// #1948: "exile X cards" exists on a cast's mandatory slot only

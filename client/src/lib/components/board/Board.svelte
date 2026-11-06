@@ -175,6 +175,7 @@
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
+    exileCostForTargets,
     exileXChoice,
     tapCostFor,
     tapCostLimit,
@@ -999,6 +1000,9 @@
     afterX?: boolean;
     // #5193: collect evidence N — any number, enough at this mana value.
     manaValueMin?: number;
+    // #5240: collect evidence sized by the targets, asked after them; the
+    // confirm sends the cast with these picks.
+    afterTargets?: { state: TargetingState; targets: TargetRef[] };
   } | null>(null);
   const exileCardsOptions = $derived.by(() => {
     const p = exileCardsPrompt;
@@ -1015,6 +1019,11 @@
     if (!p) return;
     if (p.afterX) {
       afterXCost(p.card, { ...p.choices, exileIDs: ids });
+      return;
+    }
+    if (p.afterTargets) {
+      const { state, targets } = p.afterTargets;
+      fireTargets({ ...state, choices: { ...p.choices, exileIDs: ids } }, targets);
       return;
     }
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
@@ -1105,8 +1114,9 @@
     }
     const ec = castExileCardsCost(card, choices);
     // #1948: "exile X cards" is asked after the X prompt (afterXCost),
-    // because its count is the X.
-    if (ec && !ec.fromX && choices.exileIDs === undefined) {
+    // because its count is the X. #5240: a collect evidence X sized by the
+    // targets is asked after targeting (fireTargets), because X is theirs.
+    if (ec && !ec.fromX && !ec.fromTargets && choices.exileIDs === undefined) {
       if (ec.options.length > ec.count) {
         exileCardsPrompt = {
           card,
@@ -2157,6 +2167,31 @@
       abilityCostBranch = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
+      return;
+    }
+    // #5240: "collect evidence X, where X is the total mana value of the
+    // permanents this spell targets" (Urgent Necropsy). The targets are
+    // chosen before the total cost is determined (CR 601.2c, 601.2f), so
+    // the graveyard picker opens now, with the floor these targets fix. X =
+    // 0 has nothing to ask.
+    const castChoices = state.choices ?? {};
+    const evidence = castExileCardsCost(state.card, castChoices);
+    if (evidence?.fromTargets && castChoices.exileIDs === undefined) {
+      const sized = exileCostForTargets(evidence, targets);
+      if (sized.exileIDs) {
+        fireTargets({ ...state, choices: { ...castChoices, exileIDs: sized.exileIDs } }, targets);
+        return;
+      }
+      exileCardsPrompt = {
+        card: state.card,
+        cost: sized.cost.cost,
+        label: sized.cost.label,
+        count: 0,
+        choices: castChoices,
+        manaValueMin: sized.cost.manaValueMin,
+        afterTargets: { state, targets },
+      };
+      cancelTargeting();
       return;
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };

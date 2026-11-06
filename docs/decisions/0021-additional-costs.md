@@ -344,3 +344,50 @@ at the cast).
 Card: Lifestream's Blessing is Full. Other "as you cast this spell" statements
 (a count of lands you controlled as you cast it, and so on) now declare one
 `CastTimeValue` and read it back; none was found carrying a caveat for the gap.
+
+## Amendment (2026-11-06): a cost sized by the chosen targets (#5240)
+
+Urgent Necropsy's "As an additional cost to cast this spell, collect evidence
+X, where X is the total mana value of the permanents this spell targets" is a
+cost whose amount is not known until the targets are. The rules allow it: the
+targets are announced at CR 601.2c and the total cost is determined at CR
+601.2f and paid at 601.2h. The ruling (2024-02-02) says X is locked in once the
+targets are chosen and before costs are paid. The engine already validates the
+whole cast in one `cast_spell`, targets before costs, so the decision is only
+where the floor is read and in which order the client and the bot ask.
+
+- **No new cast step.** The amount is re-derived from the announced targets at
+  announce, not stored. `game.ExileCost.ManaValueFromTargets` (built by
+  `game.CollectEvidenceFromTargetsCost`, `effects.CollectEvidenceFromTargetsCost`)
+  is collect evidence's any-number graveyard clause with no printed floor;
+  `CastSpell` fixes the floor with `Game.CollectEvidenceTargetsFloorForEffect`
+  right after the CR 601.2c target check and checks `exile_ids` against it with
+  the existing validator. X is the sum of the mana values of the distinct
+  permanents among the targets (a permanent chosen for two "target" words is one
+  permanent the spell targets, CR 115.3), read through `ManaValueForEffect`. A
+  parked announcement already carries `Targets` and `ExileIDs`, so a cast parked
+  mid-announcement re-derives the same X when it is made again; nothing is added
+  to the snapshot.
+- **Every such cast collects evidence**, collect evidence 0 included, so
+  `EventCollectEvidence` is emitted for it as for an announced optional collect
+  evidence.
+- **Castable without a target search.** `effects.Register` allows the clause
+  only alone on a spell's mandatory slot, on a spell whose every target clause is
+  "up to": X = 0 is then always a legal announcement, so the cast gate needs no
+  search over target sets. It refuses it on an optional cost, an either/or
+  branch, an ability, beside another component, on a spell with no target
+  clause and on one with a clause that must be filled.
+- **§3 stands, with one exception.** The cost pickers still open before
+  targeting, because the order is not observable in the game state. A
+  target-sized cost cannot be asked before its targets, so for this cost alone
+  the client skips the graveyard picker in the pre-targeting chain and opens it
+  when the targets are confirmed, sized from the view's
+  `exile_cost_target_mana_values` (each permanent's mana value as the engine
+  reads it, so the client's X is the engine's). X = 0 asks nothing. The one
+  `cast_spell` carries both.
+- **The bot chooses targets first, then the payment.** The enumerator takes the
+  graveyard in fuel order as the pool, drops a target set whose X the graveyard
+  cannot reach (CR 118.3), and names the cheapest-first cards that reach it for
+  each set it offers.
+
+Card: Urgent Necropsy, Full.

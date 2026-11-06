@@ -4183,7 +4183,8 @@ is the same total, so an X above it is refused. Every prompt is keyed, so a tabl
 
 Not built: collect evidence X as a cast's additional cost whose X is the total mana value of the spell's targets
 (Urgent Necropsy). Its floor is known only once the targets are chosen, and the client's cost pickers and the bot's
-cast payment are both settled before the targets.
+cast payment are both settled before the targets. Built since (#5240): see [ADR 0021's 2026-11-06
+amendment](0021-additional-costs.md#amendment-2026-11-06-a-cost-sized-by-the-chosen-targets-5240).
 
 ### Snapshot, closure and ledger
 

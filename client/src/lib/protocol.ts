@@ -3228,6 +3228,15 @@ export interface AdditionalCostView {
   // graveyard pays, absent at 0.
   exile_cost_x?: boolean;
   exile_cost_x_max?: number;
+  // #5240: "collect evidence X, where X is the total mana value of the
+  // permanents this spell targets" (Urgent Necropsy). Any number of
+  // `exile_cost_options`, none included, whose mana values total X or
+  // more; X is known only once the targets are picked, so the cast chain
+  // asks for the cards after targeting. `exile_cost_target_mana_values` is
+  // each permanent's mana value as the server reads it, keyed by instance
+  // id: X is the sum over the distinct permanents picked as targets.
+  exile_cost_from_targets?: boolean;
+  exile_cost_target_mana_values?: Record<string, number>;
   payable?: boolean;
 }
 
