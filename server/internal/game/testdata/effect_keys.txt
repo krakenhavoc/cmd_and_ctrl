@@ -336,6 +336,7 @@ castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/amass-army
@@ -350,6 +351,7 @@ choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/aziza-mage-tower-captain-tap-three
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
+choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/borg-cube-assimilate
@@ -1169,6 +1171,7 @@ payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
+payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
