@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"slices"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Phoenix Fleet Airship — Artifact — Vehicle {2}{B}{B}, 4/4 (Avatar: The
 // Last Airbender, #4459):
@@ -36,20 +32,9 @@ func init() {
 		Name:            "Phoenix Fleet Airship",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Static: []game.StaticAbility{{
-			Label: "As long as you control eight or more permanents named Phoenix Fleet Airship, this Vehicle is an artifact creature.",
-			Layer: game.Layer4Type,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && phoenixFleetAirshipsControlled(g, source) >= 8
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, t := range []string{"Artifact", "Creature"} {
-					if !slices.Contains(c.Types, t) {
-						c.Types = append(c.Types, t)
-					}
-				}
-			},
-		}},
+		Static: []game.StaticAbility{selfIsArtifactCreatureWhile(
+			"As long as you control eight or more permanents named Phoenix Fleet Airship, this Vehicle is an artifact creature.",
+			func(g *game.Game, source *game.Card) bool { return phoenixFleetAirshipsControlled(g, source) >= 8 })},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginEndStep, AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return g.TurnTallyFor(source.Controller).PermanentsSacrificed > 0

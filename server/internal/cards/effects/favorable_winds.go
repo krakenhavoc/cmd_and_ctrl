@@ -19,15 +19,6 @@ func init() {
 		OracleID:     "2361ca87-6352-4ba3-8d91-b3d71242914d",
 		Name:         "Favorable Winds",
 		Completeness: CompletenessFull,
-		Static: []game.StaticAbility{{
-			Label:     "Creatures you control with flying get +1/+1.",
-			Layer:     game.Layer7PT,
-			SubLayer:  game.SubLayer7C_Modify,
-			AppliesTo: b30CreaturesYouControlWithFlying,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Power++
-				c.Toughness++
-			},
-		}},
+		Static:       []game.StaticAbility{creaturesYouControlWithFlyingGetPlusOne()},
 	})
 }
