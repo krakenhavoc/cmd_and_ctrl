@@ -135,3 +135,30 @@ func TestManaValueOfSplitAndFaces(t *testing.T) {
 		t.Error("IsBasicLand")
 	}
 }
+
+func TestFactsOfRolesCountCopiesUnderEachRole(t *testing.T) {
+	ring := deckCard("Sol Ring", "Artifact", "{1}")
+	counter := deckCard("Counterspell", "Instant", "{U}{U}")
+	list := []DeckCard{{Card: ring, Count: 2}, {Card: counter, Count: 1}, {Card: deckCard("Forest", "Basic Land — Forest", ""), Count: 5}}
+	roles := map[uuid.UUID][]string{ring.OracleID: {cards.RoleRamp, cards.RoleManaRock}, counter.OracleID: {cards.RoleCounterspell}}
+	f := FactsOfRoles(list, 0, func(o uuid.UUID) []string { return roles[o] })
+	if !f.RolesAvailable || len(f.Roles) != len(cards.AllRoles) {
+		t.Fatalf("roles %+v", f)
+	}
+	for i, r := range f.Roles {
+		if r.Role != cards.AllRoles[i] {
+			t.Errorf("role %d = %s, want AllRoles order", i, r.Role)
+		}
+	}
+	got := map[string]int{}
+	for _, r := range f.Roles {
+		got[r.Role] = r.Cards
+	}
+	if got[cards.RoleRamp] != 2 || got[cards.RoleManaRock] != 2 || got[cards.RoleCounterspell] != 1 || got[cards.RoleRemoval] != 0 {
+		t.Errorf("counts %v", got)
+	}
+	// Roles never move the version hash.
+	if plain := FactsOf(list, 0); plain.Hash != f.Hash || plain.RolesAvailable || plain.Roles != nil {
+		t.Errorf("without roles: %+v", plain)
+	}
+}

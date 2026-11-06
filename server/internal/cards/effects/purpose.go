@@ -512,7 +512,9 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //     is the rest of the review;
 //   - a change until end of turn (#4302) that is neither benefit nor
 //     harm, on a clause that cannot target a permanent, or whose Pump
-//     points the other way (checkUntilEndOfTurn);
+//     points the other way (checkUntilEndOfTurn); a pump of the
+//     announced X (#4976) on a harm, or beside a printed amount on the
+//     same side (checkPumpX);
 //   - an exile from a graveyard (#4559) on a clause that cannot target
 //     a graveyard card, beside a reanimation, or an ExileGrows that is
 //     not "permanent" or "creature" or has no Exiles beside it.
@@ -601,6 +603,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 // no keyword to a harm (a harm's keywords are lost, which a Pump cannot
 // say).
 func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail func(string)) {
+	checkPumpX(e, fail)
 	switch e.UntilEndOfTurn {
 	case "":
 		if e.Pump != nil {
@@ -627,13 +630,49 @@ func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail f
 	}
 }
 
+// checkPumpX is checkUntilEndOfTurn's half for a pump of the announced X
+// (#4976): only on a benefit, and with no printed amount on the side the
+// X fills, as DamageIsX is refused beside Damage.
+func checkPumpX(e game.TargetPurpose, fail func(string)) {
+	if !e.PumpPowerIsX && !e.PumpToughnessIsX {
+		return
+	}
+	if e.UntilEndOfTurn != game.TargetBenefit {
+		fail(fmt.Sprintf("declares a pump of X on slot %d that is not a benefit until end of turn (#4976)", e.Slot))
+	}
+	if pm := e.Pump; pm != nil && ((e.PumpPowerIsX && pm.Power != 0) || (e.PumpToughnessIsX && pm.Toughness != 0)) {
+		fail(fmt.Sprintf("sets both a printed amount and X on the same side of slot %d's pump (#4976)", e.Slot))
+	}
+}
+
+// PumpXUntilEOT is BenefitUntilEOT for "+X/+X until end of turn", where
+// X is the spell's or ability's announced X (#4976): Tyvar's Stand's
+// "target creature you control gets +X/+X and gains hexproof and
+// indestructible until end of turn" is PumpXUntilEOT(0, "hexproof",
+// "indestructible"). The bot reads the X the move names.
+func PumpXUntilEOT(slot int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, 0, 0, keywords...)
+	e.PumpPowerIsX, e.PumpToughnessIsX = true, true
+	return e
+}
+
+// PowerXUntilEOT is PumpXUntilEOT for "+X/+0" (#4976): Hatred's "target
+// creature gets +X/+0 until end of turn" is PowerXUntilEOT(0), and Kessig
+// Wolf Run's "+X/+0 and gains trample" PowerXUntilEOT(0, "trample").
+func PowerXUntilEOT(slot int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, 0, 0, keywords...)
+	e.PumpPowerIsX = true
+	return e
+}
+
 // BenefitUntilEOT is the target entry for a clause that helps its pick
 // until end of turn (#4302): Heliod, Sun-Crowned's "another target
 // creature gains lifelink until end of turn" is
 // ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")), and "target creature
 // gets +2/+2 until end of turn" BenefitUntilEOT(0, 2, 2). With no amount
-// and no keyword (+X/+X, "can't be blocked this turn") it declares only
-// the direction.
+// and no keyword (+X/+X where X is counted at resolution, "can't be
+// blocked this turn") it declares only the direction; an announced X is
+// PumpXUntilEOT or PowerXUntilEOT (#4976).
 func BenefitUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
 	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetBenefit}
 	if power != 0 || toughness != 0 || len(keywords) > 0 {

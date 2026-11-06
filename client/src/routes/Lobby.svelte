@@ -56,6 +56,7 @@
     type ReadyMoment,
   } from "../lib/readyMoment";
   import { canInviteTablemates } from "../lib/tablemates";
+  import { TABLES_CHANGED_EVENT } from "../lib/tablesChanged";
   import {
     canCreateTables,
     setupResultMessage,
@@ -1388,10 +1389,12 @@
       if (document.visibilityState === "visible") void refresh();
     };
     window.addEventListener("focus", onFocus);
+    window.addEventListener(TABLES_CHANGED_EVENT, onFocus);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(t);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener(TABLES_CHANGED_EVENT, onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
   });

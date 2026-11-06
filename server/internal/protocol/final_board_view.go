@@ -1,6 +1,10 @@
 package protocol
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // final_board_view.go is #4912: an eliminated seat's final board on the
 // wire, what that player had when they left the game (game/final_board.go).
@@ -20,6 +24,10 @@ type FinalBoardView struct {
 	Graveyard   []FinalCardView `json:"graveyard,omitempty"`
 	Exile       []FinalCardView `json:"exile,omitempty"`
 	Command     []FinalCardView `json:"command,omitempty"`
+	// Commanders is the names of the commanders the player owned, each
+	// once, wherever they were when the player left (#4547): what the
+	// tombstone's commander line reads. Absent for a player with none.
+	Commanders []string `json:"commanders,omitempty"`
 }
 
 // FinalCardView is one recorded card. Its keys are CardView's, so a client
@@ -57,6 +65,7 @@ func viewOfFinalBoard(fb *game.FinalBoard) *FinalBoardView {
 		Graveyard:   viewOfFinalCards(fb.Graveyard),
 		Exile:       viewOfFinalCards(fb.Exile),
 		Command:     viewOfFinalCards(fb.Command),
+		Commanders:  slices.Clone(fb.Commanders),
 	}
 }
 

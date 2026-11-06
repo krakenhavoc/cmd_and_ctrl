@@ -39,7 +39,7 @@ func (p *Policy) hasteTapGain(st *state, m legal.Move) float64 {
 	if !p.cfg.PriceHasteTapRows || !p.cfg.PriceTemporaryEffects {
 		return 0
 	}
-	picks, entries := st.temporaryPicks(m)
+	picks, entries := st.temporaryPicks(m, p.cfg.PriceXPumps)
 	if len(picks) == 0 {
 		return 0
 	}

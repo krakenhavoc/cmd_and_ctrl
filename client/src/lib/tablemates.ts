@@ -22,6 +22,10 @@ export interface Tablemate {
   avatar_url?: string;
   /** When the most recent shared table was created, Unix milliseconds. */
   last_played_at: number;
+  /** How many tables the two of you have shared (ADR 0213 §1). Absent from an older server. */
+  games_together?: number;
+  /** The name of the most recent one. Absent from an older server. */
+  last_table?: string;
 }
 
 export interface TablematesResponse {

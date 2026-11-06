@@ -36,7 +36,7 @@ func newShareStack(t *testing.T) advancedStack {
 		c.Now = func() time.Time { return advancedNow }
 	}, statsAdminDiscordID)
 	s.lobby.SetGameStats(stats)
-	return advancedStack{statsPrefsStack: statsPrefsStack{adminStack: s, db: d}, stats: stats, library: library, oracle: oracle}
+	return advancedStack{statsPrefsStack: statsPrefsStack{adminStack: s, db: d}, stats: stats, library: library, oracle: oracle, idx: idx}
 }
 
 func (s advancedStack) mintShare(t *testing.T, tok string) shareLinkResponse {
@@ -172,8 +172,13 @@ func TestSharedViewShowsTheOwnerAndNoOneElse(t *testing.T) {
 	if len(got.Overview.Decks) == 0 || got.Overview.Decks[0].Name != "Atraxa" {
 		t.Errorf("the owner's deck names are part of the view: %+v", got.Overview.Decks)
 	}
-	// Never: another person's name, a table name, a game id, a deck id.
-	for _, never := range []string{"Zed the Opponent", "Friday", "game_id", "replay", d.ID.String(), other.String(), user.String()} {
+	// The deck id stays, so the shared deck page can be reached; the
+	// owner's and the opponent's account ids never do.
+	if got.Overview.Decks[0].DeckID != d.ID.String() {
+		t.Errorf("the overview's deck id = %q, want the saved deck's", got.Overview.Decks[0].DeckID)
+	}
+	// Never: another person's name, a table name, a game id.
+	for _, never := range []string{"Zed the Opponent", "Friday", "game_id", "replay", other.String(), user.String()} {
 		if strings.Contains(body, never) {
 			t.Errorf("the shared view carries %q", never)
 		}
@@ -196,5 +201,74 @@ func TestSharedViewWithNoStore(t *testing.T) {
 	s := newAdminStackWith(t, nil, nil, statsAdminDiscordID)
 	if code := status(t, s.srv, "GET", "/stats/shared/"+strings.Repeat("A", 22), "", nil); code != http.StatusNotFound {
 		t.Errorf("no store: %d, want 404", code)
+	}
+}
+
+// A shared view reaches the owner's deck pages, read-only (ADR 0217
+// §6): the same body as the owner's page and the owner's name, a deck
+// that is not the owner's or a dead link is a 404, and it never names
+// another seat.
+func TestSharedDeckPage(t *testing.T) {
+	s := newShareStack(t)
+	tok, user := s.person(t, "222", "Bea")
+	_, other := s.person(t, "333", "Zed the Opponent")
+	d := s.saveDeck(t, user, "Atraxa Superfriends", atraxaList, "Atraxa, Praetors' Voice")
+	theirs := s.saveDeck(t, other, "Theirs", atraxaList, "Atraxa, Praetors' Voice")
+	for i := 0; i < 4; i++ {
+		s.seed(t, user, seededGame{daysAgo: i, deckID: d.ID.String(), hash: s.currentHash(), result: gamestats.ResultWin,
+			others: []string{"person", "bot", "person"}})
+	}
+	link := s.mintShare(t, tok)
+	get := func(token, deckID, query string) (int, string) {
+		t.Helper()
+		resp := do(t, s.srv, "GET", "/stats/shared/"+token+"/decks/"+deckID+query, "", nil)
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(raw)
+	}
+
+	// Advanced stats off: the link shows the basic record only.
+	if code, _ := get(link.Token, d.ID.String(), ""); code != http.StatusNotFound {
+		t.Errorf("advanced off: %d, want 404", code)
+	}
+	s.on(t, tok)
+	code, body := get(link.Token, d.ID.String(), "?version=all&range=30d")
+	if code != http.StatusOK {
+		t.Fatalf("shared deck: %d %s", code, body)
+	}
+	var got sharedDeckResponse
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.DisplayName != "Bea" || got.Deck.Name != "Atraxa Superfriends" || got.Version != "all" || got.Record.Games != 4 ||
+		got.Range != gamestats.Range30 {
+		t.Errorf("shared deck page: %+v", got)
+	}
+	for _, never := range []string{"Zed the Opponent", "Friday", "game_id", "replay", other.String(), user.String(), tok} {
+		if strings.Contains(body, never) {
+			t.Errorf("the shared deck page carries %q", never)
+		}
+	}
+	// Not the owner's deck, a deck that does not exist, and a bad id.
+	for _, id := range []string{theirs.ID.String(), uuid.NewString(), "nope"} {
+		if code, _ := get(link.Token, id, ""); code != http.StatusNotFound {
+			t.Errorf("deck %s: %d, want 404", id, code)
+		}
+	}
+	if code, _ := get(link.Token, d.ID.String(), "?version=latest"); code != http.StatusBadRequest {
+		t.Errorf("bad version: %d, want 400", code)
+	}
+	if code, _ := get(link.Token, d.ID.String(), "?range=week"); code != http.StatusBadRequest {
+		t.Errorf("bad range: %d, want 400", code)
+	}
+	// A dead link and a revoked one.
+	if code, _ := get(strings.Repeat("A", 22), d.ID.String(), ""); code != http.StatusNotFound {
+		t.Errorf("unknown link: %d, want 404", code)
+	}
+	if code := status(t, s.srv, "DELETE", "/me/stats/share-link", tok, nil); code != http.StatusNoContent {
+		t.Fatalf("DELETE: %d", code)
+	}
+	if code, _ := get(link.Token, d.ID.String(), ""); code != http.StatusNotFound {
+		t.Errorf("revoked link: %d, want 404", code)
 	}
 }

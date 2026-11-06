@@ -632,6 +632,9 @@ type DeadCard struct {
 	Name        string `json:"name"`
 	Dead        Rate   `json:"dead"`
 	CouldAfford bool   `json:"could_afford"`
+	// ScryfallID is a printing to draw the card with, filled in by the
+	// read route from the card index; empty when the name is unknown.
+	ScryfallID string `json:"scryfall_id,omitempty"`
 }
 
 // DeadCardsMax caps the dead-card list.
