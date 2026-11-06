@@ -2062,6 +2062,7 @@ tail then/braids-arisen-nightmare-ask-opponents
 tail then/braids-arisen-nightmare-next-opponent
 tail then/breeches-the-blastmaker-flip
 tail then/cait-sith-fortune-teller-boost
+tail then/calamitous-tide-loot
 tail then/caustic-bronco-life
 tail then/celebrate-the-mountain-king-exiled-one
 tail then/chain-lightning-offer-red-payment

@@ -22,19 +22,7 @@ func init() {
 		Targets:      Clauses(TargetAny(), Distinct(TargetAny())),
 		Purpose:      ForTargets(DamageToTarget(0, 2), DamageToTarget(1, 1)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			amounts := []int{2, 1}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				for slot, n := range amounts {
-					t, ok := ctx.ClauseTarget(slot)
-					if !ok {
-						continue
-					}
-					if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
+			return damageEachClauseTarget(ctx, 2, 1)
 		},
 	})
 }
