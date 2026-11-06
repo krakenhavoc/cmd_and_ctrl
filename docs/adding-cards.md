@@ -1656,9 +1656,22 @@ Master of Time), and that can be announced with no target: it has no `Targets`, 
 clause allows zero ("up to one", "any number of": `Min` 0), or it is
 modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
-A row that must name a target declares nothing: its move already stops
-you. An "up to" row is announced both ways, so declare it too; its
+An "up to" row is announced both ways, so declare it too; its
 targeted moves still carry `has_targets`.
+
+**A row that must name a target may declare** (#4734 slice 7, ADR 0009's
+amendment Q2 (a)), and is not required to. Undeclared, its move carries
+`has_targets` and stops you at every opponent item and key window.
+Declared, smart autopass matches it by its kind, like any other row: Mother
+of Runes (`protect`) stops you when an opponent's item targets a creature
+of yours, and not at an empty end step. Declare a protective, pump or
+prevent row when you add or touch it; nothing else needs one. Declare the
+union of what it gives its target, and never `value`, which no reader
+acts on there (the guard refuses it):
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))}, // Mother of Runes
+```
 
 **The vocabulary.** Use the smallest set that is true. The tier is fixed
 in code, not declared.
@@ -1713,8 +1726,8 @@ both where both are true; neither is derived from the other.
 - on a spell, `AnswerValue` in any slot when its additional cost
   sacrifices or exiles a creature, or on an alternative cost that
   sacrifices or returns one;
-- `Answers` on a sorcery-speed or loyalty row, or on a row whose every
-  announcement has a target;
+- `Answers` on a sorcery-speed or loyalty row, and `AnswerValue` on a row
+  whose every announcement has a target;
 - a crew row without `AnswerAnimate`;
 - a row whose cost sacrifices, exiles or returns a creature without
   `AnswerSacOutlet`, `AnswerSurvive` or `AnswerProtect`;
