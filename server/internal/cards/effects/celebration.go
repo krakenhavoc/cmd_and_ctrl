@@ -86,3 +86,14 @@ func WheneverThisAttacksIfCelebration(label string, effect Effect) game.Triggere
 func AtBeginningOfYourCombatIfCelebration(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(CondCelebration{}, On(game.EventStepBegan, AllOf(StepBegan(game.StepBeginCombat, true), YouHaveCelebration), label, effect))
 }
+
+// SelfKeywordWhileCelebration is "Celebration — This creature has
+// <keyword> as long as two or more nonland permanents entered the
+// battlefield under your control this turn" (Gallant Pie-Wielder's
+// double strike, Grand Ball Guest's trample): a layer 6 grant
+// (CR 613.1f) that is on while the source's controller has celebration.
+func SelfKeywordWhileCelebration(keyword string) game.StaticAbility {
+	ab := KeywordGrant(whileYouHave(Celebration, selfCreature), keyword)
+	ab.Label = "Has " + keyword + " as long as two or more nonland permanents entered the battlefield under your control this turn."
+	return ab
+}
