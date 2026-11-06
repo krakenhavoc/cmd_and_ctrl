@@ -278,6 +278,22 @@ one with a non-nil `user_id` (the same person at their next table).
 Any other session, and a credential that no longer validates, joins by
 `name` exactly as before.
 
+**A host's personal block** ([ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md)
+§3). A signed-in person the table's host has blocked
+([`PUT /me/blocks/{user_id}`](#get-meblocks-get-put-and-delete-meblocksuser_id))
+cannot take a seat at that table, by this route, by
+[`POST /join`](#post-join) or by the Discord sign-in that carries an
+invite. The refusal is the **401** a wrong or rotated invite gets, same
+status and same body, so it never says there is a block. It applies to
+the host's block of the joiner only: a joiner who blocked the host is
+seated, a guest is not affected, and it follows whoever hosts at that
+moment (the host seat, or the signed-in creator while nobody has sat
+down). It does not unseat anyone already at the table, who is told they
+are seated as before (the host's Remove control is for that), and it
+does not reach spectating. `GET /games/{id}/preview?t=<player invite>`
+answers the same 401 to a blocked person who sends a signed-in session,
+and a seated person still sees their own table there.
+
 **Lifetime** ([ADR 0110](decisions/0110-remember-me.md) §1, S55): a
 signed-in joiner's seat session expires at the same instant as the
 session they joined from, so `expires_at` is that session's, not
@@ -327,7 +343,7 @@ agent seat:
 | Status | Reason |
 |---|---|
 | 400 | empty name; a name on the filter's list (`code: "name_not_allowed"`, see [Moderation](#moderation-2984)); or `agent` with a signed-in session (`an agent seat joins as a guest`) |
-| 401 | invite token did not match |
+| 401 | invite token did not match; also the answer to a person the table's host has blocked (a personal block, above) |
 | 403 | the table removed and blocked this person (`code: "blocked_from_table"`, see [Moderation](#moderation-2984)) |
 | 404 | game not found |
 | 409 | game already started, game full, or the signed-in person already holds a seat at this table; or the table has been archived (`code: "game_closed"`) |
@@ -3693,7 +3709,13 @@ two, in either direction. From then on, both ways:
 
 - each is left out of the other's `GET /me/tablemates`;
 - friend requests are refused;
-- `POST /games/{id}/invites/dm` is refused.
+- `POST /games/{id}/invites/dm` is refused;
+- a person you block cannot take a seat at a table **you host**: the
+  join, the join by code and the invite preview answer as a wrong
+  invite does (see [`POST /games/{id}/join`](#post-gamesidjoin)). It
+  checks whoever hosts when the person tries, leaves anyone already
+  seated in their seat, and does not stop them watching. Your block does
+  not keep you out of a table somebody else hosts.
 
 Nobody is told, and nothing reaches #mod-log (ADR 0213 §3).
 `DELETE /me/blocks/{user_id}` unblocks (**204**). It brings back nothing

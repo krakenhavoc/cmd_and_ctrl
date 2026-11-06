@@ -173,6 +173,16 @@ type PlayerTurnTally struct {
 	// changed controller still counts (Gyome, Master Chef's ruling,
 	// #4834). Additive.
 	NontokenCreaturesEntered int `json:"nontokenCreaturesEntered,omitempty"`
+	// NonlandPermanentsEntered counts the nonland permanents that
+	// entered the battlefield under this player's control this turn
+	// (celebration, CR 207.2c; #5164): each entry once, whatever card
+	// types the permanent has, so an artifact creature is one; tokens
+	// count; a land, a land creature included, does not. Judged as each
+	// entered, after the layers (EnteredSubtypes' reading), so one that
+	// has since left the battlefield or changed controller still counts.
+	// Read through Game.NonlandPermanentsEnteredThisTurn. Additive
+	// within schema v9.
+	NonlandPermanentsEntered int `json:"nonlandPermanentsEntered,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -1976,6 +1986,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if controller != uuid.Nil && entered.IsCreature() && !entered.IsToken() {
 			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NontokenCreaturesEntered++ })
 		}
+		if controller != uuid.Nil && !entered.IsLand() {
+			// #5164: celebration. One per entry, not one per card type.
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NonlandPermanentsEntered++ })
+		}
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return
@@ -2171,6 +2185,16 @@ func (g *Game) VoidThisTurn() bool {
 // Caller must hold g.mu.
 func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).PermanentsLeft > 0
+}
+
+// NonlandPermanentsEnteredThisTurn reports how many nonland permanents
+// entered the battlefield under `playerID`'s control this turn
+// (celebration, CR 207.2c; #5164). Each entry counts once, tokens
+// included, and one that has since left still counts.
+//
+// Caller must hold g.mu.
+func (g *Game) NonlandPermanentsEnteredThisTurn(playerID uuid.UUID) int {
+	return g.TurnTallyFor(playerID).NonlandPermanentsEntered
 }
 
 // PermanentReturnedToHandThisTurn reports whether a permanent was

@@ -485,6 +485,14 @@ func Handler(c Config) http.Handler {
 	}
 	mux := metrics.NewServeMux()
 
+	// ADR 0213 §3: a host's personal block keeps the blocked person out
+	// of the host's tables. Wired here because Config.Social is a
+	// concrete store that may be nil, and a nil *Store must not become a
+	// non-nil interface.
+	if c.Lobby != nil && c.Social != nil {
+		c.Lobby.SetPersonalBlocks(c.Social)
+	}
+
 	// Dev / e2e knob: with CMDCTRL_DEV_RELAX_RATE_LIMITS set (truthy),
 	// every limiter constructed here becomes effectively unlimited so
 	// test suites can hammer join/login without outwaiting the refill.
@@ -1888,7 +1896,14 @@ func previewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	meta, kind, err := c.Lobby.Preview(id, r.URL.Query().Get("t"))
+	// The session is optional here: the invite is the credential. A
+	// signed-in person's account is what a host's block is matched on
+	// (ADR 0213 §3).
+	var userID uuid.UUID
+	if p, ok := optionalSession(c, r); ok && isSignedInPerson(p) {
+		userID = p.UserID
+	}
+	meta, kind, err := c.Lobby.PreviewAs(id, r.URL.Query().Get("t"), userID)
 	if err != nil {
 		return err
 	}
