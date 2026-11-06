@@ -38,7 +38,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}{W}, {T}: Creatures you control gain flying and lifelink until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"flying", "lifelink"}}, Answers: game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{4}{W}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{

@@ -1625,6 +1625,17 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   Elves") keeps `BenefitUntilEOT(slot, 0, 0, ...)`.
   `TestPumpXDeclarationsMatchThePrintedCard` holds both to the printed
   words, and `effects.Register` refuses one on a harm.
+- **`TeamPump`** goes on an activated row of the controller's own whose
+  whole effect is "creatures you control get +N/+M and/or gain
+  [keywords] until end of turn", with the printed amounts: Purphoros, God
+  of the Forge's "{2}{R}: Creatures you control get +1/+0 until end of
+  turn." is `game.Purpose{TeamPump: &game.Pump{Power: 1}, Answers: game.AnswerPump}`
+  ([#4320](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4320)).
+  Under `PriceTeamPumps` the bot prices it by the attack it adds this
+  turn, so it waits for creatures that can attack. A row that pumps a
+  subtype, counts its amount at resolution, does something else besides,
+  or is a loyalty ability or a `survive`/`protect` answer declares none.
+  `TestTeamPumpRowsDeclareTheirPump` holds the catalog to its words.
 - **`ResolutionMana`** goes on an activated row of the controller's own
   that adds mana on one numbered resolution of it in a turn: Soulbright
   Seeker's "If this is the third time this ability has resolved this

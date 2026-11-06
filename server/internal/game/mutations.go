@@ -1076,7 +1076,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// announced (x_ceiling.go). Refused rather than clamped, for the
 	// reason the X lock above is.
 	//
-	// #3225, CR 601.3c: the claimed alternative cost may carry a
+	// #3225, CR 601.3b: the claimed alternative cost may carry a
 	// ceiling of its own ("as though it had flash if X is 3 or less"),
 	// so the question is asked with the offer in hand.
 	if ceiling, ok := g.SpellXCeilingForOfferLocked(playerID, CatalogKey(card), alt); ok && params.XValue > ceiling {
@@ -1780,6 +1780,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			)
 			return ErrLandDropUnavailable
 		}
+		// #4943: the play is made from here, and it is its own CR
+		// 116.2a event, so it opens its own batch: a land played from a
+		// graveyard and a spell cast from it in the same window are two
+		// departures, not one. After every refusal above, so a refused
+		// play opens nothing. See event_batch.go.
+		g.beginActionEventBatchLocked()
 		// ADR 0034: the chosen face has to exist on the card IN THE
 		// SOURCE ZONE, not just on the local copy, before the
 		// replacement pipeline runs.
@@ -1985,6 +1991,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if err != nil {
 		return err
 	}
+	// #4943: the cast is made from here — nothing above has tapped,
+	// paid or moved anything, and every question it parks on has been
+	// asked — and a cast is its own event (CR 601.2a), so it opens its
+	// own batch. Its auto-tap, its cost payments and its move to the
+	// stack below are one occurrence, and a second cast in the same
+	// priority window is another: two flashback casts are two
+	// departures from the graveyard (CR 603.2c). See event_batch.go.
+	g.beginActionEventBatchLocked()
 
 	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
 	// caller's untapped permanents and materialise the produced mana

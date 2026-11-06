@@ -517,6 +517,57 @@ mono-red-aggro 16, 33.3% (21.7–47.5%); simic-ramp 10, 20.8%
 (11.7–34.3%). The labelled suite stayed at 42/42. Reports, decision logs
 and the scanner stayed on the authoring machine.
 
+## Haste for a {T} ability in the arena (#4981, S75)
+
+`--decks haste-battle` is BattleDeck with six Expedite, four Hanweir
+Battlements, four Frostwielders, four Goblin Sharpshooters and four
+Fervent Paincasters (20 Mountains, 4 Bears, 4 Ogres, 4 Drakes, 6 Wurms
+and 6 Lightning Bolts are left). Every creature it adds has a {T} ping
+that a summoning-sick creature can't use until it has haste (CR 302.6,
+702.10c). `heuristic-nohastetap` is today's heuristic with
+`PriceHasteTapRows` off.
+
+The 2026-11-05 UTC run used develop `f0102388` plus #4324's commit
+(cherry-picked before #5000 merged it; the price code is the same) and
+#4981, two seats with the price on against two with it off, rotation,
+lockstep and decision logs (`--decision-log-mode all`):
+
+```sh
+boteval arena --seats heuristic,heuristic-nohastetap,heuristic,heuristic-nohastetap \
+  --decks haste-battle,haste-battle,haste-battle,haste-battle \
+  --games 48 --seed 2000 --rotate --lockstep --turn-budget 60 --wall 10m \
+  --decision-log --decision-log-mode all --out DIR --md
+```
+
+All 48 games ended with a winner (median 14 turns) and none stalled. The
+four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games |
+|---|---|
+| price on (`heuristic`) | 21, 21.9% (14.8–31.1%) |
+| price off (`heuristic-nohastetap`) | 27, 28.1% (20.1–37.8%) |
+
+The intervals overlap, so the run shows no effect either way. Two seats
+of one policy share a game, so the trials are not independent and the
+intervals are conservative.
+
+The deck does produce the windows. A haste grant on the seat's own
+sick, untapped pinger was legal in 370 decisions across 50 of the 96
+on seat-games, and 522 across 52 off seat-games. The price fired in 294
+of the on decisions. Each was priced at +0.20: a 1-damage ping less the
+tapped blocker. The grant ranked first in 274 of those, but no move
+cleared the bar ("nothing worth doing"), so the bot passed. It cast a
+grant priced by the change 10 times. Over the run, the on seats cast
+Expedite 147 times (44 on their own sick pinger) and the off seats 172
+times (46). A pinger used its {T} the turn a grant hit it 42 and 41
+times. So on this deck the price changes few decisions: a ping is worth
+too little to clear the bar. The catalog's creatures whose {T} draws
+(Talas Researcher's draw, Merfolk Looter's loot) declare an answer
+purpose, which `PriceHasteTapRows` leaves out, so neither could go in the
+deck. 35 of
+102,149 decision records were dropped at the log's cap. Reports and
+decision logs stayed on the authoring machine.
+
 ## Modal trigger bullets (#4674, S79)
 
 `heuristic-nomodepicks` is today's heuristic with `PriceModePicks` off: every
@@ -975,6 +1026,43 @@ the plans counted. The labelled position suite, the gated heuristic games
 (`AISEAT_GAME_TESTS=1`, the four- and two-seat heuristic tests) and the
 package tests passed. With the switch off, `DefaultConfig` plays exactly
 as before. Reports and decision logs stayed on the authoring machine.
+
+## Team pumps (#4320, S75)
+
+`heuristic-noteampumps` is today's heuristic with `PriceTeamPumps` off:
+a row that declares `team_pump` (Purphoros, God of the Forge's {2}{R}
+row) keeps the flat `ActivateBase` in every window. The position tests
+(`heuristic/team_pump_test.go`) hold the issue's cases: no pump in a main
+phase with no creature able to attack, nor after combat damage, nor for a
+chump block it does not change; a pump for two declared attackers with
+spare mana, and none with the mana a second-main-phase cast needs; haste
+for a fresh creature only; and Shadowspear's `restrict` row held with no
+combat and with attackers. `TestTeamPumpRowsDeclareTheirPump`
+(`cards/effects`) holds the 21 declared rows to their text.
+
+The 2026-11-06 UTC runs used `develop` at `ee606a09b` with the change,
+the standard pool, `--rotate --lockstep --games 48`, two seats of each
+policy, each run twice with the policies swapped between the chairs.
+Seeds 2000–2047 ran in chunks of eight with decision logs on (scanned,
+then deleted); seeds 3000–3047 without. 192 games, no stalls.
+
+| Purphoros's row, seeds 2000–2047 | heuristic | heuristic-noteampumps |
+|---|---:|---:|
+| activations | 89 | 180 |
+| before combat, own turn, no attacker declared | 8 | 48 |
+| after combat damage | 0 | 16 |
+| in its own combat | 10 | 0 |
+| on another seat's turn | 48 | 97 |
+
+| mono-red-aggro wins | heuristic | heuristic-noteampumps |
+|---|---:|---:|
+| seeds 2000–2047 | 15/48 | 20/48 |
+| seeds 3000–3047 | 19/48 | 20/48 |
+| both | 34/96, 35.4% (26.6–45.4%) | 40/96, 41.7% (32.3–51.7%) |
+
+The pumps changed as the issue asked; the aggro deck's win rate did not
+move beyond noise in either direction (the intervals overlap almost
+entirely, and the second seed's runs are a game apart).
 
 ## Test knobs
 

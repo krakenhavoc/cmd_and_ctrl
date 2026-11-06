@@ -3138,3 +3138,43 @@ The intervals overlap, so the loss is a direction, not a result; the switch ship
 - A "can't block" on a triggered row (Clamor Shaman, Plasma Jockey, Hawkeye, Zog, Triceraton Castaway) or on a modal activated row's bullet (Lost Jitte): those are not declared, as nothing prices a triggered row by its target entry.
 - "Can't block" that makes a blocker unavailable for a later opponent's attack in the same turn, and a "can't block" on the bot's own creature on its own turn, which costs nothing but is still priced as a harm on its own side.
 - The enumerator's target-set budget: `legal.MaxExpansionPerSource` (12) sets per spell, biggest creatures first, so on a crowded board "up to three" is offered as one or two picks and the pair or trio that opens the attack may not be on the list.
+
+## Amendment 2026-11-05: a team pump, priced by the attack it adds
+
+**Status:** Proposed in the PR that adds this section; the price is the owner's to accept. One `Config` switch, `PriceTeamPumps`, on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noteampumps` is `DefaultConfig()` with it off.
+**Issue:** [#4320](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4320), from real games, and the "Not priced" line of the amendment of 2026-10-24 ("a pump … with no printed amount before combat" covered the targeted half). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (one new purpose field) and the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is).
+
+### The problem
+
+Purphoros, God of the Forge's "{2}{R}: Creatures you control get +1/+0 until end of turn." has no target, so #4302's target entry could not say what it does, and its purpose declared only that it answers (`pump`). It kept the flat `ActivateBase` (0.50) in every window, over `PassThreshold` (0.25) in the bot's main phase. In the issue's 96 four-seat games the bot pumped 105 times before combat in 55 turns it attacked with nothing, and 19 times after combat damage. `pump` alone could not be the signal: Monstrosity and adapt rows declare exactly the same, and their counters stay.
+
+Shadowspear's "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn", the issue's other card, declares only `restrict`, and #4318 already holds such a row until the stack has something to answer. All eight of the issue's activations were in a main phase with an empty stack. It is not changed here.
+
+### Decision
+
+1. **A row declares its team pump.** `Purpose.TeamPump` (`team_pump` on the wire, `pump`'s fields) is what an activated row gives each creature its controller controls until end of turn, with no target: Purphoros's is `{power: 1}`. `effects.Register` refuses it off an activated row of the controller's own (an any-player row pumps whoever controls the source), one that gives nothing, and one that takes power or toughness away. It is declared only on a row whose whole effect it is, with printed amounts: a row that pumps a subtype ("Dragons you control"), counts its amount at resolution (+X/+X), or does something else besides (Sauron, the Lidless Eye's drain) declares none, nor do loyalty abilities (the +1 is worth its loyalty too) and `survive`/`protect` rows, which are answers. `TestTeamPumpRowsDeclareTheirPump` holds 21 catalog rows to their words, and every declaration to such words.
+2. **The heuristic prices it by this turn** (`team_pump.go`), in place of `ActivateBase`: the attack the pump adds to each of the bot's creatures (`pumpAttackGain`, the price a targeted pump of the bot's own already has, with `LethalBonus` once when it makes a kill), and for each creature blocking before damage, the attacker a pumped blocker now kills and the blocker that now survives, at their permanent values. `CombatGrant` is added once when that is something and a creature is in combat. So the pump is worth nothing in a main phase with no creature that can attack this turn, after combat damage (the change ends at cleanup having done nothing, CR 514.2), and for a chump block it does not change. A keyword grant adds nothing to a creature that has the keyword (CR 702.15f for lifelink, and so for the others), nor a second time while the first is still on the stack. The set of creatures is the board's now: the pump locks its set as it resolves (CR 611.2c), so a creature cast after it is not counted.
+3. **Spare mana in combat.** A team pump with a creature it helps in combat, paid with mana and taps only, clears `LeftoverThreshold` when the mana left still pays for the biggest card the bot could cast this turn, as `spareCombatGrant` does for a targeted grant; on another seat's turn all of it is spare.
+
+### Measurements
+
+`boteval arena --rotate --lockstep --games 48` on the standard pool (mono-red-aggro, simic-ramp, esper-control, mono-black-aristocrats), two seats of `heuristic` and two of `heuristic-noteampumps`, each run twice with the policies swapped between the chairs, so each policy played each deck 48 times per seed; the tree was `develop` at `ee606a09b` with this change. Seeds 2000–2047 (in chunks of eight, decision logs on) and 3000–3047. 192 games, no stalls. Only mono-red-aggro (Purphoros) holds a declared row.
+
+Purphoros's row, seeds 2000–2047, from the decision logs:
+
+| | `heuristic` | `heuristic-noteampumps` |
+|---|---:|---:|
+| activations | 89 | 180 |
+| before combat in an own turn with no attacker declared | 8 | 48 |
+| after combat damage | 0 | 16 |
+| in its own combat | 10 | 0 |
+| on another seat's turn (blocks) | 48 | 97 |
+
+mono-red-aggro's wins: 15/48 against 20/48 on seeds 2000–2047, 19/48 against 20/48 on seeds 3000–3047; 34/96, 35.4% (26.6–45.4%) against 40/96, 41.7% (32.3–51.7%) together. The intervals overlap almost entirely and the second seed's runs are a game apart, so the win rate is not a result in either direction; the pumps are. The eight pumps left before combat with no attacker (five turns) are priced by an attack the pump improves, which the attack decision then did not make; they were not examined further.
+
+### Not priced
+
+- A team pump of a subtype, one counted at resolution, a spell (Overrun) and a triggered row: they declare none and keep their prices.
+- A gang block's shared damage: each block is read one on one.
+- The self-pumps with no toughness ("{R}: This creature gets +1/+0 until end of turn"), which `TestSelfPumpRowsDeclareTheirPump` skips: a declared self `pump` is still priced only in answer to removal, and otherwise at `ActivateBase`.

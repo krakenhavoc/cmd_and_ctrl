@@ -27,7 +27,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{R}{R}, {T}: Creatures you control get +1/+0 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1}, Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{1}{R}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return BoostUntilEOT{

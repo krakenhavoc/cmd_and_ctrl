@@ -3471,7 +3471,7 @@ export interface AlternativeCostView {
   timing_closed?: boolean;
   // #3225: the largest X the viewer may announce while claiming THIS
   // offer — "you may cast this spell as though it had flash if X is 3
-  // or less" (CR 601.3c) — already folded with the card's printed
+  // or less" (CR 601.3b) — already folded with the card's printed
   // `x_max`. The server refuses a larger X under the claim; the cast for
   // the printed cost is not bound by it. Present only on an offer that
   // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
@@ -4243,6 +4243,15 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4320: on an activated row of its controller's own, what it gives
+  // each creature its controller controls until end of turn, with no
+  // target (Purphoros, God of the Forge's {2}{R} row: power 1).
+  team_pump?: {
+    power?: number;
+    toughness?: number;
+    keywords?: string[];
+    cant_be_blocked?: boolean;
+  };
   // #4980: on an activated row of its controller's own, the mana it adds
   // on one numbered resolution of it this turn (Soulbright Seeker: the
   // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The flash clause is Bard's Company's shape: an offer at the printed
 // cost that opens the instant-speed window for its own claim
 // (AlternativeCost.AsThoughFlash), gated by Condition, read as the cast
-// begins (CR 601.3c). The discount is Ravenous Cosmozoan's (CR 601.2f):
+// begins (CR 601.3). The discount is Ravenous Cosmozoan's (CR 601.2f):
 // it counts the caster's graveyard as the cost is determined, applies to
 // either cast, and reduces only the generic part, so {U}{U} is always
 // paid (the ruling). The mana value stays 7 (the ruling).

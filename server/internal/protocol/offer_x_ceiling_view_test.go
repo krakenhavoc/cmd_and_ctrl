@@ -11,7 +11,7 @@ import (
 
 // TestOfferXCeilingViewCarriesTheClaimedOffersCeiling is the #3225 view
 // half: an alternative cost with its own X ceiling ("as though it had
-// flash if X is 3 or less", CR 601.3c) ships that ceiling on the OFFER
+// flash if X is 3 or less", CR 601.3b) ships that ceiling on the OFFER
 // as `x_max`, and leaves the card's own `x_max` absent — the cast for
 // the printed cost is not bound by it. A printed ceiling on the card is
 // folded in by taking the smaller.

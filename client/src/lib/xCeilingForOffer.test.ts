@@ -1,5 +1,5 @@
 // xCeilingForOffer.test.ts — #3225. "You may cast this spell as though it
-// had flash if X is 3 or less" (Silver Scrutiny, CR 601.3c) is an offer
+// had flash if X is 3 or less" (Silver Scrutiny, CR 601.3b) is an offer
 // that carries its own X ceiling. The X picker takes the claimed offer's
 // `x_max`; the cast for the printed cost is not bound by it.
 
