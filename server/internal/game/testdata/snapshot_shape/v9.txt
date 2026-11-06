@@ -70945,6 +70945,8 @@ turnTally.replacementsApplied	map:string
 turnTally.replacementsApplied{}	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
+turnTally.sacrificedCardTypes	map:string
+turnTally.sacrificedCardTypes{}	number:int
 turnTally.sacrificedSubtypes	map:string
 turnTally.sacrificedSubtypes{}	number:int
 turnTally.spellsWarped	number:int

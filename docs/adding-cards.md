@@ -104,6 +104,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
   - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
+  - ["If you've sacrificed an artifact this turn" (#5224)](#if-youve-sacrificed-an-artifact-this-turn-5224)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -13178,6 +13179,18 @@ if Celebration(g, item.Controller) { … }              // a resolution-time che
 ```
 
 The trigger shapes are intervening ifs (CR 603.4), and `CondCelebration` declares `game.FootprintCondCelebration`, since the count only rises within a turn. Set `Targets` on the returned ability for a targeted body.
+
+### "If you've sacrificed an artifact this turn" (#5224)
+
+The turn tally counts sacrifices per player and per card type the permanent had as it was sacrificed (`TurnTally.SacrificedCardTypes`, read through `Game.SacrificedWithCardTypeThisTurn(player, "artifact")`), beside the per-subtype tally the Food readers use (`SacrificedWithSubtypeThisTurn(player, "Food")`). A token counts, though it is gone by the time anyone asks (CR 704.5d); an artifact creature is one artifact. The readers are in `cards/effects/sacrificed_artifact.go`:
+
+```go
+Condition: YouSacrificedAnArtifactThisTurn,         // "Activate only if …" (Detective's Satchel)
+InterveningIf(CondSacrificedAnArtifact{}, On(...))  // an intervening "if"
+if SacrificedAnArtifactThisTurn(g, you) { … }       // a resolution check, a block rule, a cost reduction
+```
+
+`CondSacrificedAnArtifact` declares `game.FootprintCondArtifactSacrificed`, since the count only rises within a turn. Another card type is the same call with its name; never walk `g.Events` for a sacrificed permanent.
 
 ### Adding a `Spec` slot (#622)
 
