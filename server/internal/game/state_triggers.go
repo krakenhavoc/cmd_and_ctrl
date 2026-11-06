@@ -265,7 +265,8 @@ func mayHaveStateTrigger(c *Card, keys map[string]struct{}) bool {
 			}
 		}
 	}
-	return false
+	// ADR 0155's 2026-11-05 amendment: a state trigger a borrow lent.
+	return borrowedStateTriggerCandidate(c, has)
 }
 
 // holdStateTriggersLocked opens a section the per-event check skips

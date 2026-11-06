@@ -1,13 +1,13 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
-// Broken Wings — Instant {2}{G} (Foundations, #4465):
+// Broken Wings — Instant {2}{G} (Aetherdrift, #4464):
 //
 //	"Destroy target artifact, enchantment, or creature with flying."
 //
-// One target clause, three kinds; "with flying" qualifies only the
-// creature, as Crushing Canopy's creature bullet reads it.
+// Make Your Move's destroy shape with the creature clause narrowed to a
+// creature with flying, read off the permanent as it is now (a creature
+// that only gained flying until end of turn is a legal target). The
+// target is re-checked at resolution (CR 608.2b).
 //
 // No simplification.
 func init() {
@@ -15,7 +15,6 @@ func init() {
 		OracleID:     "5e316864-d55c-496f-8f46-773567896864",
 		Name:         "Broken Wings",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets: TargetPermanent("target artifact, enchantment, or creature with flying",
 			Or(Artifact(), Enchantment(), And(Creature(), HasKeyword("flying")))),
 		OnResolve: destroyTheTargetPermanent,

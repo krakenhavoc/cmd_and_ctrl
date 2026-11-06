@@ -75,6 +75,11 @@ func (g *Game) OptionalCostsForCastLocked(caster uuid.UUID, card Card) []Additio
 			if gr.Spells != nil && !gr.Spells(g, caster, card) {
 				continue
 			}
+			// #4690: a granted cost that taps permanents (conspire) rides
+			// teamwork_ids, which a card's own tap cost may already hold.
+			if !gr.Cost.TapOthers.Empty() && castTapListTaken(CatalogKey(card)) {
+				continue
+			}
 			seen[gr.Cost.Key] = true
 			if out == nil {
 				out = append([]AdditionalCost(nil), own...)
@@ -101,4 +106,34 @@ func GrantedOptionalTimesPaid(paid PaidCost, key string) int {
 		}
 	}
 	return n
+}
+
+// castTapListTaken reports whether the card keyed `key` already pays
+// a cost of its own on the cast's teamwork_ids list — a mandatory "tap an
+// untapped Vampire you control" (or such a branch of an either/or cost),
+// teamwork, a replicate cost that taps, or escalate's taps. A granted
+// cost that taps (conspire) is then not offered on that card:
+// planTapOthers reads ONE tap clause per plan, so the two would merge
+// into one filter and tap the wrong permanents. Offering less than
+// printed is the safe direction.
+func castTapListTaken(key string) bool {
+	if ac := AdditionalCostFor(key); ac != nil {
+		if !ac.TapOthers.Empty() {
+			return true
+		}
+		for _, b := range ac.Either {
+			if !b.TapOthers.Empty() {
+				return true
+			}
+		}
+	}
+	for _, oc := range OptionalCostsFor(key) {
+		if oc.Teamwork != 0 || !oc.TapOthers.Empty() {
+			return true
+		}
+	}
+	if ms := ModeSpecFor(key); ms != nil && ms.Escalate != nil && ms.Escalate.TapCreatures != 0 {
+		return true
+	}
+	return false
 }

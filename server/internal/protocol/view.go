@@ -1705,6 +1705,12 @@ type AdditionalCostView struct {
 	Reveal        bool              `json:"reveal,omitempty"`
 	Behold        bool              `json:"behold,omitempty"`
 	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
+	// BeholdExile marks the mandatory "behold a Kithkin and exile it"
+	// (#4687, the Lorwyn Eclipsed Champions): `reveal` and `behold` are
+	// set too, and the one pick on `reveal_ids` is EXILED with the spell
+	// on the stack rather than shown. The permanent the spell becomes
+	// returns it to its owner's hand when it leaves.
+	BeholdExile bool `json:"behold_exile,omitempty"`
 	// Payable marks a branch the viewer could pay right now:
 	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
 	// the bot enumerator ask. Absent means the branch cannot be taken
@@ -4811,6 +4817,14 @@ type ActivatedAbilityView struct {
 	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
 	// way, and the legal-move enumerator does not offer it.
 	PowerUpUsed bool `json:"power_up_used,omitempty"`
+	// ResolvedThisTurn is how many times this row of this object has
+	// resolved this turn (#4980): Game.ResolvedThisTurn for the row's
+	// label, the count the card's own effect reads, per object (CR 400.7).
+	// Stamped only on a row whose purpose declares resolution_mana
+	// (Soulbright Seeker), and absent at zero. An activation still on the
+	// stack has not resolved and is not in it. Public: every player saw
+	// each resolution.
+	ResolvedThisTurn int `json:"resolved_this_turn,omitempty"`
 	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
 	// if this creature attacked this turn and only once each turn")
 	// cannot be activated right now: "not_attacked" or "used". Absent
@@ -5634,6 +5648,23 @@ type ManaAbilityView struct {
 	// Cabal Coffers), whose output only exists once computed at
 	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
+	// TriggerAdds is the mana tapping the permanent for this ability now
+	// would ALSO add through triggered mana abilities (CR 605.1b), in
+	// Produced's grammar: "{B}" for a Swamp under Crypt Ghast, "{G}" for
+	// a Forest under Mirari's Wake, "{G}{G}" under two Wild Growths
+	// (#4770, ADR 0074's amendment of 2026-10-30, owner decision 2).
+	// Produced stays what CR 106.7 says the ability "could produce",
+	// which never includes it.
+	//
+	// The auto-tap planner's own judge answers it, priced through the
+	// CR 106.12b window as the planner prices it, so it is what auto-pay
+	// counts. Absent when no trigger would fire, for an ability that does
+	// not tap, and when the extra mana depends on the colour picked
+	// (Mirari's Wake on a dual land) or the picks are past the planner's
+	// cap. Describes the board as it is now: a trigger cast later this
+	// turn shows in the next view. Stamped by stampManaTriggerAdds, the
+	// pass with a game handle.
+	TriggerAdds string `json:"trigger_adds,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -8434,6 +8465,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// the validator accepts (#544). The spell itself is excluded.
 		out.Reveal = true
 		out.Behold = ac.Reveal.Behold
+		out.BeholdExile = ac.Reveal.Exile
 		out.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, ac.Reveal))}
 	}
 	return out
@@ -8497,10 +8529,12 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			}
 		}
 		// #4092: a replicate cost that taps — each payment taps Count of
-		// the options, so the stepper stops at what they cover.
+		// the options, so the stepper stops at what they cover. #4690:
+		// conspire's creatures share a colour with the spell, so the walk
+		// is asked with the spell as the cost's source.
 		if tc := oc.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
-			v.TapOthersOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
 			if tc.Count > 0 {
 				if affordable := len(v.TapOthersOptions.Cards) / tc.Count; affordable < v.MaxTimes {
 					v.MaxTimes = max(affordable, 1)
@@ -8706,6 +8740,9 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	// per-card stampers below did — made every view quadratic in the
 	// size of the board.
 	restricted := g.AnyActivationRestrictionsForEffect()
+	// #4770: the trigger-mana reader, taken once for the same reason; nil
+	// on every board with no triggered mana ability.
+	triggerMana, _ := g.TapTriggerManaLocked()
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
 		// #521: this guard used to be `c.oracleID == ""`, which
@@ -8764,6 +8801,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 		stampManaChargedCost(g, card, controller, c.ManaAbilities)
+		stampManaTriggerAdds(triggerMana, card, controller, c.ManaAbilities)
 		// #1369: last, after every stamp above has written into the
 		// rows. The option lists read out of the controller's HAND go
 		// to the controller alone; every other viewer, spectators
@@ -8892,6 +8930,10 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 	stampManaIdentity(g, &card, seat, mine)
 	stampManaCounterCosts(g, &card, seat, mine)
 	stampManaChargedCost(g, &card, seat, mine)
+	// #4770: the mana its triggers would add goes to the activator's pool.
+	if tm, ok := g.TapTriggerManaLocked(); ok {
+		stampManaTriggerAdds(tm, &card, seat, mine)
+	}
 	byIndex := make(map[int]ManaAbilityView, len(mine))
 	for _, m := range mine {
 		if m.AnyPlayer {
@@ -9323,6 +9365,26 @@ func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, v
 			s := charged.String()
 			views[i].ChargedManaCost = &s
 		}
+	}
+}
+
+// stampManaTriggerAdds sets ManaAbilityView.TriggerAdds (#4770): the
+// mana a tap for each row would add through triggered mana abilities,
+// from the auto-tap planner's judge (game.TapTriggerMana). A nil reader,
+// which is every board with no triggered mana ability, stamps nothing.
+// A row is read by its published index, as stampManaConditions reads a
+// borrower's. Caller must hold g's read lock.
+func stampManaTriggerAdds(tm *game.TapTriggerMana, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if tm == nil || len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
+	for i := range views {
+		r := views[i].Index
+		if r < 0 || r >= len(raw) {
+			continue
+		}
+		views[i].TriggerAdds = tm.AddsLocked(controller, card, &raw[r])
 	}
 }
 
@@ -13288,6 +13350,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
 		v.PowerUpUsed = g.PowerUpUsed(&c, a)
+		// #4980: the resolutions so far of a row that adds mana on one
+		// of them, from the tally the card's effect reads.
+		if a.Purpose.ResolutionMana != nil {
+			v.ResolvedThisTurn = g.ResolvedThisTurn(c.InstanceID, a.Label)
+		}
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true

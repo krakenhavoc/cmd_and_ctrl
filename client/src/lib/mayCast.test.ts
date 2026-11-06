@@ -39,6 +39,7 @@ describe("keywordCastWords (#4243, #4250)", () => {
     expect(keywordCastWords("cascade")?.ifNot).toContain("bottom of your library");
     expect(keywordCastWords("discover")?.ifNot).toContain("into your hand");
     expect(keywordCastWords("free_or_hand")?.ifNot).toBe("it goes into your hand");
+    expect(keywordCastWords("play_or_free_or_hand")?.ifNot).toBe("it goes into your hand");
     expect(keywordCastWords("rebound")?.ifNot).toBe("it stays in exile");
     expect(keywordCastWords("suspend")?.ifNot).toBe("it stays in exile");
     expect(keywordCastWords("madness")?.ifNot).toBe("it goes into your graveyard");
@@ -79,6 +80,17 @@ describe("keywordCastWords (#4243, #4250)", () => {
     expect(keywordCastWords("exile_until", "Leave it in exile")?.ifNot).toMatch(
       /^it stays in exile/,
     );
+  });
+
+  // #4697: the top card that is a land to play or a spell to cast.
+  it("says play or cast for the combined offer from the top", () => {
+    expect(keywordCastWords("play_or_free_or_hand")).toEqual({
+      src: "CR 608.2g",
+      verb: "play or cast",
+      how: "from the top of your library",
+      ifNot: "it goes into your hand",
+    });
+    expect(keywordCastWords("free_or_hand")?.verb).toBeUndefined();
   });
 
   it("is null for a copy's offer, which names no keyword", () => {

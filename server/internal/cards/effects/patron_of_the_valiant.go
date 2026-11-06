@@ -22,7 +22,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Patron of the Valiant — put a +1/+1 counter on each creature you control with a +1/+1 counter on it",
-				putCountersOnEachYouControlThat(game.CounterPlusOne, 1, tomikHasPlusCounter)),
+				putPlusOneCountersOnEachYouControlThat(1, tomikHasPlusCounter)),
 		},
 	})
 }

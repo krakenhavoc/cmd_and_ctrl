@@ -432,3 +432,91 @@ func TestFlatPricedPermissionKeepsItsFreeCastBesideOtherPermissions(t *testing.T
 		})
 	}
 }
+
+// castClaimsFor lists the cast moves the enumerator offers for a card
+// as (alternative cost, permission type) pairs.
+func castClaimsFor(t *testing.T, g *game.Game, seat, card uuid.UUID) [][2]string {
+	t.Helper()
+	var out [][2]string
+	for _, m := range legal.EnumerateFor(g, seat) {
+		if m.Type != legal.TypeCastSpell || m.Source != card {
+			continue
+		}
+		var p struct {
+			AlternativeCost string `json:"alternative_cost"`
+			PermissionType  string `json:"permission_type"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil {
+			t.Fatal(err)
+		}
+		if c := [2]string{p.AlternativeCost, p.PermissionType}; !slices.Contains(out, c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func claimsAlt(claims [][2]string, alt string) bool {
+	return slices.ContainsFunc(claims, func(c [2]string) bool { return c[0] == alt })
+}
+
+// #5081: each offer is held to Muldrotha's one of each type under the
+// permission it is cast under in the offer list itself, and so on the
+// view's `alternative_costs`, not only in the bot's moves. A Boon Satyr
+// is an enchantment creature: its printed cast may spend either type,
+// its bestow cast (an Aura spell, CR 702.103b) only the enchantment.
+// Once Muldrotha's enchantment is spent, bestow is neither listed,
+// offered nor accepted, and the printed cast, as the creature, still is.
+func TestGreenGoblinBesideMuldrothaListsNoOfferWithItsTypeSpent(t *testing.T) {
+	bothOrders(t, func(t *testing.T, goblinFirst bool) {
+		g, me := goblinBesideMuldrotha(t, goblinFirst)
+		host := pushVanillaCreature(g, me.ID, "Host", 2, 2)
+		satyr := spmB18Graveyard(g, me, game.Card{Name: "Boon Satyr", TypeLine: "Enchantment Creature — Satyr",
+			OracleID: "aedcd2fb-813a-4915-b7b9-ac7479863462", ManaCost: "{1}{G}{G}", Power: 4, Toughness: 2,
+			KnownBy: map[uuid.UUID]bool{me.ID: true}})
+		enchantment := ptGraveCard(me, "Enchantment", "Enchantment")
+
+		// Nothing spent: the printed cast names either type, and bestow
+		// is offered beside it.
+		floatForTest(g, me, "GGGGG")
+		claims := castClaimsFor(t, g, me.ID, satyr)
+		if !slices.Contains(claims, [2]string{"", game.PermissionTypeCreature}) ||
+			!slices.Contains(claims, [2]string{"", game.PermissionTypeEnchantment}) || !claimsAlt(claims, game.BestowKey) {
+			t.Errorf("bot moves = %v, want the printed cast as either type and bestow", claims)
+		}
+		if keys := offerKeys(offerGrantsFor(g, me.ID, satyr, game.ZoneGraveyard)); !slices.Contains(keys, game.BestowKey) {
+			t.Errorf("offers = %v, want bestow while Muldrotha's enchantment is unspent", keys)
+		}
+
+		if err := g.CastSpell(me.ID, enchantment, game.CastSpellParams{FromZone: "graveyard"}); err != nil {
+			t.Fatalf("an enchantment from the graveyard under Muldrotha: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+
+		g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+		floatForTest(g, me, "GGGGG")
+		if keys := offerKeys(offerGrantsFor(g, me.ID, satyr, game.ZoneGraveyard)); slices.Contains(keys, game.BestowKey) || !slices.Contains(keys, "printed") {
+			t.Errorf("offers = %v, want the printed cost and no bestow with the enchantment spent", keys)
+		}
+		if claims := castClaimsFor(t, g, me.ID, satyr); claimsAlt(claims, game.BestowKey) || !claimsAlt(claims, "") {
+			t.Errorf("bot moves = %v, want the printed cast (the creature) and no bestow", claims)
+		}
+		c := graveyardViewOf(t, g, me.ID, satyr)
+		var keys []string
+		for _, ac := range c.AlternativeCosts {
+			keys = append(keys, ac.Key)
+		}
+		if slices.Contains(keys, game.BestowKey) || !c.CastableHere {
+			t.Errorf("view: offers = %v, castable_here = %v; want castable, with no bestow", keys, c.CastableHere)
+		}
+		if err := g.CastSpell(me.ID, satyr, game.CastSpellParams{
+			Strict: true, FromZone: "graveyard", AlternativeCost: game.BestowKey,
+			Targets: []game.TargetRef{{Kind: game.TargetCard, ID: host}},
+		}); err == nil {
+			t.Fatal("Boon Satyr was bestowed from the graveyard with Muldrotha's enchantment spent")
+		}
+		if err := g.CastSpell(me.ID, satyr, game.CastSpellParams{Strict: true, FromZone: "graveyard"}); err != nil {
+			t.Fatalf("Boon Satyr as the creature: %v", err)
+		}
+	})
+}

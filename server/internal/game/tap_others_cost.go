@@ -130,6 +130,17 @@ type TapOthersCost struct {
 	// beside ReducedByTappedPower); effects.Register refuses it
 	// anywhere else.
 	UpTo bool
+
+	// SharesColorWithSource is conspire's "that each share a color with
+	// it" (CR 702.78a, #4690): every permanent tapped must have a colour
+	// in common with the cost's source, which for a cast is the spell
+	// being cast. Judged on the spell's and the permanents' current
+	// colours (sharesColor), so a colourless spell can be paid by none.
+	// DATA rather than a predicate on Filter because CardOK is handed
+	// the caster, not the object whose cost this is (RelativeToSource's
+	// reason). Read by TapOthersOptionsForEffect and the validator, the
+	// one walk the view, the enumerator and the engine share (#544).
+	SharesColorWithSource bool
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
@@ -219,9 +230,29 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 		if c == nil || c.Controller != playerID || c.Tapped {
 			continue
 		}
+		if !g.tapOthersColorOKLocked(tc, sourceID, c) {
+			continue
+		}
 		out = append(out, id)
 	}
 	return out
+}
+
+// tapOthersColorOKLocked is the SharesColorWithSource clause (conspire,
+// CR 702.78a): true when the cost has no such clause, or when `c` has a
+// colour in common with the cost's source — the spell, wherever it is
+// as the cost is offered or paid (its hand as the view asks, the stack
+// as CastSpell pays). A source the engine cannot find shares nothing,
+// so a walk that cannot say what "it" is never admits more than
+// printed.
+//
+// Caller must hold g.mu.
+func (g *Game) tapOthersColorOKLocked(tc *TapOthersCost, sourceID uuid.UUID, c *Card) bool {
+	if tc == nil || !tc.SharesColorWithSource {
+		return true
+	}
+	src := g.findCardByIDLocked(sourceID)
+	return src != nil && sharesColor(src, c)
 }
 
 // TapOthersPayable reports whether `tc` could be paid at all right
@@ -314,6 +345,10 @@ func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *
 		// permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
 		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), tc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
+			return ErrIllegalTarget
+		}
+		// Conspire (CR 702.78a): "that each share a color with it".
+		if !g.tapOthersColorOKLocked(tc, sourceID, c) {
 			return ErrIllegalTarget
 		}
 	}

@@ -657,7 +657,13 @@ func corpusBoards() []corpusBoard {
 		{"fetched_shockland", corpusFetchedShockland},
 		{"put_batch_second_question", corpusPutBatchSecondQuestion},
 		{"token_creation_order", corpusTokenCreationOrder},
-		{"token_copy_entry", corpusTokenCopyEntry},
+		{"token_copy_entry", corpusTokenCopyEntryAsFrozen},
+		// Added by #4867 (ADR 0061 amendment 2026-11-05) as a new file:
+		// the same creation of two Clone token copies, now that a
+		// creation of several tokens enters them together, so the
+		// question is the simultaneous entry's frame (move-token-batch)
+		// and not token_copy_entry's one-at-a-time move-tail.
+		{"token_copy_entry_together", corpusTokenCopyEntry},
 		{"monstrosity_order", corpusMonstrosityOrder},
 		{"drain_order", corpusDrainOrder},
 		{"face_down_exile_leg", corpusFaceDownExileLeg},
@@ -3278,7 +3284,24 @@ func corpusUntilEOTPump(t *testing.T) *game.Game {
 // that game is the crewed_vehicle_event board, and this one keeps building
 // what the frozen fixture holds (corpusDriftAdvice's rule) by restoring it.
 func corpusCrewedVehicleAsFrozen(t *testing.T) *game.Game {
-	raw, err := os.ReadFile(filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion), "crewed_vehicle.json"))
+	return corpusFrozenBoard(t, "crewed_vehicle")
+}
+
+// corpusTokenCopyEntryAsFrozen is the token_copy_entry board as its
+// fixture holds it: two Clone token copies entering one at a time, the
+// first asking with the second behind it on its entry tail. Since #4867 a
+// creation of several tokens enters them together, so the scripted
+// creation builds a different game on purpose; that game is the
+// token_copy_entry_together board, and this one keeps building what the
+// frozen fixture holds by restoring it.
+func corpusTokenCopyEntryAsFrozen(t *testing.T) *game.Game {
+	return corpusFrozenBoard(t, "token_copy_entry")
+}
+
+// corpusFrozenBoard restores the current version's fixture `name`: the
+// board of a fixture whose scripted game the engine no longer builds.
+func corpusFrozenBoard(t *testing.T, name string) *game.Game {
+	raw, err := os.ReadFile(filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion), name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}

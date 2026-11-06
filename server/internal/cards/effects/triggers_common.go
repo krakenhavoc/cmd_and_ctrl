@@ -289,6 +289,18 @@ func ByYou(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game
 	return ev.Actor == source.Controller
 }
 
+// YouCastACreatureSpell — "whenever you cast a creature spell", on an
+// EventCast: your own cast, of a spell that is a creature as it sits on
+// the stack (Beast Whisperer, Champions of the Perfect). A permanent's own
+// cast never fires it: it is not on the battlefield yet.
+func YouCastACreatureSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Actor != source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && spell.IsCreature()
+}
+
 // ByAnOpponent — the event's actor is a seated player other than the
 // source's controller. Excludes the actor-less admin / SBA events.
 func ByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

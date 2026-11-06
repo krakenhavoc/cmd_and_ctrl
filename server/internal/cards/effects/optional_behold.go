@@ -60,7 +60,7 @@ func checkOptionalBehold(spec Spec) {
 		seen++
 		rest := oc
 		rest.Reveal, rest.Key, rest.Label, rest.Optional, rest.Targets = nil, "", "", false, nil
-		if oc.Key != game.BeholdKey || oc.Reveal == nil || !oc.Reveal.Behold || oc.Reveal.Subtype == "" || oc.Reveal.Color != "" ||
+		if oc.Key != game.BeholdKey || oc.Reveal == nil || !oc.Reveal.Behold || oc.Reveal.Exile || oc.Reveal.Subtype == "" || oc.Reveal.Color != "" ||
 			oc.Repeat > 1 || oc.MinX != 0 || !rest.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q is a malformed behold cost — build it with OptionalBehold", spec.Name, oc.Key))
 		}

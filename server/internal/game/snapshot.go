@@ -1209,6 +1209,11 @@ type cardSnapshot struct {
 	// Carried for ChosenPermanent's reason: nothing can re-derive it. Old
 	// snapshots have no key and read "none".
 	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
+	// ChosenCard is the card an ability of this permanent chose last
+	// (ADR 0155's 2026-11-05 amendment) — Koh, the Face Stealer's. Carried
+	// for ChosenPermanent's reason: a player chose it and nothing can
+	// re-derive it. Old snapshots have no key and read "none chosen".
+	ChosenCard *ObjectRef `json:"chosenCard,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -3068,6 +3073,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
+		ChosenCard:               objectRefPtr(c.ChosenCard),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4194,6 +4200,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
+		ChosenCard:               objectRefValue(c.ChosenCard),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,

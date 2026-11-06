@@ -43,8 +43,9 @@ const maxDMNameLen = 80
 //     is what an ordinary signed-in caller uses. The server resolves it
 //     to a Discord snowflake through identities; the snowflake is never
 //     on the wire in either direction. An ordinary caller may name only
-//     a person they have shared a table with, the people the picker
-//     offers (Lobby.IsTablemate); an admin may name any account.
+//     a person they have shared a table with or a friend, with no block
+//     between them either way (Config.mayReach, ADR 0213 §1 and §3); an
+//     admin may name any account.
 //   - discord_id is a raw Discord snowflake, and is ADMIN-ONLY. It
 //     exists for #613's `/c2-invite-dm @user`, which holds a mention
 //     and nothing else — the target may have never signed in here, so
@@ -59,8 +60,14 @@ type dmInviteRequest struct {
 }
 
 // errNotATablemate is the 404 for a user_id an ordinary caller may not
-// name: a stranger, a deleted account, or an id that is nobody's.
-const errNotATablemate = "no such tablemate; you can invite people you have sat at a table with"
+// name: a stranger, a deleted account, an id that is nobody's, or
+// someone who blocked the caller (ADR 0213 §3: the blocked person is
+// not told).
+const errNotATablemate = "no such tablemate; you can invite people you have sat at a table with, and your friends"
+
+// errYouBlocked is the refusal when the caller blocked the person they
+// named (ADR 0213 §3): the blocker is told why.
+const errYouBlocked = "you blocked this person; unblock them on the Friends page to send this"
 
 // dmInviteResponse is the 200 body. It deliberately carries no
 // snowflake and no invite token: the caller learns that the DM was
@@ -199,12 +206,15 @@ func (c Config) dmRecipient(r *http.Request, caller uuid.UUID, admin bool, body 
 		return "", "", httpError(http.StatusBadRequest, "invalid user_id")
 	}
 	if !admin {
-		mate, err := c.Lobby.IsTablemate(caller, target)
+		ok, blockedByMe, err := c.mayReach(r.Context(), caller, target, true)
 		if err != nil {
 			c.logger().Error("checking a DM-invite target's tablemate status failed", "err", err)
 			return "", "", httpError(http.StatusInternalServerError, "could not look that person up; try again")
 		}
-		if !mate {
+		if blockedByMe {
+			return "", "", httpError(http.StatusForbidden, errYouBlocked)
+		}
+		if !ok {
 			return "", "", httpError(http.StatusNotFound, errNotATablemate)
 		}
 	}

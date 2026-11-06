@@ -229,6 +229,11 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 	if c.ModelKeys != nil {
 		c.ModelKeys.Forget(id)
 	}
+	// ADR 0213 §10: the friends and blocks rows went in the transaction;
+	// the request rate window is the only part held in memory.
+	if c.Social != nil {
+		c.Social.Forget(id.String())
+	}
 	if c.Playmats != nil {
 		if err := c.Playmats.ForgetFiles(res.PlaymatIDs); err != nil {
 			log.Warn("account deletion: removing playmat files failed", "user_id", id, "err", err)
@@ -253,6 +258,10 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"notification_pref_rows", res.Counts.NotifyPrefRows,
 		"stats_prefs_rows", res.Counts.StatsPrefRows,
 		"model_key_rows", res.Counts.ModelKeyRows,
+		"friendships", res.Counts.Friendships,
+		"friend_requests", res.Counts.FriendRequests,
+		"user_blocks", res.Counts.UserBlocks,
+		"social_prefs_rows", res.Counts.SocialPrefRows,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,

@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // has no counters (CR 800.4a). Chapter III is one placement of two
 // counters on each creature the Saga's controller controls that is a
 // Zombie or a Mutant, the tokens from chapter II among them
-// (putCountersOnEachYouControlThat).
+// (putPlusOneCountersOnEachYouControlThat).
 //
 // No simplifications.
 func init() {
@@ -42,7 +42,7 @@ func init() {
 					}.Apply(NewContext(g, item))
 				}),
 			ChapterTrigger(3, "Vault 12: The Necropolis — III: two +1/+1 counters on each Zombie or Mutant you control",
-				putCountersOnEachYouControlThat("+1/+1", 2, Or(OfSubtype("Zombie"), OfSubtype("Mutant")))),
+				putPlusOneCountersOnEachYouControlThat(2, Or(OfSubtype("Zombie"), OfSubtype("Mutant")))),
 		},
 	})
 }

@@ -421,6 +421,9 @@ type Index struct {
 	// file was fetched. Both are nil/zero until a roles file is loaded.
 	roles   map[uuid.UUID][]string
 	rolesAt time.Time
+	// sets is Scryfall's set list by lowercase code, loaded by LoadSets
+	// from sets.json (#4790). Nil until a sets file is loaded.
+	sets map[string]SetInfo
 }
 
 // tokenPoolExcludedSetTypes are the ADR 0078 decision 3a set types

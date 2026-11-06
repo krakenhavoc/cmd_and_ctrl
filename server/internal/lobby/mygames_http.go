@@ -58,6 +58,22 @@ func myGames(c Config, w http.ResponseWriter, r *http.Request) error {
 		c.logger().Error("listing a user's games failed", "err", err)
 		return httpError(http.StatusInternalServerError, "could not load your games; try again")
 	}
+	// ADR 0213 §9: History's With friends is "a current friend was at
+	// the table", so each other seat says whether it is one. A failure
+	// costs the marks, not the list.
+	if c.Social != nil {
+		rel, err := c.Social.Relations(r.Context(), p.UserID.String())
+		if err != nil {
+			c.logger().Warn("reading a user's friends for their games failed", "err", err)
+		} else {
+			for i := range games {
+				for j := range games[i].Others {
+					o := &games[i].Others[j]
+					o.Friend = o.userID != "" && rel.Friends[o.userID]
+				}
+			}
+		}
+	}
 	return writeJSON(w, http.StatusOK, myGamesResponse{Games: games})
 }
 

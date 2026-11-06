@@ -763,6 +763,27 @@
     /* Room for the pile count badges, which sit 6px above the tiles,
        under the row label. */
     padding-top: 26px;
+    /* #4725: no scrollbar on the strip may come and go with anything a
+       scrollbar or a hover changes; where a bar takes room (Windows'
+       classic scrollbars; overlay ones take none) that loop flashed a
+       top-row opponent's lands several times a second.
+       - It is one line, so it never scrolls up and down. On a top-row
+         (flipped) panel the list is turned 180°, and a pile's copies,
+         stacked 3px up each, reach a few px below the row; under
+         `overflow: auto` they grew a vertical bar, whose width pushed the
+         lands of a strip only as wide as them (--strip-spread) into a
+         sideways bar too. Clipped, the overhang has no bar to grow.
+       - It scrolls sideways only while its piles at rest are wider than
+         it (fitRow sets data-scrolls, rowFit.ts stripScrolls), never for
+         a hovered pile's spread, which is a translate past its end: that
+         grew a bar, the bar moved a top-row pile out from under the
+         pointer, and the hover ended, over and over. A sideways bar takes
+         height, never the width that decides it.
+       board-flicker-4725.spec.ts samples every row for it. */
+    overflow: hidden;
+  }
+  .row.strip:global([data-scrolls]) {
+    overflow-x: auto;
   }
   .row.strip .row-cards {
     flex-wrap: nowrap;

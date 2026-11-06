@@ -853,7 +853,14 @@
   // permanent you control. The same single-pick sheet the blight
   // creature uses, over the server's `reveal_options` (hand first, then
   // permanents), resolved against both zones.
-  let revealPrompt = $state<{ card: CardView; label: string; choices: CastChoices } | null>(null);
+  // #4687: `exile` is the Champions' "behold a Kithkin and exile it", whose
+  // pick is exiled, so the sheet's verb is "Exile".
+  let revealPrompt = $state<{
+    card: CardView;
+    label: string;
+    exile: boolean;
+    choices: CastChoices;
+  } | null>(null);
   let revealPromptOptionIDs = $state<string[]>([]);
   const revealOptions = $derived.by(() => {
     const me = view.seats.find((s) => s.id === viewerID);
@@ -998,7 +1005,12 @@
       revealPromptOptionIDs = rv.options;
       revealPrompt = {
         card,
-        label: rv.behold ? `${rv.label} (choose or reveal)` : rv.label,
+        label: rv.exile
+          ? `${rv.label} (one you control or one in your hand)`
+          : rv.behold
+            ? `${rv.label} (choose or reveal)`
+            : rv.label,
+        exile: rv.exile,
         choices,
       };
       return;
@@ -4388,7 +4400,7 @@
     label={revealPrompt?.label ?? "a card to show"}
     options={revealOptions}
     count={1}
-    verb="Choose"
+    verb={revealPrompt?.exile ? "Exile" : "Choose"}
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
   />

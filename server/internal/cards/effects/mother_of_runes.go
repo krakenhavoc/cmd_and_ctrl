@@ -37,8 +37,11 @@ func init() {
 		Name:         "Mother of Runes",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:   "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
+			Label: "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+			// #4734 slice 7: protection from a color keeps the target out of
+			// reach of what targets it. A targeted row may declare since ADR 0009's
+			// #4734 amendment, Q2 (a).
+			Purpose: game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))},
 			Cost:    game.AbilityCost{Tap: true},
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
