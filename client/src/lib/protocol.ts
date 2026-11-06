@@ -4282,11 +4282,18 @@ export interface TargetPurposeView {
   // turn cuts for its controller.
   until_end_of_turn?: "benefit" | "harm";
   // #4302: that change in printed amounts (negative for a harm).
-  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
+  pump?: {
+    power?: number;
+    toughness?: number;
+    keywords?: string[];
+    cant_be_blocked?: boolean;
+    cant_block?: boolean;
+  };
   // #4976: beside a "benefit", the power or the toughness the change adds
   // is the announced X (Tyvar's Stand's +X/+X sends both).
   pump_power_is_x?: boolean;
   pump_toughness_is_x?: boolean;
+  // #4977: `pump.cant_block` is a harm's "can't block this turn".
 }
 
 // TargetReturnView is what a removal spell hands the controller of the

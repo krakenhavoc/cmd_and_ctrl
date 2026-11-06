@@ -113,9 +113,10 @@ func (p *Policy) temporaryBenefitValue(st *state, c *protocol.CardView, pump *pr
 // temporaryHarmValue is what a change until end of turn is worth on an
 // opponent's permanent c.
 func (p *Policy) temporaryHarmValue(st *state, c *protocol.CardView, pump *protocol.PumpView) float64 {
-	if pump == nil {
-		// -X/-X, "can't block": no printed amount to test, so the old
-		// reading, an opposing pick removed.
+	if pump == nil || (pump.CantBlock && pump.Power == 0 && pump.Toughness == 0) {
+		// -X/-X: no printed amount to test, so the old reading, an
+		// opposing pick removed. "Can't block" reads the same with
+		// PriceCantBlock off; with it on, cant_block.go prices it first.
 		return st.cardTargetValue(p.cfg, c.InstanceID)
 	}
 	if shrinkKills(c, pump) {

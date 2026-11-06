@@ -319,6 +319,9 @@ type PumpView struct {
 	// CantBeBlocked: the change makes the creature unblockable this turn
 	// (#4312).
 	CantBeBlocked bool `json:"cant_be_blocked,omitempty"`
+	// CantBlock: a harm's change says the creature can't block this turn
+	// (#4977).
+	CantBlock bool `json:"cant_block,omitempty"`
 }
 
 // DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
@@ -460,6 +463,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
+		v.Pump.CantBlock = pm.CantBlock // #4977
 	}
 	if pm := p.TeamPump; pm != nil {
 		v.TeamPump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
@@ -510,6 +514,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			}
 			if pm := t.Pump; pm != nil {
 				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
+				out[i].Pump.CantBlock = pm.CantBlock // #4977
 			}
 			// #4976: a pump of the announced X.
 			out[i].PumpPowerIsX, out[i].PumpToughnessIsX = t.PumpPowerIsX, t.PumpToughnessIsX

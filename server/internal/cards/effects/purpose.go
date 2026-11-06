@@ -176,6 +176,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
 	}
+	if p.Pump != nil && p.Pump.CantBlock {
+		fail("sets CantBlock on a row's pump of its own source — \"can't block\" is a harm, declared on a target's entry (#4977)")
+	}
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
@@ -292,8 +295,8 @@ func checkPump(pm *game.Pump, fail func(string)) {
 	if pm == nil {
 		return
 	}
-	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked {
-		fail("is a pump that gives nothing — set Power, Toughness, Keywords or CantBeBlocked")
+	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked && !pm.CantBlock {
+		fail("is a pump that gives nothing — set Power, Toughness, Keywords, CantBeBlocked or CantBlock")
 	}
 	for _, k := range pm.Keywords {
 		if k == "" || k != strings.ToLower(k) || strings.ContainsAny(k, "\t—") {
@@ -681,6 +684,9 @@ func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail f
 	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0 || pm.CantBeBlocked) {
 		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness, a keyword or unblockability (#4302)", e.Slot))
 	}
+	if e.UntilEndOfTurn == game.TargetBenefit && pm.CantBlock {
+		fail(fmt.Sprintf("declares a benefit on slot %d that says it can't block — that is a harm (#4977)", e.Slot))
+	}
 }
 
 // checkPumpX is checkUntilEndOfTurn's half for a pump of the announced X
@@ -751,13 +757,29 @@ func CantBeBlockedUntilEOT(slot, power, toughness int, keywords ...string) game.
 // HarmUntilEOT is the target entry for a clause that hurts its pick until
 // end of turn (#4302), with the printed change as signed amounts: "target
 // creature gets -2/-1 until end of turn" is HarmUntilEOT(0, -2, -1). With
-// no amount (-X/-X, "can't block this turn") it declares only the
-// direction.
+// no amount (-X/-X) it declares only the direction. "Can't block this
+// turn" is CantBlockUntilEOT (#4977).
 func HarmUntilEOT(slot, power, toughness int) game.TargetPurpose {
 	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetHarm}
 	if power != 0 || toughness != 0 {
 		e.Pump = &game.Pump{Power: power, Toughness: toughness}
 	}
+	return e
+}
+
+// CantBlockUntilEOT is HarmUntilEOT for a clause that also says its pick
+// can't block this turn (#4977): Daring Discovery's "up to three target
+// creatures can't block this turn" is CantBlockUntilEOT(0, 0, 0), and
+// "target creature gets -2/-0 and can't block this turn"
+// CantBlockUntilEOT(0, -2, 0). With Config.PriceCantBlock on the bot
+// prices it by the attack it opens before the defender's blocks, not as
+// removal.
+func CantBlockUntilEOT(slot, power, toughness int) game.TargetPurpose {
+	e := HarmUntilEOT(slot, power, toughness)
+	if e.Pump == nil {
+		e.Pump = &game.Pump{}
+	}
+	e.Pump.CantBlock = true
 	return e
 }
 

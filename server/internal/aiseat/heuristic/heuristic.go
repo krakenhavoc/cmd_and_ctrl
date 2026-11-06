@@ -340,6 +340,19 @@ type Config struct {
 	// the creature, and a trample grant by the damage it puts over the
 	// defender's biggest blocker. Off, neither adds to the attack.
 	PriceEvasionGrants bool
+	// PriceCantBlock prices a declared "can't block this turn" on an
+	// opponent's creature (Pump.CantBlock, #4977, cant_block.go) by the
+	// attack it opens: on the bot's own turn before blockers, the swing
+	// at that creature's controller with the move's can't-block picks
+	// unable to block, less the swing with them able, plus LethalBonus
+	// when they turn the all-in swing into a kill; after blockers and on
+	// another seat's turn nothing. Off (the zero value, DefaultConfig
+	// and BaselineConfig) prices each such pick as the removal a harm
+	// with no printed amount is, so Daring Discovery is three removal
+	// spells: in #4977's arena the price lost head-to-head, so it ships
+	// off and the arena's `heuristic-cantblock` turns it on
+	// (docs/bot-testing.md). Read only with PriceTemporaryEffects on.
+	PriceCantBlock bool
 	// PriceHasteTapRows prices haste granted until end of turn to the
 	// bot's summoning-sick creature by the {T} ability it can then
 	// activate (#4324, haste_tap.go; CR 302.6, 702.10c): the best row
@@ -1036,6 +1049,8 @@ func DefaultConfig() Config {
 		PriceEvasionGrants: true,
 		// #4324: haste priced by the {T} ability it unlocks.
 		PriceHasteTapRows: true,
+		// #4977: PriceCantBlock stays off (the price lost in the
+		// arena); `heuristic-cantblock` turns it on.
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -1239,6 +1254,8 @@ func BaselineConfig() Config {
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
 	c.PriceHasteTapRows = false
+	// #4977: "can't block" was removal.
+	c.PriceCantBlock = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1497,6 +1514,10 @@ type state struct {
 	// restrictClasses numbers the restricted mana rows the turn plan
 	// counts in this decision (manaClasses), made on first use.
 	restrictClasses *manaClasses
+	// noBlock is the creatures couldBlock treats as unable to block
+	// while cantBlockValue prices a "can't block this turn" (#4977,
+	// cant_block.go). Nil everywhere else.
+	noBlock map[string]bool
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {

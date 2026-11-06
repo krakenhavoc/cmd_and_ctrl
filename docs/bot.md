@@ -1375,8 +1375,9 @@ or `harm`, with the printed `pump` when there is one (`BenefitUntilEOT`,
   because a grant still on the stack shows nothing on the creature yet.
 - A harm on an opponent's permanent is removal when its declared -N/-N
   kills (CR 704.5f, 704.5g), `CombatGrant` on a creature in combat when it
-  does not, and nothing elsewhere. One with no printed amount (-X/-X,
-  "can't block") keeps the old removal price.
+  does not, and nothing elsewhere. One with no printed amount (-X/-X)
+  keeps the old removal price. "Can't block" is declared on its own, and
+  an opt-in switch prices it by the attack it opens (#4977, below).
 - In combat, such a move costing only mana and taps clears
   `LeftoverThreshold` when the mana left after it still pays for the
   biggest card in the bot's hand or command zone that its mana could cast
@@ -1518,6 +1519,46 @@ So `DefaultConfig` and `BaselineConfig` price these pumps as before, a
 benefit with no amount, and Hatred's life is not charged.
 `heuristic-xpumps` turns the price on in the arena, and `--decks
 xpumps-battle` deals a deck with the cards in it.
+
+**"Can't block" can be priced by the attack it opens**
+([#4977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4977),
+`PriceCantBlock`, `cant_block.go`). "Can't block this turn" was a harm
+with no printed amount, the same declaration as Tragic Slip's -X/-X, so
+every pick was priced as removal: Daring Discovery's "up to three target
+creatures can't block this turn" was three removal spells, and Untimely
+Malfunction's third mode two. The entry now declares `cant_block`
+(`Pump.CantBlock`, built by `effects.CantBlockUntilEOT`) on Daring
+Discovery, Untimely Malfunction's third mode, Fifty Feet of Rope's Climb
+Over row and Duel Tactics. With `PriceCantBlock` on, a move's
+can't-block picks of opponents' creatures are priced together:
+
+- on the bot's own turn, before blockers: the swing at the picks'
+  controller with them unable to block, less the swing with them able,
+  plus `LethalBonus` when they turn the all-in swing into a kill. The
+  swing is the bot's attackers sent one at a time, biggest first, while
+  `attackValue` says each is worth sending: in the first main phase and
+  beginning of combat every creature that could still attack, and in the
+  declare attackers step the ones attacking;
+- after blockers are declared nothing (CR 509.1b), nor on another
+  seat's turn, nor after combat.
+
+So one of three blockers that can't block opens nothing while the other
+two still block at a loss, and all three open the whole attack. A
+Daring Discovery cast at no creature is priced by its discover, not by
+the mana-value proxy, which would otherwise outbid the same cast at the
+blockers. A pick whose declared shrink kills is still removal, and a pick
+of the bot's own creature is still a harm on its own side. Tragic Slip
+and the rest of the -X/-X family keep the removal price.
+`TestCantBlockDeclarationsMatchTheirText` and the two direction audits
+hold `cant_block` to the words "can't block". The enumerator offers at
+most twelve target sets per spell (`MaxExpansionPerSource`), biggest
+creatures first, so on a crowded board "up to three" is offered as one
+or two picks. The switch **ships off**: in the arena the seats with it
+held Daring Discovery for an attack, then mostly cast it at one creature,
+and lost head-to-head ([bot-testing.md](bot-testing.md#cant-block-priced-by-the-attack-it-opens-4977-s75)).
+Off, every can't-block pick is removal, as before. The arena's
+`heuristic-cantblock` turns it on, and `--decks cantblock-battle` deals
+BattleDeck with four Daring Discovery and four Untimely Malfunction.
 
 **Haste is also worth the {T} ability it unlocks**
 ([#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324),
@@ -2874,8 +2915,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink`, `heuristic-sparetokens`, `heuristic-noriders` or `heuristic-noteampumps`. `heuristic-noteampumps` disables only #4320's team-pump price (`PriceTeamPumps`). `heuristic-noriders` disables only #4978's rider prices (`PriceRiders`: scry, learn, discover, amass and the Ring). `heuristic-noresolutionmana` disables only #4980's price of the mana a row adds on a counted resolution (`PriceResolutionMana`, Soulbright Seeker's third). `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-triggermana` turns ON #4770's count of triggered mana in the turn plan's mana model (`PlanTriggerMana`, [The mana model](#the-mana-model)), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). `heuristic-xpumps` turns ON #4976's price of a pump of the announced X (`PriceXPumps`), which today's heuristic ships with off. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s, and `ghast-battle` is a black-green deck with six Crypt Ghasts and four Zendikar Resurgents, for [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770)'s, and `xpumps-battle` is the battle deck in red and green with Tyvar's Stand, Mishra's Command, Primal Might and two Kessig Wolf Runs, for [#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)'s. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink`, `heuristic-sparetokens`, `heuristic-noriders` or `heuristic-noteampumps`. `heuristic-noteampumps` disables only #4320's team-pump price (`PriceTeamPumps`). `heuristic-noriders` disables only #4978's rider prices (`PriceRiders`: scry, learn, discover, amass and the Ring). `heuristic-cantblock` turns ON #4977's price of "can't block" by the attack it opens (`PriceCantBlock`), which today's heuristic ships with off. `heuristic-noresolutionmana` disables only #4980's price of the mana a row adds on a counted resolution (`PriceResolutionMana`, Soulbright Seeker's third). `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-triggermana` turns ON #4770's count of triggered mana in the turn plan's mana model (`PlanTriggerMana`, [The mana model](#the-mana-model)), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). `heuristic-xpumps` turns ON #4976's price of a pump of the announced X (`PriceXPumps`), which today's heuristic ships with off. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s, and `ghast-battle` is a black-green deck with six Crypt Ghasts and four Zendikar Resurgents, for [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770)'s, and `xpumps-battle` is the battle deck in red and green with Tyvar's Stand, Mishra's Command, Primal Might and two Kessig Wolf Runs, for [#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)'s. `cantblock-battle` is the synthetic deck with four Daring Discovery and four Untimely Malfunction, for [#4977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4977)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
