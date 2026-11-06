@@ -289,7 +289,63 @@ type FaceDownCast struct {
 	// FaceUpCounter is megamorph's "turn it face up, then put a
 	// +1/+1 counter on it" (CR 702.37b). False for morph and
 	// disguise.
+	//
+	// It rides the COST: CR 702.37b puts the counter on "if its
+	// megamorph cost was paid to turn it face up", so it is copied onto
+	// the offer (keywordOffer) and an effect that turns the permanent
+	// up pays nothing and gets no counter. AsTurnedFaceUp, below, is
+	// the clause that does not ride the cost.
 	FaceUpCounter bool
+
+	// AsTurnedFaceUp is the card's own printed "As this creature is
+	// turned face up, put N +1/+1 counters on it" — Bubble Smuggler's
+	// four, Crowd-Control Warden's X (#5237). Nil for every card that
+	// prints no such clause, megamorph included.
+	//
+	// It is a replacement effect (CR 614.1e), and CR 708.11 applies it
+	// WHILE the permanent is being turned face up, not afterward, so
+	// the counters are already on it when any "when this is turned face
+	// up" trigger looks (finishTurnFaceUpLocked puts them on before it
+	// emits EventTurnedFaceUp).
+	//
+	// Unlike FaceUpCounter it is an ability of the face-up CARD, not a
+	// rider on a cost, so it applies whichever way the permanent comes
+	// up: its disguise cost, a manifested card's mana cost
+	// (CR 701.40b), or an effect that turns it face up (CR 708.8). It
+	// is never copied onto a SpecialAction for that reason.
+	//
+	// Nor onto the permanent. finishTurnFaceUpLocked reads it off the
+	// card's CATALOG ROW at the moment of turning, so a computed count
+	// is a function in the catalog and never a closure on game state
+	// (ADR 0041's closure ratchet), and a restored game reads the same
+	// row the running one did. A pointer, so FaceDownCast stays
+	// comparable.
+	AsTurnedFaceUp *AsTurnedFaceUpCounters
+}
+
+// AsTurnedFaceUpCounters is "put N +1/+1 counters on it" as a
+// CR 614.1e "As this permanent is turned face up" replacement — the
+// payload of FaceDownCast.AsTurnedFaceUp. N is fixed, or Count's
+// answer when Count is set.
+type AsTurnedFaceUpCounters struct {
+	// N is a printed, fixed count: Bubble Smuggler's "four".
+	N int
+
+	// Count, when set, computes N at the moment the permanent is
+	// turned face up, and N is ignored: Crowd-Control Warden's "where X
+	// is the number of other creatures you control". It is called once
+	// per turn, after the face-down state is cleared (so `c` is the
+	// face-up card, under its controller), with g.mu held: read the
+	// board through the ForEffect accessors and mutate nothing.
+	Count func(g *Game, c *Card) int
+}
+
+// amount is N for this turn face up. Zero or less puts nothing on.
+func (a *AsTurnedFaceUpCounters) amount(g *Game, c *Card) int {
+	if a.Count != nil {
+		return a.Count(g, c)
+	}
+	return a.N
 }
 
 // FaceDownCastFor returns the card's own CR 708.4 face-down cast
@@ -669,7 +725,10 @@ func CanTurnFaceUpForEffect(c Card) bool {
 // CR 702.37b puts that counter on the permanent only if its megamorph
 // cost was paid to turn it face up, so a megamorph card turned up by
 // an effect arrives without it. The counter rides the cost, and an
-// effect has none.
+// effect has none. The card's own "As this creature is turned face up,
+// put N +1/+1 counters on it" (FaceDownCast.AsTurnedFaceUp) is
+// different and does apply here: it is the card's ability, not a rider
+// on a cost (CR 614.1e, CR 708.11).
 //
 // Caller must hold g.mu (write).
 func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
@@ -683,8 +742,9 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 	if source == uuid.Nil {
 		source = id
 	}
-	// No counter is requested, so the only error the shared tail can
-	// return (the megamorph counter's) cannot happen.
+	// No megamorph counter is requested. The shared tail's only other
+	// error is the AsTurnedFaceUp placement's, on a permanent it has
+	// just found on the battlefield, so it cannot happen either.
 	return g.finishTurnFaceUpLocked(idx, actor, source, id, false) == nil
 }
 
@@ -696,7 +756,9 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 // for the special action, the effect's source otherwise (the log
 // narrates the second and stays silent on the first, which its own
 // special-action line already covers). `counter` is CR 702.37b's
-// megamorph counter, owed only when the megamorph COST was paid.
+// megamorph counter, owed only when the megamorph COST was paid. The
+// card's own "As this creature is turned face up" counters
+// (asTurnedFaceUpCountersLocked) are owed on every call.
 //
 // CR 708.8: turning a permanent face up DOES NOT make it a new
 // object. So this touches nothing that identifies one — InstanceID,
@@ -748,6 +810,12 @@ func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, 
 			return err
 		}
 	}
+	// CR 614.1e / CR 708.11: the card's own "As this creature is turned
+	// face up, put N +1/+1 counters on it", on every route up and also
+	// before the event (#5237).
+	if err := g.asTurnedFaceUpCountersLocked(cardID); err != nil {
+		return err
+	}
 	g.EmitEvent(Event{
 		Kind:   EventTurnedFaceUp,
 		Actor:  actor,
@@ -755,6 +823,46 @@ func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, 
 		CardID: cardID,
 	})
 	return nil
+}
+
+// asTurnedFaceUpCountersLocked applies the CR 614.1e "As this creature
+// is turned face up, put N +1/+1 counters on it" clause the card at
+// cardID declares (FaceDownCast.AsTurnedFaceUp), if it declares one.
+// finishTurnFaceUpLocked calls it once the face-down state is cleared
+// and before EventTurnedFaceUp goes out, which is CR 708.11's "applied
+// while that permanent is being turned face up, not afterward".
+//
+// The declaration is read off the CATALOG ROW of the card that is now
+// face up — CatalogKey answers again the instant ClearFaceDown has run
+// — and a computed N is counted here, against the board as it stands
+// at this moment. Nothing is stored anywhere for it, so a face-down
+// permanent restored from a snapshot comes up exactly as the running
+// game's would.
+//
+// The permanent's CONTROLLER puts the counters: the clause is that
+// permanent's ability, whoever's effect turned it face up (Hauntwoods
+// Shrieker can reach an opponent's creature card). They go through the
+// CR 614 counter window, settled now, so Hardened Scales and Doubling
+// Season see them as they would any other placement; a permanent that
+// can't have counters put on it gets none (#4692).
+//
+// Caller must hold g.mu (write).
+func (g *Game) asTurnedFaceUpCountersLocked(cardID uuid.UUID) error {
+	idx := findCardOnBattlefield(g, cardID)
+	if idx < 0 {
+		return nil
+	}
+	up := g.Battlefield.Cards[idx]
+	alt := FaceDownCastFor(CatalogKey(up))
+	if alt == nil || alt.FaceDown == nil || alt.FaceDown.AsTurnedFaceUp == nil {
+		return nil
+	}
+	n := alt.FaceDown.AsTurnedFaceUp.amount(g, &up)
+	if n <= 0 {
+		return nil
+	}
+	_, err := g.AddCounterByMustSettleNowForEffect(up.Controller, cardID, "+1/+1", n)
+	return err
 }
 
 // CanTurnFaceDown reports whether an instruction to turn this
