@@ -333,6 +333,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Cruel Administrator's Soldier with firebending 1 (Avatar, #4459).
 	printedAvB16SoldierFirebendingToken,
+	// Lita, Mechanical Engineer's Zeppelin: flying, crew 3 (#5075).
+	printedAvB24ZeppelinToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
