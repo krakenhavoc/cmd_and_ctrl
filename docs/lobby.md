@@ -4628,6 +4628,195 @@ apart by it.
 - **424** when GitHub fails while reading the deck's issue, commenting
   or filing (not 502, which Cloudflare replaces with its own page).
 
+## Pods (ADR 0220 slice 2)
+
+A pod is a named set of accounts with one owner ([ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md)).
+It has no other content. Stored in migration 0033's `pods`, `pod_members`,
+`pod_invites` and `pod_suggestion_dismissals` (`server/internal/pods`);
+account deletion passes a pod the person owns to the member who joined
+first, or deletes it if they were the last, and deletes their rows.
+
+Every route needs a signed-in person. No credential is **401**; a guest's
+seat or spectator session and the admin token are **403** (`pods need an
+account…`). With no database every route is **503** (`pods are not
+available on this server`). Ids are **our** user ids. Times are Unix
+milliseconds.
+
+**A pod is private.** Every route answers **404** (`no such pod`) to
+someone who is not a member, whether or not the pod exists. There is no
+pod search and no public list.
+
+**Limits** (§5): 12 members a pod, 10 pods a person (owned or not), 20
+pending invites a pod, 10 new invites an hour a person and a burst of 3
+new pods then 1 an hour (both in memory), invites last 30 days, a link 7.
+The writes share a per-person bucket of 1 a second with a burst of 5, the
+reads one of 2 a second with a burst of 10.
+
+**Roles** (§2). Any member may read the pod, invite one of their own
+friends and leave. Only the owner may make, rotate or turn off the link,
+rename, remove a member, hand the pod over and delete it; a member trying
+gets **403** (`only the pod's owner can do that`). When the owner leaves or
+deletes their account, the member who joined first becomes the owner;
+when the last member leaves, the pod is deleted.
+
+**Blocks** (§6, read through `social.Store`). A person with a block with
+any member, either way, cannot get in: an invite to them is **403**
+(`can't invite that person to this pod`, naming nobody), an invite to
+them already pending leaves their list and cannot be accepted, and a link
+join answers as a dead link. A block between two members made after both
+joined removes neither: each is left out of the other's member list, the
+pending invites and the member count, and the owner is left out of the
+pod's `owner` for a member they have a block with. The one exception is
+the owner's own list, which keeps a member the owner blocked as one row,
+`{"user_id", "display_name", "blocked": true}`, for Remove.
+
+**One pattern for two routes.** `/pods/join/{token}` and `/pods/{id}/link`
+both match `/pods/join/link`, which Go's `ServeMux` refuses to register
+together, so `GET` and `POST /pods/{id}/{action}` are registered and
+dispatch: an `{id}` of `join` is the link, anything else a pod (a pod id is
+a UUID). A route added under `/pods/{id}/` for `GET` or `POST` goes in that
+dispatcher (`podRead`, `podAction` in `lobby/pods_http.go`).
+
+### `GET /me/pods`
+
+```json
+{
+  "pods": [{ "id": "<uuid>", "name": "Thursday", "member_count": 4, "role": "owner" }],
+  "invites": [{ "pod_id": "<uuid>", "pod_name": "Friday", "invited_by": { "display_name": "Bea", "avatar_url": "/avatars/…" }, "since": 1789820000000 }],
+  "suggestions": [],
+  "max_pods": 10,
+  "max_members": 12
+}
+```
+
+- `pods`, by name. `role` is `owner` or `member`.
+- `invites`, newest first: invites waiting on you. One you declined is
+  not here, nor one to a pod with a member you have a block with.
+- `suggestions` is slice 4's, and empty until it lands.
+
+### `POST /pods`
+
+`{"name": "Thursday"}` makes a pod with you as its owner and only member:
+**201** with the `pods` row shape. The name is trimmed, 1 to 40
+characters, one line, no control characters (**400**, `a pod's name is 1
+to 40 characters on one line`), and goes through the name filter: a
+listed word is **400** with `"code": "name_not_allowed"`, without saying
+which. **409** in 10 pods already (`You're in 10 pods. Leave one to join
+another.`), **429** past the new-pod allowance. `suggestion` (slice 4) is
+**404** until suggestions land.
+
+### `GET /pods/{id}`
+
+```json
+{
+  "id": "<uuid>", "name": "Thursday", "role": "owner",
+  "owner": { "user_id": "<uuid>", "display_name": "Ann", "avatar_url": "/avatars/…" },
+  "member_count": 3, "max_members": 12,
+  "members": [
+    { "user_id": "<uuid>", "display_name": "Ann", "joined_at": 1789820000000, "sharing": false, "owner": true },
+    { "user_id": "<uuid>", "display_name": "Bea", "joined_at": 1789830000000, "sharing": true }
+  ],
+  "invites": [{ "user_id": "<uuid>", "display_name": "Cal", "invited_by": { "display_name": "Ann" }, "since": 1789840000000, "mine": true, "can_cancel": true }],
+  "link": { "live": true, "expires_at": 1790420000000 }
+}
+```
+
+- `members`, the member who joined first first. `sharing` is the
+  person's `stats_prefs.share_pods`, the one switch for every pod they
+  are in (ADR 0217 §6); joining shares nothing.
+- `invites`, newest first, pending to the whole pod, including one its
+  invitee declined (the decline is silent). The invitee's `user_id` and
+  `can_cancel` are there only for whoever sent it and for the owner.
+- `link` is the owner's only: whether one is live and when it stops. The
+  token itself is never shown again.
+
+### `PATCH /pods/{id}` and `DELETE /pods/{id}`
+
+The owner renames (`{"name": …}`, the same rules as `POST /pods`; **200**
+`{"id", "name"}`) or deletes the pod with its members and invites
+(**204**).
+
+### `PUT /pods/{id}/owner`
+
+`{"user_id": "<a member>"}`: the owner hands the pod over and stays a
+member (**204**). **404** (`no such member`) for someone not in the pod or
+a member with a block with the owner; **400** for yourself.
+
+### `POST /pods/{id}/invites` and `DELETE /pods/{id}/invites/{user_id}`
+
+`{"user_id": "<a friend>"}` invites one of **your own** friends (from
+`GET /me/friends`). **200** `{"outcome": "sent"|"pending", "user_id",
+"display_name"}`: `pending` when one already was, including one they
+declined. An invite carries no text.
+
+| Status | Reason |
+|---|---|
+| 400 | a bad id, or yourself |
+| 403 | they have a block with a member (`can't invite that person to this pod`) |
+| 404 | not your friend (`no such friend…`), or not your pod |
+| 409 | already in the pod, the pod is full (`This pod is full`), or 20 invites are pending |
+| 429 | 10 new invites in the last hour, or the write bucket |
+
+`DELETE …/invites/{user_id}` cancels one: whoever sent it, or the owner
+(**204**; **403** for another member, **404** with none pending).
+
+### `POST /me/pod-invites/{pod_id}/accept` and `/decline`
+
+Accept makes you a member: **200** with the `pods` row shape. **404**
+(`no such pod invite`) when there is none, it expired, or you have a block
+with a member; **409** when the pod is full (`This pod is full`) or you are
+in 10 pods. An invite you declined can still be accepted. Decline takes it
+off your list silently (**204**): the pod still sees it pending until it
+expires.
+
+### `POST /pods/{id}/link` and `DELETE /pods/{id}/link`
+
+The owner mints the invite link, or rotates it (the old one stops at
+once): **201**
+
+```json
+{ "token": "<22 characters>", "path": "#/pods/join/<token>", "expires_at": 1790420000000 }
+```
+
+The token is 128 bits in base64url, shown this once; only its SHA-256 is
+kept. It lasts 7 days and has no use count. `DELETE` turns it off
+(**204**).
+
+### `GET /pods/join/{token}` and `POST /pods/join/{token}`
+
+The preview a signed-in person sees before joining, and the join itself.
+Nothing about a pod is shown to anyone signed out.
+
+```json
+{ "name": "Thursday", "owner_name": "Ann", "member_count": 3, "member": false }
+```
+
+`member` is true, with `pod_id`, for someone already in it. `POST` joins
+(**200** with the `pods` row shape; already a member answers the same);
+**409** for someone in 10 pods.
+
+An unknown, malformed, rotated, expired or turned-off link, a full pod,
+and a join refused for a block, either way, all answer the same **404**:
+`{"error": "This invite link can't be used."}`. A probe learns nothing.
+
+### `DELETE /pods/{id}/members/{user_id}`
+
+`me`, or your own id, leaves (any member, **204**). Any other id is the
+owner removing a member (**204**; **403** for a member, **404** for someone
+not in it). Leaving and removal are silent and store nothing about the
+person. `?new_link=1` on a removal also replaces a **live** link in the
+same transaction, for the Remove dialog's "Also make a new invite link":
+**200** `{"link": {"token", "path", "expires_at"}}`. With no live link
+nothing is made and the answer is **204**.
+
+### `PUT /admin/pods/{id}/name` and `DELETE /admin/pods/{id}` *(admin only)*
+
+For a bad name that gets through the filter (ADR 0220 §8), behind
+`requireAdmin`, which writes the `admin action` audit line. `PUT` takes
+`{"name": …}` with the same rules as a member's rename (**200**
+`{"id", "name"}`); `DELETE` deletes the pod (**204**). **404** for no such
+pod. There is no pod list and no membership graph for admins.
+
 ## Session lifetimes (ADR 0110 §1)
 
 One rule for every route that mints a session
@@ -6179,4 +6368,4 @@ query string.
 
 The routes the lobby and the server serve, with the API reference above.
 
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET /me/pods`, `POST /pods`, `GET` + `PATCH` + `DELETE /pods/{id}`, `PUT /pods/{id}/owner`, `POST /pods/{id}/invites` + `DELETE /pods/{id}/invites/{user_id}`, `POST /me/pod-invites/{pod_id}/accept` + `/decline`, `POST` + `DELETE /pods/{id}/link`, `GET` + `POST /pods/join/{token}`, `DELETE /pods/{id}/members/{user_id}` and `PUT /admin/pods/{id}/name` + `DELETE /admin/pods/{id}` (pods: a named group with one owner who passes on to the member who joined first; in by a friend invite or the owner's 7-day link; members only, 404 to anyone else; 12 members, 10 pods each, 20 pending invites, 10 invites an hour, 3 new pods then 1 an hour, 30-day invites; one answer for every dead link; a block keeps a person out and hides two members from each other — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md), [docs/lobby.md](lobby.md#pods-adr-0220-slice-2)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))

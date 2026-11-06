@@ -12,7 +12,10 @@
 //  2. Delete: decks, user_settings, table_setups, notification_prefs,
 //     stats_prefs, model_keys, user_playmats, social_prefs, every
 //     friendship, friend request and personal block with the person on
-//     either side (ADR 0213 §10), the
+//     either side (ADR 0213 §10), every pod membership, every pod
+//     invite the person sent or was sent and their pod suggestion
+//     dismissals (ADR 0220 §12; a pod they owned passes to the member
+//     who joined first, or is deleted if they were the last), the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -51,6 +54,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 )
 
 // DeletedPlayerName is the stable name an anonymised seat carries, in
@@ -101,10 +105,17 @@ type Counts struct {
 	FriendRequests int
 	UserBlocks     int
 	SocialPrefRows int
-	ModelKeyRows   int
-	Identities     int
-	Reports        int
-	Blocks         int
+	// ADR 0220 §12: pods the person owned that passed to another member
+	// or were deleted, and their member, invite and dismissal rows.
+	PodsPassedOn  int
+	PodsDeleted   int
+	PodMembers    int
+	PodInvites    int
+	PodDismissals int
+	ModelKeyRows  int
+	Identities    int
+	Reports       int
+	Blocks        int
 }
 
 // Result is what Delete hands back after it commits.
@@ -328,6 +339,16 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	if err := exec(&res.Counts.SocialPrefRows, `DELETE FROM social_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
+	// Pods (ADR 0220 §12, migration 0033): a pod the person owns passes
+	// to the member who joined first, or is deleted with its invites if
+	// they were the last; then their member, invite (sent or received)
+	// and dismissal rows go. A pod's name stays with the pod.
+	pc, err := pods.ForgetAccount(ctx, tx, uid, at)
+	if err != nil {
+		return Result{}, fmt.Errorf("accountdelete: pods: %w", err)
+	}
+	res.Counts.PodsPassedOn, res.Counts.PodsDeleted = pc.PodsPassedOn, pc.PodsDeleted
+	res.Counts.PodMembers, res.Counts.PodInvites, res.Counts.PodDismissals = pc.Members, pc.Invites, pc.Dismissals
 	// The person's own model key (ADR 0182, migration 0025), sealed
 	// key and all. A bot seat that ran on it keeps pointing at the
 	// tombstone (seats.bot_key_user_id), which carries no identity and

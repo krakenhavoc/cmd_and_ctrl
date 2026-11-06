@@ -234,6 +234,11 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 	if c.Social != nil {
 		c.Social.Forget(id.String())
 	}
+	// ADR 0220 §12: the pod rows went in the transaction; the invite and
+	// new-pod rate windows are the only part held in memory.
+	if c.Pods != nil {
+		c.Pods.Forget(id.String())
+	}
 	if c.Playmats != nil {
 		if err := c.Playmats.ForgetFiles(res.PlaymatIDs); err != nil {
 			log.Warn("account deletion: removing playmat files failed", "user_id", id, "err", err)
@@ -262,6 +267,11 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"friend_requests", res.Counts.FriendRequests,
 		"user_blocks", res.Counts.UserBlocks,
 		"social_prefs_rows", res.Counts.SocialPrefRows,
+		"pods_passed_on", res.Counts.PodsPassedOn,
+		"pods_deleted", res.Counts.PodsDeleted,
+		"pod_members", res.Counts.PodMembers,
+		"pod_invites", res.Counts.PodInvites,
+		"pod_dismissals", res.Counts.PodDismissals,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,
