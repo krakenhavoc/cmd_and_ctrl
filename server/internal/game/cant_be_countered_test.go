@@ -365,7 +365,10 @@ func TestAnAbilityShieldStopsEveryCounterVerb(t *testing.T) {
 		{"counter to the bottom of the library", func(g *Game, id uuid.UUID) error {
 			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{ToBottom: true}, KeyedTail{})
 		}},
-		{"counter unless paid, declined", func(g *Game, id uuid.UUID) error { return g.counterIfStillOnStackLocked(id) }},
+		{"counter unless paid, declined", func(g *Game, id uuid.UUID) error { return g.counterIfStillOnStackLocked(id, ZoneRef{}) }},
+		{"counter unless paid to exile, declined", func(g *Game, id uuid.UUID) error {
+			return g.counterIfStillOnStackLocked(id, ZoneRef{Kind: ZoneExile})
+		}},
 	}
 	for _, v := range verbs {
 		for _, kind := range []StackItemKind{StackItemActivated, StackItemTriggered} {

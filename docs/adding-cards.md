@@ -8550,7 +8550,11 @@ Negation, every cumulative upkeep that is not a coin flip),
 Charger, Banon), `GuardedPayUnless{Else}` (Divert; the guarded spell is
 `r.Guards`) and `CounterUnlessPaid{Then}` for a consequence on the paid half.
 A plain `CounterUnlessPaid` (Daze, Mana Leak, ward's mana half) is keyed by the
-engine and needs nothing from the card. A non-mana payment (a discard, a
+engine and needs nothing from the card. "If that spell is countered this way,
+exile it instead" is `CounterUnlessPaid{Dest: game.ZoneRef{Kind:
+game.ZoneExile}}` (Syncopate, No More Lies; #5236), which the engine keys as
+`pay-unless/counter-guarded-exile`; exile is the only destination keyed so far,
+any other is refused, and so is a `Dest` beside a `Then`. A non-mana payment (a discard, a
 sacrifice, a tap) is plain data on the prompt (`PayActionClause`). The any-player
 offers are `AnyPlayerPays{Then, Carry}` with `AnyPlayerConsequences(key, onPaid,
 onNobody, perPayer)` (`anyPlayerMayCounterThisSpell` is the shared helper; Dash
