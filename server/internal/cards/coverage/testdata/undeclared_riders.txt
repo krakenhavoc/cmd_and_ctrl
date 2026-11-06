@@ -70,6 +70,7 @@ Origin of the Avengers | scry | on a triggered row that is not the card's enters
 Overgrown Arch | learn | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Palantír of Orthanc | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Path of Ancestry | scry | the text makes it conditional or optional
+Poised Practitioner | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Political Triumph | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Prescient Chimera | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Primordial Gnawer | discover | on a triggered row that is not the card's enters effect, which nothing prices
