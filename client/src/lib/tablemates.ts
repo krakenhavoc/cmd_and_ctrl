@@ -26,6 +26,10 @@ export interface Tablemate {
   games_together?: number;
   /** The name of the most recent one. Absent from an older server. */
   last_table?: string;
+  /** Whether you are friends (ADR 0213 slice 3). Absent when you are not. */
+  friend?: boolean;
+  /** A pending friend request between you: they asked you, or you asked them. */
+  request?: "incoming" | "outgoing";
 }
 
 export interface TablematesResponse {

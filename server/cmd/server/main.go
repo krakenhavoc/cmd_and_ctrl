@@ -227,6 +227,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -902,6 +903,7 @@ func main() {
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
 		StatsPrefs:        newStatsPrefsStore(database),
+		Social:            newSocialStore(database),
 		AdvancedStats:     newAdvancedStatsStore(database),
 		Log:               log,
 		Bots:              bots,
@@ -1702,6 +1704,15 @@ func newStatsPrefsStore(database *db.DB) gamestats.PrefsStore {
 		return nil
 	}
 	return gamestats.NewSQLPrefsStore(database)
+}
+
+// newSocialStore is ADR 0213's friends and blocks (migration 0032), or
+// nil with no database, where nobody is signed in to have friends.
+func newSocialStore(database *db.DB) *social.Store {
+	if database == nil {
+		return nil
+	}
+	return social.NewStore(database)
 }
 
 func newTableSetupStore(database *db.DB) tablesetups.Store {

@@ -122,6 +122,13 @@
   import AgentChip from "../lib/components/AgentChip.svelte";
   import DeckPowerBadge from "../lib/components/DeckPowerBadge.svelte";
   import Page from "../lib/components/Page.svelte";
+  import {
+    askFriendAtSeat,
+    canBefriendSeat,
+    friendErrorLine,
+    outcomeLine,
+    stateAfter,
+  } from "../lib/friends";
   import { noteMyGames } from "../lib/hints/endedGame";
 
   // Tables, the signed-in home (ADR 0112 §1, ADR 0158 §1). The page
@@ -265,6 +272,38 @@
   // shared admin token has none, and gets the box disabled.
   let wantLFG = $state(false);
   const lfgCreateBlocked = $derived(signedInUserID($session) === null);
+
+  // Add friend on another signed-in person's seat (ADR 0213 §2, slice 3):
+  // asked by seat, so the page never holds an account id. Where each seat
+  // stands after asking, keyed by table and seat, for as long as the page
+  // is open; the drawer's Played with is where it is remembered.
+  let seatFriends = $state<
+    Record<string, { state: "none" | "outgoing" | "friend"; note?: string }>
+  >({});
+  let befriendBusy = $state(false);
+  function seatKey(g: GameMeta, p: SeatInfo): string {
+    return `${g.id}|${p.player_id}`;
+  }
+  async function befriendSeat(g: GameMeta, p: SeatInfo): Promise<void> {
+    if (befriendBusy) return;
+    befriendBusy = true;
+    const key = seatKey(g, p);
+    try {
+      const res = await askFriendAtSeat(g.id, p.player_id);
+      const next = stateAfter(res.outcome);
+      seatFriends = {
+        ...seatFriends,
+        [key]: {
+          state: next === "friend" ? "friend" : "outgoing",
+          note: outcomeLine(res.outcome, res.display_name || seatName(p)),
+        },
+      };
+    } catch (err) {
+      seatFriends = { ...seatFriends, [key]: { state: "none", note: friendErrorLine(err) } };
+    } finally {
+      befriendBusy = false;
+    }
+  }
   // ADR 0174 §1: shown only when the server has a results channel, off
   // by default. The post names the seats, not accounts, so a guest host
   // may tick it.
@@ -1759,6 +1798,14 @@
                               expanded: panel === "deck",
                               controls: pickerID(g.id),
                               onclick: () => togglePanel(g, "deck"),
+                            }
+                          : undefined}
+                        befriend={signedInUserID($session) && canBefriendSeat(p, myNo)
+                          ? {
+                              state: seatFriends[seatKey(g, p)]?.state ?? "none",
+                              note: seatFriends[seatKey(g, p)]?.note,
+                              disabled: befriendBusy,
+                              onclick: () => void befriendSeat(g, p),
                             }
                           : undefined}
                         remove={(p.is_bot ? canManageBots(g) : canRemove(g, p))

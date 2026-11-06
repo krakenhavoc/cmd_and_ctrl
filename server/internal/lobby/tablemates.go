@@ -39,6 +39,13 @@ package lobby
 // lets an ordinary caller name only a person this query returns
 // (IsTablemate), so the picker and the route cannot disagree about who
 // counts.
+//
+// ADR 0213 slice 3 adds friends and personal blocks (internal/social).
+// GET /me/tablemates leaves out anyone with a block between the two
+// people, in either direction, and marks each entry as a friend or with
+// a pending request (Config.playedWith). The DM route's gate becomes
+// "a tablemate or a friend, and no block either way" (Config.mayReach),
+// and so does the friend request's, which counts tablemates only.
 
 import (
 	"context"
@@ -90,7 +97,20 @@ type Tablemate struct {
 	// LastTable is the name of the most recent one, which is already in
 	// both people's History.
 	LastTable string `json:"last_table"`
+	// Friend is whether the two of you are friends (ADR 0213 §1, slice
+	// 3). Absent when you are not.
+	Friend bool `json:"friend,omitempty"`
+	// Request is a pending friend request between you: "incoming" (they
+	// asked you, and you have not ignored it) or "outgoing" (you asked
+	// them). Absent when there is none.
+	Request string `json:"request,omitempty"`
 }
+
+// The values of Tablemate.Request.
+const (
+	RequestIncoming = "incoming"
+	RequestOutgoing = "outgoing"
+)
 
 // Tablemates lists the people userID has shared a table with, most
 // recent table first, at most MaxTablemates of them. The caller is
@@ -179,12 +199,90 @@ func myTablemates(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	mates, err := c.Lobby.Tablemates(p.UserID)
+	mates, err := c.playedWith(r.Context(), p.UserID)
 	if err != nil {
 		c.logger().Error("listing a user's tablemates failed", "err", err)
 		return httpError(http.StatusInternalServerError, "could not load your tablemates; try again")
 	}
 	return writeJSON(w, http.StatusOK, tablematesResponse{Tablemates: mates})
+}
+
+// playedWith is the Played with list as GET /me/tablemates serves it
+// (ADR 0213 §1, §3): the tablemates, minus anyone with a block between
+// them and userID in either direction, each marked as a friend or with
+// a pending request, capped at MaxTablemates. The block is applied
+// before the cap, so a blocked person does not take one of the 50
+// places.
+func (c Config) playedWith(ctx context.Context, userID uuid.UUID) ([]Tablemate, error) {
+	all, err := c.Lobby.allTablemates(userID)
+	if err != nil {
+		return nil, err
+	}
+	if c.Social != nil && len(all) > 0 {
+		rel, err := c.Social.Relations(ctx, userID.String())
+		if err != nil {
+			return nil, err
+		}
+		kept := all[:0]
+		for _, m := range all {
+			id := m.UserID.String()
+			if rel.Blocked[id] {
+				continue
+			}
+			m.Friend = rel.Friends[id]
+			switch {
+			case rel.Incoming[id]:
+				m.Request = RequestIncoming
+			case rel.Outgoing[id]:
+				m.Request = RequestOutgoing
+			}
+			kept = append(kept, m)
+		}
+		all = kept
+	}
+	if len(all) > MaxTablemates {
+		all = all[:MaxTablemates]
+	}
+	return all, nil
+}
+
+// mayReach is the rule for naming another person in an invite or a
+// friend request (ADR 0213 §1, §3): target is one of userID's tablemates
+// (the whole relation, not the capped list) or friends, and neither has
+// blocked the other. blockedByMe says the block that refused it was the
+// caller's own, so the caller can be told; a block the other person made
+// reads like any other refusal.
+func (c Config) mayReach(ctx context.Context, userID, target uuid.UUID, friendsCount bool) (ok, blockedByMe bool, err error) {
+	if target == uuid.Nil || target == userID {
+		return false, false, nil
+	}
+	if c.Social != nil {
+		mine, err := c.Social.IsBlocking(ctx, userID.String(), target.String())
+		if err != nil {
+			return false, false, err
+		}
+		if mine {
+			return false, true, nil
+		}
+		theirs, err := c.Social.IsBlocking(ctx, target.String(), userID.String())
+		if err != nil {
+			return false, false, err
+		}
+		if theirs {
+			return false, false, nil
+		}
+		if friendsCount {
+			friends, err := c.Social.AreFriends(ctx, userID.String(), target.String())
+			if err != nil {
+				return false, false, err
+			}
+			if friends {
+				return true, false, nil
+			}
+		}
+	}
+	mate, err := c.Lobby.IsTablemate(userID, target)
+	return mate, false, err
 }
 
 // --- SQLStore ----------------------------------------------------

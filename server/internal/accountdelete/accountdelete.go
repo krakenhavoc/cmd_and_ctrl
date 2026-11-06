@@ -10,7 +10,9 @@
 //  1. Refuse if the person holds a seat at a table that has not ended
 //     (a lobby or an active game). SeatedError names the table.
 //  2. Delete: decks, user_settings, table_setups, notification_prefs,
-//     stats_prefs, model_keys, user_playmats, the
+//     stats_prefs, model_keys, user_playmats, social_prefs, every
+//     friendship, friend request and personal block with the person on
+//     either side (ADR 0213 §10), the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -94,10 +96,15 @@ type Counts struct {
 	SetupRows       int
 	NotifyPrefRows  int
 	StatsPrefRows   int
-	ModelKeyRows    int
-	Identities      int
-	Reports         int
-	Blocks          int
+	// ADR 0213 §10: rows with the person on either side.
+	Friendships    int
+	FriendRequests int
+	UserBlocks     int
+	SocialPrefRows int
+	ModelKeyRows   int
+	Identities     int
+	Reports        int
+	Blocks         int
 }
 
 // Result is what Delete hands back after it commits.
@@ -301,6 +308,24 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	// share link's hash goes with it, so the link stops working in
 	// this transaction.
 	if err := exec(&res.Counts.StatsPrefRows, `DELETE FROM stats_prefs WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
+	// Friends and blocks (ADR 0213 §10, migration 0032): every row that
+	// names the person, on either side. A block made against them goes
+	// too, as a table block does: a new account is a new person.
+	if err := exec(&res.Counts.Friendships,
+		`DELETE FROM friendships WHERE user_a = ? OR user_b = ?`, uid, uid); err != nil {
+		return Result{}, err
+	}
+	if err := exec(&res.Counts.FriendRequests,
+		`DELETE FROM friend_requests WHERE from_user = ? OR to_user = ?`, uid, uid); err != nil {
+		return Result{}, err
+	}
+	if err := exec(&res.Counts.UserBlocks,
+		`DELETE FROM user_blocks WHERE user_id = ? OR blocked_user_id = ?`, uid, uid); err != nil {
+		return Result{}, err
+	}
+	if err := exec(&res.Counts.SocialPrefRows, `DELETE FROM social_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
 	// The person's own model key (ADR 0182, migration 0025), sealed

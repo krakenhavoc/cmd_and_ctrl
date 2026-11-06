@@ -13,6 +13,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -72,6 +73,7 @@ func newUserStackWithDB(t *testing.T, sealer *users.Sealer, configure func(*Conf
 		c.Auth = a
 		c.Users = us
 		c.UserSettings = usersettings.NewSQLStore(d)
+		c.Social = social.NewStore(d)
 		if configure != nil {
 			configure(c, d)
 		}

@@ -125,6 +125,17 @@ var Inventory = join(
 	cols("model_keys", Deleted, "the person's own model key for their AI seats (ADR 0182): the sealed key, its last four characters, the provider, address, model, limits, counts, dates and last error",
 		"user_id", "provider", "base_url", "model", "sealed_key", "last4", "games_per_day", "calls_per_game",
 		"day", "day_games", "created_at", "updated_at", "last_used_at", "last_error", "last_error_at"),
+	// ADR 0213 §10 (slice 3, migration 0032): friends and blocks. Every
+	// row names the person on one side or the other, and goes whichever
+	// side they are on.
+	cols("friendships", Deleted, "every friendship the person is in, on either side (ADR 0213 §2)",
+		"user_a", "user_b", "created_at"),
+	cols("friend_requests", Deleted, "every friend request the person sent or was sent, and whether the receiver ignored it (ADR 0213 §2)",
+		"from_user", "to_user", "created_at", "ignored_at"),
+	cols("user_blocks", Deleted, "every block the person made, and every block made against them (ADR 0213 §3)",
+		"user_id", "blocked_user_id", "created_at"),
+	cols("social_prefs", Deleted, "the person's two social settings: who sees what they are doing, and who can send them friend requests (ADR 0213 §5)",
+		"user_id", "presence", "requests", "updated_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 

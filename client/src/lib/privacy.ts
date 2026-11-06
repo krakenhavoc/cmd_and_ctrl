@@ -107,8 +107,16 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * when a table was last used, and why the server closed it for being
  * idle. Both are about the table and name no one, and nothing on the
  * notice changes.
+ *
+ * 32 (#3313, ADR 0213 slice 3) adds friendships, friend_requests,
+ * user_blocks and social_prefs: a person's friends, the friend requests
+ * they sent and were sent (with whether the receiver ignored one), the
+ * people they blocked, and their two social settings. The new "Friends
+ * and blocks" row names them, with the 30-day request expiry and the
+ * friends cap; account deletion deletes every row with the person on
+ * either side.
  */
-export const PRIVACY_SCHEMA_VERSION = 31;
+export const PRIVACY_SCHEMA_VERSION = 32;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -145,6 +153,10 @@ export const PRIVACY_FACTS = {
   reportEveryMinutes: 5,
   /** ws.RecentChatLimit: chat lines a table remembers in memory, only to attach to a report. */
   chatRecentLines: 20,
+  /** social.RequestTTL, in days: an unanswered friend request is deleted after this long. */
+  friendRequestDays: 30,
+  /** social.MaxFriends: friends one person can have. */
+  friendCap: 200,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */
   logDays: 30,
   /** scripts/backup-offsite.sh: restic keeps this many daily snapshots. */
