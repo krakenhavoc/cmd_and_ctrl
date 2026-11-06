@@ -103,24 +103,6 @@ func eoeABNamedCount(g *game.Game, owner uuid.UUID, name string) int {
 	return n
 }
 
-// eoeABToken creates a token for owner through the effect API, so it
-// enters the way a created token does, and returns its id.
-func eoeABToken(t *testing.T, g *game.Game, owner uuid.UUID, c game.Card) uuid.UUID {
-	t.Helper()
-	g.WithWriteLock(func() {
-		if err := g.CreateTokenForEffect(owner, c, 1); err != nil {
-			t.Fatal(err)
-		}
-	})
-	g.RunStateChecksForTest()
-	passPriorityAroundTable(t, g)
-	id := avB1Named(g, owner, c.Name)
-	if id == uuid.Nil {
-		t.Fatalf("token %s was not created", c.Name)
-	}
-	return id
-}
-
 // eoeABOfferedCards is the set of cards the open target prompt offers.
 func eoeABOfferedCards(t *testing.T, g *game.Game) map[uuid.UUID]bool {
 	t.Helper()
