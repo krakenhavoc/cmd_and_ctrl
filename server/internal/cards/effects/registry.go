@@ -2453,7 +2453,10 @@ func checkOnlyOnce(spec Spec) {
 // one ability of either kind. `seen` is shared across the kinds
 // because the record's key space is.
 func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool, seen map[string]bool) {
-	mentions := strings.Contains(strings.ToLower(label), "exhaust")
+	// "an exhaust ability" names other abilities (Pit Automaton's "When
+	// you next activate an exhaust ability …"); only the keyword itself
+	// marks this one.
+	mentions := strings.Contains(strings.ReplaceAll(strings.ToLower(label), "exhaust abilit", ""), "exhaust")
 	if exhaust && !mentions {
 		panic(fmt.Sprintf("effects.Register: %q %s %d sets Exhaust but its label does not print the keyword — the label is what the player reads", name, kind, i))
 	}
