@@ -371,4 +371,7 @@ var tokenTable = map[string]game.Card{
 
 	// #4459 batch 8: Avatar's Ballistic Boulder (Fire Navy Trebuchet, TTLA 13).
 	"2/1 colorless Construct artifact with flying named Ballistic Boulder": {Name: "Ballistic Boulder", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
+
+	// #5075 batch 34: Avatar Eternal's plain Soldier (Fire Nation Archers, TTLE).
+	"2/2 red Soldier": {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"R"}},
 }
