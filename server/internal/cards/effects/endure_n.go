@@ -54,6 +54,17 @@ func EndureN(ctx *Context, permanent uuid.UUID, n int, name string) error {
 	}.Apply(ctx)
 }
 
+// ThisEndures is a trigger body "<this> endures n": the resolving
+// ability's own source endures (Sandskitter Outrider's enters trigger,
+// Sinkhole Surveyor's attack trigger). `name` heads the prompt.
+//
+//	WhenThisEnters("Sandskitter Outrider — it endures 2", ThisEndures("Sandskitter Outrider", 2)),
+func ThisEndures(name string, n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		return EndureN(NewContext(g, item), item.SourceCardID, n, name)
+	}
+}
+
 // endureCanTakeCounters is whether `permanent` is still the object the
 // effect names and on the battlefield.
 func endureCanTakeCounters(ctx *Context, permanent uuid.UUID) bool {

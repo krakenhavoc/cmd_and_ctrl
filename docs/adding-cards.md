@@ -101,6 +101,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
+  - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -13033,6 +13034,20 @@ if Void(ctx.Game) { … }                     // a spell's "instead if", read as
 ```
 
 The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the trigger fires and again as it resolves, and an `effect` that is a `Do` keeps its steps, so a later step still waits for an earlier step's prompt. Set `Targets` on the returned ability for a targeted body. A land (a land creature too) leaving does not count; a token ceasing to exist does; a spell cast for any alternative cost that carries the warp exile clause counts whether or not it resolves.
+
+### Celebration: "two or more nonland permanents entered" (#5164)
+
+**Celebration** (CR 207.2c) is "two or more nonland permanents entered the battlefield under your control this turn", one per-player turn-tally fact (`PlayerTurnTally.NonlandPermanentsEntered`, read through `Game.NonlandPermanentsEnteredThisTurn`; `cards/effects/celebration.go`). Each entry counts once whatever its card types, so an artifact creature is one; tokens count; a land, a land creature included, does not; one that has since left still counts, and the source counts itself if it entered this turn. Never add up the per-type entry tallies, and never walk `g.Events`.
+
+```go
+SelfPumpWhileCelebration(0, 2)                        // "This creature gets +0/+2 as long as …"
+WheneverThisAttacksIfCelebration(label, effect)       // "Celebration — Whenever ~ attacks, if …"
+AtBeginningOfYourCombatIfCelebration(label, effect)   // "Celebration — At the beginning of combat on your turn, if …"
+InterveningIf(CondCelebration{}, On(...))             // any other trigger shape
+if Celebration(g, item.Controller) { … }              // a resolution-time check
+```
+
+The trigger shapes are intervening ifs (CR 603.4), and `CondCelebration` declares `game.FootprintCondCelebration`, since the count only rises within a turn. Set `Targets` on the returned ability for a targeted body.
 
 ### Adding a `Spec` slot (#622)
 
