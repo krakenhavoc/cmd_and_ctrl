@@ -50,21 +50,29 @@ func init() {
 // the battlefield tapped and the other into your hand" resolution,
 // used by Cultivate and Kodama's Reach (#2942).
 func cultivateSearch(ctx *Context, name string) error {
+	return twoLandSearch(ctx, name, "basic land", IsBasicLand, cultivateHandHalf(name))
+}
+
+// twoLandSearch is cultivateSearch over any land predicate: one `what`
+// onto the battlefield tapped, then the `hand` tail (a landToHandTail)
+// for the other and the shuffle. Claim Territory's "up to two basic
+// Forest cards" is the other caller.
+func twoLandSearch(ctx *Context, name, what string, pred func(game.Card) bool, hand game.TailRef) error {
 	controller := ctx.Controller()
 	source := ctx.Source()
 	return SearchLibrary{
 		Player:        controller,
 		Source:        source,
-		Predicate:     IsBasicLand,
+		Predicate:     pred,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
 		Reveal:        true,
 		Shuffle:       false,
 		TappedOnEntry: true,
-		Reason:        name + " — basic land onto the battlefield tapped",
+		Reason:        name + " — " + what + " onto the battlefield tapped",
 		// #4253 slice 4: the hand half is a registered tail, so the first
 		// land's entry question is a restore point.
-		ThenTail: game.KeyedTail{Ref: cultivateHandHalf(name), Player: controller, Source: source},
+		ThenTail: game.KeyedTail{Ref: hand, Player: controller, Source: source},
 	}.Apply(ctx)
 }
 
@@ -76,16 +84,22 @@ var (
 )
 
 func cultivateHandTail(key, name string) game.TailRef {
+	return landToHandTail(key, name, "basic land", IsBasicLand)
+}
+
+// landToHandTail registers the hand half of a two-land search under
+// `key`: one `what` into your hand, then the shuffle.
+func landToHandTail(key, name, what string, pred func(game.Card) bool) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
 		return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 			Player:  o.Tail.Player,
 			Source:  o.Tail.Source,
-			Pred:    IsBasicLand,
+			Pred:    pred,
 			Dest:    game.ZoneHand,
 			Limit:   1,
 			Reveal:  true,
 			Shuffle: true,
-			Reason:  name + " — basic land into your hand",
+			Reason:  name + " — " + what + " into your hand",
 		})
 	})
 }

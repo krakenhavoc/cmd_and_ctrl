@@ -91,6 +91,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Companion (CR 702.139, ADR 0172, #3401)](#companion-cr-702139-adr-0172-3401)
   - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
+  - [Omen cards (CR 720, #5175)](#omen-cards-cr-720-5175)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
@@ -12413,6 +12414,28 @@ creature is renowned" are intervening ifs (CR 603.4): read `ThisIsRenowned(sourc
 in `AppliesTo` and `ThisWasRenowned(ctx)` in the effect, which reads the source
 as it last existed if it has left (Consul's Lieutenant, Scab-Clan Berserker).
 Never write a renown trigger by hand, and never set `Card.Renowned` from a card.
+
+### Omen cards (CR 720, #5175)
+
+An omen card is an Adventure card with a different exit, and Scryfall lays
+it out as `adventure`. Register both faces the same way: the permanent
+under the bare oracle ID and the Omen half under `"<oracle_id>#1"`, with
+the Omen's `Targets`, `Purpose` and `OnResolve` written as for any instant
+or sorcery. See
+[bloomvine_regent.go](../server/internal/cards/effects/bloomvine_regent.go)
+and [twinmaw_stormbrood.go](../server/internal/cards/effects/twinmaw_stormbrood.go).
+
+Write nothing about the lifecycle. The engine reads the `Omen` spell type
+off the face's type line (`castAsOmen`, [game/omen.go](../server/internal/game/omen.go)),
+so an Omen half never takes the Adventure exile. As it resolves, the card
+goes to its owner's library and that library is shuffled (CR 720.3d, the
+`omen` resolution exit and its `engine/omen-shuffled` tail). A countered
+or fizzled Omen goes to the graveyard, and a copy ceases to exist. The
+hand offers both halves through `CastableFaces`, the one gate the
+engine, the view and the bot enumerator share, and in every other zone the
+card is its permanent half, mana value included (CR 720.4). An Omen half
+whose text searches and shuffles ("Also shuffle this card") needs nothing
+extra: the search shuffles, then the exit shuffles again.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 
