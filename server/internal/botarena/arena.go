@@ -216,6 +216,14 @@ const VariantNoResolutionMana = "noresolutionmana"
 // NoResolutionManaContestant is an arena name only.
 const NoResolutionManaContestant = string(tiers.Heuristic) + "-" + VariantNoResolutionMana
 
+// VariantTriggerMana turns on #4770's count of triggered mana in the turn
+// plan's mana model (Config.PlanTriggerMana), which DefaultConfig leaves
+// off.
+const VariantTriggerMana = "triggermana"
+
+// TriggerManaContestant is an arena name only.
+const TriggerManaContestant = string(tiers.Heuristic) + "-" + VariantTriggerMana
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
 // `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
@@ -226,8 +234,11 @@ const NoResolutionManaContestant = string(tiers.Heuristic) + "-" + VariantNoReso
 // `heuristic-sourcecounters` (#5083) is one too.
 // `heuristic-noriders` (#4978) is one too.
 // `heuristic-noresolutionmana` (#4980) is one too.
+// `heuristic-triggermana` (#4770) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
+	case TriggerManaContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantTriggerMana}, nil
 	case BaselineContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
 	case RampCurveContestant:
@@ -462,7 +473,7 @@ func knownVariant(v string) bool {
 		return true
 	case VariantSourceCounters, VariantNoSpareMana:
 		return true
-	case VariantNoResolutionMana:
+	case VariantNoResolutionMana, VariantTriggerMana:
 		return true
 	}
 	return false
@@ -977,6 +988,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PriceResolutionMana = false
 		opt.Heuristic = &h
+	case VariantTriggerMana:
+		h := heuristic.DefaultConfig()
+		h.PlanTriggerMana = true
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -1012,6 +1027,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return TricksBattleDeck(uuid.Nil), nil
 	case ThopterDeckID:
 		return ThopterBattleDeck(uuid.Nil), nil
+	case GhastDeckID:
+		return GhastBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

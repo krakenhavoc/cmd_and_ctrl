@@ -622,6 +622,17 @@ type Config struct {
 	// amendment of 2026-10-16, #3976). Off (the zero value) leaves such a
 	// row out of the plan's mana model, as ADR 0136 §2 shipped.
 	PlanRestrictedMana bool
+	// PlanTriggerMana counts, on each source the plan's mana model reads,
+	// the mana a tap would add through triggered mana abilities, as the
+	// view's trigger_adds names it (#4770, ADR 0074's amendment of
+	// 2026-10-30, owner decision 2): a Swamp under Crypt Ghast makes
+	// {B}{B}, a Forest under Mirari's Wake {G}{G}. Off (the zero value,
+	// DefaultConfig and BaselineConfig) counts only `produced`, which CR
+	// 106.7 keeps the trigger's mana out of: in #4770's arena the count
+	// did not win more games and its plan misses rose (Crypt Ghast's
+	// extort spends mana the plan does not budget), so it ships off and
+	// the arena's `heuristic-triggermana` turns it on (docs/bot-testing.md).
+	PlanTriggerMana bool
 	// PlanRockTwoTurns weighs a mana source against the turn's chosen
 	// line over two turns when this turn's mana pays for one or the
 	// other, not both (ADR 0136's amendment of 2026-10-09, rocknow.go):
@@ -1024,6 +1035,8 @@ func DefaultConfig() Config {
 		PlanLandDropsAsRamp: true,
 		PlanFilterLands:     true,
 		PlanRestrictedMana:  true,
+		// #4770: PlanTriggerMana stays off (no gain in the arena);
+		// `heuristic-triggermana` turns it on.
 		// A quarter off next turn: see ADR 0136's amendment of
 		// 2026-10-09 for the reason.
 		PlanRockTwoTurns:     true,
@@ -1270,6 +1283,8 @@ func BaselineConfig() Config {
 	c.PlanLandDropsAsRamp = false
 	c.PlanFilterLands = false
 	c.PlanRestrictedMana = false
+	// #4770: trigger mana uncounted.
+	c.PlanTriggerMana = false
 	c.PlanRockTwoTurns = false
 	c.PlanNextTurnDiscount = 0
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.

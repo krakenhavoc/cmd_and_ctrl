@@ -1327,6 +1327,7 @@ run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/ascent-of-the-worthy-redirect
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
+run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -1808,6 +1809,7 @@ tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/feral-appetite-pest
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
+tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
@@ -1965,6 +1967,7 @@ tail rottenmouth-viper/punish
 tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
+tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
