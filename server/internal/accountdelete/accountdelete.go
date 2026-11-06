@@ -16,8 +16,8 @@
 //     invite the person sent or was sent and their pod suggestion
 //     dismissals (ADR 0220 §12; a pod they owned passes to the member
 //     who joined first, or is deleted if they were the last), the
-//     identities row (Discord id, name, avatar hash and the encrypted
-//     refresh token), the person's deck_request_asks rows, the player
+//     identities row (Discord id, name, avatar hash, the encrypted
+//     refresh token and the encrypted Linked Roles grant), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
 //     keyed on their account or Discord id (#2984).
 //  3. Anonymise: the person's seats keep their place in the game but
@@ -130,8 +130,13 @@ type Result struct {
 	DiscordSubject string
 	// AvatarHash is the avatar hash the identity row held, "" if none.
 	AvatarHash string
-	Counts     Counts
-	DeletedAt  time.Time
+	// RoleConnectionToken is the sealed Linked Roles grant the identity
+	// row held (ADR 0163 §7), nil if the person had not linked. The row
+	// is gone; the caller uses this once to empty the connection on
+	// Discord, best effort, and must never log it.
+	RoleConnectionToken []byte
+	Counts              Counts
+	DeletedAt           time.Time
 }
 
 // Store deletes accounts. SQLStore is the production one.
@@ -206,7 +211,8 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	// were claimed through OAuth before a users row linked them.
 	var subject, hash sql.NullString
 	err = tx.QueryRowContext(ctx,
-		`SELECT subject, avatar_hash FROM identities WHERE user_id = ? AND provider = 'discord'`, uid).Scan(&subject, &hash)
+		`SELECT subject, avatar_hash, role_connection_token FROM identities WHERE user_id = ? AND provider = 'discord'`, uid).
+		Scan(&subject, &hash, &res.RoleConnectionToken)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return Result{}, fmt.Errorf("accountdelete: read identity: %w", err)
 	}

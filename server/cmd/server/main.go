@@ -868,6 +868,12 @@ func main() {
 		go pods.RunSweeper(ctx, podStore, log, pods.SweepEvery)
 	}
 
+	// Discord Linked Roles (ADR 0163): said once, either way.
+	linkedRoles := startLinkedRoles(ctx, log, cfg.LinkedRoles, discordCfg, database, userStore)
+	if linkedRoles != nil {
+		l.SetLinkedRoles(linkedRoles)
+	}
+
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
@@ -915,6 +921,7 @@ func main() {
 		BugStore:          bugStore,
 		BugForum:          bugForum,
 		ModLog:            modLog,
+		LinkedRoles:       lobbyLinkedRoles(linkedRoles),
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
@@ -1177,6 +1184,11 @@ type config struct {
 	// CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID, a private channel, with the bot
 	// token. A malformed id fails the boot; no bot token leaves it off.
 	ModLog discord.ModLog
+	// LinkedRoles is ADR 0163's Discord Linked Roles:
+	// CMDCTRL_DISCORD_LINKED_ROLES=1 with CMDCTRL_DISCORD_APP_ID and the
+	// bot token. A malformed switch or application id fails the boot;
+	// a missing id or token leaves it off.
+	LinkedRoles discord.LinkedRoles
 	// Shops is ADR 0179's shop link templates, one CMDCTRL_SHOP_*
 	// variable per retailer. Unset: no shop links. A malformed template
 	// fails the boot, naming the variable.
@@ -1488,6 +1500,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.ModLog = modLog
+	linkedRoles, lrerr := discord.LinkedRolesFromEnv(os.Getenv)
+	if lrerr != nil {
+		log.Error("linked roles config invalid", "err", lrerr)
+		os.Exit(1)
+	}
+	c.LinkedRoles = linkedRoles
 	// ADR 0179: a typo in a shop template stops the boot rather than
 	// serving links that go somewhere unexpected.
 	shops, serr := shoplinks.FromEnv(os.Getenv)

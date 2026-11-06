@@ -1344,6 +1344,25 @@ again. `stats_prefs.share_pods` stays and does nothing until then.
 `TestMigration0033RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0034 (ADR 0163, Discord Linked Roles, #3323) adds one nullable
+column, `identities.role_connection_token`, the sealed refresh token of a
+person's Linked Roles grant. An older binary refuses the v34 schema. Drop
+it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE identities DROP COLUMN role_connection_token; DELETE FROM schema_migrations WHERE version = 34;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every link: the Discord profiles keep the numbers last pushed
+until each person unlinks or links again, and rolling forward recreates
+the column empty, so everyone is unlinked until they link again.
+`TestMigration0034RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,
