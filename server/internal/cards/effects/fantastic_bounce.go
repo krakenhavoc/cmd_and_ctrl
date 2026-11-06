@@ -30,12 +30,7 @@ func init() {
 			CostsLessIfItTargets(2, "This spell costs {2} less to cast if it targets a tapped creature.",
 				And(Creature(), msc7Tapped)),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
-		},
+		OnResolve: bounceTheTargetThenDraw,
 	})
 }
 

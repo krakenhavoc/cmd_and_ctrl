@@ -1756,3 +1756,15 @@ func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	}
 	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
 }
+
+// bounceTheTargetThenDraw is "Return target nonland permanent to its
+// owner's hand. Draw a card." as a spell's whole OnResolve (Fantastic
+// Bounce, Johann's Stopgap): the bounce, then the draw as a keyed tail
+// that waits behind it, so a replacement or an order prompt on the
+// return is answered before the card is drawn.
+func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
+}

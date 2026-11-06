@@ -13155,7 +13155,8 @@ ctx.SourcePermanent()                                                           
 - **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
   thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
 - **Bargain** is `OptionalCosts: []game.AdditionalCost{g2Bargain()}` (`exile_if_dies_g2.go`); "if this spell was
-  bargained" is `g2WasBargained(ctx)`.
+  bargained" is `g2WasBargained(ctx)`, and "This spell costs {n} less to cast if it's bargained" is
+  `SelfCostModifiers: []game.CostModifier{CostsLessIfBargained(n, label)}` (Ice Out, Johann's Stopgap).
 - **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
   if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
   2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
@@ -13285,6 +13286,7 @@ The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the tr
 SelfPumpWhileCelebration(0, 2)                        // "This creature gets +0/+2 as long as …"
 WheneverThisAttacksIfCelebration(label, effect)       // "Celebration — Whenever ~ attacks, if …"
 AtBeginningOfYourCombatIfCelebration(label, effect)   // "Celebration — At the beginning of combat on your turn, if …"
+AtYourEndStepIfCelebration(label, effect)             // "Celebration — At the beginning of your end step, if …"
 InterveningIf(CondCelebration{}, On(...))             // any other trigger shape
 if Celebration(g, item.Controller) { … }              // a resolution-time check
 ```
