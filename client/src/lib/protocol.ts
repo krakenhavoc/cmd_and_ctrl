@@ -3818,6 +3818,11 @@ export interface ActivatedAbilityView {
   // charged_mana_cost already carries the keyword's reduction by the
   // permanent's mana cost the turn it entered.
   power_up_used?: boolean;
+  // #5221, CR 602.5b: true when the ability says "Activate only once"
+  // without the exhaust keyword (Possessed Goat, Haunted Screen) and this
+  // permanent has already activated it. Absent otherwise. Only a new
+  // object (CR 400.7) clears it.
+  once_used?: boolean;
   // #4980: on a row whose purpose declares resolution_mana, how many
   // times this permanent's row has resolved this turn (the engine's own
   // count; an activation still on the stack is not in it). Bot data; the

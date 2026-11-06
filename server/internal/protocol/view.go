@@ -4828,6 +4828,14 @@ type ActivatedAbilityView struct {
 	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
 	// way, and the legal-move enumerator does not offer it.
 	PowerUpUsed bool `json:"power_up_used,omitempty"`
+	// OnceUsed is true when the ability says "Activate only once"
+	// without the exhaust keyword (#5221, CR 602.5b — Possessed Goat,
+	// Haunted Screen) and this object has already activated it. Its own
+	// flag rather than Exhausted, because the client names the reason
+	// and the ability is not an exhaust ability. Only a new object (CR
+	// 400.7) clears it. The server refuses with ErrAbilityActivatedOnce
+	// either way, and the legal-move enumerator does not offer it.
+	OnceUsed bool `json:"once_used,omitempty"`
 	// ResolvedThisTurn is how many times this row of this object has
 	// resolved this turn (#4980): Game.ResolvedThisTurn for the row's
 	// label, the count the card's own effect reads, per object (CR 400.7).
@@ -13385,6 +13393,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
 		v.PowerUpUsed = g.PowerUpUsed(&c, a)
+		// #5221, CR 602.5b: a plain "Activate only once" already spent,
+		// the reader ActivateCatalogAbility and internal/legal share.
+		v.OnceUsed = g.OnlyOnceSpent(c.InstanceID, a)
 		// #4980: the resolutions so far of a row that adds mana on one
 		// of them, from the tally the card's effect reads.
 		if a.Purpose.ResolutionMana != nil {

@@ -5398,6 +5398,22 @@ only counters itself is `powerUpAnswering(text, cost, effect)`, which
 declares the pump; any other row builds `PowerUp` and sets its own
 `Purpose`.
 
+**"Activate only once" without a keyword (CR 602.5b, #5221):** set
+`OnlyOnce: true` on the row and keep the clause in its label (Possessed
+Goat, Haunted Screen, Mild-Mannered Librarian). It is exhaust's limit
+without exhaust's keyword: `Game.OnlyOnceSpent` reads the same
+per-object, per-label activation record, so a flicker refreshes it, a
+change of control does not, and a restore keeps it. The activation path
+(`ErrAbilityActivatedOnce`), the bot enumerator and the view
+(`once_used`) read that one gate. Never write `Exhaust: true` for it:
+the event, cost and permission readers that watch exhaust abilities
+(Rangers' Refueler, Boom Scholar, Elvish Refueler) would see it, and
+`OnlyOnce` is never stamped on an event or a cost query. "Activate only
+once each turn" is still `OncePerTurnActivation(label)`. `Register`
+panics when the label prints "Activate only once" (with no "each") and
+the row sets none of `OnlyOnce`, `Exhaust` or `PowerUp`, or sets
+`OnlyOnce` without the clause.
+
 **Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
 to cast Equipment spells or activate equip abilities" is
 `Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,

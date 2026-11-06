@@ -2001,6 +2001,15 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// OnlyOnce is the printed "Activate only once." on an ability that
+	// is not an exhaust ability (CR 602.5b, #5221): Possessed Goat,
+	// Haunted Screen. One bit, no card logic: the engine reads the
+	// per-object activation record exhaust reads and refuses a second
+	// activation itself (game.Game.OnlyOnceSpent). Never Exhaust: true
+	// for these, which would wake "whenever you activate an exhaust
+	// ability". Register panics when the label prints the clause without
+	// the bit, or the bit without the clause.
+	OnlyOnce bool
 	// CostModifiers is the ability's OWN cost clause — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (the channel lands), "…for each color of the creature
