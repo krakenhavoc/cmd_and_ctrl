@@ -55,14 +55,7 @@ func init() {
 				YourSpell(), b42CreatureSpellWithFlying()),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB,
-				func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					if !AnotherCreatureEnteredUnderYourControl(ev, source, lki, g) {
-						return false
-					}
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && game.HasKeyword(&c, "flying")
-				},
+			On(game.EventETB, anotherFlierEnteredUnderYourControl,
 				"Watcher of the Spheres — +1/+1 until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
 					return BoostUntilEOT{

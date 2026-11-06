@@ -90,11 +90,16 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		// the X is already there; a permanent that was not cast has none.
 		q.X = source.CastX()
 	}
+	if !ms.UpToCount.IsZero() {
+		// "Choose up to X, where X is <a count>" (Bumi, King of Three
+		// Trials): the count as the trigger goes on the stack (CR 603.3c).
+		q.X = ms.UpToCount.count(g, source.Controller)
+	}
 	modeMin, modeMax := g.modeBoundsLocked(ms, q)
 	if !ms.Repeatable && modeMin > len(options) {
 		modeMin = max(ms.Min, len(options))
 	}
-	if ms.UpToCastX {
+	if ms.upToX() {
 		if modeMax == 0 {
 			// X = 0: "choose up to 0" chooses no mode, and a modal
 			// trigger with no mode chosen is removed from the stack
@@ -113,8 +118,9 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	if prompt == "" || chosenInstead {
 		prompt = "Choose one"
 	}
-	if ms.UpToCastX {
-		// The printed "choose up to X" with the X it was cast for.
+	if ms.upToX() {
+		// The printed "choose up to X" with the X it was cast for, or
+		// the X counted now.
 		prompt += " (X is " + strconv.Itoa(q.X) + ")"
 	}
 	usedIdx, usedLabel := usedModeOptions(ms, g.modesChosenLocked(ms, ab))

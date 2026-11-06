@@ -34,3 +34,14 @@ func SharesACardTypeWithTarget(spec *game.TargetSpec, slot int) *game.TargetSpec
 	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetSharesCardType}
 	return spec
 }
+
+// SharesACreatureTypeWithTarget is "that share a creature type", where slot
+// names the earlier target permanent (Secret Tunnel's "two target creatures
+// you control that share a creature type"). It is judged as the ability is
+// activated (CR 601.2c) and again as it resolves (CR 608.2b), on creature
+// types after the layers; an earlier target that has left by then answers
+// with the creature types it last had (CR 608.2h).
+func SharesACreatureTypeWithTarget(spec *game.TargetSpec, slot int) *game.TargetSpec {
+	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetSharesCreatureType}
+	return spec
+}
