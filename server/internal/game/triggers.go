@@ -421,6 +421,19 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// OnlyOnce is "This ability triggers only once." (Acrobatic
+	// Cheerleader, #5245): once for the life of the OBJECT, not once
+	// each turn. The harvester records the first time the ability
+	// triggers, under (source object, Key), and every later match of
+	// that object is declined, on any turn, however the first one went
+	// (countered, fizzled or resolved). A trigger doubler adds no
+	// instance either: the printed ruling is that an effect that would
+	// make it trigger again does nothing. A new object after a zone
+	// change (CR 400.7) may trigger again. Plain data; the record is
+	// Game.OnlyOnceTriggered, carried by the snapshot. See
+	// trigger_only_once.go.
+	OnlyOnce bool
+
 	// NotPutByThisAbility is the intervening "if it wasn't put onto the
 	// battlefield with this ability" (#3933, CR 603.4: Kodama of the East
 	// Tree). An EventETB whose entry this very ability made — the event's
@@ -919,6 +932,15 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 		occurrences = g.counterRemovedDeltaLocked(pass.ev, t.PerCounterRemoved)
 	}
 	if occurrences < 1 {
+		return
+	}
+	// #5245: "This ability triggers only once." One instance, the
+	// first time only, and no doubler's extra (trigger_only_once.go).
+	if t.OnlyOnce {
+		if !g.claimTriggerOnlyOnceLocked(&source, t.Key) {
+			return
+		}
+		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
 		return
 	}
 	extra := g.triggerDoublersLocked(pass, source, lki, t, origin)

@@ -135,6 +135,7 @@ func Register(spec Spec) {
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
 		checkNotPutByThisAbility(spec.Name, t)
+		checkTriggersOnlyOnce(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
@@ -2719,6 +2720,20 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if why := m.UnitProblem(); why != "" {
 			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
 		}
+	}
+}
+
+// checkTriggersOnlyOnce holds TriggeredAbility.OnlyOnce (#5245) to the
+// rows the harvester's claim reaches: an event trigger with a Key, which
+// is half of the per-object record's key. A state trigger is dispatched
+// by its own path (state_triggers.go), which has no claim, so the bit
+// would do nothing there.
+func checkTriggersOnlyOnce(card string, t game.TriggeredAbility) {
+	if !t.OnlyOnce {
+		return
+	}
+	if t.Key == "" || t.State != "" {
+		panic(fmt.Sprintf("effects.Register: %q declares a trigger that triggers only once without a Key, or on a state trigger (#5245)", card))
 	}
 }
 

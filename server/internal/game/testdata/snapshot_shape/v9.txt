@@ -35841,6 +35841,8 @@ nextPhaseId	number:int
 nextReplacementSerial	number:int
 oncePerBatchFired	map:string
 oncePerBatchFired{}	number:uint64
+onlyOnceTriggered	map:string
+onlyOnceTriggered{}	number:int
 openingRoll	object
 openingRoll.chooser	number:int
 openingRoll.rounds	array

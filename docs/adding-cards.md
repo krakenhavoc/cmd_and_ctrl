@@ -46,6 +46,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
+  - ["Skip that draw" (#5246, CR 614.1b)](#skip-that-draw-5246-cr-6141b)
+  - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
@@ -4414,6 +4416,50 @@ Replacements: []game.ReplacementEffect{
 - **The substitute is not replaced again.** Each of the four drawn cards is its
   own descendant draw that inherits the applied replacements (CR 614.5), and
   the mark keeps every later draw this turn plain.
+
+### "Skip that draw" (#5246, CR 614.1b)
+
+"If you would draw a card while your library has no cards in it, skip that
+draw instead" (Living Conundrum) is `SkipThatDrawFromAnEmptyLibrary(name)`
+([draw_replacements.go](../server/internal/cards/effects/draw_replacements.go)),
+Laboratory Maniac's replacement with nothing in place of the win. A skip is a
+replacement (CR 614.1b, 614.10), and its `Replace` is `ev.Cancel()` alone.
+
+- **A skipped draw is not a draw** (CR 614.6). No card moves and no
+  `EventDrawCard` is emitted, so "whenever you draw" does not trigger, the
+  turn's draw counts (`PlayerTurnTally.CardsDrawn`, `CardsDrawnThisTurnFor`)
+  do not rise, and no CR 704.5b flag is set.
+- **Each draw is asked on its own** (CR 121.2). "Draw three" off a two-card
+  library draws two and skips the third.
+- **A static that reads "no cards in your library"** declares
+  `DependsOnLibraryTop`: an empty library is a top card that is gone, so the
+  library-top watch recomputes the layers on the draw that empties it.
+
+### "This ability triggers only once" (#5245)
+
+Once for the life of the object, not once each turn (Acrobatic Cheerleader).
+Wrap the row in `TriggersOnlyOnce(t)` ([triggers_common.go](../server/internal/cards/effects/triggers_common.go)),
+which sets `game.TriggeredAbility.OnlyOnce`:
+
+```go
+Triggered: []game.TriggeredAbility{
+    TriggersOnlyOnce(Survival("Acrobatic Cheerleader — put a flying counter on it",
+        Do(CounterOnThis{Kind: game.CounterFlying, N: 1}))),
+},
+```
+
+- **The record is the engine's.** The harvester writes
+  `Game.OnlyOnceTriggered` under `ObjectTallyKey(source, epoch, Key)` the
+  first time the ability triggers, and declines every later match of that
+  object, on any turn. A countered or fizzled trigger still spent it. A new
+  object after a zone change may trigger again (CR 400.7); a change of
+  control does not refresh it. The snapshot and the undo clone carry it.
+- **A doubler adds nothing.** The printed ruling says an effect that would
+  make it trigger again does nothing, so the doublers are not asked.
+- **A trigger that did not happen spends nothing.** A failed intervening if,
+  a suppressor and a zero occurrence count all return before the claim.
+- `Register` refuses `OnlyOnce` on a row with no `Key` or on a state trigger.
+  "Triggers only once each turn" is still `TriggersOnlyOnceEachTurn(t)`.
 
 ### Attaching, and an ability whose source has gone (#812)
 
@@ -11803,7 +11849,8 @@ On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mill
   which fires once per card. It is one trigger per event batch (AtBatchEnd
   with `ThatManyEvents`), whoever milled, and `nonlandCardsMilledThisWay(item)`
   is "that many" / X. A battlefield ability only. "This ability triggers
-  only once each turn" is `TriggersOnlyOnceEachTurn(t)`; "do this only once
+  only once each turn" is `TriggersOnlyOnceEachTurn(t)` ("triggers only
+  once", with no "each turn", is `TriggersOnlyOnce(t)`); "do this only once
   each turn" is the `b28DoneThisTurn` record (Screeching Scorchbeast).
 - **"A card in a graveyard that was milled this turn"** (Tato Farmer, The
   Master, Transcendent) is the target predicate `MilledThisTurn()`: the

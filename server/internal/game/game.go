@@ -424,6 +424,14 @@ type Game struct {
 	// (#1181).
 	Activations ActivationTally
 
+	// OnlyOnceTriggered records the triggered abilities that print
+	// "This ability triggers only once" (TriggeredAbility.OnlyOnce) and
+	// have triggered, keyed by ObjectTallyKey(source, epoch, Key). Never
+	// reset: the limit is for the life of the object, and a new object
+	// after a zone change (CR 400.7) reads a key nothing has written.
+	// Nil until the first such trigger. See trigger_only_once.go (#5245).
+	OnlyOnceTriggered map[string]int
+
 	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
 	// turn with no player decision in between, nil otherwise. While
