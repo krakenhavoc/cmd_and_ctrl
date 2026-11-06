@@ -336,6 +336,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
+
+	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
+	// with a sorcery-speed "+1/+0 to a creature you control".
+	printedMercenaryToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
