@@ -110,7 +110,9 @@ body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
 body eagles-are-coming/birds
+body earth-rumble/fight
 body earthbend/return-tapped
+body earthbender-ascension/grow
 body eden/return-from-graveyard
 body electric-seaweed/one-damage-to-each-non-wall-creature
 body electro-assaulting-battery/damage
@@ -1666,6 +1668,7 @@ tail dredge/return-then-draw
 tail each-player/exile-top-step
 tail each-player/mill-step
 tail each-player/mill-until-land-step
+tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
 tail eerie-gravestone/after-mill
