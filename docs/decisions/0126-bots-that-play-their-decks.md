@@ -2962,3 +2962,82 @@ On the four curated decks #4302 measured (mono-white-weenie, boros-voltron, mono
 - +X/+X before combat, and a grant whose amount is decided at resolution.
 - Heliod's lifegain trigger, which turns lifelink into +1/+1 counters; haste letting a creature use its {T} abilities (CR 702.10c); Soulbright Seeker's third activation.
 - Scry, learn, discover and the other riders a purpose cannot say.
+
+## Amendment 2026-11-05: riders — scry, learn, discover, amass and the Ring
+
+**Status:** Proposed in the PR that adds this section; the weights are the owner's to accept. One `Config` switch, `PriceRiders`, with its weights `ScryWeight` (0.25), `ScryCap` (3), `LearnWeight` (0.30), `DiscoverPerMana` (0.30) and `RingTempt` (0.80), on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noriders` is `DefaultConfig()` with it off.
+**Issue:** [#4978](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4978), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) item 4 (and the last "Not priced" line of the amendment above). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (the purpose amounts and `purposeValue`).
+
+### The problem
+
+None of five keyword actions was a purpose amount, so a spell or an ability that did one beside its main effect was priced as though it did not: Preordain (`draws: 1`) was Opt's draw, Read the Bones was Night's Whisper, Claim the Precious was Murder, and Charming Prince's "Scry 2." bullet was worth nothing. The five are scry (CR 701.22a), learn (CR 701.48a), discover (CR 701.57a), amass (CR 701.47a) and "the Ring tempts you" (CR 701.54a).
+
+### Decision
+
+1. **Five new amounts.** `Purpose.Scry` (cards scried), `Learn` (times it learns), `Discover` (the N of its discover), `Amass` (the N of "amass [subtype] N") and `RingTempts` (times the Ring tempts its controller), on the wire as `scry`, `learn`, `discover`, `amass` and `ring_tempts`. Printed amounts, like every amount: "scry X" and "discover X, where X is ..." are not declared, nor is a rider the text makes conditional ("if this spell was bargained, ... you scry 1"). `effects.Register` refuses a negative one and one on a triggered row, which nothing prices by them: a permanent's enters trigger declares its rider on the card, as Mulldrifter's draws are, and a modal trigger's bullet on the bullet. `effects.WithRiders` adds them to a purpose a constructor builds (`ForTargets(...)`).
+2. **Priced beside the main effect, never in its place** (`aiseat/heuristic/riders.go`):
+
+   ```
+   riderValue = Hand × ScryWeight × min(scry, ScryCap)
+              + Hand × LearnWeight × learn
+              + Σ per discover (Hand + DiscoverPerMana × N)
+              + the Army an amass grows (the counters' CreatureValue on the bot's best Army),
+                or makes (a summoning-sick N/N token) when it has none
+              + RingTempt per tempting, halved when the bot controls no creature
+                and the card being cast is not one
+   ```
+
+   Inside `purposeValue` when the slot declares anything else the Config prices; otherwise added to what the slot is worth without it, the mana-value proxy, the body or `ActivateBase`. A rider is deliberately not one of the amounts that make a slot "priced" (`purposePriced`): Claim the Precious declares only its tempting, and pricing the spell by that alone would drop the proxy a removal spell is priced by. An activated row that sacrifices its own source and declares a rider pays for the source as a priced row does, so a Hidden Cave's discover does not come with a free land.
+3. **The catalog declares them, held to the text.** 118 declarations in 117 card files (the five Hidden caves share one row) declare a rider: the spells, the enters effects, two Adventure halves, the activated rows (Crystal Ball, Castle Vantress, the Strixhaven Campuses, the Hidden caves, Quintorius Kand's −3) and Charming Prince's bullet. 101 printed riders are left undeclared, each with its reason. `TestRiderPurposesMatchThePrintedCard` (`cards/coverage`) reads the oracle fixture, reminder text removed: every declared rider is printed with that amount, a counted one (learn, the Ring) no more times than it is printed, and every catalog card that prints a fixed rider and declares none is on `testdata/undeclared_riders.txt` with its reason. The list may only shrink.
+
+### Measured
+
+`boteval arena --rotate --lockstep --seed 2000 --games 48` on the standard pool, two seats of `heuristic` and two of `heuristic-noriders`, run twice with the policies swapped between the chairs so each played each deck 48 times (`docs/bot-testing.md`): 47/192, 24.5% (18.9–31.0%) against 49/192, 25.5% (19.9–32.1%), the same wins on mono-red-aggro and simic-ramp and one fewer on esper-control and mono-black-aristocrats. No stalls. The curated riders are small, and the price neither helps nor costs there; it changes when they are cast (Read the Bones taken in 7 of 21 offered windows instead of 7 of 48, Preordain in 10 of 44 instead of 11 of 58). The position tests are the evidence for the price itself.
+
+### Left undeclared (the list's reasons)
+
+- A rider on a triggered row that is not the card's enters effect (an attack, an upkeep, a death, a cast trigger, a saga chapter): nothing prices a triggered row by what it does.
+- A land's enters effect (the Temples, Crystal Grotto): a land play is not priced by its purpose.
+- A sacrifice outlet's rider (Viscera Seer, Woe Strider, Hidden Stockpile), and a row that saves (Boromir, Warden of the Tower): a rider on a row whose purpose declares only its answer makes the row more than an answer (`PurposeView.Priced`), so the bot would spend it with nothing to answer. Left to a measured follow-up.
+- A modal trigger whose other bullets declare nothing (Lita, Galadriel, Light of Valinor): the declared bullet would always be chosen.
+- A rider the text makes conditional or optional ("if you cast it", "you may pay {4}. If you do, discover 4").
+
+### Not priced
+
+What a scry finds, whether the library still holds a nonland card a discover can find, a Lesson outside the game, and how far along its levels the Ring already is (CR 701.54c): the fifth tempting is priced as the first.
+
+## Amendment 2026-11-05: a lifelink grant priced with the counters its life makes
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceLifeGainPayoffs`, on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#4979](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4979), the "Not priced" item both amendments of 2026-10-24 left. Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (one new purpose field) and the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is).
+
+### The problem
+
+Heliod, Sun-Crowned puts a +1/+1 counter on a creature or enchantment its controller controls whenever that player gains life. Its "{1}{W}: Another target creature gains lifelink until end of turn" on the bot's attacker was priced by the attack it changes, lifelink's life (`pumpAttackGain`), plus `CombatGrant`: about 0.74 for a 2/2 at 40 life. The counter that life makes was worth nothing, so another move worth a little more in the same window (a +1/+0 on the same attacker) won it.
+
+### Decision
+
+1. **A lifegain row declares what it pays** (`game.LifeGainPayoff`, `purpose.life_gain_payoff`): landfall's fields, per life-gain event of its controller's, not per point (CR 119.9). Only on a triggered row; `effects.Register` refuses it elsewhere, one that pays nothing or a negative amount, and one that gains life, which would trigger itself. A card file wraps its trigger in `effects.LifeGainPaying` or sets the purpose on the row. Declared on Heliod, Sun-Crowned and Ajani's Pridemate (`counters: 1` each).
+2. **A lifelink grant in combat is worth one event of the bot's payoffs** (`PriceLifeGainPayoffs`, `aiseat/heuristic/lifegain_payoff.go`). The damage of one lifelink source is one life-gain event (CR 702.15b, 702.15e). A move whose target entries give lifelink to a creature of the bot's that lacks it, has power, and is attacking or blocking before damage adds, per such creature, the sum over the bot's own lifegain rows in landfall's units: a counter at `Weights.Power` + `Weights.Toughness` (1.45). An opponent's payoff adds nothing.
+3. **Only where #4302 already lets the grant go.** The payoff is added only to a grant that passes `spareCombatGrant` (in combat, paid with mana the turn's later casts do not need) and does not repeat the same row on the same creature this turn. Before attacks the grant keeps its price and waits for combat, since the creature may never deal damage, and a counter does not outbid the main-phase cast the mana is kept for. Adding the payoff to every lifelink attack (`attackValue`) broke two of #4302's whole-engine tests: the bot granted lifelink in its first main phase, and spent its second main phase's mana in combat.
+
+With the payoff, Heliod's grant on an attacking 2/2 is 1.45 over a plain lifelink grant (`TestHeliodsLifelinkGrantIsPricedWithItsCounter`), and it beats a +1/+0 on the same attacker that wins without it (`TestHeliodsGrantBeatsAPumpForItsCounter`).
+
+### Measurements
+
+The base is `develop` at `f01023882`. One tree built twice, `PriceLifeGainPayoffs` on and off in `DefaultConfig()`; the declarations are in both. Every run is `--rotate --lockstep` with the real dump, every seat `heuristic`.
+
+| run | games | games that differ | stalls | Heliod's activation: windows taken of offered (games used of offered) |
+|---|---:|---:|---:|---|
+| `--games 48 --seed 4979`, mono-white-weenie, boros-voltron, mono-green-stompy, simic-ramp | 48 | 0 | 0 | 3 of 140 (2 of 5), on and off |
+| `--games 96 --seed 4979`, two seats, mono-white-weenie mirror | 96 | 0 | 1, the same game on and off | 17 of 582 (8 of 27), on and off |
+
+Every game ended on the same turn with the same winner. On these decks the change reprices the grant and changes no decision: Heliod's grant was already taken whenever it passed `spareCombatGrant`, and no competing combat move sat between the two prices.
+
+### Not priced
+
+- The attack of a creature that already has lifelink, a lifelink blocker's block, and double strike's second event.
+- Life a spell, an enters trigger or a landfall or creature-enter row gains (Courser of Kruphix, Lifecreed Duo): one event each.
+- A lifegain payoff counted at resolution (Archangel of Thune's counter on each creature you control), and the "if you gained life this turn" rows.

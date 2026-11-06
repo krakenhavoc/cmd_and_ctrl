@@ -167,8 +167,8 @@ jobs:
 
       # The cache is on for a GitHub-hosted runner only (#1433). A
       # hosted runner starts cold, so restoring the module and build
-      # cache (keyed on server/go.sum) saves the download and most of
-      # the compile. A self-hosted runner is the opposite: $HOME
+      # cache (keyed on server/go.mod and go.sum) saves the download and
+      # most of the compile. A self-hosted runner is the opposite: $HOME
       # survives between jobs and ~/go/pkg/mod is already warm --
       # there is nothing for a cache to restore that is not already
       # there. Worse, Go marks the module cache read-only (files 0444,
@@ -178,13 +178,37 @@ jobs:
       # on every run, then silently re-downloads the whole module set.
       # Note the Scryfall cache below is NOT affected and stays on: its
       # path is inside the workspace, not $HOME.
+      #
+      # One key serves every Go job here and in e2e-nightly.yml, and
+      # setup-go saves it only on a miss, from whichever job finishes
+      # first. So what the entry holds is that job's module cache, and
+      # the "Download the server's modules" step below makes it the
+      # whole server's, whichever job it is (#4948). go.mod joined the
+      # key to retire the entry a subset job had already saved: on a
+      # hit setup-go never saves, so that entry would otherwise stay
+      # until go.sum or the Go patch release changed.
       - &setup-go
         name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: |
+            server/go.mod
+            server/go.sum
+
+      # Every module go.mod requires, before any job builds a subset of
+      # them (#4948). Without it a job that tested only packages like
+      # internal/game or internal/decks saved the shared entry first,
+      # holding only the handful those need, and every later job, build
+      # included, downloaded sqlite, libc, websocket and discordgo
+      # again. A no-op once the entry has them. Hosted only, like the
+      # cache: a self-hosted runner's module cache is already warm.
+      - &go-mod-download
+        name: Download the server's modules
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: go mod download
 
       # One self-hosted runner, no job-level cleanup: the Go build cache
       # under $HOME and orphaned /tmp/go-build* trees left by cancelled
@@ -289,11 +313,39 @@ jobs:
           restore-keys: |
             golangci-lint-${{ runner.os }}-${{ hashFiles('server/Makefile', 'server/.golangci.yml') }}-
 
+      # The built golangci-lint and govulncheck binaries (#4958). Their
+      # modules are not in go.mod, so setup-go's cache never held them
+      # and every hosted run downloaded and compiled both with `go run`
+      # before lint could start. TOOLS_DIR makes `make lint` and `make
+      # vulncheck` run them from this directory, installing one only
+      # when it is missing (see server/Makefile). The key is the Go
+      # release and server/Makefile's pins, so a bump of either misses
+      # and builds afresh; no restore-keys, since an older entry holds
+      # only binaries the new key's paths never use. Hosted only, like
+      # the Go cache above: a self-hosted runner's build cache keeps
+      # `go run` warm on its own.
+      - name: Compute Go tool cache key
+        id: tools-cache-key
+        if: runner.environment == 'github-hosted'
+        working-directory: server
+        run: |
+          pins=$(make -s tool-pins | sha256sum | cut -c1-16)
+          echo "key=go-tools-${RUNNER_OS}-${RUNNER_ARCH}-$(go env GOVERSION)-${pins}" >> "$GITHUB_OUTPUT"
+          echo "TOOLS_DIR=$RUNNER_TEMP/go-tools" >> "$GITHUB_ENV"
+
+      - name: Cache the Go tool binaries
+        if: runner.environment == 'github-hosted'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/go-tools
+          key: ${{ steps.tools-cache-key.outputs.key }}
+
       - name: Server — lint
         working-directory: server
-        # golangci-lint v2.14.0 via `go run` (see server/Makefile): the
-        # repo's .golangci.yml, with errcheck and unparam excluded in
-        # test files. Wired in by #582 once the tree was clean under it.
+        # golangci-lint at server/Makefile's pin (the cached binary on a
+        # hosted runner, `go run` otherwise): the repo's .golangci.yml,
+        # with errcheck and unparam excluded in test files. Wired in by
+        # #582 once the tree was clean under it.
         # It runs on the job's own Go 1.27 (its floor is 1.26), so the
         # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
         # and lint, vet, test and build all use one toolchain.
@@ -305,7 +357,8 @@ jobs:
       # finding usually means a patch release came out after the
       # runner's cached toolchain did, and a re-run fixes it. A module
       # finding needs a `go get` of the fixed version.
-      # server/Makefile pins the version.
+      # server/Makefile pins the version; on a hosted runner the binary
+      # comes from the tool cache above.
       - name: Server — govulncheck
         working-directory: server
         run: make vulncheck
@@ -353,6 +406,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
       - *free-disk
 
       # This shard's `go test` arguments: a -run or -skip filter for a
@@ -498,6 +552,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -545,6 +600,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -629,6 +685,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
+      - *go-mod-download
       - *free-disk
       - *setup-node
 
@@ -641,6 +698,9 @@ jobs:
           # The restore rehearsal's application half (#3340); shipped with
           # the server because it links the same migrations.
           go build -o bin/cmd_and_ctrl-restorecheck ./cmd/restorecheck
+          # The weekly card-roles refresh (ADR 0217 §7), run by the
+          # scryfall-refresh workflow on the host after the dump.
+          go build -o bin/cmd_and_ctrl-cardroles ./cmd/cardroles
 
       - name: Bot — build
         if: needs.changes.outputs.server == 'true'
@@ -675,6 +735,7 @@ jobs:
           path: |
             server/bin/cmd_and_ctrl-server
             server/bin/cmd_and_ctrl-restorecheck
+            server/bin/cmd_and_ctrl-cardroles
           retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload bot binary
@@ -858,12 +919,8 @@ jobs:
           # checkout to leave wired into the local credential helper.
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.27"
-          cache: ${{ runner.environment == 'github-hosted' }}
-          cache-dependency-path: server/go.sum
+      - *setup-go
+      - *go-mod-download
 
       # One step, in numbered sections, for the same reason "Ensure
       # off-site backup" below (in the shared CD steps) is one step: the
@@ -1224,7 +1281,7 @@ jobs:
           path: client/dist
 
       - name: Restore server binary exec bit
-        run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-restorecheck server/bin/cmd_and_ctrl-bot
+        run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-restorecheck server/bin/cmd_and_ctrl-cardroles server/bin/cmd_and_ctrl-bot
 
       # Set the live release aside before replacing it (#3339), so the
       # rollback-prod workflow can put it back in minutes. One release
@@ -1246,6 +1303,7 @@ jobs:
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
             server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-restorecheck \
+            server/bin/cmd_and_ctrl-cardroles \
             krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/server/bin/
 
       # Production only, on purpose -- this, "Install bot systemd unit",
@@ -1800,6 +1858,37 @@ jobs:
           if [ -n "${bug_forum}" ]; then mirror=set; else mirror=unset; fi
           if [ -n "${mod_log}" ]; then modlog=set; else modlog=unset; fi
           echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, bug forum ${mirror}, mod log ${modlog}, ${#exempt_ids[@]} exempt id(s))"
+
+      # ADR 0211 §7: the idle cleanup's thresholds. An unstarted table with
+      # no activity for CMDCTRL_IDLE_LOBBY_TABLE_AFTER (default 24h), a
+      # started game with no human move for CMDCTRL_IDLE_GAME_AFTER (48h)
+      # and a game left to its bots for CMDCTRL_IDLE_BOTS_AFTER (1h) are
+      # closed. Each is a Go duration; empty is the default and 0 switches
+      # that cleanup off.
+      #
+      # BOTH hosts, ALWAYS written, empty included, like the community
+      # variables: clearing one must bring back the default on the next
+      # deploy. A GitHub environment's value overrides the repo's, so the
+      # preview can use short values. Checked here with the server's own
+      # rule (capacity.FromEnv: 0, or a non-negative Go duration) before
+      # anything is written; the server refuses to boot on a malformed one.
+      - name: Sync server env (idle cleanup)
+        env:
+          CMDCTRL_IDLE_LOBBY_TABLE_AFTER: ${{ vars.CMDCTRL_IDLE_LOBBY_TABLE_AFTER }}
+          CMDCTRL_IDLE_GAME_AFTER: ${{ vars.CMDCTRL_IDLE_GAME_AFTER }}
+          CMDCTRL_IDLE_BOTS_AFTER: ${{ vars.CMDCTRL_IDLE_BOTS_AFTER }}
+        run: |
+          trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          for name in CMDCTRL_IDLE_LOBBY_TABLE_AFTER CMDCTRL_IDLE_GAME_AFTER CMDCTRL_IDLE_BOTS_AFTER; do
+            value="$(trim "${!name}")"
+            if [ -n "${value}" ] && [ "${value}" != "0" ] && ! [[ "${value}" =~ ^([0-9]+(\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$ ]]; then
+              echo "::error::${name} must be a Go duration such as 24h or 90m, or 0 for off; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+            fi
+            printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
+            echo "set ${name}=${value:-default}"
+          done
 
       # ADR 0179: optional shop links. One URL template per retailer,
       # holding {url} exactly once: an https wrapper with {url} after the

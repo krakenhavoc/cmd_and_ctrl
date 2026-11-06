@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Mentor (Whenever this creature attacks, put a +1/+1 counter on
 //	 target attacking creature with lesser power.)"
 //
-// Mentor (CR 702.136) is the shared Mentor() trigger; see
+// Mentor (CR 702.134) is the shared Mentor() trigger; see
 // hammer_dropper.go for what its source-relative clause guarantees.
 //
 // No simplification.

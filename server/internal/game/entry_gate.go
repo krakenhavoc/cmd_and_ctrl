@@ -167,7 +167,7 @@ func (g *Game) entryRefusalLocked(q EntryQuery) (entryRefusal, bool) {
 		refused entryRefusal
 		found   bool
 	)
-	g.forEachEmblemLocked(func(src *Card) bool {
+	g.forEachCommandSourceLocked(func(src *Card) bool {
 		refused, found = refusedBy(src)
 		return !found
 	})
@@ -191,7 +191,7 @@ func (g *Game) anyEntryRestrictionLocked() bool {
 		}
 	}
 	found := false
-	g.forEachEmblemLocked(func(src *Card) bool {
+	g.forEachCommandSourceLocked(func(src *Card) bool {
 		found = len(entryRestrictionsOf(src)) > 0
 		return !found
 	})

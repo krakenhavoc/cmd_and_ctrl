@@ -108,6 +108,12 @@ var gameFields = plan(
 	// ADR 0121 §1: the open opening roll. Plain data; a restored game
 	// mid-roll continues where it stopped.
 	"OpeningRoll", carried, "",
+	// ADR 0216 §3: the Planechase option's planar controller and die
+	// count, and the two planar containers, in the snapshot's
+	// `planechase` object.
+	"Planechase", carried, "",
+	"PlanarDeck", carried, "",
+	"PlanarFaceUp", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
 	// ADR 0132: the day/night designation and the previous turn's spell
@@ -135,6 +141,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
+	"DilemmasFacedThisTurn", carried, "", // #4973
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
@@ -222,6 +229,9 @@ var gameFields = plan(
 	// #4361 S17: an entry frozen behind its discard or sacrifice, as
 	// FrozenEntries; one that is not data is counted instead.
 	"frozenEntries", carried, "",
+	// #4522: a move parked behind its token creation, as
+	// MovesAwaitingTokens; one that is not data is counted instead.
+	"movesAwaitingTokens", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
 	// #4163: what an earlier step handed a later one.
@@ -485,6 +495,9 @@ var cardFields = plan(
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",
+	// ADR 0219: carried — no battlefield source rebuilds it, so a restore
+	// that dropped it would take Q, Stacking the Deck's ability away.
+	"ExileGrants", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	"damageInstance", dropped, "restores empty: which damage instance marked the latest damage on this creature (heal_damage.go, #4614). Only Wolverine, Fierce Fighter reads it, to keep damage dealt at the same time; a restore taken inside a damage step gives the rest of the step a new instance anyway (damage_instance.go), so the worst case is a later event of that step healing damage the same step marked before the restore",
 	"damageInstanceMarked", dropped, "restores empty: how much of DamageMarked damageInstance wrote; goes with damageInstance",
@@ -569,6 +582,7 @@ var cardFields = plan(
 	// ADR 0155 §8 (#3202): the permanent chosen as it entered (Scheming
 	// Fence's). A player's choice, so nothing can rebuild it.
 	"ChosenPermanent", carried, "",
+	"LinkedPermanent", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
@@ -697,6 +711,7 @@ var cardFields = plan(
 	"TextBox", rebuilt, "ADR 0160: derived from the textBox records in ScopedEffects by materialiseTextBoxesLocked; restore forces a recompute",
 	"TextWords", rebuilt, "ADR 0160's 2026-10-15 amendment: derived from the changeText records in ScopedEffects by materialiseTextWordsLocked; restore forces a recompute",
 	"wordLens", rebuilt, "ADR 0160's 2026-10-15 amendment: set only on a value copy handed to a target predicate (ThroughTextOf), never on a card in a zone",
+	"ptAnywhere", rebuilt, "#4964: set only on a value copy handed to a cast permission lookup (withPTAnywhereLocked), never on a card in a zone",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
@@ -743,6 +758,9 @@ var playerFields = plan(
 	// every such effect's clock, and a departed seat's skipped turns
 	// are not derivable from the board.
 	"TurnsBegun", carried, "",
+	// #4973: the extra turns this player has begun this game (H.M.S.
+	// Bounty). Carried: not derivable from the board.
+	"ExtraTurnsBegun", carried, "",
 	// ADR 0108 §5: the upkeep counter Card.ControlledSinceUpkeep is
 	// compared against. Carried, for TurnsBegun's reason.
 	"UpkeepsBegun", carried, "",
@@ -757,6 +775,9 @@ var playerFields = plan(
 	// #4879: why the player left (a LossCause), for the seat view's
 	// loss_cause. Carried, additive within v9.
 	"LossCause", carried, "",
+	// #4912: what the player had when they left, for the seat view's
+	// final_board. Carried, additive within v9.
+	"FinalBoard", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
 	// it would let the removed player straight back in.
@@ -791,6 +812,8 @@ var playerFields = plan(
 	"CompletedDungeons", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
+	// #4973: the first spell cast this game (First Contact).
+	"FirstSpellCast", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
 	// ADR 0113 §3: the grant's timestamp, for CR 613.11's order.

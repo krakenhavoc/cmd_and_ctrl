@@ -50,6 +50,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -133,6 +134,14 @@ const (
 	// Consecutive mills by one player in one turn collapse into one
 	// entry, so "mill three" reads as one line naming all three.
 	LogMill LogKind = "mill"
+	// LogDiscard — a player discarded a card (CR 701.9a), one line per
+	// card: an effect's discard, the cleanup step's hand-size discard
+	// (CR 514.1) or a cost. `card_id` is the card, `seat` the player,
+	// `new_zone` where it went (the graveyard, or exile for madness,
+	// CR 702.35a), `cause` why ("effect", "cleanup", "cost") and
+	// `source` the card behind it. #4445: a discard had no line at all
+	// since #650 split it off the zone move, whose line it had been.
+	LogDiscard LogKind = "discard"
 	// LogSearch — a player searched a library (CR 701.23), or shuffled
 	// one (Label "shuffle"). Never names a card: what a search takes is
 	// not public until it is revealed, and a search that reveals was
@@ -309,6 +318,12 @@ const (
 	// it ("Foretell {2}"), and the entry is the only thing that
 	// says WHICH action a card leaving a hand for exile was.
 	LogSpecialAction LogKind = "special_action"
+	// LogPlaneswalk — a player planeswalked (CR 901.11, ADR 0216 §5).
+	// `Choice` is "from" for each plane they planeswalked away from and
+	// "to" for the plane they planeswalked to, and `Label` is that
+	// plane's name: a card turned face down is in no zone a view shows,
+	// so the line carries it. `card_id` is the plane.
+	LogPlaneswalk LogKind = "planeswalk"
 	// LogCompanionRevealed — a player revealed their companion as the
 	// game began (CR 103.2b, ADR 0172 §5): "Alice revealed Jegantha,
 	// the Wellspring as their companion". `card_id` is the companion,
@@ -430,6 +445,13 @@ const (
 	// seat, the actor who decided (no seat for the server admin), and
 	// `Amount` the whole minutes the seat had been offline.
 	LogAwaySeat LogKind = "away_seat"
+	// LogIdleClose — the server closed the table, or warned that it
+	// will, because nobody used it (ADR 0211 §4, §6). `Label` is
+	// "idle_lobby", "idle_game" or "idle_bots" for a close and
+	// "idle_warning" for the warning; `Amount` the hours idle (minutes
+	// for "idle_bots"); on a warning, `Call` is when the game closes
+	// (RFC 3339). No seat did it.
+	LogIdleClose LogKind = "idle_close"
 	// LogSpawn — the host or the admin put cards or tokens onto the
 	// table from nowhere (ADR 0075 §2.4). `Label` is the card or
 	// token name, `Amount` the count, `NewZone` where they went and
@@ -720,11 +742,35 @@ type LogEvent struct {
 	// who was attacked, who took the damage. Nil when the entry
 	// targets a card (see Target) or nothing.
 	TargetSeat *int `json:"target_seat,omitempty"`
+	// LibrarySeat is the seat whose library was searched (CR 701.23a),
+	// on the one entry that tells a library search (#4447, ADR 0209 §3):
+	// a LogSearch that is a search (not a plain shuffle), where it
+	// equals TargetSeat, or, when the search revealed what it took (a
+	// fetch land, a "reveal it" tutor, Bribery), the LogReveal that
+	// already told it, whose search line the fold drops. The reveal is
+	// stamped with the searcher's seat as it is folded, because the
+	// search line can come a frame later (a fetched shock land's entry
+	// prompt in between), and the dropped line corrects it to the
+	// library's owner when that is someone else (Bribery). A seat is
+	// public, and the field says nothing about what was
+	// found, or whether anything was (CR 701.23b), so it is not
+	// redacted. Nil on every other entry. It is what lets the client's
+	// library_search cue riffle the right library pile.
+	LibrarySeat *int `json:"library_seat,omitempty"`
 	// CardID is the card the entry is about, when the viewer is
 	// entitled to know a card is involved at all. Empty for entries
 	// that deliberately carry no card reference (draws; any zone
 	// change with two hidden endpoints).
 	CardID string `json:"card_id,omitempty"`
+	// CardIDs is, on a LogMill entry, the milled cards the text names,
+	// in the order they were milled (#4445, ADR 0209 §3): the first
+	// logRevealNamesMax of them, so it is never longer than the list of
+	// names, and Amount is still the count. A milled card is in a
+	// graveyard, where its instance ID is on every viewer's ZoneView
+	// already, so the list is not redacted. It is what lets the client's
+	// mill cue slide the cards themselves into the graveyard. Empty on
+	// every other kind.
+	CardIDs []string `json:"card_ids,omitempty"`
 	// StackItemID is the stack item a LogResolve, LogFizzle or LogCounter
 	// entry is about, for a spell and an ability alike (ADR 0119 §3).
 	// For a spell it equals its card's ID; an ability's item has an ID of
@@ -741,7 +787,12 @@ type LogEvent struct {
 	// or Toxic Deluge shares one Batch and one Source, and "three or more
 	// permanents left in one Batch from one Source" is a board wipe.
 	// Empty when nothing resolving is behind the exit (combat damage, a
-	// cost, a sandbox move). Redacted for a viewer who may not identify
+	// cost, a sandbox move), except that a LogSacrifice paid as a cost of
+	// the sacrificed permanent's own ability (a fetch land, a Treasure's
+	// mana, a Clue; Cause "cost") names that permanent, its own CardID
+	// (#4427). On a LogDiscard entry it is the card whose
+	// effect or cost made the player discard, empty for the cleanup
+	// step's discard (#4445). Redacted for a viewer who may not identify
 	// the card, exactly as CardID is: the Batch still groups.
 	Source string `json:"source,omitempty"`
 	// Amount is the signed or counting payload: life delta, damage
@@ -771,8 +822,15 @@ type LogEvent struct {
 	// "other". A sacrifice is its own LogSacrifice line, whose kind says
 	// so, and the zone move after it is not repeated. The cause is the
 	// instruction, not the destination: read OldZone and NewZone for
-	// where the card went. Empty on every other kind, and on an
-	// elimination recorded before the engine named its cause.
+	// where the card went. On a LogDiscard entry it is why the card
+	// was discarded (game.DiscardCause, #4445): "effect", "cleanup"
+	// (the CR 514.1 hand-size discard) or "cost". On a LogSacrifice entry
+	// it is "cost" when the permanent was sacrificed to pay a cost
+	// (CR 118.1, 601.2h, 602.2b: an ability's, a mana ability's, a spell's
+	// or a pay-unless), and empty for an effect's or a sandbox
+	// sacrifice (#4427). Empty on every other
+	// kind, and on an elimination recorded before the engine named its
+	// cause.
 	Cause string `json:"cause,omitempty"`
 	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
 	// action — the "2" in "scry 2" — where Amount is how many cards
@@ -815,8 +873,12 @@ type LogEvent struct {
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
 	Faces   []string `json:"faces,omitempty"`
-	Call    string   `json:"call,omitempty"`
-	Wins    int      `json:"wins,omitempty"`
+	// PlanarFace is the face a planar die showed on a `roll` line
+	// ("blank", "chaos" or "planeswalk", ADR 0216 §4). Such a line has
+	// no sides and no results: the planar die has no number (CR 901.9d).
+	PlanarFace string `json:"planar_face,omitempty"`
+	Call       string `json:"call,omitempty"`
+	Wins       int    `json:"wins,omitempty"`
 	// Seats are the seats a LogOpeningRoll entry names: the seats that
 	// tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
@@ -1128,8 +1190,12 @@ type logFold struct {
 	// (revealTo set), and cleared by the search's own LogSearch line,
 	// which the fold then drops: the reveal already said it. The seat is
 	// the searcher, so a search by someone else is still its own line.
+	// revealedSearchSeq is that reveal's RevealSeq, which revealAt maps
+	// to its entry: the dropped search line's LibrarySeat goes there
+	// (#4447).
 	revealedSearch     bool
 	revealedSearchSeat int
+	revealedSearchSeq  uint64
 	// replaying is set from a loop replay's EventLoopReplayBegin to its
 	// EventLoopReplayed: every event between is folded out, and the
 	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
@@ -1144,6 +1210,10 @@ type logFold struct {
 	// them. Kept through a loop replay, whose events write no line but
 	// still move the counts.
 	counts map[uuid.UUID]map[string]int
+	// stats is FullLogOf's StatsLog (ADR 0217 §1): the loop breaker's
+	// event gets a line, and a loop replay's line says it is one. Never
+	// set on a fold whose entries go on the wire.
+	stats bool
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1183,6 +1253,31 @@ func (f *logFold) countDelta(ev game.Event) int {
 		}
 	}
 	return 0
+}
+
+// statsEntry is the stats-only log's change to one projected entry
+// (FullLogOf's StatsLog): the loop breaker firing, which the public log
+// leaves out, becomes a LogLoop line with Call LoopCallSuspected, and a
+// loop replay's line is marked LoopCallReplayed.
+func (f *logFold) statsEntry(ev game.Event, e LogEvent, ok bool) (LogEvent, bool) {
+	switch ev.Kind {
+	case game.EventLoopSuspected:
+		return LogEvent{
+			Seq:    ev.Seq,
+			Batch:  ev.Batch,
+			Kind:   LogLoop,
+			Seat:   f.seatOf(ev.Actor),
+			CardID: uuidStringOrEmpty(ev.Source),
+			Label:  ev.Label,
+			Amount: ev.Amount,
+			Call:   LoopCallSuspected,
+		}, true
+	case game.EventLoopReplayed:
+		if ok {
+			e.Call = LoopCallReplayed
+		}
+	}
+	return e, ok
 }
 
 // extends reports whether g's event log is the log f folded, possibly
@@ -1249,6 +1344,9 @@ func (f *logFold) feed(events []game.Event) int {
 			}
 		}
 		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
+		if f.stats {
+			e, ok = f.statsEntry(events[i], e, ok)
+		}
 		if !ok {
 			continue
 		}
@@ -1303,6 +1401,17 @@ func (f *logFold) feed(events []game.Event) int {
 			// The search this reveal belongs to comes after it; see the
 			// LogSearch case below.
 			f.revealedSearch, f.revealedSearchSeat = true, e.Seat
+			f.revealedSearchSeq = e.revealSeq
+			// #4447: a search made this reveal, so it tells the search,
+			// and says so now: the search line can come a frame later,
+			// after a prompt the found card's entry asks (a fetched
+			// shock land's "pay 2 life?"). Until that line names whose
+			// library it was, it is the searcher's own, which it is for
+			// every search but one of another player's library.
+			if e.Seat != NoSeat {
+				lib := e.Seat
+				e.LibrarySeat = &lib
+			}
 		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
 			if at, seen := f.revealAt[e.revealSeq]; seen {
@@ -1339,6 +1448,9 @@ func (f *logFold) feed(events []game.Event) int {
 			if len(prev.revealIDs) < logRevealNamesMax {
 				prev.revealIDs = append(prev.revealIDs, e.revealIDs...)
 			}
+			if len(prev.CardIDs) < logRevealNamesMax {
+				prev.CardIDs = append(prev.CardIDs, e.CardIDs...)
+			}
 			continue
 		}
 		// A search that fetched a card, or revealed one on its way to
@@ -1348,6 +1460,15 @@ func (f *logFold) feed(events []game.Event) int {
 		// "searched their library" again would say the same thing twice.
 		if e.Kind == LogSearch && e.Label != "shuffle" && f.revealedSearch && f.revealedSearchSeat == e.Seat {
 			f.revealedSearch = false
+			// #4447: the reveal line tells the search too, so it carries
+			// whose library it was, which this line now says for certain
+			// (Bribery's is an opponent's). Its entry may already have
+			// fallen off the ring, and then there is nothing to mark.
+			if at, seen := f.revealAt[f.revealedSearchSeq]; seen && e.LibrarySeat != nil {
+				if prev := ring.pushed(at); prev != nil && prev.Kind == LogReveal {
+					prev.LibrarySeat = e.LibrarySeat
+				}
+			}
 			continue
 		}
 		// CR 702.29b: a cycling's cost DISCARDED the card, and the
@@ -1356,10 +1477,15 @@ func (f *logFold) feed(events []game.Event) int {
 		// in place — EventCycle is emitted immediately after the cost
 		// is paid, so the zone line is the last one pushed — and keep
 		// the zone line's seq, the convention a collapsed run follows
-		// everywhere else in this function.
-		if prev := ring.last(); prev != nil && e.Kind == LogCycle && prev.Kind == LogZone &&
+		// everywhere else in this function. #4445: the line is the
+		// cost's LogDiscard now, and the cycling keeps where the card
+		// went, so the client's discard cue reads a cycling as the
+		// discard it is.
+		if prev := ring.last(); prev != nil && e.Kind == LogCycle &&
+			(prev.Kind == LogZone || prev.Kind == LogDiscard) &&
 			prev.CardID == e.CardID && game.ZoneKind(prev.NewZone) == game.ZoneGraveyard {
 			e.Seq = prev.Seq
+			e.OldZone, e.NewZone = prev.OldZone, prev.NewZone
 			*prev = e
 			continue
 		}
@@ -1395,6 +1521,9 @@ func (f *logFold) entries() []LogEvent {
 		}
 		if e.revealIDs != nil {
 			e.revealIDs = append([]string(nil), e.revealIDs...)
+		}
+		if e.CardIDs != nil {
+			e.CardIDs = append([]string(nil), e.CardIDs...)
 		}
 	}
 	return out
@@ -1447,7 +1576,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventRollDie, game.EventFlipCoin:
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.batchSeq = ev.BatchSeq
-		if ev.Kind == game.EventRollDie {
+		if ev.Kind == game.EventRollDie && ev.PlanarFace != "" {
+			// ADR 0216 §4: the planar die shows a face, not a number.
+			base.Kind = LogRoll
+			base.PlanarFace = ev.PlanarFace
+		} else if ev.Kind == game.EventRollDie {
 			base.Kind = LogRoll
 			base.Sides = ev.Sides
 			base.Results = []int{ev.Amount}
@@ -1612,6 +1745,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// The card that asked for the sacrifice when the engine knew it,
 		// else the card behind the batch (#4395).
 		base.Source = uuidStringOrEmpty(cmp.Or(ev.Source, ev.LeaveSource))
+		// #4427: a sacrifice paid as a cost says so, and one paid for the
+		// sacrificed permanent's own ability (a fetch land, a Treasure's
+		// mana, a Clue) names the permanent itself as its source. A cost
+		// names no other source: it is paid as the ability is activated
+		// (CR 602.2b), not by anything resolving, so a creature sacrificed
+		// to Viscera Seer is no batch's resolution, and three of them must
+		// not read as a board wipe.
+		if ev.Cause == game.MoveCauseCost {
+			base.Cause = string(game.MoveCauseCost)
+			if ev.CauseSource != nil && ev.CauseSource.ID == ev.CardID {
+				base.Source = base.CardID
+			}
+		}
 		return base, true
 
 	case game.EventExert:
@@ -1733,7 +1879,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = 1
 		if ev.CardID != uuid.Nil {
 			base.revealIDs = []string{ev.CardID.String()}
+			base.CardIDs = []string{ev.CardID.String()}
 		}
+		return base, true
+
+	case game.EventDiscardCard:
+		// #4445: CR 701.9a, one line per card. The discard is the move
+		// out of the hand; NewZone is where the card really went (madness
+		// exiles it, CR 702.35a). A discarded commander goes to the
+		// graveyard like any card, and its owner's CR 903.9a choice is a
+		// zone line of its own after this one.
+		base.Kind = LogDiscard
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.OldZone = string(ev.OldZone)
+		base.NewZone = string(ev.NewZone)
+		base.Cause = string(cmp.Or(ev.DiscardCause, game.DiscardCauseEffect))
+		base.Source = uuidStringOrEmpty(ev.Source)
 		return base, true
 
 	case game.EventSearchLibrary:
@@ -1745,6 +1906,12 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.Target != uuid.Nil {
 			if seat := seatOf(ev.Target); seat != NoSeat {
 				base.TargetSeat = &seat
+				// #4447: a search, not a plain shuffle, names whose
+				// library it was where the client's search cue reads it.
+				if ev.Label != "shuffle" {
+					lib := seat
+					base.LibrarySeat = &lib
+				}
 			}
 		}
 		return base, true
@@ -1936,11 +2103,28 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventPlaneswalkFrom, game.EventPlaneswalkTo:
+		base.Kind = LogPlaneswalk
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.PublicNames[ev.CardID]
+		base.Choice = "to"
+		if ev.Kind == game.EventPlaneswalkFrom {
+			base.Choice = "from"
+		}
+		return base, true
+
 	case game.EventCompanionRevealed:
 		// ADR 0172 §5. The card is public, so the line names it.
 		base.Kind = LogCompanionRevealed
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
+		return base, true
+
+	case game.EventIdleClose:
+		base.Kind = LogIdleClose
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		base.Call = ev.Call
 		return base, true
 
 	case game.EventAwaySeat:
@@ -2552,8 +2736,13 @@ func (r *logNameResolver) resolve(e *LogEvent) {
 		e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(r.v)
 	}
 	// #4395: only the knower set of the source; it is never named in text.
+	// A permanent sacrificed for its own ability is its own source
+	// (#4427), and is known exactly as its card is, a token that has
+	// since ceased to exist included.
 	if c, ok := r.cards[e.Source]; ok {
 		e.sourceKnowers = c.knowers
+	} else if e.Source != "" && e.Source == e.CardID {
+		e.sourceKnowers = e.cardKnowers
 	}
 	// Revealed cards are looked up in every zone, hands and
 	// libraries included, without a knower check: see
@@ -2990,6 +3179,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s drew %d cards", actor, e.Amount)
 	case LogMill:
 		return renderMillText(*e, actor)
+	case LogDiscard:
+		return renderDiscardText(*e, actor, card)
 	case LogSearch:
 		return renderSearchText(*e, actor)
 	case LogLife:
@@ -3120,7 +3311,17 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		if e.Label == "" {
 			return fmt.Sprintf("%s took a special action on %s", actor, card)
 		}
+		if e.CardID == "" {
+			// ADR 0216 §4: the planar die is taken on no card.
+			return fmt.Sprintf("%s used %s", actor, e.Label)
+		}
 		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogPlaneswalk:
+		plane := nameOr(e.Label, "a plane")
+		if e.Choice == "from" {
+			return fmt.Sprintf("%s planeswalked away from %s", actor, plane)
+		}
+		return fmt.Sprintf("%s planeswalked to %s", actor, plane)
 	case LogCompanionRevealed:
 		// The view always holds a revealed companion, outside the game
 		// or later in play, so the name comes from the card; the label
@@ -3197,6 +3398,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return renderSettingsText(*e)
 	case LogAwaySeat:
 		return renderAwaySeatText(*e, actor, target)
+	case LogIdleClose:
+		return renderIdleCloseText(*e)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
 	case LogStorm:
@@ -3416,6 +3619,12 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s set the away time to 1 minute", who)
 		}
 		return fmt.Sprintf("%s set the away time to %s minutes", who, e.Choice)
+	case game.SettingPlanechase:
+		// ADR 0216 §1.
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s turned on Planechase", who)
+		}
+		return fmt.Sprintf("%s turned off Planechase", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)
@@ -3443,6 +3652,38 @@ func renderAwaySeatText(e LogEvent, actor, target string) string {
 		return fmt.Sprintf("%s took their seat back", target)
 	}
 	return fmt.Sprintf("%s moved %s's seat on", actor, target)
+}
+
+// renderIdleCloseText words an idle close or its warning (ADR 0211
+// §4, §6): "Closed: no moves for 48 hours." The closing time of a
+// warning is in UTC, the one zone every reader of a replay shares.
+func renderIdleCloseText(e LogEvent) string {
+	switch e.Label {
+	case game.IdleCloseLobby:
+		return fmt.Sprintf("Closed: no activity for %s.", idleHours(e.Amount))
+	case game.IdleCloseGame:
+		return fmt.Sprintf("Closed: no moves for %s.", idleHours(e.Amount))
+	case game.IdleCloseBots:
+		if e.Amount == 60 {
+			return "Closed: only bots left for an hour."
+		}
+		return fmt.Sprintf("Closed: only bots left for %d minutes.", e.Amount)
+	case game.IdleCloseWarning:
+		when := "soon"
+		if at, err := time.Parse(time.RFC3339, e.Call); err == nil {
+			when = at.UTC().Format("at 15:04 UTC on Monday")
+		}
+		return fmt.Sprintf("No one has moved for %s. This game closes %s unless someone makes a move.", idleHours(e.Amount), when)
+	}
+	return "Closed: nobody was using the table."
+}
+
+// idleHours words a whole number of hours: "1 hour", "36 hours".
+func idleHours(n int) string {
+	if n == 1 {
+		return "1 hour"
+	}
+	return fmt.Sprintf("%d hours", n)
 }
 
 // renderSpawnText words a spawn (ADR 0075 §2.4): who did it, under
@@ -3715,7 +3956,26 @@ func renderMillText(e LogEvent, actor string) string {
 	return fmt.Sprintf("%s milled %s", actor, list)
 }
 
-// renderSearchText words a LogSearch: "P1 searched their library",
+// renderDiscardText words a LogDiscard (#4445): "P1 discarded Swamp",
+// "… to hand size" for the cleanup step's discard (CR 514.1), and where
+// the card went when it was not the graveyard ("… into exile" for
+// madness).
+func renderDiscardText(e LogEvent, actor, card string) string {
+	suffix := ""
+	switch game.ZoneKind(e.NewZone) {
+	case game.ZoneGraveyard, "":
+	case game.ZoneLibrary:
+		suffix = " onto their library"
+	default:
+		suffix = " into " + prettyZone(e.NewZone)
+	}
+	if e.Cause == string(game.DiscardCauseCleanup) {
+		suffix += " to hand size"
+	}
+	return fmt.Sprintf("%s discarded %s%s", actor, card, suffix)
+}
+
+// renderSearchText words a LogSearch:"P1 searched their library",
 // "P1 searched P2's library and shuffled it" (a search that shuffled),
 // or "P1 shuffled their library" for a plain shuffle (Label "shuffle").
 // It never names a card.

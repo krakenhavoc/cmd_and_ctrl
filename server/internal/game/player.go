@@ -227,6 +227,13 @@ type Player struct {
 	// seam.
 	TurnsBegun int
 
+	// ExtraTurnsBegun counts the EXTRA turns (CR 500.7) this player has
+	// begun this game (#4973, H.M.S. Bounty's "haven't begun an extra
+	// turn this game"). Unlike TurnsBegun it counts only turns that
+	// really began: a skipped extra turn (CR 614.10a) and a seat stepped
+	// over after leaving the game began nothing.
+	ExtraTurnsBegun int
+
 	// UpkeepsBegun counts the upkeep steps this player has begun
 	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
 	// before any "at the beginning of your upkeep" trigger is checked,
@@ -281,6 +288,13 @@ type Player struct {
 	// player who was decked (LossEmptyDraw) from one who lost to life
 	// on any frame, a reload included.
 	LossCause LossCause
+
+	// FinalBoard is what the player had when they left the game (#4912,
+	// final_board.go): their battlefield, hand, graveyard, exile and
+	// command zone as plain data, written once by leaveGameLocked before
+	// CR 800.4a takes their objects out of the game, and never changed.
+	// Nil while they play. The seat view sends it to everyone.
+	FinalBoard *FinalBoard
 
 	// Removed is set when an admin removed this seat from a game that
 	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player
@@ -433,6 +447,14 @@ type Player struct {
 	// the mana cost — players track mana on paper / in their head.
 	// Added in S13.1.
 	CommanderCasts map[uuid.UUID]int
+
+	// FirstSpellCast is the first spell this player cast this game, as
+	// the object it was on the stack (CR 400.7): First Contact's "if
+	// this spell is the first spell you've cast this game". Stamped once
+	// in CastSpell, as the cast completes (CR 601.2i); a copy is not
+	// cast (CR 707.10) and never stamps it. The zero ref is "no spell
+	// cast yet". Additive within the snapshot version (#4973).
+	FirstSpellCast ObjectRef
 
 	// Counters is the per-player named counter map (S13.2 — poison,
 	// energy, experience, rad, plus any homebrew). Distinct from the

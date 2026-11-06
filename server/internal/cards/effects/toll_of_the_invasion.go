@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Toll of the Invasion — Sorcery {2}{B}:
 //
 //	"Target opponent reveals their hand. You choose a nonland card from
@@ -17,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3a7c2e32-8585-4f7f-8635-199e3c6cd8a9",
 		Name:         "Toll of the Invasion",
+		Purpose:      game.Purpose{Amass: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// The amass waits for the choice from the revealed hand (CR 608.2c, #4155).

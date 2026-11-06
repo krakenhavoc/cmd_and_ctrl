@@ -687,6 +687,9 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// ADR 0203 / CR 309.4c: a dungeon card's room abilities function in
 	// the command zone, and trigger as the venture marker moves.
 	g.harvestFromDungeonsLocked(&pass)
+	// ADR 0216 §6 / CR 901.7: a face-up plane's triggered abilities
+	// function in the command zone.
+	g.harvestFromPlanesLocked(&pass)
 	// #925: abilities that declared another zone (CR 113.6) — a
 	// graveyard card's "when you cycle this card", suspend's exile
 	// countdown. Indexed at Register, so an event kind nothing
@@ -916,7 +919,7 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	if occurrences < 1 {
 		return
 	}
-	extra := g.triggerDoublersLocked(pass, source, lki, t, origin == triggerOfSpell)
+	extra := g.triggerDoublersLocked(pass, source, lki, t, origin)
 	for n := 0; n < occurrences; n++ {
 		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
 		for _, d := range extra {
@@ -1238,6 +1241,7 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			AttachedTo: c.AttachedTo,
 			TextBox:    c.TextBox,
 			TextWords:  c.TextWords.entries(),
+			FaceDown:   leavingFaceDownKind(c),
 		}
 		// #1218: The Ozolith's "if it had counters on it" — snapshotted
 		// here, before MoveCard's battlefield-exit cleanup zeroes
@@ -1254,6 +1258,16 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 		}
 		return
 	}
+}
+
+// leavingFaceDownKind is the CR 708.2 permanent state a departing
+// permanent is in, for its trigger identity (#4845), or FaceDownNone
+// for a face-up one.
+func leavingFaceDownKind(c *Card) FaceDownKind {
+	if c.faceDownPermanent() {
+		return c.FaceDownKind
+	}
+	return FaceDownNone
 }
 
 // findCardByIDLocked finds the card with the given

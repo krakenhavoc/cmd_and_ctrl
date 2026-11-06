@@ -134,6 +134,13 @@ const (
 	// It takes precedence over every other move key: a binary from
 	// before it knows those keys and would drop the trigger.
 	ReplacementResumeMoveReflexive = "replacement-resume/move-reflexive"
+
+	// #4522: a move carrying a token creation a replacement declared on
+	// it (tokensAfterMove, "instead exile that card and create a
+	// token"). It takes precedence over every other move key, the
+	// reflexive one included: a binary from before it knows those keys
+	// and would drop the creation.
+	ReplacementResumeMoveTokens = "replacement-resume/move-tokens"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -161,6 +168,7 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeMoveExchange: RepEventMove,
 
 	ReplacementResumeMoveReflexive: RepEventMove,
+	ReplacementResumeMoveTokens:    RepEventMove,
 
 	ReplacementResumeDamage: RepEventDamage,
 
@@ -230,6 +238,9 @@ func eventCarriesDataTail(ev *ReplacementEvent) bool {
 // when it carries a data tail: its kind's tailed key, or the move-entry-tail
 // key when the tail is a single permanent's entry tail (#4253 slice 6).
 func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
+	if ev.Kind == RepEventMove && len(ev.tokensAfterMove) > 0 {
+		return ReplacementResumeMoveTokens
+	}
 	if ev.Kind == RepEventMove && len(ev.reflexiveAfterMove) > 0 {
 		return ReplacementResumeMoveReflexive
 	}
@@ -255,6 +266,9 @@ func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
 
 // snapshotTailedKeyOf is replacementResumeTailedKeyOf over the mirror.
 func snapshotTailedKeyOf(ev *replacementEventSnapshot, kind ReplacementEventKind) string {
+	if kind == RepEventMove && len(ev.TokensAfterMove) > 0 {
+		return ReplacementResumeMoveTokens
+	}
 	if kind == RepEventMove && len(ev.ReflexiveAfterMove) > 0 {
 		return ReplacementResumeMoveReflexive
 	}
@@ -311,13 +325,16 @@ func replacementResumeKeyFor(kind ReplacementEventKind) string {
 // the prompt's own written fields: ResolveOptionalReplacement,
 // ResolveReplacementOrder, ResolveEntryRiot, ResolveCopyTarget,
 // ResolveEntryController, ResolveEntryCardChoice, ResolveAuraHost,
-// ResolveEntryReadAhead and ResolveEntryPayLife.
+// ResolveEntryReadAhead, ResolveEntryPayLife and
+// ResolveEntryAttackTarget.
 func keyedReplacementPromptKind(k PendingChoiceKind) bool {
 	switch k {
 	case PendingChoiceOptionalReplacement, PendingChoiceReplacementOrder, PendingChoiceEntryRiot,
 		// #4253 slice 2: the entry questions that share the frame.
 		PendingChoiceCopyTarget, PendingChoiceEntryController, PendingChoiceAuraHost,
-		PendingChoiceEntryReadAhead, PendingChoiceEntryPayLife:
+		PendingChoiceEntryReadAhead, PendingChoiceEntryPayLife,
+		// Kira Nerys, Firebrand: CR 508.4's defender (entry_attack.go).
+		PendingChoiceEntryAttackTarget:
 		return true
 	}
 	return isEntryCardChoiceKind(k)
@@ -486,6 +503,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"lifeAfterMove":             repFieldCarried,
 	"extraTurnsAfterMove":       repFieldCarried,
 	"reflexiveAfterMove":        repFieldCarried,
+	"tokensAfterMove":           repFieldCarried,
 	"asCommanderMove":           repFieldCarried,
 	"commanderAnswer":           repFieldCarried,
 
@@ -598,7 +616,7 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	if key == "" || !g.replacementEventKeyable(ev) {
 		return ""
 	}
-	if eventCarriesDataTail(ev) || (ev.Kind == RepEventMove && len(ev.reflexiveAfterMove) > 0) {
+	if eventCarriesDataTail(ev) || (ev.Kind == RepEventMove && (len(ev.reflexiveAfterMove) > 0 || len(ev.tokensAfterMove) > 0)) {
 		key = replacementResumeTailedKeyOf(ev)
 	}
 	if ev.Kind == RepEventDamage {
@@ -682,6 +700,17 @@ func (g *Game) replacementEventKeyableAs(ev *ReplacementEvent, batchToken bool) 
 		_ = snapshotCard(grp.Template, &scratch)
 		if !scratch.Empty() {
 			return false
+		}
+	}
+	for _, in := range ev.tokensAfterMove {
+		// #4522: a declared creation's templates, written through the
+		// card mirror as a creation's groups are.
+		for _, grp := range in.Groups {
+			var scratch ContinuationCensus
+			_ = snapshotCard(grp.Template, &scratch)
+			if !scratch.Empty() {
+				return false
+			}
 		}
 	}
 	if r := ev.zoneRoute; r != nil {
@@ -803,6 +832,8 @@ type replacementEventSnapshot struct {
 
 	// #4517: reflexive triggers a replacement declared on the move.
 	ReflexiveAfterMove []moveReflexiveSnapshot `json:"reflexiveAfterMove,omitempty"`
+	// #4522: token creations a replacement declared on the move.
+	TokensAfterMove []moveTokensSnapshot `json:"tokensAfterMove,omitempty"`
 
 	// #4253 slice 2: a keyword action's tail (its data half), a counter
 	// placement and a life change.
@@ -1143,6 +1174,14 @@ func restoreMoveReflexive(s moveReflexiveSnapshot) reflexiveMoveInstruction {
 	return out
 }
 
+// moveTokensSnapshot is a tokenMoveInstruction (#4522, ADR 0178
+// amendment of 2026-11-05): its templates through the card mirror.
+type moveTokensSnapshot struct {
+	Source     *uuid.UUID           `json:"source,omitempty"`
+	Controller uuid.UUID            `json:"controller"`
+	Groups     []tokenGroupSnapshot `json:"groups"`
+}
+
 // replacementSerialSnapshot is one entry of Game.replacementObjectSerials.
 type replacementSerialSnapshot struct {
 	Object ObjectRef `json:"object"`
@@ -1355,6 +1394,11 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 	for _, r := range ev.reflexiveAfterMove {
 		out.ReflexiveAfterMove = append(out.ReflexiveAfterMove, snapshotMoveReflexive(r))
 	}
+	for _, t := range ev.tokensAfterMove {
+		out.TokensAfterMove = append(out.TokensAfterMove, moveTokensSnapshot{
+			Source: uuidPtrOrNil(t.Source), Controller: t.Controller, Groups: snapshotTokenGroups(t.Groups, cen),
+		})
+	}
 	snapshotDamageEvent(ev, &out)
 	return out
 }
@@ -1518,6 +1562,11 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 	for _, r := range s.ReflexiveAfterMove {
 		ev.reflexiveAfterMove = append(ev.reflexiveAfterMove, restoreMoveReflexive(r))
 	}
+	for _, t := range s.TokensAfterMove {
+		ev.tokensAfterMove = append(ev.tokensAfterMove, tokenMoveInstruction{
+			Source: uuidOrNil(t.Source), Controller: t.Controller, Groups: restoreTokenGroups(t.Groups),
+		})
+	}
 	restoreDamageEvent(s, ev)
 	return ev
 }
@@ -1543,7 +1592,12 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) && snapshotCarriesDataTail(&f.Event):
 		// #4362: combat damage owes its caller nothing.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
-	case kind == RepEventMove && (len(f.Event.ReflexiveAfterMove) > 0) != (c.PickThen == ReplacementResumeMoveReflexive):
+	case kind == RepEventMove && (len(f.Event.TokensAfterMove) > 0) != (c.PickThen == ReplacementResumeMoveTokens):
+		// #4522: a declared token creation is written under its own key,
+		// and only an event carrying one is.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over a move whose token creations it does not match")
+	case kind == RepEventMove && len(f.Event.TokensAfterMove) == 0 &&
+		(len(f.Event.ReflexiveAfterMove) > 0) != (c.PickThen == ReplacementResumeMoveReflexive):
 		// #4517: a declared reflexive trigger is written under its own
 		// key, and only an event carrying one is.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a move whose reflexive triggers it does not match")

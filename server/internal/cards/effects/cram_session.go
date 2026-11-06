@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Cram Session — Sorcery {1}{B/G} (EDHREC rank 25366):
 //
 //	"You gain 4 life.
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6e5b8bb2-9dd8-4986-9d0a-659114be5a2a",
 		Name:         "Cram Session",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		OnResolve:    ResolveSteps(GainLife{Amount: 4}, Learn{}),
 	})

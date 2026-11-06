@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d7d2f701-77df-4169-bf98-0d51d6886e9b",
 		Name:         "Behold the Multiverse",
+		Purpose:      game.Purpose{Scry: 2},
 		Completeness: CompletenessFull,
 		SpecialActions: []game.SpecialAction{
 			Foretell("{1}{U}"),

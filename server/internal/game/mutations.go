@@ -823,7 +823,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
 	// permission for this cast, from here down: the path gate refuses a
 	// zone nothing else opens, and a hand cast is an ordinary one.
-	grant = grant.ForSpell(card)
+	grant = g.permissionForSpellLocked(grant, card)
 	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
@@ -868,7 +868,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// so is every other way a card gets cast out of exile in this
 	// engine: impulse exile, airbend, warp, cascade, a defeated
 	// Siege's back face. No catalog card ever declared ZoneExile, so
-	// nothing shipped through the hole.
+	// nothing shipped through the hole. A card whose OWN text says "You
+	// may cast this card from exile" (ADR 0066, 2026-11-05) reaches here
+	// holding the permission castPermissionLocked derives for its owner
+	// while it is face up, so this gate is unchanged.
 	//
 	// The graveyard and the library reach the same question through
 	// validateCastPathLocked below, which is handed `grant`; exile
@@ -1596,6 +1599,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #4687: an exiling behold spends its card, so it may not also pay
+	// another component of this cast (CR 118.3).
+	if err := validateBeholdExileSpent(costPlan, params.RevealIDs, castSpentObjects(params)); err != nil {
+		slog.Warn("cast_spell rejected: the beheld card also pays another cost",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): and each
 	// revealed splice card's cost that is not mana, with every object the
 	// rest of this cast already spends (CR 118.3).
@@ -1895,6 +1908,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #4055: and every object a splice card's cost spends.
 	spliceSpent := spliceObjectsOf(params.SplicePayments)
 	moving = append(moving, spliceSpent...)
+	// #4687: and the card an exiling behold takes.
+	moving = append(moving, beholdExileMoving(costPlan, params.RevealIDs)...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -2327,8 +2342,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// ADR 0100 amendment 2026-10-07: a revealed card is shown with the
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
-	// with. Nothing moves.
-	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
+	// with. Nothing moves — unless the behold exiles its card (#4687, the
+	// Champions): it is exiled here, linked to the spell (CR 607.2q).
+	if err := g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs, params.commanderAnswers); err != nil {
+		slog.Error("cast_spell: behold-and-exile cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): the splice
 	// costs that are not mana, in the order the cards were revealed, with
 	// the spell on the stack like every other cost of the cast.
@@ -2360,6 +2383,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			p.CommanderCasts = make(map[uuid.UUID]int)
 		}
 		p.CommanderCasts[cardID]++
+	}
+	// #4973: the first spell this player has cast this game, as the
+	// object it is on the stack (First Contact).
+	if p.FirstSpellCast.ID == uuid.Nil {
+		for i := range g.Stack.Cards {
+			if sc := &g.Stack.Cards[i]; sc.InstanceID == cardID {
+				p.FirstSpellCast = ObjectRef{ID: cardID, Epoch: sc.ObjectEpoch}
+				break
+			}
+		}
 	}
 	// S19 sub-PR 6: per-turn cast tally, bumped BEFORE EventCast so
 	// "first noncreature spell each turn" predicates see this spell
@@ -2458,6 +2491,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)
+	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
+	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
+	// came before the cast finished.
+	if modeSpec != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,
@@ -2688,7 +2727,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 }
 
 // spendStrategyForCast asks the catalog whether this spell reads the
-// colours that paid for it (#761). Converge (CR 702.86) and sunburst
+// colours that paid for it (#761). Converge (CR 207.2c) and sunburst
 // (CR 702.44) do; everything else keeps the default order.
 //
 // A DECLARATION on the spec rather than something inferred from the
@@ -3143,7 +3182,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			// #1397: nil answers — the auto-tapper asks nobody, and a
 			// commander whose own mana ability sacrifices it is not a
 			// source it plans with.
-			if err := g.payCostSacrificesLocked(sacrifices, nil); err != nil {
+			if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, nil); err != nil {
 				continue
 			}
 		}
@@ -3668,6 +3707,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
+		// and its "costs {N} more" (Zero, Incorporeal Sensate).
+		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -3775,7 +3816,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// through it (ForSpell).
 	//
 	// #4696: the permission that opens that face, as CastSpell finds it.
-	grant := g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face).ForSpell(card)
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(p.ID, card, srcKind, params.AlternativeCost, params.Face), card)
 	alt, err := g.resolveAlternativeCostLocked(p.ID, card, srcKind, grant, params.AlternativeCost, nil)
 	if err != nil {
 		return ParsedCost{}, CastCost{}, err
@@ -5891,6 +5932,10 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	p.Eliminated = true
 	p.LossCause = cause
 	p.AttemptedEmptyDraw = false
+	// #4912: what they had, before anything below takes it away. Their
+	// face-down exiled cards are revealed on the way out only when the
+	// departure does not end the game (the same test as below).
+	g.recordFinalBoardLocked(p, g.survivingSeatsLocked() > 1)
 	// #2450: a player leaving the game is loop progress (ADR 0055's
 	// 2026-10-07 amendment, option B, owner decision 3a).
 	g.noteLoopProgressLocked()
@@ -8315,7 +8360,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
-		if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
+		if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below

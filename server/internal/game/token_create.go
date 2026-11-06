@@ -54,6 +54,13 @@ import (
 //     Arwen, Dragonstorm Globe) and fireETBHookLocked reach a token
 //     for the first time.
 //
+//     When the first event settled on more than one token, those
+//     entries are ONE simultaneous entry (#4867, entry_batch.go): every
+//     token's window runs against the board before any of them entered,
+//     then they all land and are announced together (CR 608.2f,
+//     603.6a). Only a creation of one token, or of tokens created
+//     blocking, takes the walk below.
+//
 // The split is the rules' own: CR 616.1's "would create" replacements
 // apply to the instruction, and entry replacements apply to each
 // permanent as it enters. Collapsing them into one event would make a
@@ -129,14 +136,15 @@ type TokenGroup struct {
 	CreatedWith PermissionCardRef
 
 	// Blocking is the attacking creature this group's tokens are created
-	// BLOCKING (CR 506.3d, 509.5): Brimaz's "create a 1/1 Cat Soldier
+	// BLOCKING (CR 506.3d, 509.4): Brimaz's "create a 1/1 Cat Soldier
 	// creature token with vigilance that's blocking that creature". It
 	// is stampEntryBlockerLocked's, once the token has landed: never
 	// declared as a blocker, so no "whenever this blocks" trigger fires
 	// for it, and an attacker that has left combat by then leaves the
 	// token on the battlefield not blocking (the instruction's other
-	// part still happens). Single-token entry only; a Together creation
-	// ignores it.
+	// part still happens). Single-token entry only: a creation whose
+	// tokens block enters them one at a time even when it makes several
+	// (#4867), and a Together creation ignores it.
 	Blocking uuid.UUID
 }
 
@@ -161,7 +169,12 @@ type TokenCreation struct {
 	// the part of it that can still be delivered.
 	Attacking uuid.UUID
 
-	// Together settles all entries before landing any token.
+	// Together settles all entries before landing any token. Since
+	// #4867 that is the default for every creation that makes more than
+	// one token (ADR 0061 amendment 2026-11-05), so the field changes
+	// nothing a caller can see; it stays because it is written to disk
+	// (the creation's tokenTogether) and the callers that set it read as
+	// the rule they implement.
 	Together bool
 	// AttackChoicesLabel names the per-token choices made after count replacements.
 	AttackChoicesLabel string
@@ -408,7 +421,8 @@ func (g *Game) createTokensLocked(ev *ReplacementEvent) error {
 }
 
 // applyResolvedTokenCreationLocked mints the tokens a settled
-// RepEventCreateTokens describes and enters them one at a time.
+// RepEventCreateTokens describes and enters them: together, as one
+// simultaneous entry, when there is more than one (#4867).
 //
 // Caller must hold g.mu.
 func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
@@ -452,12 +466,35 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	if ev.tokenTail != nil {
 		done = tokenDone{keyed: ev.tokenTail.keyed, report: ev.tokenTail.report}
 	}
-	if ev.TokenTogether {
+	if ev.TokenTogether || (len(batch) > 1 && !stagedTokensBlock(batch)) {
+		// #4867, ADR 0061 amendment 2026-11-05: the tokens one
+		// instruction creates are created at the same time (CR 701.7a,
+		// CR 608.2f), so they enter in ONE event: each newcomer sees the
+		// others enter (CR 603.6a) and a "one or more" trigger counts one
+		// event (CR 603.2c). The default for every creation of more than
+		// one token, whatever the window left it making.
 		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, done)
 	}
+	// A creation of one token enters it on its own: a one-member batch
+	// is the same entry, and this path keeps its existing frame. So does
+	// a creation of tokens put onto the battlefield blocking (Brimaz
+	// under a doubler): a paused simultaneous entry's members have no
+	// field for what a token blocks, and adding one would be lost by a
+	// binary from before it, so those tokens still enter one at a time.
 	// #4253 slice 3: the rest of the batch is data, so a token's entry
 	// question is a restore point.
 	return g.enterCreatedTokensKeyedLocked(batch, nil, ev.Source, done)
+}
+
+// stagedTokensBlock reports whether any token of a batch is put onto
+// the battlefield blocking (TokenGroup.Blocking).
+func stagedTokensBlock(batch []stagedToken) bool {
+	for _, st := range batch {
+		if st.blocking != uuid.Nil {
+			return true
+		}
+	}
+	return false
 }
 
 // stagedToken is one minted-but-not-yet-entered token: the object

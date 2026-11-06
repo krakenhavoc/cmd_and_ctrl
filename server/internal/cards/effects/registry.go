@@ -264,16 +264,27 @@ func Register(spec Spec) {
 	// the shape suspend and foretell will use"; they do not use it and
 	// could not, because a CARD-level declaration opens exile for
 	// every copy of the card at any time, however the copy got there.
-	// Every exile cast in this engine is a per-instance
+	// Every exile cast another effect grants is a per-instance
 	// game.CastPermission (ADR 0066). Refused at boot so the retired
 	// shape cannot come back through a card file.
+	//
+	// The one exception (ADR 0066, amendment of 2026-11-05) is a card
+	// whose OWN printed text says "You may cast this card from exile":
+	// there "every face-up copy, however it got there" is the text. It
+	// is admitted only beside Spec.CastsItselfFromExile, the statement
+	// that the card prints it, and the marker is refused without the
+	// zone.
+	exileListed := zoneDeclared(spec.CastableZones, game.ZoneExile)
+	if spec.CastsItselfFromExile && !exileListed {
+		panic(fmt.Sprintf("effects.Register: %q sets CastsItselfFromExile without listing ZoneExile in CastableZones", spec.Name))
+	}
 	for _, z := range spec.CastableZones {
 		if z == game.ZoneOutside {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneOutside in CastableZones — a cast from outside the game is a per-instance game.CastPermission (#3955, ADR 0198), never a card-level declaration",
 				spec.Name))
 		}
-		if z == game.ZoneExile {
-			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
+		if z == game.ZoneExile && !spec.CastsItselfFromExile {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration, unless the card's own printed text says \"You may cast this card from exile\" and it sets CastsItselfFromExile (#659, ADR 0066)",
 				spec.Name))
 		}
 	}
@@ -774,7 +785,7 @@ func Register(spec Spec) {
 		}
 		// #1221 / #1404: the same rule one zone over. ExileSelf
 		// follows the ability's zone — scavenge's and embalm's
-		// "Exile this card from YOUR GRAVEYARD" (CR 702.96a,
+		// "Exile this card from YOUR GRAVEYARD" (CR 702.97a,
 		// CR 702.128a) from the graveyard, Perpetual Timepiece's
 		// "Exile this artifact" from the battlefield (the default
 		// when Zones is nil). Every zone the ability functions from
@@ -787,6 +798,17 @@ func Register(spec Spec) {
 			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
 				if !game.ExileSelfZoneSupported(z) {
 					panic(fmt.Sprintf("effects.Register: %q ability %d declares an exile-this cost but functions from the %s — the component is paid from the battlefield or the graveyard",
+						spec.Name, i, z))
+				}
+			}
+		}
+		// The put-this-on-the-bottom twin of the check above: the
+		// component is paid from the battlefield or the graveyard
+		// (game.BottomSelfZoneSupported), and from nowhere else.
+		if ab.Cost.BottomSelf {
+			for _, z := range game.AbilityZones(game.ActivatedAbilityShape{Zones: ab.Zones}) {
+				if !game.BottomSelfZoneSupported(z) {
+					panic(fmt.Sprintf("effects.Register: %q ability %d declares a put-this-on-the-bottom cost but functions from the %s — the component is paid from the battlefield or the graveyard",
 						spec.Name, i, z))
 				}
 			}
@@ -829,6 +851,13 @@ func Register(spec Spec) {
 		// make the ability free — the refusal the CR 602 discard gets,
 		// and the same "Discard your hand" exception (#1600).
 		checkDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
+		// #4896: the mana payer solves its discard as the cheapest N,
+		// with no set rule, and no printed mana ability says "with
+		// different names".
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
+				spec.Name, i))
+		}
 		checkManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
 		// ADR 0109 §7: a random discard is a CR 602 component only. No
 		// printed mana ability discards at random, and the mana payer
@@ -1683,7 +1712,7 @@ func checkAltCostBehold(card string, ac game.AlternativeCost) {
 		}
 		return
 	}
-	if !rc.Behold || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
+	if !rc.Behold || rc.Exile || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
 		panic(fmt.Sprintf("effects.Register: %q offers %q with a malformed behold — build it with FlashbackBehold", card, ac.Key))
 	}
 }

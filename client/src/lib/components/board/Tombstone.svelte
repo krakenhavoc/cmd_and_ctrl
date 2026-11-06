@@ -26,6 +26,13 @@
   // still and reduced motion are this, the grey seat and the badge, alone.
   // An arriving decked stone waits for the library's ghost
   // (TableEffects.svelte) to reach its badge beat, not for a burst.
+  //
+  // #4912: the stone carries a Final board button, the one thing on it a
+  // player can reach (it alone takes pointer events). It opens the read-
+  // only viewer of what the player had when they left the game
+  // (FinalBoardModal.svelte, through finalBoard.ts), and is there only when
+  // the seat came with that record, so a seat restored from an older
+  // snapshot shows the stone alone.
 
   import { untrack } from "svelte";
   import { get } from "svelte/store";
@@ -37,7 +44,6 @@
     TOMBSTONE_DROP_MS,
     TOMBSTONE_FADE_MS,
     commanderLine,
-    rememberCommanders,
     tombstoneCommanders,
   } from "../../elimination";
   import {
@@ -47,6 +53,7 @@
     type EffectMotion,
   } from "../../tableEffects";
   import { tombstoneBand, tombstoneFits, type Span } from "../../tombstoneAnchor";
+  import { hasFinalBoard, openFinalBoard } from "../../finalBoard";
 
   interface Props {
     seat: PlayerView;
@@ -59,12 +66,10 @@
   const eliminated = $derived(seat.eliminated === true);
   const decked = $derived(seatDecked(seat));
   const name = $derived(seat.display_name ?? seat.name);
+  const finalBoard = $derived(hasFinalBoard(seat));
 
-  // Remember the commander while it can be seen: the frame that eliminates
-  // the seat no longer shows it.
-  $effect(() => {
-    rememberCommanders(view, seat);
-  });
+  // The commander line reads the seat's final board (#4547), so a stone
+  // seen for the first time after the player left still names it.
   const commander = $derived(eliminated ? commanderLine(tombstoneCommanders(view, seat)) : "");
 
   // The parts of a seat's identity that stand apart from its box: the name
@@ -193,6 +198,17 @@
       {#if commander}
         <span class="commander">{commander}</span>
       {/if}
+      {#if finalBoard}
+        <button
+          type="button"
+          class="final-open"
+          aria-label={L.finalBoardOpen(name)}
+          data-final-board-open={seat.id}
+          onclick={() => openFinalBoard(seat.id)}
+        >
+          {L.finalBoard}
+        </button>
+      {/if}
     </div>
   </div>
 {/if}
@@ -303,6 +319,41 @@
   .compact .commander,
   .snug .commander {
     font-size: 0.6rem;
+  }
+  /* #4912: the one control on the stone, so the one thing on it that
+     takes the pointer. A small mono pill, quiet until hovered. */
+  .final-open {
+    pointer-events: auto;
+    margin-top: 4px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--fg) 28%, transparent);
+    background: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color 120ms var(--ease),
+      border-color 120ms var(--ease),
+      background 120ms var(--ease);
+  }
+  .final-open:hover {
+    color: var(--accent-strong);
+    border-color: var(--accent-line);
+    background: var(--surface-raised);
+  }
+  .compact .final-open,
+  .snug .final-open {
+    margin-top: 2px;
+    height: 18px;
+    padding: 0 7px;
+    font-size: 8.5px;
   }
 
   /* #4879: a decked seat drains to a cold grey-blue, and its stone is cold.

@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "eda99a16-6a7c-4f39-8a6b-a284e6afd3fc",
 		Name:         "Goblin Plate Mail",
+		Purpose:      game.Purpose{Amass: 1},
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(1, 0), GrantToAttached("menace")},
 		Triggered: []game.TriggeredAbility{

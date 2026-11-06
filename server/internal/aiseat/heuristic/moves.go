@@ -55,6 +55,8 @@ const suicideValue = eliminatedStrength
 // arithmetic and a fifth one forgotten.
 func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	v, reason := p.payoffOf(st, m)
+	// #4979: a lifelink grant's counters (lifegain_payoff.go).
+	v += p.lifelinkGrantPayoff(st, m)
 	if m.Cost == nil {
 		return v, reason
 	}
@@ -198,6 +200,12 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	return v, false
 }
 
+// castBeholdExiles reports whether c's mandatory additional cost exiles
+// the card its behold names (#4687): `additional_cost.behold_exile`.
+func castBeholdExiles(c *protocol.CardView) bool {
+	return c != nil && c.AdditionalCost != nil && c.AdditionalCost.BeholdExile
+}
+
 // castTapsPermanents reports whether a cast of c pays a mandatory "tap an
 // untapped <permanent> you control" additional cost (#3868): the card's
 // own cost, or the either/or branch the cast names (Disruption Protocol's
@@ -324,7 +332,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		return p.landDropValue(st, m)
 
 	case legal.KindCast:
-		return p.valueOfCast(st, m)
+		v, reason := p.valueOfCast(st, m)
+		// #4324: haste that lets a fresh creature use its {T} ability
+		// (haste_tap.go).
+		if g := p.hasteTapGain(st, m); g > 0 {
+			v += g
+			reason += " (haste for a {T} ability)"
+		}
+		return v, reason
 
 	case legal.KindActivate:
 		cp := decode[activateParams](m.Params)
@@ -411,6 +426,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// own source pays for the source. A row with no purpose keeps
 		// ActivateBase (owner decision 6).
 		purposed := false
+		// #5084: a row that sacrifices its source for lands, priced by
+		// the turn as well as the hand (ramp_curve.go).
+		curveRow := false
 		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
 		// declares an entry for is priced by what the row does to it.
 		targetV, targetsPriced := p.pricedTargetsHarm(st, cp.Targets, func(t targetRef) bool {
@@ -444,12 +462,33 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				// tap happens (tapCreatureCost): a loot before combat
 				// costs the attack it replaces.
 			}
+			if purposed && p.cfg.PriceRampCurve && rampCurveRow(row, ps) {
+				if c := p.rampCurveValue(st, ps.lands); c > 0 {
+					v += c
+					reason += " (ramp curve)"
+				}
+				curveRow = true
+			}
+			// #5083: the +1/+1 counters the row puts on its own source
+			// (source_counter.go), in place of the flat ActivateBase.
+			if cv, ok := p.sourceCounterValue(st, src, row); ok {
+				if !purposed {
+					v, reason, purposed = 0, "activate (counter on its source)", true
+				}
+				v += cv
+			}
+			// #4978: a rider on a row that declares nothing else priced
+			// is added to ActivateBase (riders.go), and such a row pays
+			// for its source like a priced one: a Hidden Cave's discover
+			// does not come with a free land.
+			rider := p.unpricedRiderValue(st, ps, nil)
+			v += rider
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
 			// Strip Mine targeting itself would otherwise beat passing.
 			// #4318: purely defensive rows pay this cost in response too;
 			// other untargeted rows without a priced purpose retain their proxy.
-			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly) {
+			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly || rider > 0) {
 				v -= p.selfSacrificeCost(st, src)
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`
@@ -554,7 +593,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// flat price it always had.
 			if row := activatedRow(src, cp.AbilityIndex); row != nil && row.TapCost {
 				v -= p.tapCreatureCost(st, src)
-			} else {
+			} else if !curveRow {
+				// #5084: a row that sacrificed the creature has paid
+				// for the blocker in its board value already.
 				v -= tappedBlocker
 			}
 		}
@@ -608,6 +649,12 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			if st.myTurn && st.step == "precombat_main" && !c.SummoningSick && c.Power > 0 {
 				v -= st.w.Power * float64(c.Power)
 			}
+		}
+		// #4324: haste that lets a fresh creature use its {T} ability
+		// (haste_tap.go).
+		if g := p.hasteTapGain(st, m); g > 0 {
+			v += g
+			reason += " (haste for a {T} ability)"
 		}
 		return v, reason
 
@@ -856,6 +903,23 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	} else {
 		v -= st.w.Hand * float64(len(cp.ExileFromHandIDs))
 	}
+	// #4687: the card a "behold a Kithkin and exile it" exiles is gone
+	// until the permanent leaves, priced as the two exile costs above
+	// price a permanent and a hand card. A plain behold or reveal keeps
+	// its card and costs nothing.
+	if castBeholdExiles(card) {
+		for _, id := range cp.RevealIDs {
+			if st.bf[id] != nil {
+				v -= p.sacrificeCost(st, []string{id})
+				continue
+			}
+			if p.cfg.DiscardCostByCard {
+				v -= p.discardCost(st, id, cp.InstanceID, cp.RevealIDs)
+			} else {
+				v -= st.w.Hand
+			}
+		}
+	}
 	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
@@ -910,6 +974,27 @@ func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64
 	if p.cfg.RampPerMana == 0 || amount <= 0 || st.seat == nil {
 		return 0
 	}
+	sources := 0
+	for _, c := range st.bf {
+		if c.Controller == st.me {
+			sources += repeatableMana(c)
+		}
+	}
+	deficit := p.manaWant(st, card) - sources
+	if deficit <= 0 {
+		return 0
+	}
+	return p.cfg.RampPerMana * float64(min(amount, deficit))
+}
+
+// manaWant is the mana a turn the bot wants to cast what it holds (ADR
+// 0126 §2): the largest mana value among the cards in its hand, less
+// `card` (nil for none), and its commanders in the command zone with
+// their tax, capped at RampWantCap. Zero with no seat in the view.
+func (p *Policy) manaWant(st *state, card *protocol.CardView) int {
+	if st.seat == nil {
+		return 0
+	}
 	want := 0
 	consider := func(c *protocol.CardView, tax int) {
 		if (card != nil && c.InstanceID == card.InstanceID) || isLand(c) {
@@ -929,17 +1014,7 @@ func (p *Policy) rampFor(st *state, card *protocol.CardView, amount int) float64
 	if want > p.cfg.RampWantCap {
 		want = p.cfg.RampWantCap
 	}
-	sources := 0
-	for _, c := range st.bf {
-		if c.Controller == st.me {
-			sources += repeatableMana(c)
-		}
-	}
-	deficit := want - sources
-	if deficit <= 0 {
-		return 0
-	}
-	return p.cfg.RampPerMana * float64(min(amount, deficit))
+	return want
 }
 
 // castSource finds the card a cast move names, in any zone a cast can
@@ -1372,6 +1447,7 @@ func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionPara
 		if p.purposePriced(ps) {
 			v += p.purposeValue(st, ps, 0, c, false)
 		}
+		v += p.unpricedRiderValue(st, ps, c)
 		// #3776: and the pump it gives the creature for this turn's attack
 		// (face_up_pump.go).
 		if pv, note := p.faceUpPumpValue(st, c, c.Purpose.TurnedFaceUp.Pump); note != "" {

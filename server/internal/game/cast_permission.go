@@ -391,6 +391,25 @@ type PermissionFilter struct {
 	// its type; an instant or a sorcery does not. NonLandPermanentOnly
 	// is the same without the lands. Additive.
 	PermanentOnly bool `json:"permanentOnly,omitempty"`
+
+	// PowerOrToughnessCapped and PowerOrToughnessAtMost are "creature
+	// spells with power or toughness N or less" (Leonardo, Sewer Samurai,
+	// #4964): a card qualifies when it is a creature and its power is N
+	// or less, or its toughness is (a 2/1 and a 1/2 both qualify under
+	// "1 or less", a 2/2 does not). The flag says the clause is there,
+	// because 0 is a legal N. Additive, and both write nothing when unset.
+	//
+	// The numbers are the card's where it is. A characteristic-defining
+	// ability functions in all zones (CR 604.3, 113.6a), so a `*/*` card
+	// in a graveyard has the power and toughness its own ability gives it
+	// there, which only the game can work out: the lookups that hold the
+	// game stamp it on the copy they judge (Game.withPTAnywhereLocked),
+	// and a card with such an ability that reaches Matches unstamped, or
+	// a `*` the engine cannot compute at all, does not qualify. Unknown
+	// is never "1 or less". A card that is not a creature has no power
+	// or toughness for this clause (CR 208.3).
+	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
+	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -463,6 +482,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
+		return false
+	}
+	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
 		return false
 	}
 	return true
@@ -619,6 +641,17 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
+	// Incorporeal Sensate, #4973): generic mana added to the price of a
+	// spell cast through this permission. CostLess's twin, an INCREASE
+	// (CR 601.2f): it composes with whatever the cast would otherwise pay
+	// and is added with the board's increases, before any reduction comes
+	// off. A land has no cost to raise. Read by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the permission
+	// it holds, as CostLess is. Zero is no increase, which is every
+	// permission written before this.
+	CostMore int `json:"costMore,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -675,6 +708,15 @@ type CastPermission struct {
 	// discarded — see AlternativeCost.DiscardFromHand for why a
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
+
+	// SneakCost is the price of a granted sneak (#4680, Ninja Teen's
+	// "Creature cards in your graveyard have sneak {3}{B}"), read only
+	// under AltCostKeyGrantedSneak: the synthesised offer charges it and
+	// returns an unblocked creature you control (CR 702.190a). Not Cost,
+	// which is a flat price charged over any claim (CastCostFor) and would
+	// reprice a card's own sneak claimed under the same permission. Only a
+	// derived standing permission carries it; none is ever stored.
+	SneakCost string `json:"sneakCost,omitempty"`
 
 	// DiscardCard is The Infamous Cruelclaw's "You may cast that card by
 	// discarding a card rather than paying its mana cost" (CR 118.9,
@@ -1340,6 +1382,15 @@ func (p *CastPermission) NamesPrice() bool {
 	return p != nil && (p.Cost != "" || p.WaterbendManaValue)
 }
 
+// atPrintedCost reports whether the permission opens its zone at the
+// card's printed cost (Yawgmoth's Will, Muldrotha, an impulse exile): no
+// claimable offer of its own and no price. Such a permission lets the
+// card be cast for any alternative cost it prints (permissionClaimOK).
+// Nil-safe: nil is false.
+func (p *CastPermission) atPrintedCost() bool {
+	return p != nil && p.AltCostKey == "" && !p.NamesPrice()
+}
+
 // AlternativeCostFor synthesises the CR 118.9 offer this permission
 // prices the cast under, or nil when the permission charges the
 // printed cost (impulse exile) or its own flat Cost (airbend,
@@ -1373,6 +1424,15 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 			FromZone:       p.Zone,
 			FromPermission: true,
 		}
+	}
+	if p.AltCostKey == AltCostKeyGrantedSneak {
+		// #4680: the granted sneak's price and riders (sneak.go).
+		return grantedSneakOffer(p, card)
+	}
+	if p.AltCostKey == AltCostKeyGrantedBeamMeUp {
+		// Scotty, Miracle Worker: the granted beam me up's price, return
+		// and exile (beam_me_up.go).
+		return grantedBeamMeUpOffer(p, card)
 	}
 	out := AlternativeCost{
 		Key:            p.AltCostKey,
@@ -1755,10 +1815,17 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // could never be reached by asking it.
 //
 // So a claim picks: a live stored permission whose AltCostKey is
-// `claim` is the one the cast uses. Every other claim, and no claim,
-// gets CastPermissionForLocked's answer. The cast path, its price and
-// its preview all ask this with the claim they were handed, so all
-// three judge the cast under the same permission; CastOffersForLocked
+// `claim` is the one the cast uses. Any other claim out of a zone a
+// stored or standing permission opens is cast under the first such
+// permission at the printed cost, if there is one (#4971), and
+// otherwise gets the first permission. No claim out of such a zone is
+// cast under the first permission that admits a cast claiming nothing
+// (#5081), skipping one whose price is a claimable offer of its own
+// (Green Goblin's mayhem ahead of Muldrotha), and otherwise under the
+// first permission. The
+// cast path, its price and its preview all ask this with the claim
+// they were handed, so all three judge the cast under the same
+// permission; CastOffersForLocked
 // lists the other permission's offer so a caster can make the claim.
 //
 // Caller must hold g.mu (read or write).
@@ -1803,7 +1870,7 @@ func (g *Game) CastPermissionForFaceLocked(playerID uuid.UUID, card Card, zone Z
 	spell := card
 	spell.SetFace(face)
 	if perm := g.castPermissionForClaimMatchingLocked(playerID, card, zone, claim, func(perm *CastPermission) bool {
-		return perm.opensFace(spell, playerID)
+		return perm.opensFace(g.lendPTLocked(perm, spell), playerID)
 	}); perm != nil {
 		return perm
 	}
@@ -1829,7 +1896,7 @@ func (g *Game) CastPermissionForFaceLocked(playerID uuid.UUID, card Card, zone Z
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastableFaceGrantsLocked(playerID uuid.UUID, card Card, zone ZoneKind, first *CastPermission) []FaceGrant {
-	faces := CastableFacesUnder(card, first, playerID)
+	faces := CastableFacesUnder(g.lendPTLocked(first, card), first, playerID)
 	out := make([]FaceGrant, 0, len(faces))
 	for _, f := range faces {
 		out = append(out, FaceGrant{Face: f, Permission: first})
@@ -1850,7 +1917,7 @@ func (g *Game) CastableFaceGrantsLocked(playerID uuid.UUID, card Card, zone Zone
 			continue
 		}
 		perm := g.CastPermissionForFaceLocked(playerID, card, zone, "", f)
-		if perm == nil || !slices.Contains(CastableFacesUnder(card, perm, playerID), f) {
+		if perm == nil || !slices.Contains(CastableFacesUnder(g.lendPTLocked(perm, card), perm, playerID), f) {
 			continue
 		}
 		out = append(out, FaceGrant{Face: f, Permission: perm})
@@ -1913,7 +1980,11 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 			// the same card with no offer of its own (Shaman's Trance's
 			// plain play of another player's graveyard).
 			for _, perm := range g.standingCastPermissionsLocked(p) {
-				if perm.AltCostKey == claim && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
+				// #4680: a claim of the card's own sneak is cast under a
+				// granted-sneak permission too ("using their sneak
+				// abilities"), which is the door it opens.
+				answers := perm.AltCostKey == claim || (perm.AltCostKey == AltCostKeyGrantedSneak && printedSneakClaim(card, claim))
+				if answers && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
 					out := perm
 					if !acceptsPermission(accept, &out) {
 						continue
@@ -1921,9 +1992,54 @@ func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Car
 					return &out
 				}
 			}
+			// #4971: a claim no permission's key answers (the card's own
+			// evoke, overload, bestow) is cast under a permission at the
+			// printed cost if one opens the card. One that names a price
+			// (Green Goblin's mayhem, Underworld Breach's escape, a {0}
+			// exile) accepts no claim but its own (permissionClaimOK), so
+			// handing it this one refused a cast Muldrotha or Yawgmoth's
+			// Will beside it allows, whenever it happened to come first.
+			if perm := g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+				return perm.atPrintedCost() && acceptsPermission(accept, perm)
+			}); perm != nil {
+				return perm
+			}
+		}
+	}
+	if claim == "" && zone != ZoneCommand && zone != ZoneHand && !card.PrepareCopy && !card.IsLand() {
+		// #5081: a cast that claims nothing is made under the first
+		// permission that lets one be made (permissionClaimOK): one at the
+		// printed cost (Muldrotha) or one with a flat price that charges
+		// itself (a {0} exile, airbend's {2}). One whose price is a
+		// claimable offer (Green Goblin's mayhem, Underworld Breach's
+		// escape) is claimed under its key and refuses a cast that claims
+		// nothing, so handing it this one refused the printed cast
+		// Muldrotha beside it allows, whenever it happened to come first.
+		// Only those are skipped: a flat-priced permission keeps its place,
+		// so its free cast is never traded for the printed cost. A land is
+		// played, not cast, and keeps the first permission.
+		if perm := g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+			return permissionClaimOK(card, nil, perm) && acceptsPermission(accept, perm)
+		}); perm != nil {
+			return perm
 		}
 	}
 	return g.castPermissionLocked(playerID, card, zone, accept)
+}
+
+// printedCostPermissionForOffersLocked is the first live permission at
+// the printed cost (atPrintedCost) that opens `card` out of `zone` for
+// playerID, or nil: the one castPermissionForClaimMatchingLocked hands a
+// cast claiming an offer no permission names (#4971), so
+// CastOffersForLocked can list those offers under it. `card` is the card
+// with the face being cast already materialised, and a multi-face card's
+// permission must open that face, as CastPermissionForFaceLocked's must.
+//
+// Caller must hold g.mu.
+func (g *Game) printedCostPermissionForOffersLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission {
+	return g.castPermissionLocked(playerID, card, zone, func(perm *CastPermission) bool {
+		return perm.atPrintedCost() && (!card.IsMultiFace() || perm.opensFace(g.lendPTLocked(perm, card), playerID))
+	})
 }
 
 // acceptsPermission is castPermissionForClaimMatchingLocked's test: nil
@@ -1936,7 +2052,7 @@ func acceptsPermission(accept func(*CastPermission) bool, perm *CastPermission) 
 // for a permission derived from the battlefield: covering the card, over
 // a pile it reaches, at a position it allows. Caller must hold g.mu.
 func (g *Game) standingPermissionOpensLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
-	return perm.CoversCard(card, zone) && g.permissionReachesPileLocked(holder, perm, card, zone) &&
+	return perm.CoversCard(g.lendPTLocked(perm, card), zone) && g.permissionReachesPileLocked(holder, perm, card, zone) &&
 		g.permissionPositionOKLocked(holder, perm, card)
 }
 
@@ -1948,7 +2064,7 @@ func (g *Game) standingPermissionOpensLocked(holder uuid.UUID, perm *CastPermiss
 //
 // Caller must hold g.mu.
 func (g *Game) storedPermissionOpensLocked(playerID uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
-	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(card, zone) &&
+	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(g.lendPTLocked(perm, card), zone) &&
 		g.permissionReachesPileLocked(playerID, perm, card, zone) &&
 		g.permissionPositionOKLocked(playerID, perm, card)
 }
@@ -2018,7 +2134,7 @@ func (g *Game) consumeLimitedGrantLocked(holder uuid.UUID, card Card, grant *Cas
 	spent := false
 	for _, perm := range p.CastPermissions {
 		if !spent && perm.CastsLeft > 0 && perm.Source == grant.Source && perm.Label == grant.Label &&
-			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(card, perm.Zone) {
+			perm.AltCostKey == grant.AltCostKey && perm.CoversCard(g.lendPTLocked(&perm, card), perm.Zone) {
 			spent = true
 			perm.CastsLeft--
 			if perm.CastsLeft == 0 {
@@ -2114,7 +2230,7 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		return &out
 	}
 	for _, perm := range g.standingCastPermissionsLocked(p) {
-		if !perm.CoversCard(card, zone) {
+		if !perm.CoversCard(g.lendPTLocked(&perm, card), zone) {
 			continue
 		}
 		if !g.permissionReachesPileLocked(p.ID, &perm, card, zone) {
@@ -2128,6 +2244,13 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 			continue
 		}
 		return &out
+	}
+	// ADR 0066, 2026-11-05: the card's own "You may cast this card from
+	// exile", for its owner while it is face up.
+	if zone == ZoneExile {
+		if perm := g.ownTextExilePermissionLocked(playerID, card); acceptsPermission(accept, perm) {
+			return perm
+		}
 	}
 	// A permission an ability sticker on the card gives it (#4307).
 	if zone == ZoneGraveyard {
@@ -2727,6 +2850,11 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	if g.anyStickerGraveyardCastLocked() {
 		return true
 	}
+	// ADR 0066, 2026-11-05: and a face-up exiled card whose own text
+	// lets its owner cast it from there.
+	if g.anyOwnTextExileCastLocked() {
+		return true
+	}
 	if g.Battlefield == nil {
 		return false
 	}
@@ -2773,7 +2901,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			// holder's grant over one opponent's graveyard would be
 			// stamped as the public `exile_play` on every card in every
 			// graveyard, the holder's own included.
-			if !perm.CoversCard(card, zone) || !g.permissionReachesPileLocked(p.ID, perm, card, zone) {
+			if !perm.CoversCard(g.lendPTLocked(perm, card), zone) || !g.permissionReachesPileLocked(p.ID, perm, card, zone) {
 				continue
 			}
 			if g.CastPermissionActiveForEffect(perm, p.ID) {
@@ -2803,6 +2931,12 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			return derived
 		}
 	}
+	if fallback == nil && zone == ZoneExile {
+		// ADR 0066, 2026-11-05: the card's own text, for its owner.
+		if own := g.ownTextExilePermissionLocked(card.Owner, card); own != nil {
+			return own
+		}
+	}
 	return fallback
 }
 
@@ -2821,7 +2955,7 @@ func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPe
 			continue
 		}
 		for _, perm := range g.standingCastPermissionsLocked(p) {
-			if perm.CoversCard(card, zone) && g.permissionReachesPileLocked(p.ID, &perm, card, zone) &&
+			if perm.CoversCard(g.lendPTLocked(&perm, card), zone) && g.permissionReachesPileLocked(p.ID, &perm, card, zone) &&
 				g.permissionPositionOKLocked(p.ID, &perm, card) {
 				out := perm
 				return &out
@@ -3024,9 +3158,24 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	// #4509: `card` is the face being cast; a permission that does not
 	// admit it takes nothing off (ForSpell).
 	// #4696: the permission that opens that face, as CastSpell finds it.
-	grant := g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face).ForSpell(card)
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
 	if grant == nil || grant.CostLess <= 0 {
 		return 0
 	}
 	return grant.CostLess
+}
+
+// grantIncreaseLocked is CostQuery.GrantIncrease for one announcement: the
+// CostMore of the permission the cast claims, or 0 for a cast that uses
+// none. grantReductionLocked's twin, asking the same claim. Caller must
+// hold g.mu.
+func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
+	if from == ZoneHand || from == ZoneCommand {
+		return 0
+	}
+	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
+	if grant == nil || grant.CostMore <= 0 {
+		return 0
+	}
+	return grant.CostMore
 }

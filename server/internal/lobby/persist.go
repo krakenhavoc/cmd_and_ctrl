@@ -141,6 +141,9 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		LFGMessageID: entry.lfgMessageID,
 		// ADR 0174 §1.
 		Results: entry.meta.Results,
+		// ADR 0211 §1, §4. A nil LastActiveAt leaves the stored one.
+		LastActiveAt: entry.lastActiveStored,
+		ClosedReason: entry.closedReason,
 	}
 	return rec
 }
@@ -583,6 +586,16 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		voiceChannelID: rec.VoiceChannelID,
 		// ADR 0161 §6: the LFG manager's boot pass adopts it.
 		lfgMessageID: rec.LFGMessageID,
+		// ADR 0211 §1, §3: the idle clocks. A row with no last
+		// activity (every table that existed before migration 0031)
+		// starts its clock now, so the first deploy closes nothing at
+		// once; and nothing is closed within an hour of coming back.
+		lastActiveStored: rec.LastActiveAt,
+		closedReason:     rec.ClosedReason,
+		residentSince:    l.idleNow(),
+	}
+	if rec.LastActiveAt == nil {
+		entry.lastTouched = entry.residentSince
 	}
 	l.restampVoice(entry)
 	return entry, nil

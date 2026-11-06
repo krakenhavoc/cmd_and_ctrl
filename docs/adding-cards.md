@@ -1598,6 +1598,15 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   nothing else stays a plain `Landfall`. The bot prices every land it
   puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
   by what these rows pay.
+- **`SourceCounters`** goes on an activated row of the controller's own
+  that puts +1/+1 counters on its own source, to stay: Hangarback
+  Walker's "{1}, {T}: Put a +1/+1 counter on this creature." is
+  `game.Purpose{Answers: game.AnswerPump, SourceCounters: 1}`
+  ([#5083](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5083)).
+  Under `PriceSourceCounters` (off by default, [bot.md](bot.md#a-counter-on-its-own-source-5083))
+  the bot prices each counter as a point of power and toughness. A
+  counter on a target, an X amount, and an any-player row (Feral Hydra)
+  declare none; `effects.Register` refuses it off an activated row.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
@@ -2285,6 +2294,12 @@ library search, an exile return and a reanimation use** (#478) — as a
 comes from no zone, CR 111.1). So an
 enters-tapped or enters-with-counters replacement you write for cards
 covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation that makes more than one token enters them **together**, as
+one simultaneous entry (#4867, ADR 0061 amendment 2026-11-05; CR 608.2f,
+603.6a), whatever door you call: a Soul Warden token sees the other
+tokens of its own creation enter. (Tokens created blocking are the one
+exception; see the amendment.) Do not loop `N: 1` creations to make N
+tokens; one creation with `N: n` is the printed instruction.
 A creation CAN PAUSE — two different effects in the window is a CR 616
 ordering prompt — and so can a single token's entry, so
 `CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
@@ -2833,6 +2848,35 @@ stack the next time a player would receive priority. A later replacement
 that sends the card elsewhere or cancels the move means no trigger. Each
 replaced move makes its own trigger. A target clause goes on the
 `ReflexiveBody` registration; `Optional` and `Payload` are not supported.
+
+#### "Instead exile that card and create a token" (ADR 0178 amendment 2026-11-05, #4522)
+
+When the token is part of the modified event (Kalitas, Traitor of Ghet),
+not a "when you do" trigger, declare the creation on the move. Never call
+a token door inside `Replace`: the creation is an event of its own that can
+pause, and it has to land after the card moves.
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.CreateTokensAfterReplacedMoveForEffect(ev, game.TokenCreation{
+        Controller: src.Controller,
+        Source:     src.InstanceID,
+        Groups: []game.TokenGroup{{
+            Template: src.TokenThroughText(TokenCard("2/2 black Zombie")),
+            Count:    1,
+        }},
+    })
+},
+```
+
+The move's finisher lands the card, creates the tokens through the token
+pipeline (doublers apply, and each token's entry runs), then runs the
+move's own continuation, which waits if the creation or an entry asks a
+question. The controller is fixed when the replacement applies. The tokens
+are still made if a later replacement redirects or cancels the move (CR
+614.6). A creation attacking, blocking or entering together is refused.
 
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
@@ -5318,7 +5362,8 @@ refuses fewer than two branches, a branch without a unique `Key`, an
 empty, optional, repeating or nested branch, a variable sacrifice in a
 branch, and components on the branched cost itself. Reveal and behold
 branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
-`OptionalBehold` (#4642). "tap an untapped artifact", "exile two cards from your graveyard" and
+`OptionalBehold` (#4642), and a mandatory "behold a Kithkin and exile it"
+is `BeholdAndExileCost` (#4687, below). "tap an untapped artifact", "exile two cards from your graveyard" and
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
@@ -5332,6 +5377,26 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+**Behold a creature type and exile it (#4687, CR 701.4a, CR 607.2q, ADR
+0100 amendment 2026-11-05):** the Lorwyn Eclipsed Champions' "As an
+additional cost to cast this spell, behold a Kithkin and exile it" and "When
+this creature leaves the battlefield, return the exiled card to its owner's
+hand" are
+
+```go
+AdditionalCost: BeholdAndExileCost("a", "Kithkin"),                 // Champion of the Clachan
+Triggered: []game.TriggeredAbility{ReturnTheExiledCardToHand("Champion of the Clachan")},
+```
+
+The caster names one card on `reveal_ids`: a permanent of that creature
+type they control, or a card of it in their hand (a changeling counts). It
+is exiled with the spell on the stack, linked to the spell object
+(`Card.ExiledWith`), and the link moves to the permanent as the spell
+resolves, so the leave trigger returns that card and no other. A countered
+spell's card stays in exile. With nothing to behold the card can't be cast.
+The mandatory slot only, and alone on it: Register refuses the exiling form
+on a branch, an optional cost, an alternative cost and an ability.
 
 **Tap an untapped permanent you control as an additional cost (#3868):**
 "As an additional cost to cast this spell, tap an untapped Vampire you
@@ -5588,8 +5653,8 @@ countered spell takes it along, and a cast from hand or through another
 permission gets none. Only a creature spell as cast is marked (every
 printed rider says "that creature"), so a noncreature spell, a
 noncreature face and a bestowed Aura spell cast this way get nothing. A
-finality counter works the same way (Leonardo, Sewer Samurai, which also
-needs a power-or-toughness filter the permission does not have yet).
+finality counter works the same way (Leonardo, Sewer Samurai, whose
+`game.CounterFinality` rider rides the power-or-toughness filter below).
 `PermissionFilter.CreatureTypesAny` holds two types and must not be
 widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
 Turtle spells" is two permissions with the same rider.
@@ -7213,7 +7278,8 @@ client's pay picker reads "Behold", and the bot charges nothing for the
 picks. `Register` counts the behold as the offer's one card component
 and refuses a malformed one (a plain reveal, no type, a colour, no
 count). An additional cost of "behold a … and exile it" (#4687) is not
-this shape: that card is spent.
+this shape, because that card is spent: it is `BeholdAndExileCost` on the
+mandatory slot.
 
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
@@ -7435,6 +7501,19 @@ stamp (Bilbo, Thief in the Night), never with a type check on the card,
 which reads only its front face. A free cast's "a spell [with mana value
 N or less]" is a `freeCastSpell` clause (`freeInstantOrSorcery()`,
 `spellWithManaValueAtMost(n)`) that the permission carries.
+
+**"Creature spells with power or toughness N or less" (#4964, ADR 0066
+amendment 2026-11-04).** `Filter: game.PermissionFilter{CreatureOnly:
+true, PowerOrToughnessCapped: true, PowerOrToughnessAtMost: 1}` (Leonardo,
+Sewer Samurai). An OR over the two numbers, so a 2/1 and a 1/2 qualify and
+a 2/2 does not, and the flag carries the clause because 0 is a legal cap.
+A `*/*` card is judged by its own characteristic-defining ability where it
+sits (CR 604.3, CR 113.6a): the engine lends the card its reading
+(`Game.withPTAnywhereLocked`), so a card file writes nothing for it, and a
+`*` the engine cannot compute does not qualify — unknown is never "N or
+less". Nothing else in a card file reads power off a card in a graveyard:
+use `g.PowerAnywhereForEffect` / `ToughnessAnywhereForEffect` for an
+effect that needs the number itself.
 
 **"A spell from among those cards" (#1729).** `CastsLeft: 1` makes one
 permission over a set good for one spell: the first cast it is the
@@ -9667,6 +9746,14 @@ beside `battlefield` / `stack` / `exile`, with `phased_out: true` on
 each card; the client folds them back onto the controller's row,
 dimmed and badged `PHASED`, with the click withheld.
 
+**"Permanents can't phase in."** (The City on the Edge of Forever's Human
+token, #4973) is the `game.PermanentsCantPhaseIn` restriction bit, put on
+the source itself with `RestrictSelf(game.PermanentsCantPhaseIn)`. While
+any permanent on the battlefield has it, `phaseInLocked` refuses every
+phase-in, at an untap step and from a "phases out until ~ leaves" lock
+alike (CR 101.2); the permanents stay out until a later untap step of the
+player they phased out under. It is not on the wire.
+
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
 turn" whose object phases out keeps its `ScopedEffect` record
@@ -11696,6 +11783,16 @@ its rule (the static is the creature's own), and the enumerator, the
 view's `crew_power` and the engine's validator all count the same
 number. The client sums `crew_power` too since #3550.
 
+**"As though his power were tripled", and station (#4974, CR 702.184c).**
+`CostPowerRule.Multiplier` multiplies the counted power before any bonus
+is added (Sulu, Heroic Helmsman's 3). `game.CostPowerStation` is the use for
+"stations Spacecraft": the station ability of a Spacecraft reads
+`Context.TappedStationPower`, which is `Card.CountedPower(CostPowerStation)`
+live, or the `PaidTap.StationPower` the exit hook froze when the creature
+has left (CR 608.2h). A Planet's station still reads the plain power,
+because the card names Spacecraft. Sulu's static is
+`crewsAndStationsAsThoughPowerTripled` (trek_b46_helpers.go).
+
 A card that makes a Pilot token passes `PilotToken()` ("This token saddles
 Mounts and crews Vehicles as though its power were 2 greater") or, for the
 crew-only wording, `CrewPilotToken()` to `CreateToken`
@@ -12376,6 +12473,15 @@ validation; `effects.DiscardLegendaryNamedLikeYourPermanent()` builds the
 printed clause. A new board question of this kind is a new bool there, with
 the same two readers.
 
+A rule over the whole SET of discarded cards ("Discard three cards with
+different names", Ormos, Archive Keeper, #4896) is not a `Match` either:
+`Match` judges one card. `effects.DiscardNDifferentNames(n, label, match…)`
+sets `DiscardCost.DifferentNames`, which the validator checks over the set
+(CR 201.2b, strictly: a nameless card never pays, and a split card has both
+its names), the enumerator pays with `game.DiscardDifferentNamesPaymentForEffect`,
+and the wire marks `discard_cost_different_names` for the client's picker.
+`Register` allows it on an activated ability's fixed count of two or more only.
+
 "The discarded card" of an activated ability (Land's Edge's "if the
 discarded card was a land card", Volrath's "the discarded card's mana
 value") is `ctx.DiscardedCard()` / `ctx.DiscardedManaValue()` (ADR 0109
@@ -12435,6 +12541,15 @@ the same way an upkeep does. A card-level `CastableZones: exile`
 declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.
+
+The one card that wants exactly that prints it on itself: *"You may
+cast this card from exile."* (Khan, Vengeful Heart). Declare it as
+`CastableZones: []game.ZoneKind{game.ZoneExile}` beside
+`CastsItselfFromExile: true`; `Register` refuses either half alone
+([ADR 0066, amendment of 2026-11-05](decisions/0066-granted-cast-and-play-permissions.md)).
+The engine opens any face-up copy in exile for its owner, however it got
+there, and never a face-down one (CR 406.3a). Rebound's reminder text is
+not this clause.
 
 ### Opening-hand actions (ADR 0133, #2190, CR 103.6a)
 
@@ -12538,6 +12653,20 @@ Use the constructor, never a hand-built offer: `AlternativeCost.Sneak` carries t
 `ReturnToHand` narrowed by `UnblockedAttacker`, so the picker, the enumerator and the validator agree. An instant or
 sorcery with sneak takes the same constructor and simply has no entry. The defender rides `PaidCost.ReturnedAttacking`,
 ninjutsu's field, so a card that needs it reads `ctx.ReturnedAttacking()`.
+
+"Creature cards in your graveyard have sneak {3}{B}. You may cast creature spells from your graveyard using their sneak
+abilities." (Ninja Teen, #4680) is a standing permission, not a `GrantedAlternativeCost`:
+
+```go
+GatedCastPermissions: []game.CastPermissionGate{{
+    Permission: CreatureCardsInYourGraveyardHaveSneak("{3}{B}", "Ninja Teen"),
+    ActiveWhen: Level(3),
+}},
+```
+
+It opens the graveyard only to a sneak cast of a creature spell, under the granted `granted-sneak` offer or the card's
+own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
+[ADR 0025](decisions/0025-alternative-costs.md).
 
 ### Flash if X is N or less (#3225)
 

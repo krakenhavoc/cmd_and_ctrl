@@ -271,3 +271,26 @@ func DifferentColors(n int) string {
 	}
 	return "{" + strings.Join(game.AllColors, "|") + ":" + strconv.Itoa(n) + "}"
 }
+
+// ProtectionFromChosenColorSparingThisAura is the Aura static
+// "Enchanted creature has protection from the chosen color. This effect
+// doesn't remove this Aura." (Flickering Ward, Ward of Lights; CR
+// 702.16n, #4843).
+//
+// The instance is minted with the Aura's own id
+// (game.ProtectionSparingAura), so the CR 704.5m check passes over it
+// for this Aura alone: a white Ward that chose white stays attached,
+// and still falls off when the creature gets protection from white
+// from anything else, a second Ward included. Before a colour is chosen
+// the creature has no protection, the weaker direction.
+func ProtectionFromChosenColorSparingThisAura() game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer6Ability,
+		Label:     "Enchanted creature has protection from the chosen color. This effect doesn't remove this Aura.",
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			tok := game.ProtectionSparingAura(game.ProtectionFromColor(source.ChosenColor), source.InstanceID)
+			c.Abilities = game.AppendKeywordAbility(c.Abilities, tok)
+		},
+	}
+}

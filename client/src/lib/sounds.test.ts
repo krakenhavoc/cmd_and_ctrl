@@ -210,6 +210,19 @@ describe("sounds", () => {
       "commander_return", // #4443, silent
       "attach_equip", // #4444, silent
       "attach_aura", // #4444, silent
+      "mill", // #4445, silent
+      "discard", // #4445, silent
+      "reanimate", // #4446, silent
+      "library_search", // #4447, silent
+      "transform", // #4448, silent
+      "day_night", // #4448, silent
+      "fetch_crack", // #4427, silent
+      "treasure_crack", // #4427, silent
+      "clue_crack", // #4427, silent
+      "food_crack", // #4427, silent
+      "fizzle", // #4450, silent
+      "dice_roll", // #4450, silent
+      "coin_flip", // #4450, silent
     ];
 
     it("lists no takes exactly for the cues in NOT_MADE_YET", async () => {
@@ -287,6 +300,116 @@ describe("sounds", () => {
         await settle();
         expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
       }
+    });
+
+    it("plays nothing for mill and discard until their files land, and each itself once a take is listed (#4445)", async () => {
+      const m = await load();
+      for (const name of ["mill", "discard"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["mill", "discard"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for fizzle, dice_roll and coin_flip until their files land, and each itself once a take is listed (#4450)", async () => {
+      const m = await load();
+      for (const name of ["fizzle", "dice_roll", "coin_flip"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["fizzle", "dice_roll", "coin_flip"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for reanimate until its files land, and itself once a take is listed (#4446)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.reanimate).toBe("effects");
+      expect(m.SOUND_FALLBACK.reanimate).toBeUndefined();
+      m.play("reanimate");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.reanimate = ["/sounds/reanimate-1.mp3"];
+      m.play("reanimate", { volume: 0.6 });
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/reanimate-1.mp3");
+    });
+
+    it("plays nothing for library_search until its files land, and itself once a take is listed (#4447)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.library_search).toBe("effects");
+      expect(m.SOUND_FALLBACK.library_search).toBeUndefined();
+      m.play("library_search");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.library_search = ["/sounds/library_search-1.mp3"];
+      m.play("library_search");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/library_search-1.mp3");
+    });
+
+    it("plays nothing for transform until its files land, and itself once a take is listed (#4448)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.transform).toBe("effects");
+      expect(m.SOUND_FALLBACK.transform).toBeUndefined();
+      m.play("transform");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.transform = ["/sounds/transform-1.mp3"];
+      m.play("transform");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/transform-1.mp3");
+    });
+
+    it("plays nothing for a self-sacrifice's crack until its files land, and itself once a take is listed (#4427)", async () => {
+      const m = await load();
+      for (const name of ["fetch_crack", "treasure_crack", "clue_crack", "food_crack"] as const) {
+        expect(m.SOUND_CATEGORY[name]).toBe("effects");
+        expect(m.SOUND_FALLBACK[name]).toBeUndefined();
+        m.play(name);
+        await settle();
+        expect(played()).toHaveLength(0);
+      }
+      for (const name of ["fetch_crack", "treasure_crack", "clue_crack", "food_crack"] as const) {
+        tick();
+        m.SOUND_MANIFEST[name] = [`/sounds/${name}-1.mp3`];
+        m.play(name);
+        await settle();
+        expect(played().at(-1)?.src).toBe(`/sounds/${name}-1.mp3`);
+      }
+    });
+
+    it("plays nothing for day_night until its files land, and itself once a take is listed (#4448)", async () => {
+      const m = await load();
+      expect(m.SOUND_CATEGORY.day_night).toBe("effects");
+      expect(m.SOUND_FALLBACK.day_night).toBeUndefined();
+      m.play("day_night");
+      await settle();
+      expect(played()).toHaveLength(0);
+      tick();
+      m.SOUND_MANIFEST.day_night = ["/sounds/day_night-1.mp3"];
+      m.play("day_night");
+      await settle();
+      expect(played().at(-1)?.src).toBe("/sounds/day_night-1.mp3");
     });
 
     // #4543: three hit sounds by how much combat damage lands, each its

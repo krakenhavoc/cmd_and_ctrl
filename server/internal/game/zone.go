@@ -223,6 +223,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// object off the battlefield. The new object is stamped by the next
 	// pass (the layer-version bump on a move between such zones).
 	c.zoneLayered = nil
+	// #4964: a lent power-and-toughness reading is never on a card in a
+	// zone; this is the belt to that braces.
+	c.ptAnywhere = nil
 	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
 	// and the permanent it becomes, never to the card. Every zone
 	// change ends it, a resolving one included: the battlefield entry
@@ -232,6 +235,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// #4455 / CR 400.7: suspend an effect gave an exiled card belonged to
 	// that object. The card in its new zone has only what it prints.
 	c.SuspendGranted = false
+	// ADR 0219 / CR 400.7: an ability a resolved effect gave the exiled
+	// card belonged to that object.
+	c.ExileGrants = nil
 	// ADR 0154 / CR 400.7, CR 611.2c: Animate Dead's gained enchant
 	// clause belongs to the Aura object that resolved the trigger. The
 	// card in its new zone never had it.
@@ -331,6 +337,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// pays life again.
 		c.ChosenNumber = 0
 		c.ChosenPermanent = ObjectRef{}
+		c.LinkedPermanent = ObjectRef{}
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

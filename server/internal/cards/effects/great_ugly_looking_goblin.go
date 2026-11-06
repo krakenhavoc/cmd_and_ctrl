@@ -36,6 +36,7 @@ func init() {
 	Register(Spec{
 		OracleID:     greatUglyLookingGoblinOracleID + "#1",
 		Name:         "Clap! Snap!",
+		Purpose:      game.Purpose{Amass: 2},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Amass{Subtype: "Goblin", N: 2}.Apply(ctx)

@@ -28,7 +28,7 @@ import (
 // already transformed (the trigger watches only the front face's
 // ability) does nothing more. The back face is its own catalog row
 // (oracle ID + "#1"): a card leaving the battlefield is front face up
-// in every other zone (CR 711.8), so the dies trigger returns the
+// in every other zone (CR 712.8a), so the dies trigger returns the
 // front, Vincent, tapped, and he keeps nothing from the beast.
 //
 // No simplification.

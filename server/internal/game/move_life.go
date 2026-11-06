@@ -126,11 +126,16 @@ func (g *Game) runMoveTailLocked(ev *ReplacementEvent) error {
 	// you do, …") goes to PendingTriggers if the card landed where the
 	// replacement sent it. It cannot pause either.
 	g.queueReflexiveTriggersAfterMoveLocked(ev)
-	if len(ev.lifeAfterMove) == 0 {
+	if len(ev.lifeAfterMove) == 0 && len(ev.tokensAfterMove) == 0 {
 		return g.runRouteTailLocked(ev.zoneRoute)
 	}
 	seq := moveLifeSequence{remaining: ev.lifeAfterMove, mustSettleNow: ev.mustSettleNow}
-	ev.lifeAfterMove = nil
+	// #4522: a declared token creation ("instead exile that card and
+	// create a token") runs before the life instructions, and the route's
+	// continuation waits for both. It can pause, so the rest of the move
+	// is parked behind it (move_tokens.go).
+	tokens := ev.tokensAfterMove
+	ev.lifeAfterMove, ev.tokensAfterMove = nil, nil
 	if r := ev.zoneRoute; r != nil {
 		if r.hasTail() {
 			// #4253 slice 9: a keyed batch's or face-down leg's run is a
@@ -143,6 +148,9 @@ func (g *Game) runMoveTailLocked(ev *ReplacementEvent) error {
 		if err := g.runRouteTailLocked(r); err != nil {
 			return err
 		}
+	}
+	if len(tokens) > 0 {
+		return g.continueMoveTokensLocked(tokens, seq)
 	}
 	return g.continueMoveLifeLocked(seq)
 }

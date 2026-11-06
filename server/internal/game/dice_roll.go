@@ -94,6 +94,11 @@ type DiceRoll struct {
 	IgnoreLowest int
 	// Then is the rest of the effect, told the kept rolls.
 	Then KeyedTail
+	// Planar is the planar die (CR 901.3a, ADR 0216 §4): a d6 drawn from
+	// its own stream whose kept roll is announced as a face
+	// (EventRollDie.PlanarFace) with no number (CR 901.9d). The tail is
+	// still told the drawn 1..6.
+	Planar bool
 }
 
 // diceShield is one applied "then you choose one of those rolls to
@@ -192,7 +197,13 @@ func (g *Game) continueDiceRollLocked(p diceRollPause) error {
 		}
 		p.Ordered = append(append([]diceShield(nil), p.Ordered...), p.Pending...)
 		p.Pending = nil
-		r := g.randForLocked(rngStream{kind: rngStreamRoll, player: p.Roll.Player, source: p.Roll.Source})
+		kind := rngStreamRoll
+		if p.Roll.Planar {
+			// ADR 0216 §4: a stream of its own, so a planar roll never
+			// moves a card's d20.
+			kind = rngStreamPlanarDie
+		}
+		r := g.randForLocked(rngStream{kind: kind, player: p.Roll.Player, source: p.Roll.Source})
 		p.Rolls = make([]int, p.Roll.N)
 		for i := range p.Rolls {
 			p.Rolls[i] = r.IntN(p.Roll.Sides) + 1
@@ -223,7 +234,12 @@ func (g *Game) finishDiceRollLocked(r DiceRoll, rolls []int) error {
 	}
 	batch := g.eventSeq + 1
 	for _, result := range kept {
-		g.EmitEvent(Event{Kind: EventRollDie, Actor: r.Player, Source: r.Source, Amount: result, Sides: r.Sides, BatchSeq: batch})
+		ev := Event{Kind: EventRollDie, Actor: r.Player, Source: r.Source, Amount: result, Sides: r.Sides, BatchSeq: batch}
+		if r.Planar {
+			// CR 901.9d: the planar die has no numerical result.
+			ev.Amount, ev.PlanarFace = 0, planarFaceOf(result)
+		}
+		g.EmitEvent(ev)
 	}
 	return g.runKeyedRollTailLocked(r.Then, kept)
 }
@@ -312,7 +328,11 @@ func (g *Game) askDiceIgnoreLocked(p diceRollPause) error {
 	s := p.Ordered[0]
 	options := make([]ChoiceOption, 0, len(p.Rolls))
 	for i, v := range p.Rolls {
-		options = append(options, ChoiceOption{Label: "Ignore the " + strconv.Itoa(v) + " (die " + strconv.Itoa(i+1) + ")"})
+		shown := strconv.Itoa(v)
+		if p.Roll.Planar {
+			shown = planarFaceOf(v)
+		}
+		options = append(options, ChoiceOption{Label: "Ignore the " + shown + " (die " + strconv.Itoa(i+1) + ")"})
 	}
 	pause := p
 	source := s.Source
@@ -384,6 +404,7 @@ type diceRollPauseSnapshot struct {
 	N            int                `json:"n"`
 	IgnoreLowest int                `json:"ignoreLowest,omitempty"`
 	Then         *keyedTailSnapshot `json:"then,omitempty"`
+	Planar       bool               `json:"planar,omitempty"`
 	Rolls        []int              `json:"rolls,omitempty"`
 	Pending      []diceShield       `json:"pending,omitempty"`
 	Ordered      []diceShield       `json:"ordered,omitempty"`
@@ -392,7 +413,7 @@ type diceRollPauseSnapshot struct {
 func snapshotDiceRollPause(p *diceRollPause) *diceRollPauseSnapshot {
 	return &diceRollPauseSnapshot{
 		Player: p.Roll.Player, Source: uuidPtrOrNil(p.Roll.Source), Sides: p.Roll.Sides, N: p.Roll.N,
-		IgnoreLowest: p.Roll.IgnoreLowest, Then: snapshotKeyedTail(p.Roll.Then),
+		IgnoreLowest: p.Roll.IgnoreLowest, Then: snapshotKeyedTail(p.Roll.Then), Planar: p.Roll.Planar,
 		Rolls: append([]int(nil), p.Rolls...), Pending: append([]diceShield(nil), p.Pending...),
 		Ordered: append([]diceShield(nil), p.Ordered...),
 	}
@@ -402,7 +423,7 @@ func restoreDiceRollPause(s *diceRollPauseSnapshot) *diceRollPause {
 	return &diceRollPause{
 		Roll: DiceRoll{
 			Player: s.Player, Source: uuidOrNil(s.Source), Sides: s.Sides, N: s.N,
-			IgnoreLowest: s.IgnoreLowest, Then: restoreKeyedTail(s.Then),
+			IgnoreLowest: s.IgnoreLowest, Then: restoreKeyedTail(s.Then), Planar: s.Planar,
 		},
 		Rolls: append([]int(nil), s.Rolls...), Pending: append([]diceShield(nil), s.Pending...),
 		Ordered: append([]diceShield(nil), s.Ordered...),

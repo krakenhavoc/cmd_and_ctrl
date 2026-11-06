@@ -324,6 +324,12 @@ type GameSnapshot struct {
 	// and on every game that never had a designation, which restores
 	// as neither day nor night.
 	DayNight *DayNightState `json:"dayNight,omitempty"`
+	// Planechase is the Planechase option's state and planar cards
+	// (CR 901, ADR 0216 §3): Game.Planechase, Game.PlanarDeck and
+	// Game.PlanarFaceUp in one object. Additive within v9: absent on
+	// every file written before it and on every table without the
+	// option, which restores with no planar state at all.
+	Planechase *planechaseSnapshot `json:"planechase,omitempty"`
 	// UndoLimit is the pre-v4 home of the undo budget. Read only when
 	// migrating an older file (migrateLegacySettings); a v4 capture
 	// leaves it zero and it is omitted.
@@ -403,6 +409,11 @@ type GameSnapshot struct {
 	DrawnThisStep            map[uuid.UUID]int         `json:"drawnThisStep,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
+
+	// DilemmasFacedThisTurn is Game.DilemmasFacedThisTurn (#4973).
+	// Additive within v9: a file written before it restores with no
+	// dilemmas faced this turn.
+	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
 
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
@@ -565,6 +576,13 @@ type GameSnapshot struct {
 	// tail names the entry by event ID. A frame that is not data is
 	// counted, not written. Additive within v9.
 	FrozenEntries []replacementResumeSnapshot `json:"frozenEntries,omitempty"`
+
+	// MovesAwaitingTokens is Game.movesAwaitingTokens (#4522,
+	// move_tokens.go): a replaced move whose declared token creation has
+	// paused, as a carrier event holding its route and the instructions
+	// not yet run. The creation's keyed tail names it by event ID. One
+	// that is not data is counted, not written. Additive within v9.
+	MovesAwaitingTokens []replacementEventSnapshot `json:"movesAwaitingTokens,omitempty"`
 
 	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
 	// multi-seat instructions in flight whose continuation is a
@@ -828,6 +846,10 @@ type playerSnapshot struct {
 	// restore still ends on that player's next turn, because the
 	// stamp is taken from the restored value.
 	TurnsBegun int `json:"turnsBegun,omitempty"`
+	// ExtraTurnsBegun is Player.ExtraTurnsBegun (#4973). Additive within
+	// v9: a file written before it restores with 0, which reads as "has
+	// begun no extra turn this game".
+	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -853,6 +875,10 @@ type playerSnapshot struct {
 	// LossCause is Player.LossCause (#4879). Additive within v9: a file
 	// written before it restores an eliminated player with no cause.
 	LossCause string `json:"lossCause,omitempty"`
+	// FinalBoard is Player.FinalBoard (#4912): an eliminated player's
+	// zones as they left, plain data. Additive within v9: a file written
+	// before it restores an eliminated player with no final board.
+	FinalBoard *FinalBoard `json:"finalBoard,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -910,6 +936,10 @@ type playerSnapshot struct {
 	// Speed is the player's speed (ADR 0138, CR 702.179). Additive
 	// within v7: a file without it restores as no speed.
 	Speed int `json:"speed,omitempty"`
+	// FirstSpellCast is Player.FirstSpellCast (#4973). Additive within
+	// the version: a file without it restores a player who has cast no
+	// spell yet.
+	FirstSpellCast *ObjectRef `json:"firstSpellCast,omitempty"`
 	// LandDropsPerTurn is the player's base land-play allowance
 	// (#500). Absent from every pre-#500 snapshot, which would
 	// restore as 0 — "may never play a land" — so restorePlayer maps
@@ -1174,6 +1204,11 @@ type cardSnapshot struct {
 	// ChosenPlayer's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenPermanent *ObjectRef `json:"chosenPermanent,omitempty"`
+	// LinkedPermanent is the permanent a linked ability of this one
+	// affected (CR 607.2e) — The Best of Both Worlds' assimilated Borg.
+	// Carried for ChosenPermanent's reason: nothing can re-derive it. Old
+	// snapshots have no key and read "none".
+	LinkedPermanent *ObjectRef `json:"linkedPermanent,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -1409,6 +1444,12 @@ type cardSnapshot struct {
 	// shows the card as automated again, which is cosmetic, not a
 	// rules change.
 	AbilitiesLostOnRestore bool `json:"abilitiesLostOnRestore,omitempty"`
+
+	// ExileGrants is Card.ExileGrants (ADR 0219, #4973): abilities a
+	// resolved effect gave an exiled card. Additive within the version:
+	// absent from every earlier file, which restores as "has only its
+	// printed abilities", the state before the field existed.
+	ExileGrants []ExileGrantSnapshot `json:"exileGrants,omitempty"`
 }
 
 // AbilityCounts is how many catalog abilities of each kind a card
@@ -1579,6 +1620,10 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Sideboard)
 		walk(p.AttractionDeck)
 		walk(p.Junkyard)
+	}
+	if s.Planechase != nil {
+		walk(s.Planechase.Deck)
+		walk(s.Planechase.FaceUp)
 	}
 	return out
 }
@@ -2479,6 +2524,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.Stack = snapshotZone(g.Stack, cen)
 	s.Exile = snapshotZone(g.Exile, cen)
 	s.PhasedOut = snapshotZone(g.PhasedOut, cen)
+	s.Planechase = snapshotPlanechase(g, cen)
 
 	s.Seats = make([]playerSnapshot, len(g.Seats))
 	for i, p := range g.Seats {
@@ -2528,6 +2574,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
+	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -2617,6 +2664,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		if s.FrozenEntries = g.snapshotFrozenEntriesLocked(cen); len(s.FrozenEntries) > 0 {
 			keyedFrames = true
 		}
+		// #4522: the moves parked behind a token creation one of these
+		// prompts is pausing.
+		if s.MovesAwaitingTokens = g.snapshotMovesAwaitingTokensLocked(cen); len(s.MovesAwaitingTokens) > 0 {
+			keyedFrames = true
+		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
 			// #4389: staged tokens are written only here, and none is
@@ -2647,6 +2699,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		// restart rewinds rather than guessing.
 		cen.ChoiceResumeFrames++
 		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
+	} else if len(g.movesAwaitingTokens) > 0 {
+		// #4522: likewise a move parked behind a token creation.
+		cen.ChoiceResumeFrames++
+		cen.note("a move parked behind its token creation with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
 	// damage-assignment prompts. #4362: written as data, and each open
@@ -2777,6 +2833,57 @@ func restoreCompanionZone(z *zoneSnapshot) *Zone {
 		return nil
 	}
 	return restoreZone(z, ZoneOutside)
+}
+
+// planechaseSnapshot mirrors a Planechase table's state (ADR 0216 §3):
+// PlanechaseState's plain fields and the two planar containers, written
+// and read by the attraction deck's pair (snapshotCompanionZone,
+// restoreCommandPile). Every field is omitempty, so the object is as
+// small as the table's state.
+type planechaseSnapshot struct {
+	Mode       PlanarDeckMode `json:"mode,omitempty"`
+	Controller uuid.UUID      `json:"controller,omitempty"`
+	Deck       *zoneSnapshot  `json:"deck,omitempty"`
+	FaceUp     *zoneSnapshot  `json:"faceUp,omitempty"`
+	DieTurnSeq int            `json:"dieTurnSeq,omitempty"`
+	DieRolls   int            `json:"dieRolls,omitempty"`
+}
+
+// snapshotPlanechase captures the planar state, nil for a table that
+// has none (the option off, which is every table but a Planechase one).
+func snapshotPlanechase(g *Game, cen *ContinuationCensus) *planechaseSnapshot {
+	if g.Planechase == nil && g.PlanarDeck == nil && g.PlanarFaceUp == nil {
+		return nil
+	}
+	out := &planechaseSnapshot{
+		Deck:   snapshotCompanionZone(g.PlanarDeck, cen),
+		FaceUp: snapshotCompanionZone(g.PlanarFaceUp, cen),
+	}
+	if ps := g.Planechase; ps != nil {
+		out.Mode = ps.Mode
+		out.Controller = ps.Controller
+		out.DieTurnSeq = ps.DieTurnSeq
+		out.DieRolls = ps.DieRolls
+	}
+	return out
+}
+
+// restoreInto puts the planar state back on g. A nil snapshot is a
+// table without Planechase and leaves all three fields nil. An empty
+// container restores as nil and is made again on first use
+// (planarDeckForLocked, planarFaceUpLocked).
+func (s *planechaseSnapshot) restoreInto(g *Game) {
+	if s == nil {
+		return
+	}
+	g.Planechase = &PlanechaseState{
+		Mode:       s.Mode,
+		Controller: s.Controller,
+		DieTurnSeq: s.DieTurnSeq,
+		DieRolls:   s.DieRolls,
+	}
+	g.PlanarDeck = restoreCommandPile(s.Deck)
+	g.PlanarFaceUp = restoreCommandPile(s.FaceUp)
 }
 
 // restoreCommandPile is restoreZone for Player.AttractionDeck and
@@ -2938,6 +3045,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -2959,6 +3067,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
+		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -3039,12 +3148,14 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
+		ExtraTurnsBegun:       p.ExtraTurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
 		LossCause:             string(p.LossCause),
+		FinalBoard:            cloneFinalBoard(p.FinalBoard),
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
@@ -3074,6 +3185,10 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		MaxHandSizeAt:         p.MaxHandSizeAt,
 		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
+	}
+	if p.FirstSpellCast.ID != uuid.Nil {
+		first := p.FirstSpellCast
+		out.FirstSpellCast = &first
 	}
 	// ADR 0018's eighth amendment (#3016): the remembered trigger orders.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
@@ -3663,6 +3778,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Stack = restoreZone(s.Stack, ZoneStack)
 	g.Exile = restoreZone(s.Exile, ZoneExile)
 	g.PhasedOut = restoreZone(s.PhasedOut, ZonePhasedOut)
+	s.Planechase.restoreInto(g)
 
 	g.Seats = make([]*Player, len(s.Seats))
 	for i := range s.Seats {
@@ -3780,6 +3896,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
+	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -3935,6 +4052,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 		// #4361 S17: after the serials, like the frames.
 		g.frozenEntries = append(g.frozenEntries, g.rebuildFrozenEntryLocked(&s.FrozenEntries[i]))
 	}
+	// #4522: the moves parked behind a token creation.
+	g.restoreMovesAwaitingTokensLocked(s.MovesAwaitingTokens)
 	return g
 }
 
@@ -4052,6 +4171,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		SuspendGranted:           c.SuspendGranted,
+		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -4073,6 +4193,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
+		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4185,12 +4306,14 @@ func restorePlayer(p *playerSnapshot) *Player {
 		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
+		ExtraTurnsBegun:    p.ExtraTurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
 		LossCause:          LossCause(p.LossCause),
+		FinalBoard:         cloneFinalBoard(p.FinalBoard),
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
@@ -4221,6 +4344,9 @@ func restorePlayer(p *playerSnapshot) *Player {
 	}
 	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
+	if p.FirstSpellCast != nil {
+		out.FirstSpellCast = *p.FirstSpellCast
+	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
 	// play a land again. Nothing in the catalog sets an allowance of

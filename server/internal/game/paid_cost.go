@@ -45,7 +45,7 @@ type PaidCost struct {
 	// (#761). Nil when no mana component was paid. Each entry is a
 	// RUN (#3041): read amounts through Spent(), never len(Mana).
 	//
-	// Readers: converge (CR 702.86) counts distinct colours,
+	// Readers: converge (CR 207.2c) counts distinct colours,
 	// sunburst (CR 702.44) counts them at entry, adamant counts one
 	// colour, and "if no mana was spent" asks whether this is empty
 	// — but only together with OnPaper, which is the difference
@@ -390,6 +390,14 @@ type PaidTap struct {
 	// the reader.
 	Power int  `json:"power"`
 	Left  bool `json:"left,omitempty"`
+	// StationPower is CountedPower(CostPowerStation) beside Power, kept
+	// and rewritten at the same two moments: what the object counts for
+	// when it stations a Spacecraft ("as though his power were tripled",
+	// Sulu, Heroic Helmsman). Clamped at zero, so zero means "the plain
+	// power" (a record written before the field existed included) and the
+	// reader falls back to Power. Read it through
+	// PaidTapStationPowerForEffect.
+	StationPower int `json:"stationPower,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was

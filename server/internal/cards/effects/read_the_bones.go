@@ -22,7 +22,7 @@ func init() {
 		OracleID:     "5bf4d8d9-a2b2-4dba-ac05-9d4470a89db2",
 		Name:         "Read the Bones",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Draws: 2},
+		Purpose:      game.Purpose{Draws: 2, Scry: 2},
 		OnResolve: ResolveSteps(
 			// The life loss waits for the scry's answer, and for the draw after it
 			// (CR 608.2c, #4155).

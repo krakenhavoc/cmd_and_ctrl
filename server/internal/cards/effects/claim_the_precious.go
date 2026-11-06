@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8b0a0991-2327-45ea-b47f-c31db367fa1d",
 		Name:         "Claim the Precious",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

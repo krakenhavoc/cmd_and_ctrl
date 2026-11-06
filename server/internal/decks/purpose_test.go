@@ -23,8 +23,9 @@ import (
 // repo), so the instants and sorceries are listed by hand below, and
 // realdump_purpose_manual_test.go checks the list against Scryfall.
 
-// curatedInstantsAndSorceries is every instant and sorcery in the four
-// curated decks, by name. A card that is in two decks is listed once.
+// curatedInstantsAndSorceries is every instant and sorcery in the
+// curated decks, by name. A card that is in two decks is listed once,
+// under the first deck that carries it.
 var curatedInstantsAndSorceries = []string{
 	// esper-control
 	"Counterspell", "Negate", "An Offer You Can't Refuse", "Mana Drain", "Force of Negation",
@@ -57,6 +58,15 @@ var curatedInstantsAndSorceries = []string{
 	"Council's Judgment", "Fateful Absence", "Flawless Maneuver",
 	// boros-voltron
 	"Akroma's Will", "Boros Charm", "Lightning Helix", "Wild Slash", "Teferi's Protection",
+	// mono-blue-artifacts
+	"Reverse Engineer",
+	// izzet-spellslinger
+	"Chain Lightning", "Compulsive Research", "Deep Analysis", "Lórien Revealed", "Enter the Enigma",
+	"Mizzium Mortars", "Blasphemous Act",
+	// orzhov-aristocrats
+	"Lingering Souls", "Vindicate",
+	// gruul-counters
+	"Primal Might",
 }
 
 // valueIsTheirTarget is ADR 0126 §6's short, named list of curated
@@ -98,6 +108,8 @@ var valueIsTheirTarget = map[string]string{
 	"Bite Down":          "removal",
 	"Fateful Absence":    "removal",
 	"Council's Judgment": "removal",
+	// orzhov-aristocrats
+	"Vindicate": "removal",
 }
 
 // noPrintedAmount is the curated spells that do something in a priced
@@ -145,6 +157,12 @@ var curatedTargetPurposes = map[string]string{
 	"Beast Within":         "card",
 	"Rapid Hybridization":  "card",
 	"Pongify":              "card",
+	"Chain Lightning":      "card",
+	"Compulsive Research":  "card",
+	"Deep Analysis":        "card",
+	"Enter the Enigma":     "card",
+	"Mizzium Mortars":      "card",
+	"Primal Might":         "card",
 }
 
 // targetEntriesIn counts the target entries a spell declares in `slot`:
@@ -251,6 +269,12 @@ var curatedPermanentPurposes = map[string]string{
 	"Mirkwood Bats":        "death payoff",
 	"Falkenrath Noble":     "death payoff",
 	"Vindictive Vampire":   "death payoff",
+	// #4990: Morbid Opportunist's draw row is a death payoff too. The
+	// other three came in with Grave Dividends (#5000).
+	"Morbid Opportunist":            "death payoff",
+	"Cruel Celebrant":               "death payoff",
+	"Nadier's Nightblade":           "death payoff",
+	"Elas il-Kor, Sadistic Pilgrim": "death payoff",
 	// landfall payoffs, on the triggered row (#3072). Avenger of
 	// Zendikar's counters are counted at resolution and Field of the
 	// Dead's Zombie needs seven differently named lands, so neither
@@ -267,6 +291,14 @@ var curatedPermanentPurposes = map[string]string{
 	// (ADR 0136's amendment of 2026-10-09)
 	"Rhystic Study":    "tax gift",
 	"Smothering Tithe": "tax gift",
+	"Mystic Remora":    "tax gift",
+
+	// #554's four decks: the death payoffs, and the activated rows
+	// that search for a land or draw.
+	"Zulaport Cutthroat": "death payoff",
+	"Sifter of Skulls":   "death payoff",
+	"Wayfarer's Bauble":  "activated",
+	"Hedron Archive":     "activated",
 }
 
 // specDeclaresPurpose reports whether a spell declares what it does on

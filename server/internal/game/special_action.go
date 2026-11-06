@@ -412,6 +412,13 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is IgnoreEffectOffersLocked's answer (ignore_effect.go).
 		return true
 
+	case SpecialActionPlanarDie:
+		// CR 901.9: "any time the active player has priority and the
+		// stack is empty, but only during a main phase of their turn"
+		// — the plot row exactly, on a Planechase table only. The
+		// card is ignored: the action is taken on none.
+		return g.Planechase != nil && g.SorcerySpeedOpenLocked(playerID)
+
 	case SpecialActionCompanion:
 		// CR 116.2g: "any time they have priority and the stack is
 		// empty during a main phase of their turn" — the plot and
@@ -460,6 +467,10 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// other kind takes one.
 	if kind == SpecialActionIgnoreEffect {
 		return g.performIgnoreEffectLocked(p, cardID, params)
+	}
+	// CR 901.9 (ADR 0216 §4): the planar die is taken on no card.
+	if kind == SpecialActionPlanarDie {
+		return g.performPlanarDieLocked(p, cardID, params)
 	}
 	if params.SacrificeID != uuid.Nil {
 		return ErrInvalidParam

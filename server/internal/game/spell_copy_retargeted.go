@@ -46,6 +46,7 @@ func (g *Game) retargetedSpellCopyLocked(spellID, controller, from, to uuid.UUID
 		return Card{}, nil, nil, false
 	}
 	ts := SourceSnapshot(controller, SourceCharacteristics(&src))
+	ts.spell = true
 	if err := g.validateAnnouncedTargetsWithLocked(ts, g.itemAnnouncedClauses(item), next, nil, item.Targets); err != nil {
 		return Card{}, nil, nil, false
 	}

@@ -1,0 +1,109 @@
+# Catalog cards that print a rider with a fixed amount (scry N, learn,
+# discover N, amass [subtype] N, the Ring tempts you) and declare none
+# (#4978, ADR 0126's amendment of 2026-11-05). One "<card> | <rider> |
+# <reason>" a line. TestRiderPurposesMatchThePrintedCard holds it both
+# ways: a new undeclared rider fails until it is declared or listed here,
+# and a line that no longer matches fails until it is deleted.
+
+Along the Crooked Way | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Anchor to Reality | scry | the text makes it conditional or optional
+Aqueous Form | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Aragorn, the Uniter | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Boromir, Warden of the Tower | ring | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
+Bothersome Noisemaker | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Cait Sith, Fortune Teller | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Call of the Ring | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Caparocti Sunborn | discover | the text makes it conditional or optional
+Celeborn the Wise | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Champions from Beyond | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Chimil, the Inner Sun | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Clockwork Droid | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Corsairs of Umbar | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Crystal Grotto | scry | a land's enters effect; a land play is not priced by its purpose
+Data, Exploring Humanity | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Deep-Fried Plague Myr | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Digsite Conservator | discover | the text makes it conditional or optional
+Down, Down to Goblin-town | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Dreadhorde Invasion | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Dream Strix | learn | on a triggered row that is not the card's enters effect, which nothing prices
+Dúnedain Rangers | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Elrond, Lord of Rivendell | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Elrond, Lord of Rivendell | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Eyetwitch | learn | on a triggered row that is not the card's enters effect, which nothing prices
+Falcon, Joaquin Torres | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Fearsome Goblin Pair | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Fortune Teller | scry | an Attraction's visit, which nothing prices
+Franklin Richards, Ascendant | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Frodo Baggins | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Frodo, Adventurous Hobbit | ring | the text makes it conditional or optional
+Frodo, Sauron's Bane | ring | on an ability the card grants, which no catalog row declares
+Gadwick's First Duel | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Galadriel of Lothlórien | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Galadriel, Elven-Queen | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Galadriel, Light of Valinor | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
+Geological Appraiser | discover | the text makes it conditional or optional
+Glorious Gale | ring | the text makes it conditional or optional
+Gollum, Patient Plotter | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Great Fierce Bee | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Greedy Freebooter | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Gríma Wormtongue | amass | the text makes it conditional or optional
+Hawkeye, Bowslinger | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Hermes, Overseer of Elpis | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Hidden Stockpile | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
+Hyperion's Atomic Vision | scry | the text makes it conditional or optional
+In the Darkness Bind Them | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Insectoid Exterminator | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Jace's Sanctum | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Lifecrafter's Bestiary | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Lita, Little Orphan Amphibian | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
+Lothlórien Lookout | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Mirrormere Guardian | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Misty Mountains Raider | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Model of Unity | scry | the text makes it conditional or optional
+Moria Scavenger | amass | the text makes it conditional or optional
+One Ring to Rule Them All | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Origin of the Avengers | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Overgrown Arch | learn | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
+Palantír of Orthanc | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Path of Ancestry | scry | the text makes it conditional or optional
+Political Triumph | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Prescient Chimera | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Primordial Gnawer | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Restless Spire | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Retriever Phoenix | learn | the text makes it conditional or optional
+Rohirrim Lancer | ring | on a triggered row that is not the card's enters effect, which nothing prices
+S.H.I.E.L.D. Spy Kit | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Sauron, Lord of the Rings | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Sauron, Lord of the Rings | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Sauron, the Dark Lord | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Sauron, the Dark Lord | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Scroll of Isildur | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Season of Growth | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Sméagol, Helpful Guide | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Swashbuckler's Whip | discover | on an ability the card grants, which no catalog row declares
+Sylvan Anthem | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Temple of Abandon | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Deceit | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Enlightenment | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Epiphany | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Malady | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Malice | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Mystery | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Plenty | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Silence | scry | a land's enters effect; a land play is not priced by its purpose
+Temple of Triumph | scry | a land's enters effect; a land play is not priced by its purpose
+Thassa, God of the Sea | scry | on a triggered row that is not the card's enters effect, which nothing prices
+The Legend of Kuruk // Avatar Kuruk | scry | on a triggered row that is not the card's enters effect, which nothing prices
+There and Back Again | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Tidings of War | amass | the text makes it conditional or optional
+Took Reaper | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Torch the Tower | scry | the text makes it conditional or optional
+Trained Arynx | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Viscera Seer | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
+Wakandan Tusker | scry | on a triggered row that is not the card's enters effect, which nothing prices
+War of the Last Alliance | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Warg Rider | amass | on a triggered row that is not the card's enters effect, which nothing prices
+Witch-king of Angmar | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Woe Strider | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
+Zoetic Glyph | discover | on a triggered row that is not the card's enters effect, which nothing prices

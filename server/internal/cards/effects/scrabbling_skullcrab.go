@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Scrabbling Skullcrab — Creature — Crab Skeleton {U}, 0/3:
 //
@@ -23,14 +19,7 @@ func init() {
 		Name:         "Scrabbling Skullcrab",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(Eerie("Scrabbling Skullcrab — target player mills two cards (eerie)", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				p := targetedPlayerOf(ctx)
-				if p == uuid.Nil {
-					return nil
-				}
-				return MillCards{Player: p, N: 2}.Apply(ctx)
-			}), TargetPlayer("target player")),
+			Targeting(Eerie("Scrabbling Skullcrab — target player mills two cards (eerie)", targetPlayerMills(2)), TargetPlayer("target player")),
 		},
 	})
 }

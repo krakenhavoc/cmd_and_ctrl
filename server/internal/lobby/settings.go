@@ -31,8 +31,8 @@ import (
 // engine emits, which is what lets the log name them.
 //
 // Errors are the engine's verbatim — game.ErrInvalidSetting for a
-// value out of range, game.ErrStartingLifeLocked or
-// game.ErrFreeMulliganLocked for a change after Start — so the HTTP layer can map them to 400 and 422
+// value out of range, game.ErrStartingLifeLocked,
+// game.ErrFreeMulliganLocked or game.ErrPlanechaseLocked for a change after Start — so the HTTP layer can map them to 400 and 422
 // without this layer inventing its own vocabulary.
 //
 // Deliberately routed through applyLocked (ApplyExternal) rather than
@@ -61,6 +61,11 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 		return entry.room.Game.UpdateSettings(actor, patch)
 	}); err != nil {
 		return game.TableSettings{}, err
+	}
+	// ADR 0211 §1: the host's change keeps the table open; the
+	// server admin's (actor uuid.Nil) does not.
+	if actor != uuid.Nil {
+		l.touchLocked(entry)
 	}
 	// Read back rather than reconstruct from the patch: the answer is
 	// the whole struct, including the fields the patch left alone, and

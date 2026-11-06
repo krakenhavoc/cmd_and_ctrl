@@ -25,7 +25,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}, Put a page counter on this artifact: Scry 1.",
-				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 1},
 				Cost:    Plus(TapCost(), AddCounterToThis(page, 1)),
 				Effect:  Do(Scry{N: 1}),
 			},

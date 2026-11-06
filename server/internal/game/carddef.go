@@ -519,7 +519,7 @@ type CardDef struct {
 	XCeiling *XCeiling
 
 	// WantsDistinctColors marks a spell that READS the colours of the
-	// mana that paid for it — converge (CR 702.86) and sunburst (CR
+	// mana that paid for it — converge (CR 207.2c) and sunburst (CR
 	// 702.44), and nothing else today. It picks the colour-maximising
 	// payment strategy at the cast gate (#761).
 	WantsDistinctColors bool

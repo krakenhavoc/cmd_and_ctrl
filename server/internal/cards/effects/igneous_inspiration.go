@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Igneous Inspiration — Sorcery {2}{R} (EDHREC rank 25744):
 //
 //	"Igneous Inspiration deals 3 damage to any target.
@@ -16,7 +18,7 @@ func init() {
 		Name:         "Igneous Inspiration",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
-		Purpose:      ForTargets(DamageToTarget(0, 3)),
+		Purpose:      WithRiders(ForTargets(DamageToTarget(0, 3)), game.Purpose{Learn: 1}),
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
 				for _, t := range ctx.LegalTargets() {

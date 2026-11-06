@@ -28,6 +28,13 @@ package lobby
 // `users.deleted_at IS NOT NULL` or the picker offers a person who can
 // no longer be reached and the DM route fails on them with a 422.
 //
+// ADR 0213 §1 (slice 2) adds to each entry the number of tables the two
+// people shared (`games_together`) and the name of the most recent one
+// (`last_table`), and caps the list at the 50 most recent people
+// (MaxTablemates). The cap is on what the list SHOWS: the DM route's
+// gate (IsTablemate) reads the whole relation, so someone sat with long
+// ago still counts as a tablemate for an invite.
+//
 // The same relation is the DM route's gate: POST /games/{id}/invites/dm
 // lets an ordinary caller name only a person this query returns
 // (IsTablemate), so the picker and the route cannot disagree about who
@@ -57,7 +64,17 @@ type TablemateRecord struct {
 	AvatarURL string
 	// LastPlayedAt is when the most recent shared table was created.
 	LastPlayedAt time.Time
+	// GamesTogether is how many tables the two people have shared,
+	// lobbies that never started included.
+	GamesTogether int
+	// LastTable is the name of the most recent shared table, the one
+	// LastPlayedAt dates.
+	LastTable string
 }
+
+// MaxTablemates caps GET /me/tablemates at the 50 most recent people
+// (ADR 0213 §1).
+const MaxTablemates = 50
 
 // Tablemate is one entry of GET /me/tablemates. LastPlayedAt is Unix
 // milliseconds, the unit the games table stores and the unit
@@ -67,15 +84,35 @@ type Tablemate struct {
 	DisplayName  string    `json:"display_name"`
 	AvatarURL    string    `json:"avatar_url,omitempty"`
 	LastPlayedAt int64     `json:"last_played_at"`
+	// GamesTogether is the count of tables the two of you have shared
+	// (ADR 0213 §1); at least 1.
+	GamesTogether int `json:"games_together"`
+	// LastTable is the name of the most recent one, which is already in
+	// both people's History.
+	LastTable string `json:"last_table"`
 }
 
 // Tablemates lists the people userID has shared a table with, most
-// recent table first. The caller is never in the list, and a seat
-// with no user — a guest, a bot, a Discord seat still waiting on a
-// users row — is not a person and is skipped. So is a deleted
-// account, which the SQL store leaves out (the memory store has no
-// users table, so no account there is ever deleted).
+// recent table first, at most MaxTablemates of them. The caller is
+// never in the list, and a seat with no user — a guest, a bot, a
+// Discord seat still waiting on a users row — is not a person and is
+// skipped. So is a deleted account, which the SQL store leaves out (the
+// memory store has no users table, so no account there is ever
+// deleted).
 func (l *Lobby) Tablemates(userID uuid.UUID) ([]Tablemate, error) {
+	all, err := l.allTablemates(userID)
+	if err != nil {
+		return nil, err
+	}
+	if len(all) > MaxTablemates {
+		all = all[:MaxTablemates]
+	}
+	return all, nil
+}
+
+// allTablemates is the whole relation, most recent first, for the
+// callers that need membership rather than a page of it.
+func (l *Lobby) allTablemates(userID uuid.UUID) ([]Tablemate, error) {
 	out := []Tablemate{}
 	if userID == uuid.Nil {
 		return out, nil
@@ -92,27 +129,30 @@ func (l *Lobby) Tablemates(userID uuid.UUID) ([]Tablemate, error) {
 			return nil, fmt.Errorf("seats.user_id %q: %w", r.UserID, err)
 		}
 		out = append(out, Tablemate{
-			UserID:       id,
-			DisplayName:  r.DisplayName,
-			AvatarURL:    r.AvatarURL,
-			LastPlayedAt: r.LastPlayedAt.UnixMilli(),
+			UserID:        id,
+			DisplayName:   r.DisplayName,
+			AvatarURL:     r.AvatarURL,
+			LastPlayedAt:  r.LastPlayedAt.UnixMilli(),
+			GamesTogether: r.GamesTogether,
+			LastTable:     r.LastTable,
 		})
 	}
 	return out, nil
 }
 
 // IsTablemate reports whether target is one of userID's tablemates:
-// the answer of Tablemates, so the picker and the invite-DM route
-// share one definition of "someone you have sat at a table with"
-// (a guest, a bot, yourself and a deleted account are not). It reads
-// the whole list rather than asking the store a second question, which
-// would be a second copy of the join; the list is the people one
-// person has played with, which at this scale is small.
+// the answer of Tablemates before its cap of MaxTablemates, so the
+// picker and the invite-DM route share one definition of "someone you
+// have sat at a table with" (a guest, a bot, yourself and a deleted
+// account are not). It reads the whole list rather than asking the
+// store a second question, which would be a second copy of the join;
+// the list is the people one person has played with, which at this
+// scale is small.
 func (l *Lobby) IsTablemate(userID, target uuid.UUID) (bool, error) {
 	if target == uuid.Nil {
 		return false, nil
 	}
-	mates, err := l.Tablemates(userID)
+	mates, err := l.allTablemates(userID)
 	if err != nil {
 		return false, err
 	}
@@ -158,12 +198,17 @@ func myTablemates(c Config, w http.ResponseWriter, r *http.Request) error {
 // rather than offering a nameless entry the DM route could not
 // resolve. `u.deleted_at IS NULL` keeps a deleted account's tombstone
 // out for the same reason: it has no Discord identity left to DM.
+//
+// `g.name` is a bare column in an aggregate query with one MAX(), so
+// SQLite takes it from the row that holds the maximum: the name of the
+// most recent shared table (SQLite's documented bare-column rule).
 func (s *SQLStore) Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error) {
 	if userID == "" {
 		return nil, nil
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT s2.user_id, u.display_name, COALESCE(u.avatar_url, ''), MAX(g.created_at) AS last_played
+		`SELECT s2.user_id, u.display_name, COALESCE(u.avatar_url, ''), MAX(g.created_at) AS last_played,
+		        COUNT(DISTINCT g.id), g.name
 		 FROM seats s1
 		 JOIN seats s2 ON s2.game_id = s1.game_id
 		 JOIN games g ON g.id = s1.game_id
@@ -182,7 +227,8 @@ func (s *SQLStore) Tablemates(ctx context.Context, userID string) ([]TablemateRe
 			rec        TablemateRecord
 			lastPlayed sql.NullInt64
 		)
-		if err := rows.Scan(&rec.UserID, &rec.DisplayName, &rec.AvatarURL, &lastPlayed); err != nil {
+		if err := rows.Scan(&rec.UserID, &rec.DisplayName, &rec.AvatarURL, &lastPlayed,
+			&rec.GamesTogether, &rec.LastTable); err != nil {
 			return nil, err
 		}
 		if lastPlayed.Valid {
@@ -205,6 +251,9 @@ func (s *memoryStore) Tablemates(_ context.Context, userID string) ([]TablemateR
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byUser := map[string]TablemateRecord{}
+	// COUNT(DISTINCT game) as the SQL store has it: one per shared
+	// table, however many seats the person holds in it.
+	counted := map[string]bool{}
 	for gid, seats := range s.seats {
 		g, ok := s.games[gid]
 		if !ok {
@@ -227,6 +276,11 @@ func (s *memoryStore) Tablemates(_ context.Context, userID string) ([]TablemateR
 			rec, seen := byUser[st.UserID]
 			if !seen || g.CreatedAt.After(rec.LastPlayedAt) {
 				rec.LastPlayedAt = g.CreatedAt
+				rec.LastTable = g.Name
+			}
+			if key := gid.String() + "|" + st.UserID; !counted[key] {
+				counted[key] = true
+				rec.GamesTogether++
 			}
 			rec.UserID = st.UserID
 			if st.GuestName != "" {

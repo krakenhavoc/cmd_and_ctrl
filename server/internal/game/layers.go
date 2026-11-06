@@ -636,6 +636,8 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// zone. One more source list into the same gather, never a second
 	// pass — see emblem.go.
 	out = append(out, g.emblemContinuousEffectsLocked()...)
+	// ADR 0216 §6 / CR 901.7: and a face-up plane's.
+	out = append(out, g.planarContinuousEffectsLocked()...)
 	// #1221 / CR 113.6c: statics that function from a zone other than
 	// the battlefield — the Judgment incarnations' "as long as this
 	// card is in your graveyard". One more source list into the same

@@ -68,6 +68,91 @@ func TestACappedSearchIsFetchedInFullAndNamesItsChoice(t *testing.T) {
 	}
 }
 
+// #4765: a capped search on a list far under the wire's 48-move cap. No
+// full-list reply brings its cut, so the seat reads it from the frame's
+// legal_prompt_cuts, fetches the search in full and counts the window.
+func TestACappedSearchUnderTheWireCapIsFetchedInFull(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	tutor, choice := uuid.New(), uuid.NewString()
+	v := activeView(f)
+	v.PendingChoices = []protocol.PendingChoiceView{{ID: choice, Kind: "search_library", Chooser: f.playerID.String(), Source: tutor.String()}}
+	var capped, full []legal.Move
+	for i := 0; i < 40; i++ {
+		m := searchMove(f, tutor, choice, fmt.Sprintf("Card %02d", i), uuid.New())
+		if i < 12 {
+			capped = append(capped, m)
+		}
+		full = append(full, m)
+	}
+	full = append(full, searchMove(f, tutor, choice, "Black Lotus", uuid.New()))
+	v.LegalPromptCuts = []protocol.LegalCutView{{Source: tutor.String(), Choice: choice, Cap: "per_source", Omitted: 29}}
+	f.mu.Lock()
+	f.choiceMoves = map[string][]legal.Move{choice: full}
+	f.mu.Unlock()
+	f.setState(v, capped, false)
+
+	_, text := decisionWindow(t, s)
+	if !strings.Contains(text, "MOVES (41)") || !strings.Contains(text, "Black Lotus") {
+		t.Fatalf("the search was not fetched in full:\n%s", text)
+	}
+	if strings.Contains(text, "not listed") {
+		t.Errorf("a search fetched in full still says it was cut:\n%s", text)
+	}
+	f.mu.Lock()
+	reqs := append([]protocol.LegalMovesRequestPayload(nil), f.moveReqs...)
+	f.mu.Unlock()
+	// The first connection's wire probe is a whole-list request; the
+	// search is the only other one.
+	if n := len(reqs); n == 0 || reqs[n-1] != (protocol.LegalMovesRequestPayload{Choice: choice}) {
+		t.Errorf("requests = %+v; want the last to ask for choice %s alone", reqs, choice)
+	}
+	s.mu.Lock()
+	st := s.stats
+	s.mu.Unlock()
+	if st.truncatedWindows != 1 {
+		t.Errorf("stats = %+v; the window was cut", st)
+	}
+}
+
+// #4765: a capped prompt that is not a search, under the wire cap, is
+// named with the call that expands it, from the frame alone.
+func TestACappedDiscardUnderTheWireCapIsNamed(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := activeView(f)
+	var moves []legal.Move
+	for i := 0; i < 12; i++ {
+		moves = append(moves, legal.Move{Type: legal.TypeDiscardSelection, Player: f.playerID, Kind: legal.KindChoice,
+			Label:  fmt.Sprintf("Discard to hand size: Card %02d Card %02d", i, i+1),
+			Params: mustJSON(map[string]any{"card_ids": []string{uuid.NewString(), uuid.NewString()}})})
+	}
+	v.LegalPromptCuts = []protocol.LegalCutView{{Choice: legal.CleanupDiscardChoice, Cap: "per_source", Omitted: 24}}
+	f.setState(v, moves, false)
+
+	_, text := decisionWindow(t, s)
+	want := `choice cleanup_discard: 24 answers not listed (cap per_source) — legal_moves(choice: "cleanup_discard") expands it`
+	if !strings.Contains(text, want) {
+		t.Errorf("the cut discard is not named; want %s in:\n%s", want, text)
+	}
+	f.mu.Lock()
+	reqs := append([]protocol.LegalMovesRequestPayload(nil), f.moveReqs...)
+	f.mu.Unlock()
+	for _, r := range reqs {
+		if r.Choice != "" {
+			t.Errorf("requests = %+v; a prompt that is not a search is not fetched on its own", reqs)
+		}
+	}
+	s.mu.Lock()
+	st := s.stats
+	s.mu.Unlock()
+	if st.truncatedWindows != 1 {
+		t.Errorf("stats = %+v; the window was cut", st)
+	}
+}
+
 // A capped prompt that is not a search stays capped, and its hint carries
 // the choice id even though a card raised it.
 func TestACutPromptNamesItsChoiceEvenWithASource(t *testing.T) {

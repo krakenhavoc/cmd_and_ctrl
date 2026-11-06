@@ -36,6 +36,8 @@ import (
 //     amendment of 2026-10-06);
 //   - a LandfallPayoff anywhere but a triggered row, or one that pays
 //     nothing or a negative amount (#3072);
+//   - a LifeGainPayoff anywhere but a triggered row, one that pays
+//     nothing or a negative amount, or one that gains life (#4979);
 //   - a Pump or PreventCombatDamageToSelf anywhere but a triggered or
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
@@ -48,6 +50,8 @@ import (
 //     no TriggerDoubler (#3146);
 //   - ExtraLoyaltyActivations anywhere but the card or an activated
 //     row of the controller's own (#4191);
+//   - SourceCounters anywhere but an activated row of the controller's
+//     own (#5083);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -64,6 +68,7 @@ import (
 //     the card, on a card with no single kicker / no face-down cast
 //     offer, or whose inner purpose is empty, nests another, or
 //     declares what only the card's own slot may (checkConditionalPurposes).
+//   - a negative rider, or one on a triggered row (checkRiders, #4978).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
 type purposeSlot int
@@ -105,7 +110,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.ExtraLoyaltyActivations < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.ExtraLoyaltyActivations < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 || p.SourceCounters < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
@@ -122,6 +127,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.ExtraLoyaltyActivations != 0 && slot != purposeOnCard && slot != purposeOnActivated {
 		fail("sets ExtraLoyaltyActivations off the card or an activated row of its controller's own — it grants the planeswalkers of whoever resolves it (#4191)")
+	}
+	if p.SourceCounters != 0 && slot != purposeOnActivated {
+		fail("sets SourceCounters off an activated row of its controller's own — it is the +1/+1 counters a row puts on its own source, and an any-player row grows another player's permanent (#5083)")
 	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
@@ -146,6 +154,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.CreatureEnterPayoff != nil && slot != purposeOnTriggered {
 		fail("sets CreatureEnterPayoff off a triggered row — it is a \"whenever a creature you control enters\" trigger (#3165)")
+	}
+	if p.LifeGainPayoff != nil && slot != purposeOnTriggered {
+		fail("sets LifeGainPayoff off a triggered row — it is a \"whenever you gain life\" trigger (#4979)")
 	}
 	if p.CreatureTokens > p.Tokens {
 		fail("declares more CreatureTokens than Tokens (#3165)")
@@ -179,9 +190,26 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		l := game.LandfallPayoff(*c)
 		checkLandfallPayoff(&l, fail)
 	}
+	checkLifeGainPayoff(p.LifeGainPayoff, fail)
 	checkSweep(p.Sweep, fail)
+	checkRiders(p, slot, fail)
 	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
+	}
+}
+
+// checkRiders is the guard for the riders (#4978, ADR 0126's amendment
+// of 2026-11-05): scry, learn, discover, amass and the Ring tempting
+// its controller. None may be negative, and none is declared on a
+// triggered row, which nothing prices by them: a permanent's enters
+// trigger declares its rider on the card, as Mulldrifter's draws are,
+// and a modal trigger's bullet on that bullet.
+func checkRiders(p game.Purpose, slot purposeSlot, fail func(string)) {
+	if p.Scry < 0 || p.Learn < 0 || p.Discover < 0 || p.Amass < 0 || p.RingTempts < 0 {
+		fail("has a negative rider (#4978)")
+	}
+	if slot == purposeOnTriggered && (p.Scry != 0 || p.Learn != 0 || p.Discover != 0 || p.Amass != 0 || p.RingTempts != 0) {
+		fail("declares a rider (scry, learn, discover, amass, the Ring tempting) on a triggered row, which nothing reads — an enters trigger's rider is the card's own purpose (#4978)")
 	}
 }
 
@@ -275,6 +303,20 @@ func checkLandfallPayoff(l *game.LandfallPayoff, fail func(string)) {
 	}
 	if *l == (game.LandfallPayoff{}) {
 		fail("is a landfall payoff that pays nothing — leave it nil, or set what each land pays")
+	}
+}
+
+// checkLifeGainPayoff is checkPurpose's half for a declared
+// LifeGainPayoff (#4979): checkLandfallPayoff's rules, and no LifeGain,
+// which would be the row paying for its own payout.
+func checkLifeGainPayoff(g *game.LifeGainPayoff, fail func(string)) {
+	if g == nil {
+		return
+	}
+	l := game.LandfallPayoff(*g)
+	checkLandfallPayoff(&l, fail)
+	if g.LifeGain != 0 {
+		fail("is a lifegain payoff that gains life — it would trigger itself; leave LifeGain out (#4979)")
 	}
 }
 
@@ -698,6 +740,22 @@ func ModeWithPurpose(o game.ModeOption, p game.Purpose) game.ModeOption {
 	return o
 }
 
+// WithRiders is p with the riders r declares added (#4978): scry,
+// learn, discover, amass and the Ring tempting its controller, for a
+// purpose a constructor builds. Only r's riders are read.
+//
+//	Purpose: WithRiders(ForTargets(DamageToTarget(0, 4)), game.Purpose{Scry: 1}),
+func WithRiders(p, r game.Purpose) game.Purpose {
+	p.Scry += r.Scry
+	p.Learn += r.Learn
+	p.Amass += r.Amass
+	p.RingTempts += r.RingTempts
+	if r.Discover != 0 {
+		p.Discover = r.Discover
+	}
+	return p
+}
+
 // CostWithPurpose is an alternative cost with what the spell does when
 // cast for it (ADR 0126 §6): overload's "each" turns a removal spell
 // into a sweep, so the purpose rides on the overload offer rather than
@@ -764,4 +822,13 @@ func LandfallPaying(label string, pays game.LandfallPayoff, effect Effect) game.
 //		game.CreatureEnterPayoff{DamageEachOpponent: 2})
 func CreatureEnterPaying(t game.TriggeredAbility, pays game.CreatureEnterPayoff) game.TriggeredAbility {
 	return TriggerWithPurpose(t, game.Purpose{CreatureEnterPayoff: &pays})
+}
+
+// LifeGainPaying is a "whenever you gain life" row with what it pays for
+// each life-gain event declared (#4979): the purpose the heuristic reads
+// when it prices a lifelink attack. Ajani's Pridemate is
+//
+//	LifeGainPaying(WheneverYouGainLife(...), game.LifeGainPayoff{Counters: 1})
+func LifeGainPaying(t game.TriggeredAbility, pays game.LifeGainPayoff) game.TriggeredAbility {
+	return TriggerWithPurpose(t, game.Purpose{LifeGainPayoff: &pays})
 }

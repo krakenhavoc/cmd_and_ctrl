@@ -767,7 +767,7 @@ var items = []Item{
 	{
 		Slug: "unearth", Name: "Unearth", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Return a creature from your graveyard to the battlefield with haste for one turn; it's exiled afterwards.",
-		Rules:   []string{"702.82"},
+		Rules:   []string{"702.84"},
 		Probe:   anyOf(activatedLabel("Unearth "), activatedLabel("Unearth—")),
 		Phrases: []string{"unearthed"},
 	},
@@ -780,7 +780,7 @@ var items = []Item{
 	{
 		Slug: "scavenge", Name: "Scavenge", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Exile a creature card from your graveyard to put +1/+1 counters equal to its power on a creature.",
-		Rules:   []string{"702.96"},
+		Rules:   []string{"702.97"},
 		Probe:   activatedLabel("Scavenge "),
 	},
 	{
@@ -2651,6 +2651,15 @@ var items = []Item{
 		Examples: []string{"Reiterating Bolt"},
 	},
 	{
+		Slug: "squad", Name: "Squad", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Pay a creature spell's squad cost any number of times as you cast it, and create a token copy of the creature for each payment when it enters.",
+		Rules:    []string{"702.157"},
+		Issue:    5011,
+		Mechanic: "squad",
+		Printed:  printedKeyword("squad"),
+		Examples: []string{"Roadkill Rodney"},
+	},
+	{
 		Slug: "energy-paid-or-lost", Name: "Getting energy, and energy paid or lost this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Cards that trigger whenever you get energy, or count the energy you've paid or lost this turn, such as Aether Revolt, Territorial Gorger and Izzet Generatorium.",
 		Rules:       []string{"107.14", "122.1", "603.2c"},
@@ -3104,6 +3113,18 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#4684, ADR 0020's 2026-11-03 amendment, Decision 78): `game.AbilityCost.Blight` (N), built by `effects.BlightN(n)`. The activator names the creature in `blight_ids`, any creature they control that can have counters put on it (`BlightOptionsForEffect`, the cast path's walk), and the counters go on through `blightLocked` marked `CounterFromCost`: Doubling Season doesn't double them, Vizier of Remedies applies (CR 614.16). With no creature to blight the ability can't be activated (CR 701.68b). The source's zone doesn't matter, so a graveyard ability blights a creature on the battlefield. The wire carries `blight` / `blight_options` on the row; the enumerator offers one move per creature, a survivor first, and `legal.MoveCost.Blight` prices the counters for the policy. Dawnhand Dissident waits for its cast permission's counter-removal cost.",
 	},
 	{
+		// #4964 (ADR 0066's 2026-11-04 amendment). Closed; history in
+		// Closed seams.
+		Slug: "permission-power-or-toughness", Name: "Casting from a graveyard filtered by power or toughness", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Permission to cast creature spells with power or toughness 1 or less from your graveyard, such as Leonardo, Sewer Samurai's.",
+		Rules:       []string{"604.3", "113.6a", "208.2a", "208.3", "122.1h", "601.3"},
+		Issue:       4964,
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Probe:       declaresPowerOrToughnessPermission,
+		Examples:    []string{"Leonardo, Sewer Samurai"},
+		EngineNotes: "**Shipped** (#4964, ADR 0066's 2026-11-04 amendment): `game.PermissionFilter.PowerOrToughnessCapped` with `PowerOrToughnessAtMost`, an OR over the two numbers on a creature card, so a 2/1 and a 1/2 qualify under \"1 or less\" and a 2/2 does not. A `*` card's own characteristic-defining ability functions in the graveyard (CR 604.3, CR 113.6a, CR 208.2a), which a pure-data filter cannot compute, so the lookups that hold the game lend the card its reading per face (`Game.withPTAnywhereLocked`, `lendPTLocked`, `permissionForSpellLocked`, built on #2115's `cdaAnywhereLocked`): Tarmogoyf in a graveyard is judged at the power its ability gives it there, and an unlent or uncomputable `*` does not qualify, so a missed lookup is narrower than printed, never wider. The permission, the view's offers, the bot enumerator and `CastSpell` all read the one clause. Additive in v9 (`filter.powerOrToughnessCapped` / `filter.powerOrToughnessAtMost`), with the lent reading derived and never persisted.",
+	},
+	{
 		// #4799 (ADR 0020's 2026-11-02 amendment). Closed; history in
 		// Closed seams.
 		Slug: "unattach-equipment-cost", Name: "Unattaching an Equipment as an ability's cost", Kind: KindSeam, Status: StatusImplemented,
@@ -3386,7 +3407,7 @@ var items = []Item{
 	{
 		Slug: "a-permanent-you-controlled-left", Name: "A permanent you controlled left the battlefield this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that check whether a permanent you controlled left the battlefield this turn, such as revolt and Shortcut to Mushrooms.",
-		Rules:       []string{"603.4", "702.136"},
+		Rules:       []string{"603.4", "207.2c"},
 		Issue:       2148,
 		Tracked:     "#2148 (the per-player sibling of the void seam, #2128)",
 		Examples:    []string{"Shortcut to Mushrooms", "Fatal Push", "Renegade Rallier", "Hidden Stockpile"},
@@ -3712,7 +3733,7 @@ var items = []Item{
 		Issue:       2726,
 		Tracked:     "#2726 (found building the ascend cards, #2706)",
 		Examples:    []string{"Timestream Navigator"},
-		EngineNotes: "`game.AbilityCost.BottomSelf` (`effects.PutThisOnTheBottomOfItsOwnersLibrary`) is `ReturnSelf`'s sibling one zone over (`game/bottom_self_cost.go`). It is paid at announce, before the stack item is built, through the one zone-route exit with cause cost to the bottom of the OWNER's library, so the leaves-the-battlefield triggers see it go and sit above the ability, and the item's `SourceObject` (stamped before the payment) gives the effect the permanent's last-known information (CR 400.7, 608.2h). A commander that puts itself there is asked CR 903.9b first, with the library as its destination (ADR 0115). Battlefield only (`AbilityNeedsPermanentSource`), never beside a sacrifice-this, exile-this, return-this or exert cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `bottom_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost`. **Cards:** Timestream Navigator.",
+		EngineNotes: "`game.AbilityCost.BottomSelf` (`effects.PutThisOnTheBottomOfItsOwnersLibrary`) is `ReturnSelf`'s sibling one zone over (`game/bottom_self_cost.go`). It is paid at announce, before the stack item is built, through the one zone-route exit with cause cost to the bottom of the OWNER's library, so the leaves-the-battlefield triggers see it go and sit above the ability, and the item's `SourceObject` (stamped before the payment) gives the effect the permanent's last-known information (CR 400.7, 608.2h). A commander that puts itself there is asked CR 903.9b first, with the library as its destination (ADR 0115). Paid from the battlefield or, as a card's own graveyard ability, the graveyard (`game.BottomSelfZoneSupported`, checked by `effects.Register` at boot and by the validator at activation): Daniels, Temporal Agent's \"{2}, Put this card from your graveyard on the bottom of your library\" (#4973) is the graveyard form. Never beside a sacrifice-this, exile-this, return-this or exert cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `bottom_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost`. **Cards:** Timestream Navigator; Daniels, Temporal Agent.",
 	},
 	{
 		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusImplemented,

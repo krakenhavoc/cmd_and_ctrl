@@ -11,6 +11,7 @@ import {
   DICE_QUEUE_MAX,
   DICE_SHOWN_MAX,
   DICE_SLOT_MS,
+  DICE_SOUND_LATE_MS,
   DICE_TUMBLE_MS,
   DICE_TUMBLE_STEPS,
   diceLabel,
@@ -19,6 +20,8 @@ import {
   diceSeed,
   diceShown,
   diceSlotMs,
+  diceSound,
+  diceSoundsDue,
   diceThrow,
   emptyDiceState,
   faceAt,
@@ -542,5 +545,49 @@ describe("table rolls", () => {
     const first = after([tableRoll(9, 3)], 1000);
     const next = trackDice(first, rollsFromLogs([tableRoll(9, 3), tableRoll(10, 4)]), 1100, MOTION);
     expect(next.plays.map((p) => p.roll.key)).toEqual(["table:3", "table:4"]);
+  });
+});
+
+describe("the sound (#4450)", () => {
+  it("rattles for a die and rings for a coin", () => {
+    expect(diceSound({ kind: "die" })).toBe("dice_roll");
+    expect(diceSound({ kind: "coin" })).toBe("coin_flip");
+  });
+
+  it("each entry sounds once, as its tumble starts, however many dice it rolls", () => {
+    const s = after([roll(1, 0, [3, 9], 12), flip(2, 1)], 1000);
+    expect(diceSoundsDue(s.plays, 999, new Set())).toEqual([]);
+    expect(diceSoundsDue(s.plays, 1000, new Set())).toEqual([
+      { key: "seq:1", name: "dice_roll" },
+      { key: "seq:2", name: "coin_flip" },
+    ]);
+    expect(diceSoundsDue(s.plays, 1500, new Set(["seq:1", "seq:2"]))).toEqual([]);
+  });
+
+  it("a burst's entries sound one by one, each as it starts", () => {
+    const s = after([roll(1), roll(2)], 0);
+    expect(diceSoundsDue(s.plays, 0, new Set()).map((d) => d.key)).toEqual(["seq:1"]);
+    const second = [...s.plays].sort((x, y) => x.startAt - y.startAt)[1];
+    expect(diceSoundsDue(s.plays, second.startAt, new Set(["seq:1"]))).toEqual([
+      { key: "seq:2", name: "dice_roll" },
+    ]);
+  });
+
+  it("with motion off it sounds at once: only the motion is gated", () => {
+    const s = after([roll(1)], 500, STILL);
+    expect(diceSoundsDue(s.plays, 500, new Set())).toEqual([{ key: "seq:1", name: "dice_roll" }]);
+  });
+
+  it("a primed window sounds nothing", () => {
+    const s = primeDice(rollsFromLogs([roll(1), flip(2)]));
+    expect(diceSoundsDue(s.plays, 0, new Set())).toEqual([]);
+  });
+
+  it("a play first seen long after it started is due with no sound", () => {
+    const s = after([roll(1)], 0);
+    expect(diceSoundsDue(s.plays, DICE_SOUND_LATE_MS, new Set())[0].name).toBe("dice_roll");
+    expect(diceSoundsDue(s.plays, DICE_SOUND_LATE_MS + 1, new Set())).toEqual([
+      { key: "seq:1", name: null },
+    ]);
   });
 });

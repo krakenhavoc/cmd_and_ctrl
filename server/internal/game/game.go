@@ -175,6 +175,27 @@ type Game struct {
 	// snapshot.
 	OpeningRoll *OpeningRoll
 
+	// Planechase is the Planechase option's planar controller and die
+	// count (CR 901, ADR 0216), nil when the table is not playing
+	// Planechase. Every Planechase code path is behind a nil check, so
+	// a table without the option runs none of it. Carried by Clone,
+	// RestoreFrom and the snapshot.
+	Planechase *PlanechaseState
+
+	// PlanarDeck is the communal planar deck (CR 901.15), face down in
+	// the command zone (CR 901.4), bottom first and top last; and
+	// PlanarFaceUp is the face-up plane cards, in the order they were
+	// turned up. Both are of kind ZoneCommand and both are OUTSIDE the
+	// card index: no ZoneRef reaches them, so nothing but the
+	// Planechase code moves a planar card (ADR 0216 §3, ADR 0207's
+	// containers). Nil when the table is not playing Planechase. Read
+	// through planarDeckForLocked and planarFaceUpLocked. Every card in
+	// both is owned and controlled by the planar controller (CR
+	// 901.15b, setPlanarControllerLocked). Carried by Clone,
+	// RestoreFrom and the snapshot (inside its `planechase` object).
+	PlanarDeck   *Zone
+	PlanarFaceUp *Zone
+
 	// Monarch is the player ID currently designated as the monarch
 	// (CR 725). uuid.Nil means "no monarch currently". Handed out by
 	// the set_monarch action or by a card effect; from #375 onward the
@@ -338,6 +359,14 @@ type Game struct {
 	// asking whether this count is still zero. Cleared on
 	// Turn.advance to a new turn, alongside SpellsCastThisTurn.
 	ForetoldThisTurn map[uuid.UUID]int
+
+	// DilemmasFacedThisTurn counts, per player, the dilemmas that player
+	// has faced this turn (#4973, Star Trek: "for each dilemma you've
+	// faced this turn", "if you faced a dilemma this turn"). Bumped by
+	// emitFacedDilemmaLocked, the one place EventFacedDilemma is made,
+	// so the count and the trigger never disagree. Cleared as a turn
+	// begins, alongside ForetoldThisTurn.
+	DilemmasFacedThisTurn map[uuid.UUID]int
 
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
@@ -608,14 +637,17 @@ type Game struct {
 	//
 	// blockedAttackers is the CR 509.1h state: "a creature remains
 	// blocked even if all the creatures blocking it are removed from
-	// combat". It is written in exactly one place —
-	// commitBlockDeclarationLocked, the block declaration's lock-in —
-	// and read by both combat damage steps, which never ask the live
-	// battlefield whether an attacker is blocked (#715: they used to,
-	// so an attacker whose chump blocker died hit the player). The
-	// same set is the CR 506.4 announcement guard, because an
-	// attacker becomes blocked exactly once: an EventBecomesBlocked
-	// is emitted when, and only when, an attacker is added here.
+	// combat". It is written in two places —
+	// commitBlockDeclarationLocked, the block declaration's lock-in,
+	// and stampEntryBlockerLocked, a creature put onto the battlefield
+	// blocking (put_blocking.go) — and read by both combat damage
+	// steps, which never ask the live battlefield whether an attacker
+	// is blocked (#715: they used to, so an attacker whose chump
+	// blocker died hit the player). The same set is the CR 506.4
+	// announcement guard, because an attacker becomes blocked exactly
+	// once: an EventBecomesBlocked is emitted only when an attacker is
+	// added here (and, for a put-onto-the-battlefield blocker, only if
+	// the attacker was unblocked at that time, CR 509.3c).
 	//
 	// The maps exist because the declaration is announced at LOCK-IN
 	// and the sandbox lets the defender keep clicking afterwards: the
@@ -990,6 +1022,14 @@ type Game struct {
 	// after it is frozen. Clone and the persisted snapshot carry them.
 	frozenEntries []*replacementResumeFrame
 
+	// movesAwaitingTokens are the replaced moves whose declared token
+	// creation is still settling (#4522, move_tokens.go): each is a
+	// carrier event holding what is left of the move, its route and the
+	// instructions not yet run, by event ID, until the creation's keyed
+	// tail takes it back. Copy on write, and a carrier is never written
+	// after it is parked. Clone and the persisted snapshot carry them.
+	movesAwaitingTokens []*ReplacementEvent
+
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the
@@ -1310,6 +1350,9 @@ func NewGame() *Game {
 	// abilities have no source either, so they ride the registry for
 	// the monarch's reason and right after it. See initiative.go.
 	g.Listeners = append(g.Listeners, initiativeTriggers{})
+	// ADR 0216 §5: CR 901.8's planeswalking ability. A table without
+	// Planechase returns at the listener's first line.
+	g.Listeners = append(g.Listeners, planechaseTriggers{})
 	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.
@@ -1555,6 +1598,16 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	if len(g.Seats) < MinPlayers {
 		return ErrNotEnoughPlayers
 	}
+	// ADR 0216 §§1–2: a Planechase table checks its communal planar
+	// deck before anything moves, so a refused Start leaves the table
+	// as it was.
+	var planar []Card
+	if g.Settings.Planechase {
+		var err error
+		if planar, err = planarTemplates(g.playersInGameLocked()); err != nil {
+			return err
+		}
+	}
 
 	switch {
 	case key != nil:
@@ -1567,6 +1620,9 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	// No "<= 0 means default" rewrite here any more (ADR 0075 §2.2):
 	// NewGame sets the defaults, and a limit of 0 set in the lobby is
 	// a table that wants no undos.
+	if g.Settings.Planechase {
+		g.installPlanarDeckLocked(planar)
+	}
 	g.beginPregameLocked()
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
 	// NOT fire at Start — the cursor sits idle on Untap until the
@@ -2178,6 +2234,16 @@ func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
 		return 0
 	}
 	return g.ForetoldThisTurn[playerID]
+}
+
+// DilemmasFacedThisTurnFor returns how many dilemmas `playerID` has
+// faced this turn (Game.DilemmasFacedThisTurn); zero when none.
+// Caller must hold g.mu.
+func (g *Game) DilemmasFacedThisTurnFor(playerID uuid.UUID) int {
+	if g.DilemmasFacedThisTurn == nil {
+		return 0
+	}
+	return g.DilemmasFacedThisTurn[playerID]
 }
 
 // stepExistsLocked reports whether the step the cursor has landed on

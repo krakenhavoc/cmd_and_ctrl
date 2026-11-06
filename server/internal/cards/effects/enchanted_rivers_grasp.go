@@ -38,17 +38,7 @@ func init() {
 		Static:                []game.StaticAbility{LoseAllAbilities()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Enchanted River's Grasp — tap enchanted creature and remove all counters from it",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					aura, ok := ctx.TriggeringPermanent()
-					if !ok || aura.AttachedTo.Kind != game.TargetCard {
-						return nil
-					}
-					if err := (TapTarget{Target: aura.AttachedTo.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					return removeEveryCounterFrom(ctx, aura.AttachedTo.ID)
-				}),
+				tapEnchantedAndRemoveAllCounters),
 		},
 	})
 }

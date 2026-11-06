@@ -95,6 +95,39 @@ const (
 	// nothing counts, so other creatures attack freely and the source
 	// may not join them. Max is always 1.
 	AttackLimitOnlyAlone
+
+	// AttackLimitNotAlone is "this creature can't attack alone" — Pet
+	// Sehlat (#4973, CR 506.5, 508.1c). The other direction of
+	// AttackLimitOnlyAlone: a restriction on its own source that a
+	// declaration breaks when the source is the ONLY creature declared
+	// as an attacker. It counts no attack (counts is false), so it
+	// leaves every capacity and AttackLimitRoomForEffect alone; Max is
+	// always 1, the one attacker it refuses.
+	//
+	// The engine's declaration is incremental, and a creature that
+	// can't attack alone is necessarily declared before its companion
+	// (or the two in one bulk verb), so it is judged in two places:
+	//
+	//   - by the declaration verbs (attackLimitRefusalLocked), only as a
+	//     dead end: the source joining an empty declaration is refused
+	//     when no other creature could be added beside it at all
+	//     (attackCompanionAvailableLocked, a tax the player could pay
+	//     counted), so a declaration that can never become legal is
+	//     never begun and the enumerator never offers it;
+	//   - at the declaration's checkpoint (attackCheckpointLocked), on
+	//     the whole declaration as CR 508.1c judges it: a lone source is
+	//     refused while a FREE companion could still be added, and the
+	//     enumerator withholds the pass and offers those companions as
+	//     the owed answer (MustAttackForEffect). Where none is left —
+	//     the board changed under a half-made declaration, or the only
+	//     companions cost something to attack with — the lone source is
+	//     taken out of the declaration instead, so the table never
+	//     wedges and the creature never attacks alone.
+	//
+	// Two creatures that each can't attack alone may attack together
+	// (CR 508.1c's example). CR 508.1d weighs a requirement on the
+	// source only where a companion can be added (attackRequirementReachLocked).
+	AttackLimitNotAlone
 )
 
 // AttackLimit is one "no more than N creatures can attack …" static
@@ -141,6 +174,10 @@ func (l AttackLimit) counts(target uuid.UUID, source *Card) bool {
 		// Every attack, but only while the source is among them: see
 		// attackLimitSource.countIn.
 		return source != nil
+	case AttackLimitNotAlone:
+		// No count: it is judged on the declaration's size, not on a
+		// slot (attackLimitRefusalLocked, attackCheckpointLocked).
+		return false
 	}
 	return false
 }
@@ -240,6 +277,8 @@ func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 		return s + " " + nameOr(e.SourceName, "that permanent") + " each combat."
 	case AttackLimitOnlyAlone:
 		return nameOr(e.SourceName, "That creature") + " can only attack alone."
+	case AttackLimitNotAlone:
+		return nameOr(e.SourceName, "That creature") + " can't attack alone."
 	}
 	s += " each combat"
 	if e.SourceName != "" {
@@ -295,6 +334,12 @@ func (g *Game) attackLimitRefusalLocked(decls []AttackDeclaration) *AttackLimitE
 		after[d.Attacker] = d.Target
 	}
 	for _, l := range limits {
+		if l.limit.Scope == AttackLimitNotAlone {
+			if g.notAloneDeadEndLocked(l, before, after) {
+				return g.attackLimitErrorLocked(l, decls)
+			}
+			continue
+		}
 		nAfter := l.countIn(after)
 		if nAfter <= l.limit.Max || nAfter <= l.countIn(before) {
 			continue
@@ -406,6 +451,11 @@ func (g *Game) attackLimitErrorLocked(l attackLimitSource, decls []AttackDeclara
 				e.DefenderName = p.Name
 			}
 		}
+	}
+	if l.limit.Scope == AttackLimitNotAlone && l.source != nil {
+		// The creature that can't attack alone is the one to point at.
+		e.Attacker, e.AttackerName = e.Source, e.SourceName
+		return e
 	}
 	for _, d := range decls {
 		if !l.limit.counts(d.Target, l.source) {

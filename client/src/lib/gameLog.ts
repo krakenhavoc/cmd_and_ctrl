@@ -89,6 +89,8 @@ const LOG_TONE: Record<LogKind, string> = {
   reveal: "tone-cast",
   // A mill moves cards out of a library into a graveyard: a zone change.
   mill: "tone-zone",
+  // #4445: a discard moves a card to the graveyard, like a mill.
+  discard: "tone-zone",
   // A search or shuffle is bookkeeping, like a draw.
   search: "tone-quiet",
   roll: "tone-cast",
@@ -132,6 +134,7 @@ const LOG_TONE: Record<LogKind, string> = {
   // without raising their voice.
   control: "tone-bad",
   special_action: "tone-cast",
+  planeswalk: "tone-cast",
   companion_revealed: "tone-cast",
   // ADR 0106 §1: reaching across the table to activate another
   // player's permanent is a play, toned like the special action.
@@ -166,6 +169,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // the spine of the log, not a whisper in it.
   settings: "tone-step",
   away_seat: "tone-step",
+  // ADR 0211: the table closing for want of players ends the spine.
+  idle_close: "tone-step",
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",

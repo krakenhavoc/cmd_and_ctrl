@@ -198,12 +198,118 @@ const AnswersDeckID = "answers-battle"
 // tricks-battle`. Synthetic, so it needs no Scryfall dump.
 const TricksDeckID = "tricks-battle"
 
+// ThopterDeckID is the arena deck id of ThopterBattleDeck: `--decks
+// thopter-battle`. Synthetic, so it needs no Scryfall dump.
+const ThopterDeckID = "thopter-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
-// monolith-battle, answers-battle and tricks-battle.
+// monolith-battle, answers-battle, tricks-battle, thopter-battle and
+// ghast-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID || id == ThopterDeckID ||
+		id == GhastDeckID
 }
+
+// GhastDeckID is the arena deck id of GhastBattleDeck: `--decks
+// ghast-battle`. Synthetic, so it needs no Scryfall dump.
+const GhastDeckID = "ghast-battle"
+
+// GhastBattleDeck is a black-green deck whose lands make more mana than
+// they print through triggered mana abilities, for #4770's arena
+// measurement of the turn plan counting that mana: six Crypt Ghasts
+// ("Whenever you tap a Swamp for mana, add an additional {B}") and four
+// Zendikar Resurgents ("Whenever you tap a land for mana, add one mana of
+// any type that land produced"), beside BattleDeck's vanilla Bears,
+// Drakes, Ogres and Wurms recoloured, and twelve Swamps and twelve
+// Forests. Its curve tops out at the Wurm's six, so a turn with the extra
+// mana has two spells to cast. No curated deck holds either card. Dealt
+// by oracle ID so the catalog gives each its abilities; the printed costs
+// and stats are the cards' own.
+func GhastBattleDeck(owner uuid.UUID) []game.Card {
+	cmdr := game.NewCommander("Commander Bear", owner)
+	cmdr.TypeLine = "Legendary Creature — Bear"
+	cmdr.ManaCost = "{2}{B}"
+	cmdr.Colors = []string{"B"}
+	cmdr.Power, cmdr.Toughness = 3, 3
+	deck := []game.Card{cmdr}
+	add := func(n int, name, oracle, typeLine, cost string, colors []string, power, toughness int, keywords ...string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Colors = colors
+			c.Power, c.Toughness = power, toughness
+			c.Keywords = keywords
+			deck = append(deck, c)
+		}
+	}
+	black, green := []string{"B"}, []string{"G"}
+	add(12, "Swamp", "", "Basic Land — Swamp", "", nil, 0, 0)
+	add(12, "Forest", "", "Basic Land — Forest", "", nil, 0, 0)
+	add(6, "Crypt Ghast", oracleCryptGhast, "Creature — Spirit", "{3}{B}", black, 2, 2)
+	add(4, "Zendikar Resurgent", oracleZendikarResurgent, "Enchantment", "{5}{G}{G}", green, 0, 0)
+	add(10, "Bear", "", "Creature — Bear", "{1}{B}", black, 2, 2)
+	add(8, "Drake", "", "Creature — Drake", "{2}{B}", black, 3, 3, "flying")
+	add(6, "Ogre", "", "Creature — Ogre", "{3}{G}", green, 4, 4)
+	add(6, "Wurm", "", "Creature — Wurm", "{5}{G}", green, 7, 7, "trample")
+	return deck
+}
+
+// The ghast deck's catalog keys.
+const (
+	oracleCryptGhast        = "a3c8d817-7949-4dae-b9f5-f9d952479270"
+	oracleZendikarResurgent = "a0af158b-f42a-4022-a438-e0a2e1fd6d9e"
+)
+
+// ThopterBattleDeck is a mono-blue deck led by Sai, Master Thopterist,
+// for #4991's arena measurement: Sai makes a Thopter for each artifact
+// spell and trades two artifacts for a card. Its artifacts are eight
+// Ornithopters, six Memnites, four Hangarback Walkers, four Burnished
+// Harts and four Mind Stones, beside BattleDeck's vanilla Drakes, Ogres
+// and Wurms recoloured blue and twenty-four Islands. The curated Thopter
+// Swarm deck holds the same artifacts but needs a Scryfall dump; this
+// one does not. Dealt by oracle ID so the catalog gives each card its
+// abilities; the printed costs and stats are the cards' own.
+func ThopterBattleDeck(owner uuid.UUID) []game.Card {
+	cmdr := game.NewCommander("Sai, Master Thopterist", owner)
+	cmdr.OracleID = oracleSai
+	cmdr.TypeLine, cmdr.ManaCost = "Legendary Creature — Human Artificer", "{2}{U}"
+	cmdr.Colors = []string{"U"}
+	cmdr.Power, cmdr.Toughness = 1, 4
+	deck := []game.Card{cmdr}
+	add := func(n int, name, oracle, typeLine, cost string, blue bool, power, toughness int, keywords ...string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			if blue {
+				c.Colors = []string{"U"}
+			}
+			c.Power, c.Toughness = power, toughness
+			c.Keywords = keywords
+			deck = append(deck, c)
+		}
+	}
+	add(24, "Island", "", "Basic Land — Island", "", false, 0, 0)
+	add(8, "Ornithopter", oracleOrnithopter, "Artifact Creature — Thopter", "{0}", false, 0, 2, "flying")
+	add(6, "Memnite", oracleMemnite, "Artifact Creature — Construct", "{0}", false, 1, 1)
+	add(4, "Hangarback Walker", oracleHangarbackWalker, "Artifact Creature — Construct", "{X}{X}", false, 0, 0)
+	add(4, "Burnished Hart", oracleBurnishedHart, "Artifact Creature — Elk", "{3}", false, 2, 2)
+	add(4, "Mind Stone", oracleMindStone, "Artifact", "{2}", false, 0, 0)
+	add(6, "Drake", "", "Creature — Drake", "{2}{U}", true, 3, 3, "flying")
+	add(4, "Ogre", "", "Creature — Ogre", "{3}{U}", true, 4, 4)
+	add(4, "Wurm", "", "Creature — Wurm", "{5}{U}", true, 7, 7, "trample")
+	return deck
+}
+
+// The thopter deck's catalog keys.
+const (
+	oracleSai              = "52241b9c-7a69-4176-9234-8bdab09d8e64"
+	oracleOrnithopter      = "a3a98bc9-caa0-49b7-951c-fe4e4f54e4ba"
+	oracleMemnite          = "7663ac7c-1de3-4250-b96a-fae9dbd66a27"
+	oracleHangarbackWalker = "dde55256-5259-44e7-a267-fca45a7f0d04"
+	oracleBurnishedHart    = "893fed41-c144-433f-af88-bc7d419b7fb3"
+	oracleMindStone        = "c97361b5-af16-4a7b-af85-a429dbaf4ad2"
+)
 
 // TricksBattleDeck is BattleDeck with the changes until end of turn #4312
 // prices in it, for its arena measurement: four Brute Force ("target

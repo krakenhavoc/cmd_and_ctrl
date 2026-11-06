@@ -490,7 +490,9 @@ func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
 		}
 	}
-	return SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
+	src.spell = cf.item.Kind == StackItemSpell
+	return src
 }
 
 // createCopyLocked puts the copy on the stack: a new spell object for
@@ -955,7 +957,64 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 			tail.Carry = []uuid.UUID{controlBase}
 		}
 	}
+	// #4783, CR 707.10: the copy copied the alternative cost the original
+	// was cast for, so the token gets the entry riders that cost attaches
+	// to "the permanent this spell becomes": evoke's sacrifice (CR
+	// 702.74a), dash's haste and return (CR 702.109a), blitz's haste, draw
+	// and sacrifice (CR 702.152a), warp's exile (CR 702.185a). They run
+	// once the token has entered, as they do for a cast permanent
+	// (queueAltCostEntryTriggerLocked), from a tail of their own chained
+	// after this one, so a binary that does not know it refuses the file
+	// rather than restoring a token without them.
+	//
+	// Escape is deliberately absent. "Escaped" means the spell was CAST
+	// from a graveyard with an escape ability (CR 702.138b), and a copy of
+	// a spell isn't cast (CR 707.10), so the token neither escaped nor
+	// gets the "escapes with" counters (CR 702.138c), and
+	// applyAltCostEntryCountersLocked is not run for it.
+	if altCostHasEntryRider(tmpl, item) {
+		tail.Next = &KeyedTail{Ref: spellCopyTokenAltCostRef, Player: item.Controller, Source: item.SourceCardID, Word: item.AltCost}
+	}
 	return g.CreateTokensKeyedForEffect(spec, tail)
+}
+
+// altCostHasEntryRider reports whether `item` was cast for (or is a copy
+// of a spell cast for) an alternative cost of `card`'s catalog row that
+// attaches a clause to the permanent's entry: the clauses
+// queueAltCostEntryTriggerLocked applies. Nil-safe.
+func altCostHasEntryRider(card Card, item *StackItem) bool {
+	if item == nil || item.AltCost == "" {
+		return false
+	}
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	return alt != nil && (alt.SacrificeOnEntry || alt.Dash || alt.Blitz || alt.WarpExile)
+}
+
+// spellCopyTokenAltCostRef is the spell-copy token tail's Next when the
+// copy was of a spell cast for an alternative cost with entry riders
+// (#4783): Word is the alternative cost's key, Player the copy's
+// controller, and the outcome's IDs the tokens the copy became. An on-disk
+// key: never renamed, never reused. Assigned in init: a var initialiser
+// would be an initialisation cycle through the trigger harvest back to
+// resolvePermanentSpellCopyLocked, the shape dashReturnBody's comment
+// explains.
+var spellCopyTokenAltCostRef TailRef
+
+func init() {
+	spellCopyTokenAltCostRef = RegisterTail("engine/spell-copy-token-alt-cost", runSpellCopyTokenAltCostTail)
+}
+
+// runSpellCopyTokenAltCostTail applies the alternative cost's entry riders
+// to each token that is on the battlefield, through the same
+// queueAltCostEntryTriggerLocked a cast permanent's entry runs.
+func runSpellCopyTokenAltCostTail(g *Game, o TailOutcome) error {
+	item := &StackItem{AltCost: o.Tail.Word, Controller: o.Tail.Player}
+	for _, id := range o.IDs {
+		if tok := findBattlefieldCard(g, id); tok != nil {
+			g.queueAltCostEntryTriggerLocked(*tok, item)
+		}
+	}
+	return nil
 }
 
 // spellCopyCastEntryCounters is the counters a copy of a permanent spell's
@@ -1028,6 +1087,11 @@ func runSpellCopyTokenTail(g *Game, o TailOutcome) error {
 			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
 		}
 		g.adoptSpellControlLocked(o.Tail.Records, id, base)
+	}
+	// #4783: the alternative cost's entry riders, after the control
+	// records, so they see the token under the controller it ends with.
+	if o.Tail.Next != nil {
+		return g.runKeyedTailLocked(*o.Tail.Next, o.IDs, 0)
 	}
 	return nil
 }

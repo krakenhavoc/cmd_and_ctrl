@@ -597,6 +597,10 @@ export interface GameView {
   // legal_moves that the cap loses (legalActions.ts), so it only needs
   // to know.
   legal_moves_truncated?: boolean;
+  // #4765: the enumerator's cuts in the prompts legal_moves answers (a
+  // search, a discard), each with its `choice`. Own seat only. The
+  // browser reads none of it: it is for a seat that plays from the list.
+  legal_prompt_cuts?: LegalCutView[];
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
   // Own seat only, like legal_moves. Absent means "highlight nothing",
@@ -1099,14 +1103,25 @@ export type LogKind =
   // many cards it showed. Never carries card_id; `amount` is the card
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
-  // text names no card for anyone.
+  // text names no card for anyone. #4447: a reveal a library search made
+  // (a fetch land's "fetched", a "reveal it" tutor) also tells the search,
+  // whose own `search` line is then not written: it carries `library_seat`.
   | "reveal"
   // A player milled cards from their library (CR 701.17a). The milled cards
   // are named in `text`; no card_id, and `amount` is the card count.
+  // `card_ids` (#4445) is the cards the text names, in milled order.
   | "mill"
+  // #4445: a player discarded a card (CR 701.9a), one entry per card.
+  // `card_id` is the card, `seat` the player, `old_zone` "hand",
+  // `new_zone` where it went (the graveyard, or exile for madness),
+  // `cause` why ("effect", "cleanup" for the hand-size discard, "cost")
+  // and `source` the card behind it. A cycling's discard is its `cycle`
+  // entry instead, which carries the same `old_zone` and `new_zone`.
+  | "discard"
   // A player searched a library, or shuffled one. `label` "shuffle" is a plain
   // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
-  // `target_seat` is set when the library was another player's.
+  // `target_seat` is whose library it was. #4447: a search (not a plain
+  // shuffle) also carries `library_seat`, the same seat.
   | "search"
   // S30 random effects: the server-rendered public outcome of a die
   // roll or coin flip. The event text is already redacted and ready
@@ -1183,6 +1198,10 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0216 §5: a player planeswalked (CR 901.11). `choice` is "from"
+  // for each plane left and "to" for the plane arrived at; `label` is
+  // that plane's name and `card_id` the plane.
+  | "planeswalk"
   // ADR 0172 §5: a seat revealed its companion as the game began
   // ("Alice revealed Jegantha, the Wellspring as their companion").
   // `card_id` is the companion, public from then on.
@@ -1234,6 +1253,11 @@ export type LogKind =
   // seat; `seat` who decided (NoSeat for the admin); `amount` the
   // minutes the seat had been offline.
   | "away_seat"
+  // ADR 0211 §4, §6: the server closed the table, or warned that it
+  // will, because nobody used it. `label` is "idle_lobby", "idle_game",
+  // "idle_bots" or "idle_warning"; `amount` the hours idle (minutes for
+  // "idle_bots"); on a warning, `call` is when the game closes.
+  | "idle_close"
   // ADR 0075 §2.4: the host or the admin put cards or tokens on the
   // table from nowhere. `label` is the card or token name, `amount`
   // the count, `new_zone` where they went and `target_seat` whose
@@ -1375,10 +1399,18 @@ export interface LogEvent {
   // Seat index of the player the entry acts on (who was attacked, who
   // took the damage). Absent when the entry targets a card or nothing.
   target_seat?: number;
+  // #4447: the seat whose library was searched (CR 701.23a), on the one
+  // entry that tells a library search: a `search` that is not a plain
+  // shuffle, or the `reveal` a search made. It says nothing about what was
+  // found, or whether anything was. Absent on every other entry.
+  library_seat?: number;
   // Instance ID of the card the entry is about. Absent when the entry
   // deliberately carries no card reference — a draw, or a zone change
   // with hidden zones at both ends.
   card_id?: string;
+  // #4445: on a `mill` entry, the milled cards the text names (at most
+  // five, in milled order; `amount` is still the count).
+  card_ids?: string[];
   // ADR 0119 §3: the stack item a `resolve`, `fizzle` or `counter`
   // entry is about, for spells and abilities alike. For a spell it
   // equals its card's ID; an ability's item has an ID no other field
@@ -1447,6 +1479,10 @@ export interface LogEvent {
   // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
   // It is the instruction, not the destination: a destruction replaced by
   // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
+  // On a `discard` entry (#4445) it is `effect`, `cleanup` or `cost`. On
+  // a `sacrifice` entry (#4427) it is `cost` when the permanent was
+  // sacrificed to pay a cost, and absent for an effect's or a sandbox
+  // sacrifice.
   cause?: string;
   // #4395, ADR 0209 §3: the run of events the rules treat as one
   // occurrence (CR 603.2c). Two entries with equal `batch` happened at
@@ -1458,7 +1494,10 @@ export interface LogEvent {
   // resolution the `batch` is). Empty when nothing resolving is behind
   // it (combat damage, a cost, a sandbox move), and absent for a viewer
   // who may not identify the card. Three or more exits in one `batch`
-  // from one `source` are a board wipe.
+  // from one `source` are a board wipe. A `sacrifice` entry with `cause`
+  // `cost` whose `source` is its own `card_id` was paid for that
+  // permanent's own ability (#4427): a fetch land cracked, a Treasure
+  // sacrificed for its mana, a Clue for its card.
   source?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
@@ -1728,6 +1767,14 @@ export interface PendingChoiceView {
     // answer is {option_index: N}, chapter N+1. source is the entering
     // Saga; entry_keyword is "read ahead".
     | "entry_read_ahead"
+    // CR 508.4: what a creature put onto the battlefield attacking
+    // attacks, asked before it enters (CR 614.12a) — Kira Nerys,
+    // Firebrand's "instead it enters tapped and attacking". The defenders
+    // ride pick_options in order, the one already attacked first: a
+    // player's option has `player` set, a planeswalker's or battle's has
+    // its card in `cards`. The answer is {option_index: N}. source is
+    // the replacement's source.
+    | "entry_attack_target"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1924,6 +1971,13 @@ export interface PendingChoiceView {
   // instance_id (no card exists until one is taken). Sent to the chooser
   // only, with choose_min / choose_max.
   collection_options?: CardView[];
+  // #4947: on an "outside_collection" pick, true when the cards must have
+  // different names (Turtles Forever, Extrapolate the Impossible), so the
+  // picker takes each name once whatever the ceiling. #4962: the same on a
+  // "choose_cards" pick over the chooser's sideboard, where a second card
+  // with a picked name is disabled. Absent where a name may repeat
+  // (Research, Spawnsire of Ulamog). The chooser's only.
+  distinct_names?: boolean;
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -2661,6 +2715,12 @@ export interface PlayerView {
   // "commander_damage", "effect", "concede"). Absent while they play,
   // and on a seat restored from a snapshot that predates it.
   loss_cause?: string;
+  // #4912: what the player had at the moment they left the game,
+  // recorded before CR 800.4a took their objects out of it. Public and
+  // the same for every viewer, the hand included (owner decision,
+  // 2026-11-04); never the library. Absent while they play, and on a
+  // seat restored from a snapshot that predates it.
+  final_board?: FinalBoardView;
   // True once the player has committed to their opening hand during
   // the mulligan window. Omitempty on the wire — absent means false.
   // Added in S08.
@@ -3111,6 +3171,11 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #4687: the mandatory "behold a Kithkin and exile it" (the Lorwyn
+  // Eclipsed Champions). `reveal` and `behold` are set too, and the one
+  // pick on `reveal_ids` is exiled with the spell on the stack rather than
+  // shown; the permanent returns it to its owner's hand when it leaves.
+  behold_exile?: boolean;
   // #3402: an "exile a creature you control" additional cost (Soul
   // Exchange). `exile_permanent_options` lists the permanents that could
   // pay it, in payment order, min / max the clause's count; the picks ride
@@ -3838,7 +3903,7 @@ export interface ActivatedAbilityView {
   // nothing to ask and the client skips its picker.
   discard_self?: boolean;
   // #1221: scavenge's and embalm's "Exile this card from your
-  // graveyard" (CR 702.96a / CR 702.128a) — `discard_self` one zone
+  // graveyard" (CR 702.97a / CR 702.128a) — `discard_self` one zone
   // over, advisory for the same reason and sending nothing for the
   // same reason: the source IS the payment.
   exile_self?: boolean;
@@ -3882,6 +3947,11 @@ export interface ActivatedAbilityView {
   // sends its mana value as `x_value` (the engine refuses any other) and
   // narrows the ability's target clause by it (`mana_value_equals_x`).
   discard_cost_mana_value_x?: boolean;
+  // #4896: "Discard three cards with different names" (Ormos, Archive
+  // Keeper). No two picks may share a name (both halves of a split card
+  // count), so the picker greys a repeat and opens even when the options
+  // number exactly `discard_cost_n`. The engine refuses a repeat.
+  discard_cost_different_names?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -4127,6 +4197,14 @@ export interface PurposeView {
   awaken_land?: number;
   // #2480: cards it exiles that its controller may play this turn.
   impulse?: number;
+  // #4978: riders beside the main effect: cards scried (CR 701.22a),
+  // learns (CR 701.48a), a discover's N (CR 701.57a), an amass's N
+  // (CR 701.47a) and temptings by the Ring (CR 701.54a). Bot data.
+  scry?: number;
+  learn?: number;
+  discover?: number;
+  amass?: number;
+  ring_tempts?: number;
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;
@@ -4137,9 +4215,15 @@ export interface PurposeView {
   // turn each of its controller's planeswalkers may activate a loyalty
   // ability.
   extra_loyalty_activations?: number;
+  // #5083: on an activated row of its controller's own, the +1/+1
+  // counters it puts on its own source, to stay (Hangarback Walker 1).
+  source_counters?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
+  // #4979: on a "whenever you gain life" row, what it pays for each
+  // life-gain event of its controller's (never life_gain).
+  life_gain_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
@@ -4713,6 +4797,49 @@ export interface StickerSheetView {
   name: string;
   scryfall_id?: string;
   stickers: StickerView[];
+}
+
+/**
+ * #4912: an eliminated seat's final board, PlayerView.final_board. Each
+ * zone is absent when it was empty.
+ */
+export interface FinalBoardView {
+  battlefield?: FinalCardView[];
+  hand?: FinalCardView[];
+  graveyard?: FinalCardView[];
+  exile?: FinalCardView[];
+  command?: FinalCardView[];
+  /**
+   * #4547: the names of the commanders the player owned, each once,
+   * wherever each was when they left (one an opponent had stolen, one on
+   * the stack, one in the library). The tombstone's commander line. Absent
+   * for a player with none, and on a record written before #4547.
+   */
+  commanders?: string[];
+}
+
+/**
+ * #4912: one card of a final board, with CardView's keys and nothing that
+ * acts. `attached_to` / `attached_to_name` name what an Aura or Equipment
+ * was on (a card, or a player for a Curse). `face_down` with no name is a
+ * face-down exiled card nothing revealed.
+ */
+export interface FinalCardView {
+  instance_id: string;
+  name?: string;
+  scryfall_id?: string;
+  layout?: string;
+  active_face?: number;
+  type_line?: string;
+  power?: number;
+  toughness?: number;
+  tapped?: boolean;
+  face_down?: boolean;
+  is_token?: boolean;
+  is_commander?: boolean;
+  counters?: Record<string, number>;
+  attached_to?: string;
+  attached_to_name?: string;
 }
 
 export interface CardView extends CastSurfaceView {

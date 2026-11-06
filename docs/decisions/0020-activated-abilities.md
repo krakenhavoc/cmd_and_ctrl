@@ -1723,8 +1723,8 @@ it is four keywords' worth of variation over one dimension:
 | keyword | CR | zone | cost | effect |
 |---|---|---|---|---|
 | cycling | 702.29a | hand | discard this | draw |
-| unearth | 702.82a | graveyard | mana only | return it, haste, exile it later |
-| scavenge | 702.96a | graveyard | **exile this** | counters equal to its power |
+| unearth | 702.84a | graveyard | mana only | return it, haste, exile it later |
+| scavenge | 702.97a | graveyard | **exile this** | counters equal to its power |
 | embalm / eternalize | 702.128a / 702.129a | graveyard | **exile this** | a token copy with changes |
 
 Four keywords, one activation path, one zone field. Nothing here is a
@@ -4039,3 +4039,66 @@ and without a creature, and a restore with the ability on the stack), `legal/bli
 creature in order, none from the graveyard with no creature, every move accepted), `protocol/blight_cost_view_test.go`
 and `aiseat/heuristic/blight_cost_test.go` (an activation that blights prices below the same one free, and a wall
 takes the counter rather than a 1/1; dropping the price fails both).
+
+## Amendment 2026-11-05 ([#4896](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4896)): "with different names" on a discard clause
+
+Ormos, Archive Keeper prints "{1}{U}{U}, Discard three cards with different names: Draw five cards." A discard clause
+was a count and a per-card predicate (`DiscardCost.Match`), so the only way to write it was `DiscardN(3, …)`, which is
+stronger than printed: it takes three copies of one card. The sacrifice clause's twin closed with the 2026-10-16
+amendment above (#3940); this is the same rule one cost component over. CR text checked against the 2026-09-25 edition
+(CR 118.3, 201.2a, 201.2b, 602.2b, 709.4).
+
+### Decision 79: the rule is a bit on the discard clause, read strictly
+
+`game.DiscardCost.DifferentNames` is the rule, built with `effects.DiscardNDifferentNames(n, label, match…)`. It is data
+beside `SameNameAsLegendaryPermanent` (#4487), not a predicate, so no route from `Game` to a func is added and the
+closure counts do not move. The sacrifice clause carries its rule as `TargetSpec.Different`, a keyed func; a discard
+clause has no `TargetSpec`, and the one key it needs is the card's names, which the engine can read itself.
+
+It is read as a cost reads the sacrifice rule: strictly (CR 201.2b). A card with no name is never a candidate, and two
+cards differ only if no name of one is a name of the other (CR 201.2a), so a split card's two names both count
+(CR 709.4): Fire // Ice and Fire share a name. Names are compared trimmed and case-insensitively, as an outside pick's
+`CardNamesDiffer` compares them.
+
+The readers are the ones every discard clause has:
+
+- **Candidates.** `discardClauseAcceptsLocked` drops a nameless card, so `DiscardCostOptionsForEffect` (the view and
+  the enumerator) and the per-card check in `validateDiscardCostLocked` agree.
+- **The activation.** `validateDiscardCostLocked` checks the whole set once every card is found
+  (`game.DiscardNamesDiffer`) and refuses a repeat with `ErrInvalidParam`, naming the rule, with nothing paid.
+- **The enumerator.** The fixed-count path takes one payment from `game.DiscardDifferentNamesPaymentForEffect`: N cards
+  in the seat's fuel order whose names differ. Cards with one name each are interchangeable, so that is the first of
+  each name; a split card can block a set greedy picking would miss (Fire // Ice, Fire, Ice, for two), so the walk
+  backtracks. With fewer than N names in hand there is no move (#544).
+- **The wire and the client.** The row carries the public `discard_cost_different_names`. `DiscardCostModal` greys a
+  card whose name is already picked, holds the confirm until the names differ, and says the hand is short when it holds
+  fewer than N names; the board opens the picker even at exactly N options, because they may share a name.
+
+`effects.Register` allows the rule on an activated ability's fixed count of two or more only. It refuses it beside
+"at random", "your hand", "X cards", "a card with mana value X" and the legendary-name clause, and on a mana ability,
+whose payer takes the cheapest N with no set rule. An either/or branch is plain data with no such field. A cast's
+additional discard is a count with no clause at all. No printed card needs any of those.
+
+### Cards
+
+Ormos, Archive Keeper ships Full. Its other clause, "If you would draw a card while your library has no cards in it,
+instead put five +1/+1 counters on Ormos", is Laboratory Maniac's window with a `DrawInstead` body instead of a
+`Replace`, because the counter placement can pause on a CR 616 ordering prompt (Doubling Season beside Hardened
+Scales). The rest of the draw instruction waits behind it as a parked `DrawDone` on a keyed tail
+(`ormos-archive-keeper/then-draw`), so the paused table is a restore point. Each draw of "draw five" is replaced on its
+own (CR 121.2), so five counters land for each one that finds the library empty.
+
+### Snapshot, closure and ledger
+
+The rule is catalog data and never persisted. The draw-instead body and the tail are new on-disk keys in
+`effect_keys.txt`. No snapshot change, and no closure count moves.
+
+### Tests
+
+`game/discard_different_names_test.go` (the strict set check, a repeat and a split card refused, a nameless card not
+offered, the payment's first-of-each-name and its backtrack past a split card),
+`cards/effects/ormos_archive_keeper_test.go` (the activation and its refusals paying nothing, the enumerator offering
+nothing with two names and an accepted payment with three, the Register refusals, one replaced draw, an ordinary
+draw, draw five off a two-card library for fifteen counters, and the ordering prompt holding the next draw),
+`protocol/discard_different_names_view_test.go`, and the client's `discardNames.test.ts` and
+`discardDifferentNames.render.test.ts`.

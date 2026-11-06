@@ -457,7 +457,7 @@ type AbilityCost struct {
 
 	// ExileSelf exiles the SOURCE CARD from the zone the ability was
 	// activated from, as part of the cost — scavenge's "Exile this
-	// card from your graveyard" (CR 702.96a), embalm's and
+	// card from your graveyard" (CR 702.97a), embalm's and
 	// eternalize's (CR 702.128a / CR 702.129a). #1221.
 	//
 	// DiscardSelf's sibling, one zone over, and written as a second
@@ -2327,7 +2327,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
-	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
+	if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1213: how many this announcement actually sacrificed, recorded
@@ -2570,6 +2570,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
 	g.recordModesChosenLocked(ab.Modes, modeAbility, params.Modes)
+	// #4973: and the activator faced a dilemma (CR 700.2a).
+	if ab.Modes != nil && len(params.Modes) > 0 {
+		g.emitFacedDilemmaLocked(playerID, cardID)
+	}
 	// CardID is set here and on no trigger's EventTrigger, and the
 	// public log reads it that way (ADR 0119 §5): this breadcrumb is an
 	// activation, which EventActivateAbility below tells, so it gets no

@@ -138,6 +138,15 @@ type Purpose struct {
 	// creature-enter payoff". Refused on every other slot. A pointer so
 	// Purpose stays comparable.
 	CreatureEnterPayoff *CreatureEnterPayoff
+	// LifeGainPayoff is set on a TRIGGERED row that pays out whenever
+	// its controller gains life ("whenever you gain life": Heliod,
+	// Sun-Crowned's +1/+1 counter, Ajani's Pridemate's), and says what
+	// it pays for EACH life-gain event, not each point of life
+	// (CR 119.9; two lifelink sources dealing damage at once are two
+	// events, CR 702.15e) (#4979). Nil is "not a lifegain payoff".
+	// Refused on every other slot, and one that itself gains life.
+	// A pointer so Purpose stays comparable.
+	LifeGainPayoff *LifeGainPayoff
 
 	// The fields below were added for exert (ADR 0130 §9 and its
 	// amendment of 2026-10-07). The heuristic reads them on a row the
@@ -231,6 +240,42 @@ type Purpose struct {
 	// 121.1): the card is lost unless it is played before the turn
 	// ends, so a reader prices it by whether it can be.
 	Impulse int
+
+	// SourceCounters is how many +1/+1 counters an activated row puts on
+	// its own source, to stay (#5083): Hangarback Walker's "{1}, {T}: Put
+	// a +1/+1 counter on this creature." 1. A counter put on a target is
+	// not here, and neither is a pump that ends with the turn (Pump).
+	// Refused off an activated row of its controller's own: an
+	// any-player row grows whoever controls the source, not the
+	// activator.
+	SourceCounters int
+
+	// The riders below are keyword actions a spell or an ability does
+	// for its controller beside its main effect (#4978, ADR 0126's
+	// amendment of 2026-11-05): Preordain's scry 2 before its draw,
+	// Claim the Precious's "the Ring tempts you" after its removal. Each
+	// is the PRINTED number, like every amount here; "scry X" and
+	// "discover X, where X is ..." are counted at resolution and are not
+	// declared. A rider the text gates on a condition ("if this spell
+	// was bargained, ... you scry 1") is not declared either.
+
+	// Scry is the cards its controller scries (CR 701.22a): Opt 1,
+	// Preordain 2. Two scries in one statement add.
+	Scry int
+	// Learn is how many times its controller learns (CR 701.48a):
+	// Field Trip 1.
+	Learn int
+	// Discover is the N of the discover it does (CR 701.57a): Daring
+	// Discovery 4, Trumpeting Carnosaur's enters effect 5. A statement
+	// that discovers more than once declares none.
+	Discover int
+	// Amass is the N of "amass [subtype] N" (CR 701.47a), the +1/+1
+	// counters put on its controller's Army: Orcish Medicine 1, Eternal
+	// Skylord's enters effect 2.
+	Amass int
+	// RingTempts is how many times the Ring tempts its controller (CR
+	// 701.54a): Claim the Precious 1.
+	RingTempts int
 
 	// Targets is what happens TO each target the statement names, one
 	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
@@ -603,6 +648,12 @@ type LandfallPayoff struct {
 // resolution.
 type CreatureEnterPayoff LandfallPayoff
 
+// LifeGainPayoff is what a row pays its controller for each life-gain
+// event of theirs, in LandfallPayoff's units and with the same rules
+// (#4979): printed amounts only. Its LifeGain is always zero: a row that
+// gained life whenever its controller gained life would trigger itself.
+type LifeGainPayoff LandfallPayoff
+
 // IsZero reports whether nothing is declared.
 func (p Purpose) IsZero() bool {
 	return p == Purpose{}
@@ -773,6 +824,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		OnOpponentDiscard:         p.OnOpponentDiscard,
 		LandfallPayoff:            p.LandfallPayoff,
 		CreatureEnterPayoff:       p.CreatureEnterPayoff,
+		LifeGainPayoff:            p.LifeGainPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
 		ExtraTurns:                p.ExtraTurns + o.ExtraTurns,
@@ -786,6 +838,13 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations + o.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse + o.Impulse,
+	}
+	// #4978: the riders. A discover's N is one discover's, so a fused
+	// spell keeps the half that declares one rather than adding them.
+	out.Scry, out.Learn, out.Amass, out.RingTempts = p.Scry+o.Scry, p.Learn+o.Learn, p.Amass+o.Amass, p.RingTempts+o.RingTempts
+	out.Discover = p.Discover
+	if out.Discover == 0 {
+		out.Discover = o.Discover
 	}
 	// #2877: a fused spell answers what either half does, and a half
 	// that declares nothing leaves the whole undeclared, which a reader
@@ -820,6 +879,9 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.CreatureEnterPayoff == nil {
 		out.CreatureEnterPayoff = o.CreatureEnterPayoff
+	}
+	if out.LifeGainPayoff == nil {
+		out.LifeGainPayoff = o.LifeGainPayoff
 	}
 	targets := append([]TargetPurpose(nil), p.Targets.List()...)
 	for _, t := range o.Targets.List() {

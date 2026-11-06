@@ -95,6 +95,14 @@ type Room struct {
 	// actMu, never by mu, so a read never waits on a commit.
 	actMu     sync.Mutex
 	lastActed map[uuid.UUID]time.Time
+	// lastHumanAt and lastChatAt are the idle clocks' stamps (ADR 0211
+	// §1, idle.go): the newest commit a person or an agent made for
+	// their own seat, and the newest chat line from a seated person.
+	// clock is their time source, nil for time.Now; tests set it. All
+	// three are guarded by actMu, beside lastActed.
+	lastHumanAt time.Time
+	lastChatAt  time.Time
+	clock       func() time.Time
 
 	// pendingAnnotation is consumed by the next captureLocked and
 	// written onto the replay line / crash dump it produces. Set
@@ -407,6 +415,7 @@ func (r *Room) ApplyAction(tag ActionTag, fn func() error) (protocol.GameView, u
 	st.record()
 	if err == nil {
 		r.noteActed(tag.Actor)
+		r.noteHuman(tag)
 		r.notify()
 	}
 	return view, seq, err
@@ -591,6 +600,7 @@ func (r *Room) ApplyBundle(b Bundle) (protocol.GameView, uint64, error) {
 	st.record()
 	if err == nil {
 		r.noteActed(b.Actor)
+		r.noteHuman(ActionTag{Actor: b.Actor})
 		r.notify()
 	}
 	return view, seq, err
@@ -679,6 +689,10 @@ func (r *Room) ApplyExternalAction(tag ActionTag, fn func() error) (protocol.Gam
 	view, seq, err := r.applyExternal(fn, &st)
 	st.record()
 	if err == nil {
+		// The lobby's own commits carry no actor and stamp nothing; a
+		// seat's opening roll, mulligan, table roll or settings change
+		// is a move (ADR 0211 §1).
+		r.noteHuman(tag)
 		r.notify()
 	}
 	return view, seq, err
@@ -781,9 +795,17 @@ func (r *Room) notify() {
 // frame and don't have to special-case the rewind. The undo itself
 // is NOT pushed onto the stack — no redo at v1.
 func (r *Room) Undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
+	return r.UndoBy(caller, false)
+}
+
+// UndoBy is Undo for a connection that says whether it is an admin's:
+// an admin bound to a seat undoes as that seat, but the idle clock
+// does not count it as the seat's move (ADR 0211 §1).
+func (r *Room) UndoBy(caller uuid.UUID, admin bool) (protocol.GameView, uint64, error) {
 	view, seq, err := r.undo(caller)
 	if err == nil {
 		r.noteActed(caller)
+		r.noteHuman(ActionTag{Actor: caller, Admin: admin})
 		r.notify()
 	}
 	return view, seq, err

@@ -429,6 +429,13 @@ read-ahead Saga on chapter I, so it gets every chapter the Saga prints.
 It has no measure of when trading the skipped chapters for tempo is
 worth it. See `readAheadValue` in `aiseat/heuristic/choices.go`.
 
+**What an entering attacker attacks (`entry_attack_target`, CR 508.4).**
+The bot sends a creature that enters tapped and attacking (Kira Nerys,
+Firebrand) at the opponent with the least life, skipping a seat that
+can't lose for life, and on a tie keeps it with the attack it already
+made (the first option). Planeswalkers and battles are offered but never
+preferred. See `entryAttackTargetValue` in `aiseat/heuristic/choices.go`.
+
 **Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
 CR 903.9a).** When the bot's commander has been put into a graveyard or
 exile, the state-based action asks its owner whether it goes to the
@@ -1211,6 +1218,19 @@ row, it replaces `ActivateBase`, so a loot is priced by the card it
 draws and a land sacrifice by the land it fetches. A row with no
 purpose keeps the flat `ActivateBase` (0.50).
 
+**Riders are added, never in place of the main effect**
+([#4978](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4978),
+`PriceRiders`, `riders.go`, ADR 0126's amendment of 2026-11-05). A
+purpose's `scry`, `learn`, `discover`, `amass` and `ring_tempts` are
+priced at `Hand × ScryWeight` (0.25) per card scried up to `ScryCap`
+(3), `Hand × LearnWeight` (0.30) per learn, a card plus
+`DiscoverPerMana` (0.30) per point of N per discover, the Army an amass
+grows or the summoning-sick N/N it makes, and `RingTempt` (0.80) per
+tempting, half with no creature to bear the Ring. A slot that declares
+nothing else priced keeps its proxy, body or `ActivateBase` and adds the
+rider to it, so Claim the Precious is Murder plus a tempting.
+`heuristic-noriders` turns it off.
+
 **An impulse is a card the bot can use this turn**
 ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480),
 `PriceImpulse`, `impulse.go`). A purpose's `impulse` is the cards it
@@ -1372,6 +1392,21 @@ matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
 and Zack Fair are exempt, each for a reason the test names). The arena's
 `heuristic-notemporary` is today's heuristic with the switch off.
 
+**A lifelink grant is worth the counters its life makes**
+([#4979](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4979),
+`PriceLifeGainPayoffs`, `lifegain_payoff.go`). A "whenever you gain life"
+row declares a `life_gain_payoff` (landfall's fields, per life-gain
+event): Heliod, Sun-Crowned's and Ajani's Pridemate's +1/+1 counter. Such
+a trigger fires once per event, not per point (CR 119.9), and one lifelink
+source's damage is one event (CR 702.15b, 702.15e). A grant that passes
+`spareCombatGrant` and gives lifelink to a creature of the bot's that
+lacks it and has power is worth one event of the bot's own payoffs more
+per such creature, a counter at `Power` + `Toughness`. Before attacks, and
+with mana a later cast needs, the grant keeps #4302's price, so it still
+waits for combat and for spare mana. The attack of a creature that
+already has lifelink, and life a spell or a trigger gains, are not
+repriced.
+
 **Spells declare it too**
 ([#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)).
 Giant Growth's "+3/+3 until end of turn", Dismember's -5/-5, Blossoming
@@ -1427,6 +1462,23 @@ biggest blocker (CR 702.19b). After blockers are declared neither changes
 anything (CR 509.1h) and only `CombatGrant` is left. +X/+X is still not
 priced before combat. The arena's `heuristic-nogrants` turns both of
 these off, and `--decks tricks-battle` deals a deck with the cards in it.
+
+**Haste is also worth the {T} ability it unlocks**
+([#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324),
+`PriceHasteTapRows`, `haste_tap.go`). A summoning-sick creature can't pay
+a {T} cost (CR 302.6), and haste lifts that as well as the attack
+(CR 702.10c). A declared haste grant on the bot's own sick, untapped
+creature without haste is worth the best of that creature's {T} rows the
+bot could then activate, less the tapped blocker, when that beats what the
+grant was already priced at (its attack, or a save). The row has to cost
+only the tap and mana the bot still has once the grant is paid for,
+counting the grant's own source when it taps a mana source (Hanweir
+Battlements). It is priced as the activation would be: its declared
+purpose, or `ActivateBase` with none. Answer rows, rows that sacrifice
+their source and mana abilities are left out. So Expedite on a fresh
+creature with "{T}: Draw a card" is cast for the draw. No curated deck
+holds a haste grant, so the evidence is the position tests
+(`heuristic/haste_tap_test.go`).
 
 ### Board wipes
 
@@ -1689,6 +1741,46 @@ opponent's Tatyova, it keeps the Hart.
   the one it sacrifices is ramp. So a fetch with no payoff out is
   cracked as before.
 
+### A land search that sacrifices its source, by the turn (#5084)
+
+Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library
+for up to two basic land cards" was priced as two lands (`ManaSource`
+each, 2.00) plus the ramp premium, which is the hand's deficit (the
+largest mana value the bot holds above its sources), against the Hart's
+board value (about 3.30), with the flat `tappedBlocker` (0.30) for an
+untapped creature on top. A hand of cheap cards has no deficit, so the
+bot cracked the Hart only while it held a card it could not yet cast.
+The 0.30 was charged twice: the sacrifice already pays the creature's
+whole board value, blocker and all.
+
+With `PriceRampCurve` on (`ramp_curve.go`), the premium for an
+activated row that sacrifices its own source and declares `lands`
+(Burnished Hart, Sakura-Tribe Elder) is the larger of the hand's
+deficit and the curve's:
+
+```
+curve = min(RampWantCap, round + RampCurveLead) − the bot's mana sources
+        while round < RampWantCap, else 0
+```
+
+`RampCurveLead` is 2, so round 4 wants six mana. The two are not added
+up. Such a row is also not charged `tappedBlocker` again. So on round 4
+with four lands and a castable hand, the real Hart's activation is about
++0.70 rather than −1.60, and the bot cracks it once its cheaper casts
+are made; on round 6 with six lands the curve adds one mana, not two;
+from round 7 the curve has closed, and a Hart on a stalled board is kept
+unless the hand asks for the mana. The casts of ramp spells (Cultivate,
+Harrow), mana rocks and fetch lands keep their prices.
+
+The switch **ships off**, and the double charge stays with it. In
+thopter-battle the curve changed few decisions: the Hart is mostly on
+the battlefield from round 7, when the curve has closed, and early its
+{3} competes with casts the turn plan prices higher. The seats with the
+curve won no more than the seats without
+([bot-testing.md](bot-testing.md#burnished-harts-land-search-by-the-turn-5084-s75)).
+`heuristic-rampcurve` turns it on in the arena; `BaselineConfig` leaves
+it off too.
+
 ### One more loyalty activation (#4191)
 
 The Chain Veil's "{4}, {T}: For each planeswalker you control, you may
@@ -1701,6 +1793,33 @@ passing anywhere else (another player's turn, its own combat, no
 walker), where the grant cannot be used before the turn ends. After it
 resolves, the enumerator offers the walkers' loyalty rows again and they
 are priced as usual.
+
+### A counter on its own source (#5083)
+
+Hangarback Walker's "{1}, {T}: Put a +1/+1 counter on this creature."
+declares `source_counters: 1` on the row. With `PriceSourceCounters` on
+(`source_counter.go`; off by default, see below), each such counter is worth `Weights.Power` plus
+`Weights.Toughness` (1.45), the price a landfall or discard payoff's
+counter on its source already has, in place of the flat `ActivateBase`.
+The tap is priced as before: the blocker (0.30), and before combat on
+the bot's own turn the attack it gives up. So the Walker grows in the
+bot's own main phase with spare mana (1.15 against `PassThreshold`
+0.25), where the flat price (0.20) left it for the end step before the
+bot's untap. A spell that wants the mana, or an attack worth more than
+the counter, comes first. On an opponent's turn before blockers are
+declared the counter is not priced, since the tap takes a blocker out of
+the coming combat. The Thopters the counter becomes when the Walker dies
+are not priced, so the price is a floor.
+
+The switch ships off: in the arena the seats that grew the Walker on
+their own turn lost to the seats that grew it in the end step before
+their untap ([bot-testing.md](bot-testing.md#a-counter-on-its-own-source-5083-s75)).
+Grown before combat, the Walker stays tapped through every opponent's
+turn, and the flat blocker price undercounts that against a counter the
+bot gets for nothing one window later. So the row keeps `ActivateBase`
+in `DefaultConfig` and `BaselineConfig`, and the Walker grows in the end
+step before the bot's untap, as before. `heuristic-sourcecounters` turns
+the price on in the arena.
 
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
@@ -1764,6 +1883,46 @@ With `OneShotManaAsToken` on (#2480), a token whose every mana ability
 sacrifices it (a Treasure) costs `TokenWeight` (0.50) when it is given
 up to pay a cost, rather than its board value as a mana source (1.00).
 It makes its mana once, and 0.50 is what the bot prices making one at.
+
+With `PriceSpareTokens` on (#4991, `spare_token.go`; off by default,
+see below), a creature token
+given up to pay a cost is *spare* when, after the payment, the bot still
+controls `SpareTokenKeep` (2) other creature tokens with the same body:
+the same name, power, toughness and keywords. A spare token costs what
+tapping it would (`tapCreatureCost`: a blocker, 0.30, and before combat
+on the bot's own turn the attack it gives up), never less than the
+blocker, rather than its board value (2.95 for a 1/1 flying Thopter).
+So Sai, Master Thopterist, whose row declares its draw, trades two of
+four Thopters for a card after combat (1.20 less 0.30 for Sai and 0.30
+for each Thopter, against `PassThreshold` 0.25) and keeps two. With
+three Thopters, or before the Thopters attack, it passes. A nontoken
+creature, a commander, a token in combat, one with counters and one with
+something attached are never spare. The switch ships off: in the arena
+the seats that made this trade lost to the seats that kept their
+Thopters on the synthetic deck, and did no better on the curated
+`mono-blue-artifacts` deck ([bot-testing.md](bot-testing.md#spare-tokens-for-sais-draw-4991-s75)),
+so the board price stands and Sai's draw is still made only with
+Thopters that are dying anyway. `heuristic-sparetokens` turns it on in
+the arena; `BaselineConfig` leaves it off too. Sai's row now declares
+its draw (`draws: 1`), so it is priced by the card rather than the flat
+`ActivateBase`.
+
+With `PriceSpareManaSources` on (#5085, `spare_mana.go`; on by
+default), a mana rock given up to pay a cost, its own row's or another's,
+is *spare* when the mana the bot's other sources make, leaving out every
+permanent the cost gives up, still covers what its hand and commander
+want (the ramp deficit's `want`, capped at `RampWantCap`) and
+`SpareManaKeep` (5). A spare rock costs `SpareManaSourceCost` (0.50)
+rather than its board value as a mana source (1.00 untapped). So Mind
+Stone's "{1}, {T}, Sacrifice: Draw a card", whose row declares its draw,
+nets 0.70 against `PassThreshold` (0.25) once the bot has five other
+sources and nothing in hand it cannot already cast, and Commander's
+Sphere's the same; early, or while a card in hand still wants the
+stone's mana, it costs 1.00 and the draw (1.20) does not clear the bar.
+A rock is a noncreature, nonland permanent with a repeatable mana
+ability: a land and a mana creature are never spare, nor a commander.
+`heuristic-nosparemana` turns it off in the arena; `BaselineConfig`
+leaves it off ([bot-testing.md](bot-testing.md#spare-mana-rocks-for-mind-stones-draw-5085-s75)).
 
 The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
@@ -1922,6 +2081,21 @@ The bot counts its own mana from the view (§2, `plan.go`):
 - **Filter lands:** a filter land such as Flooded Grove counts as a
   filter, paid with one of the colours its cost names. When nothing can
   pay that cost, it counts as its plain {C} ability.
+- **Triggered mana (off by default):** with `PlanTriggerMana` a source
+  also makes the mana its row's `trigger_adds` names
+  ([protocol.md](protocol.md)): what triggered mana abilities add when
+  it is tapped, judged by the auto-tap planner's own judge, so a Swamp
+  under Crypt Ghast counts as {B}{B}. Without it the model reads only
+  `produced`, which CR 106.7 keeps that mana out of, and under-plans a
+  turn with two spells; the bot still casts them one at a time, because
+  the engine's payer counts the trigger mana ([ADR 0074](decisions/0074-triggered-mana-abilities.md)'s
+  amendment of 2026-10-30). Two rows of one land whose trigger mana
+  differs are not merged, since a tap makes one row's mana and its
+  trigger's, never a mix. The field is left out where the extra mana
+  depends on the colour picked (Mirari's Wake on a dual land), so such a
+  land counts as its own mana. The switch ships off until the arena shows
+  it helps ([bot-testing.md](bot-testing.md#triggered-mana-in-the-turn-plan-4770-s75));
+  `heuristic-triggermana` seats it on.
 
 The bot pays in the same order as the engine's auto-tapper: painless
 sources before painful ones, then the source with the fewest colours.
@@ -2095,6 +2269,7 @@ and off in `BaselineConfig()`:
 | `PlanLandDropsAsRamp` | on | Extra land drops order with the mana (§4, 2026-10-08). |
 | `PlanFilterLands` | on | Filter lands modelled as filters (§2). |
 | `PlanRestrictedMana` | on | Restricted mana counted for the casts it admits (§2, 2026-10-16). |
+| `PlanTriggerMana` | **off** (off in both) | Triggered mana (`trigger_adds`) counted on each source (#4770). |
 | `PlanRockTwoTurns`, `PlanNextTurnDiscount` | on, 0.75 | The two-turn comparison. |
 | `IdleLateRocks` | on | The idle late rock (ADR 0126 §2). |
 | `PlanWeighTaxes` | on | An opponent's tax weighed against the plan. |
@@ -2188,6 +2363,10 @@ time a spec was refactored.
 | `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
 | `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
 | `wubrg-dragons` | Dragon Hoard | The Ur-Dragon | Tribal (WUBRG) — nineteen Dragons that The Ur-Dragon makes cheaper and turns into cards and free permanents. The one built-in deck with a companion: Jegantha, the Wellspring waits outside the game ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md) decision 8) |
+| `mono-blue-artifacts` | Thopter Swarm | Sai, Master Thopterist | Artifacts (U) — cheap artifacts and mana rocks; every artifact spell is a flying Thopter from Sai, and spare Thopters become cards |
+| `izzet-spellslinger` | Spell Echo | Veyran, Voice of Duality | Spellslinger (UR) — burn, card draw and counterspells behind creatures that reward each spell; Veyran makes every one of those rewards trigger twice |
+| `orzhov-aristocrats` | Grave Dividends | Teysa Karlov | Aristocrats (WB) — tokens to sacrifice and drains on every death; Teysa makes each death trigger fire twice and gives the tokens lifelink |
+| `gruul-counters` | Growing Pains | Grumgully, the Generous | Counters (RG) — +1/+1 counters: Grumgully and the counter doublers make every creature enter bigger, and the Hydras keep growing |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -2217,10 +2396,18 @@ cost) shaped the list, so there is no Wrath of God or Sun Titan in it.
 it through the same pipeline a pasted list runs, and the heuristic is
 offered the `companion` special action like any seat with one.
 
+The last four (Thopter Swarm, Spell Echo, Grave Dividends, Growing
+Pains) are #554's second round, for the gaps it still listed: no
+mono-blue deck, no second aristocrats or control option, and no
+precon-style theme such as spellslinger. Each is in a colour or colour
+pair no other deck uses, and each is held to the same bar: every
+non-basic card graded `full` (72, 79, 78 and 80 cards), and every
+instant declaring what it answers.
+
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-All seven are in the picker. The `placeholder-mono-red` stand-in that
+All twelve are in the picker. The `placeholder-mono-red` stand-in that
 sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
 from it.
 
@@ -2598,8 +2785,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants` or `heuristic-nomanasink`. `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-rampcurve`, `heuristic-sourcecounters`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber`, `heuristic-nolandorder`, `heuristic-nogrants`, `heuristic-nomanasink`, `heuristic-sparetokens` or `heuristic-noriders`. `heuristic-noriders` disables only #4978's rider prices (`PriceRiders`: scry, learn, discover, amass and the Ring). `heuristic-sparetokens` turns ON #4991's spare-token sacrifice price (`PriceSpareTokens`), which today's heuristic ships with off. `heuristic-rampcurve` turns ON #5084's ramp curve for a land search that sacrifices its source (`PriceRampCurve`), which today's heuristic ships with off. `heuristic-sourcecounters` turns ON #5083's price of a row's +1/+1 counter on its own source (`PriceSourceCounters`), which today's heuristic ships with off. `heuristic-triggermana` turns ON #4770's count of triggered mana in the turn plan's mana model (`PlanTriggerMana`, [The mana model](#the-mana-model)), which today's heuristic ships with off. `heuristic-nosparemana` disables only #5085's spare mana-rock sacrifice price (`PriceSpareManaSources`). `heuristic-nomanasink` disables #4559's mana-sink ordering and graveyard-exile pricing (`SinkManaLast`, `PriceGraveyardExile`). `heuristic-nolandorder` disables only #4317's land-drop ordering (`OrderLandDrops`). `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s, and `thopter-battle` is a mono-blue deck led by Sai, Master Thopterist with Ornithopters, Memnites, Hangarback Walkers, Burnished Harts and Mind Stones, for [#4991](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4991)'s, and `ghast-battle` is a black-green deck with six Crypt Ghasts and four Zendikar Resurgents, for [#4770](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4770)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -3120,7 +3307,12 @@ itself:
   filtered with too. One move per entry, so a flashed-back Faithless
   Looting and a
   hard-cast one are separate moves at separate prices — the same rule
-  the optional costs follow.
+  the optional costs follow. The enumerator walks it as
+  `game.CastOfferGrantsForLocked` (#5081), which pairs each entry with
+  the permission a cast claiming it is made under, and prices, times and
+  holds each move to a per-type budget under that one: beside Muldrotha,
+  Green Goblin's granted mayhem is cast under Goblin Formula and spends
+  none of Muldrotha's types, whichever of the two came first.
 
 A third question the same walk answers, and the reason an adventure
 needed no code here: WHICH FACE. `Card.CastableFaces` offers both

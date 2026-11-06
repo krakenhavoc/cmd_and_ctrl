@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2f1ae834-f6b8-458c-ac0d-3510ddb85193",
 		Name:         "Inherited Envelope",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

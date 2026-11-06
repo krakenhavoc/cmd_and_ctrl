@@ -20,14 +20,7 @@ func init() {
 		// The draw waits for the prompts the life losses ask (a CR 616 order; CR
 		// 608.2c, #4155).
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				for _, id := range tablePlayers(ctx) {
-					if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), id, -2); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			Instruction(eachPlayerLosesTwoLife),
 			DrawCards{N: 2},
 		),
 	})

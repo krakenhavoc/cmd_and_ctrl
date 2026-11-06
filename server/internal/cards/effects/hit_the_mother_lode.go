@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Hit the Mother Lode — Sorcery {4}{R}{R}{R}:
 //
 //	"Discover 10. If the discovered card's mana value is less than 10,
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a49900b3-cc34-428f-806d-71861dc8059d",
 		Name:         "Hit the Mother Lode",
+		Purpose:      game.Purpose{Discover: 10},
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		OnResolve:    ResolveSteps(Discover{N: 10}, Instruction(hitTheMotherLodeTreasures)),

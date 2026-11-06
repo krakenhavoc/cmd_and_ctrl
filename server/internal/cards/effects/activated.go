@@ -656,7 +656,7 @@ func ExileACreatureYouControl() game.AbilityCost {
 //     not die and it is not sacrificed. Compose it with Plus like any
 //     other component.
 //   - from the GRAVEYARD — scavenge's and embalm's "Exile this card
-//     from your graveyard" (CR 702.96a, CR 702.128a). Build those with
+//     from your graveyard" (CR 702.97a, CR 702.128a). Build those with
 //     Scavenge / Embalm / Eternalize rather than by hand.
 //
 // Register refuses it on an ability that functions from any other
@@ -740,6 +740,26 @@ func DiscardLegendaryNamedLikeYourPermanent() game.AbilityCost {
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
 	return DiscardCardsMatching(n, label, nil)
+}
+
+// DiscardNDifferentNames is "Discard N cards with different names" —
+// Ormos, Archive Keeper's "{1}{U}{U}, Discard three cards with different
+// names" (#4896):
+//
+//	Plus(ManaCost("{1}{U}{U}"), DiscardNDifferentNames(3, "three cards with different names"))
+//
+// The set rule is the engine's (game.DiscardCost.DifferentNames, read
+// strictly per CR 201.2b), so the activation refuses two cards sharing a
+// name, the enumerator pays N distinct names, and the client's picker
+// greys a card whose name is already picked. Pass a predicate for "N
+// creature cards with different names". Register allows it on an
+// activated ability's fixed count of two or more only.
+func DiscardNDifferentNames(n int, label string, match ...func(game.Card) bool) game.AbilityCost {
+	dc := &game.DiscardCost{N: n, Label: label, DifferentNames: true}
+	if len(match) > 0 {
+		dc.Match = match[0]
+	}
+	return game.AbilityCost{DiscardCards: dc}
 }
 
 // DiscardX is "Discard X cards" as a cost (#2527, ADR 0113's

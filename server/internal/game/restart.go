@@ -138,6 +138,17 @@ func (g *Game) finishRestartLocked() {
 	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
 
 	start := g.restartStartingSeatLocked(req.Restarter)
+	// ADR 0216: the new game of a Planechase table is a Planechase game
+	// too, with a fresh communal planar deck (the planar cards are not
+	// the old game's cards: CR 727.2 walks the zones above, and the
+	// planar containers are none of them). A deck the database can no
+	// longer supply leaves the new game without the option, which is
+	// logged rather than refusing a restart already under way.
+	if g.Settings.Planechase {
+		if err := g.setUpPlanechaseLocked(); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, Actor: req.Restarter, ErrorMsg: err.Error()})
+		}
+	}
 	g.beginPregameLocked()
 	ev := Event{
 		Kind:   EventGameRestarted,

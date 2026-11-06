@@ -91,6 +91,25 @@ func attackedPlayer(g *game.Game, ev game.Event) uuid.UUID {
 	return ev.Target
 }
 
+// attacksYouOrYourPlaneswalker reports whether an attack aimed at
+// `target` is aimed at the player `you` or at a planeswalker `you`
+// control: "attacks you or a planeswalker you control" (CR 508.3a). A
+// battle `you` protect is neither, though `you` defend it (#4864).
+// Effective types: a planeswalker animated out of being one is not.
+func attacksYouOrYourPlaneswalker(g *game.Game, target, you uuid.UUID) bool {
+	if target == uuid.Nil || you == uuid.Nil {
+		return false
+	}
+	if target == you {
+		return true
+	}
+	if g.ClassifyAttackTargetForEffect(target) != game.AttackTargetPlaneswalker {
+		return false
+	}
+	pw, ok := g.LookupCardForEffect(target)
+	return ok && pw.Controller == you
+}
+
 // b17OpponentHasMoreLifeThanAnother is Breena's intervening if: `opp`
 // (an opponent of `controller`) has more life than at least one
 // OTHER opponent of `controller` still in the game.

@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ce657a2e-461b-45fd-ab98-35b5c8512777",
 		Name:         "Walk with the Ancestors",
+		Purpose:      game.Purpose{Discover: 4},
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Targets:      TargetCardInGraveyard("up to one target permanent card from your graveyard", YouOwn(), Permanent()).WithCount(0, 1),

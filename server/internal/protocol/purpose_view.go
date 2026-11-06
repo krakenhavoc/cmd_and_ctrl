@@ -85,6 +85,10 @@ type PurposeView struct {
 	// whenever a creature enters under its controller's control, and
 	// says what it pays for each creature (#3165).
 	CreatureEnterPayoff *CreatureEnterPayoffView `json:"creature_enter_payoff,omitempty"`
+	// LifeGainPayoff is present on a triggered row that pays out
+	// whenever its controller gains life, and says what it pays for each
+	// life-gain event (#4979).
+	LifeGainPayoff *LifeGainPayoffView `json:"life_gain_payoff,omitempty"`
 	// Pump is what the row gives its own source until end of turn
 	// (ADR 0130's amendment of 2026-10-07).
 	Pump *PumpView `json:"pump,omitempty"`
@@ -124,6 +128,20 @@ type PurposeView struct {
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
+	// SourceCounters is the +1/+1 counters an activated row of the
+	// controller's own puts on its own source, to stay (#5083):
+	// Hangarback Walker's {1}, {T} row 1.
+	SourceCounters int `json:"source_counters,omitempty"`
+	// The riders (#4978, ADR 0126's amendment of 2026-11-05): keyword
+	// actions it does for its controller beside its main effect, as
+	// printed amounts. Scry is the cards it scries (Preordain 2), Learn
+	// the times it learns, Discover the N of its discover, Amass the N
+	// of its amass, RingTempts the times the Ring tempts its controller.
+	Scry       int `json:"scry,omitempty"`
+	Learn      int `json:"learn,omitempty"`
+	Discover   int `json:"discover,omitempty"`
+	Amass      int `json:"amass,omitempty"`
+	RingTempts int `json:"ring_tempts,omitempty"`
 	// Targets is what happens to each target the statement names, one
 	// entry per target clause, keyed by the clause's slot: the slot a
 	// move's `targets[].slot` names, within the statement this purpose
@@ -330,6 +348,11 @@ type LandfallPayoffView struct {
 // control (#3165), in LandfallPayoffView's fields.
 type CreatureEnterPayoffView LandfallPayoffView
 
+// LifeGainPayoffView is game.LifeGainPayoff on the wire: what a row pays
+// its controller for each life-gain event of theirs (#4979), in
+// LandfallPayoffView's fields. Its life_gain is always absent.
+type LifeGainPayoffView LandfallPayoffView
+
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
 // purpose was declared on any-player rows alone. Kept so a reader of
 // that ADR finds the type.
@@ -395,6 +418,12 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		LandfallExtraTriggers:     p.LandfallExtraTriggers,
 		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse,
+		SourceCounters:            p.SourceCounters,
+		Scry:                      p.Scry,
+		Learn:                     p.Learn,
+		Discover:                  p.Discover,
+		Amass:                     p.Amass,
+		RingTempts:                p.RingTempts,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
@@ -435,6 +464,10 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	if c := p.CreatureEnterPayoff; c != nil {
 		pay := CreatureEnterPayoffView(*c)
 		v.CreatureEnterPayoff = &pay
+	}
+	if g := p.LifeGainPayoff; g != nil {
+		pay := LifeGainPayoffView(*g)
+		v.LifeGainPayoff = &pay
 	}
 	if ts := p.Targets.List(); len(ts) > 0 {
 		out := make([]TargetPurposeView, len(ts))

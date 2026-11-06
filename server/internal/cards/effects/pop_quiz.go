@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Pop Quiz — Instant {2}{U} (EDHREC rank 25086):
 //
 //	"Draw a card.
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "dda9ac6c-1ab2-4f77-b499-f03d587163d8",
 		Name:         "Pop Quiz",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		OnResolve:    ResolveSteps(DrawCards{N: 1}, Learn{}),
 	})

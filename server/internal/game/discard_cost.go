@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // discard_cost.go — #660: discarding as part of an activated
 // ability's cost (CR 602.2b), the component `AbilityCost` was
@@ -82,6 +87,30 @@ type DiscardCost struct {
 	// (CR 708.2a). Random, Hand and ManaValueX are meaningless beside
 	// it, and Register refuses them.
 	SameNameAsLegendaryPermanent bool
+
+	// DifferentNames is the set rule of "Discard three cards with
+	// different names" (#4896; Ormos, Archive Keeper): no two of the
+	// discarded cards may share a name. Like the board clause above it is
+	// DATA, read by the engine, so it adds no route from Game to a func
+	// (closure_fields.txt).
+	//
+	// It is read strictly, as a cost reads the sacrifice clause's twin
+	// (#3940): CR 201.2b, objects "have different names only if each of
+	// them has at least one name and no two objects in that group have a
+	// name in common". So a card with no name is never a candidate
+	// (discardClauseAcceptsLocked), and a split card's two names both
+	// count (CR 709.4, 201.2a): Fire // Ice and Fire share one.
+	//
+	// Its readers are the per-card ones (the view and the enumerator's
+	// candidates, through DiscardCostOptionsForEffect), the set check in
+	// validateDiscardCostLocked (DiscardNamesDiffer), and the
+	// enumerator's one payment (DiscardDifferentNamesPaymentForEffect),
+	// so what is offered and what is accepted cannot drift. Register
+	// allows it only on an activated ability's fixed count of two or more:
+	// Random, Hand, CountFromX, ManaValueX and the board clause are
+	// refused beside it, and so is a mana ability. Build it with
+	// effects.DiscardNDifferentNames.
+	DifferentNames bool
 
 	// Random is "Discard N cards at random" (ADR 0109 §7, owner
 	// decision 3; CR 701.9b) — Pyromancy, Mage il-Vec, Meteor Storm's
@@ -226,10 +255,136 @@ func (g *Game) discardClauseAcceptsLocked(playerID uuid.UUID, d *DiscardCost, c 
 	if !d.Matches(c) {
 		return false
 	}
+	// #4896: CR 201.2b — a card with no name can never be one of a set
+	// "with different names".
+	if d.DifferentNames && len(discardNameKeys(c)) == 0 {
+		return false
+	}
 	if !d.SameNameAsLegendaryPermanent {
 		return true
 	}
 	return g.controlsLegendaryNamedLikeLocked(playerID, c)
+}
+
+// DiscardCostDifferentNames reports the "with different names" set rule
+// (#4896). Nil-safe.
+func DiscardCostDifferentNames(d *DiscardCost) bool {
+	return d != nil && d.DifferentNames
+}
+
+// discardNameKeys is every name `c` has (NamesOf: both halves of a split
+// card, CR 709.4), compared case-insensitively with surrounding space
+// trimmed, the comparison CardNamesDiffer makes for an outside pick.
+// Empty names are dropped, so a nameless card has no keys.
+func discardNameKeys(c Card) []string {
+	names := NamesOf(c)
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		if k := strings.ToLower(strings.TrimSpace(n)); k != "" {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// DiscardNamesDiffer is "with different names" over a set of cards in a
+// hand, read strictly (CR 201.2b): every card has at least one name and no
+// two cards have a name in common (CR 201.2a), so a split card shares a
+// name with a card named like either half. CardNamesDiffer, an outside
+// pick's check, is the lenient sibling: a card there with no name
+// conflicts with nothing.
+func DiscardNamesDiffer(cards []Card) bool {
+	seen := make(map[string]bool, len(cards))
+	for _, c := range cards {
+		keys := discardNameKeys(c)
+		if len(keys) == 0 {
+			return false
+		}
+		for _, k := range keys {
+			if seen[k] {
+				return false
+			}
+		}
+		for _, k := range keys {
+			seen[k] = true
+		}
+	}
+	return true
+}
+
+// DiscardDifferentNamesPaymentForEffect is the one payment of a "Discard N
+// cards with different names" clause (#4896): N of `ordered` (the
+// candidates, in the order the caller prefers to lose them) whose names
+// differ, or nil when the hand holds no such set and the cost cannot be
+// paid (CR 118.3).
+//
+// Cards with one name each are interchangeable under the rule, so the
+// first of each name in order is the payment, as
+// SacrificeDifferentPaymentForEffect takes it. A split card has two names,
+// and taking it first can block a set that exists (Fire // Ice, Fire,
+// Ice, for two), so the walk backtracks: it keeps the earliest cards it
+// can and gives one up only when no set can be finished with it. N is a
+// printed count and the hand is a hand, so the search stays small.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DiscardDifferentNamesPaymentForEffect(playerID uuid.UUID, cost *DiscardCost, ordered []uuid.UUID) []uuid.UUID {
+	if cost == nil || !cost.DifferentNames || cost.N < 1 {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	keys := make([][]string, 0, len(ordered))
+	ids := make([]uuid.UUID, 0, len(ordered))
+	for _, id := range ordered {
+		c := g.findHandCardLocked(p, id)
+		if c == nil {
+			continue
+		}
+		k := discardNameKeys(*c)
+		if len(k) == 0 {
+			continue
+		}
+		keys = append(keys, k)
+		ids = append(ids, id)
+	}
+	held := map[string]bool{}
+	picked := make([]uuid.UUID, 0, cost.N)
+	var walk func(from int) bool
+	walk = func(from int) bool {
+		if len(picked) == cost.N {
+			return true
+		}
+		for i := from; i < len(ids) && len(ids)-i >= cost.N-len(picked); i++ {
+			clash := false
+			for _, k := range keys[i] {
+				if held[k] {
+					clash = true
+					break
+				}
+			}
+			if clash {
+				continue
+			}
+			for _, k := range keys[i] {
+				held[k] = true
+			}
+			picked = append(picked, ids[i])
+			if walk(i + 1) {
+				return true
+			}
+			picked = picked[:len(picked)-1]
+			for _, k := range keys[i] {
+				delete(held, k)
+			}
+		}
+		return false
+	}
+	if !walk(0) {
+		return nil
+	}
+	return picked
 }
 
 // controlsLegendaryNamedLikeLocked reports whether `playerID` controls a
@@ -314,7 +469,8 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 //   - Exactly cost.N ids for a DiscardCards clause (the announced X
 //     for a CountFromX clause, #2527), each distinct, each in the
 //     activator's hand, each matching the clause, and none of them
-//     the source of a hand activation.
+//     the source of a hand activation; and, for a "with different
+//     names" clause (#4896), no two of them sharing a name.
 //   - No ids for a "Discard your hand" clause (#1600): the answer is
 //     the whole hand, read here, and an empty hand is a payment of
 //     nothing rather than a refusal.
@@ -384,6 +540,7 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 		return nil, ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(chosen))
+	var named []Card
 	for _, id := range chosen {
 		// One card pays one discard. Naming it twice would let a
 		// single card pay "Discard two cards".
@@ -414,9 +571,20 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 				return nil, ErrInvalidParam
 			}
 		}
+		named = append(named, *c)
+	}
+	// #4896: "with different names" is a rule over the whole set, so it
+	// is checked once every card has been found (CR 201.2b).
+	if cost.DiscardCards.DifferentNames && !DiscardNamesDiffer(named) {
+		return nil, errDiscardNamesRepeat
 	}
 	return append(out, chosen...), nil
 }
+
+// errDiscardNamesRepeat is the refusal of a "with different names"
+// discard whose cards share a name (#4896). It wraps ErrInvalidParam, as
+// every other refusal of a discard pick does, and says the rule.
+var errDiscardNamesRepeat = fmt.Errorf("%w: the cards you discard must have different names", ErrInvalidParam)
 
 // findHandCardLocked returns the card with `id` in `p`'s hand, or nil.
 // Caller must hold g.mu.

@@ -108,7 +108,9 @@ func WheneverYouRollDice(label string, effect func(*game.Game, *game.StackItem, 
 			batch := item.Trigger.Event.BatchSeq
 			total := 0
 			for _, rolled := range g.Events {
-				if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch {
+				// CR 901.9d (ADR 0216 §4): the planar die triggers this but
+				// has no numerical result, so it adds nothing to the total.
+				if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch && rolled.PlanarFace == "" {
 					total += rolled.Amount
 				}
 			}

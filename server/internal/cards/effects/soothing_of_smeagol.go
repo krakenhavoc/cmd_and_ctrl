@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "35a17b42-9d3f-49ef-8218-2780c5ef5f08",
 		Name:         "Soothing of Sméagol",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target nontoken creature", Not(IsTokenPredicate())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

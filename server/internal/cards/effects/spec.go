@@ -984,11 +984,27 @@ type Spec struct {
 	// Hand is implicit and need not be listed — declaring the
 	// graveyard ADDS a path, it never removes the ordinary cast.
 	// Listing ZoneCommand is pointless (CR 903.4 grants that one to
-	// the format, not the card) and listing ZoneExile is for cards
-	// whose own text grants the permission; the impulse-exile /
-	// airbend / madness family grants it to a single exiled
-	// instance instead, through game.CastPermission.
+	// the format, not the card). ZoneExile is refused (#659) unless
+	// CastsItselfFromExile is set; the impulse-exile / airbend /
+	// suspend / foretell family grants an exile cast to a single
+	// exiled instance instead, through game.CastPermission.
 	CastableZones []game.ZoneKind
+
+	// CastsItselfFromExile marks a card whose OWN printed text says
+	// "You may cast this card from exile" (Khan, Vengeful Heart), and
+	// is the only thing that lets CastableZones list ZoneExile (ADR
+	// 0066, amendment of 2026-11-05). Declare both together:
+	//
+	//	CastableZones:        []game.ZoneKind{game.ZoneExile},
+	//	CastsItselfFromExile: true,
+	//
+	// The engine reads it as a permission for the card's owner while
+	// the card is face up in exile, however it got there; a card
+	// exiled face down has no text (CR 406.3a) and is not opened.
+	// Register panics on either half without the other, and
+	// coverage's TestEveryExileCastableCardPrintsTheClause holds the
+	// marker to the printed text.
+	CastsItselfFromExile bool
 
 	// CastableZonesIf is CastableZones for a zone the card opens only
 	// WHILE A CONDITION HOLDS — Lightwheel Enhancements' "Max speed —
@@ -1426,7 +1442,7 @@ type Spec struct {
 	GameEndGates []game.GameEndGate
 
 	// WantsDistinctColors declares a spell that READS the colours of
-	// the mana that paid for it: converge (CR 702.86 — Painful
+	// the mana that paid for it: converge (CR 207.2c — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
 	// Oracle). Nothing else in the game does (#761).
 	//

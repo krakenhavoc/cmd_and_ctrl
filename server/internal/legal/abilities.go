@@ -135,7 +135,7 @@ func (e *enumerator) activatedMoves() {
 	// #660, widened by #1221: every OTHER zone an ability can
 	// function from. Cycling is an ordinary CR 602 activation whose
 	// ability functions from hand (CR 702.29a), unearth is one whose
-	// ability functions from a graveyard (CR 702.82a), and both go
+	// ability functions from a graveyard (CR 702.84a), and both go
 	// through the same body below rather than through a second
 	// enumerator — the zone predicate is the only thing that differs,
 	// which is the whole point of ADR 0062 Decision 1.
@@ -605,7 +605,17 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			// #2016: the cheapest N in the seat's own opinion (Options.OrderCostFuel);
 			// hand order when it has none.
-			discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
+			if dc.DifferentNames {
+				// #4896: "with different names" — the cheapest N whose
+				// names differ, or no move when the hand holds fewer
+				// than N names (CR 118.3, #544).
+				discardIDs = g.DiscardDifferentNamesPaymentForEffect(e.seat, dc, e.cheapestFuelFirst(opts))
+				if discardIDs == nil {
+					continue
+				}
+			} else {
+				discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
+			}
 		} else if game.DiscardCountFromX(ab.Cost.DiscardCards) {
 			discardSets = e.variableDiscardPayments(g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.DiscardCards),
 				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()))

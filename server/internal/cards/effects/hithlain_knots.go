@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Hithlain Knots — Instant {1}{U} (The Hobbit Eternal, HOC):
 //
@@ -15,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2c80fc55-86a0-403e-82ce-09ee03095d8a",
 		Name:         "Hithlain Knots",
+		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

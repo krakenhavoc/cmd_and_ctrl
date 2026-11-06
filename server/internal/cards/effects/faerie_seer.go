@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "b2e65e8b-5f08-4cc2-ab1d-00f8903dbea2",
 		Name:            "Faerie Seer",
+		Purpose:         game.Purpose{Scry: 2},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{

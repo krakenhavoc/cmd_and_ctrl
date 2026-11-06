@@ -355,10 +355,18 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 			ev.auraHost, ev.auraHostFixed = b.opts.AttachedTo, true
 		}
 		if m.token {
+			// The fields createdTokenEntryEvent gives a token entering on
+			// its own, so a creation entering together (#4867) asks every
+			// replacement what a single token's entry asks.
+			ev.NewZoneOwner = m.controller
 			ev.EntersTapped = m.tokenEntry.Tapped
 			ev.EntersAttacking = m.attacking
 			for name, n := range m.tokenEntry.Counters {
 				ev.AddCounterAtETB(name, n)
+			}
+			// #3158: a creation that names the Aura token's host.
+			if m.tokenEntry.AttachedTo.Kind != "" {
+				ev.auraHost, ev.auraHostFixed = m.tokenEntry.AttachedTo, true
 			}
 		}
 		out, err := g.applyReplacementsLocked(ev)
@@ -451,7 +459,7 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 		// needs the exit's landing/announcement split for the paired entry.
 		r.ViaBattlefieldLeave = false
 		r.Dst = ZoneGraveyard
-		if err := g.announceSacrificeLocked(b.exchangeSacrifice, b.exchangeSource, MoveCause{}); err != nil {
+		if err := g.announceSacrificeLocked(b.exchangeSacrifice, b.exchangeSource, MoveCause{}, uuid.Nil); err != nil {
 			return err
 		}
 		if len(b.members) == 1 && b.members[0].out != nil {

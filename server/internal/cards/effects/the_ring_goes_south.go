@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3d36f0ab-d333-4a08-ad1b-5b7e1ddb647c",
 		Name:         "The Ring Goes South",
+		Purpose:      game.Purpose{RingTempts: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Keyed (#4253 slice 10b): the reveal is the tempt's tail.

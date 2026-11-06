@@ -1210,12 +1210,26 @@ sudo -u cmdctrl /tmp/statsbackfill -data-dir /var/lib/cmd_and_ctrl/data
 Run it as `cmdctrl`, the owner of the 0600 database. The server can
 keep running: the database is in WAL mode with a 5 s busy timeout on
 every connection, each game's record is one short transaction, and the
-tool writes only the three statistics tables. Stop the server only if
+tool writes only the statistics tables. Stop the server only if
 you see `database is locked` failures; a failed game is reported and the
 run goes on, and the exit status is 1 if any failed. A record whose log
 had a hole is stored with `log_complete = 0` (the summary marks it).
 Games with no replay file, such as ones whose files were deleted with
 the game, are skipped.
+
+Version 2 (ADR 0217, migration 0029) makes every version-1 record stale,
+so **run it once on each host after the release that brings migration
+0029**. It now reads each replay twice: once to merge the log, as
+before, and once for the turn samples. It loads the Scryfall dump
+(`<data dir>/scryfall/default-cards.json`, or `-scryfall-dump <path>`)
+for the deck hash and the mana sources; without one it says so and goes
+on, leaving `deck_hash` empty and reading mana off the replay's views. It
+holds the card index in memory (about 1 GB, as the server does), so on a
+4 GB host run it when the tables are quiet. Measured on four-seat arena
+games (#4880's PR), it does about one game every 4.5 s, so a thousand
+games take about 75 minutes. A record whose replay was not read whole
+(missing its last line, or never reaching the ended game) is stored with
+`frames_complete = 0`, and the summary marks it `(frames incomplete)`.
 
 Migration 0022 (ADR 0162, Discord DM notifications) adds the
 `notification_prefs` table: each person's three notification switches
@@ -1272,6 +1286,61 @@ It costs every saved key: rolling forward again recreates the table empty,
 so everyone who had added one adds it again in Settings › AI opponents.
 `TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
 forward.
+
+Migration 0031 (ADR 0211, closing idle tables, #4562) adds two nullable
+columns, `games.last_active_at` and `games.closed_reason`. An older binary
+refuses the v31 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN closed_reason; ALTER TABLE games DROP COLUMN last_active_at; DELETE FROM schema_migrations WHERE version = 31;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the idle clocks: every table's clock starts again when the
+newer binary next loads it, and a table the sweep closed stays archived
+(the older binary has no idle sweep, so nothing more is closed). Its
+reason is lost, so My games and the admin views show it as an ordinary
+archive. `TestMigration0031RollbackByHand` runs exactly this sequence and
+then rolls forward.
+
+Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
+tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
+new nullable columns on `game_stats` (`frames_complete`, `win_kind`,
+`win_turn`, `combo_rule`) and `seat_stats` (turn position, deck hash, how
+the seat left, land drops, screw, flood and colour screw, the attack
+share's sums, commander casts, life lost to combat). An older binary
+refuses the v29 schema. Drop it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite <<'SQL'
+DROP TABLE seat_card_seen; DROP TABLE seat_target_stats; DROP TABLE seat_turn_stats;
+ALTER TABLE game_stats DROP COLUMN frames_complete; ALTER TABLE game_stats DROP COLUMN win_kind;
+ALTER TABLE game_stats DROP COLUMN win_turn; ALTER TABLE game_stats DROP COLUMN combo_rule;
+ALTER TABLE seat_stats DROP COLUMN turn_position; ALTER TABLE seat_stats DROP COLUMN deck_hash;
+ALTER TABLE seat_stats DROP COLUMN out_kind; ALTER TABLE seat_stats DROP COLUMN out_by_seat;
+ALTER TABLE seat_stats DROP COLUMN own_turns; ALTER TABLE seat_stats DROP COLUMN land_drops_hit;
+ALTER TABLE seat_stats DROP COLUMN land_drops_missed; ALTER TABLE seat_stats DROP COLUMN screw_turns;
+ALTER TABLE seat_stats DROP COLUMN flood_turns; ALTER TABLE seat_stats DROP COLUMN colour_screw_turns;
+ALTER TABLE seat_stats DROP COLUMN screw_game; ALTER TABLE seat_stats DROP COLUMN flood_game;
+ALTER TABLE seat_stats DROP COLUMN colour_screw_game; ALTER TABLE seat_stats DROP COLUMN creatures_eligible;
+ALTER TABLE seat_stats DROP COLUMN creatures_attacked; ALTER TABLE seat_stats DROP COLUMN commander_casts;
+ALTER TABLE seat_stats DROP COLUMN commander_first_cast_turn; ALTER TABLE seat_stats DROP COLUMN life_lost_to_combat;
+DELETE FROM schema_migrations WHERE version = 29;
+SQL
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only derived rows: every record keeps its version-1 fields.
+Rolling forward again recreates the tables empty, and the records the
+newer binary wrote still say `stats_version = 2`. Mark them stale with
+`UPDATE game_stats SET stats_version = 1 WHERE stats_version = 2` and run
+the backfill below to compute them again. `TestMigration0029RollbackByHand`
+runs exactly this sequence and then rolls forward.
 
 Migration 0028 (#4135, the cards each deck request listed) adds one
 table, `deck_request_cards`. An older binary refuses the v28 schema. Drop

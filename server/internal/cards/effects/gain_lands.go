@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // gain_lands.go — the Khans of Tarkir "gain lands":
 //
 //	"This land enters tapped.
@@ -22,6 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // identical three lines, so its members join this table as their
 // batches reach them rather than opening a second file for the same
 // card.
+//
+// Star Trek (#4973) prints the same three lines on five Planets; each
+// has its own file and registers through the same registerGainLand
+// (trek_b28_helpers.go) this table calls.
 //
 // No simplification.
 func init() {
@@ -55,19 +57,21 @@ func init() {
 		{"8417f2d5-93c9-474a-a143-5c4e17097a88", "A.I.M. Labs", "U", "B"},
 		{"e3614df6-ce84-4180-ade1-a1751e8e3c9a", "Asgardian Citadel", "R", "W"},
 		{"52401cb4-1bce-4191-9220-0d93ea4108b8", "Stark Industries", "U", "R"},
+		// Teenage Mutant Ninja Turtles (#4457): the same three lines.
+		{"4139f40a-873b-4842-96a2-b7875de1c20a", "TCRI Building", "U", "R"},
+		{"f6059731-2e10-4f72-a214-b257f1677e9e", "Mutant Town", "G", "U"},
+		{"01ee70d4-6527-45ae-9600-bd3d16b3037d", "Illegitimate Business", "B", "G"},
+		{"063dd25b-d4b4-4e09-acae-8c52dcb40803", "Foot Headquarters", "W", "B"},
+		{"8683341a-e836-41e5-9034-4da09eb0ab42", "Dimension X", "R", "W"},
+		// Star Trek (#4973) batch 29: the Planets print the same three
+		// lines.
+		{"47e3aa22-8806-408f-b93e-0d0b800866f6", "Orion", "R", "G"},
+		{"cab718af-8e6f-4766-856e-3a61ba98f94d", "Qo'noS", "B", "R"},
+		{"365a4644-74f4-4af9-81ab-0d328ca5edce", "Risa", "G", "W"},
+		{"14c4ad24-7f38-409b-8ef0-341f233982da", "Romulus", "U", "B"},
+		// Star Trek (#4973): the same three lines on a Planet.
+		{"c7b6bc1f-9161-415e-a097-d9c8cd81d4ae", "Vulcan", "W", "U"},
 	} {
-		Register(Spec{
-			OracleID:      land.oracleID,
-			Name:          land.name,
-			Completeness:  CompletenessFull,
-			Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-			ManaAbilities: []ManaAbility{dualManaAbility(land.a, land.b)},
-			Triggered: []game.TriggeredAbility{{
-				Watches:   []game.EventKind{game.EventETB},
-				AppliesTo: b06SelfETB,
-				Key:       land.name + " — you gain 1 life",
-				Effect:    Do(GainLife{Amount: 1}),
-			}},
-		})
+		registerGainLand(land.oracleID, land.name, land.a, land.b)
 	}
 }

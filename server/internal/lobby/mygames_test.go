@@ -730,13 +730,13 @@ func TestMyStatsShowsOnlyTheCallersSeats(t *testing.T) {
 		cmd string
 	}{{mine.ID, `["My Commander"]`}, {theirs.ID, `["Bobs Commander"]`}} {
 		for _, q := range []string{
-			`INSERT INTO game_stats VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`,
+			`INSERT INTO game_stats (game_id, stats_version, source, log_complete, turns, rounds, starting_seat, computed_at) VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`,
 		} {
 			if _, err := s.db.Exec(q, g.id.String()); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if _, err := s.db.Exec(`INSERT INTO seat_stats VALUES (?, 0, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, g.id.String(), g.cmd); err != nil {
+		if _, err := s.db.Exec(`INSERT INTO seat_stats (game_id, seat, result, place, eliminated_turn, conceded, final_life, life_gained, life_lost, damage_to_players, combat_damage_to_players, commander_damage_dealt, commander_damage_taken, spells_cast, cards_drawn, attacks, tokens_created, mulligans, commanders) VALUES (?, 0, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, g.id.String(), g.cmd); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -808,9 +808,9 @@ func TestMyGameCardsOnlyAfterTheGameEndedAndOnlyForASeatedPerson(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{`INSERT INTO game_stats VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`, []any{id}},
-		{`INSERT INTO seat_stats VALUES (?, ?, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["Bobs Commander"]')`, []any{id, bobSeat}},
-		{`INSERT INTO seat_stats VALUES (?, ?, 'loss', 2, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["My Commander"]')`, []any{id, mySeat}},
+		{`INSERT INTO game_stats (game_id, stats_version, source, log_complete, turns, rounds, starting_seat, computed_at) VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`, []any{id}},
+		{`INSERT INTO seat_stats (game_id, seat, result, place, eliminated_turn, conceded, final_life, life_gained, life_lost, damage_to_players, combat_damage_to_players, commander_damage_dealt, commander_damage_taken, spells_cast, cards_drawn, attacks, tokens_created, mulligans, commanders) VALUES (?, ?, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["Bobs Commander"]')`, []any{id, bobSeat}},
+		{`INSERT INTO seat_stats (game_id, seat, result, place, eliminated_turn, conceded, final_life, life_gained, life_lost, damage_to_players, combat_damage_to_players, commander_damage_dealt, commander_damage_taken, spells_cast, cards_drawn, attacks, tokens_created, mulligans, commanders) VALUES (?, ?, 'loss', 2, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["My Commander"]')`, []any{id, mySeat}},
 		{`INSERT INTO seat_card_stats VALUES (?, ?, 'Sol Ring', NULL, 2, 1)`, []any{id, bobSeat}},
 		{`INSERT INTO seat_card_stats VALUES (?, ?, 'My Own Card', NULL, 1, 1)`, []any{id, mySeat}},
 	} {

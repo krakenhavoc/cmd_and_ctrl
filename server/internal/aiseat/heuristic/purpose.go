@@ -80,6 +80,11 @@ type purposeSet struct {
 	// what it does is then declared, so the proxy goes. Never set on a
 	// card being spent, which points at nothing.
 	targetsPriced bool
+
+	// riders is what it declares beside its main effect: scry, learn,
+	// discover, amass, the Ring (#4978, riders.go). Priced under
+	// Config.PriceRiders.
+	riders riderSet
 }
 
 // add folds one declared purpose in.
@@ -103,6 +108,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.extraLands += p.ExtraLandDrops
 	ps.impulse += p.Impulse
 	ps.turns += p.ExtraTurns - p.SkipsTurns
+	ps.riders.add(p)
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -244,6 +250,8 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 	// #3165: the creature tokens it makes pay the bot's creature-enter
 	// payoffs (token_payoff.go).
 	v += p.tokenPayoffValue(st, ps)
+	// #4978: the riders beside its main effect (riders.go).
+	v += p.riderValue(st, ps.riders, self)
 	if p.cfg.PriceImpulse && ps.impulse > 0 {
 		v += st.impulseValue(ps.impulse)
 	}

@@ -320,6 +320,13 @@ type Characteristic struct {
 	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
 	CantHaveCounters bool `json:",omitempty"`
 
+	// CantBeBeamedUp is "can't be beamed up" (Marooned's enchanted
+	// permanent): it can't be returned to pay a beam me up cost. Written
+	// by an ordinary layer-6 static of the restricting permanent, so this
+	// permanent losing its abilities does not lift it; BeamMeUpReturnSpec
+	// reads it (beam_me_up.go).
+	CantBeBeamedUp bool `json:",omitempty"`
+
 	// CantTransform is "this permanent can't transform" (CR 101.2):
 	// Immerwolf's "Non-Human Werewolves you control can't transform"
 	// (ADR 0132 amendment 2026-10-16, #4071). Written by an ordinary
@@ -461,6 +468,11 @@ const (
 	CostPowerCrew CostPowerUse = 1 << iota
 	// CostPowerSaddle is "saddles Mounts" (CR 702.171a).
 	CostPowerSaddle
+	// CostPowerStation is "stations Spacecraft" (CR 702.184a and c; Sulu,
+	// Heroic Helmsman): the power a station ability of a Spacecraft reads
+	// for the creature tapped to pay it. A Planet's station does not ask
+	// for it.
+	CostPowerStation
 )
 
 // CostPowerRule is "this creature [saddles Mounts and] crews Vehicles
@@ -468,10 +480,15 @@ const (
 // toughness rather than its power" (UseToughness). Uses says which
 // costs it applies to: a rule for crew alone does not help a creature
 // saddle a Mount.
+//
+// Multiplier is "as though its power were tripled" (3; Sulu, Heroic
+// Helmsman). Zero or one leaves the power as it is. It applies before
+// any Bonus.
 type CostPowerRule struct {
 	Uses         CostPowerUse
 	Bonus        int
 	UseToughness bool
+	Multiplier   int `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's

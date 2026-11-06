@@ -26,6 +26,7 @@ tests-e2e/
     ├── dock-avatar-4069.spec.ts # #4069: at four seats the tall declare-attackers dock leaves your avatar and life visible at 1024x768, 1366x768 and 1920x1080; opening an opponent's expanded board logs no "ResizeObserver loop" error
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
+    ├── final-board-4912.spec.ts # #4912: a departed seat's tombstone carries a Final board button, on screen and not covered, that opens the read-only final board (battlefield, hand, graveyard, command zone) at 2, 3 and 4 seats and 1280x720, 1366x768 and 1920x1080, and again after a reload
     ├── free-cast-hand-3270.spec.ts # #3270: "cast a spell from your hand without paying its mana cost" (Surtland Elementalist): the pick starts the cast at once, a sorcery in the declare attackers step included; none casts nothing
     ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
     ├── game.spec.ts           # game route WS handshake
@@ -38,7 +39,7 @@ tests-e2e/
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
-    ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap and show a readable loyalty pip, at 2, 3 and 4 seats and three viewports
+    ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap, show a readable loyalty pip and (#4946) sit inside their row on both sides, an across-table seat's included, at 2, 3 and 4 seats and 1920x1080, 1366x768 and 1280x720
     ├── playmat-shape-3934.spec.ts # #3934, ADR 0128 §12: a playmat is shown whole (contain, centred) over a blurred backdrop that is its seat's battlefield box, at 2, 3 and 4 seats and three viewports
     ├── outside-game-3833.spec.ts # #3833, #4054, #4109: a seated sideboard has no pile in the rail but a read-only Sideboard tab in its owner's zone browser (none for a seat without one); hovering an adventurer lists the creature and its Adventure with no ?face=1 scan
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
@@ -48,6 +49,8 @@ tests-e2e/
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
     ├── skipped-first-target-4497.spec.ts # #4497: Meager Meal cast with its "up to one target creature" left empty (Done with nothing picked), the opponent picked for "target player": on the stack at slot 1, and they gain 2 life
     ├── smoke.spec.ts          # router + entry pages + healthz
+    ├── stats-pages-4880.spec.ts # ADR 0217 slice 6: a shared stats link opens signed out and read-only, a revoked one says so; #/stats shows the opt-in while advanced stats are off, then the overview, its filters and the share dialog; no page scroll at 1440, 820 and 390 px in a dark and the light skin
+    ├── stats-deck-4880.spec.ts # ADR 0217 slice 6 part 2: a deck's stats page: the overview's Decks row opens it, the mana curve over the land curve, dead cards, the version picker and filters; the opt-in while advanced stats are off; a shared deck page is read-only and signed out; no page scroll at 1440, 820 and 390 px in a dark and the light skin
     ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
 ├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold

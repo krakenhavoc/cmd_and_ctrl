@@ -44,9 +44,12 @@ var (
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
 	ErrPlayerNotInGame = errors.New("lobby: player is not in this game")
 
-	// ErrGameArchived is returned by the operations that refuse to
-	// act on a retired table — minting or redeeming a seat-reclaim
-	// ticket. Unarchive first; the state is all still there.
+	// ErrGameArchived is returned by every way into a retired table
+	// (#4564, ADR 0211 §4 "Closed means closed"): a seat (join), a
+	// spectator, a deck, a bot, a start, a seat-reclaim ticket and a
+	// WebSocket upgrade by anyone but an admin. The HTTP layer maps
+	// it to 409 with CodeGameClosed. Unarchive first; the state is
+	// all still there.
 	ErrGameArchived = errors.New("lobby: game is archived")
 
 	// ErrGameNotActiveForSpawn is returned by Spawn when the
@@ -362,11 +365,19 @@ type Lobby struct {
 	// away is the away clock's own state: who chose to keep waiting
 	// (away.go). Guarded by its own mutex.
 	away awayState
+	// idle is the idle sweep's clock (idle.go, ADR 0211). Guarded by
+	// its own mutex, a leaf read under l.mu.
+	idle idleState
 	// gameStats, when non-nil, keeps each stored game's statistics
 	// record (ADR 0165); recordStatsLocked writes it when the game ends.
-	// statsWG counts the writes still running (WaitGameStats).
-	gameStats gamestats.Store
-	statsWG   sync.WaitGroup
+	// statsWG counts the writes still queued or running (WaitGameStats).
+	// statsQueue is the one stats worker's queue (ADR 0217 §1), under
+	// its own statsMu, and statsRunning says the worker is up.
+	gameStats    gamestats.Store
+	statsWG      sync.WaitGroup
+	statsMu      sync.Mutex
+	statsQueue   []statsJob
+	statsRunning bool
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
@@ -549,6 +560,24 @@ type gameEntry struct {
 	rematchDecks map[uuid.UUID][]game.Card
 	rematch      *rematchOffer
 	rematchTimer *time.Timer
+
+	// The idle clocks (idle.go, ADR 0211). lastTouched is the newest
+	// lobby-side activity (touchLocked); lastActiveStored is
+	// games.last_active_at as last written or loaded, nil for none;
+	// residentSince is when the table came into this process (a create,
+	// a boot restore, a hot restore), which starts the residency grace;
+	// botOnlySince is when the sweep first saw the game left to its
+	// bots with nobody at the table, zero while it is not;
+	// idleWarnedAt and idleCloseAt are the warning before a started game
+	// is closed and when it will close, zero until warned; closedReason
+	// is games.closed_reason, "" unless the sweep closed the table.
+	lastTouched      time.Time
+	lastActiveStored *time.Time
+	residentSince    time.Time
+	botOnlySince     time.Time
+	idleWarnedAt     time.Time
+	idleCloseAt      time.Time
+	closedReason     string
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -709,7 +738,8 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 	// The plaintext tokens stay on this entry for the life of the
 	// process, so GET /games/{id} can still show them to the admin and
 	// seated players. Only their hashes are persisted.
-	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true, createdBy: creator}
+	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true, createdBy: creator,
+		residentSince: l.idleNow()}
 	l.mu.Lock()
 	l.games[g.ID] = entry
 	// The entry now carries the cost: drop the reservation in the same
@@ -788,6 +818,7 @@ func (l *Lobby) RotateInvite(id uuid.UUID, kind InviteKind) (string, GameMeta, e
 	// ADR 0161 §4: the #lfg post must not keep a link that stopped
 	// working.
 	l.lfgChangedLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1
 	return newToken, copyMeta(entry.meta), nil
 }
 
@@ -954,6 +985,11 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
+	// #4564: an archived table is closed (ADR 0211 §4). After the
+	// invite, so only someone holding one learns that it was closed.
+	if entry.meta.Archived() {
+		return GameMeta{}, uuid.Nil, ErrGameArchived
+	}
 	// #2984: removed-and-blocked from this table. After the invite, which
 	// is the credential, so the refusal is only ever seen by someone who
 	// holds one.
@@ -1063,6 +1099,7 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, p.ID)
+	l.touchLocked(entry) // ADR 0211 §1
 	if bindNamedHost {
 		entry.meta.HostDiscordID = ""
 		l.persistGameLocked(entry)
@@ -1108,6 +1145,10 @@ func (l *Lobby) SpectateAs(id uuid.UUID, invite string, userID uuid.UUID, discor
 		return GameMeta{}, err
 	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
+	}
+	// #4564: an archived table is closed to watchers too.
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
 	}
 	if entry.blockedLocked(userID, discordID, name) {
 		return GameMeta{}, ErrBlockedFromWatching
@@ -1230,6 +1271,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, ErrGameStarted
 	}
@@ -1264,6 +1308,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	// deck's, or clear them when this one has none the index knows.
 	seat.commanders = l.commandersOf(cards)
 	l.persistSeatsLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1
 	return copyMeta(entry.meta), nil
 }
 
@@ -1287,11 +1332,15 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string, power f
 	if !ok {
 		return ErrGameNotFound
 	}
+	if entry.meta.Archived() {
+		return ErrGameArchived
+	}
 	for i := range entry.meta.Players {
 		if entry.meta.Players[i].PlayerID == playerID {
 			entry.meta.Players[i].DeckID = deckID
 			entry.meta.Players[i].DeckPower = power
 			l.persistSeatsLocked(entry)
+			l.touchLocked(entry)
 			return nil
 		}
 	}
@@ -1377,6 +1426,11 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	// #4564: before the already-running no-op, so a closed game is
+	// never reported as started.
+	if entry.meta.Archived() {
+		return GameMeta{}, ErrGameArchived
+	}
 	if entry.room.Game.CurrentState() == game.StateActive {
 		return copyMeta(entry.meta), nil
 	}
@@ -1407,6 +1461,9 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	l.syncStateLocked(entry)
 	l.startWatchLocked(entry)
 	l.noteStartedLocked(entry)
+	// ADR 0211 §1: starting moves the table onto the game clock, which
+	// starts here.
+	l.touchLocked(entry)
 	// Chained onto the broadcast thunk so it runs after l.mu is
 	// released: StartBots spawns goroutines that begin committing to
 	// the room immediately, and holding the lobby-wide mutex across
@@ -1513,6 +1570,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	if !ok {
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
 	}
+	if entry.meta.Archived() {
+		return GameMeta{}, uuid.Nil, ErrGameArchived
+	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
@@ -1565,6 +1625,7 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)
+	l.touchLocked(entry) // ADR 0211 §1
 	if keyOwner != uuid.Nil {
 		metrics.OwnKeySeatAdded()
 	}
@@ -1618,6 +1679,7 @@ func (l *Lobby) RemoveBot(id, playerID uuid.UUID) (GameMeta, error) {
 		entry.meta.Players[i].Seat = i
 	}
 	l.persistSeatsLocked(entry)
+	l.touchLocked(entry) // ADR 0211 §1
 	return copyMeta(entry.meta), nil
 }
 
@@ -1686,6 +1748,17 @@ func (l *Lobby) List() []GameMeta { return l.list(false) }
 // every existing caller, including the Discord bot's /c2-games —
 // keeps meaning "the tables you can actually play at".
 func (l *Lobby) ListArchived() []GameMeta { return l.list(true) }
+
+// IsArchived reports whether the table id is resident and archived.
+// The WebSocket authorizer asks it so a session for a closed table
+// cannot reconnect (#4564, ADR 0211 §4). An unknown id is false: the
+// hub refuses that one itself, as not found.
+func (l *Lobby) IsArchived(id uuid.UUID) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	return ok && entry.meta.Archived()
+}
 
 func (l *Lobby) list(archived bool) []GameMeta {
 	l.mu.Lock()
@@ -1757,19 +1830,15 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 	}
 	switch {
 	case archived && !entry.meta.Archived():
-		// Archiving a running table closes it (ADR 0123 §3).
-		l.recordClosedLocked(entry)
-		now := time.Now().UTC()
-		entry.meta.ArchivedAt = &now
-		// A link minted moments before the archive must not outlive
-		// it — RedeemReclaim would refuse anyway, but not holding the
-		// ticket at all is the cheaper guarantee.
-		l.dropReclaimsLocked(id)
-		if bots := l.bots; bots != nil {
-			after = func() { bots.StopBots(id) }
-		}
+		after = l.archiveLocked(entry, time.Now().UTC())
 	case !archived && entry.meta.Archived():
 		entry.meta.ArchivedAt = nil
+		// ADR 0211 §4: unarchiving clears an idle close's reason, and
+		// gives the table a fresh clock, or the sweep would close it
+		// again on its next tick.
+		entry.closedReason = ""
+		l.resetIdleLocked(entry)
+		l.touchLocked(entry)
 		if entry.room.Game.CurrentState() == game.StateActive {
 			bots, standIns := l.botStartLocked(entry), l.standInStartLocked(entry)
 			after = func() {
@@ -1785,6 +1854,26 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 	l.syncStateLocked(entry)
 	l.persistGameLocked(entry)
 	return copyMeta(entry.meta), nil
+}
+
+// archiveLocked is the archive half of SetArchived, shared with the
+// idle sweep's close (idle.go, ADR 0211 §4): the end is counted for a
+// running table, archived_at is stamped at, reclaim tickets are dropped,
+// and the returned thunk stops the bots. The caller syncs and persists
+// the row, holds l.mu, and runs the thunk after releasing it.
+func (l *Lobby) archiveLocked(entry *gameEntry, at time.Time) func() {
+	id := entry.meta.ID
+	// Archiving a running table closes it (ADR 0123 §3).
+	l.recordClosedLocked(entry)
+	entry.meta.ArchivedAt = &at
+	// A link minted moments before the archive must not outlive
+	// it — RedeemReclaim would refuse anyway, but not holding the
+	// ticket at all is the cheaper guarantee.
+	l.dropReclaimsLocked(id)
+	if bots := l.bots; bots != nil {
+		return func() { bots.StopBots(id) }
+	}
+	return nil
 }
 
 // Delete removes the game from both the lobby registry and the

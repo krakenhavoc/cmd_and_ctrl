@@ -657,7 +657,13 @@ func corpusBoards() []corpusBoard {
 		{"fetched_shockland", corpusFetchedShockland},
 		{"put_batch_second_question", corpusPutBatchSecondQuestion},
 		{"token_creation_order", corpusTokenCreationOrder},
-		{"token_copy_entry", corpusTokenCopyEntry},
+		{"token_copy_entry", corpusTokenCopyEntryAsFrozen},
+		// Added by #4867 (ADR 0061 amendment 2026-11-05) as a new file:
+		// the same creation of two Clone token copies, now that a
+		// creation of several tokens enters them together, so the
+		// question is the simultaneous entry's frame (move-token-batch)
+		// and not token_copy_entry's one-at-a-time move-tail.
+		{"token_copy_entry_together", corpusTokenCopyEntry},
 		{"monstrosity_order", corpusMonstrosityOrder},
 		{"drain_order", corpusDrainOrder},
 		{"face_down_exile_leg", corpusFaceDownExileLeg},
@@ -688,7 +694,36 @@ func corpusBoards() []corpusBoard {
 		{"crypt_incursion_exile_leg", corpusCryptIncursionExileLeg},
 		{"mind_rot_discard_leg", corpusMindRotDiscardLeg},
 		{"obstinate_baloth_discard_entry", corpusObstinateBalothDiscardEntry},
+		// v9, added by #4691 as a new file: the loseAllCreatureTypes kind
+		// (layer 4, CR 613.1d), made by the card that writes it. Two
+		// resolved Nameless Inversions, each one record until end of turn
+		// holding modifyPT +3/-3 and loseAllCreatureTypes: one on a Goblin
+		// and one on a changeling (CR 702.73a), whose every-creature-type
+		// marking goes too while it keeps the keyword. A new vocabulary
+		// value an older binary must refuse rather than read as nothing.
+		{"lose_all_creature_types", corpusLoseAllCreatureTypes},
 	}
+}
+
+// corpusLoseAllCreatureTypes is #4691's loseAllCreatureTypes kind, made
+// by the card that writes it: Nameless Inversion on a Goblin and on a
+// changeling, both still on the battlefield with their records live.
+func corpusLoseAllCreatureTypes(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	goblin := pushTribalCreature(g, opp, "Goblin Brute", "Creature — Goblin", 2, 4)
+	shifter := pushTribalCreature(g, opp, "Woodland Changeling", "Creature — Shapeshifter", 2, 4, game.KeywordChangeling)
+	castNamelessInversion(t, g, goblin)
+	castNamelessInversion(t, g, shifter)
+	if len(g.ScopedEffects) != 2 {
+		t.Fatalf("setup: two Nameless Inversions registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	for _, id := range []uuid.UUID{goblin, shifter} {
+		if c := layeredCard(t, g, id); len(effectiveSubtypes(t, g, id)) != 0 || game.HasAllCreatureTypes(&c) {
+			t.Fatalf("setup: %s still has a creature type", c.Name)
+		}
+	}
+	return g
 }
 
 // corpusCryptIncursionExileLeg is Crypt Incursion's exile of two creature
@@ -3249,7 +3284,24 @@ func corpusUntilEOTPump(t *testing.T) *game.Game {
 // that game is the crewed_vehicle_event board, and this one keeps building
 // what the frozen fixture holds (corpusDriftAdvice's rule) by restoring it.
 func corpusCrewedVehicleAsFrozen(t *testing.T) *game.Game {
-	raw, err := os.ReadFile(filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion), "crewed_vehicle.json"))
+	return corpusFrozenBoard(t, "crewed_vehicle")
+}
+
+// corpusTokenCopyEntryAsFrozen is the token_copy_entry board as its
+// fixture holds it: two Clone token copies entering one at a time, the
+// first asking with the second behind it on its entry tail. Since #4867 a
+// creation of several tokens enters them together, so the scripted
+// creation builds a different game on purpose; that game is the
+// token_copy_entry_together board, and this one keeps building what the
+// frozen fixture holds by restoring it.
+func corpusTokenCopyEntryAsFrozen(t *testing.T) *game.Game {
+	return corpusFrozenBoard(t, "token_copy_entry")
+}
+
+// corpusFrozenBoard restores the current version's fixture `name`: the
+// board of a fixture whose scripted game the engine no longer builds.
+func corpusFrozenBoard(t *testing.T, name string) *game.Game {
+	raw, err := os.ReadFile(filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion), name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}

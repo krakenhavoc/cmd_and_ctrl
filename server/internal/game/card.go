@@ -239,6 +239,17 @@ type Card struct {
 	// on a card in a zone — and so never persisted or cloned.
 	wordLens *TextWords
 
+	// ptAnywhere is this card's power and toughness where it sits, one
+	// reading per face, with its own characteristic-defining abilities
+	// applied (CR 604.3), lent to a value copy by withPTAnywhereLocked so
+	// a cast permission's "power or toughness N or less" clause
+	// (PermissionFilter.PowerOrToughnessCapped, #4964) can judge a `*/*`
+	// card in a graveyard without the game. Set only on a copy handed to
+	// a permission lookup — never on a card in a zone (MoveCard clears it
+	// all the same) — and so never persisted. Nil on every card without
+	// such an ability, which reads its printed numbers.
+	ptAnywhere []ptReading
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
@@ -889,6 +900,19 @@ type Card struct {
 	// Game.ChosenPermanentOf.
 	ChosenPermanent ObjectRef
 
+	// LinkedPermanent is the permanent one of this object's abilities
+	// affected, which a linked ability of the same object later names
+	// (CR 607.1, CR 607.2e): The Best of Both Worlds' chapter I assimilates
+	// a creature and chapter III exiles "the Borg assimilated with this
+	// Saga". An OBJECT, not a card: a linked permanent that leaves the
+	// battlefield and returns is a new object the ability never affected
+	// (CR 400.7). ChosenPermanent's lifecycle: per INSTANCE, carried by the
+	// snapshot and by clone, cleared when this permanent leaves the
+	// battlefield, and NOT a copiable value (CR 707.2). Written by
+	// Game.SetLinkedPermanentForEffect and read with
+	// Game.LinkedPermanentForEffect (linked_permanent.go).
+	LinkedPermanent ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.
@@ -1192,6 +1216,12 @@ type Card struct {
 	// abilities of all cards exiled with it" borrower, whose lenders are
 	// read on every layer pass. Other ability exiles still keep the
 	// effects package's event-log record (b27ExiledWith).
+	//
+	// #4687 (CR 607.2q): a card exiled to PAY for a permanent spell (an
+	// exiling behold, payBeholdExileLocked) is linked to the SPELL object
+	// {instance, stack epoch} until the spell resolves, and then to the
+	// permanent it became (relinkCostExilesLocked). A countered spell's
+	// card keeps naming the spell object, which no reader ever matches.
 	ExiledWith PermissionCardRef
 
 	// ExiledWithAbility is the other half of CR 607.2a's link: WHICH
@@ -1324,6 +1354,20 @@ type Card struct {
 	// never written in place, and cleared by MoveCard on every zone
 	// change, because a grant to a card ends with the object (CR 400.7).
 	zoneGranted []GrantedAbility
+
+	// ExileGrants is the ability bundles a RESOLVED effect gave this card
+	// while it is in exile (CR 113.10, ADR 0219, #4973): Q, Stacking the
+	// Deck's "That nonland card gains '…Activate only … if this card is
+	// exiled.'" Plain data (bundle key, grantor, activator), never a
+	// closure, read by activatedAbilityRows beside zoneGranted
+	// (abilityGrantsOf). Written only by GrantAbilityToExiledCardForEffect
+	// (exile_effect_grants.go), always as a fresh slice.
+	//
+	// Per object (CR 400.7): cleared in MoveCard on every zone change, so
+	// the grant ends the moment the card leaves exile. Not a copiable value
+	// (CR 707.2), so a copy of the card never has it. Carried by the
+	// snapshot, because no source on the battlefield rebuilds it.
+	ExileGrants []GrantedAbility
 
 	// zoneLayered is this object's characteristic after layers 4 and 5
 	// while it is NOT on the battlefield (#3862, ADR 0039 amendment
@@ -2001,7 +2045,9 @@ func (c Card) PowerForComparison() int {
 //  1. Start from PowerForComparison (layers and P/T counters, not
 //     clamped). If a rule for this use says UseToughness, start from the
 //     toughness instead.
-//  2. Add the Bonus of every rule for this use. Two rules add up.
+//  2. Multiply by the Multiplier of every rule for this use that has one
+//     ("as though its power were tripled"), then add the Bonus of every
+//     rule for this use. Two bonuses add up.
 //  3. Clamp at zero, as CurrentPower does: a creature never takes power
 //     away from a total, but the bonus is added BEFORE the clamp, so a
 //     -1/1 with "+2" counts 1, not 2 (owner decision 2, 2026-10-14).
@@ -2019,6 +2065,11 @@ func (c Card) CountedPower(use CostPowerUse) int {
 		if r.Uses&use != 0 && r.UseToughness {
 			p = t
 			break
+		}
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.Multiplier > 1 {
+			p = SaturatingMul(p, r.Multiplier)
 		}
 	}
 	for _, r := range eff.CostPower {

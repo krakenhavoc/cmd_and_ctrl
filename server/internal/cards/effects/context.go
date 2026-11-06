@@ -312,6 +312,19 @@ func (c *Context) TappedPower() (power int, ok bool) {
 	return c.Game.PaidTapPowerForEffect(taps[0]), true
 }
 
+// TappedStationPower is TappedPower for the station ability of a
+// Spacecraft: what the first permanent the cost tapped counts for when it
+// stations one (Game.PaidTapStationPowerForEffect; Sulu, Heroic
+// Helmsman's tripled power). The plain power, clamped at zero, for a
+// creature with no such rule.
+func (c *Context) TappedStationPower() (power int, ok bool) {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 || c.Game == nil {
+		return 0, false
+	}
+	return c.Game.PaidTapStationPowerForEffect(taps[0]), true
+}
+
 // TappedToPay is the permanents a tap-permanents cost tapped, as the
 // objects they were when tapped (instance ID and epoch), in the order
 // named — "the creature tapped to pay this spell's additional cost"
@@ -396,7 +409,7 @@ func (c *Context) ManaSpentToCastThis() game.ManaSpent {
 }
 
 // ColorsSpent is the distinct COLOURS of mana spent to cast this
-// spell, in WUBRG order — converge's X (CR 702.86) and sunburst's
+// spell, in WUBRG order — converge's X (CR 207.2c) and sunburst's
 // counter count (CR 702.44). Colourless is not a colour, so {C} never
 // appears. Empty when the payment was not recorded, which is the
 // weaker-than-printed answer. Added in #761.

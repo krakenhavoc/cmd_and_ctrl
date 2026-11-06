@@ -262,7 +262,7 @@ func (g *Game) forEachGameEndGateLocked(p *Player, fn func(gate GameEndGate, sou
 		}
 		// ADR 0109 §5: the emblems (CR 114.4), after the battlefield.
 		stopped := false
-		g.forEachEmblemLocked(func(c *Card) bool {
+		g.forEachCommandSourceLocked(func(c *Card) bool {
 			stopped = !walk(c)
 			return !stopped
 		})

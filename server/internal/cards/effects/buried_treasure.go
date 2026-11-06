@@ -24,6 +24,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:        "{5}, Exile this card from your graveyard: Discover 5",
+			Purpose:      game.Purpose{Discover: 5},
 			Cost:         Plus(ManaCost("{5}"), ExileThis()),
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,

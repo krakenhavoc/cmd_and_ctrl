@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f474d421-5fd0-4d76-95cb-4824a2381a29",
 		Name:         "Poet's Quill",
+		Purpose:      game.Purpose{Learn: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Poet's Quill — learn", Do(Learn{})),

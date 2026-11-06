@@ -810,7 +810,7 @@ func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone Zo
 	}
 	// #4509: `card` is the face being cast, and a permission whose filter
 	// does not admit that spell offers it nothing to claim (ForSpell).
-	grant = grant.ForSpell(card)
+	grant = g.permissionForSpellLocked(grant, card)
 	if base, ok := grantedInstanceClaim(key); ok {
 		return grantedInstanceOffer(card, grant, base, key, targets)
 	}
@@ -1435,6 +1435,9 @@ func TargetSpecUnderAlternativeCost(base *TargetSpec, alt *AlternativeCost) *Tar
 // sacrifice happens NOW and uses the stack, so it is an ordinary
 // triggered ability; warp's exile happens at a later step, so it is
 // a CR 603.7 delayed trigger. Neither gets a bespoke loop.
+//
+// The token a copy of such a spell becomes gets the same clauses (CR
+// 707.10, #4783): runSpellCopyTokenAltCostTail calls this for it.
 //
 // No-op for a spell cast for its mana cost, and for an alternative
 // cost that carries neither clause. Caller must hold g.mu.

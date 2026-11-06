@@ -92,6 +92,32 @@ export type SoundName =
   // buckle), and an Aura enchanting one (a soft shimmer).
   | "attach_equip"
   | "attach_aura"
+  // #4445: cards milled into a graveyard (a papery card slide), and
+  // cards discarded into one (a soft card toss).
+  | "mill"
+  | "discard"
+  // #4446: a card returned from a graveyard to the battlefield or a hand
+  // (a reversed whoosh with a low rumble; quieter for a hand).
+  | "reanimate"
+  // #4447: a library searched (a quick card riffle).
+  | "library_search"
+  // #4448: a double-faced card turned over (a flip whoosh with a short
+  // sting), and the game becoming day or night (a bell).
+  | "transform"
+  | "day_night"
+  // #4427: a permanent sacrificed for its own ability, quick and a little
+  // quieter than the other effect cues: a fetch land cracked (a dry
+  // branch or wax-seal crack, then a short card slide), a Treasure (a
+  // coin clink), a Clue (a paper crumple), a Food (a crunch or bite).
+  | "fetch_crack"
+  | "treasure_crack"
+  | "clue_crack"
+  | "food_crack"
+  // #4450: a spell or ability that fizzles (a quiet counter with no slap),
+  // and a die rolled or a coin flipped (a dice rattle, a coin ring).
+  | "fizzle"
+  | "dice_roll"
+  | "coin_flip"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
   // files fail to load, each falls back to the generic cue it replaces
   // (SOUND_FALLBACK). Loaded lazily: the first time the
@@ -157,6 +183,19 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   commander_return: "effects",
   attach_equip: "effects",
   attach_aura: "effects",
+  mill: "effects",
+  discard: "effects",
+  reanimate: "effects",
+  library_search: "effects",
+  transform: "effects",
+  day_night: "effects",
+  fetch_crack: "effects",
+  treasure_crack: "effects",
+  clue_crack: "effects",
+  food_crack: "effects",
+  fizzle: "effects",
+  dice_roll: "effects",
+  coin_flip: "effects",
   sig_blasphemous_act: "effects",
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
@@ -225,6 +264,46 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // (client/public/sounds/README.md, "Files not made yet").
   attach_equip: [],
   attach_aura: [],
+  // #4445: files not made yet, and no fallback, so a mill's slide and a
+  // discard's toss into the graveyard are silent until mill-1.mp3 and
+  // discard-1.mp3 (and an optional -2 of each) are listed here
+  // (client/public/sounds/README.md, "Files not made yet").
+  mill: [],
+  discard: [],
+  // #4446: files not made yet, and no fallback, so a card's rise out of a
+  // graveyard is silent until reanimate-1.mp3 (and an optional -2) are
+  // listed here (client/public/sounds/README.md, "Files not made yet").
+  reanimate: [],
+  // #4447: files not made yet, and no fallback, so a library's riffle
+  // while it is searched is silent until library_search-1.mp3 (and an
+  // optional -2) are listed here (client/public/sounds/README.md, "Files
+  // not made yet"). A search's own shuffle plays nothing of its own.
+  library_search: [],
+  // #4448: files not made yet, and no fallback, so a card's flip to its
+  // other face and the sky's wash as it becomes day or night are silent
+  // until transform-1.mp3 and day_night-1.mp3 (each with an optional -2)
+  // are listed here (client/public/sounds/README.md, "Files not made
+  // yet"). Night turning werewolves over is one sound, the bell.
+  transform: [],
+  day_night: [],
+  // #4427: files not made yet, and no fallback (not the sacrifice's
+  // knife either: the crack replaces that cue because it is too heavy),
+  // so a self-sacrifice's crack is silent until fetch_crack-1.mp3,
+  // treasure_crack-1.mp3, clue_crack-1.mp3 and food_crack-1.mp3 (each
+  // with an optional -2) are listed here (client/public/sounds/README.md,
+  // "Files not made yet"). Any other self-sacrificing permanent plays
+  // treasure_crack.
+  fetch_crack: [],
+  treasure_crack: [],
+  clue_crack: [],
+  food_crack: [],
+  // #4450: files not made yet, and no fallback, so a fizzle's dissolve and
+  // a die's tumble or a coin's spin are silent until fizzle-1.mp3,
+  // dice_roll-1.mp3 and coin_flip-1.mp3 (and an optional -2 of each) are
+  // listed here (client/public/sounds/README.md, "Files not made yet").
+  fizzle: [],
+  dice_roll: [],
+  coin_flip: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],

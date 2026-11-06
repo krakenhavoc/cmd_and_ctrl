@@ -531,6 +531,17 @@ func rfOpponentCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *ga
 	return ok && c.IsCreature() && c.Controller != src.Controller
 }
 
+// opponentNontokenCreatureWouldDie is rfOpponentCreatureWouldDie narrowed
+// to nontoken creatures: "if a nontoken creature an opponent controls
+// would die" (The Darkness Crystal, Kalitas, Traitor of Ghet).
+func opponentNontokenCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if !rfOpponentCreatureWouldDie(ev, g, src) {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && !c.IsToken()
+}
+
 // rfDamageFirstLegalTarget is "it deals N damage to target …" as an
 // activated ability's whole body: the still-legal first target takes the
 // damage from the ability's source, and a target that left in response

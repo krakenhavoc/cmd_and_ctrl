@@ -1063,6 +1063,19 @@ const (
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
 
+	// EventFacedDilemma — a player chose one or more modes for a spell
+	// or ability (#4973, Star Trek's "you face a dilemma as you choose
+	// one or more modes for a spell or ability"; CR 700.2a, 700.2b).
+	// Actor = the player who chose, Source / CardID = the spell, or the
+	// source of the ability. Emitted where the choice is made: as a
+	// modal spell is cast (just before its EventCast), as a modal
+	// activated ability is put on the stack, and as a modal trigger's
+	// mode_pick is answered. A copy (CR 700.2g), a mode chosen at
+	// random, and a "choose up to" answered with no mode choose nothing
+	// and emit nothing. Delivered to the listeners only, never appended
+	// to Game.Events (emitFacedDilemmaLocked says why).
+	EventFacedDilemma EventKind = "faced_dilemma"
+
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
 	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
 	// the permanent, Actor = its controller, Amount = the N of the
@@ -1246,7 +1259,10 @@ const (
 	//
 	// Emitted from commitBlockDeclarationLocked, in the same event
 	// batch as the EventBlock events of the same declaration, so a
-	// OncePerBatch ability sees one occurrence. Added in #830.
+	// OncePerBatch ability sees one occurrence. Added in #830. Also
+	// emitted by stampEntryBlockerLocked when a creature put onto the
+	// battlefield blocking blocks an attacker that was unblocked at
+	// that time (CR 509.3c, #4956).
 	EventBecomesBlocked EventKind = "becomes_blocked"
 
 	// EventBlockersDeclared — the defending player named by Actor has
@@ -1527,6 +1543,16 @@ const (
 	// a spawn into a hand or a library — see protocol.projectEvent.
 	// Added in S35 (#1032).
 	EventSpawned EventKind = "spawned"
+
+	// EventIdleClose — the server closed the table, or warned that it
+	// will, because nobody used it (ADR 0211 §4, §6). Label is
+	// IdleCloseLobby, IdleCloseGame or IdleCloseBots for a close, and
+	// IdleCloseWarning for the warning before a started game is closed;
+	// Amount is the whole hours the table had been idle (the minutes,
+	// for IdleCloseBots); on a warning, Call is when the game will close
+	// (RFC 3339, UTC). No Actor: nobody did it. Public. Nothing in the
+	// rules reads it.
+	EventIdleClose EventKind = "idle_close"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -1719,6 +1745,12 @@ type Event struct {
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
 
+	// PlanarFace is the face a planar die showed on an EventRollDie
+	// (CR 901.3a, ADR 0216 §4): PlanarFaceBlank, PlanarFaceChaos or
+	// PlanarFacePlaneswalk. Amount is 0 on such an event: the planar die
+	// has no numerical result (CR 901.9d). Empty on every other event.
+	PlanarFace string `json:"planarFace,omitempty"`
+
 	// Seats are the seat indexes an EventOpeningRoll names: the seats
 	// that tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
@@ -1852,8 +1884,10 @@ type Event struct {
 	// move. Empty when nothing was recorded. "A spell or ability you
 	// control exiles one or more permanents" (Ranar the Ever-Watchful)
 	// reads it — see move_cause.go and ExiledBySpellOrAbilityOf.
-	// Engine-internal: protocol/log.go does not project it. Added with
-	// #1320.
+	// Engine-internal: protocol/log.go does not project it, except that an
+	// EventSacrifice paid as a cost carries Cause "cost" (#4427,
+	// announceSacrificeLocked; its payer is the event's Actor), which the
+	// log's `sacrifice` line says. Added with #1320.
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
@@ -1867,6 +1901,12 @@ type Event struct {
 	// event, on an entry no ability made (a land played, a spell
 	// resolving into a permanent, a sandbox move), and on an entry made
 	// by a spell's effect, which has no catalog row of its own.
+	//
+	// On an EventSacrifice paid as an activated ability's cost (a mana
+	// ability's included), CauseSource is that ability's source object,
+	// and CauseAbility is nil (#4427): equal to CardID when a permanent
+	// was sacrificed for its own ability (a fetch land, a Treasure).
+	// NotPutByThisAbility reads EventETB alone, so it never sees one.
 	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
 	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
 

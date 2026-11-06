@@ -4920,3 +4920,180 @@ and cast for exactly {2}, with the printed {R}{R}{R} not repriced; a creature ca
 opponent's Lorehold and a declined reveal are refused; Lorehold destroyed after the reveal still leaves the {2} cast; two
 Loreholds make one reveal; beside Molecule Man a creature is revealed once and an instant twice; a draw on an opponent's turn;
 the bot's move list and the view; the loot in each opponent's upkeep, declined, and not in its controller's own.
+
+## Amendment — 2026-11-04 (#4964): a filter on power or toughness, and a `*` card judged where it sits
+
+Leonardo, Sewer Samurai — "During your turn, you may cast creature spells with power or toughness 1 or less from your graveyard.
+If you cast a spell this way, that creature enters with a finality counter on it" — was left out of the TMT batches (#4957)
+because `PermissionFilter` spoke about types, subtypes, colours, counters and arrivals, and about neither of the two numbers.
+Shipping it without the clause would have made every creature card in the graveyard castable, which is stronger than printed.
+
+**The clause.** `PermissionFilter.PowerOrToughnessCapped` (bool) with `PowerOrToughnessAtMost` (int). The flag carries the
+clause's presence because 0 is a legal N ("power or toughness 0 or less"), and a filter without it writes neither key. It is an
+OR over the two numbers — a 2/1 and a 1/2 both qualify under "1 or less", a 2/2 does not — and only over a creature: a card that
+is not a creature has no power or toughness at all off the battlefield (CR 208.3). It composes with every other clause as a
+further AND, as `ColorsAny` does (the 2026-10-30 amendment), and Leonardo pairs it with `CreatureOnly`.
+
+**The hard half: a `*/*` card in a graveyard.** A characteristic-defining ability conveys an object's power or toughness and
+*functions in all zones* (CR 604.3, CR 113.6a; CR 208.2a says the same of a printed `*`), so Tarmogoyf in a graveyard really is
+the creature its own ability makes it, and the number needs the game — the graveyards it counts, the board around it. A stored
+permission's filter is pure data and `Matches` is handed a `Card`, not a `*Game` (the type's file header), and that is not
+negotiable: a closure in a permission is not snapshottable.
+
+So the lookups that hold the game **lend** the card its reading, exactly as `ThroughTextOf` lends a judging object's text to a
+target predicate. `Game.withPTAnywhereLocked` writes one reading per face onto a value copy (`Card.ptAnywhere`), worked out by
+#2115's `cdaAnywhereLocked` — the same reader Talara's Bane and craft already use for "that card's toughness" off the
+battlefield — and `lendPTLocked` does it only for a permission that carries the clause, so every other permission costs nothing.
+`permissionForSpellLocked` is `ForSpell` with the lend, and the stored, standing, per-face, per-type, pile and offer paths all go
+through one of the two, so the permission lookup, `castable_here` and the view's offers, the bot enumerator and `CastSpell` read
+one answer. The reading is per face because CR 712.11c judges the face that would be cast.
+
+**Unknown is never "1 or less".** A card with such an ability that reaches `Matches` without a reading (a caller that did not
+lend one) and a `*` the engine cannot compute at all (`Card.VariableToughness`, no catalogued layer-7a ability) both fail the
+clause. The failure mode of a missed lookup is therefore a permission that is *narrower* than printed, never one that casts a
+Tarmogoyf it should not — the direction AGENTS.md §7 asks for.
+
+**Timing and the rider are not new.** "During your turn" is `Timing: game.TimingYourTurnOnly` (#2179), which closes the cast off
+the holder's turn and leaves each creature's own timing in force, and "that creature enters with a finality counter" is #4679's
+`CastPermission.EntersWithCounterKind` / `EntersWithCounters` with `game.CounterFinality`, put on through the CR 614 pipeline as
+the creature enters, after which CR 122.1h's replacement exiles it instead of letting it die. Nothing limits the number of casts:
+the card prints no "once each turn", so there is no `PerType` and no `CastsLeft`.
+
+**Snapshot.** `filter.powerOrToughnessCapped` and `filter.powerOrToughnessAtMost`, additive in v9 and absent when unset, on
+`seats[].castPermissions[]` and every keyed tail's `permission`, recorded in `snapshot_shape/v9.txt`. `Card.ptAnywhere` is
+derived like `wordLens` and `zoneLayered`: set only on a value copy handed to a lookup, never on a card in a zone, never
+persisted, and cleared by `MoveCard` for good measure. No closure route from `Game` is added.
+
+**Tests.** `game/permission_pt_test.go`: the OR over both numbers, 0 as a legal N, a noncreature, an uncomputable `*`, a lent
+characteristic-defining reading that changes with the board, and the lend that only a clause-carrying permission gets.
+`cards/effects/leonardo_sewer_samurai_test.go`: the registration (Full, sneak {2}{W}{W}, double strike, the rider, no budget);
+a 2/1 and a 1/2 cast and a 2/2 and a 5/5 refused; no other card type castable from the graveyard; Tarmogoyf in the graveyard
+cast as a 1/2 and refused once a second card type makes it a 2/3; an uncomputable `*` refused; only your own turn and your own
+graveyard; the finality counter on entry, absent on a cast from hand, and exiling the creature instead of killing it; double
+strike; and a restore with the permission open.
+
+**Cards.** Leonardo, Sewer Samurai — Full.
+
+## Amendment — 2026-11-04 (#4969): a priced permission accepts only its own offer
+
+Rule 4 of `validateCastPathLocked` refused a cast that claimed nothing under a permission that names a price, but accepted
+any other claim. So a card that a priced permission alone let out of a zone could be cast there for an alternative cost it
+prints instead: a Mulldrifter in the graveyard under Green Goblin's granted mayhem was evokeable, discarded this turn or not,
+and a Cyclonic Rift opened in exile by a `{0}` permission could be overloaded too. Only one alternative cost can be applied to
+a spell (CR 118.9a), and the permission's price is that cost. Rule 4 is now `permissionClaimOK`: a permission with a claimable
+offer (Green Goblin, Underworld Breach, Snapcaster, Bolas's Citadel, a `granted-cost` grant, foretell, madness) accepts only a
+claim under its own key, or its granted-instance spelling (#3938), and granted sneak keeps #4967's allowance for the card's
+own sneak (`sneakOnlyClaimOK`); one with a flat price (airbend, cascade, discover, a
+waterbend) accepts no claim. A permission at the printed cost (`AltCostKey` empty, `NamesPrice()` false: Yawgmoth's Will,
+Muldrotha, an impulse exile) still lets the card's own alternative costs through, and rule 4 still applies only when the
+permission is the reason the cast is legal: a card that opens the zone itself keeps its own paths. The view's offer list and
+the bot enumerator ask the same gate, so neither lists a refused claim. Nothing new is stored. Tests:
+`cards/effects/priced_permission_claims_test.go`.
+
+## Amendment (2026-11-05): a card's own cast-from-exile text
+
+[#4973](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4973). Khan, Vengeful Heart prints *"You may cast this card from
+exile."* #659 made `effects.Register` refuse `ZoneExile` in `Spec.CastableZones`, and `validateCastPathLocked` admit an exile
+cast only under a `CastPermission`, because every exile cast the engine had seen was granted to one object by another effect
+(impulse exile, suspend, foretell, cascade, warp, a defeated Siege). A card-level declaration would have opened every copy of
+those cards in exile, however each got there, and their text never says that: a Path to Exile'd Rift Bolt is not castable.
+Khan's text says exactly that. The ability is printed on the card, so it is there whenever the card is in exile with its text,
+by whatever route it arrived; CR 400.7 makes each arrival a new object, and its text comes with it.
+
+### Decision 1 — `ZoneExile` in `CastableZones` only beside `Spec.CastsItselfFromExile`
+
+`Register` admits `ZoneExile` in `CastableZones` only when the spec also sets `CastsItselfFromExile`, the statement that the
+card's own printed text grants the cast, and panics on the marker without the zone. Every other exile cast stays a
+per-instance `CastPermission`, and the #659 refusal is unchanged for every card that does not set the marker
+(`TestRegisterStillRefusesExileCastableWithoutOwnText`). The marker is held to the printed text by coverage's
+`TestEveryExileCastableCardPrintsTheClause`: a spec that sets it must have a face whose oracle text has a line that is exactly
+the clause, and a catalogued face that prints that line must set it. Rebound's reminder text ("… you may cast this card from
+exile without paying its mana cost") is not that line, and rebound stays the delayed trigger and permission of ADR 0107. `CastableZonesIf` still
+refuses exile: no card prints a conditional version.
+
+### Decision 2 — face up only (CR 406.3a, 708.2)
+
+CR 406.3a: "A card exiled face down has no characteristics". A face-down card has no text, so it grants itself nothing.
+`cardOpensZoneLocked` answers false for a face-down card in exile, and the derived permission below is never made for one. A
+face-down exiled card is castable only under a permission the effect that exiled it granted (foretell, Gonti, Outrageous
+Robbery, hideaway), as before. A CR 722.3c prepare copy is also left out: ADR 0090 lets only the prepared permanent open it.
+
+### Decision 3 — the card's text is a permission DERIVED for its owner, not a second door
+
+`validateCastPathLocked` and `CastSpell` keep the one exile rule they have, "a permission is the only way in". The card's text
+comes in through that door. `castPermissionLocked` derives a `ScopeCards` permission naming the object
+(`ownTextExilePermissionLocked`, `game/cast_from_exile_own_text.go`) for the card's **owner** while the card is face up in
+exile. CR 109.5 makes "you" on an object with no controller its owner, and exile is the one shared pile, so the owner is
+asked here rather than by a pile lookup as it would be for a graveyard. The permission is at the printed cost, `CastOnly`, of
+indefinite duration, and has no count, follow-up or rider. The cast is the card's own at its own timing (Decision 6). This is
+the shape #4307's sticker permission already has: derived on every query and never stored. The card's presence face up in
+exile is the duration.
+
+Deriving it is what keeps the three readers on one answer (Decision 3 of the original ADR, #1171's lesson).
+`CastPermissionForLocked` hands it to `CastSpell`'s exile gate. `CastPermissionOnCardForEffect` and `castHoldersOf` stamp
+`exile_play`, `castable_here` and the price list for the owner's seat alone, so the client's exile button needs no change.
+The bot enumerator reads `perm != nil`. `AnyCastPermissionsForEffect` gains a fast positive (`anyOwnTextExileCastLocked`, one
+pass over exile when nothing else has answered) so neither the view nor the enumerator skips exile when this is the only
+opening on the table.
+
+`castUsesGrantLocked` now asks `cardOpensZoneLocked` for exile as it does for the graveyard. A cast of such a card that a
+stored grant also covers (an impulse "cast one spell from among them" with `CastsLeft`) is the card's own cast and does not
+spend that grant, just as a printed flashback card does not spend a Snapcaster grant.
+
+### Snapshot, clone, closure
+
+Nothing is stored. No snapshot key is added, no `Card` or `Player` field is added, and no func is reachable from `Game`; the
+closure ratchet does not move. Clone, undo and a restore re-derive the answer from the exile zone they hold.
+
+### Out of scope, stated
+
+- **Other zones a card's text opens for itself** (the library, outside the game). No card in the catalog needs them, and
+  `CastableZones` keeps refusing both.
+- **A Khan copy cast from exile** (CR 707.12). The card-copy cast of the 2026-10-13 amendment is a permission over a copy
+  object. A copy's text would include the clause, but no effect makes a copy of a card in exile today.
+
+### Cards
+
+Khan, Vengeful Heart (Full). A sweep of the checked-in Scryfall oracle fixtures (8,666 faces), the Star Trek batch data and the
+rest of the repository finds no other card whose text has the standalone line; the 33 other fixture hits are rebound
+reminder text.
+
+## Amendment (2026-11-05, #4973): one use a turn shared across two zones, and a standing permission over outside the game
+
+The Holodeck: "Once during each of your turns, you may play a permanent card you own from outside the game or from your
+graveyard." A permission has one `Zone`, and two independent permissions would give two plays a turn, which is stronger than
+printed. Before this amendment the outside-the-game right (`OutsidePlayRightPermission`, Wish) existed only as a stored
+one-shot an effect grants.
+
+### Decision 1 — the shared use is the per-type budget's key, which names the object and not the zone
+
+A derived budget is kept in `TurnTally.PermissionTypes` under (holder, granting object, type) (the 2026-10-09 amendment).
+The zone is not in the key. So two standing permissions declared by ONE card, each with
+`PerType: []string{PermissionTypePermanent}` (Serra Paragon's single-use pseudo-type), are ONE use: the first land played
+or permanent spell cast through either one spends the use of both. This was already true of the code. The amendment makes it
+a stated contract rather than an accident, so a later change that adds the zone to the key would break a card. No field is
+added. A second copy of the card is a second object and brings a use of its own (CR 400.7); the tally empties as each turn
+begins, which is "once during each of your turns".
+
+### Decision 2 — a catalog permission may be over `ZoneOutside`
+
+`Spec.CastPermissions` may declare `Zone: ZoneOutside`. Such a permission is derived for its controller off the battlefield
+like any other standing permission, and reaches only the holder's own container (CR 400.11a: "Cards in a player's sideboard
+are outside the game."). `CastableZones` still refuses `ZoneOutside`: a card can't open outside the game for ITSELF, which is
+the #3955 rule, and is a different statement from a permanent opening it for its controller.
+
+The cast path, the view's sideboard stamps and the bot enumerator already ask the one permission lookup, which includes
+standing permissions, so they needed no change. The database pool's naming action (`outside_play`) did:
+`OutsidePlayRightLocked` now also answers with a derived standing permission over the container that has a use left
+(`derivedUseLeft`) and whose `TimingYourTurnOnly`, if it has it, is satisfied. A right whose filter is `PermanentOnly` names
+from a keyed pick that offers only permanent cards (`engine/outside-pick-permanent`, a new on-disk key). A Wish right still
+names from every card.
+
+### Snapshot, clone, closure
+
+Nothing new is stored. The spent use is the existing `TurnTally.PermissionTypes` entry, which snapshots, clones and restores
+already carry. No snapshot key, no `Card` or `Player` field, no func reachable from `Game`; the closure ratchet does not move.
+
+### Cards
+
+The Holodeck (Full).
