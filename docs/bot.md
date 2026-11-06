@@ -1428,7 +1428,7 @@ bot passes. In combat it
 clears `LeftoverThreshold` with spare mana, as `spareCombatGrant` does for
 a targeted grant. A keyword grant adds nothing to a creature that has the
 keyword, nor a second time while the first is on the stack.
-`TestTeamPumpRowsDeclareTheirPump` holds 20 catalog rows to their words;
+`TestTeamPumpRowsDeclareTheirPump` holds 21 catalog rows to their words;
 Sauron, the Lidless Eye's drain besides, loyalty abilities and
 `survive`/`protect` rows declare none. The arena's `heuristic-noteampumps`
 is today's heuristic with the switch off. Shadowspear's strip declares

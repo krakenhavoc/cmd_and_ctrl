@@ -138,8 +138,8 @@ func TestTeamPumpRowsDeclareTheirPump(t *testing.T) {
 			}
 		}
 	}
-	if found < 20 {
-		t.Errorf("found %d team-pump rows, want at least the 20 #4320 declared", found)
+	if found < 21 {
+		t.Errorf("found %d team-pump rows, want at least the 21 #4320 declared", found)
 	}
 }
 
