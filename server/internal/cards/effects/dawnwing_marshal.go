@@ -21,7 +21,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}: Creatures you control get +1/+1 until end of turn.",
 			Cost:    ManaCost("{4}{W}"),
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Toughness: 1}, Answers: game.AnswerPump},
 			Effect: Do(BoostUntilEOT{
 				Match: And(Creature(), YouControl()), Power: 1, Toughness: 1,
 				Label: "Dawnwing Marshal — creatures you control get +1/+1",
