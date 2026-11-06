@@ -12766,7 +12766,11 @@ ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(c
 
 Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
 that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
-the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
+the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Because the offer is an alternative
+cost, the flash cast can't also take another one (CR 118.9a), which the printed card allows: every "as though it had
+flash if" offer (`FlashForMore`, `FlashIfXAtMost`, `FlashIfTargets`, a `Condition`-gated `AsThoughFlash` offer) ships
+`CompletenessCaveats` with that caveat, and coverage's `TestEveryFlashIfOfferCardDeclaresItsCaveat` holds it (#5207).
+Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
@@ -12839,7 +12843,8 @@ Use the constructor, never `Spec.XCeiling` and never a flat `CastKindAsThoughFla
 cast too (nothing prints that), the second opens instant speed for every X (stronger than printed). The printed cost
 stays sorcery-speed with any X. The ceiling rides `AlternativeCost.XCeiling`, read through
 `game.SpellXCeilingForOfferLocked` by the announce gate, the enumerator, the view (`alternative_costs[].x_max`) and the
-auto-tap preview; `Register` refuses one on a cost with no {X}.
+auto-tap preview; `Register` refuses one on a cost with no {X}. The card still ships `CompletenessCaveats`: the offer is
+an alternative cost, so the flash cast can't take another one (#5207, the flash surcharge section above).
 
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 

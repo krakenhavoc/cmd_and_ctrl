@@ -12,7 +12,7 @@ import (
 
 // flash_if_x_at_most_test.go — #3225: a per-offer X ceiling on an
 // alternative cost, the shape behind "You may cast this spell as though
-// it had flash if X is 3 or less" (Silver Scrutiny, CR 601.3c). The
+// it had flash if X is 3 or less" (Silver Scrutiny, CR 601.3b). The
 // enumerator and the view halves live in internal/legal and
 // internal/protocol; this file is the announce gate and the card.
 
@@ -120,15 +120,15 @@ func TestSilverScrutinyFlashOfferIsBoundedAtSorcerySpeedToo(t *testing.T) {
 	}
 }
 
-// The card is fully implemented now: the flash clause was its only
-// caveat (#3225).
-func TestSilverScrutinyIsFullAndDrawsX(t *testing.T) {
+// The flash clause is the per-offer X ceiling (#3225); its one caveat is
+// that the offer is an alternative cost (#5207).
+func TestSilverScrutinyDeclaresItsOfferCaveatAndDrawsX(t *testing.T) {
 	spec, ok := Lookup(silverScrutinyFlashOracle)
 	if !ok {
 		t.Fatal("Silver Scrutiny is not in the catalog")
 	}
-	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
-		t.Errorf("completeness = %v, caveats = %v; want Full and none", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Errorf("completeness = %v, caveats = %v; want Caveats and one", spec.Completeness, spec.Caveats)
 	}
 
 	g := newCatalogGame(t)

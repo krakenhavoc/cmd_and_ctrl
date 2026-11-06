@@ -26,13 +26,19 @@ import (
 // not stop the other's; then every creature is destroyed, and the
 // indestructible ones survive (CR 702.12b).
 //
-// No simplification.
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the flash is a timing permission, so it could. Declared
+// as the caveat.
 func init() {
 	Register(Spec{
 		OracleID:     "610d9f58-4182-49cb-855c-9b6030e7f714",
 		Name:         "Fated Clash",
-		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Casting this at instant speed while creatures are attacking and blocking can't be combined with another alternative cost.",
+		},
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		AlternativeCosts: []game.AlternativeCost{{
 			Key:           "flash-if-attacking-and-blocking",
 			Label:         "Cast with flash — a creature is attacking and a creature is blocking ({3}{W}{W})",

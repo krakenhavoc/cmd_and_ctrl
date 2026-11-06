@@ -43,7 +43,12 @@ func TestAvatarB30aCardsAreRegistered(t *testing.T) {
 			t.Errorf("%s (%s) is not registered", name, oracle)
 			continue
 		}
-		if spec.Name != name || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		want, caveats := CompletenessFull, 0
+		if oracle == avB30aScarringOracle {
+			// #5207: its flash is an alternative-cost offer.
+			want, caveats = CompletenessCaveats, 1
+		}
+		if spec.Name != name || spec.Completeness != want || len(spec.Caveats) != caveats {
 			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}

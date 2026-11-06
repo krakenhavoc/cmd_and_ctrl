@@ -18,15 +18,21 @@ import (
 // The flash clause is Fated Clash's shape: an offer at the printed cost
 // that opens the instant-speed window for its own claim
 // (AlternativeCost.AsThoughFlash), gated by Condition, read as the cast
-// begins (CR 601.3c). The Company is in the hand then, so it is not the
+// begins (CR 601.3). The Company is in the hand then, so it is not the
 // Human it asks about.
 //
-// No simplification. The Hobbit (#4475).
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the flash is a timing permission, so it could. Declared
+// as the caveat. The Hobbit (#4475).
 func init() {
 	Register(Spec{
 		OracleID:     "5c5bfbb2-0e63-4e43-b441-c4878983288f",
 		Name:         "Bard's Company",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Casting this at instant speed while you control a Human can't be combined with another alternative cost.",
+		},
 		AlternativeCosts: []game.AlternativeCost{{
 			Key:           "flash-if-you-control-a-human",
 			Label:         "Cast with flash — you control a Human ({2}{W}{U})",
