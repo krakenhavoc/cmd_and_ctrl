@@ -2116,7 +2116,7 @@ type AlternativeCostView struct {
 	// XMax is the largest X the viewer may announce while claiming THIS
 	// offer, set only for an offer that carries a ceiling of its own
 	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
-	// less", CR 601.3c) and already folded with the card's printed
+	// less", CR 601.3b) and already folded with the card's printed
 	// `x_max` — the same number CastSpell refuses above. The X picker
 	// reads it for the claimed offer; the card's own `x_max` still
 	// bounds the cast for the printed cost. Absent for every other offer.

@@ -3471,7 +3471,7 @@ export interface AlternativeCostView {
   timing_closed?: boolean;
   // #3225: the largest X the viewer may announce while claiming THIS
   // offer — "you may cast this spell as though it had flash if X is 3
-  // or less" (CR 601.3c) — already folded with the card's printed
+  // or less" (CR 601.3b) — already folded with the card's printed
   // `x_max`. The server refuses a larger X under the claim; the cast for
   // the printed cost is not bound by it. Present only on an offer that
   // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).

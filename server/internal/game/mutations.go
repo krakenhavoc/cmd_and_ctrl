@@ -1076,7 +1076,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// announced (x_ceiling.go). Refused rather than clamped, for the
 	// reason the X lock above is.
 	//
-	// #3225, CR 601.3c: the claimed alternative cost may carry a
+	// #3225, CR 601.3b: the claimed alternative cost may carry a
 	// ceiling of its own ("as though it had flash if X is 3 or less"),
 	// so the question is asked with the offer in hand.
 	if ceiling, ok := g.SpellXCeilingForOfferLocked(playerID, CatalogKey(card), alt); ok && params.XValue > ceiling {

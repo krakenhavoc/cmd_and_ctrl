@@ -112,7 +112,7 @@ func (g *Game) SpellXCeilingForEffect(caster uuid.UUID, key string) (int, bool) 
 // SpellXCeilingLocked does.
 //
 // "You may cast this spell as though it had flash if X is 3 or less"
-// (Silver Scrutiny) is CR 601.3c: the caster begins the cast at instant
+// (Silver Scrutiny) is CR 601.3b: the caster begins the cast at instant
 // speed and the announced X must then satisfy the condition. The
 // condition belongs to the CLAIM, not to the card — the same spell cast
 // for its printed cost at sorcery speed may announce any X — so the

@@ -573,9 +573,10 @@ type AlternativeCost struct {
 	// 3 or less" (Silver Scrutiny, #3225). Zero, the overwhelming
 	// majority, is no ceiling; Register refuses a negative.
 	//
-	// CR 601.3c: an effect that lets a spell be cast as though it had
-	// flash only if a condition holds lets its caster BEGIN to cast it
-	// at instant speed, and the condition is then checked against the
+	// CR 601.3b: an effect that lets a spell with certain qualities be
+	// cast as though it had flash lets its caster BEGIN to cast it at
+	// instant speed when a choice made while casting could give it those
+	// qualities, and the condition is then checked against the
 	// announcement. So the offer is the spell's printed cost with
 	// AsThoughFlash, and this field is the condition: an X above it is
 	// refused under the claim (castSpellLocked), the enumerator never

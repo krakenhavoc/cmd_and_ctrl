@@ -12,7 +12,7 @@ import (
 )
 
 // offer_x_ceiling_test.go — the enumerator half of #3225: a per-offer X
-// ceiling ("as though it had flash if X is 3 or less", CR 601.3c) caps
+// ceiling ("as though it had flash if X is 3 or less", CR 601.3b) caps
 // the X announced under THAT claim and no other. At instant speed only
 // the flash offer is open, so no cast move announces X > 3; in a main
 // phase the printed cost still announces what the mana pays for.
