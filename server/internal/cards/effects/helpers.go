@@ -1709,12 +1709,25 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 // on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
 // "enters with".
 func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 1)
+}
+
+// returnTargetCreatureWithTwoPlusOneCounters is the same OnResolve with
+// "two additional +1/+1 counters on it" (Evil Reawakened).
+func returnTargetCreatureWithTwoPlusOneCounters(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 2)
+}
+
+// returnTargetCreatureWithPlusOneCounters returns the first legal target
+// from the graveyard under the caster's control with n +1/+1 counters as
+// it enters (CR 614.1c).
+func returnTargetCreatureWithPlusOneCounters(ctx *Context, n int) error {
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
 		return nil
 	}
 	_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(ts[0].ID, ctx.Controller(), false,
-		map[string]int{game.CounterPlusOne: 1})
+		map[string]int{game.CounterPlusOne: n})
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil // CR 400.7: it left the graveyard in response
 	}

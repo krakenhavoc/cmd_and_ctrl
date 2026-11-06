@@ -340,6 +340,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,
+
+	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
+	// +1/+0 on landfall.
+	printedChocoboBirdToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
