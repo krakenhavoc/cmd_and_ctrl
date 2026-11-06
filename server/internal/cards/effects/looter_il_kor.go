@@ -12,13 +12,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"shadow"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Source != source.InstanceID || ev.Amount <= 0 {
-					return false
-				}
-				p := g.PlayerByIDForEffect(ev.Target)
-				return p != nil && p.ID != source.Controller
-			}, "Looter il-Kor — draw, then discard", func(g *game.Game, item *game.StackItem) error {
+			WheneverThisDealsDamageToAnOpponent("Looter il-Kor — draw, then discard", func(g *game.Game, item *game.StackItem) error {
 				return b16DrawThenDiscard(g, item, 1)
 			}),
 		},
