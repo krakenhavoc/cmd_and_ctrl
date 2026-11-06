@@ -21,12 +21,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1},
 		Targets:      TargetPermanent("target nonland permanent", Nonland()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return BounceToHand{Target: id, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
-		},
+		OnResolve:    bounceTargetThenDrawACard,
 	})
+}
+
+// bounceTargetThenDrawACard is "Return target nonland permanent to its
+// owner's hand. Draw a card." (Leave in the Dust, Eject): the draw is the
+// bounce's continuation, and an illegal target leaves nothing to do.
+func bounceTargetThenDrawACard(_ *game.StackItem, ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return BounceToHand{Target: id, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }
