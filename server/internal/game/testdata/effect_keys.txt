@@ -309,6 +309,7 @@ body time-to-feed/gain-three-life
 body tolarian-kraken/tap-or-untap
 body transformers/convert-this
 body treasure/create-tapped
+body ty-lee-artful-acrobat/cant-block
 body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undying/return
@@ -1267,6 +1268,7 @@ payunless pay-unless/the-thing-double-counters
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trudge-garden-fungus-beast
+payunless pay-unless/ty-lee-artful-acrobat
 payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
