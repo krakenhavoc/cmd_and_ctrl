@@ -26,7 +26,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return MayForage(NewContext(g, item), "Corpseberry Cultivator — forage?", mayForageNothingMore)
 				}),
-			WheneverYouForage("Corpseberry Cultivator — put a +1/+1 counter on this creature", plusOneCountersOnThis(1)),
+			WheneverYouForage("Corpseberry Cultivator — put a +1/+1 counter on this creature", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

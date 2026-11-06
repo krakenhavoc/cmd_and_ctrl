@@ -4525,7 +4525,7 @@ writes it with its own either/or, marked as a forage
 Cost: Plus(ManaCost("{2}"), Forage()),          // Camellia: "{2}, Forage:"
 AdditionalCost: ForageOrPay("{B}"),               // Feed the Cycle: "forage or pay {B}"
 MayForage(ctx, question, mayPayDrawACard)         // Treetop Sentries: "you may forage. If you do, draw a card"
-WheneverYouForage(label, plusOneCountersOnThis(1)) // Corpseberry Cultivator
+WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // Corpseberry Cultivator
 ```
 
 - `Forage()` is an `OrCost` over `game.ForageAbilityBranches` (branch 0
