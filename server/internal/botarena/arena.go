@@ -248,6 +248,14 @@ const VariantCantBlock = "cantblock"
 // CantBlockContestant is an arena name only.
 const CantBlockContestant = string(tiers.Heuristic) + "-" + VariantCantBlock
 
+// VariantNoHasteTap disables only #4324's price of haste by the {T}
+// ability it unlocks (Config.PriceHasteTapRows false), seated as
+// `heuristic-nohastetap` (#4981).
+const VariantNoHasteTap = "nohastetap"
+
+// NoHasteTapContestant is an arena name only.
+const NoHasteTapContestant = string(tiers.Heuristic) + "-" + VariantNoHasteTap
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
 // `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
@@ -262,6 +270,7 @@ const CantBlockContestant = string(tiers.Heuristic) + "-" + VariantCantBlock
 // `heuristic-xpumps` (#4976) is one too.
 // `heuristic-noteampumps` (#4320) is one too.
 // `heuristic-cantblock` (#4977) is one too.
+// `heuristic-nohastetap` (#4981) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case TriggerManaContestant:
@@ -308,6 +317,8 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTeamPumps}, nil
 	case NoResolutionManaContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoResolutionMana}, nil
+	case NoHasteTapContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoHasteTap}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
@@ -512,6 +523,8 @@ func knownVariant(v string) bool {
 	case VariantXPumps:
 		return true
 	case VariantCantBlock:
+		return true
+	case VariantNoHasteTap:
 		return true
 	}
 	return false
@@ -1042,6 +1055,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PriceCantBlock = true
 		opt.Heuristic = &h
+	case VariantNoHasteTap:
+		h := heuristic.DefaultConfig()
+		h.PriceHasteTapRows = false
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -1083,6 +1100,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return XPumpsBattleDeck(uuid.Nil), nil
 	case CantBlockDeckID:
 		return CantBlockBattleDeck(uuid.Nil), nil
+	case HasteDeckID:
+		return HasteBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }
