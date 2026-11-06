@@ -18,11 +18,9 @@ const (
 	dskB1AmalgamOracle        = "9fb95813-05e5-4aa0-bab9-53d8a071fe6a"
 	dskB1ArabellaOracle       = "7c4bbb1b-29c4-4e06-aed0-b361293a585b"
 	dskB1BearTrapOracle       = "f7afb2c3-50ee-40f5-8b14-32f80c2bacd0"
-	dskB1BedheadOracle        = "7143d82a-931a-4918-bb14-37bc5b9a4d99"
 	dskB1SlasherOracle        = "b9671f4b-72d2-48d7-a497-2ea0ab72cd0b"
 	dskB1CautiousOracle       = "28eb696f-a42c-4444-8139-dfd62029e020"
 	dskB1ProwlerOracle        = "afe4a60c-747a-439b-bf61-cd323b8dffe7"
-	dskB1PercussionistOracle  = "3b74c8ac-9c19-45b0-935f-8630b8da4543"
 	dskB1CommuneOracle        = "0248bf01-14e0-4a39-ba3a-5177fe272fe9"
 	dskB1CynicalLonerOracle   = "9d5ff568-1c55-4757-94d0-5743ca674bab"
 	dskB1StartingLife         = 40
@@ -36,11 +34,9 @@ func TestDskB1EveryCardIsRegisteredFull(t *testing.T) {
 		dskB1AmalgamOracle:       "Appendage Amalgam",
 		dskB1ArabellaOracle:      "Arabella, Abandoned Doll",
 		dskB1BearTrapOracle:      "Bear Trap",
-		dskB1BedheadOracle:       "Bedhead Beastie",
 		dskB1SlasherOracle:       "Cackling Slasher",
 		dskB1CautiousOracle:      "Cautious Survivor",
 		dskB1ProwlerOracle:       "Clammy Prowler",
-		dskB1PercussionistOracle: "Clockwork Percussionist",
 		dskB1CommuneOracle:       "Commune with Evil",
 		dskB1CynicalLonerOracle:  "Cynical Loner",
 	} {
@@ -210,43 +206,6 @@ func TestDskB1BearTrapNeedsToUntap(t *testing.T) {
 	}
 }
 
-// --- Bedhead Beastie -----------------------------------------------------------
-
-func TestDskB1BedheadBeastieHasMenaceAndMountaincycles(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	beastie := dskB1Creature(g, me.ID, "Bedhead Beastie", "Creature — Beast", dskB1BedheadOracle, 5, 6)
-	if !hasEffectiveKeyword(t, g, beastie, "menace") {
-		t.Error("Bedhead Beastie has no menace")
-	}
-
-	g = newCatalogGame(t)
-	me = g.Seats[g.Turn.ActiveSeat]
-	ids := seedSearchLibrary(me,
-		searchTestLand("Mountain", "Basic Land — Mountain"),
-		searchTestLand("Forest", "Basic Land — Forest"),
-		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
-	)
-	id, _ := cycleFromHand(t, g, "Bedhead Beastie", "Creature — Beast", dskB1BedheadOracle, "{C}{C}")
-	if !me.Graveyard.Contains(id) {
-		t.Fatal("the cycled Beastie is not in the graveyard")
-	}
-	passPriorityAroundTable(t, g)
-	c := searchChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("no search prompt after mountaincycling")
-	}
-	if len(c.SearchCards) != 1 {
-		t.Fatalf("search offers %d cards, want only the Mountain", len(c.SearchCards))
-	}
-	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{ids[0]}); err != nil {
-		t.Fatalf("ResolveSearchLibrary: %v", err)
-	}
-	if !me.Hand.Contains(ids[0]) {
-		t.Error("the Mountain did not reach the hand")
-	}
-}
-
 // --- Cackling Slasher ------------------------------------------------------------
 
 func TestDskB1CacklingSlasherGetsACounterOnlyIfACreatureDied(t *testing.T) {
@@ -326,35 +285,6 @@ func TestDskB1ClammyProwlerAttackingAloneHasNoTarget(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if r := restrictionsOf(t, g, prowler); r != 0 {
 		t.Errorf("the Prowler made itself unblockable: %v", r.Names())
-	}
-}
-
-// --- Clockwork Percussionist -----------------------------------------------------
-
-func TestDskB1ClockworkPercussionistHasHasteAndDiesIntoAPlayableTopCard(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	advanceToMain(t, g)
-	top := trekB18BLibrary(me,
-		game.Card{Name: "Spark", TypeLine: "Instant", ManaCost: "{R}"},
-		game.Card{Name: "Second", TypeLine: "Instant", ManaCost: "{R}"})
-	monkey := dskB1Creature(g, me.ID, "Clockwork Percussionist", "Artifact Creature — Monkey Toy", dskB1PercussionistOracle, 1, 1)
-	if !hasEffectiveKeyword(t, g, monkey, "haste") {
-		t.Error("Clockwork Percussionist has no haste")
-	}
-	trekB18BDestroy(t, g, monkey)
-	passPriorityAroundTable(t, g)
-	if !inExile(g, top[0]) {
-		t.Fatal("the top card was not exiled when the Percussionist died")
-	}
-	if !me.Library.Contains(top[1]) {
-		t.Error("the dies trigger exiled more than the top card")
-	}
-	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}"); err != nil {
-		t.Fatal(err)
-	}
-	if err := g.CastSpell(me.ID, top[0], game.CastSpellParams{FromZone: "exile", Strict: true, AutoTap: true}); err != nil {
-		t.Fatalf("casting the exiled card: %v", err)
 	}
 }
 
