@@ -4609,10 +4609,33 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   number, none included, whose registered set rule is `game.CollectEvidenceMet`.
   Nothing is asked below N. `then` runs after the cards are exiled and only
   when evidence was collected; a "when you do" is a `ReflexiveTrigger` from it
-  (Sample Collector).
+  (Sample Collector). Pass a nil `then` for "you may collect evidence N." with
+  nothing after it (Evidence Examiner, Surveillance Monitor).
+- **Collect evidence X as an effect** ("you may collect evidence X. When you
+  do, …", X chosen as it resolves, CR 107.3f; #5223) is a `CollectEvidenceX`
+  from `RegisterCollectEvidenceX(slug, name, then)`, asked with
+  `.Ask(ctx, question)`: a yes/no (collect evidence 0 is always possible, an
+  empty graveyard included), then any number of graveyard cards
+  (`Game.CollectEvidenceXOptionsForEffect`), then X from 0 to their total
+  mana value (`Game.CollectEvidenceXCeilingForEffect`, not asked when it is
+  0). The gate is `Game.CollectEvidenceXMetForEffect`, `FloorMet` with the
+  floor at X. `then(ctx, x, exiled)` runs once the cards are exiled
+  (Incinerator of the Guilty: a reflexive trigger carrying X in `Params`).
+- **"Whenever you collect evidence"** is `WheneverYouCollectEvidence(label,
+  effect)`, off `game.EventCollectEvidence`: one event per collection, from
+  every form above, collect evidence 0 included. Its `CardIDs` are the exiled
+  cards in the order named and its `Amount` their total mana value. Write a
+  one-sentence payoff with `Do` (Surveillance Monitor's Thopter).
 
-Not built yet: "whenever you collect evidence" (no event is emitted),
-collect evidence X, a mana ability that collects evidence, ward with a
+```go
+WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(CreateToken{Template: ClueToken(), N: 1}))
+var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", "Incinerator of the Guilty",
+	func(ctx *Context, x int, _ []uuid.UUID) error { … })             // "you may collect evidence X. When you do, …"
+```
+
+Not built yet: collect evidence X as a cost whose X is set by the spell's
+targets (Urgent Necropsy: the cast's pickers and the bot settle the costs
+before the targets), a mana ability that collects evidence, ward with a
 collect evidence cost and collect evidence as an alternative cost (the
 roadmap's `collect-evidence` row names the cards).
 

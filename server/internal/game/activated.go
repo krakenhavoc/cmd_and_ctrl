@@ -2508,6 +2508,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		paid.Foraged = true
 		g.noteForageLocked(playerID, cardID)
 	}
+	// #5223, CR 701.59a: and a "Collect evidence N" component, paid with
+	// the exiles above (Forensic Researcher), is a collection that
+	// "whenever you collect evidence" sees.
+	if ab.Cost.ExileCards.IsCollectEvidence() {
+		g.noteCollectEvidenceLocked(playerID, cardID, exiles)
+	}
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()

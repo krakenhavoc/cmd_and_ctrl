@@ -20,6 +20,12 @@ import (
 //
 // "If evidence was collected" is ctx.EvidenceCollected() on a resolving
 // spell and ThisEvidenceCollected on a permanent's own enters trigger.
+//
+// #5223 adds the payoff and the X form: every collection emits
+// game.EventCollectEvidence, which WheneverYouCollectEvidence watches
+// (Evidence Examiner), and "you may collect evidence X. When you do, …" is
+// RegisterCollectEvidenceX (Incinerator of the Guilty), X chosen as it
+// resolves and gated by game.Game.CollectEvidenceXMetForEffect.
 
 // OptionalCollectEvidence is "As an additional cost to cast this spell,
 // you may collect evidence N" (CR 701.59a). The caster who takes the offer
@@ -43,6 +49,16 @@ func OptionalCollectEvidence(n int) game.AdditionalCost {
 // little in the graveyard the ability can't be activated.
 func CollectEvidenceN(n int) game.AbilityCost {
 	return game.AbilityCost{ExileCards: game.CollectEvidenceCost(n, collectEvidenceLabel(n))}
+}
+
+// WheneverYouCollectEvidence is "Whenever you collect evidence, <effect>"
+// (Evidence Examiner, Surveillance Monitor, #5223): one trigger per
+// collection its controller makes, whichever form made it — a spell's
+// optional cost, an ability's cost, or a resolving "you may collect
+// evidence" of any card, collect evidence 0 included — off
+// game.EventCollectEvidence.
+func WheneverYouCollectEvidence(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventCollectEvidence, ByYou, label, effect)
 }
 
 // collectEvidenceLabel is the picker's words for the clause, without the
@@ -162,10 +178,16 @@ type CollectEvidence struct {
 // <then>" under key ("choose-cards/<card>-collect-evidence"; an on-disk
 // identity, ledgered: never renamed, never reused). Call it once, from a
 // package-level var. `then` runs after the cards are exiled and only when
-// evidence was collected; `exiled` is the cards, in the order chosen.
+// evidence was collected; `exiled` is the cards, in the order chosen. A nil
+// `then` is "you may collect evidence N." with nothing after it (Evidence
+// Examiner, Surveillance Monitor): the collection is the point, and
+// "whenever you collect evidence" pays it off.
+//
+// The collection emits game.EventCollectEvidence once the cards are exiled
+// and before `then` runs (#5223).
 func RegisterCollectEvidence(key string, n int, then func(ctx *Context, exiled []uuid.UUID) error) CollectEvidence {
-	if n <= 0 || then == nil {
-		panic(fmt.Sprintf("effects.RegisterCollectEvidence: %q needs N ≥ 1 and a body", key))
+	if n <= 0 {
+		panic(fmt.Sprintf("effects.RegisterCollectEvidence: %q needs N ≥ 1", key))
 	}
 	return CollectEvidence{n: n, pick: askedPickRule(key,
 		func(picked []game.Card) bool { return game.CollectEvidenceMet(picked, n) },
@@ -173,13 +195,29 @@ func RegisterCollectEvidence(key string, n int, then func(ctx *Context, exiled [
 			if len(r.Picked) == 0 {
 				return nil
 			}
-			for _, id := range r.Picked {
-				if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
+			exiled := append([]uuid.UUID(nil), r.Picked...)
+			if err := collectEvidenceWith(ctx, r.Source, exiled); err != nil {
+				return err
 			}
-			return then(ctx, append([]uuid.UUID(nil), r.Picked...))
+			if then == nil {
+				return nil
+			}
+			return then(ctx, exiled)
 		})}
+}
+
+// collectEvidenceWith is the effect form's collection, N's and X's alike:
+// each chosen card is exiled (not a target), and then the collection is
+// announced for "whenever you collect evidence" (game.EventCollectEvidence),
+// with the cards, before the rest of the card runs.
+func collectEvidenceWith(ctx *Context, source uuid.UUID, exiled []uuid.UUID) error {
+	for _, id := range exiled {
+		if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	ctx.Game.NoteCollectEvidenceForEffect(ctx.Controller(), source, exiled)
+	return nil
 }
 
 // Ask is the offer, made as the ability resolves (CR 608.2c). `question` is
@@ -204,4 +242,104 @@ func (ce CollectEvidence) Ask(ctx *Context, question string) error {
 		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
+}
+
+// CollectEvidenceX is "you may collect evidence X. When you do, …" as the
+// EFFECT of a resolving ability, X chosen as it resolves (CR 107.3f, 608.2d;
+// Incinerator of the Guilty, #5223). Hold one only from
+// RegisterCollectEvidenceX.
+//
+// Ask offers the controller, in order:
+//
+//  1. a yes/no: collect evidence at all. Collect evidence 0 is always
+//     possible, an empty graveyard included, so the offer is always made
+//     (and "whenever you collect evidence" triggers on it);
+//  2. one choose_cards prompt over the whole graveyard
+//     (game.CollectEvidenceXOptionsForEffect), any number, none included;
+//  3. X, from 0 to the chosen cards' total mana value
+//     (game.CollectEvidenceXCeilingForEffect), opening on the total; not
+//     asked when the total is 0.
+//
+// Choosing the cards before X is the same set of outcomes the rule allows
+// (any X with cards of total mana value X or greater, CR 701.59a): nothing
+// can happen between the two answers. The cards are exiled once X is
+// chosen, game.EventCollectEvidence is announced, and then the rest of the
+// card runs, told X and the cards. Every prompt is keyed, so a table
+// waiting on any of them is a restore point.
+type CollectEvidenceX struct {
+	may game.ConfirmThen
+}
+
+// RegisterCollectEvidenceX registers "you may collect evidence X. When you
+// do, <then>" for one card. `slug` names its three on-disk keys
+// ("confirm/<slug>-collect-evidence-x", "choose-cards/…" and "number/…",
+// ledgered: never renamed, never reused) and `name` is the card's name for
+// the prompts' headers. Call it once, from a package-level var. `then` runs
+// once the cards are exiled, with X and the cards in the order chosen.
+func RegisterCollectEvidenceX(slug, name string, then func(ctx *Context, x int, exiled []uuid.UUID) error) CollectEvidenceX {
+	if then == nil {
+		panic(fmt.Sprintf("effects.RegisterCollectEvidenceX: %q needs a body", slug))
+	}
+	finish := func(ctx *Context, x int, picked []uuid.UUID) error {
+		if !ctx.Game.CollectEvidenceXMetForEffect(ctx.Controller(), picked, x) {
+			// The cards are no longer all in the graveyard (their owner
+			// left the game while asked): nothing is collected.
+			return nil
+		}
+		if err := collectEvidenceWith(ctx, ctx.Source(), picked); err != nil {
+			return err
+		}
+		return then(ctx, x, picked)
+	}
+	number := NumberThen("number/"+slug+"-collect-evidence-x", func(ctx *Context, r game.NumberAnswer) error {
+		return finish(ctx, r.Number, append([]uuid.UUID(nil), r.Carry...))
+	})
+	pick := askedPick("choose-cards/"+slug+"-collect-evidence-x", func(ctx *Context, r game.CardsChosen) error {
+		if !r.Answered {
+			// The chooser left, or the pick was withdrawn: nothing is
+			// collected.
+			return nil
+		}
+		picked := append([]uuid.UUID(nil), r.Picked...)
+		ceiling, ok := ctx.Game.CollectEvidenceXCeilingForEffect(ctx.Controller(), picked)
+		if !ok {
+			return nil
+		}
+		if ceiling == 0 {
+			return finish(ctx, 0, picked)
+		}
+		return ChooseNumber{
+			Min:      0,
+			Max:      ceiling,
+			Goal:     func(*Context) int { return ceiling },
+			Question: fmt.Sprintf("%s — collect evidence X: choose X, up to %d (the total mana value of the cards you chose)", name, ceiling),
+			Then:     number,
+			Carry:    picked,
+		}.Apply(ctx)
+	})
+	may := MayYes("confirm/"+slug+"-collect-evidence-x", func(ctx *Context, _ game.ConfirmAnswer) error {
+		cards := ctx.Game.CollectEvidenceXOptionsForEffect(ctx.Controller())
+		if len(cards) == 0 {
+			return finish(ctx, 0, nil)
+		}
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:  ctx.Controller(),
+			Source:   ctx.Source(),
+			Question: name + " — collect evidence X: choose the cards to exile from your graveyard (none is X = 0)",
+			Cards:    cards,
+			Min:      0,
+			Max:      len(cards),
+			LiveZone: game.ZoneGraveyard,
+			ThenKey:  pick,
+			Asked:    game.NewAskedItem(ctx.Item),
+		})
+		return nil
+	})
+	return CollectEvidenceX{may: may}
+}
+
+// Ask is the offer, made as the ability resolves (CR 608.2c). `question` is
+// the yes/no's header.
+func (ce CollectEvidenceX) Ask(ctx *Context, question string) error {
+	return MayChoice{Question: question, Then: ce.may}.Apply(ctx)
 }
