@@ -216,6 +216,14 @@ const VariantTriggerMana = "triggermana"
 // TriggerManaContestant is an arena name only.
 const TriggerManaContestant = string(tiers.Heuristic) + "-" + VariantTriggerMana
 
+// VariantXPumps turns on #4976's price of a pump of the announced X
+// (Config.PriceXPumps), which DefaultConfig leaves off: Tyvar's Stand,
+// Hatred and Mishra's Command's +X priced at the move's X.
+const VariantXPumps = "xpumps"
+
+// XPumpsContestant is an arena name only.
+const XPumpsContestant = string(tiers.Heuristic) + "-" + VariantXPumps
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
 // `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
@@ -226,10 +234,13 @@ const TriggerManaContestant = string(tiers.Heuristic) + "-" + VariantTriggerMana
 // `heuristic-sourcecounters` (#5083) is one too.
 // `heuristic-noriders` (#4978) is one too.
 // `heuristic-triggermana` (#4770) is one too.
+// `heuristic-xpumps` (#4976) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case TriggerManaContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantTriggerMana}, nil
+	case XPumpsContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantXPumps}, nil
 	case BaselineContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
 	case RampCurveContestant:
@@ -463,6 +474,8 @@ func knownVariant(v string) bool {
 	case VariantSourceCounters, VariantNoSpareMana:
 		return true
 	case VariantTriggerMana:
+		return true
+	case VariantXPumps:
 		return true
 	}
 	return false
@@ -977,6 +990,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PlanTriggerMana = true
 		opt.Heuristic = &h
+	case VariantXPumps:
+		h := heuristic.DefaultConfig()
+		h.PriceXPumps = true
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -1014,6 +1031,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return ThopterBattleDeck(uuid.Nil), nil
 	case GhastDeckID:
 		return GhastBattleDeck(uuid.Nil), nil
+	case XPumpsDeckID:
+		return XPumpsBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

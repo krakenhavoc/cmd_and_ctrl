@@ -1607,6 +1607,21 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   the bot prices each counter as a point of power and toughness. A
   counter on a target, an X amount, and an any-player row (Feral Hydra)
   declare none; `effects.Register` refuses it off an activated row.
+- **A pump of the announced X** on a target, until end of turn, is
+  `PumpXUntilEOT(slot, keywords...)` for "+X/+X" and
+  `PowerXUntilEOT(slot, keywords...)` for "+X/+0", in place of a
+  no-amount `BenefitUntilEOT`: Tyvar's Stand is
+  `ForTargets(PumpXUntilEOT(0, "hexproof", "indestructible"))`, Hatred
+  `ForTargets(PowerXUntilEOT(0))`
+  ([#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)).
+  They set `TargetPurpose.PumpPowerIsX` and `PumpToughnessIsX`, and
+  under `PriceXPumps` (off by default, [bot.md](bot.md)) the bot reads
+  the move's X. Only for the X announced with the cast or
+  activation, whether paid in mana, life or a counted cost (Martyr of
+  Spores' reveal); an X the text defines ("where X is the number of
+  Elves") keeps `BenefitUntilEOT(slot, 0, 0, ...)`.
+  `TestPumpXDeclarationsMatchThePrintedCard` holds both to the printed
+  words, and `effects.Register` refuses one on a harm.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
