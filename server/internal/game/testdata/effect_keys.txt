@@ -1457,6 +1457,7 @@ run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/liliana-dreadhorde-general-keep
+run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
@@ -2085,6 +2086,7 @@ tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
+tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump

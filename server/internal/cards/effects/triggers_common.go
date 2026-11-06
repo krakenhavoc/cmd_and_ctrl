@@ -1346,3 +1346,11 @@ func ACreatureYouControlWasTurnedFaceUp(ev game.Event, source *game.Card, _ game
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.Controller == source.Controller && c.IsCreature()
 }
+
+// ThisAttackedAlone is "whenever this creature attacks alone" (Intrepid
+// Trufflesnout): the source was declared as an attacker and is the only
+// creature declared as one (CR 506.5), read through game.AttackedAlone as
+// the attack trigger is harvested, after the whole declaration.
+func ThisAttackedAlone(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
+	return ThisAttacked(ev, source, c, g) && game.AttackedAlone(g)
+}

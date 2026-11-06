@@ -344,6 +344,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
 	// +1/+0 on landfall.
 	printedChocoboBirdToken,
+
+	// Into the Fae Court's Faerie: flying, and it can block only
+	// creatures with flying (Wilds of Eldraine, #4471).
+	printedFlyingBlockerFaerieToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
