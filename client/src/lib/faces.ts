@@ -132,6 +132,24 @@ export function needsFacePicker(card: CardView): boolean {
 }
 
 /**
+ * isOmenCard reports whether an adventure-layout card is an omen card
+ * (CR 720) rather than an adventurer card (CR 715). Scryfall lays both
+ * out as `adventure`; the only marker is the Omen spell type (CR 205.3k)
+ * on the second half's type line, which is where the server reads it
+ * too (`adventureSpellHalfHasSubtype`, game/omen.go).
+ */
+export function isOmenCard(card: Pick<CardView, "layout" | "faces">): boolean {
+  if (card.layout !== LAYOUT_ADVENTURE) return false;
+  const typeLine = card.faces?.[1]?.type_line ?? "";
+  const dash = typeLine.indexOf("—");
+  if (dash < 0) return false;
+  return typeLine
+    .slice(dash + 1)
+    .split(/\s+/)
+    .some((w) => w.toLowerCase() === "omen");
+}
+
+/**
  * cardAsFused is a view of `card` as its FUSED cast (CR 702.102b, ADR
  * 0103): both names, both costs, and the server's announce block for
  * the fused cast — the left half's clauses then the right half's. The

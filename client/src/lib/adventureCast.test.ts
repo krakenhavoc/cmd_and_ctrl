@@ -29,10 +29,13 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 // promise. Stubbed here so the render below is about the markup.
 vi.mock("./sounds", () => ({ play: () => {}, arm: () => {}, preload: () => {} }));
 
-import { cardAsFace, needsFacePicker } from "./faces";
+import { cardAsFace, isOmenCard, needsFacePicker } from "./faces";
 import { alternativeCostsOf, begin, isModal, stepsFor, targeting } from "./targeting";
 import type { CardView, ZoneView } from "./protocol";
 import Hand from "./components/board/Hand.svelte";
+import FacePickerModal from "./components/board/FacePickerModal.svelte";
+import DockHarness from "./test/DockHarness.svelte";
+import { L } from "./labels";
 import { render, cleanup } from "./test/render.svelte";
 
 afterEach(() => {
@@ -110,6 +113,52 @@ describe("casting the Adventure half", () => {
     expect(stepsFor("any", giant.legal_targets, giant.clauses, 0)).toEqual([
       { mode: "any", min: 1, max: 1, modeIndex: 0, slot: 0, distinct: false },
     ]);
+  });
+});
+
+// #5191: an omen card (CR 720) is laid out as an adventure, and the
+// face picker named it one. It is known by the Omen spell type on its
+// second half's type line, the same read the server makes.
+function bloomvine(): CardView {
+  return {
+    instance_id: "br1",
+    name: "Bloomvine Regent",
+    owner: "me",
+    controller: "me",
+    scryfall_id: "br",
+    type_line: "Creature — Dragon",
+    mana_cost: "{3}{G}{G}",
+    layout: "adventure",
+    faces: [
+      { name: "Bloomvine Regent", type_line: "Creature — Dragon", mana_cost: "{3}{G}{G}" },
+      { name: "Claim Territory", type_line: "Sorcery — Omen", mana_cost: "{2}{G}" },
+    ],
+  };
+}
+
+// The face picker's source tag: the rule the choice comes from.
+function pickerSource(card: CardView): string | null | undefined {
+  const r = render(
+    DockHarness as never,
+    {
+      component: FacePickerModal,
+      props: { card, onConfirm: () => {}, onCancel: () => {} },
+    } as never,
+  );
+  return r.container.querySelector(".dock-sheet .prompt-src")?.textContent;
+}
+
+describe("the face picker's source tag", () => {
+  it("names an adventurer card an adventure — CR 715.3", () => {
+    expect(isOmenCard(bonecrusher())).toBe(false);
+    expect(pickerSource(bonecrusher())).toBe("adventure · CR 715.3");
+  });
+
+  it("names an omen card an Omen — CR 720.3", () => {
+    expect(isOmenCard(bloomvine())).toBe(true);
+    expect(needsFacePicker(bloomvine())).toBe(true);
+    expect(pickerSource(bloomvine())).toBe(L.facePickerOmen);
+    expect(L.facePickerOmen).toBe("omen · CR 720.3");
   });
 });
 
