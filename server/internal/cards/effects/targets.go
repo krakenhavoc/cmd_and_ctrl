@@ -306,6 +306,22 @@ func WithMorphAbility() CardPredicate {
 	}
 }
 
+// WithWarp — "target exiled card with warp", Blade of the Swarm's
+// clause (#4461): a card that has warp (CR 702.185a), whether or not it
+// was ever cast for its warp cost.
+//
+// Not HasKeyword("warp"): warp is not a token in canonicalKeywords (the
+// deck importer drops it), for morph's reason, so the card's
+// declaration of the warp alternative cost IS the ability and the
+// predicate asks for that. A card with warp that is not in the catalog
+// declares nothing and does not pass; a face-down card answers false,
+// because CatalogKey answers "" for one.
+func WithWarp() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return game.AlternativeCostByKey(game.CatalogKey(c), "warp") != nil
+	}
+}
+
 // FaceDown is the "face-down permanent" clause (CR 708.2): a battlefield
 // permanent that is currently face down. Hauntwoods Shrieker's target
 // (#2590).

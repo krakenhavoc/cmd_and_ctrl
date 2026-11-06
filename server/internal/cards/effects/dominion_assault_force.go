@@ -20,13 +20,7 @@ func init() {
 	etb.Modes = ChooseOne(
 		ModeDoing("Exile target card from a graveyard.",
 			TargetCardInGraveyard("target card from a graveyard"),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return ExileTarget{Target: t.ID}.Apply(ctx)
-			}),
+			ExileTheModesTarget),
 		ModeDoing("Surveil 1.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return Surveil{Player: item.Controller, N: 1}.Apply(ctx)
 		}),

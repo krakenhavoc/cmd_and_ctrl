@@ -345,6 +345,7 @@ choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
+choose choose-cards/alpharael-discard-two-unless-artifact
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/archon-of-cruelty-payout
@@ -972,6 +973,7 @@ drawinstead ormos-archive-keeper
 drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
+drawthen alpharael-discard-two-unless-artifact
 drawthen brainstorm-put-back
 drawthen brainsurge-put-back
 drawthen development-after-draw
