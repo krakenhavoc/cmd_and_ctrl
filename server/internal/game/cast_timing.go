@@ -319,7 +319,7 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 			// #1852: a one-use "the next <kind> spell you cast can be
 			// cast as though it had flash" promise. Spent by the cast it
 			// permits (spendNextSpellPromisesLocked), never here.
-			if st.NextSpell.Flash && g.livePromise(st) && st.NextSpell.Filter.Matches(card) {
+			if st.NextSpell.Flash && g.livePromise(st) && st.NextSpell.Matches(card) {
 				v.Flash = true
 			}
 			if st.Timing.Timing == TimingNormal {

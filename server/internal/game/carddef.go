@@ -282,6 +282,11 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// TurnFaceUpRestrictions are the "can't be turned face up" statics
+	// this PERMANENT imposes (#5241, turn_face_up_gate.go): Karlov
+	// Watchdog. Read from the battlefield through CatalogAbilityKey,
+	// like LandPlayRestrictions.
+	TurnFaceUpRestrictions []TurnFaceUpRestriction
 	// IgnorableEffect says this PERMANENT's static ability may be
 	// ignored by the player it bears on, by sacrificing a permanent
 	// (CR 116.2d, #1986, ignore_effect.go): Damping Engine. The
@@ -962,6 +967,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogTurnFaceUpRestrictions = func(key string) []TurnFaceUpRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.TurnFaceUpRestrictions
 		}
 		return nil
 	}

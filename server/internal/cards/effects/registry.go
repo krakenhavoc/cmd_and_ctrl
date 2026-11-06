@@ -453,6 +453,9 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	for _, r := range spec.TurnFaceUpRestrictions {
+		checkRestriction(spec.Name, "turn-face-up", r.Label, r.Forbids == nil)
+	}
 	// CR 116.2d (#1986): an ignorable effect and the restrictions that
 	// are it come together or not at all.
 	checkIgnorableEffect(spec)

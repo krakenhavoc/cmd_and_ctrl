@@ -288,6 +288,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CastConditionLabel:                         spec.CastConditionLabel,
 		CastRestrictions:                           spec.CastRestrictions,
 		LandPlayRestrictions:                       spec.LandPlayRestrictions,
+		TurnFaceUpRestrictions:                     spec.TurnFaceUpRestrictions,
 		IgnorableEffect:                            spec.IgnorableEffect,
 		EntryRestrictions:                          spec.EntryRestrictions,
 		TargetingRestrictions:                      spec.TargetingRestrictions,

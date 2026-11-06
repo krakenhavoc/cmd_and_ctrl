@@ -572,6 +572,15 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// TurnFaceUpRestrictions are the "can't be turned face up" statics
+	// this permanent imposes while it is on the battlefield (#5241):
+	// Karlov Watchdog's "Permanents your opponents control can't be
+	// turned face up during your turn". Read live from the battlefield
+	// through CatalogAbilityKey, like LandPlayRestrictions, by the
+	// turn-face-up special action's window (so the engine, the
+	// enumerator and the view agree) and by game.TurnFaceUpForEffect.
+	TurnFaceUpRestrictions []game.TurnFaceUpRestriction
+
 	// IgnorableEffect declares that the player a static ability bears on
 	// may ignore it until end of turn by sacrificing a permanent (CR
 	// 116.2d, #1986) — Damping Engine's last sentence. The restrictions

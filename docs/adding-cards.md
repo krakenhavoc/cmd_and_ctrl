@@ -13251,6 +13251,44 @@ if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check
 
 Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
 
+### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
+
+Three small pieces around CR 708 face-down permanents and CR 702.168 disguise.
+
+```go
+TurnFaceUpRestrictions: []game.TurnFaceUpRestriction{
+    OpponentsPermanentsCantTurnFaceUpDuringYourTurn("…"),          // Karlov Watchdog
+},
+Do(GrantNextSpellPromise{From: "Goblin Maskmaker", Promise: game.NextSpellPromise{
+    FaceDownOnly: true, Reduce: 1, EveryMatchingSpell: true, Text: "…"}})  // "face-down spells you cast this turn cost {1} less"
+g.PermanentEnteredFaceDownThisTurn(you) || g.TurnedPermanentFaceUpThisTurn(you) // Oblivious Bookworm's "unless"
+```
+
+- **"Can't be turned face up"** is a static of a permanent on the battlefield
+  (`Spec.TurnFaceUpRestrictions`, `game/turn_face_up_gate.go`), read through
+  `CatalogAbilityKey` like a land-play restriction (CR 101.2), so nothing is
+  stored and the source leaving lifts it. The turn-face-up special action's
+  window (`SpecialActionTimingOKLocked`) asks it, so the engine refuses the
+  action before charging, the enumerator does not offer it and the view greys
+  the row. `TurnFaceUpForEffect` asks it too, and a card that offers a choice
+  to turn something face up asks `g.TurnFaceUpForbiddenForEffect(c)` first
+  (`canTurnFaceUpByEffect` already does). A `Forbids` with a shape the
+  constructor does not cover is a literal over `game.TurnFaceUpQuery`
+  (the game, the face-down permanent, the source).
+- **A face-down spell** is a promise with `FaceDownOnly`. A face-down cast is
+  stamped a CR 708.2 object before it is priced (CR 708.4), so the promise sees
+  the 2/2 and not the card. Read a promise through `NextSpellPromise.Matches`,
+  never its `Filter` alone.
+- **The turn tally** counts, per player, the permanents that entered face down
+  under their control (`PermanentsEnteredFaceDown`: a face-down spell resolving,
+  a manifest, a cloak; not a permanent turned face down where it was) and the
+  permanents they turned face up (`PermanentsTurnedFaceUp`, the Actor of
+  `EventTurnedFaceUp`, by the special action or by their effect).
+- **Disguise {X} is not built.** CR 107.3d has the player choose X just before
+  paying a special action's cost, and a special action carries no X (not in
+  `SpecialActionParams`, the enumerator or the client's row), so Aurelia's
+  Vindicator is left out.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

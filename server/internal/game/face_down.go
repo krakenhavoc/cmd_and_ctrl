@@ -736,7 +736,8 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 		return false
 	}
 	idx := findCardOnBattlefield(g, id)
-	if idx < 0 || !CanTurnFaceUpForEffect(g.Battlefield.Cards[idx]) {
+	if idx < 0 || !CanTurnFaceUpForEffect(g.Battlefield.Cards[idx]) ||
+		g.turnFaceUpForbiddenLocked(&g.Battlefield.Cards[idx]) { // #5241, CR 101.2
 		return false
 	}
 	if source == uuid.Nil {
