@@ -755,6 +755,11 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	}, func(t targetRef) *protocol.TargetPurposeView {
 		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue, p.cfg.PriceXPumps), len(cp.TeamworkIDs))
 	}, card, card)
+	// #4977: an "up to" can't-block cast that names no creature is
+	// priced by its purpose (cant_block.go), not the mana-value proxy.
+	if !targetsPriced && len(targets) == 0 && p.declaresCantBlock(castEntryFor(card, cp, targetRef{})) {
+		targetsPriced = true
+	}
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).
 	if p.isBestowCast(cp) {

@@ -3102,3 +3102,39 @@ None. No curated or synthetic arena deck holds Soulbright Seeker, and the declar
 - The colours of the cards the mana would pay for: a run toward a card whose other colours the bot's lands cannot make is priced as though they could.
 - A run the turn plan (ADR 0136) would weigh as a member: the plan ranks casts, and the run is a single move it is compared against.
 - The other "the nth time this ability has resolved this turn" cards in the catalog (Elrond, Lord of Rivendell; Belladonna Took; Victor, Valgavoth's Seneschal; Sephiroth, Fabled SOLDIER, among others): what their numbered resolution does is not mana, and Soulbright Seeker is the only one whose is.
+
+## Amendment 2026-11-05 (#4977): "can't block" priced by the attack it opens
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceCantBlock`, off in `DefaultConfig()` (it lost in the arena) and in `BaselineConfig()`; the arena's `heuristic-cantblock` is `DefaultConfig()` with it on. The declarations ship either way.
+**Issue:** [#4977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4977), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** the amendments of 2026-10-24 (a change until end of turn, priced by whose permanent it is; spells and evasion before attacks).
+
+### The problem
+
+A harm until end of turn that prints no amount declared only its direction, `HarmUntilEOT(0, 0, 0)`, and `temporary_effect.go` priced such a pick of an opponent's permanent as removal. Fifteen declarations had that shape, and four of them were "can't block this turn", not -X/-X: Daring Discovery ("up to three target creatures can't block this turn"), Untimely Malfunction's third mode ("one or two target creatures"), Fifty Feet of Rope's Climb Over row and Duel Tactics. Each pick kept the full removal price, so Daring Discovery at three creatures was three removal spells (22.08 for three 4/4s in `TestDaringDiscoveryIsWorthTheAttacksItOpens`, against 3.90 for the attack it really opens), cast as soon as it could be, at whatever was biggest, whether or not the bot could attack.
+
+### Decision
+
+1. **"Can't block" is declared.** `Pump.CantBlock` (`cant_block` on a target entry's `pump`), built by `effects.CantBlockUntilEOT(slot, power, toughness)`, on the four cards above. `effects.Register` refuses it on a benefit and on a row's pump of its own source. The two direction audits require it wherever a harm's words say "can't block" and refuse it where they do not, and `TestCantBlockDeclarationsMatchTheirText` reads every declared harm (Duel Tactics' "It can't block this turn." is a sentence of its own, which their pattern does not reach). `TestNoAmountHarmsSplitByTheirText` pins the fifteen: the four declare `CantBlock` and nothing else, and the -X/-X ten (Tragic Slip, Tragic Trajectory, Chill Haunting, Defile, Grim Hireling, Infused Arrows, Battle at the Bridge, Call for Blood, Necrotic Wound, Olivia's Midnight Ambush; Flourishing Grapple's "loses all abilities" is the fifteenth and is untouched) keep the bare direction and the removal price.
+2. **Priced by the attack it opens** (`PriceCantBlock`, `aiseat/heuristic/cant_block.go`). A move's can't-block picks of opponents' creatures are priced together, once: on the bot's own turn, in its first main phase, beginning of combat or declare attackers step, the best opponent's `swingAt` with those creatures unable to block less the same swing with them able, plus `LethalBonus` when they turn the all-in swing (`lethalPushAs`) into a kill. `swingAt` is the bot's attack at that seat one creature at a time: the attackers already declared, then, before attackers are declared, each creature that could still attack, biggest first, while `attackValue` says it is worth sending. After blockers are declared a "can't block" changes nothing (CR 509.1b: restrictions are checked as blockers are declared), and on another seat's turn the bot is not attacking: there it is worth nothing. One blocker of three opens nothing while the other two still block at a loss; all three open the attack.
+3. **The rest is unchanged.** A pick whose declared shrink kills is still removal, a pick of the bot's own creature is still the harm on its own side (`hostWorth`), and Duel Tactics' 1 damage is priced as declared damage before its restriction is. A cast of Daring Discovery that names none of its "up to three" is priced by its purpose (the discover), not by the mana-value proxy, which would otherwise outbid the same cast at the blockers. With the switch off a can't-block pick is removal, as before.
+
+### Measurements
+
+The base is `develop` at `ee606a09`. No curated deck holds a can't-block card, so every run used the synthetic `--decks cantblock-battle` (BattleDeck with four Daring Discovery and four Untimely Malfunction in place of six Bears and two Ogres) at four seats, `--rotate --lockstep`. No game stalled.
+
+| run | price on | price off |
+|---|---|---|
+| `--games 16 --seed 1000`, all four seats on one policy: Daring Discovery taken / offered | 46 / 166 | 61 / 63 |
+| the same, Untimely Malfunction taken / offered | 68 / 2,057 | 79 / 194 |
+| the same, own turns ending with mana stranded | 8.9% | 1.8% |
+| `--games 48 --seed 2000`, two seats of each: wins / 96 seat-games | 19, 19.8% (13.1–28.9%) | 29, 30.2% (21.9–40.0%) |
+| the same, Daring Discovery cast at 0 / 1 / 2 / 3 creatures | 11 / 73 / 0 / 0 | 0 / 22 / 43 / 4 |
+
+The intervals overlap, so the loss is a direction, not a result; the switch ships off. The removal price casts Daring Discovery in the first main phase it can, at the biggest creatures the enumerator offers; the attack price waits for a board where its picks open a swing and then mostly finds one creature whose absence lets an attacker through, and it holds Untimely Malfunction in hand. The position tests and the whole-engine test (`aiseat/cant_block_bot_test.go`) are the evidence for the price itself. `docs/bot-testing.md` has the runs.
+
+### Not priced
+
+- A "can't block" on a triggered row (Clamor Shaman, Plasma Jockey, Hawkeye, Zog, Triceraton Castaway) or on a modal activated row's bullet (Lost Jitte): those are not declared, as nothing prices a triggered row by its target entry.
+- "Can't block" that makes a blocker unavailable for a later opponent's attack in the same turn, and a "can't block" on the bot's own creature on its own turn, which costs nothing but is still priced as a harm on its own side.
+- The enumerator's target-set budget: `legal.MaxExpansionPerSource` (12) sets per spell, biggest creatures first, so on a crowded board "up to three" is offered as one or two picks and the pair or trio that opens the attack may not be on the list.

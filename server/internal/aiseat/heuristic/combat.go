@@ -742,6 +742,10 @@ func couldBlock(st *state, defender string, atk, blk *protocol.CardView) bool {
 	if hasRestriction(blk, "cant_block") || hasRestriction(atk, "cant_be_blocked") {
 		return false
 	}
+	if st != nil && blk != nil && st.noBlock[blk.InstanceID] {
+		// #4977: priced as though a "can't block" had resolved.
+		return false
+	}
 	if landwalkBites(st, defender, atk) {
 		return false
 	}
