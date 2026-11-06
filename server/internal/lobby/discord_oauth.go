@@ -122,7 +122,8 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Linked Roles (ADR 0163 §3): its own branch, before the sign-up
 	// gate and before anything a sign-in writes. It mints no session.
 	if entry.RoleConnection {
-		return finishRoleConnection(c, w, r, entry, code)
+		finishRoleConnection(c, w, r, entry, code)
+		return nil
 	}
 
 	// A link round-trip only finishes in the browser that started it:

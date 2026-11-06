@@ -110,43 +110,43 @@ func discordLinkedRole(c Config, w http.ResponseWriter, r *http.Request) error {
 // account, and mints no session for one who does: linking is not
 // signing in. Every outcome is a redirect to the client's page; the
 // reason for a failure goes to the log, never to the browser.
-func finishRoleConnection(c Config, w http.ResponseWriter, r *http.Request, entry discord.StateEntry, code string) error {
+func finishRoleConnection(c Config, w http.ResponseWriter, r *http.Request, entry discord.StateEntry, code string) {
 	if c.LinkedRoles == nil {
 		http.Redirect(w, r, linkedRoleUnavailable, http.StatusFound)
-		return nil
+		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), linkedRoleCallTimeout)
 	defer cancel()
 	log := c.logger()
-	failed := func(msg string, err error) error {
+	failed := func(msg string, err error) {
 		log.Warn(msg, "err", err)
 		http.Redirect(w, r, linkedRoleFailed, http.StatusFound)
-		return nil
 	}
 
 	client := c.discordClient()
 	token, err := c.Discord.ExchangeCode(ctx, client, code, entry.CodeVerifier)
 	if err != nil {
-		return failed("linked roles: code exchange failed", err)
+		failed("linked roles: code exchange failed", err)
+		return
 	}
 	user, err := c.Discord.FetchUser(ctx, client, token.AccessToken)
 	if err != nil {
-		return failed("linked roles: reading the Discord user failed", err)
+		failed("linked roles: reading the Discord user failed", err)
+		return
 	}
 	userID, err := c.userStore().UserIDForDiscord(ctx, user.ID)
 	if errors.Is(err, users.ErrNotFound) {
 		// No account: nothing is stored, and the page offers sign-in.
 		http.Redirect(w, r, linkedRoleSignIn, http.StatusFound)
-		return nil
+		return
 	}
 	if err != nil {
-		return failed("linked roles: looking up the account failed", err)
+		failed("linked roles: looking up the account failed", err)
+		return
 	}
 	if err := c.LinkedRoles.Link(ctx, userID, user.ID, token); err != nil {
-		log.Warn("linked roles: linking failed", "user_id", userID, "err", err)
-		http.Redirect(w, r, linkedRoleFailed, http.StatusFound)
-		return nil
+		failed("linked roles: linking failed", err)
+		return
 	}
 	http.Redirect(w, r, linkedRoleLinked, http.StatusFound)
-	return nil
 }

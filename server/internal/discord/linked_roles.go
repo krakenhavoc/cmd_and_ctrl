@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -211,7 +212,7 @@ var ErrLinkedRolesOff = fmt.Errorf("discord: Linked Roles is off — %s=1, %s an
 // ErrRoleConnectionUnauthorized is a 401 on the PUT: the access token
 // was refused, which after a fresh refresh means the person removed the
 // app between the two calls.
-var ErrRoleConnectionUnauthorized = fmt.Errorf("discord: the role-connection access token was refused")
+var ErrRoleConnectionUnauthorized = errors.New("discord: the role-connection access token was refused")
 
 func (lr LinkedRoles) putRoleConnection(ctx context.Context, client *http.Client, accessToken string, body any) error {
 	if lr.AppID == "" {
