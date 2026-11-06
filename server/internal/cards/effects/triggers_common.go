@@ -720,6 +720,12 @@ func WheneverThisDealsCombatDamageToAPlayer(label string, effect Effect) game.Tr
 	return On(game.EventDealDamage, ThisDealtCombatDamageToAPlayer, label, effect)
 }
 
+// WheneverThisDealsDamageToAnOpponent — "Whenever ~ deals damage to an
+// opponent" (Looter il-Kor, Thieving Otter).
+func WheneverThisDealsDamageToAnOpponent(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventDealDamage, ThisDealtDamageToAnOpponent, label, effect)
+}
+
 // AtYourStep — "At the beginning of your <step>" for any step. The
 // upkeep, draw, precombat-main and end-step shapes above use the
 // older per-step event kinds, which fire after that step's turn-based
