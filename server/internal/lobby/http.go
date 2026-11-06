@@ -40,6 +40,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
@@ -262,6 +263,13 @@ type Config struct {
 	// database): everyone follows gamestats.AdvancedDefault and the
 	// writes answer 503.
 	StatsPrefs gamestats.PrefsStore
+
+	// Social is ADR 0213's friends and personal blocks (migration 0032,
+	// slice 3): /me/friends, /me/blocks and /me/social, and the blocks
+	// GET /me/tablemates and the DM invite route apply. Nil (no
+	// database): those routes answer 503, and the Played with list and
+	// the DM route have no friends to add and no blocks to apply.
+	Social *social.Store
 
 	// AdvancedStats reads a person's version-2 stats record (ADR 0217
 	// slice 5) for GET /me/stats/advanced and GET
@@ -836,6 +844,27 @@ func Handler(c Config) http.Handler {
 	// the people the caller has shared a table with. Same caller rule
 	// as the rest of /me/*.
 	mux.Handle("GET /me/tablemates", auth.Middleware(c.Auth)(handlerFunc(c, myTablemates)))
+	// Friends, blocks and the social settings (ADR 0213 slice 3,
+	// friends_http.go). The reads are unlimited like the tablemates
+	// list; every write shares one per-person bucket, a click a second
+	// with a burst of 10, which a person managing their list never
+	// meets. New requests have their own hourly cap in social.Store.
+	socialWrite := newLimiter(1, 10)
+	socialRoute := func(h func(Config, http.ResponseWriter, *http.Request) error) http.Handler {
+		return auth.Middleware(c.Auth)(perCallerLimit(socialWrite, handlerFunc(c, h)))
+	}
+	mux.Handle("GET /me/friends", auth.Middleware(c.Auth)(handlerFunc(c, myFriends)))
+	mux.Handle("POST /me/friends/requests", socialRoute(postFriendRequest))
+	mux.Handle("POST /me/friends/requests/{user_id}/accept", socialRoute(acceptFriendRequest))
+	mux.Handle("POST /me/friends/requests/{user_id}/ignore", socialRoute(ignoreFriendRequest))
+	mux.Handle("DELETE /me/friends/requests/{user_id}", socialRoute(cancelFriendRequest))
+	mux.Handle("DELETE /me/friends/{user_id}", socialRoute(removeFriend))
+	mux.Handle("GET /me/blocks", auth.Middleware(c.Auth)(handlerFunc(c, myBlocks)))
+	mux.Handle("GET /me/blocks/{user_id}", auth.Middleware(c.Auth)(handlerFunc(c, myBlock)))
+	mux.Handle("PUT /me/blocks/{user_id}", socialRoute(putBlock))
+	mux.Handle("DELETE /me/blocks/{user_id}", socialRoute(deleteBlock))
+	mux.Handle("GET /me/social", auth.Middleware(c.Auth)(handlerFunc(c, mySocial)))
+	mux.Handle("PUT /me/social", socialRoute(putMySocial))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
 	// Renewal on use and the saved identity's reinstall (ADR 0110 §1
 	// items 5 and 6, session_renew.go). A signed-in person only; the

@@ -81,6 +81,15 @@
       source: "migration 0030 stats_prefs; lobby/stats_prefs.go, lobby/stats_share.go",
     },
     {
+      // ADR 0213 §10, slice 3: social/social.go, lobby/friends_http.go.
+      what: "Friends and blocks",
+      details: `Your friends (at most ${F.friendCap}) and when each of you became friends; the friend requests you sent and were sent, with when, and whether you chose Ignore on one (the sender is not told); the people you blocked; and your two settings: who can send you friend requests (people you’ve played with, or nobody) and who can see what you’re doing on CMD & CTRL (your friends, your friends and people you’ve played with, or nobody). A request carries no message. Your friends see you in their friends list, and the person you sent a request to sees it. A block is never shown to the person you blocked: it ends any friendship and request between you, and keeps each of you out of the other’s lists, requests and invites. The server also counts, in memory only, how many requests you sent in the last hour.`,
+      why: "So you can keep a list of the people you play with, answer their requests, and keep away anyone you don’t want to hear from.",
+      howLong: `A friendship until either of you removes it. A request until it is answered or cancelled, or ${F.friendRequestDays} days. A block until you lift it. Your settings until you change them. Deleting your account deletes all of it, on both sides: you leave other people’s friends lists, and their blocks of you go too.`,
+      source:
+        "migration 0032 friendships, friend_requests, user_blocks, social_prefs; social/social.go RequestTTL, MaxFriends",
+    },
+    {
       what: "Your own model key for AI opponents",
       details:
         "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",
@@ -199,7 +208,7 @@
       // /me/tablemates), the header's Played with drawer. Nothing is
       // stored for it: it is read from the seats of the games themselves.
       who: "People you’ve played with",
-      what: "Your display name and avatar appear in the Played with list of each signed-in person you have shared a table with, with the name of your latest table together and how many you have shared. They can have the bot send you a table’s invite link as a Discord direct message. Deleting your account removes you from these lists.",
+      what: "Your display name and avatar appear in the Played with list of each signed-in person you have shared a table with, with the name of your latest table together and how many you have shared. They can have the bot send you a table’s invite link as a Discord direct message, and so can your friends. Someone you blocked, or who blocked you, is left out of these lists both ways. Deleting your account removes you from these lists.",
     },
     {
       // ADR 0217 §6 and §9, slice 6: lobby/stats_share.go,

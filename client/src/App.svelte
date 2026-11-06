@@ -16,6 +16,7 @@
   import Join from "./routes/Join.svelte";
   import Reclaim from "./routes/Reclaim.svelte";
   import Stats from "./routes/Stats.svelte";
+  import Friends from "./routes/Friends.svelte";
   import SharedStats from "./routes/SharedStats.svelte";
   import StatsDeck from "./routes/StatsDeck.svelte";
   import Privacy from "./routes/Privacy.svelte";
@@ -200,6 +201,8 @@
   <Lobby />
 {:else if $route.name === "stats"}
   <Stats />
+{:else if $route.name === "friends"}
+  <Friends />
 {:else if $route.name === "statsShared"}
   <SharedStats token={$route.token} />
 {:else if $route.name === "statsDeck"}

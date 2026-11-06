@@ -358,6 +358,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -379,6 +382,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -1093,6 +1099,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -1114,6 +1123,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -1872,6 +1884,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -1893,6 +1908,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -2654,6 +2672,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -2675,6 +2696,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -3498,6 +3522,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -3519,6 +3546,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -4297,6 +4327,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -4318,6 +4351,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -5054,6 +5090,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -5075,6 +5114,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -5904,6 +5946,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -5925,6 +5970,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -6627,6 +6675,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -6648,6 +6699,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -7444,6 +7498,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -7465,6 +7522,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -8278,6 +8338,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -8299,6 +8362,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -9061,6 +9127,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -9082,6 +9151,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -9846,6 +9918,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -9867,6 +9942,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -10547,6 +10625,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -10568,6 +10649,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -11283,6 +11367,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -11304,6 +11391,9 @@
                         ]
                       }
                     }
+                  ],
+                  "answers": [
+                    "protect"
                   ]
                 }
               }
@@ -18045,5 +18135,1760 @@
     ],
     "verdict": "pass",
     "why": "nothing the seat holds matches, and beginning of combat is not a default stop; a player who ticks it still stops there"
+  },
+  {
+    "name": "targeted_protect_row_opponent_murder_on_your_creature",
+    "note": "an opponent's Murder aimed at yours creature; the seat holds Mother of Runes, a targeted row that declares protect",
+    "viewer": "000001e8-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001e9-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001ea-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001ea-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001ea-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001ea-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001ea-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001eb-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001ea-0000-4000-8000-000000000000",
+                "controller": "000001ea-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001ec-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001ec-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001ec-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001ec-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001ec-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ed-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001ec-0000-4000-8000-000000000000",
+                "controller": "000001ec-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001ee-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001ee-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001ee-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001ee-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001ee-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ef-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001ee-0000-4000-8000-000000000000",
+                "controller": "000001ee-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001e8-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "000001f0-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001e8-0000-4000-8000-000000000000",
+                "controller": "000001e8-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001f1-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001e8-0000-4000-8000-000000000000",
+                "controller": "000001e8-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "000001f2-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001e8-0000-4000-8000-000000000000",
+                "controller": "000001e8-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001f3-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001e8-0000-4000-8000-000000000000",
+                "controller": "000001e8-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "000001f4-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "controller": "000001e8-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001f5-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001ee-0000-4000-8000-000000000000",
+            "controller": "000001ee-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "000001f6-0000-4000-8000-000000000000",
+            "name": "Mother of Runes",
+            "owner": "000001e8-0000-4000-8000-000000000000",
+            "controller": "000001e8-0000-4000-8000-000000000000",
+            "type_line": "Creature — Human Cleric",
+            "colors": [
+              "W"
+            ],
+            "power": 1,
+            "toughness": 1,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "auto": true,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "ref": "own:0",
+                "tap_cost": true,
+                "target_mode": "creature",
+                "legal_targets": {
+                  "cards": [
+                    "000001f4-0000-4000-8000-000000000000",
+                    "000001f6-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ],
+            "mana_cost": "{W}",
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "000001f7-0000-4000-8000-000000000000",
+            "name": "Murder",
+            "owner": "000001ea-0000-4000-8000-000000000000",
+            "controller": "000001ea-0000-4000-8000-000000000000",
+            "type_line": "Instant",
+            "colors": [
+              "B"
+            ],
+            "known_by_you": true,
+            "auto": true,
+            "target_mode": "creature",
+            "mana_cost": "{1}{B}{B}",
+            "purpose": {
+              "answers": [
+                "remove"
+              ]
+            }
+          }
+        ]
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "next_seat": 1,
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "stack_items": [
+        {
+          "id": "000001f7-0000-4000-8000-000000000000",
+          "kind": "spell",
+          "controller": "000001ea-0000-4000-8000-000000000000",
+          "owner": "000001ea-0000-4000-8000-000000000000",
+          "source_card_id": "000001f7-0000-4000-8000-000000000000",
+          "label": "Murder",
+          "targets": [
+            {
+              "kind": "card",
+              "id": "000001f4-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      ],
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001e8-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001e8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001f6-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "000001f4-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Seat Bear",
+          "source": "000001f6-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001e8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "000001f6-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "000001f6-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Mother of Runes",
+          "source": "000001f6-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": true
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "000001f6-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 2,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "000001f6-0000-4000-8000-000000000000",
+        "name": "Mother of Runes",
+        "kind": "activate",
+        "answers_now": true,
+        "why": "an opponent's spell targets a creature of the seat's, which protection from a color answers"
+      }
+    ],
+    "verdict": "stop",
+    "why": "a matched answer to an opponent's item is a response (rule 6)"
+  },
+  {
+    "name": "targeted_protect_row_opponent_murder_on_other_creature",
+    "note": "an opponent's Murder aimed at another player's creature; the seat holds Mother of Runes, a targeted row that declares protect",
+    "viewer": "000001f8-0000-4000-8000-000000000000",
+    "view": {
+      "id": "000001f9-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "000001fa-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001fa-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001fa-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001fa-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001fa-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001fb-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "000001fa-0000-4000-8000-000000000000",
+                "controller": "000001fa-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001fc-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001fc-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001fc-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001fc-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001fc-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001fd-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "000001fc-0000-4000-8000-000000000000",
+                "controller": "000001fc-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001fe-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001fe-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001fe-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001fe-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001fe-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "000001ff-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "000001fe-0000-4000-8000-000000000000",
+                "controller": "000001fe-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "000001f8-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000200-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001f8-0000-4000-8000-000000000000",
+                "controller": "000001f8-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000201-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001f8-0000-4000-8000-000000000000",
+                "controller": "000001f8-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000202-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "000001f8-0000-4000-8000-000000000000",
+                "controller": "000001f8-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000203-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "000001f8-0000-4000-8000-000000000000",
+                "controller": "000001f8-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "00000204-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "controller": "000001f8-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "00000205-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "000001fe-0000-4000-8000-000000000000",
+            "controller": "000001fe-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "00000206-0000-4000-8000-000000000000",
+            "name": "Mother of Runes",
+            "owner": "000001f8-0000-4000-8000-000000000000",
+            "controller": "000001f8-0000-4000-8000-000000000000",
+            "type_line": "Creature — Human Cleric",
+            "colors": [
+              "W"
+            ],
+            "power": 1,
+            "toughness": 1,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "auto": true,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "ref": "own:0",
+                "tap_cost": true,
+                "target_mode": "creature",
+                "legal_targets": {
+                  "cards": [
+                    "00000204-0000-4000-8000-000000000000",
+                    "00000206-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ],
+            "mana_cost": "{W}",
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 1,
+        "cards": [
+          {
+            "instance_id": "00000207-0000-4000-8000-000000000000",
+            "name": "Murder",
+            "owner": "000001fa-0000-4000-8000-000000000000",
+            "controller": "000001fa-0000-4000-8000-000000000000",
+            "type_line": "Instant",
+            "colors": [
+              "B"
+            ],
+            "known_by_you": true,
+            "auto": true,
+            "target_mode": "creature",
+            "mana_cost": "{1}{B}{B}",
+            "purpose": {
+              "answers": [
+                "remove"
+              ]
+            }
+          }
+        ]
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "precombat_main",
+        "step": "precombat_main",
+        "next_seat": 1,
+        "phase_id": 2,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "begin_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_attackers",
+            "phase_id": 3
+          },
+          {
+            "step": "declare_blockers",
+            "phase_id": 3
+          },
+          {
+            "step": "first_strike_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "combat_damage",
+            "phase_id": 3
+          },
+          {
+            "step": "end_combat",
+            "phase_id": 3
+          },
+          {
+            "step": "postcombat_main",
+            "phase_id": 4
+          },
+          {
+            "step": "end",
+            "phase_id": 5
+          },
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "stack_items": [
+        {
+          "id": "00000207-0000-4000-8000-000000000000",
+          "kind": "spell",
+          "controller": "000001fa-0000-4000-8000-000000000000",
+          "owner": "000001fa-0000-4000-8000-000000000000",
+          "source_card_id": "00000207-0000-4000-8000-000000000000",
+          "label": "Murder",
+          "targets": [
+            {
+              "kind": "card",
+              "id": "00000205-0000-4000-8000-000000000000"
+            }
+          ]
+        }
+      ],
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "000001f8-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001f8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000206-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000204-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Seat Bear",
+          "source": "00000206-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": false
+        },
+        {
+          "type": "activate_ability",
+          "player": "000001f8-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000206-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000206-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Mother of Runes",
+          "source": "00000206-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": false
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000206-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 2,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "00000206-0000-4000-8000-000000000000",
+        "name": "Mother of Runes",
+        "kind": "activate",
+        "answers_now": false,
+        "why": "the stack threatens nothing of the seat's"
+      }
+    ],
+    "verdict": "pass",
+    "why": "nothing the seat holds answers the opponent's item; before slice 7 Mother of Runes' has_targets stopped here"
+  },
+  {
+    "name": "targeted_protect_row_empty_opponent_end_step",
+    "note": "an opponent's end step, the stack empty; the seat holds Mother of Runes, a targeted row that declares protect",
+    "viewer": "00000208-0000-4000-8000-000000000000",
+    "view": {
+      "id": "00000209-0000-4000-8000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "0000020a-0000-4000-8000-000000000000",
+          "name": "krakenhavoc",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000020a-0000-4000-8000-000000000000",
+            "count": 2,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000020a-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000020a-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000020a-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000020b-0000-4000-8000-000000000000",
+                "name": "krakenhavoc's commander",
+                "owner": "0000020a-0000-4000-8000-000000000000",
+                "controller": "0000020a-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "0000020c-0000-4000-8000-000000000000",
+          "name": "Slysloth",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000020c-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000020c-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000020c-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000020c-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000020d-0000-4000-8000-000000000000",
+                "name": "Slysloth's commander",
+                "owner": "0000020c-0000-4000-8000-000000000000",
+                "controller": "0000020c-0000-4000-8000-000000000000",
+                "is_commander": true,
+                "known_by_you": true
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "0000020e-0000-4000-8000-000000000000",
+          "name": "Bot 1",
+          "seat": 2,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "0000020e-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": []
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "0000020e-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "0000020e-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "0000020e-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "0000020f-0000-4000-8000-000000000000",
+                "name": "Goreclaw, Terror of Qal Sisma",
+                "owner": "0000020e-0000-4000-8000-000000000000",
+                "controller": "0000020e-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Bear",
+                "colors": [
+                  "G"
+                ],
+                "power": 4,
+                "toughness": 3,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "mana_cost": "{3}{G}"
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000208-0000-4000-8000-000000000000",
+          "name": "Claude",
+          "seat": 3,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "count": 3,
+            "cards": [
+              {
+                "instance_id": "00000210-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000208-0000-4000-8000-000000000000",
+                "controller": "00000208-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000211-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000208-0000-4000-8000-000000000000",
+                "controller": "00000208-0000-4000-8000-000000000000"
+              },
+              {
+                "instance_id": "00000212-0000-4000-8000-000000000000",
+                "name": "",
+                "owner": "00000208-0000-4000-8000-000000000000",
+                "controller": "00000208-0000-4000-8000-000000000000"
+              }
+            ]
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "count": 0,
+            "cards": []
+          },
+          "command": {
+            "kind": "command",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "00000213-0000-4000-8000-000000000000",
+                "name": "Adeline, Resplendent Cathar",
+                "owner": "00000208-0000-4000-8000-000000000000",
+                "controller": "00000208-0000-4000-8000-000000000000",
+                "type_line": "Legendary Creature — Human Knight",
+                "colors": [
+                  "W"
+                ],
+                "power": 1,
+                "toughness": 4,
+                "is_commander": true,
+                "known_by_you": true,
+                "auto": true,
+                "cast_prices": [
+                  {
+                    "cost": "{1}{W}{W}",
+                    "printed": true
+                  }
+                ],
+                "mana_cost": "{1}{W}{W}",
+                "abilities": [
+                  "vigilance"
+                ]
+              }
+            ]
+          },
+          "commander_damage": {},
+          "life_history": [],
+          "hand_kept": true,
+          "undos_remaining": 1,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 3,
+        "cards": [
+          {
+            "instance_id": "00000214-0000-4000-8000-000000000000",
+            "name": "Seat Bear",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "controller": "00000208-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "00000215-0000-4000-8000-000000000000",
+            "name": "Other Bear",
+            "owner": "0000020e-0000-4000-8000-000000000000",
+            "controller": "0000020e-0000-4000-8000-000000000000",
+            "type_line": "Creature — Beast",
+            "colors": [
+              "G"
+            ],
+            "power": 2,
+            "toughness": 2,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "mana_cost": "{1}{G}"
+          },
+          {
+            "instance_id": "00000216-0000-4000-8000-000000000000",
+            "name": "Mother of Runes",
+            "owner": "00000208-0000-4000-8000-000000000000",
+            "controller": "00000208-0000-4000-8000-000000000000",
+            "type_line": "Creature — Human Cleric",
+            "colors": [
+              "W"
+            ],
+            "power": 1,
+            "toughness": 1,
+            "known_by_you": true,
+            "battle_x": 0,
+            "battle_y": 0,
+            "auto": true,
+            "activated_abilities": [
+              {
+                "index": 0,
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "ref": "own:0",
+                "tap_cost": true,
+                "target_mode": "creature",
+                "legal_targets": {
+                  "cards": [
+                    "00000214-0000-4000-8000-000000000000",
+                    "00000216-0000-4000-8000-000000000000"
+                  ],
+                  "min": 1,
+                  "max": 1
+                },
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ],
+            "mana_cost": "{W}",
+            "ability_rows": [
+              {
+                "kind": "activated",
+                "label": "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
+                "purpose": {
+                  "targets": [
+                    {
+                      "slot": 0,
+                      "until_end_of_turn": "benefit",
+                      "pump": {
+                        "keywords": [
+                          "protection"
+                        ]
+                      }
+                    }
+                  ],
+                  "answers": [
+                    "protect"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": []
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": []
+      },
+      "phased_out": {
+        "kind": "phased_out",
+        "count": 0,
+        "cards": []
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 3,
+        "phase": "ending",
+        "step": "end",
+        "next_seat": 1,
+        "phase_id": 5,
+        "phase_ordinal": 1,
+        "upcoming": [
+          {
+            "step": "cleanup",
+            "phase_id": 5
+          }
+        ]
+      },
+      "mulligans_open": false,
+      "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false,
+        "away_after": 3
+      },
+      "starting_seat": 0,
+      "legal_moves": [
+        {
+          "type": "pass_priority",
+          "player": "00000208-0000-4000-8000-000000000000",
+          "kind": "pass",
+          "label": "Pass priority",
+          "source": "00000000-0000-0000-0000-000000000000",
+          "always_legal": true
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000208-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000216-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000214-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Seat Bear",
+          "source": "00000216-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": false
+        },
+        {
+          "type": "activate_ability",
+          "player": "00000208-0000-4000-8000-000000000000",
+          "params": {
+            "source_card_id": "00000216-0000-4000-8000-000000000000",
+            "ability_index": 0,
+            "ref": "own:0",
+            "targets": [
+              {
+                "kind": "card",
+                "id": "00000216-0000-4000-8000-000000000000"
+              }
+            ],
+            "strict": true,
+            "auto_tap": true
+          },
+          "kind": "activate",
+          "label": "Mother of Runes: {T}: Target creature you control gains protection from the color of your choice until end of turn. targeting Mother of Runes",
+          "source": "00000216-0000-4000-8000-000000000000",
+          "has_targets": true,
+          "answers_now": false
+        }
+      ],
+      "legal_actions": {
+        "pass": true,
+        "sources": {
+          "00000216-0000-4000-8000-000000000000": {
+            "kinds": [
+              "activate"
+            ],
+            "moves": 2,
+            "abilities": [
+              "own:0"
+            ]
+          }
+        }
+      },
+      "log": [
+        {
+          "seq": 1,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "untap",
+          "batch": 1,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · untap"
+        },
+        {
+          "seq": 2,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "upkeep",
+          "batch": 2,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · upkeep"
+        },
+        {
+          "seq": 4,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "draw",
+          "batch": 3,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · draw"
+        },
+        {
+          "seq": 5,
+          "kind": "draw",
+          "turn": 1,
+          "batch": 3,
+          "seat": 0,
+          "amount": 1,
+          "text": "krakenhavoc drew a card"
+        },
+        {
+          "seq": 7,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "precombat_main",
+          "batch": 4,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · precombat main"
+        },
+        {
+          "seq": 9,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "begin_combat",
+          "batch": 5,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · begin combat"
+        },
+        {
+          "seq": 10,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "declare_attackers",
+          "batch": 6,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · declare attackers"
+        },
+        {
+          "seq": 11,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "end_combat",
+          "batch": 10,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · end combat"
+        },
+        {
+          "seq": 12,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "postcombat_main",
+          "batch": 11,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · postcombat main"
+        },
+        {
+          "seq": 13,
+          "kind": "step",
+          "turn": 1,
+          "round": 1,
+          "step": "end",
+          "batch": 12,
+          "seat": 0,
+          "text": "Turn 1 (round 1) — krakenhavoc · end"
+        }
+      ]
+    },
+    "moves": [
+      {
+        "source": "00000216-0000-4000-8000-000000000000",
+        "name": "Mother of Runes",
+        "kind": "activate",
+        "answers_now": false,
+        "why": "nothing threatens the seat or its permanents, and no combat involves it"
+      }
+    ],
+    "verdict": "pass",
+    "why": "nothing the seat holds matches; before slice 7 Mother of Runes' has_targets stopped at this key window"
   }
 ]

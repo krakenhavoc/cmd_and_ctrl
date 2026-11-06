@@ -202,11 +202,22 @@ const TricksDeckID = "tricks-battle"
 // thopter-battle`. Synthetic, so it needs no Scryfall dump.
 const ThopterDeckID = "thopter-battle"
 
+// CantBlockDeckID is the arena deck id of CantBlockBattleDeck: `--decks
+// cantblock-battle`. Synthetic, so it needs no Scryfall dump.
+const CantBlockDeckID = "cantblock-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
 // monolith-battle, answers-battle, tricks-battle, thopter-battle and
-// ghast-battle.
+// ghast-battle, and xpumps-battle (#4976). cantblock-battle (#4977) is
+// one too.
 func IsSynthetic(id string) bool {
+	if id == XPumpsDeckID {
+		return true
+	}
+	if id == CantBlockDeckID {
+		return true
+	}
 	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID || id == ThopterDeckID ||
 		id == GhastDeckID
 }
@@ -259,6 +270,91 @@ func GhastBattleDeck(owner uuid.UUID) []game.Card {
 const (
 	oracleCryptGhast        = "a3c8d817-7949-4dae-b9f5-f9d952479270"
 	oracleZendikarResurgent = "a0af158b-f42a-4022-a438-e0a2e1fd6d9e"
+)
+
+// XPumpsDeckID is the arena deck id of XPumpsBattleDeck: `--decks
+// xpumps-battle`. Synthetic, so it needs no Scryfall dump.
+const XPumpsDeckID = "xpumps-battle"
+
+// XPumpsBattleDeck is BattleDeck in red and green with the pumps of the
+// announced X #4976 prices in it, for its arena measurement: four Tyvar's
+// Stand ("+X/+X and gains hexproof and indestructible"), four Mishra's
+// Command (its last bullet "+X/+0 and gains haste"), two Primal Might
+// ("+X/+X", then a fight) and two Kessig Wolf Runs ("{X}{R}{G}, {T}: +X/+0
+// and gains trample"), with ten Forests for the green. No curated deck
+// holds any of them. Hatred is left out: its {B}{B} would want a third
+// colour. Dealt by oracle ID so the catalog gives each its effect; the
+// printed costs are the cards' own.
+func XPumpsBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	drop := map[string]int{"Bear": 8, "Ogre": 4, "Mountain": 10}
+	for _, c := range deck {
+		if drop[c.Name] > 0 {
+			drop[c.Name]--
+			continue
+		}
+		out = append(out, c)
+	}
+	add := func(n int, name, oracle, typeLine, cost string, colors []string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Colors = colors
+			out = append(out, c)
+		}
+	}
+	add(4, "Tyvar's Stand", oracleTyvarsStand, "Instant", "{X}{G}", []string{"G"})
+	add(4, "Mishra's Command", oracleMishrasCommand, "Sorcery", "{X}{R}", []string{"R"})
+	add(2, "Primal Might", oraclePrimalMight, "Sorcery", "{X}{G}", []string{"G"})
+	add(2, "Kessig Wolf Run", oracleKessigWolfRun, "Land", "", nil)
+	add(10, "Forest", "", "Basic Land — Forest", "", nil)
+	return out
+}
+
+// The X-pumps deck's catalog keys.
+const (
+	oracleTyvarsStand    = "4247b667-a0a8-4995-97c7-622d20132f7d"
+	oracleMishrasCommand = "25434ea3-bcfa-4dae-a16e-10ab87ce32af"
+	oraclePrimalMight    = "58d7b8b3-ac47-4805-8259-4ba8e70d7dc3"
+	oracleKessigWolfRun  = "c6911265-54ef-4c16-bcf2-1ffb24b7d426"
+)
+
+// CantBlockBattleDeck is BattleDeck with eight "can't block this turn"
+// spells in it, for #4977's arena measurement: four Daring Discovery ("up
+// to three target creatures can't block this turn. Discover 4.") and four
+// Untimely Malfunction (its third mode, "one or two target creatures
+// can't block this turn"), in place of six Bears and two Ogres. No
+// curated deck holds either. Dealt by oracle ID so the catalog gives each
+// its effect; the printed costs are the cards' own.
+func CantBlockBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	drop := map[string]int{"Bear": 6, "Ogre": 2}
+	for _, c := range deck {
+		if drop[c.Name] > 0 {
+			drop[c.Name]--
+			continue
+		}
+		out = append(out, c)
+	}
+	add := func(n int, name, oracle, typeLine, cost string) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Colors = []string{"R"}
+			out = append(out, c)
+		}
+	}
+	add(4, "Daring Discovery", oracleDaringDiscovery, "Sorcery", "{4}{R}")
+	add(4, "Untimely Malfunction", oracleUntimelyMalfunction, "Instant", "{1}{R}")
+	return out
+}
+
+// The can't-block deck's catalog keys.
+const (
+	oracleDaringDiscovery     = "a9564593-b5a6-4a83-be1e-2af8caf647d7"
+	oracleUntimelyMalfunction = "2c49d24a-98a4-43c2-bb59-1ef13d4214c2"
 )
 
 // ThopterBattleDeck is a mono-blue deck led by Sai, Master Thopterist,

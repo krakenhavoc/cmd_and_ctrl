@@ -116,16 +116,49 @@ func rowEntryFor(src *protocol.CardView, index int, t targetRef) *protocol.Targe
 }
 
 // entryAtX is a target entry with its X resolved (#1944): an entry
-// declared DamageIsX deals the X the move announces. Every other entry
-// is returned as it is. A copy, so the card's own view is untouched.
-func entryAtX(e *protocol.TargetPurposeView, x int) *protocol.TargetPurposeView {
-	if e == nil || !e.DamageIsX {
+// declared DamageIsX deals the X the move announces. With pumpX
+// (Config.PriceXPumps, #4976) an entry declared PumpPowerIsX or
+// PumpToughnessIsX adds that X to its pump's power or toughness:
+// Tyvar's Stand announced at X=3 is a +3/+3 benefit with hexproof and
+// indestructible. Every other entry is returned as it is. A copy, so the
+// card's own view is untouched.
+//
+// The X is the move's own x_value, the number the engine announces for
+// the cast or activation and the effect reads back (Context.X). For
+// Hatred that is also the life its additional cost pays (CR 601.2f,
+// 119.4), charged by pumpXLifeCost.
+func entryAtX(e *protocol.TargetPurposeView, x int, pumpX bool) *protocol.TargetPurposeView {
+	if e == nil || (!e.DamageIsX && !(pumpX && declaresPumpX(e))) {
 		return e
 	}
 	out := *e
-	out.Damage = max(x, 0)
-	out.DamageIsX = false
+	if e.DamageIsX {
+		out.Damage = max(x, 0)
+		out.DamageIsX = false
+	}
+	if pumpX && declaresPumpX(e) {
+		pm := protocol.PumpView{}
+		if e.Pump != nil {
+			pm = *e.Pump
+		}
+		if e.PumpPowerIsX {
+			pm.Power += max(x, 0)
+		}
+		if e.PumpToughnessIsX {
+			pm.Toughness += max(x, 0)
+		}
+		if pm.Power != 0 || pm.Toughness != 0 || e.Pump != nil {
+			out.Pump = &pm
+		}
+		out.PumpPowerIsX, out.PumpToughnessIsX = false, false
+	}
 	return &out
+}
+
+// declaresPumpX reports whether e is a benefit whose power or toughness
+// is the announced X (#4976).
+func declaresPumpX(e *protocol.TargetPurposeView) bool {
+	return e != nil && (e.PumpPowerIsX || e.PumpToughnessIsX)
 }
 
 // entryAtTapped is a target entry with its tap count resolved (#3961): an
@@ -198,6 +231,7 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	var gifts map[string]*giftAmounts
 	var cards float64
 	priced := false
+	var noBlock []*protocol.CardView // #4977: can't-block picks, priced together
 	for _, t := range targets {
 		e := entryOf(t)
 		if t.Kind != "player" {
@@ -223,6 +257,13 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 					priced = true
 					continue
 				}
+			}
+			// #4977: "can't block this turn", by the attack it opens
+			// with the move's other such picks (cant_block.go).
+			if c, ok := p.cantBlockPick(st, t, e); ok {
+				noBlock = append(noBlock, c)
+				priced = true
+				continue
 			}
 			// #4302: a change until end of turn, by whose permanent it
 			// is and what it does this turn (temporary_effect.go).
@@ -263,6 +304,7 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	if !priced {
 		return st.targetsValue(p.cfg, targets), false
 	}
+	cards += p.cantBlockValue(st, noBlock) // #4977
 	return st.targetsValue(p.cfg, rest) + cards + p.giftsValue(st, gifts, self), true
 }
 

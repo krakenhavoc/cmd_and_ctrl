@@ -52,6 +52,8 @@ import (
 //     row of the controller's own (#4191);
 //   - SourceCounters anywhere but an activated row of the controller's
 //     own (#5083);
+//   - ResolutionMana anywhere but an activated row of the controller's
+//     own, or one with no resolution or no fixed mana (#4980);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -171,6 +173,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
 	}
+	if p.Pump != nil && p.Pump.CantBlock {
+		fail("sets CantBlock on a row's pump of its own source — \"can't block\" is a harm, declared on a target's entry (#4977)")
+	}
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
@@ -193,8 +198,38 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	checkLifeGainPayoff(p.LifeGainPayoff, fail)
 	checkSweep(p.Sweep, fail)
 	checkRiders(p, slot, fail)
+	checkResolutionMana(p.ResolutionMana, slot, fail)
 	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
+	}
+}
+
+// checkResolutionMana is the guard for Purpose.ResolutionMana (#4980):
+// the mana an activated row of its controller's own adds on one
+// numbered resolution of it in a turn (Soulbright Seeker's third). It is
+// refused off such a row, on a resolution before the first, and on mana
+// that is not one or more fixed symbols ({W}{U}{B}{R}{G}{C}): a generic
+// number, an X, a hybrid or a Phyrexian symbol would let the reader
+// count mana the card does not add.
+func checkResolutionMana(rm *game.ResolutionMana, slot purposeSlot, fail func(string)) {
+	if rm == nil {
+		return
+	}
+	if slot != purposeOnActivated {
+		fail("sets ResolutionMana off an activated row of its controller's own — it is the mana a row adds on its nth resolution in a turn (#4980)")
+	}
+	if rm.Resolution < 1 {
+		fail("sets ResolutionMana with a resolution before the first (#4980)")
+	}
+	notFixed := fmt.Sprintf("sets ResolutionMana's mana to %q, which is not one or more fixed mana symbols (#4980)", rm.Mana)
+	c, err := game.ParseCost(rm.Mana)
+	if err != nil || len(c.Required) == 0 || c.Generic != 0 || c.XSlots != 0 {
+		fail(notFixed)
+	}
+	for _, r := range c.Required {
+		if len(r.Options) != 1 || r.Snow || r.Phyrexian || r.HasNumericAlt {
+			fail(notFixed)
+		}
 	}
 }
 
@@ -256,8 +291,8 @@ func checkPump(pm *game.Pump, fail func(string)) {
 	if pm == nil {
 		return
 	}
-	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked {
-		fail("is a pump that gives nothing — set Power, Toughness, Keywords or CantBeBlocked")
+	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked && !pm.CantBlock {
+		fail("is a pump that gives nothing — set Power, Toughness, Keywords, CantBeBlocked or CantBlock")
 	}
 	for _, k := range pm.Keywords {
 		if k == "" || k != strings.ToLower(k) || strings.ContainsAny(k, "\t—") {
@@ -512,7 +547,9 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //     is the rest of the review;
 //   - a change until end of turn (#4302) that is neither benefit nor
 //     harm, on a clause that cannot target a permanent, or whose Pump
-//     points the other way (checkUntilEndOfTurn);
+//     points the other way (checkUntilEndOfTurn); a pump of the
+//     announced X (#4976) on a harm, or beside a printed amount on the
+//     same side (checkPumpX);
 //   - an exile from a graveyard (#4559) on a clause that cannot target
 //     a graveyard card, beside a reanimation, or an ExileGrows that is
 //     not "permanent" or "creature" or has no Exiles beside it.
@@ -601,6 +638,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 // no keyword to a harm (a harm's keywords are lost, which a Pump cannot
 // say).
 func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail func(string)) {
+	checkPumpX(e, fail)
 	switch e.UntilEndOfTurn {
 	case "":
 		if e.Pump != nil {
@@ -625,6 +663,44 @@ func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail f
 	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0 || pm.CantBeBlocked) {
 		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness, a keyword or unblockability (#4302)", e.Slot))
 	}
+	if e.UntilEndOfTurn == game.TargetBenefit && pm.CantBlock {
+		fail(fmt.Sprintf("declares a benefit on slot %d that says it can't block — that is a harm (#4977)", e.Slot))
+	}
+}
+
+// checkPumpX is checkUntilEndOfTurn's half for a pump of the announced X
+// (#4976): only on a benefit, and with no printed amount on the side the
+// X fills, as DamageIsX is refused beside Damage.
+func checkPumpX(e game.TargetPurpose, fail func(string)) {
+	if !e.PumpPowerIsX && !e.PumpToughnessIsX {
+		return
+	}
+	if e.UntilEndOfTurn != game.TargetBenefit {
+		fail(fmt.Sprintf("declares a pump of X on slot %d that is not a benefit until end of turn (#4976)", e.Slot))
+	}
+	if pm := e.Pump; pm != nil && ((e.PumpPowerIsX && pm.Power != 0) || (e.PumpToughnessIsX && pm.Toughness != 0)) {
+		fail(fmt.Sprintf("sets both a printed amount and X on the same side of slot %d's pump (#4976)", e.Slot))
+	}
+}
+
+// PumpXUntilEOT is BenefitUntilEOT for "+X/+X until end of turn", where
+// X is the spell's or ability's announced X (#4976): Tyvar's Stand's
+// "target creature you control gets +X/+X and gains hexproof and
+// indestructible until end of turn" is PumpXUntilEOT(0, "hexproof",
+// "indestructible"). The bot reads the X the move names.
+func PumpXUntilEOT(slot int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, 0, 0, keywords...)
+	e.PumpPowerIsX, e.PumpToughnessIsX = true, true
+	return e
+}
+
+// PowerXUntilEOT is PumpXUntilEOT for "+X/+0" (#4976): Hatred's "target
+// creature gets +X/+0 until end of turn" is PowerXUntilEOT(0), and Kessig
+// Wolf Run's "+X/+0 and gains trample" PowerXUntilEOT(0, "trample").
+func PowerXUntilEOT(slot int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, 0, 0, keywords...)
+	e.PumpPowerIsX = true
+	return e
 }
 
 // BenefitUntilEOT is the target entry for a clause that helps its pick
@@ -632,8 +708,9 @@ func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail f
 // creature gains lifelink until end of turn" is
 // ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")), and "target creature
 // gets +2/+2 until end of turn" BenefitUntilEOT(0, 2, 2). With no amount
-// and no keyword (+X/+X, "can't be blocked this turn") it declares only
-// the direction.
+// and no keyword (+X/+X where X is counted at resolution, "can't be
+// blocked this turn") it declares only the direction; an announced X is
+// PumpXUntilEOT or PowerXUntilEOT (#4976).
 func BenefitUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
 	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetBenefit}
 	if power != 0 || toughness != 0 || len(keywords) > 0 {
@@ -659,13 +736,29 @@ func CantBeBlockedUntilEOT(slot, power, toughness int, keywords ...string) game.
 // HarmUntilEOT is the target entry for a clause that hurts its pick until
 // end of turn (#4302), with the printed change as signed amounts: "target
 // creature gets -2/-1 until end of turn" is HarmUntilEOT(0, -2, -1). With
-// no amount (-X/-X, "can't block this turn") it declares only the
-// direction.
+// no amount (-X/-X) it declares only the direction. "Can't block this
+// turn" is CantBlockUntilEOT (#4977).
 func HarmUntilEOT(slot, power, toughness int) game.TargetPurpose {
 	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetHarm}
 	if power != 0 || toughness != 0 {
 		e.Pump = &game.Pump{Power: power, Toughness: toughness}
 	}
+	return e
+}
+
+// CantBlockUntilEOT is HarmUntilEOT for a clause that also says its pick
+// can't block this turn (#4977): Daring Discovery's "up to three target
+// creatures can't block this turn" is CantBlockUntilEOT(0, 0, 0), and
+// "target creature gets -2/-0 and can't block this turn"
+// CantBlockUntilEOT(0, -2, 0). With Config.PriceCantBlock on the bot
+// prices it by the attack it opens before the defender's blocks, not as
+// removal.
+func CantBlockUntilEOT(slot, power, toughness int) game.TargetPurpose {
+	e := HarmUntilEOT(slot, power, toughness)
+	if e.Pump == nil {
+		e.Pump = &game.Pump{}
+	}
+	e.Pump.CantBlock = true
 	return e
 }
 

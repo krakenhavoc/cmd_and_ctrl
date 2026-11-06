@@ -243,3 +243,29 @@ describe("your own beginning of combat with a manland or a keyword grant", () =>
     expect(browserVerdict({ ...g, stepStop: true })).toBe("stop");
   });
 });
+
+// Slice 7 of #4734 (Q2 (a)): a targeted row may declare what it answers.
+// Mother of Runes declares protect, so it stops the table only when an
+// opponent's item threatens something of the viewer's. Without the
+// verdict its move is an ability through has_targets, and every one of
+// these frames stopped, as it did before the row declared.
+describe("a targeted row that declares is matched by its kind", () => {
+  const targeted = frames.filter((f) => f.name.startsWith("targeted_protect_row_"));
+
+  it("the fixture holds a stop and a pass for it", () => {
+    expect(targeted.some((f) => f.verdict === "stop")).toBe(true);
+    expect(targeted.some((f) => f.verdict === "pass")).toBe(true);
+  });
+
+  for (const f of targeted) {
+    it(`${f.name} stops without the verdict`, () => {
+      expect(browserVerdict(gatesFor(f.view, f.viewer, true)), f.note).toBe("stop");
+    });
+  }
+
+  it("a pass it caused says so on the chip's gate", () => {
+    for (const f of targeted.filter((x) => x.verdict === "pass")) {
+      expect(gatesFor(f.view, f.viewer).heldUnmatchedAnswer, f.name).toBe(true);
+    }
+  });
+});

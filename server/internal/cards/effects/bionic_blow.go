@@ -23,7 +23,7 @@ func init() {
 		Name:         "Bionic Blow",
 		Completeness: CompletenessFull,
 		XMatters:     true,
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0)),
+		Purpose:      ForTargets(PowerXUntilEOT(0)),
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			Distinct(TargetCreature("up to one other target creature").WithCount(0, 1)),

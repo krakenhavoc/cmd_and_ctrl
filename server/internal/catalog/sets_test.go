@@ -247,3 +247,127 @@ func TestCatalogRouteServesSets(t *testing.T) {
 		}
 	}
 }
+
+// foldTable is a small hand-built Scryfall set table: a set with a
+// masterpiece bonus sheet and a commander precon under it, a promo
+// subset of the bonus sheet, a parentless promo set and a Secret Lair.
+func foldTable(idx *cards.Index) {
+	for _, s := range []cards.SetInfo{
+		{Code: "tmt", Name: "Teenage Mutant Ninja Turtles", SetType: "expansion", ReleasedAt: "2026-03-06"},
+		{Code: "pza", Name: "TMNT Source Material", SetType: "masterpiece", ParentSetCode: "tmt", ReleasedAt: "2026-03-07"},
+		{Code: "ppza", Name: "TMNT Source Material Promos", SetType: "promo", ParentSetCode: "pza", ReleasedAt: "2026-03-08"},
+		{Code: "tmc", Name: "TMNT Commander", SetType: "commander", ParentSetCode: "tmt", ReleasedAt: "2026-03-06"},
+		{Code: "plst", Name: "The List", SetType: "promo", ReleasedAt: "2020-09-26"},
+		{Code: "sld", Name: "Secret Lair Drop", SetType: "box", ReleasedAt: "2019-12-02"},
+		{Code: "hml", Name: "Homelands", SetType: "expansion", ReleasedAt: "1995-10-01"},
+	} {
+		idx.PutSet(s)
+	}
+}
+
+// A masterpiece subset folds into its parent, through a promo grandchild
+// too, and a card printed in both is counted once and listed once.
+func TestSubsetFoldsIntoItsParent(t *testing.T) {
+	idx := testIndex(t,
+		printing(1, oracleA, "Card A", "tmt", "Teenage Mutant Ninja Turtles", "2026-03-06"),
+		printing(2, oracleA, "Card A", "pza", "TMNT Source Material", "2026-03-07"),
+		printing(3, oracleB, "Card B", "pza", "TMNT Source Material", "2026-03-07"),
+		printing(4, oracleC, "Card C", "ppza", "TMNT Source Material Promos", "2026-03-08"),
+	)
+	foldTable(idx)
+	got := buildWithSets([]effects.Spec{
+		{OracleID: oracleA.String(), Name: "Card A", Completeness: effects.CompletenessFull},
+		{OracleID: oracleB.String(), Name: "Card B"},
+	}, idx)
+
+	want := []SetSummary{{
+		Code: "tmt", Name: "Teenage Mutant Ninja Turtles", Released: "2026-03-06",
+		Total: 3, Full: 1, Unreviewed: 1, Unsupported: 1,
+	}}
+	if !reflect.DeepEqual(got.Sets, want) {
+		t.Fatalf("sets = %+v, want %+v", got.Sets, want)
+	}
+	if sets := entryByName(t, got, "Card A").Sets; !reflect.DeepEqual(sets, []string{"tmt"}) {
+		t.Fatalf("Card A sets = %v, want the parent once", sets)
+	}
+	if sets := entryByName(t, got, "Card B").Sets; !reflect.DeepEqual(sets, []string{"tmt"}) {
+		t.Fatalf("Card B sets = %v, want the parent", sets)
+	}
+}
+
+// A commander child of a set keeps its own entry: people pick a precon
+// as a product.
+func TestCommanderSubsetStaysItsOwnSet(t *testing.T) {
+	idx := testIndex(t,
+		printing(1, oracleA, "Card A", "tmt", "Teenage Mutant Ninja Turtles", "2026-03-06"),
+		printing(2, oracleA, "Card A", "tmc", "TMNT Commander", "2026-03-06"),
+		printing(3, oracleB, "Card B", "tmc", "TMNT Commander", "2026-03-06"),
+	)
+	foldTable(idx)
+	got := buildWithSets([]effects.Spec{
+		{OracleID: oracleA.String(), Name: "Card A", Completeness: effects.CompletenessFull},
+	}, idx)
+
+	if s := setByCode(t, got, "tmc"); s.Total != 2 || s.Name != "TMNT Commander" {
+		t.Fatalf("tmc = %+v, want its own entry of 2 cards", s)
+	}
+	if s := setByCode(t, got, "tmt"); s.Total != 1 {
+		t.Fatalf("tmt = %+v, want only its own card", s)
+	}
+	if sets := entryByName(t, got, "Card A").Sets; !reflect.DeepEqual(sets, []string{"tmc", "tmt"}) {
+		t.Fatalf("Card A sets = %v", sets)
+	}
+}
+
+// A parentless promo set and a Secret Lair have no picker entry; their
+// cards stay in the catalogue, picked by their other printings only.
+func TestPromoAndBoxSetsLeaveThePicker(t *testing.T) {
+	idx := testIndex(t,
+		printing(1, oracleA, "Card A", "plst", "The List", "2020-09-26"),
+		printing(2, oracleA, "Card A", "hml", "Homelands", "1995-10-01"),
+		printing(3, oracleB, "Card B", "sld", "Secret Lair Drop", "2019-12-02"),
+	)
+	foldTable(idx)
+	got := buildWithSets([]effects.Spec{
+		{OracleID: oracleA.String(), Name: "Card A", Completeness: effects.CompletenessFull},
+		{OracleID: oracleB.String(), Name: "Card B", Completeness: effects.CompletenessFull},
+	}, idx)
+
+	want := []SetSummary{{Code: "hml", Name: "Homelands", Released: "1995-10-01", Total: 1, Full: 1}}
+	if !reflect.DeepEqual(got.Sets, want) {
+		t.Fatalf("sets = %+v, want only Homelands", got.Sets)
+	}
+	if sets := entryByName(t, got, "Card A").Sets; !reflect.DeepEqual(sets, []string{"hml"}) {
+		t.Fatalf("Card A sets = %v", sets)
+	}
+	b := entryByName(t, got, "Card B")
+	if b.Sets != nil {
+		t.Fatalf("Card B sets = %v, want none", b.Sets)
+	}
+}
+
+// With no set table the picker is exactly what it was: every set its own
+// entry, promos and subsets included.
+func TestNoSetTableKeepsEverySet(t *testing.T) {
+	in := []cards.Card{
+		printing(1, oracleA, "Card A", "tmt", "Teenage Mutant Ninja Turtles", "2026-03-06"),
+		printing(2, oracleA, "Card A", "pza", "TMNT Source Material", "2026-03-07"),
+		printing(3, oracleB, "Card B", "sld", "Secret Lair Drop", "2019-12-02"),
+		printing(4, oracleC, "Card C", "plst", "The List", "2020-09-26"),
+	}
+	specs := []effects.Spec{{OracleID: oracleA.String(), Name: "Card A", Completeness: effects.CompletenessFull}}
+	got := buildWithSets(specs, testIndex(t, in...))
+
+	want := []SetSummary{
+		{Code: "pza", Name: "TMNT Source Material", Released: "2026-03-07", Total: 1, Full: 1},
+		{Code: "tmt", Name: "Teenage Mutant Ninja Turtles", Released: "2026-03-06", Total: 1, Full: 1},
+		{Code: "plst", Name: "The List", Released: "2020-09-26", Total: 1, Unsupported: 1},
+		{Code: "sld", Name: "Secret Lair Drop", Released: "2019-12-02", Total: 1, Unsupported: 1},
+	}
+	if !reflect.DeepEqual(got.Sets, want) {
+		t.Fatalf("sets = %+v, want %+v", got.Sets, want)
+	}
+	if sets := entryByName(t, got, "Card A").Sets; !reflect.DeepEqual(sets, []string{"pza", "tmt"}) {
+		t.Fatalf("Card A sets = %v", sets)
+	}
+}

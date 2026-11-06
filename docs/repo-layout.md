@@ -47,6 +47,7 @@ cmd_and_ctrl/
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
 │   │   ├── tablesetups/  # the last setup each person started a table with: settings, bots, tablemates (ADR 0110 §5, migration 0008)
 │   │   ├── moderation/  # the name and chat filter: a hand-kept denylist (denylist.txt) with normalisation, masking for chat, refusal for names, and the folded key a guest block uses; a test holds it clear of every card name (#2984, ADR 0075 §2.6)
+│   │   ├── social/      # friends, requests, personal blocks and the two social settings (ADR 0213 §2, §3, migration 0032); Blocked / BlockedWith for other packages (pods, ADR 0220 §6)
 │   │   ├── accountdelete/ # self-serve account deletion (ADR 0149, migration 0015): one SQL transaction, the tombstone, and Inventory — every column with its deletion treatment, held to the live schema by a test
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   ├── capacity/    # the server's caps and their defaults: weighted table load, WebSocket connections, creation rates; policy and arithmetic only, the lobby and hub enforce them (ADR 0148)

@@ -82,6 +82,10 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 		filter := land("Mystic Gate", "Land")
 		ring := game.Card{InstanceID: uuid.New(), Name: "Sol Ring", TypeLine: "Artifact", Owner: p.ID, Controller: p.ID}
 		pushBattlefieldCardWithTimestamp(g, ring)
+		// A mana creature, for "whenever you tap a creature for mana"
+		// (Badgermole Cub).
+		elf := game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid", Power: 1, Toughness: 1, Owner: p.ID, Controller: p.ID}
+		pushBattlefieldCardWithTimestamp(g, elf)
 
 		probes = append(probes,
 			judgeProbe{"Forest {G}", forest, p.ID, []string{"G"}},
@@ -96,6 +100,7 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 			judgeProbe{"Swamp Forest {G}", dual, p.ID, []string{"G"}},
 			judgeProbe{"filter land {U}{R}", filter, p.ID, []string{"U", "R"}},
 			judgeProbe{"Sol Ring {C}{C}", ring, p.ID, []string{"C", "C"}},
+			judgeProbe{"Llanowar Elves {G}", elf, p.ID, []string{"G"}},
 		)
 
 		// The card under test, on this seat: an Aura on this seat's Forest.

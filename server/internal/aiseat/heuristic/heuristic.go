@@ -340,6 +340,19 @@ type Config struct {
 	// the creature, and a trample grant by the damage it puts over the
 	// defender's biggest blocker. Off, neither adds to the attack.
 	PriceEvasionGrants bool
+	// PriceCantBlock prices a declared "can't block this turn" on an
+	// opponent's creature (Pump.CantBlock, #4977, cant_block.go) by the
+	// attack it opens: on the bot's own turn before blockers, the swing
+	// at that creature's controller with the move's can't-block picks
+	// unable to block, less the swing with them able, plus LethalBonus
+	// when they turn the all-in swing into a kill; after blockers and on
+	// another seat's turn nothing. Off (the zero value, DefaultConfig
+	// and BaselineConfig) prices each such pick as the removal a harm
+	// with no printed amount is, so Daring Discovery is three removal
+	// spells: in #4977's arena the price lost head-to-head, so it ships
+	// off and the arena's `heuristic-cantblock` turns it on
+	// (docs/bot-testing.md). Read only with PriceTemporaryEffects on.
+	PriceCantBlock bool
 	// PriceHasteTapRows prices haste granted until end of turn to the
 	// bot's summoning-sick creature by the {T} ability it can then
 	// activate (#4324, haste_tap.go; CR 302.6, 702.10c): the best row
@@ -568,6 +581,16 @@ type Config struct {
 	// price lost head-to-head, so it ships off and the arena's
 	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
 	PriceSourceCounters bool
+	// PriceResolutionMana prices an activation of a row of the bot's own
+	// that declares the mana it adds on one numbered resolution this turn
+	// (Purpose.ResolutionMana, #4980, resolution_mana.go): Soulbright
+	// Seeker's third. In the bot's own main phase, an activation on a
+	// reachable run to that resolution that nets mana its hand can spend
+	// is worth SpellPerMana per mana the hand can spend after the run, in
+	// place of the row's grant price. Off (the zero value, BaselineConfig) prices the row as
+	// any other grant until end of turn. On in DefaultConfig; the arena's
+	// `heuristic-noresolutionmana` turns it off.
+	PriceResolutionMana bool
 	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
 	// cost at SpareManaSourceCost rather than its board value as a mana
 	// source (#5085, spare_mana.go): a rock is spare when the bot's other
@@ -583,6 +606,18 @@ type Config struct {
 	SpareManaKeep int
 	// SpareManaSourceCost is what a spare rock costs when it is given up.
 	SpareManaSourceCost float64
+	// PriceXPumps reads a benefit until end of turn whose power or
+	// toughness is the announced X (TargetPurpose.PumpPowerIsX and
+	// PumpToughnessIsX, #4976, pump_x.go) at the move's X: Tyvar's Stand
+	// at X=3 on an attacker is priced as the +3/+3 it gives, through
+	// PriceTemporaryEffects. A cast whose X is also life paid (Hatred) is
+	// charged that life. Off (the zero value, DefaultConfig and
+	// BaselineConfig) prices such a pump as a benefit with no amount: its
+	// keywords, and CombatGrant once the creature is in combat. In
+	// #4976's arena the price did not win head-to-head and moved the
+	// pumps from combat to the first main phase, so it ships off and the
+	// arena's `heuristic-xpumps` turns it on (docs/bot-testing.md).
+	PriceXPumps bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -999,6 +1034,8 @@ func DefaultConfig() Config {
 		PriceEvasionGrants: true,
 		// #4324: haste priced by the {T} ability it unlocks.
 		PriceHasteTapRows: true,
+		// #4977: PriceCantBlock stays off (the price lost in the
+		// arena); `heuristic-cantblock` turns it on.
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -1052,11 +1089,16 @@ func DefaultConfig() Config {
 		SpareTokenKeep: 2,
 		// #5083: PriceSourceCounters stays off (the price lost in the
 		// arena); `heuristic-sourcecounters` turns it on.
+		// #4980: Soulbright Seeker's third resolution, priced by the
+		// mana it returns when the hand can spend it.
+		PriceResolutionMana: true,
 		// #5085: a spare mana rock costs what is left of it, so Mind
 		// Stone is cashed in for a card late and kept early.
 		PriceSpareManaSources: true,
 		SpareManaKeep:         5,
 		SpareManaSourceCost:   0.50,
+		// #4976: PriceXPumps stays off (no gain in the arena);
+		// `heuristic-xpumps` turns it on.
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -1195,6 +1237,8 @@ func BaselineConfig() Config {
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
 	c.PriceHasteTapRows = false
+	// #4977: "can't block" was removal.
+	c.PriceCantBlock = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1302,10 +1346,14 @@ func BaselineConfig() Config {
 	c.SpareTokenKeep = 0
 	// #5083: a row's counter on its own source was the flat ActivateBase.
 	c.PriceSourceCounters = false
+	// #4980: a row's mana on its nth resolution was not priced.
+	c.PriceResolutionMana = false
 	// #5085: every sacrificed mana rock cost its board value.
 	c.PriceSpareManaSources = false
 	c.SpareManaKeep = 0
 	c.SpareManaSourceCost = 0
+	// #4976: a pump of the announced X was a benefit with no amount.
+	c.PriceXPumps = false
 	// #4978: riders priced at nothing.
 	c.PriceRiders = false
 	// #2693: the mulligan counted lands only.
@@ -1447,6 +1495,10 @@ type state struct {
 	// restrictClasses numbers the restricted mana rows the turn plan
 	// counts in this decision (manaClasses), made on first use.
 	restrictClasses *manaClasses
+	// noBlock is the creatures couldBlock treats as unable to block
+	// while cantBlockValue prices a "can't block this turn" (#4977,
+	// cant_block.go). Nil everywhere else.
+	noBlock map[string]bool
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {

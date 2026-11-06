@@ -92,6 +92,8 @@ var activatedRowScopes = map[string]rowScope{
 	// battlefield, the ability's own activation record.
 	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "PowerUpUsed": rowPublic, "BoastBlocked": rowPublic,
 	"CantActivate": rowPublic, "TimingClosed": rowPublic,
+	// #4980: the row's resolutions this turn, which every player saw.
+	"ResolvedThisTurn": rowPublic,
 	// Option lists read off the BATTLEFIELD, which every viewer can
 	// count for themselves.
 	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "CrewPower": rowPublic, "ReturnOptions": rowPublic,

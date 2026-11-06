@@ -3041,3 +3041,100 @@ Every game ended on the same turn with the same winner. On these decks the chang
 - The attack of a creature that already has lifelink, a lifelink blocker's block, and double strike's second event.
 - Life a spell, an enters trigger or a landfall or creature-enter row gains (Courser of Kruphix, Lifecreed Duo): one event each.
 - A lifegain payoff counted at resolution (Archangel of Thune's counter on each creature you control), and the "if you gained life this turn" rows.
+
+## Amendment 2026-11-05: a pump of the announced X (#4976)
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceXPumps`, off in `DefaultConfig()` and `BaselineConfig()`: the arena found no gain (below). The declarations ship either way. The arena's `heuristic-xpumps` is `DefaultConfig()` with it on.
+**Issue:** [#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) (the "+X/+X before combat" line both amendments of 2026-10-24 left in "Not priced"). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is) and its follow-up (b).
+
+### The problem
+
+A target entry's `Pump` holds printed amounts, so a pump whose amount is X declared only its direction: Tyvar's Stand (`{X}{G}`: "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn"), Hatred ("As an additional cost to cast this spell, pay X life. Target creature gets +X/+0 until end of turn") and Mishra's Command's last bullet ("+X/+0 and gains haste") were `BenefitUntilEOT(0, 0, 0, …)`. `temporaryEffectValue` priced them by their keywords and, once the creature was attacking, `CombatGrant`: Tyvar's Stand at X=3 on an attacker before blocks was worth what it is worth at X=0. Yet X here is a number the move already names: it is announced with the cast or activation (CR 601.2b, 602.2b) and rides the move's `x_value`, the same slot `DamageIsX` reads (#1944).
+
+### Decision
+
+1. **Two declared flags.** `TargetPurpose.PumpPowerIsX` and `PumpToughnessIsX` (`pump_power_is_x`, `pump_toughness_is_x` on the wire, additive) say that the power, or the toughness, a benefit until end of turn adds is the announced X. `effects.PumpXUntilEOT(slot, keywords...)` builds "+X/+X", `effects.PowerXUntilEOT(slot, keywords...)` "+X/+0". `effects.Register` refuses either on anything but a `TargetBenefit` (a -X/-X harm keeps the removal price it has) and beside a printed amount on the same side. An X the text defines ("where X is the number of Elves", CR 107.3c) is not the announced X and declares neither. Catalog data only: nothing in a snapshot changes.
+2. **The heuristic can read the move's X.** With `PriceXPumps`, `entryAtX` adds the move's `x_value` to the entry's pump before the entry is priced, as it already resolves `DamageIsX`; `temporaryPicks` reads the same resolved entry, so the spare-mana combat bar, the haste-tap comparison, the lifelink payoff and the no-amount repeat memory see the +X too. Tyvar's Stand cast for X=3 on an attacker before blocks is then priced exactly as a printed +3/+3 with hexproof and indestructible (`TestTyvarsStandAtXIsPricedAsItsPump`).
+3. **Hatred's life is charged.** Hatred's X is also the life its additional cost pays (CR 601.2f, 119.4), and `legal.MoveCost.Life` does not carry it (only fixed and Phyrexian life). The enumerator offers the largest X the life allows (life − 1, capped at `MaxX`), and the bot sends the move as offered, so the X the policy prices is the X the engine charges and pumps by (`TestHeuristicPaysHatredsXInLifeForTheKill`, whole-engine). With the pump priced, a cast whose X is paid in life (`additional_cost.demands_x` without `blight_x` or `exile_cost_x`) and whose picks declare a pump of X is charged `LifeCostValue` for that life, and refused below `LifeFloor`, as `costValue` charges a declared life cost but without the `LifePayoff` proxy: the life buys the pump, which is priced. Toxic Deluge declares no pump and keeps its price.
+4. **The catalog declares it, held to the text.** Nine statements: Tyvar's Stand, Hatred, Mishra's Command's bullet, Primal Might, Bionic Blow, Kessig Wolf Run, Martyr of Spores (its X is the cards revealed), Secluded Starforge (the artifacts tapped) and Tovolar, the Midnight Scourge. `TestPumpXDeclarationsMatchThePrintedCard` (`cards/coverage`) reads every catalog spell's oracle fixture and every mode's and activated row's label: a "target … gets +A/+B" with an X in it and no "X is" in the sentence declares X on exactly the X sides, one that defines X declares neither, and every declaration in the catalog is one the scan found.
+
+### Measured
+
+No curated deck holds these cards, so the runs deal the synthetic `xpumps-battle` (BattleDeck in red and green with four Tyvar's Stand, four Mishra's Command, two Primal Might and two Kessig Wolf Runs) at all four seats, `--rotate --lockstep`, on develop `ee606a09` plus this change. No game stalled.
+
+- curated-arena.sh's shape, 16 games from seed 1000, all four seats on one policy: with the price on the games averaged 14.3 turns against 16.7, and the pumps moved out of combat. Tyvar's Stand was cast 56 times, every one in the first main phase (off: 39, four of them after attackers were declared); Kessig Wolf Run's pump 34 of 35 times in the first main phase (off: 42 of 43 in combat).
+- Head-to-head, 48 games from seed 2000, two seats each: price on 23/96 (24.0%, 16.5–33.4%), price off 25/96 (26.0%, 18.3–35.6%).
+
+The price prices what it should, and the position tests hold it, but the bot then spends the pump before attackers are declared, where the attack it adds is a forecast, rather than in combat; the result is no better at the table. So it ships off, as #5083's counter price did, until a price that keeps the pump for combat is measured. The details are in `docs/bot-testing.md`.
+
+### Not priced
+
+- A -X/-X harm (Chill Haunting, Grim Hireling): it keeps the removal price of a harm with no amount. `shrinkKills` could read it the same way; nothing measured asks for it yet.
+- Mishra's Command's two damage bullets, which declare no `DamageIsX`, and the fight Primal Might and Bionic Blow make after their pump.
+- When a pump is worth casting: with the price on, the pump goes out in the first main phase as soon as the attack it adds clears the bar, before blocks.
+- The X itself is not chosen: the bot takes the X the enumerator offers, the largest one, so a Tyvar's Stand spends all the mana it can.
+
+## Amendment 2026-11-05 (#4980): mana on a counted resolution
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceResolutionMana`, on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noresolutionmana` is `DefaultConfig()` with it off.
+**Issue:** [#4980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4980), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) (the "Soulbright Seeker's third activation" item of the amendment of 2026-10-24 (b)'s "Not priced"). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** §6 (one new purpose field) and the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is), whose item 5 exempted Soulbright Seeker from `TestUntilEndOfTurnRowsDeclareTheirDirection`.
+
+### The problem
+
+Soulbright Seeker's "{R}: Target creature you control gains trample until end of turn. If this is the third time this ability has resolved this turn, add {R}{R}{R}{R}." declared nothing. A direction alone would price every repeat of the trample below a pass, because the creature already has it and #4302's grant memory refuses a repeat on the same creature, so the third activation, which costs {R} and returns {R}{R}{R}{R}, was never priced for its mana, and the row was exempt from the guard test.
+
+### Decision
+
+1. **A row declares the mana and the resolution** (`game.ResolutionMana`, `purpose.resolution_mana: {resolution, mana}`): which of the row's resolutions this turn adds it, counting the one resolving, and the mana as printed symbols. Only on an activated row of the controller's own; `effects.Register` refuses it elsewhere, on a resolution before the first, and on mana that is not fixed symbols (a generic number, X, hybrid or Phyrexian). Declared on Soulbright Seeker, `{3, "{R}{R}{R}{R}"}`, beside its trample's target entry, so the row is no longer exempt.
+2. **The view carries the engine's count.** A row that declares `resolution_mana` is stamped with `resolved_this_turn`: `Game.ResolvedThisTurn` for the row's label on its source, the tally the card's own effect reads, per object (CR 400.7). Public, since every player saw each resolution. The policy adds the row's items still on the stack, which have not resolved: the move on offer is resolution `resolved_this_turn + pending + 1`. The engine's count, not the policy's per-turn memory of its own activations, because the card counts resolutions: a countered activation and a seat restarted mid-turn would put a remembered count off.
+3. **Priced only where the mana comes back and can be spent** (`aiseat/heuristic/resolution_mana.go`). In the bot's own main phase, an activation on a run to that resolution is priced when the rest of the run (this activation included) can be paid from the bot's untapped mana and pool, the mana added is more than the run still costs, and the most mana the hand and command zone could spend after the run (a subset sum over their mana values, commander tax included, colours not counted) is more than without it. It is then worth `SpellPerMana` per mana they could spend after the run, in place of the grant's price: a ritual is worth the casts it pays for. A repeated grant on the bot's own creature costs nothing more on such a run, so neither the redundant-grant price nor the grant memory blocks it, and the row is not a mana sink under `SinkManaLast`: a run that nets mana never takes away a cast the bot could make without it. Anywhere else the row keeps the trample grant's price.
+4. **On by default.** The position tests (`heuristic/resolution_mana_test.go`) show the price adds a move only where the mana returns and is spent: the third activation with one Mountain and a four-drop in hand, the run from none or one resolution with the Mountains to finish it, in either main phase, and ahead of a two-drop that would leave the four-drop uncast. It adds none when the run cannot be paid, when the hand cannot spend the mana (nothing in hand, or a five-drop the mana still misses), when an activation already on the stack is the third, and on another player's turn. The whole-engine test (`aiseat/resolution_mana_bot_test.go`) runs the real Seeker three times off three Mountains and casts a {3}{R} 4/4 from the pool; with the switch off the bot does neither.
+
+### Measurements
+
+None. No curated or synthetic arena deck holds Soulbright Seeker, and the declaration changes no other card's price, so an arena run would compare identical games. `heuristic-noresolutionmana` is there for the run a deck with the Seeker would allow.
+
+### Not priced
+
+- An instant the mana could pay for outside the bot's own main phase, and an activated ability the mana could pay for.
+- The colours of the cards the mana would pay for: a run toward a card whose other colours the bot's lands cannot make is priced as though they could.
+- A run the turn plan (ADR 0136) would weigh as a member: the plan ranks casts, and the run is a single move it is compared against.
+- The other "the nth time this ability has resolved this turn" cards in the catalog (Elrond, Lord of Rivendell; Belladonna Took; Victor, Valgavoth's Seneschal; Sephiroth, Fabled SOLDIER, among others): what their numbered resolution does is not mana, and Soulbright Seeker is the only one whose is.
+
+## Amendment 2026-11-05 (#4977): "can't block" priced by the attack it opens
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceCantBlock`, off in `DefaultConfig()` (it lost in the arena) and in `BaselineConfig()`; the arena's `heuristic-cantblock` is `DefaultConfig()` with it on. The declarations ship either way.
+**Issue:** [#4977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4977), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** the amendments of 2026-10-24 (a change until end of turn, priced by whose permanent it is; spells and evasion before attacks).
+
+### The problem
+
+A harm until end of turn that prints no amount declared only its direction, `HarmUntilEOT(0, 0, 0)`, and `temporary_effect.go` priced such a pick of an opponent's permanent as removal. Fifteen declarations had that shape, and four of them were "can't block this turn", not -X/-X: Daring Discovery ("up to three target creatures can't block this turn"), Untimely Malfunction's third mode ("one or two target creatures"), Fifty Feet of Rope's Climb Over row and Duel Tactics. Each pick kept the full removal price, so Daring Discovery at three creatures was three removal spells (22.08 for three 4/4s in `TestDaringDiscoveryIsWorthTheAttacksItOpens`, against 3.90 for the attack it really opens), cast as soon as it could be, at whatever was biggest, whether or not the bot could attack.
+
+### Decision
+
+1. **"Can't block" is declared.** `Pump.CantBlock` (`cant_block` on a target entry's `pump`), built by `effects.CantBlockUntilEOT(slot, power, toughness)`, on the four cards above. `effects.Register` refuses it on a benefit and on a row's pump of its own source. The two direction audits require it wherever a harm's words say "can't block" and refuse it where they do not, and `TestCantBlockDeclarationsMatchTheirText` reads every declared harm (Duel Tactics' "It can't block this turn." is a sentence of its own, which their pattern does not reach). `TestNoAmountHarmsSplitByTheirText` pins the fifteen: the four declare `CantBlock` and nothing else, and the -X/-X ten (Tragic Slip, Tragic Trajectory, Chill Haunting, Defile, Grim Hireling, Infused Arrows, Battle at the Bridge, Call for Blood, Necrotic Wound, Olivia's Midnight Ambush; Flourishing Grapple's "loses all abilities" is the fifteenth and is untouched) keep the bare direction and the removal price.
+2. **Priced by the attack it opens** (`PriceCantBlock`, `aiseat/heuristic/cant_block.go`). A move's can't-block picks of opponents' creatures are priced together, once: on the bot's own turn, in its first main phase, beginning of combat or declare attackers step, the best opponent's `swingAt` with those creatures unable to block less the same swing with them able, plus `LethalBonus` when they turn the all-in swing (`lethalPushAs`) into a kill. `swingAt` is the bot's attack at that seat one creature at a time: the attackers already declared, then, before attackers are declared, each creature that could still attack, biggest first, while `attackValue` says it is worth sending. After blockers are declared a "can't block" changes nothing (CR 509.1b: restrictions are checked as blockers are declared), and on another seat's turn the bot is not attacking: there it is worth nothing. One blocker of three opens nothing while the other two still block at a loss; all three open the attack.
+3. **The rest is unchanged.** A pick whose declared shrink kills is still removal, a pick of the bot's own creature is still the harm on its own side (`hostWorth`), and Duel Tactics' 1 damage is priced as declared damage before its restriction is. A cast of Daring Discovery that names none of its "up to three" is priced by its purpose (the discover), not by the mana-value proxy, which would otherwise outbid the same cast at the blockers. With the switch off a can't-block pick is removal, as before.
+
+### Measurements
+
+The base is `develop` at `ee606a09`. No curated deck holds a can't-block card, so every run used the synthetic `--decks cantblock-battle` (BattleDeck with four Daring Discovery and four Untimely Malfunction in place of six Bears and two Ogres) at four seats, `--rotate --lockstep`. No game stalled.
+
+| run | price on | price off |
+|---|---|---|
+| `--games 16 --seed 1000`, all four seats on one policy: Daring Discovery taken / offered | 46 / 166 | 61 / 63 |
+| the same, Untimely Malfunction taken / offered | 68 / 2,057 | 79 / 194 |
+| the same, own turns ending with mana stranded | 8.9% | 1.8% |
+| `--games 48 --seed 2000`, two seats of each: wins / 96 seat-games | 19, 19.8% (13.1–28.9%) | 29, 30.2% (21.9–40.0%) |
+| the same, Daring Discovery cast at 0 / 1 / 2 / 3 creatures | 11 / 73 / 0 / 0 | 0 / 22 / 43 / 4 |
+
+The intervals overlap, so the loss is a direction, not a result; the switch ships off. The removal price casts Daring Discovery in the first main phase it can, at the biggest creatures the enumerator offers; the attack price waits for a board where its picks open a swing and then mostly finds one creature whose absence lets an attacker through, and it holds Untimely Malfunction in hand. The position tests and the whole-engine test (`aiseat/cant_block_bot_test.go`) are the evidence for the price itself. `docs/bot-testing.md` has the runs.
+
+### Not priced
+
+- A "can't block" on a triggered row (Clamor Shaman, Plasma Jockey, Hawkeye, Zog, Triceraton Castaway) or on a modal activated row's bullet (Lost Jitte): those are not declared, as nothing prices a triggered row by its target entry.
+- "Can't block" that makes a blocker unavailable for a later opponent's attack in the same turn, and a "can't block" on the bot's own creature on its own turn, which costs nothing but is still priced as a harm on its own side.
+- The enumerator's target-set budget: `legal.MaxExpansionPerSource` (12) sets per spell, biggest creatures first, so on a crowded board "up to three" is offered as one or two picks and the pair or trio that opens the attack may not be on the list.

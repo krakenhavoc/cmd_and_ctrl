@@ -385,6 +385,11 @@ type PermissionFilter struct {
 	// (#4834). Empty constrains nothing. Additive.
 	Subtype string `json:"subtype,omitempty"`
 
+	// NotSubtype is a subtype a qualifying card must NOT have, read the
+	// same way: Iroh, Grand Lotus's "each non-Lesson instant and sorcery
+	// card" (#4459). Empty constrains nothing. Additive.
+	NotSubtype string `json:"notSubtype,omitempty"`
+
 	// PermanentOnly is "a land or a permanent spell" (Serra Paragon's
 	// "play a land ... or cast a permanent spell", #4834): a land card
 	// qualifies, and so does a card that is a permanent card, whatever
@@ -458,6 +463,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
 		return false
 	}
 	if f.ColorsAny != "" && !cardHasAnyColor(c, f.ColorsAny) {

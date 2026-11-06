@@ -204,7 +204,24 @@ func ManaTriggersForCard(c Card) []ManaTrigger { return manaTriggersOf(&c) }
 
 // manaTriggersOf is ManaTriggersForCard without the copy: Card is over
 // a kilobyte and this is asked per permanent per walk (#1498).
+//
+// ADR 0155's 2026-11-05 amendment: a borrow that lends triggered
+// abilities lends these too (CR 605.1b: a triggered mana ability is a
+// triggered ability), appended after the object's own.
 func manaTriggersOf(c *Card) []ManaTrigger {
+	own := ownManaTriggersOf(c)
+	if len(layeredBorrows(c)) == 0 {
+		return own
+	}
+	lent := borrowedManaTriggersOf(c)
+	if len(lent) == 0 {
+		return own
+	}
+	return append(append(make([]ManaTrigger, 0, len(own)+len(lent)), own...), lent...)
+}
+
+// ownManaTriggersOf is manaTriggersOf without the lent half.
+func ownManaTriggersOf(c *Card) []ManaTrigger {
 	if CatalogManaTriggers == nil {
 		return nil
 	}
