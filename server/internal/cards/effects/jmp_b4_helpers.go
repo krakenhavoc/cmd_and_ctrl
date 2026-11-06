@@ -166,6 +166,13 @@ func doubleLifeTotal(g *game.Game, source, player uuid.UUID) error {
 // does nothing) and Battlefield Promotion (first strike). The counter
 // settles before the grant, so a prompt the counter asks holds the grant.
 func plusOneCounterThenKeywordOnTheTarget(keyword, label string) []Applier {
+	return plusOneCounterThenKeywordsOnTheTarget(label, keyword)
+}
+
+// plusOneCounterThenKeywordsOnTheTarget is plusOneCounterThenKeywordOnTheTarget
+// for a grant of several keywords at once: Biosynthic Burst's "It gains
+// reach, trample, and indestructible until end of turn."
+func plusOneCounterThenKeywordsOnTheTarget(label string, keywords ...string) []Applier {
 	return []Applier{
 		Instruction(func(ctx *Context) error {
 			if id := firstLegalCardTarget(ctx); id != uuid.Nil {
@@ -175,7 +182,7 @@ func plusOneCounterThenKeywordOnTheTarget(keyword, label string) []Applier {
 		}),
 		Instruction(func(ctx *Context) error {
 			if id := firstLegalCardTarget(ctx); id != uuid.Nil {
-				return GrantKeywordUntilEOT{Target: id, Keywords: []string{keyword}, Label: label}.Apply(ctx)
+				return GrantKeywordUntilEOT{Target: id, Keywords: keywords, Label: label}.Apply(ctx)
 			}
 			return nil
 		}),

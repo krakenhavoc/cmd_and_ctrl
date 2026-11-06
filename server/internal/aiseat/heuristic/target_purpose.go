@@ -231,6 +231,7 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	var gifts map[string]*giftAmounts
 	var cards float64
 	priced := false
+	var noBlock []*protocol.CardView // #4977: can't-block picks, priced together
 	for _, t := range targets {
 		e := entryOf(t)
 		if t.Kind != "player" {
@@ -256,6 +257,13 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 					priced = true
 					continue
 				}
+			}
+			// #4977: "can't block this turn", by the attack it opens
+			// with the move's other such picks (cant_block.go).
+			if c, ok := p.cantBlockPick(st, t, e); ok {
+				noBlock = append(noBlock, c)
+				priced = true
+				continue
 			}
 			// #4302: a change until end of turn, by whose permanent it
 			// is and what it does this turn (temporary_effect.go).
@@ -296,6 +304,7 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	if !priced {
 		return st.targetsValue(p.cfg, targets), false
 	}
+	cards += p.cantBlockValue(st, noBlock) // #4977
 	return st.targetsValue(p.cfg, rest) + cards + p.giftsValue(st, gifts, self), true
 }
 

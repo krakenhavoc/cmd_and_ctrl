@@ -74,6 +74,9 @@ export type Route =
   // Your own game statistics (ADR 0165 §7, #3366): record, average
   // place, by deck and by commander, recent games. Signed-in only.
   | { name: "stats" }
+  // Friends (ADR 0213 §9, slice 3): requests sent, blocks and the two
+  // social settings, beyond what the header's drawer shows. Signed-in only.
+  | { name: "friends" }
   // A person's shared stats (ADR 0217 §6): #/stats/shared/<token>, a
   // read-only copy of their stats pages. Public: the link is the
   // credential, and it is made to be posted in Discord.
@@ -189,6 +192,8 @@ export function parseHash(hash: string): Route {
       }
       if (parts[1] === "deck" && parts[2]) return { name: "statsDeck", id: parts[2] };
       return { name: "stats" };
+    case "friends":
+      return { name: "friends" };
     case "practice":
       return { name: "practice" };
     case "catalog": {

@@ -153,10 +153,23 @@ func TestZiatorasEnvoyCastsATownsAdventureWhenTheLandCannotBePlayed(t *testing.T
 	}
 }
 
-// With the land drop still there, a Town is the land play it was.
-func TestZiatorasEnvoyStillOffersATownAsALandPlay(t *testing.T) {
+// With the land drop still there, a Town whose Adventure fits is both
+// answers in one offer (free_offer_combined_4697_test.go has the three
+// ways of answering it).
+func TestZiatorasEnvoyOffersATownAsALandPlayOrItsAdventure(t *testing.T) {
 	tb := newEnvoyTable(t)
 	id := tb.pushTop(landAdventureCard(uuid.Nil, "", "Fixture Town", "Fixture Overture", "{1}{U}", []string{"U"}))
+	tb.attack(t)
+	c := tb.mayCast()
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrFreeOrHand || keywordCastCard(c) != id {
+		t.Fatalf("offer %+v, want the land play or the cast", c)
+	}
+}
+
+// A Town whose Adventure is over the damage dealt is the land play alone.
+func TestZiatorasEnvoyStillOffersATownOverTheCapAsALandPlay(t *testing.T) {
+	tb := newEnvoyTable(t)
+	id := tb.pushTop(landAdventureCard(uuid.Nil, "", "Fixture Town", "Fixture Overture", "{5}{U}{U}", []string{"U"}))
 	tb.attack(t)
 	c := tb.mayCast()
 	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrHand || c.MayCastCard != id {
@@ -166,7 +179,7 @@ func TestZiatorasEnvoyStillOffersATownAsALandPlay(t *testing.T) {
 
 // A modal DFC whose back face is a land, and whose front face is a spell
 // over the damage dealt, is offered as a play of its land back face
-// (CR 712.11c).
+// (CR 712.12).
 func TestZiatorasEnvoyPlaysAModalDFCsLandBackFace(t *testing.T) {
 	tb := newEnvoyTable(t)
 	id := tb.pushTop(mdfcCard(uuid.Nil, "", game.LayoutModalDFC,

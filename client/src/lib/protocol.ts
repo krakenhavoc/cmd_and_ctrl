@@ -1579,7 +1579,10 @@ export interface PendingChoiceView {
     // the one real card on offer (in exile, or for free_or_hand off the top
     // of the chooser's library, where the knower filter keeps it from
     // every other viewer), with `may_cast_keyword` naming the rule and
-    // `accept_label` / `decline_label` the two answers. Answered by one of
+    // `accept_label` / `decline_label` the two answers. Under
+    // play_or_free_or_hand (#4697) a land face of the top card may be
+    // played instead: a cast_spell naming the prompt and that `face`.
+    // Answered by one of
     // the legal moves naming it
     // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
     // the prompt's id and no priority needed, or {choice_id, card_ids: []},
@@ -4270,11 +4273,18 @@ export interface TargetPurposeView {
   // turn cuts for its controller.
   until_end_of_turn?: "benefit" | "harm";
   // #4302: that change in printed amounts (negative for a harm).
-  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
+  pump?: {
+    power?: number;
+    toughness?: number;
+    keywords?: string[];
+    cant_be_blocked?: boolean;
+    cant_block?: boolean;
+  };
   // #4976: beside a "benefit", the power or the toughness the change adds
   // is the announced X (Tyvar's Stand's +X/+X sends both).
   pump_power_is_x?: boolean;
   pump_toughness_is_x?: boolean;
+  // #4977: `pump.cant_block` is a harm's "can't block this turn".
 }
 
 // TargetReturnView is what a removal spell hands the controller of the

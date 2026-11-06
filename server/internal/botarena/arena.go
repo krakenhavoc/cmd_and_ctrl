@@ -232,6 +232,14 @@ const VariantXPumps = "xpumps"
 // XPumpsContestant is an arena name only.
 const XPumpsContestant = string(tiers.Heuristic) + "-" + VariantXPumps
 
+// VariantCantBlock turns on #4977's price of "can't block this turn" by
+// the attack it opens (Config.PriceCantBlock), which DefaultConfig leaves
+// off: there such a pick is priced as removal.
+const VariantCantBlock = "cantblock"
+
+// CantBlockContestant is an arena name only.
+const CantBlockContestant = string(tiers.Heuristic) + "-" + VariantCantBlock
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
 // `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
@@ -244,12 +252,15 @@ const XPumpsContestant = string(tiers.Heuristic) + "-" + VariantXPumps
 // `heuristic-noresolutionmana` (#4980) is one too.
 // `heuristic-triggermana` (#4770) is one too.
 // `heuristic-xpumps` (#4976) is one too.
+// `heuristic-cantblock` (#4977) is one too.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case TriggerManaContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantTriggerMana}, nil
 	case XPumpsContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantXPumps}, nil
+	case CantBlockContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantCantBlock}, nil
 	case BaselineContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantBaseline}, nil
 	case RampCurveContestant:
@@ -289,7 +300,8 @@ func ParseContestant(s string) (SeatSpec, error) {
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant, NoManaSinkContestant, NoModePicksContestant, SpareTokensContestant, RampCurveContestant, SourceCountersContestant, NoRidersContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant, NoEntryCountersContestant, NoManaSinkContestant, NoModePicksContestant, SpareTokensContestant, RampCurveContestant, SourceCountersContestant, NoRidersContestant,
+			CantBlockContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -487,6 +499,8 @@ func knownVariant(v string) bool {
 	case VariantNoResolutionMana, VariantTriggerMana:
 		return true
 	case VariantXPumps:
+		return true
+	case VariantCantBlock:
 		return true
 	}
 	return false
@@ -1009,6 +1023,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PriceXPumps = true
 		opt.Heuristic = &h
+	case VariantCantBlock:
+		h := heuristic.DefaultConfig()
+		h.PriceCantBlock = true
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -1048,6 +1066,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return GhastBattleDeck(uuid.Nil), nil
 	case XPumpsDeckID:
 		return XPumpsBattleDeck(uuid.Nil), nil
+	case CantBlockDeckID:
+		return CantBlockBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

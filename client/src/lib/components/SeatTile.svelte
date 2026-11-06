@@ -22,6 +22,11 @@
   // The × (remove a seat, leave your own) stays on the tile with its
   // confirm, which the page owns.
   //
+  // Another signed-in person's seat at a table you sit at has Add friend
+  // under the deck (ADR 0213 §2, slice 3). The page sends the seat, not an
+  // account: the lobby view carries no account ids. Once asked, the tile
+  // says where it stands (Request sent, Friends) instead.
+  //
   // While the table's ready-check moment plays (ADR 0212 §2, `moment`),
   // a ready tile's check pops in seat order and the tile whose deck just
   // landed gets one brief ring. The page sets `moment` only under full
@@ -64,6 +69,16 @@
     inviteExpanded?: boolean;
     /** An open seat's Add bot. */
     addBot?: { disabled: boolean; onclick: () => void };
+    /**
+     * Another person's seat at your table: Add friend, or where asking
+     * left it. `note` is the line the last answer said (or its error).
+     */
+    befriend?: {
+      state: "none" | "outgoing" | "friend";
+      disabled: boolean;
+      note?: string;
+      onclick: () => void;
+    };
   }
 
   const {
@@ -80,6 +95,7 @@
     oninvite,
     inviteExpanded = false,
     addBot,
+    befriend,
   }: Props = $props();
 
   const ready = $derived(text?.ready === true);
@@ -187,6 +203,24 @@
       {/if}
       <span class="what" class:muted={!ready && !preview}>{text?.what ?? ""}</span>
       {#if text?.second}<span class="second">{text.second}</span>{/if}
+      {#if befriend}
+        <span class="befriend">
+          {#if befriend.state === "none"}
+            <button
+              type="button"
+              class="btn ghost sm xs"
+              disabled={befriend.disabled}
+              onclick={befriend.onclick}
+            >
+              <Icon name="plus" size={12} />
+              {L.addFriend}
+            </button>
+          {:else}
+            <span class="fstate">{befriend.state === "friend" ? "Friends" : "Request sent"}</span>
+          {/if}
+          {#if befriend.note}<span class="fnote" role="status">{befriend.note}</span>{/if}
+        </span>
+      {/if}
       <span class="srow">
         <span class="ident"
           ><IdentityPips colors={text?.colors} colorless={text?.colorless} /><DeckPowerBadge
@@ -495,6 +529,28 @@
     white-space: nowrap;
     font-size: 12px;
     color: var(--fg-muted);
+  }
+  .befriend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-width: 0;
+  }
+  .fstate {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg-muted);
+  }
+  .fnote {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--fg-muted);
+    overflow-wrap: anywhere;
   }
   .srow {
     display: flex;

@@ -67,6 +67,9 @@ battlefield.cards[].catalogAbilities.mana	number:int
 battlefield.cards[].catalogAbilities.replacements	number:int
 battlefield.cards[].catalogAbilities.static	number:int
 battlefield.cards[].catalogAbilities.triggered	number:int
+battlefield.cards[].chosenCard	object
+battlefield.cards[].chosenCard.epoch	number:int
+battlefield.cards[].chosenCard.id	custom(uuid.UUID)
 battlefield.cards[].chosenColor	string
 battlefield.cards[].chosenName	string
 battlefield.cards[].chosenNumber	number:int
@@ -606,6 +609,9 @@ enteringTokens[].catalogAbilities.mana	number:int
 enteringTokens[].catalogAbilities.replacements	number:int
 enteringTokens[].catalogAbilities.static	number:int
 enteringTokens[].catalogAbilities.triggered	number:int
+enteringTokens[].chosenCard	object
+enteringTokens[].chosenCard.epoch	number:int
+enteringTokens[].chosenCard.id	custom(uuid.UUID)
 enteringTokens[].chosenColor	string
 enteringTokens[].chosenName	string
 enteringTokens[].chosenNumber	number:int
@@ -1102,6 +1108,9 @@ exile.cards[].catalogAbilities.mana	number:int
 exile.cards[].catalogAbilities.replacements	number:int
 exile.cards[].catalogAbilities.static	number:int
 exile.cards[].catalogAbilities.triggered	number:int
+exile.cards[].chosenCard	object
+exile.cards[].chosenCard.epoch	number:int
+exile.cards[].chosenCard.id	custom(uuid.UUID)
 exile.cards[].chosenColor	string
 exile.cards[].chosenName	string
 exile.cards[].chosenNumber	number:int
@@ -8008,6 +8017,9 @@ frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.mana	number:i
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.static	number:int
 frozenEntries[].event.keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard	object
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard.epoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.chosenColor	string
 frozenEntries[].event.keywordActionTail.armyToken.chosenName	string
 frozenEntries[].event.keywordActionTail.armyToken.chosenNumber	number:int
@@ -10177,6 +10189,9 @@ frozenEntries[].event.millTail.run.planned[].catalogAbilities.mana	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.replacements	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.static	number:int
 frozenEntries[].event.millTail.run.planned[].catalogAbilities.triggered	number:int
+frozenEntries[].event.millTail.run.planned[].chosenCard	object
+frozenEntries[].event.millTail.run.planned[].chosenCard.epoch	number:int
+frozenEntries[].event.millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].chosenColor	string
 frozenEntries[].event.millTail.run.planned[].chosenName	string
 frozenEntries[].event.millTail.run.planned[].chosenNumber	number:int
@@ -10570,6 +10585,9 @@ frozenEntries[].event.millTail.run.seen[].catalogAbilities.mana	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.replacements	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.static	number:int
 frozenEntries[].event.millTail.run.seen[].catalogAbilities.triggered	number:int
+frozenEntries[].event.millTail.run.seen[].chosenCard	object
+frozenEntries[].event.millTail.run.seen[].chosenCard.epoch	number:int
+frozenEntries[].event.millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].chosenColor	string
 frozenEntries[].event.millTail.run.seen[].chosenName	string
 frozenEntries[].event.millTail.run.seen[].chosenNumber	number:int
@@ -12648,6 +12666,9 @@ frozenEntries[].event.tokenGroups[].template.catalogAbilities.mana	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.replacements	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.static	number:int
 frozenEntries[].event.tokenGroups[].template.catalogAbilities.triggered	number:int
+frozenEntries[].event.tokenGroups[].template.chosenCard	object
+frozenEntries[].event.tokenGroups[].template.chosenCard.epoch	number:int
+frozenEntries[].event.tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.chosenColor	string
 frozenEntries[].event.tokenGroups[].template.chosenName	string
 frozenEntries[].event.tokenGroups[].template.chosenNumber	number:int
@@ -13640,6 +13661,9 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.mana	
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard	object
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenColor	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenName	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -14046,6 +14070,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.mana	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -14439,6 +14466,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.mana	numb
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -17862,6 +17892,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.mana	number:
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard	object
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenColor	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenName	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -18862,6 +18895,9 @@ lastKnownStack[].card.catalogAbilities.mana	number:int
 lastKnownStack[].card.catalogAbilities.replacements	number:int
 lastKnownStack[].card.catalogAbilities.static	number:int
 lastKnownStack[].card.catalogAbilities.triggered	number:int
+lastKnownStack[].card.chosenCard	object
+lastKnownStack[].card.chosenCard.epoch	number:int
+lastKnownStack[].card.chosenCard.id	custom(uuid.UUID)
 lastKnownStack[].card.chosenColor	string
 lastKnownStack[].card.chosenName	string
 lastKnownStack[].card.chosenNumber	number:int
@@ -25373,6 +25409,9 @@ movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.mana	number:i
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.static	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard	object
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard.epoch	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenColor	string
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenName	string
 movesAwaitingTokens[].keywordActionTail.armyToken.chosenNumber	number:int
@@ -27542,6 +27581,9 @@ movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.mana	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.static	number:int
 movesAwaitingTokens[].millTail.run.planned[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].millTail.run.planned[].chosenCard	object
+movesAwaitingTokens[].millTail.run.planned[].chosenCard.epoch	number:int
+movesAwaitingTokens[].millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].chosenColor	string
 movesAwaitingTokens[].millTail.run.planned[].chosenName	string
 movesAwaitingTokens[].millTail.run.planned[].chosenNumber	number:int
@@ -27935,6 +27977,9 @@ movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.mana	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.static	number:int
 movesAwaitingTokens[].millTail.run.seen[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].millTail.run.seen[].chosenCard	object
+movesAwaitingTokens[].millTail.run.seen[].chosenCard.epoch	number:int
+movesAwaitingTokens[].millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].chosenColor	string
 movesAwaitingTokens[].millTail.run.seen[].chosenName	string
 movesAwaitingTokens[].millTail.run.seen[].chosenNumber	number:int
@@ -30013,6 +30058,9 @@ movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.mana	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.static	number:int
 movesAwaitingTokens[].tokenGroups[].template.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].tokenGroups[].template.chosenCard	object
+movesAwaitingTokens[].tokenGroups[].template.chosenCard.epoch	number:int
+movesAwaitingTokens[].tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.chosenColor	string
 movesAwaitingTokens[].tokenGroups[].template.chosenName	string
 movesAwaitingTokens[].tokenGroups[].template.chosenNumber	number:int
@@ -31005,6 +31053,9 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.mana	
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard	object
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenColor	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenName	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -31411,6 +31462,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.mana	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -31804,6 +31858,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.mana	numb
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -35227,6 +35284,9 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.mana	number:
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard	object
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenColor	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenName	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -36977,6 +37037,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.mana	num
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard	object
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.chosenColor	string
 pendingChoices[].attackSplit.settled.chosen[].template.chosenName	string
 pendingChoices[].attackSplit.settled.chosen[].template.chosenNumber	number:int
@@ -37389,6 +37452,9 @@ pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.mana	num
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.settled.groups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard	object
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.chosenColor	string
 pendingChoices[].attackSplit.settled.groups[].template.chosenName	string
 pendingChoices[].attackSplit.settled.groups[].template.chosenNumber	number:int
@@ -38362,6 +38428,9 @@ pendingChoices[].attackSplit.template.catalogAbilities.mana	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.replacements	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.static	number:int
 pendingChoices[].attackSplit.template.catalogAbilities.triggered	number:int
+pendingChoices[].attackSplit.template.chosenCard	object
+pendingChoices[].attackSplit.template.chosenCard.epoch	number:int
+pendingChoices[].attackSplit.template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.chosenColor	string
 pendingChoices[].attackSplit.template.chosenName	string
 pendingChoices[].attackSplit.template.chosenNumber	number:int
@@ -39118,6 +39187,9 @@ pendingChoices[].copyWalk.src.catalogAbilities.mana	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.replacements	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.static	number:int
 pendingChoices[].copyWalk.src.catalogAbilities.triggered	number:int
+pendingChoices[].copyWalk.src.chosenCard	object
+pendingChoices[].copyWalk.src.chosenCard.epoch	number:int
+pendingChoices[].copyWalk.src.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.chosenColor	string
 pendingChoices[].copyWalk.src.chosenName	string
 pendingChoices[].copyWalk.src.chosenNumber	number:int
@@ -49828,6 +49900,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbil
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard	object
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenColor	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenName	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.chosenNumber	number:int
@@ -51997,6 +52072,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard	object
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenColor	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenName	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].chosenNumber	number:int
@@ -52390,6 +52468,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.ma
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard	object
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenColor	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenName	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].chosenNumber	number:int
@@ -54468,6 +54549,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard	object
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenColor	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenName	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.chosenNumber	number:int
@@ -55460,6 +55544,9 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.cat
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard	object
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenColor	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenName	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.chosenNumber	number:int
@@ -55866,6 +55953,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].cata
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].chosenNumber	number:int
@@ -56259,6 +56349,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalog
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].chosenNumber	number:int
@@ -59682,6 +59775,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbi
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.replacements	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.static	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].catalogAbilities.triggered	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard	object
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard.epoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenCard.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenColor	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenName	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].chosenNumber	number:int
@@ -61716,6 +61812,9 @@ pendingChoices[].targetWalk.frame.source.catalogAbilities.mana	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.replacements	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.static	number:int
 pendingChoices[].targetWalk.frame.source.catalogAbilities.triggered	number:int
+pendingChoices[].targetWalk.frame.source.chosenCard	object
+pendingChoices[].targetWalk.frame.source.chosenCard.epoch	number:int
+pendingChoices[].targetWalk.frame.source.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.chosenColor	string
 pendingChoices[].targetWalk.frame.source.chosenName	string
 pendingChoices[].targetWalk.frame.source.chosenNumber	number:int
@@ -62405,6 +62504,9 @@ pendingChoices[].triggerFrame.source.catalogAbilities.mana	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.replacements	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.static	number:int
 pendingChoices[].triggerFrame.source.catalogAbilities.triggered	number:int
+pendingChoices[].triggerFrame.source.chosenCard	object
+pendingChoices[].triggerFrame.source.chosenCard.epoch	number:int
+pendingChoices[].triggerFrame.source.chosenCard.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.chosenColor	string
 pendingChoices[].triggerFrame.source.chosenName	string
 pendingChoices[].triggerFrame.source.chosenNumber	number:int
@@ -63247,6 +63349,9 @@ phasedOut.cards[].catalogAbilities.mana	number:int
 phasedOut.cards[].catalogAbilities.replacements	number:int
 phasedOut.cards[].catalogAbilities.static	number:int
 phasedOut.cards[].catalogAbilities.triggered	number:int
+phasedOut.cards[].chosenCard	object
+phasedOut.cards[].chosenCard.epoch	number:int
+phasedOut.cards[].chosenCard.id	custom(uuid.UUID)
 phasedOut.cards[].chosenColor	string
 phasedOut.cards[].chosenName	string
 phasedOut.cards[].chosenNumber	number:int
@@ -63643,6 +63748,9 @@ planechase.deck.cards[].catalogAbilities.mana	number:int
 planechase.deck.cards[].catalogAbilities.replacements	number:int
 planechase.deck.cards[].catalogAbilities.static	number:int
 planechase.deck.cards[].catalogAbilities.triggered	number:int
+planechase.deck.cards[].chosenCard	object
+planechase.deck.cards[].chosenCard.epoch	number:int
+planechase.deck.cards[].chosenCard.id	custom(uuid.UUID)
 planechase.deck.cards[].chosenColor	string
 planechase.deck.cards[].chosenName	string
 planechase.deck.cards[].chosenNumber	number:int
@@ -64039,6 +64147,9 @@ planechase.faceUp.cards[].catalogAbilities.mana	number:int
 planechase.faceUp.cards[].catalogAbilities.replacements	number:int
 planechase.faceUp.cards[].catalogAbilities.static	number:int
 planechase.faceUp.cards[].catalogAbilities.triggered	number:int
+planechase.faceUp.cards[].chosenCard	object
+planechase.faceUp.cards[].chosenCard.epoch	number:int
+planechase.faceUp.cards[].chosenCard.id	custom(uuid.UUID)
 planechase.faceUp.cards[].chosenColor	string
 planechase.faceUp.cards[].chosenName	string
 planechase.faceUp.cards[].chosenNumber	number:int
@@ -64663,6 +64774,9 @@ resolving.card.catalogAbilities.mana	number:int
 resolving.card.catalogAbilities.replacements	number:int
 resolving.card.catalogAbilities.static	number:int
 resolving.card.catalogAbilities.triggered	number:int
+resolving.card.chosenCard	object
+resolving.card.chosenCard.epoch	number:int
+resolving.card.chosenCard.id	custom(uuid.UUID)
 resolving.card.chosenColor	string
 resolving.card.chosenName	string
 resolving.card.chosenNumber	number:int
@@ -65623,6 +65737,9 @@ seats[].attractionDeck.cards[].catalogAbilities.mana	number:int
 seats[].attractionDeck.cards[].catalogAbilities.replacements	number:int
 seats[].attractionDeck.cards[].catalogAbilities.static	number:int
 seats[].attractionDeck.cards[].catalogAbilities.triggered	number:int
+seats[].attractionDeck.cards[].chosenCard	object
+seats[].attractionDeck.cards[].chosenCard.epoch	number:int
+seats[].attractionDeck.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].chosenColor	string
 seats[].attractionDeck.cards[].chosenName	string
 seats[].attractionDeck.cards[].chosenNumber	number:int
@@ -66149,6 +66266,9 @@ seats[].command.cards[].catalogAbilities.mana	number:int
 seats[].command.cards[].catalogAbilities.replacements	number:int
 seats[].command.cards[].catalogAbilities.static	number:int
 seats[].command.cards[].catalogAbilities.triggered	number:int
+seats[].command.cards[].chosenCard	object
+seats[].command.cards[].chosenCard.epoch	number:int
+seats[].command.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].command.cards[].chosenColor	string
 seats[].command.cards[].chosenName	string
 seats[].command.cards[].chosenNumber	number:int
@@ -66547,6 +66667,9 @@ seats[].companion.cards[].catalogAbilities.mana	number:int
 seats[].companion.cards[].catalogAbilities.replacements	number:int
 seats[].companion.cards[].catalogAbilities.static	number:int
 seats[].companion.cards[].catalogAbilities.triggered	number:int
+seats[].companion.cards[].chosenCard	object
+seats[].companion.cards[].chosenCard.epoch	number:int
+seats[].companion.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].companion.cards[].chosenColor	string
 seats[].companion.cards[].chosenName	string
 seats[].companion.cards[].chosenNumber	number:int
@@ -66954,6 +67077,9 @@ seats[].emblems.cards[].catalogAbilities.mana	number:int
 seats[].emblems.cards[].catalogAbilities.replacements	number:int
 seats[].emblems.cards[].catalogAbilities.static	number:int
 seats[].emblems.cards[].catalogAbilities.triggered	number:int
+seats[].emblems.cards[].chosenCard	object
+seats[].emblems.cards[].chosenCard.epoch	number:int
+seats[].emblems.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].emblems.cards[].chosenColor	string
 seats[].emblems.cards[].chosenName	string
 seats[].emblems.cards[].chosenNumber	number:int
@@ -67448,6 +67574,9 @@ seats[].graveyard.cards[].catalogAbilities.mana	number:int
 seats[].graveyard.cards[].catalogAbilities.replacements	number:int
 seats[].graveyard.cards[].catalogAbilities.static	number:int
 seats[].graveyard.cards[].catalogAbilities.triggered	number:int
+seats[].graveyard.cards[].chosenCard	object
+seats[].graveyard.cards[].chosenCard.epoch	number:int
+seats[].graveyard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].graveyard.cards[].chosenColor	string
 seats[].graveyard.cards[].chosenName	string
 seats[].graveyard.cards[].chosenNumber	number:int
@@ -67842,6 +67971,9 @@ seats[].hand.cards[].catalogAbilities.mana	number:int
 seats[].hand.cards[].catalogAbilities.replacements	number:int
 seats[].hand.cards[].catalogAbilities.static	number:int
 seats[].hand.cards[].catalogAbilities.triggered	number:int
+seats[].hand.cards[].chosenCard	object
+seats[].hand.cards[].chosenCard.epoch	number:int
+seats[].hand.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].hand.cards[].chosenColor	string
 seats[].hand.cards[].chosenName	string
 seats[].hand.cards[].chosenNumber	number:int
@@ -68241,6 +68373,9 @@ seats[].junkyard.cards[].catalogAbilities.mana	number:int
 seats[].junkyard.cards[].catalogAbilities.replacements	number:int
 seats[].junkyard.cards[].catalogAbilities.static	number:int
 seats[].junkyard.cards[].catalogAbilities.triggered	number:int
+seats[].junkyard.cards[].chosenCard	object
+seats[].junkyard.cards[].chosenCard.epoch	number:int
+seats[].junkyard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].junkyard.cards[].chosenColor	string
 seats[].junkyard.cards[].chosenName	string
 seats[].junkyard.cards[].chosenNumber	number:int
@@ -68644,6 +68779,9 @@ seats[].library.cards[].catalogAbilities.mana	number:int
 seats[].library.cards[].catalogAbilities.replacements	number:int
 seats[].library.cards[].catalogAbilities.static	number:int
 seats[].library.cards[].catalogAbilities.triggered	number:int
+seats[].library.cards[].chosenCard	object
+seats[].library.cards[].chosenCard.epoch	number:int
+seats[].library.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].library.cards[].chosenColor	string
 seats[].library.cards[].chosenName	string
 seats[].library.cards[].chosenNumber	number:int
@@ -69079,6 +69217,9 @@ seats[].sideboard.cards[].catalogAbilities.mana	number:int
 seats[].sideboard.cards[].catalogAbilities.replacements	number:int
 seats[].sideboard.cards[].catalogAbilities.static	number:int
 seats[].sideboard.cards[].catalogAbilities.triggered	number:int
+seats[].sideboard.cards[].chosenCard	object
+seats[].sideboard.cards[].chosenCard.epoch	number:int
+seats[].sideboard.cards[].chosenCard.id	custom(uuid.UUID)
 seats[].sideboard.cards[].chosenColor	string
 seats[].sideboard.cards[].chosenName	string
 seats[].sideboard.cards[].chosenNumber	number:int
@@ -69779,6 +69920,9 @@ stack.cards[].catalogAbilities.mana	number:int
 stack.cards[].catalogAbilities.replacements	number:int
 stack.cards[].catalogAbilities.static	number:int
 stack.cards[].catalogAbilities.triggered	number:int
+stack.cards[].chosenCard	object
+stack.cards[].chosenCard.epoch	number:int
+stack.cards[].chosenCard.id	custom(uuid.UUID)
 stack.cards[].chosenColor	string
 stack.cards[].chosenName	string
 stack.cards[].chosenNumber	number:int

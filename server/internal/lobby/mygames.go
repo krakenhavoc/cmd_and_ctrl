@@ -59,6 +59,11 @@ type MySeat struct {
 	Seat int    `json:"seat"`
 	Name string `json:"name"`
 	Bot  bool   `json:"bot,omitempty"`
+	// Friend is whether the seat is held by one of the caller's friends
+	// now (ADR 0213 §9: History's With friends). Set by GET /me/games.
+	Friend bool `json:"friend,omitempty"`
+	// userID is the seat's account, never sent.
+	userID string
 }
 
 // rejoinPath is MyGame.Rejoin for a game.
@@ -157,7 +162,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			Others:     make([]MySeat, 0, len(r.Others)),
 		}
 		for _, o := range r.Others {
-			mg.Others = append(mg.Others, MySeat(o))
+			mg.Others = append(mg.Others, MySeat{Seat: o.Seat, Name: o.Name, Bot: o.Bot, userID: o.UserID})
 		}
 		if entry, ok := l.games[g.ID]; ok {
 			l.syncStateLocked(entry)

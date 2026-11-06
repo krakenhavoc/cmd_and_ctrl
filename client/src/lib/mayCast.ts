@@ -20,7 +20,9 @@
 //
 // What is left of "may_cast" is the land play of "look at the top card,
 // you may play it" (`play_or_hand`, #3801) and the offers that are only
-// their card's text (hideaway, Malcolm); mayCastCopy words those.
+// their card's text (hideaway, Malcolm); mayCastCopy words those. A top
+// card that is both a land to play and a spell to cast, or two lands (a
+// pathway), is a resolution_cast under `play_or_free_or_hand` (#4697).
 
 export interface MayCastCopy {
   source: string;
@@ -65,12 +67,14 @@ export function mayCastCopy(
 // rule tag on the sheet, `how` finishes "you may cast <card> ..." in the
 // heading, and `ifNot` is what happens to the card if it is not cast.
 // `many`, when set, stands for the card in the heading when the offer names
-// more than one ("a spell from your hand").
+// more than one ("a spell from your hand"). `verb`, when set, replaces
+// "cast" in the heading and the hint ("play or cast", #4697).
 export interface KeywordCastWords {
   src: string;
   how: string;
   ifNot: string;
   many?: string;
+  verb?: string;
 }
 
 // whereItStays is what a declined effect cast leaves behind, read off the
@@ -126,6 +130,18 @@ export function keywordCastWords(
       };
     case "free_or_hand":
       return { src: "CR 608.2g", how: FREE, ifNot: "it goes into your hand" };
+    case "play_or_free_or_hand":
+      // #4697: Ziatora's Envoy's "you may play a land or cast a spell ...
+      // from the top of your library" over a card with more than one
+      // answer (a Town, a modal DFC with a spell face and a land face, a
+      // pathway). The moves are each land face's play and each fitting
+      // spell face's free cast.
+      return {
+        src: "CR 608.2g",
+        verb: "play or cast",
+        how: "from the top of your library",
+        ifNot: "it goes into your hand",
+      };
     case "paid_or_else":
       // #3510: "you may cast that card. If you don't, ..." (Chandra, Torch
       // of Defiance). The cast is paid at the card's own cost, timing aside;

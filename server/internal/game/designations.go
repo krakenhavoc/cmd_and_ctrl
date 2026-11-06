@@ -423,7 +423,29 @@ func TriggersForCard(c Card) []TriggeredAbility { return triggersOf(&c) }
 
 // triggersOf is TriggersForCard without the copy: the trigger harvest
 // asks it once per battlefield permanent per event (#1498).
+//
+// ADR 0155's 2026-11-05 amendment: after the object's own triggers come
+// the rows a borrow lent it ("has all … triggered abilities of …", Koh,
+// the Face Stealer), read off its layered characteristic, so every
+// harvest, the state-trigger walk and the views see a lent trigger as
+// the object's own. An object with no borrow pays one nil test.
 func triggersOf(c *Card) []TriggeredAbility {
+	own := ownTriggersOf(c)
+	if len(layeredBorrows(c)) == 0 {
+		return own
+	}
+	lent := borrowedTriggersOf(c)
+	if len(lent) == 0 {
+		return own
+	}
+	return append(append(make([]TriggeredAbility, 0, len(own)+len(lent)), own...), lent...)
+}
+
+// ownTriggersOf is triggersOf without the lent half: the triggered
+// abilities the object has of its own, printed, granted or derived from
+// its keywords. A borrow lends from this list (lentTriggerRowsOf), and
+// re-lends a lender's lent rows as the entries they are.
+func ownTriggersOf(c *Card) []TriggeredAbility {
 	// CR 702.168a / CR 701.58a, ADR 0069 decision 3 and ADR 0082
 	// decision 8: a DISGUISED or CLOAKED object has ward {2}, and it
 	// is the one ability a CR 708.2 object has. Answered before the
@@ -451,20 +473,28 @@ func triggersOf(c *Card) []TriggeredAbility {
 	if c.SuspendGranted {
 		keyword = append(keyword, SuspendUpkeepTrigger(), SuspendLastCounterTrigger())
 	}
-	if CatalogTriggers == nil {
-		return keyword
-	}
-	key := catalogAbilityKeyOf(c)
-	if key == "" {
-		return keyword
-	}
-	printed := activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
-		return t.ActiveWhen
-	})
+	printed := catalogTriggerRowsOf(c)
 	if len(keyword) == 0 {
 		return printed
 	}
 	return append(keyword, printed...)
+}
+
+// catalogTriggerRowsOf is the catalog half of ownTriggersOf: the rows of
+// the object's ability key (its own and its grants', minus CR 613.1f
+// removals), through its designation gate. Every row here has a catalog
+// identity, which is what a borrow lends by (lentTriggerRowsOf).
+func catalogTriggerRowsOf(c *Card) []TriggeredAbility {
+	if CatalogTriggers == nil {
+		return nil
+	}
+	key := catalogAbilityKeyOf(c)
+	if key == "" {
+		return nil
+	}
+	return activeOnly(c, CatalogTriggers(key), func(t TriggeredAbility) Designation {
+		return t.ActiveWhen
+	})
 }
 
 // TriggersForKey is TriggersForCard for a harvest that holds a

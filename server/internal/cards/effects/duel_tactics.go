@@ -25,7 +25,7 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{1}{R}")},
 		Purpose: ForTargets(game.TargetPurpose{
-			Slot: 0, Damage: 1, UntilEndOfTurn: game.TargetHarm,
+			Slot: 0, Damage: 1, UntilEndOfTurn: game.TargetHarm, Pump: &game.Pump{CantBlock: true},
 		}),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)

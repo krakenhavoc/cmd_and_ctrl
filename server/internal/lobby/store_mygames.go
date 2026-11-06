@@ -99,7 +99,8 @@ func (s *SQLStore) SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRe
 	}
 
 	others, err := s.db.QueryContext(ctx,
-		`SELECT o.game_id, o.seat, COALESCE(u.display_name, o.guest_name, ''), o.bot_tier IS NOT NULL
+		`SELECT o.game_id, o.seat, COALESCE(u.display_name, o.guest_name, ''), o.bot_tier IS NOT NULL,
+		        COALESCE(o.user_id, '')
 		 FROM seats o LEFT JOIN users u ON u.id = o.user_id
 		 WHERE o.game_id IN (SELECT game_id FROM seats WHERE user_id = ?)
 		   AND (o.user_id IS NULL OR o.user_id <> ?)
@@ -114,7 +115,7 @@ func (s *SQLStore) SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRe
 			o      OtherSeatRecord
 			bot    int
 		)
-		if err := others.Scan(&gameID, &o.Seat, &o.Name, &bot); err != nil {
+		if err := others.Scan(&gameID, &o.Seat, &o.Name, &bot, &o.UserID); err != nil {
 			return nil, err
 		}
 		o.Bot = bot != 0
@@ -176,7 +177,7 @@ func (s *memoryStore) SeatsOfUser(_ context.Context, userID string) ([]UserSeatR
 				if o.UserID == userID {
 					continue
 				}
-				rec.Others = append(rec.Others, OtherSeatRecord{Seat: o.Seat, Name: o.GuestName, Bot: o.BotTier != ""})
+				rec.Others = append(rec.Others, OtherSeatRecord{Seat: o.Seat, Name: o.GuestName, Bot: o.BotTier != "", UserID: o.UserID})
 			}
 			out = append(out, rec)
 		}
