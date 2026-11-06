@@ -68,6 +68,7 @@ body cipher/cast
 body claim-the-kingdom/indestructible
 body clone-saga/copy-creature-spell-not-legendary
 body combat/untap-and-remove-the-payload
+body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/surge-to-victory-exiled-card
 body copy/the-ability-you-just-activated

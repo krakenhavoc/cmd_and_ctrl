@@ -12883,6 +12883,11 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
+  "each noncreature spell you cast has conspire" is `SpellsYouCastHave(label, Noncreature(), Conspire())` (Raiding
+  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
+  engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
+  whose own cost already uses `teamwork_ids` (`castTapListTaken`).
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
