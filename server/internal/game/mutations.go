@@ -4733,6 +4733,11 @@ func (g *Game) resolveTopAbilityLocked() {
 //     exile" (CR 702.88a, rebound.go, #1854). Resolution only, like
 //     the two above it, and a fact about where the spell was CAST
 //     from, which the item records.
+//   - OMEN — "as an Omen spell resolves, its controller shuffles it
+//     into its owner's library instead of putting it into its owner's
+//     graveyard" (CR 720.3d, omen.go, #5175). The Adventure's twin:
+//     resolution only, read off the face, and an omen card's half is
+//     never also an Adventure.
 //
 // `item` is the spell's stack item, because buyback and flashback are
 // facts about what was PAID and rebound is a fact about where it was
