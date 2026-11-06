@@ -3092,7 +3092,10 @@ Additive: a reader that ignores the new keys behaves exactly as it did.
   read, so the picker and the move list are the same set by
   construction. A granted key the card also prints is dropped rather
   than listed twice, which is the precedence
-  `resolveAlternativeCostLocked` applies at announce.
+  `resolveAlternativeCostLocked` applies at announce. Since #5081 an
+  offer with no card type left under the per-type permission it is cast
+  under (a bestow cast once Muldrotha's enchantment is spent this turn)
+  is not listed, as `cast_spell` refuses it. No field changed.
 
 ## A hand's public announce half, and the face that opens a zone (#1169, #1171, 2026-09-21)
 
