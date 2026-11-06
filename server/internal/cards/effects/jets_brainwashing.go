@@ -24,7 +24,7 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Kicker("{3}")},
 		Targets:       TargetCreature("target creature"),
-		Purpose:       ForTargets(HarmUntilEOT(0, 0, 0)),
+		Purpose:       ForTargets(CantBlockUntilEOT(0, 0, 0)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if id, ok := b16FirstLegalTargetCard(ctx); ok {
 				if err := (RestrictUntilEOT{Target: id, Restrictions: game.CantBlock, Label: "Jet's Brainwashing — can't block this turn"}).Apply(ctx); err != nil {
