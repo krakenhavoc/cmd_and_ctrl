@@ -952,6 +952,8 @@
     choices: CastChoices;
     // #1948: the X form, asked after the X prompt, continues there.
     afterX?: boolean;
+    // #5193: collect evidence N — any number, enough at this mana value.
+    manaValueMin?: number;
   } | null>(null);
   const exileCardsOptions = $derived.by(() => {
     const p = exileCardsPrompt;
@@ -1048,7 +1050,14 @@
     // because its count is the X.
     if (ec && !ec.fromX && choices.exileIDs === undefined) {
       if (ec.options.length > ec.count) {
-        exileCardsPrompt = { card, cost: ec.cost, label: ec.label, count: ec.count, choices };
+        exileCardsPrompt = {
+          card,
+          cost: ec.cost,
+          label: ec.label,
+          count: ec.count,
+          choices,
+          manaValueMin: ec.manaValueMin,
+        };
         return;
       }
       // Exactly what the clause demands: nothing to ask. Re-enter the chain
@@ -4411,6 +4420,8 @@
     options={exileCardsOptions}
     need={exileCardsPrompt?.count}
     label={exileCardsPrompt?.label}
+    variable={!!exileCardsPrompt?.manaValueMin}
+    manaValueMin={exileCardsPrompt?.manaValueMin}
     verb="Exile"
     note={exileCardsPrompt ? exileCostNote(exileCardsPrompt.cost) : undefined}
     where={exileCardsPrompt ? exileCostWhere(exileCardsPrompt.cost) : undefined}
@@ -4631,6 +4642,7 @@
     variable={abilityExilePrompt?.ability.exile_cost_any_number}
     symbolColor={abilityExilePrompt?.ability.exile_cost_symbol_color}
     symbolMin={abilityExilePrompt?.ability.exile_cost_symbol_min}
+    manaValueMin={abilityExilePrompt?.ability.exile_cost_mana_value_min}
     verb="Exile"
     note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
     where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}

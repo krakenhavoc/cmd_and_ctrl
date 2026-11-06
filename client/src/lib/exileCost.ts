@@ -10,6 +10,7 @@
 // Both owners call these, so the two cannot drift apart.
 
 import type { CardView, ExileCostZone, PlayerView } from "./protocol";
+import { manaValueOf } from "./targetPrices";
 
 interface ExileCostFields {
   exile_cost_options?: string[];
@@ -66,4 +67,14 @@ export function exileCostSymbolTotal(cards: CardView[], ids: string[], color: st
   return cards
     .filter((c) => picked.has(c.instance_id))
     .reduce((sum, c) => sum + colorSymbolCount(c.mana_cost, color), 0);
+}
+
+// Collect evidence N (CR 701.59a, #5193): the running total mana value of
+// the picked cards, each read off its printed cost as the engine reads it
+// in the graveyard.
+export function exileCostManaValueTotal(cards: CardView[], ids: string[]): number {
+  const picked = new Set(ids);
+  return cards
+    .filter((c) => picked.has(c.instance_id))
+    .reduce((sum, c) => sum + manaValueOf(c.mana_cost ?? ""), 0);
 }

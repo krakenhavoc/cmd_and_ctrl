@@ -237,6 +237,16 @@ type CostQuery struct {
 	// for an activation or special action.
 	TappingToPay int
 
+	// OptionalCosts is the announcement's optional-cost indices
+	// (CastSpellParams.OptionalCosts), settled at CR 601.2b and read at
+	// 601.2f by a modifier of the spell's own: Bite Down on Crime's "This
+	// spell costs {2} less to cast if evidence was collected" (#5193,
+	// effects.CostsLessIfEvidenceCollected). Read it through
+	// OptionalCostTimes. Filled by the one pricer and, per announcement,
+	// by the enumerator, so the two agree (#544). Nil for an activation
+	// or special action.
+	OptionalCosts []int
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
@@ -1474,6 +1484,13 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // "would cost" after every reduction.
 func (c ParsedCost) totalManaWithX(x int) int {
 	return c.GenericWithX(x) + c.requiredCount()
+}
+
+// OptionalCostTimes is how many times the announcement paid the spell's
+// optional cost keyed `key` (OptionalCostTimesPaid, read off the
+// announced indices). Zero for an activation.
+func (q CostQuery) OptionalCostTimes(key string) int {
+	return optionalCostTimesFor(CatalogKey(q.Card), q.OptionalCosts, key)
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost

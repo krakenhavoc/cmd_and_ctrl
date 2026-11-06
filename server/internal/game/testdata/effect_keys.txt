@@ -280,6 +280,7 @@ body ruinous-waterbending/gain-one-life
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body sakashima/return-listed-to-hand
+body sample-collector/counter
 body sandbender-scavengers/return-to-battlefield
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
@@ -484,6 +485,7 @@ choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/isochron-scepter-imprint
+choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/kari-zevs-expertise-cast
@@ -640,6 +642,7 @@ choose choose-cards/pile-split
 choose choose-cards/planetarium-of-wan-shi-tong-cast
 choose choose-cards/plargg-and-nassari-picked
 choose choose-cards/plunge-into-darkness-take
+choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
 choose choose-cards/proliferate
@@ -672,6 +675,7 @@ choose choose-cards/rooms-d-take-up-to-from-milled
 choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/run-leg
 choose choose-cards/sacrifice-choice
+choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -1147,6 +1151,7 @@ option option-pick/pavel-chekov-first-posting-kind
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
+option option-pick/polygraph-orb-punisher
 option option-pick/practiced-offense-keyword
 option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
@@ -2227,6 +2232,7 @@ tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
 tail then/iron-man-titan-of-innovation-sacrificed
+tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
@@ -2255,6 +2261,7 @@ tail then/outbreak-type-chosen
 tail then/patriarchs-bidding-type-chosen
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
+tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
 tail then/protection-from-chosen-color-until-eot

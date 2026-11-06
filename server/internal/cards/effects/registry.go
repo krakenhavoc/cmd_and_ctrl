@@ -318,6 +318,8 @@ func Register(spec Spec) {
 	checkOptionalWaterbend(spec)
 	// #4642: an optional "you may behold a <type>".
 	checkOptionalBehold(spec)
+	// #5193: an optional "you may collect evidence N".
+	checkOptionalCollectEvidence(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -2608,12 +2610,22 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
 				name, where, ec.N))
 		}
-		if ec.SymbolTotal == nil || ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1 {
+		// #5193: or collect evidence N, a floor on the total mana value
+		// (CR 701.59a), from the graveyard only. One floor, never both.
+		symbols := ec.SymbolTotal != nil
+		if symbols == (ec.ManaValueAtLeast > 0) {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no floor, or with two — "+
+				"a clause with no floor would be free (a symbol total, or collect evidence's mana value)", name, where))
+		}
+		if symbols && (ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no symbol floor — "+
 				"a clause with no floor would be free", name, where))
 		}
-	} else if ec.SymbolTotal != nil {
-		panic(fmt.Sprintf("effects.Register: %q %s names a symbol floor without AnyNumber", name, where))
+		if !symbols && !ec.IsCollectEvidence() {
+			panic(fmt.Sprintf("effects.Register: %q %s has a mana value floor that is not collect evidence — build it with CollectEvidenceN (#5193)", name, where))
+		}
+	} else if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s names a symbol or mana value floor without AnyNumber", name, where))
 	} else if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
 			name, where, ec.N))
