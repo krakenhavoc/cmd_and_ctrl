@@ -83,6 +83,17 @@ type AdditionalCost struct {
 	// an optional cost or an either/or branch.
 	SacrificeAll bool
 
+	// SacrificeHalfRoundedUp is "As an additional cost to cast this
+	// spell, sacrifice half the lands you control, rounded up" (Tectonic
+	// Split): the caster chooses which, and the number is half of the
+	// permanents they control that the Sacrifice clause matches, rounded
+	// up, counted as the total cost is determined (CR 601.2f,
+	// sacrifice_half_cost.go). The
+	// clause carries the "any number" bounds, as SacrificeAll's does, and
+	// this flag says which number. effects.Register allows it only on the
+	// mandatory slot.
+	SacrificeHalfRoundedUp bool
+
 	// PayLifeX is "As an additional cost to cast this spell, pay X
 	// life" (Toxic Deluge), where X is the value announced on
 	// CastSpellParams.XValue. Added in S23.
