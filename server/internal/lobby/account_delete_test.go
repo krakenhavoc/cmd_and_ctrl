@@ -40,6 +40,13 @@ type deletionStack struct {
 
 func newDeletionStack(t *testing.T) deletionStack {
 	t.Helper()
+	return newDeletionStackWith(t, nil)
+}
+
+// newDeletionStackWith is newDeletionStack with a last say over the
+// Config.
+func newDeletionStackWith(t *testing.T, configure func(*Config)) deletionStack {
+	t.Helper()
 	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
 	dir := t.TempDir()
 	d := openTestDB(t, dir)
@@ -62,6 +69,9 @@ func newDeletionStack(t *testing.T) deletionStack {
 		c.Revocations = rev
 		c.SessionEvictor = ev
 		c.Accounts = accountdelete.NewSQLStore(d)
+		if configure != nil {
+			configure(c)
+		}
 	})
 	return deletionStack{srv: srv, lobby: l, mgr: mgr, stub: stub, state: state, users: us, auth: a, db: d, dir: dir, evictor: ev}
 }

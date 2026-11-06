@@ -219,6 +219,9 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 		// references it is written (ADR 0165 §2).
 		l.persistGameLocked(entry)
 		l.recordStatsLocked(entry)
+		// ADR 0163 §5: after the row has its outcome, so the push
+		// counts this game.
+		l.linkedRolesEndedLocked(entry)
 		return
 	}
 	l.persistGameLocked(entry)

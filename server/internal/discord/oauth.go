@@ -81,6 +81,13 @@ const (
 // PromptConsent (lobby.discordCallback, StateStore.Retry). An empty
 // prompt is sent as consent, Discord's own default.
 func (c Config) AuthorizeURL(state, codeChallenge string, prompt Prompt) string {
+	return c.authorizeURL(state, codeChallenge, prompt, c.Scopes())
+}
+
+// authorizeURL is AuthorizeURL with the scope string named:
+// RoleConnectionAuthorizeURL (linked_roles.go) asks for a different
+// grant on the same redirect URI.
+func (c Config) authorizeURL(state, codeChallenge string, prompt Prompt, scope string) string {
 	if prompt != PromptNone {
 		prompt = PromptConsent
 	}
@@ -88,7 +95,7 @@ func (c Config) AuthorizeURL(state, codeChallenge string, prompt Prompt) string 
 	q.Set("response_type", "code")
 	q.Set("client_id", c.ClientID)
 	q.Set("redirect_uri", c.RedirectURI)
-	q.Set("scope", c.Scopes())
+	q.Set("scope", scope)
 	q.Set("state", state)
 	q.Set("code_challenge", codeChallenge)
 	q.Set("code_challenge_method", "S256")

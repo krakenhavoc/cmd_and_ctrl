@@ -190,6 +190,13 @@ type Config struct {
 	// open — an unset token cannot send a DM by another path — and
 	// main.go says so once at boot.
 	DiscordBot discord.Bot
+	// LinkedRoles is ADR 0163's Discord Linked Roles: linking from
+	// Discord (GET /auth/discord/linked-role and its callback branch)
+	// and emptying the connection when an account is deleted. Nil is
+	// off, every environment but production: the route sends the
+	// person to a page saying linking is unavailable, and nothing else
+	// changes.
+	LinkedRoles LinkedRoles
 	// InviteBaseURL is the origin an invite link is built against
 	// (CMDCTRL_PUBLIC_BASE_URL, falling back to
 	// CMDCTRL_CLIENT_BASE_URL — the same pair bug-report attachments
@@ -567,6 +574,10 @@ func Handler(c Config) http.Handler {
 	// #59). Unlike /start it needs a player session: the seat it links
 	// is the session's own. Same bucket as /start.
 	mux.Handle("GET /auth/discord/link", limit.Middleware(auth.Middleware(c.Auth, auth.RolePlayer)(handlerFunc(c, discordLink))))
+	// Discord Linked Roles' verification URL (ADR 0163 §3): Discord
+	// sends a person here to link CMD & CTRL to their profile. No
+	// session; it comes back through /callback. Same bucket as /start.
+	mux.Handle("GET /auth/discord/linked-role", limit.Middleware(handlerFunc(c, discordLinkedRole)))
 	// Discord avatar cache. Session-gated: the board's <img> tags are
 	// same-origin, so the httpOnly session cookie rides along without
 	// the client attaching a token. Rate-limited because each cold
