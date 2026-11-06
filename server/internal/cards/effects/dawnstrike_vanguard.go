@@ -20,7 +20,7 @@ import (
 // itself counts toward the two tapped creatures. The set of creatures is
 // read as it resolves; the Vanguard is never in it, even after it has left
 // the battlefield, and each counter is its own placement
-// (putCountersOnEachYouControlThat).
+// (putPlusOneCountersOnEachYouControlThat).
 //
 // No simplification.
 func init() {
@@ -45,6 +45,6 @@ func init() {
 // controller controls other than its source.
 func dawnstrikeCounters(g *game.Game, item *game.StackItem) error {
 	source := item.SourceCardID
-	return putCountersOnEachYouControlThat(game.CounterPlusOne, 1,
+	return putPlusOneCountersOnEachYouControlThat(1,
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != source })(g, item)
 }
