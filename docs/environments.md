@@ -1344,6 +1344,23 @@ again. `stats_prefs.share_pods` stays and does nothing until then.
 `TestMigration0033RollbackByHand` runs exactly this sequence and then
 rolls forward.
 
+Migration 0034 (ADR 0215 slice 2, scheduled tables, #3321) adds two
+tables, `scheduled_tables` and `scheduled_rsvps`. An older binary refuses
+the v34 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE scheduled_rsvps; DROP TABLE scheduled_tables; DELETE FROM schema_migrations WHERE version = 34;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every scheduled table and reservation: rolling forward again
+recreates the tables empty. A table that already opened from a plan is an
+ordinary table and stays. `TestMigration0034RollbackByHand` runs exactly
+this sequence and then rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,

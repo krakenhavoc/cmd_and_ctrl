@@ -40,6 +40,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
@@ -276,6 +277,11 @@ type Config struct {
 	// /pods/*, /me/pod-invites/* and the two admin routes. Nil (no
 	// database): those routes answer 503.
 	Pods *pods.Store
+
+	// Schedule is ADR 0215's scheduled tables (migration 0034, slice 2):
+	// the /scheduled routes, and the plans Lobby.RunSchedule opens. Nil
+	// (no database): those routes answer 503 and nothing is scheduled.
+	Schedule *schedule.Store
 
 	// AdvancedStats reads a person's version-2 stats record (ADR 0217
 	// slice 5) for GET /me/stats/advanced and GET
@@ -911,6 +917,30 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /me/pod-invites/{pod_id}/decline", podWriteRoute(declinePodInvite))
 	mux.Handle("PUT /admin/pods/{id}/name", requireAdmin(c, handlerFunc(c, adminRenamePod)))
 	mux.Handle("DELETE /admin/pods/{id}", requireAdmin(c, handlerFunc(c, adminDeletePod)))
+	// Scheduled tables (ADR 0215 slice 2, scheduled_http.go). A new plan
+	// and a move spend the create bucket POST /games spends (§12), after
+	// every other check. The other writes share a per-person bucket
+	// shaped like the pods' (1 a second, burst 5), the list a read one
+	// (2 a second, burst 10). GET /scheduled/{id} is public by id (it is
+	// the Discord event's link), so it is limited per client IP. /scheduled
+	// is a top-level prefix, so it is in deploy/Caddyfile's @api matcher,
+	// the Vite proxy and the service worker's API_PATH; the SPA's
+	// #/scheduled/{id} is a hash route requested as `/`.
+	schedWrite := newLimiter(1, 5)
+	schedReadLimit := newLimiter(2, 10)
+	schedPublic := newLimiter(2, 10)
+	schedWriteRoute := func(h lobbyHandler) http.Handler {
+		return auth.Middleware(c.Auth)(perCallerLimit(schedWrite, handlerFunc(c, h)))
+	}
+	mux.Handle("GET /scheduled", auth.Middleware(c.Auth)(perCallerLimit(schedReadLimit, handlerFunc(c, listScheduled))))
+	mux.Handle("POST /scheduled", schedWriteRoute(postScheduled(createLimit)))
+	mux.Handle("GET /scheduled/{id}", schedPublic.Middleware(handlerFunc(c, getScheduled)))
+	mux.Handle("PATCH /scheduled/{id}", schedWriteRoute(patchScheduled(createLimit)))
+	mux.Handle("DELETE /scheduled/{id}", schedWriteRoute(deleteScheduled))
+	mux.Handle("PUT /scheduled/{id}/rsvp", schedWriteRoute(putScheduledRSVP))
+	mux.Handle("DELETE /scheduled/{id}/rsvp", schedWriteRoute(deleteScheduledRSVP))
+	mux.Handle("DELETE /scheduled/{id}/rsvps/{discord_id}", schedWriteRoute(removeScheduledRSVP))
+	mux.Handle("POST /scheduled/{id}/claim", schedWriteRoute(claimScheduledSeat))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
 	// Renewal on use and the saved identity's reinstall (ADR 0110 §1
 	// items 5 and 6, session_renew.go). A signed-in person only; the
@@ -1262,6 +1292,13 @@ type createGameResponse struct {
 	// the admin token, which is not a person, and when seating failed
 	// (the table is created anyway; Take a seat is still offered).
 	Seat *sessionResponse `json:"seat,omitempty"`
+}
+
+// startGameRequest is the optional body of POST /games/{id}/start.
+type startGameRequest struct {
+	// WithoutHeld confirms a start that drops the seats a scheduled
+	// table still holds for people not yet seated (ADR 0215 §3).
+	WithoutHeld bool `json:"without_held,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -3234,11 +3271,30 @@ func startGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !c.isAdmin(p) && p.GameID != id {
 		return httpError(http.StatusForbidden, "not a seat in this game")
 	}
+	// ADR 0215 §3: {"without_held": true} is the host's confirm to start
+	// a scheduled table without the people whose seats are still held.
+	// The body is optional; a start with none is the plain one.
+	var body startGameRequest
+	if r.Body != nil && r.ContentLength != 0 {
+		raw, rerr := io.ReadAll(io.LimitReader(r.Body, 1<<10))
+		if rerr != nil {
+			return httpError(http.StatusBadRequest, "unreadable body")
+		}
+		if strings.TrimSpace(string(raw)) != "" {
+			if jerr := json.Unmarshal(raw, &body); jerr != nil {
+				return httpError(http.StatusBadRequest, "invalid body: "+jerr.Error())
+			}
+		}
+	}
 	before, err := c.Lobby.Get(id)
 	if err != nil {
 		return err
 	}
-	meta, err := c.Lobby.Start(id)
+	start := c.Lobby.Start
+	if body.WithoutHeld {
+		start = c.Lobby.StartWithoutHeld
+	}
+	meta, err := start(id)
 	if err != nil {
 		return err
 	}
@@ -4768,10 +4824,31 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	msg := err.Error()
 
-	var se *httpStatusError
+	var (
+		se       *httpStatusError
+		reserved *SeatsReservedError
+		held     *SeatsHeldError
+	)
 	switch {
 	case errors.As(err, &se):
 		status = se.code
+	case errors.As(err, &reserved):
+		// ADR 0215 §3: 409 with a stable code, and when the holds run
+		// out, for the client to show in the viewer's zone.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": msg, "code": CodeSeatsReserved,
+			"reserved_until": reserved.Until.UnixMilli()})
+		return
+	case errors.As(err, &held):
+		// ADR 0215 §3: the start's confirm. The client asks the host and
+		// sends the start again with without_held.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": msg, "code": CodeSeatsHeld, "held": held.Held})
+		return
+	case errors.Is(err, ErrNoHeldSeat):
+		status = http.StatusConflict
 	case errors.Is(err, ErrGameNotFound):
 		status = http.StatusNotFound
 	case errors.Is(err, ErrInvalidInvite), errors.Is(err, ErrInvalidReclaim):

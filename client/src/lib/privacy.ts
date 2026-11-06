@@ -123,8 +123,15 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * and, from slice 4, their Not now on a suggested pod. The new "Pods"
  * row names them, with the 30-day invite expiry; account deletion passes
  * a pod they own to the member who joined first and deletes their rows.
+ *
+ * 34 (#3321, ADR 0215 slice 2) adds scheduled_tables and scheduled_rsvps:
+ * the tables a person scheduled (a name, a start, their time zone, the
+ * players and the create options) and the list of people with a seat or
+ * on the waitlist, in the order they reserved, keyed by Discord id. The
+ * new "Scheduled tables" row names them, with the 24-hour keep; account
+ * deletion deletes the plans they host and every RSVP of theirs.
  */
-export const PRIVACY_SCHEMA_VERSION = 33;
+export const PRIVACY_SCHEMA_VERSION = 34;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -173,6 +180,8 @@ export const PRIVACY_FACTS = {
   podMemberCap: 12,
   /** pods.MaxPodsPerPerson: pods one person can be in. */
   podsPerPerson: 10,
+  /** schedule.Keep, in hours: a scheduled table and its list are kept this long after the start, or after a cancel. */
+  scheduledKeepHours: 24,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */
   logDays: 30,
   /** scripts/backup-offsite.sh: restic keeps this many daily snapshots. */
