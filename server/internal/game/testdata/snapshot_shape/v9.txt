@@ -12703,6 +12703,7 @@ frozenEntries[].event.tokenGroups[].entry.counters{}	number:int
 frozenEntries[].event.tokenGroups[].entry.keywords	array
 frozenEntries[].event.tokenGroups[].entry.keywords[]	string
 frozenEntries[].event.tokenGroups[].entry.tapped	bool
+frozenEntries[].event.tokenGroups[].tag	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template	object
 frozenEntries[].event.tokenGroups[].template.abilitiesLostOnRestore	bool
 frozenEntries[].event.tokenGroups[].template.activatedAbilityCount	number:int
@@ -13702,6 +13703,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].entry.counters{}	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].entry.keywords	array
 frozenEntries[].event.tokensAfterMove[].groups[].entry.keywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].entry.tapped	bool
+frozenEntries[].event.tokensAfterMove[].groups[].tag	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.abilitiesLostOnRestore	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.activatedAbilityCount	number:int
@@ -30188,6 +30190,7 @@ movesAwaitingTokens[].tokenGroups[].entry.counters{}	number:int
 movesAwaitingTokens[].tokenGroups[].entry.keywords	array
 movesAwaitingTokens[].tokenGroups[].entry.keywords[]	string
 movesAwaitingTokens[].tokenGroups[].entry.tapped	bool
+movesAwaitingTokens[].tokenGroups[].tag	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template	object
 movesAwaitingTokens[].tokenGroups[].template.abilitiesLostOnRestore	bool
 movesAwaitingTokens[].tokenGroups[].template.activatedAbilityCount	number:int
@@ -31187,6 +31190,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].entry.counters{}	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].entry.keywords	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].entry.keywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].entry.tapped	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].tag	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.abilitiesLostOnRestore	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.activatedAbilityCount	number:int
@@ -37206,6 +37210,7 @@ pendingChoices[].attackSplit.settled.chosen[].entry.counters{}	number:int
 pendingChoices[].attackSplit.settled.chosen[].entry.keywords	array
 pendingChoices[].attackSplit.settled.chosen[].entry.keywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].entry.tapped	bool
+pendingChoices[].attackSplit.settled.chosen[].tag	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template	object
 pendingChoices[].attackSplit.settled.chosen[].template.abilitiesLostOnRestore	bool
 pendingChoices[].attackSplit.settled.chosen[].template.activatedAbilityCount	number:int
@@ -37621,6 +37626,7 @@ pendingChoices[].attackSplit.settled.groups[].entry.counters{}	number:int
 pendingChoices[].attackSplit.settled.groups[].entry.keywords	array
 pendingChoices[].attackSplit.settled.groups[].entry.keywords[]	string
 pendingChoices[].attackSplit.settled.groups[].entry.tapped	bool
+pendingChoices[].attackSplit.settled.groups[].tag	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template	object
 pendingChoices[].attackSplit.settled.groups[].template.abilitiesLostOnRestore	bool
 pendingChoices[].attackSplit.settled.groups[].template.activatedAbilityCount	number:int
@@ -54820,6 +54826,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].entry.counters{}	number:i
 pendingChoices[].replacementResume.event.tokenGroups[].entry.keywords	array
 pendingChoices[].replacementResume.event.tokenGroups[].entry.keywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].entry.tapped	bool
+pendingChoices[].replacementResume.event.tokenGroups[].tag	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.abilitiesLostOnRestore	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.activatedAbilityCount	number:int
@@ -55819,6 +55826,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].entry.counte
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].entry.keywords	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].entry.keywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].entry.tapped	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].tag	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.abilitiesLostOnRestore	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.activatedAbilityCount	number:int

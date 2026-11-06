@@ -146,6 +146,21 @@ type TokenGroup struct {
 	// tokens block enters them one at a time even when it makes several
 	// (#4867), and a Together creation ignores it.
 	Blocking uuid.UUID
+
+	// Tag is the caller's name for this group (#4867), told to the
+	// creation's keyed tail with every token minted from it (TokenTags):
+	// encore's "for each opponent, create a token ... that attacks that
+	// opponent" is ONE creation of one group per opponent, tagged with
+	// that opponent, so its tokens enter together and its tail still
+	// knows which token attacks whom. A count replacement keeps the tag
+	// (Doubling Season's second token is that opponent's too), and so does
+	// a kind replacement; a replacement that ADDS a group (Xorn's
+	// Treasure, Peregrin Took's Food) adds an untagged one, which is not
+	// the creation's own token. uuid.Nil tags nothing.
+	//
+	// Only a keyed tail reads it, and every tail that does is a key of its
+	// own, so a binary from before the tag refuses a file that has one.
+	Tag uuid.UUID
 }
 
 // TokenCreation is one "create N tokens" instruction — the whole
@@ -273,7 +288,7 @@ func (ev *ReplacementEvent) ReplaceTokenKindsWhere(pred func(Card) bool, templat
 			continue
 		}
 		for _, tmpl := range templates {
-			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking, AttackOpponent: grp.AttackOpponent, Blocking: grp.Blocking})
+			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking, AttackOpponent: grp.AttackOpponent, Blocking: grp.Blocking, Tag: grp.Tag})
 		}
 	}
 	ev.TokenGroups = out
@@ -448,7 +463,7 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 			if target != uuid.Nil {
 				tok.AttackingTarget = target
 			}
-			batch = append(batch, stagedToken{card: tok, entry: grp.Entry, blocking: grp.Blocking})
+			batch = append(batch, stagedToken{card: tok, entry: grp.Entry, blocking: grp.Blocking, tag: grp.Tag})
 		}
 	}
 	if len(batch) == 0 {
@@ -464,7 +479,7 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	// the continuation still runs exactly once per run.
 	var done tokenDone
 	if ev.tokenTail != nil {
-		done = tokenDone{keyed: ev.tokenTail.keyed, report: ev.tokenTail.report}
+		done = tokenDone{keyed: withTokenTags(ev.tokenTail.keyed, batch), report: ev.tokenTail.report}
 	}
 	if ev.TokenTogether || (len(batch) > 1 && !stagedTokensBlock(batch)) {
 		// #4867, ADR 0061 amendment 2026-11-05: the tokens one
@@ -505,6 +520,50 @@ type stagedToken struct {
 	// blocking is the attacker the token is put onto the battlefield
 	// blocking, applied after it lands (TokenGroup.Blocking).
 	blocking uuid.UUID
+	// tag is its group's TokenGroup.Tag.
+	tag uuid.UUID
+}
+
+// withTokenTags appends a (token, tag) pair to a creation's keyed tail's
+// Carry for every minted token whose group was tagged (TokenGroup.Tag),
+// after whatever the caller carried; TokenTags reads them back. A
+// creation with no tagged group, or no keyed tail, is told nothing more.
+// The pairs are written now, once the CR 701.7b window has settled and
+// before any token enters, so an entry question that pauses the batch
+// carries them on disk inside the tail it already writes.
+func withTokenTags(t KeyedTail, batch []stagedToken) KeyedTail {
+	if t.IsZero() {
+		return t
+	}
+	var pairs []uuid.UUID
+	for _, st := range batch {
+		if st.tag != uuid.Nil {
+			pairs = append(pairs, st.card.InstanceID, st.tag)
+		}
+	}
+	if len(pairs) == 0 {
+		return t
+	}
+	t = copyKeyedTail(t)
+	t.Carry = append(t.Carry, pairs...)
+	return t
+}
+
+// TokenTags is the token-to-tag map a tagged creation told its keyed tail
+// (TokenGroup.Tag, #4867): the (token, tag) pairs after the first `own`
+// entries of the tail's Carry, which are the caller's. A token that did
+// not land is in the map too; read it against o.IDs, the tokens that did.
+func TokenTags(o TailOutcome, own int) map[uuid.UUID]uuid.UUID {
+	carry := o.Tail.Carry
+	if own < 0 || own > len(carry) {
+		return nil
+	}
+	carry = carry[own:]
+	out := make(map[uuid.UUID]uuid.UUID, len(carry)/2)
+	for i := 0; i+1 < len(carry); i += 2 {
+		out[carry[i]] = carry[i+1]
+	}
+	return out
 }
 
 // mintTokenLocked builds one token object from a group's template.

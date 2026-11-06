@@ -44,30 +44,57 @@ func Encore(cost string) ActivatedAbility {
 // encoreTokens makes one hasty token copy per opponent, binds each to its
 // opponent, and schedules their sacrifice. Package-level and
 // capture-free, like every ability body.
+//
+// ONE creation, one group per opponent tagged with that opponent (#4867,
+// game.TokenGroup.Tag): "for each opponent, create a token" is one
+// instruction, so the tokens are created at the same time (CR 701.7a,
+// CR 608.2f) and enter together, and each newcomer sees the others enter
+// (CR 603.6a). A doubler doubles each opponent's group, and both of that
+// opponent's tokens attack that opponent. A token a replacement adds
+// (Xorn's Treasure) is untagged, so it is neither bound nor sacrificed.
+// The binding and the sacrifice are the creation's keyed tail, told the
+// tokens that landed, so a copy whose entry asks a question (a Clone's
+// copy choice) is still bound.
 func encoreTokens(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var all []uuid.UUID
+	tmpl, ok := TokenCopyTemplate(g, item.SourceCardID)
+	if !ok {
+		return nil
+	}
+	TokenCopyGainsHaste(&tmpl)
+	var groups []game.TokenGroup
 	for _, opp := range ctx.Opponents() {
-		cursor := b25LastEventSeq(g)
-		if err := (CreateTokenCopy{
-			Controller: item.Controller,
-			Copy:       item.SourceCardID,
-			N:          1,
-			Except:     TokenCopyGainsHaste,
+		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Tag: opp})
+	}
+	if len(groups) == 0 {
+		return nil
+	}
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: item.Controller, Source: item.SourceCardID, Groups: groups,
+	}, ctx.ItemTail(encoreBindTokens))
+}
+
+// encoreBindTokens is "that attacks that opponent this turn if able ...
+// Sacrifice them at the beginning of the next end step" over the tokens
+// the creation made, each bound to the opponent its group was tagged with.
+// An on-disk key: never renamed, never reused.
+var encoreBindTokens = CardTail("encore/bind-tokens", func(ctx *Context, o game.TailOutcome) error {
+	tags := game.TokenTags(o, 0)
+	var all []uuid.UUID
+	for _, tok := range o.IDs {
+		opp, ok := tags[tok]
+		if !ok {
+			continue
+		}
+		if err := (ScopedEffectFor{
+			Target:   tok,
+			Mods:     []game.Mod{game.AttackPlayerIfAbleMod(opp)},
+			Duration: DurationUntilEndOfTurn(ctx),
+			Label:    "Encore — attacks that opponent this turn if able",
 		}).Apply(ctx); err != nil {
 			return err
 		}
-		for _, tok := range b27TokensCreatedByAfter(g, item.Controller, cursor) {
-			if err := (ScopedEffectFor{
-				Target:   tok,
-				Mods:     []game.Mod{game.AttackPlayerIfAbleMod(opp)},
-				Duration: DurationUntilEndOfTurn(ctx),
-				Label:    "Encore — attacks that opponent this turn if able",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			all = append(all, tok)
-		}
+		all = append(all, tok)
 	}
 	if len(all) == 0 {
 		return nil
@@ -77,4 +104,4 @@ func encoreTokens(g *game.Game, item *game.StackItem) error {
 		Cards: all,
 		Body:  sacrificeListedCardsBody,
 	}.Apply(ctx)
-}
+})
