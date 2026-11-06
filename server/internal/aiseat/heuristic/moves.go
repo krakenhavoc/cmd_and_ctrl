@@ -1477,9 +1477,19 @@ func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, stri
 // The megamorph route is read off the move label, which names the
 // route and its counter whenever a permanent has two offers (a lone
 // offer has nothing to choose between, so it needs no bonus).
+//
+// #5249: a turn-face-up cost with an {X} (Aurelia's Vindicator's
+// disguise {X}{3}{W}) arrives as ONE move, at the largest X the seat can
+// pay (the enumerator's x_value, CR 107.3d), and the bot takes it at that
+// X. Max affordable is the whole rule: the bot never trades X down to
+// keep mana open, and the X is not priced into the value.
 func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionParams) (float64, string) {
 	v := p.cfg.SpecialActionValue
 	pumpNote := ""
+	xNote := ""
+	if sp.XValue > 0 {
+		xNote = " for X=" + strconv.Itoa(sp.XValue)
+	}
 	// #3762: what the card under the face-down permanent does when it is
 	// turned up, if it declares one: Unstable Hulk's skipped turn. The
 	// view sends the controller that purpose and nothing else of the
@@ -1502,5 +1512,5 @@ func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionPara
 	if sp.Route == "morph" && strings.Contains(m.Label, "megamorph") {
 		return v * 1.1, "turn face up (megamorph, +1/+1 counter)"
 	}
-	return v, "special action: turn_face_up" + pumpNote
+	return v, "special action: turn_face_up" + xNote + pumpNote
 }

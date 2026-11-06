@@ -129,6 +129,9 @@ type specialActionParams struct {
 	// Route is which of a permanent's two turn-face-up offers this is
 	// — "mana_cost", "morph" or "disguise" (ADR 0189 decision 4).
 	Route string `json:"route"`
+	// XValue is the X a turn-face-up move pays for an {X} in its cost
+	// (#5249): the enumerator's largest affordable X, which the bot keeps.
+	XValue int `json:"x_value"`
 }
 
 type attackParams struct {

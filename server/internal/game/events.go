@@ -1432,6 +1432,14 @@ const (
 	// kind a TriggeredAbility names, and by the time this is emitted
 	// the permanent is face up and its catalog entry answers again.
 	// Added in S43 (ADR 0082, #1194).
+	//
+	// Amount is the X chosen as the special action was taken, for a
+	// turn-face-up cost with an {X} in it (CR 107.3d, CR 702.168e,
+	// #5249): "other abilities of that permanent may also refer to X",
+	// and Aurelia's Vindicator's turned-face-up trigger reads it off its
+	// trigger context, as Shark Typhoon's cycle trigger reads
+	// EventCycle's. Zero for a cost with no {X} and for an effect that
+	// turns the permanent up, which pays nothing.
 	EventTurnedFaceUp EventKind = "turned_face_up"
 
 	// EventTurnedFaceDown — the permanent CardID was turned face down

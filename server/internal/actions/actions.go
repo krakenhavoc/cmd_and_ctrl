@@ -2882,6 +2882,10 @@ func dispatch(g *game.Game, a Action) error {
 			// sacrifices as its cost. Required for that kind, refused
 			// for every other.
 			SacrificeID string `json:"sacrifice_id,omitempty"`
+			// #5249, CR 107.3d: the X for an {X} in a turn_face_up
+			// cost (Aurelia's Vindicator's disguise {X}{3}{W}), chosen
+			// as the action is taken. Refused on any other cost.
+			XValue int `json:"x_value,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2917,6 +2921,7 @@ func dispatch(g *game.Game, a Action) error {
 			Cost:    p.Cost,
 			Door:    door,
 			Route:   route,
+			XValue:  p.XValue,
 
 			SacrificeID: sacrificeID,
 		})

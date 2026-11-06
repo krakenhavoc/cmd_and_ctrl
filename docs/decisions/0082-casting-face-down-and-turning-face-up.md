@@ -1063,3 +1063,40 @@ because its `CatalogKey` is silent (CR 708.2a).
 `TestIxidronLeavesACreatureEnteringWithItFaceUp` and the existing
 `TestIxidronHidesEveryOtherNontokenCreatureAndSizesItself` and `TestIxidronAloneIsAZeroZero`
 (`internal/cards/effects`).
+
+## Amendment (2026-11-06, #5249): a turn-face-up cost with an {X} (CR 107.3d, CR 702.168e) · Accepted · S79
+
+Aurelia's Vindicator prints "Disguise {X}{3}{W}". CR 107.3d: "If a cost associated with a special
+action, such as a suspend cost or a morph cost, has an {X} or an X in it, the value of X is chosen by
+the player taking the special action immediately before they pay that cost." CR 702.168e (and
+CR 702.37f for morph) lets the permanent's other abilities read the X chosen. Decision 6's special
+action had no way to carry one: not its payload, not the legal-move list, not the client's row.
+
+**F1. The X is an activation's X.** `SpecialActionParams.XValue` (wire `x_value`) is validated as
+`ActivateAbilityParams.XValue` is: within `MaxAnnouncedX`, and `invalid parameter` on a cost with no
+`{X}` or on any kind but `turn_face_up`. The payment passes it to the same helper an activation pays
+with, so it multiplies into the generic demand and a strict payment refuses an X the seat cannot pay
+before anything is spent. Only `turn_face_up` takes one (`SpecialActionDemandsX`): suspend's
+"Suspend X—{X}…" also sets the number of time counters, which its performer does not read, so an
+`{X}` there stays at 0.
+
+**F2. The X rides the event.** `PerformSpecialAction` stamps the chosen X on the copy of the offer it
+hands the performer (`SpecialAction.X`, zero on every offer), and `finishTurnFaceUpLocked` puts it on
+`EventTurnedFaceUp`'s `Amount`. A "when this is turned face up" trigger reads it off its trigger
+context, the way Shark Typhoon's cycle trigger reads `EventCycle`'s (ADR 0062's 2026-10-13
+amendment). Nothing is stored on the permanent, so there is no snapshot field: a trigger waiting on
+the stack carries its context, and a `TargetsFrom` clause that reads only the context re-derives the
+same count on restore. An effect that turns a permanent up (`TurnFaceUpForEffect`) pays no cost and
+carries 0. The log line names the X paid ("Turn face up {X}{3}{W} for X=2").
+
+**F3. Offering it.** The enumerator offers the action once, at the largest X the seat can pay, with
+the move's X open from 0 to it (ADR 0122 §6.2). The view marks the row `demands_x` and stamps
+`x_max` from `Game.SpecialActionXCeilingForEffect`, priced through the same CR 601.2f pass and spend
+context the engine charges with. The client asks for X with the existing X picker, held under
+`x_max`, and sends `x_value`. The bot takes the enumerator's X: max affordable, and it is not priced.
+
+**Cards.** Aurelia's Vindicator, Full. Pinned by `TestTurnFaceUpPaysTheChosenX`,
+`TestTurnFaceUpRefusesAnXItCannotPay` and their neighbours (`internal/game`),
+`TestAureliasVindicatorTriggerRestoresWithTheChosenX` and `TestAureliasVindicatorTurnUpOffersTheMaxX`
+(`internal/cards/effects`), and `TestHeuristicTurnsADisguiseXCreatureUpForTheMaxAffordableX`
+(`internal/aiseat`).

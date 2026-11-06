@@ -1,6 +1,8 @@
 package legal
 
 import (
+	"fmt"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -24,6 +26,10 @@ type specialActionParams struct {
 	// Route names which turn-face-up offer this is, sent only when the
 	// card offers turn_face_up more than once (ADR 0189 decision 4).
 	Route string `json:"route,omitempty"`
+	// XValue is the X for an {X} in the cost (CR 107.3d, #5249): the
+	// largest the seat can pay, and the move's Value says every X from
+	// 0 up to it is payable too.
+	XValue int `json:"x_value,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -115,13 +121,23 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		// for, or the reverse. Priced with the same zero spend
 		// context the engine pays with, so restricted mana counts
 		// here exactly as little as it does there.
+		//
+		// #5249: a cost with an {X} (Aurelia's Vindicator's disguise
+		// {X}{3}{W}) is offered once, at the largest X the seat can pay
+		// (CR 107.3d), with the X open from 0 to that, as an X cast's
+		// is (ADR 0122 §6.2). Nothing else in the move is sized by X.
+		x, xv := 0, (*MoveValue)(nil)
 		if sa.Cost != "" {
 			cost, err := g.SpecialActionManaCostForEffect(e.seat, card, sa.Kind, sa)
 			if err != nil {
 				continue
 			}
-			if !e.canPay(cost, 0, game.SpecialActionSpendContext(sa.Kind)) {
+			best, ok := e.affordableXFrom(cost, game.SpecialActionSpendContext(sa.Kind), 0)
+			if !ok {
 				continue
+			}
+			if game.SpecialActionDemandsX(sa) {
+				x, xv = best, openX(0, best)
 			}
 		}
 		label := sa.Label
@@ -145,6 +161,10 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Strict:  true,
 			AutoTap: true,
 			Door:    game.DoorName(sa.Door),
+			XValue:  x,
+		}
+		if xv != nil {
+			label += fmt.Sprintf(" for X=%d", x)
 		}
 		// #1391: an offer a grant opened in another zone names its
 		// price, because the card may offer the same kind twice
@@ -170,6 +190,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Label:  label,
 			Source: card.InstanceID,
 			Params: mustJSON(params),
+			Value:  xv,
 		})
 	}
 }

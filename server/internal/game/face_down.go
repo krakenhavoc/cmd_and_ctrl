@@ -664,8 +664,10 @@ func (g *Game) turnFaceUpLocked(p *Player, cardID uuid.UUID, sa SpecialAction) e
 		return ErrSpecialActionNotOffered
 	}
 	// The special action's event names the permanent as its own
-	// Source: it turns ITSELF face up and nothing else is involved.
-	return g.finishTurnFaceUpLocked(idx, p.ID, cardID, cardID, sa.FaceUpCounter)
+	// Source: it turns ITSELF face up and nothing else is involved. It
+	// also carries the X chosen as the action was taken (CR 107.3d,
+	// CR 702.168e, #5249).
+	return g.finishTurnFaceUpLocked(idx, p.ID, cardID, cardID, sa.FaceUpCounter, sa.X)
 }
 
 // CanTurnFaceUpForEffect reports whether an instruction to turn this
@@ -746,7 +748,8 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 	// No megamorph counter is requested. The shared tail's only other
 	// error is the AsTurnedFaceUp placement's, on a permanent it has
 	// just found on the battlefield, so it cannot happen either.
-	return g.finishTurnFaceUpLocked(idx, actor, source, id, false) == nil
+	// No X either: an effect pays no cost, so there is no X to choose.
+	return g.finishTurnFaceUpLocked(idx, actor, source, id, false, 0) == nil
 }
 
 // finishTurnFaceUpLocked is the one writer of "this permanent is now
@@ -759,7 +762,10 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 // special-action line already covers). `counter` is CR 702.37b's
 // megamorph counter, owed only when the megamorph COST was paid. The
 // card's own "As this creature is turned face up" counters
-// (asTurnedFaceUpCountersLocked) are owed on every call.
+// (asTurnedFaceUpCountersLocked) are owed on every call. `x` is the X
+// chosen for an {X} in the turn-face-up cost (CR 107.3d), which the
+// event carries as its Amount for the permanent's other abilities
+// (CR 702.168e); zero when nothing chose one.
 //
 // CR 708.8: turning a permanent face up DOES NOT make it a new
 // object. So this touches nothing that identifies one — InstanceID,
@@ -777,7 +783,7 @@ func (g *Game) TurnFaceUpForEffect(source, actor, id uuid.UUID) bool {
 // trigger CR 708.8 exists for.
 //
 // Caller must hold g.mu (write).
-func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, counter bool) error {
+func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, counter bool, x int) error {
 	c := &g.Battlefield.Cards[idx]
 	c.ClearFaceDown()
 	// ADR 0103: a Room turned face up is a Room on the battlefield
@@ -822,6 +828,7 @@ func (g *Game) finishTurnFaceUpLocked(idx int, actor, source, cardID uuid.UUID, 
 		Actor:  actor,
 		Source: source,
 		CardID: cardID,
+		Amount: x,
 	})
 	return nil
 }
