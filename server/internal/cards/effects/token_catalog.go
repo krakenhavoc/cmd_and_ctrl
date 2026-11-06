@@ -333,6 +333,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Lita, Mechanical Engineer's Zeppelin: flying, crew 3 (#5075).
 	printedAvB24ZeppelinToken,
+	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
+	// Ixalan, #4470).
+	printedFungusCantBlockToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
