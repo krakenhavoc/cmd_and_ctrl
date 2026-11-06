@@ -2093,6 +2093,15 @@
     .panel.opponent.flipped .back-part > :global(.row.strip) {
       min-width: 64px;
     }
+    /* #4725: the strip's list is turned, so a pile's copies, stacked 3px
+       up each (at most STRIP_DEPTH - 1 = 3 steps, lib/landStrip.ts), reach
+       9px below it, where your own reach into the label's band. The strip
+       never scrolls up and down (BattlefieldRow), so its bottom padding
+       holds them rather than clipping their edge. Turned back to face you,
+       the copies stack upward again. */
+    .panel.opponent.flipped:not(.faces-viewer) .grid-middle > :global(.row.strip) {
+      padding-bottom: 9px;
+    }
   }
   /* ADR 0204: seats at the table. From 600px up every panel's identity
      sits at the middle of the edge its hand is on, in front of the fan,
