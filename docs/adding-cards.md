@@ -1622,6 +1622,20 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   Elves") keeps `BenefitUntilEOT(slot, 0, 0, ...)`.
   `TestPumpXDeclarationsMatchThePrintedCard` holds both to the printed
   words, and `effects.Register` refuses one on a harm.
+- **`ResolutionMana`** goes on an activated row of the controller's own
+  that adds mana on one numbered resolution of it in a turn: Soulbright
+  Seeker's "If this is the third time this ability has resolved this
+  turn, add {R}{R}{R}{R}" is `&game.ResolutionMana{Resolution: 3, Mana:
+  "{R}{R}{R}{R}"}` beside its trample's target entry
+  ([#4980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4980)).
+  `Resolution` is the count `Game.ResolvedThisTurn` returns for the row's
+  label when the effect adds the mana (it includes the one resolving), so
+  the card's body and the declaration must name the same number; the view
+  stamps the row's `resolved_this_turn` from that tally. `Mana` is fixed
+  symbols only. `effects.Register` refuses it off an activated row, on a
+  resolution before the first, and on a generic, X or hybrid amount.
+  Under `PriceResolutionMana` ([bot.md](bot.md#mana-on-a-counted-resolution-4980))
+  the bot prices a run to that resolution by the casts its mana pays for.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
