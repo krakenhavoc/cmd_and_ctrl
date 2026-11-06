@@ -126,6 +126,8 @@ Changes to `GET /me/tablemates`:
 
 **Decided (owner, 2026-10-30): yes.** Asked as: should a personal block also keep the blocked person out of tables the blocker hosts? The list would then act as a standing `table_blocks` entry on every table the blocker hosts, checked at join and at the invite link. **Recommended: yes.** At someone else's table, that host's tools apply (ADR 0075 §2.6).
 
+*Built after slice 3 (2026-11-05, `server/internal/lobby/personal_blocks.go`).* The check is the host's block of the joiner, one direction, against whoever hosts when the person tries. A refused person gets the 401 a wrong or rotated invite gets, at the invite preview, the join and the join by code, so nothing says there is a block. Someone already seated stays seated, and watching is not refused: the decision names a seat.
+
 **Moderation hooks:**
 
 - **No new report kind.** A request has no text. Abuse at a table is reported from the table, as it is today.

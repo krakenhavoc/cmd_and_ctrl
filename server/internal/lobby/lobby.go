@@ -358,6 +358,10 @@ type Lobby struct {
 	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
 	// carries one.
 	playmats PlaymatSource
+	// personalBlocks, when non-nil, is the block list a table's host
+	// keeps people out with (personal_blocks.go, ADR 0213 §3). Set at
+	// boot via SetPersonalBlocks, which Handler does from Config.Social.
+	personalBlocks PersonalBlocks
 	// awayPresence, when non-nil, is the hub's answer to "is this seat at
 	// the table" for the away clock (away.go, ADR 0177). Set once at
 	// boot via SetAwayPresence; nil offers nothing.
@@ -1007,6 +1011,14 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 			return GameMeta{}, uuid.Nil, ErrAlreadySeated
 		}
 	}
+	// ADR 0213 §3: the host has blocked this person. After the seat
+	// checks, so someone already at the table is not touched, and with
+	// the answer a rotated invite gets, so the block is not revealed.
+	if blocked, err := l.personalBlockLocked(entry, userID); err != nil {
+		return GameMeta{}, uuid.Nil, err
+	} else if blocked {
+		return GameMeta{}, uuid.Nil, ErrInvalidInvite
+	}
 
 	// Placeholder deck: one commander + one filler so the library
 	// isn't empty on Start. Real deck import is S05.
@@ -1174,6 +1186,14 @@ const (
 // needs a session anyway); names, display names and deck names
 // stay. Added Sept 2026 for the redesigned join page.
 func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, error) {
+	return l.PreviewAs(id, invite, uuid.Nil)
+}
+
+// PreviewAs is Preview for a caller whose account is known (the preview
+// route reads the session if there is one). A player invite shown to
+// someone the table's host has blocked answers ErrInvalidInvite, as the
+// join does (personal_blocks.go); a spectator invite is not affected.
+func (l *Lobby) PreviewAs(id uuid.UUID, invite string, userID uuid.UUID) (GameMeta, PreviewKind, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -1190,6 +1210,14 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	switch rec.Kind {
 	case InvitePlayer:
 		kind = PreviewPlayer
+		// Someone already seated still sees their own table's page.
+		if _, seated := seatOfUser(entry.meta.Players, userID); !seated {
+			if blocked, err := l.personalBlockLocked(entry, userID); err != nil {
+				return GameMeta{}, "", err
+			} else if blocked {
+				return GameMeta{}, "", ErrInvalidInvite
+			}
+		}
 	case InviteSpectator:
 		kind = PreviewSpectator
 	default:
