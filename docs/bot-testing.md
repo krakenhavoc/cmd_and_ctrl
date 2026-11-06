@@ -928,7 +928,7 @@ chump block it does not change; a pump for two declared attackers with
 spare mana, and none with the mana a second-main-phase cast needs; haste
 for a fresh creature only; and Shadowspear's `restrict` row held with no
 combat and with attackers. `TestTeamPumpRowsDeclareTheirPump`
-(`cards/effects`) holds the 19 declared rows to their text.
+(`cards/effects`) holds the 20 declared rows to their text.
 
 The 2026-11-06 UTC runs used `develop` at `ee606a09b` with the change,
 the standard pool, `--rotate --lockstep --games 48`, two seats of each
