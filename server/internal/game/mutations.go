@@ -1206,6 +1206,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		params.SacrificeIDs = ids
 	}
+	// #5075: "sacrifice half the lands you control, rounded up" — the
+	// caster picks them, the count is fixed here as the total cost is
+	// determined (CR 601.2f), and the clause's own "any number" bounds let the
+	// validator check the rest.
+	if addCost != nil && addCost.SacrificeHalfRoundedUp && len(params.SacrificeIDs) != g.sacrificeHalfCountLocked(playerID, addCost.Sacrifice) {
+		slog.Warn("cast_spell rejected: sacrifice_ids are not half the permanents a sacrifice-half cost counts",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"sacrifices_received", len(params.SacrificeIDs),
+		)
+		return ErrSacrificeHalfCount
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
 	// count's bounds are read HERE, "as you cast this spell", for a
@@ -2366,6 +2378,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// ADR 0202, CR 702.47a-b: the spliced cards are revealed, all at once,
 	// and stay in the hand.
 	g.revealSplicesLocked(playerID, cardID, card.Name, spliced)
+	// #5184, CR 701.61a: the branch paid above was a forage (Feed the
+	// Cycle), so the caster has foraged — recorded for "if you foraged"
+	// and announced for "whenever you forage", with the spell on the
+	// stack below the triggers.
+	if addCost != nil && addCost.Forage {
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.Foraged = true
+		}
+		g.noteForageLocked(playerID, cardID)
+	}
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {
@@ -2427,6 +2449,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
+			}
+			// Momo, Friendly Flier's "first non-Lemur creature spell with
+			// flying" (#5075).
+			if characteristicHasType(ch, "Creature") && HasKeyword(sc, "flying") {
+				tally = tally.withFlyingCreatureSpell(ch)
 			}
 			// Lattice Library's "first spell with {X} in its mana cost".
 			if strings.Contains(manaCostForValue(*sc), "{X}") {
@@ -3698,6 +3725,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #3961: and the announced tap count (Explosive Singularity's
 		// "{1} less for each creature tapped this way").
 		TappingToPay: len(params.TeamworkIDs),
+		// #5193: and the announced optional costs (Bite Down on Crime's
+		// "{2} less if evidence was collected").
+		OptionalCosts: params.OptionalCosts,
 		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
@@ -4728,6 +4758,11 @@ func (g *Game) resolveTopAbilityLocked() {
 //     exile" (CR 702.88a, rebound.go, #1854). Resolution only, like
 //     the two above it, and a fact about where the spell was CAST
 //     from, which the item records.
+//   - OMEN — "as an Omen spell resolves, its controller shuffles it
+//     into its owner's library instead of putting it into its owner's
+//     graveyard" (CR 720.3d, omen.go, #5175). The Adventure's twin:
+//     resolution only, read off the face, and an omen card's half is
+//     never also an Adventure.
 //
 // `item` is the spell's stack item, because buyback and flashback are
 // facts about what was PAID and rebound is a fact about where it was

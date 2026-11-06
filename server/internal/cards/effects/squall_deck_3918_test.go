@@ -28,7 +28,7 @@ const (
 
 func TestSquallDeckCardsAreRegisteredFull(t *testing.T) {
 	for _, oracle := range []string{
-		sqArdennOracle, sqCelestialOracle, sqFatedClashOracl, sqJirinaOracle, sqMichikoOracle,
+		sqArdennOracle, sqCelestialOracle, sqJirinaOracle, sqMichikoOracle,
 		sqRinoaOracle, sqDaggerOracle, sqSigardasOracle, sqSwordLSOracle, sqTouchOracle,
 		zenosYaeGalvusOracleID, zenosYaeGalvusOracleID + "#1",
 	} {
@@ -40,6 +40,12 @@ func TestSquallDeckCardsAreRegisteredFull(t *testing.T) {
 		if spec.Completeness != CompletenessFull {
 			t.Errorf("%s: completeness %v, want Full", spec.Name, spec.Completeness)
 		}
+	}
+	// #5207: Fated Clash's flash is an alternative-cost offer, so it
+	// carries the caveat coverage's TestEveryFlashIfOfferCardDeclaresItsCaveat
+	// holds.
+	if spec, ok := Lookup(sqFatedClashOracl); !ok || spec.Completeness != CompletenessCaveats {
+		t.Errorf("Fated Clash: registered %v, completeness %v, want caveats", ok, spec.Completeness)
 	}
 }
 

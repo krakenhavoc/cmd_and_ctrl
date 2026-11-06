@@ -486,6 +486,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if len(c.Either) > 0 {
 			out.Either = c.Either
 		}
+		// #5184: and the mark that the either/or part is a forage, or
+		// "{2}, Forage:" would pay its branch without foraging.
+		if c.Forage {
+			out.Forage = true
+		}
 	}
 	return out
 }

@@ -2136,6 +2136,55 @@ type CastTally struct {
 	// through CastTally.Expended.
 	ManaSpent     int `json:"manaSpent,omitempty"`
 	ManaSpentLast int `json:"manaSpentLast,omitempty"`
+	// FlyingCreatureSubtypes records the creature spells with flying the
+	// player cast this turn, read off each spell as it became cast (CR
+	// 601.2i) like CardTypes: one entry a spell, separated by ";", each
+	// its subtypes joined by "," ("*" for a spell with every creature
+	// type, CR 702.73a). Momo, Friendly Flier's "the first non-Lemur
+	// creature spell with flying you cast during each of your turns"
+	// prices a spell while no entry lacks the subtype (#5075). Read
+	// through CastFlyingCreatureSpellWithout. Additive within the
+	// snapshot version.
+	FlyingCreatureSubtypes string `json:"flyingCreatureSubtypes,omitempty"`
+}
+
+// CastFlyingCreatureSpellWithout reports whether the player cast a
+// creature spell with flying this turn that did not have the creature
+// type `subtype` as it became cast (FlyingCreatureSubtypes).
+func (t CastTally) CastFlyingCreatureSpellWithout(subtype string) bool {
+	if t.FlyingCreatureSubtypes == "" {
+		return false
+	}
+	for _, entry := range strings.Split(t.FlyingCreatureSubtypes, ";") {
+		if entry == "*" && IsCreatureType(subtype) {
+			continue
+		}
+		has := false
+		for _, sub := range strings.Split(entry, ",") {
+			if sub != "" && strings.EqualFold(sub, subtype) {
+				has = true
+				break
+			}
+		}
+		if !has {
+			return true
+		}
+	}
+	return false
+}
+
+// withFlyingCreatureSpell records one creature spell with flying and the
+// characteristics it had as it became cast.
+func (t CastTally) withFlyingCreatureSpell(ch *Characteristic) CastTally {
+	entry := strings.Join(ch.Subtypes, ",")
+	if ch.AllCreatureTypes {
+		entry = "*"
+	}
+	if t.FlyingCreatureSubtypes != "" {
+		t.FlyingCreatureSubtypes += ";"
+	}
+	t.FlyingCreatureSubtypes += entry
+	return t
 }
 
 // Expended reports whether the spell just cast spent the player's Nth

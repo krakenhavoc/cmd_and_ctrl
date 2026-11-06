@@ -90,6 +90,15 @@
         "migration 0032 friendships, friend_requests, user_blocks, social_prefs; social/social.go RequestTTL, MaxFriends",
     },
     {
+      // ADR 0220 §12, slice 2: pods/pods.go, lobby/pods_http.go.
+      what: "Pods",
+      details: `If you make or join a pod, we keep its name, who is in it and who owns it, and the invites you send or get (they expire after ${F.podInviteDays} days). The pod’s members see your display name and avatar, that you are a member, and whether you share your stats with it. The server also counts, in memory only, how many invites you sent in the last hour and how many pods you made lately.`,
+      why: "So a group you play with can keep a list of who is in it.",
+      howLong: `Until you leave, are removed, or the pod is deleted; an invite until it is answered or cancelled, or ${F.podInviteDays} days. If you leave, are removed, or delete your account, your membership is gone at once. If you owned the pod, it passes to the member who joined first.`,
+      source:
+        "migration 0033 pods, pod_members, pod_invites, pod_suggestion_dismissals; pods/pods.go InviteTTL, MaxMembers, ForgetAccount",
+    },
+    {
       what: "Your own model key for AI opponents",
       details:
         "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",

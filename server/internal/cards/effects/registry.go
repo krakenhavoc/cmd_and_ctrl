@@ -59,6 +59,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
@@ -113,6 +114,7 @@ func Register(spec Spec) {
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkUpToCount(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
 				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
@@ -153,6 +155,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkUpToCount(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
@@ -315,6 +318,8 @@ func Register(spec Spec) {
 	checkOptionalWaterbend(spec)
 	// #4642: an optional "you may behold a <type>".
 	checkOptionalBehold(spec)
+	// #5193: an optional "you may collect evidence N".
+	checkOptionalCollectEvidence(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -905,6 +910,7 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	checkSacrificeAllCost(spec)
+	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A
@@ -1832,7 +1838,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
-			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType:
+			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType, game.TargetSharesCreatureType:
 			case game.TargetInTargetPlayersGraveyard:
 				checkPlayersGraveyardRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
 			default:
@@ -2604,12 +2610,22 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
 				name, where, ec.N))
 		}
-		if ec.SymbolTotal == nil || ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1 {
+		// #5193: or collect evidence N, a floor on the total mana value
+		// (CR 701.59a), from the graveyard only. One floor, never both.
+		symbols := ec.SymbolTotal != nil
+		if symbols == (ec.ManaValueAtLeast > 0) {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no floor, or with two — "+
+				"a clause with no floor would be free (a symbol total, or collect evidence's mana value)", name, where))
+		}
+		if symbols && (ec.SymbolTotal.AtLeast <= 0 || len(ec.SymbolTotal.Color) != 1) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no symbol floor — "+
 				"a clause with no floor would be free", name, where))
 		}
-	} else if ec.SymbolTotal != nil {
-		panic(fmt.Sprintf("effects.Register: %q %s names a symbol floor without AnyNumber", name, where))
+		if !symbols && !ec.IsCollectEvidence() {
+			panic(fmt.Sprintf("effects.Register: %q %s has a mana value floor that is not collect evidence — build it with CollectEvidenceN (#5193)", name, where))
+		}
+	} else if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s names a symbol or mana value floor without AnyNumber", name, where))
 	} else if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
 			name, where, ec.N))

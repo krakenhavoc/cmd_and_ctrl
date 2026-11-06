@@ -51,6 +51,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
+  - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -91,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Companion (CR 702.139, ADR 0172, #3401)](#companion-cr-702139-adr-0172-3401)
   - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
+  - [Omen cards (CR 720, #5175)](#omen-cards-cr-720-5175)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
@@ -101,6 +103,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
+  - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -4523,6 +4526,95 @@ creature on the battlefield. The card file declares nothing else; the
 view, the client's picker, the enumerator and the bot's price come with
 the component.
 
+### Forage (#5184, CR 701.61a)
+
+To forage is to exile three cards from your graveyard or sacrifice a Food.
+It is an either/or over two payments that already exist, so each owner
+writes it with its own either/or, marked as a forage
+([forage.go](../server/internal/cards/effects/forage.go)):
+
+```go
+Cost: Plus(ManaCost("{2}"), Forage()),          // Camellia: "{2}, Forage:"
+AdditionalCost: ForageOrPay("{B}"),               // Feed the Cycle: "forage or pay {B}"
+MayForage(ctx, question, mayPayDrawACard)         // Treetop Sentries: "you may forage. If you do, draw a card"
+WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // Corpseberry Cultivator
+```
+
+- `Forage()` is an `OrCost` over `game.ForageAbilityBranches` (branch 0
+  exiles three cards from the graveyard, folded into `ExileCards`; branch 1
+  sacrifices a Food), announced as `cost_branch` with `exile_ids` or
+  `sacrifice_ids`. `ForageOrPay` is three branches of the spell's
+  `EitherCost`, keyed `forage-exile`, `forage-food` and `mana`. `MayForage`
+  is a `MayPay` whose payment is `game.ForagePayAction`, answered with
+  `pay_option`. "When you do" is a `WhenYouDo` applied from its `Then`
+  (Curious Forager).
+- A forage is payable when either way is: three cards in your graveyard,
+  or a Food you control (a token, an artifact or an artifact creature, read
+  off its effective subtypes). Each way is greyed, refused and left out of
+  the bot's moves through the walk its plain clause already uses, so with
+  fewer than three cards and no Food the ability can't be activated, the
+  spell's forage branches are unpayable, and a "you may forage" asks
+  nobody (CR 118.3).
+- Paying a forage, whichever owner, emits `game.EventForage`, which
+  `WheneverYouForage` watches. A cost or a spell branch also records
+  `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
+  the cards are on `ctx.Exiled()` and the Food on
+  `ctx.SacrificedPermanents()`.
+- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
+  two mana"), which has no either/or cost, and "cast … by foraging in
+  addition to paying their other costs" (Osteomancer Adept).
+
+### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
+
+"Collect evidence N" is "exile any number of cards from your graveyard with
+total mana value N or greater" (CR 701.59a). It is the graveyard
+`game.ExileCost` in its any-number form with a `ManaValueAtLeast` floor
+(`game.CollectEvidenceCost`), so one gate, `ExileCost.FloorMet`, decides who
+may pay for the engine, the view's offers and the bot. A card's mana value is
+the one it has in the graveyard: a modal double-faced card's front face (CR
+712.8a), an adventurer card's main half (CR 715.4). With less than N in the
+whole graveyard the player can't collect evidence (CR 701.59b). Three forms:
+
+```go
+OptionalCosts: []game.AdditionalCost{OptionalCollectEvidence(6)},   // Crimestopper Sprite
+Cost: Plus(TapCost(), CollectEvidenceN(3)),                          // Forensic Researcher
+var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web-collect-evidence", 4,
+	func(ctx *Context, exiled []uuid.UUID) error { … })             // Izoni: "you may collect evidence 4. If you do, …"
+```
+
+- **The optional additional cost** ("As an additional cost to cast this
+  spell, you may collect evidence N") is keyed `game.CollectEvidenceKey`. The
+  caster names the cards on `cast_spell`'s `exile_ids`; they are exiled with
+  the spell on the stack and recorded on `PaidCost.Exiled` beside the offer's
+  index on `PaidCost.OptionalCosts`. "If evidence was collected" (CR 701.59c,
+  607.2i) reads the announcement: `ctx.EvidenceCollected()` on the resolving
+  spell, `ThisEvidenceCollected` as a permanent's intervening if (Vitu-Ghazi
+  Inspector), and `WhenThisEntersEvidence` with `ItemEvidenceCollected` for an
+  enters trigger that only branches on it (Crimestopper Sprite's stun).
+  "This spell costs {2} less to cast if evidence was collected" is
+  `SelfCostModifiers: []game.CostModifier{CostsLessIfEvidenceCollected(2, label)}`,
+  read off `game.CostQuery.OptionalCosts` at CR 601.2f (Bite Down on Crime).
+  `Register` refuses a second optional collect evidence, one beside a
+  mandatory graveyard exile (they share `exile_ids`), and anything else on
+  the offer.
+- **The activated ability's cost** is `CollectEvidenceN(n)` composed with
+  `Plus`. The activator names the cards on `activate_ability`'s `exile_ids`;
+  the row ships `exile_cost_any_number` and `exile_cost_mana_value_min`, and
+  is greyed when the graveyard is short.
+- **The effect form** ("you may collect evidence N. If you do, …", "When you
+  do, …") is a `CollectEvidence` registered once from a package-level var with
+  `RegisterCollectEvidence(key, n, then)` and asked with `.Ask(ctx, question)`
+  as the ability resolves: one choose_cards prompt over the graveyard, any
+  number, none included, whose registered set rule is `game.CollectEvidenceMet`.
+  Nothing is asked below N. `then` runs after the cards are exiled and only
+  when evidence was collected; a "when you do" is a `ReflexiveTrigger` from it
+  (Sample Collector).
+
+Not built yet: "whenever you collect evidence" (no event is emitted),
+collect evidence X, a mana ability that collects evidence, ward with a
+collect evidence cost and collect evidence as an alternative cost (the
+roadmap's `collect-evidence` row names the cards).
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
@@ -5416,9 +5508,10 @@ empty, optional, repeating or nested branch, a variable sacrifice in a
 branch, and components on the branched cost itself. Reveal and behold
 branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
 `OptionalBehold` (#4642), and a mandatory "behold a Kithkin and exile it"
-is `BeholdAndExileCost` (#4687, below). "tap an untapped artifact", "exile two cards from your graveyard" and
-forage have no branch component yet: leave those cards out (the
-Either/or additional costs registry row lists them).
+is `BeholdAndExileCost` (#4687, below). "Tap an untapped artifact" is
+`TapUntappedCost` in a branch (#3868), "exile two cards from your
+graveyard" is `ExileFromGraveyardCost` in a branch (#1948), and "forage or
+pay {B}" is `ForageOrPay("{B}")` (#5184, see "Forage" below).
 
 **Exile a creature you control as an additional cost (#3402):** "As an
 additional cost to cast this spell, exile a creature you control" is
@@ -5513,7 +5606,7 @@ announces X and the pitched card must have exactly that mana value; the
 spell reads it with `ctx.X()`. Register allows the bound only on a one-card
 hand pitch of a card that declares `XMatters`.
 
-**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Graveyard only: Register refuses the hand form, a non-positive count and an optional cost. **"Exile X cards from your graveyard" (#1948)** is `AdditionalCost: ExileXFromGraveyardCost("X cards", nil)` with `XMatters: true`: the count is the X announced with the cast (the mana cost's {X} too, if it has one), so read the number with `ctx.X()` (Skeletal Scrying, Harvest Pyre, Chill Haunting). The X form is the mandatory slot's only and may not share X with pay X life, blight X or a waterbend {X}. A fixed count may be a branch of `EitherCost` (Soaring Stoneglider: `EitherCost(ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`).
+**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Graveyard only: Register refuses the hand form, a non-positive count and an optional cost (the one optional graveyard exile is collect evidence, [#5193](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)). **"Exile X cards from your graveyard" (#1948)** is `AdditionalCost: ExileXFromGraveyardCost("X cards", nil)` with `XMatters: true`: the count is the X announced with the cast (the mana cost's {X} too, if it has one), so read the number with `ctx.X()` (Skeletal Scrying, Harvest Pyre, Chill Haunting). The X form is the mandatory slot's only and may not share X with pay X life, blight X or a waterbend {X}. A fixed count may be a branch of `EitherCost` (Soaring Stoneglider: `EitherCost(ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`).
 
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
@@ -12424,6 +12517,28 @@ in `AppliesTo` and `ThisWasRenowned(ctx)` in the effect, which reads the source
 as it last existed if it has left (Consul's Lieutenant, Scab-Clan Berserker).
 Never write a renown trigger by hand, and never set `Card.Renowned` from a card.
 
+### Omen cards (CR 720, #5175)
+
+An omen card is an Adventure card with a different exit, and Scryfall lays
+it out as `adventure`. Register both faces the same way: the permanent
+under the bare oracle ID and the Omen half under `"<oracle_id>#1"`, with
+the Omen's `Targets`, `Purpose` and `OnResolve` written as for any instant
+or sorcery. See
+[bloomvine_regent.go](../server/internal/cards/effects/bloomvine_regent.go)
+and [twinmaw_stormbrood.go](../server/internal/cards/effects/twinmaw_stormbrood.go).
+
+Write nothing about the lifecycle. The engine reads the `Omen` spell type
+off the face's type line (`castAsOmen`, [game/omen.go](../server/internal/game/omen.go)),
+so an Omen half never takes the Adventure exile. As it resolves, the card
+goes to its owner's library and that library is shuffled (CR 720.3d, the
+`omen` resolution exit and its `engine/omen-shuffled` tail). A countered
+or fizzled Omen goes to the graveyard, and a copy ceases to exist. The
+hand offers both halves through `CastableFaces`, the one gate the
+engine, the view and the bot enumerator share, and in every other zone the
+card is its permanent half, mana value included (CR 720.4). An Omen half
+whose text searches and shuffles ("Also shuffle this card") needs nothing
+extra: the search shuffles, then the exit shuffles again.
+
 ### Adding a Room or a split card (ADR 0103, #1756)
 
 A **Room** (CR 709.5) is one catalog entry for both doors, keyed on the
@@ -12662,7 +12777,11 @@ ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(c
 
 Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
 that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
-the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
+the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Because the offer is an alternative
+cost, the flash cast can't also take another one (CR 118.9a), which the printed card allows: every "as though it had
+flash if" offer (`FlashForMore`, `FlashIfXAtMost`, `FlashIfTargets`, a `Condition`-gated `AsThoughFlash` offer) ships
+`CompletenessCaveats` with that caveat, and coverage's `TestEveryFlashIfOfferCardDeclaresItsCaveat` holds it (#5207).
+Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
@@ -12735,7 +12854,8 @@ Use the constructor, never `Spec.XCeiling` and never a flat `CastKindAsThoughFla
 cast too (nothing prints that), the second opens instant speed for every X (stronger than printed). The printed cost
 stays sorcery-speed with any X. The ceiling rides `AlternativeCost.XCeiling`, read through
 `game.SpellXCeilingForOfferLocked` by the announce gate, the enumerator, the view (`alternative_costs[].x_max`) and the
-auto-tap preview; `Register` refuses one on a cost with no {X}.
+auto-tap preview; `Register` refuses one on a cost with no {X}. The card still ships `CompletenessCaveats`: the offer is
+an alternative cost, so the flash cast can't take another one (#5207, the flash surcharge section above).
 
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 
@@ -13044,6 +13164,20 @@ if Void(ctx.Game) { … }                     // a spell's "instead if", read as
 ```
 
 The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the trigger fires and again as it resolves, and an `effect` that is a `Do` keeps its steps, so a later step still waits for an earlier step's prompt. Set `Targets` on the returned ability for a targeted body. A land (a land creature too) leaving does not count; a token ceasing to exist does; a spell cast for any alternative cost that carries the warp exile clause counts whether or not it resolves.
+
+### Celebration: "two or more nonland permanents entered" (#5164)
+
+**Celebration** (CR 207.2c) is "two or more nonland permanents entered the battlefield under your control this turn", one per-player turn-tally fact (`PlayerTurnTally.NonlandPermanentsEntered`, read through `Game.NonlandPermanentsEnteredThisTurn`; `cards/effects/celebration.go`). Each entry counts once whatever its card types, so an artifact creature is one; tokens count; a land, a land creature included, does not; one that has since left still counts, and the source counts itself if it entered this turn. Never add up the per-type entry tallies, and never walk `g.Events`.
+
+```go
+SelfPumpWhileCelebration(0, 2)                        // "This creature gets +0/+2 as long as …"
+WheneverThisAttacksIfCelebration(label, effect)       // "Celebration — Whenever ~ attacks, if …"
+AtBeginningOfYourCombatIfCelebration(label, effect)   // "Celebration — At the beginning of combat on your turn, if …"
+InterveningIf(CondCelebration{}, On(...))             // any other trigger shape
+if Celebration(g, item.Controller) { … }              // a resolution-time check
+```
+
+The trigger shapes are intervening ifs (CR 603.4), and `CondCelebration` declares `game.FootprintCondCelebration`, since the count only rises within a turn. Set `Targets` on the returned ability for a targeted body.
 
 ### Adding a `Spec` slot (#622)
 

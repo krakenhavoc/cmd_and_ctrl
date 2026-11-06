@@ -89,6 +89,10 @@ export default defineConfig({
       // Only the /stats/ subtree: the SPA's #/stats is a hash route
       // requested as `/`, so it is never shadowed.
       "/stats/": { target: goServer, changeOrigin: true },
+      // Pods (ADR 0220 slice 2): POST /pods, /pods/{id}… and
+      // /pods/join/{token}. The SPA's own #/pods is a hash route
+      // requested as `/`, so it is never shadowed.
+      "/pods": { target: goServer, changeOrigin: true },
       "/me": { target: goServer, changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the

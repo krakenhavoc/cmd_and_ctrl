@@ -33,7 +33,10 @@ func init() {
 }
 
 // aPlayerHasLifeAtMost is "a player has N or less life": any player
-// still in the game.
+// still in the game. Every Duskmourn tapland prints 13; the number stays a
+// parameter so each call site reads as its printed text.
+//
+//nolint:unparam // the printed life total, kept at the call site
 func aPlayerHasLifeAtMost(n int) func(g *game.Game, _ uuid.UUID) bool {
 	return func(g *game.Game, _ uuid.UUID) bool {
 		for _, p := range g.Seats {

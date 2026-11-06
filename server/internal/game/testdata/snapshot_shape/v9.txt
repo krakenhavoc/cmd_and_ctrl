@@ -1882,6 +1882,7 @@ followUpParks[].then.paid.action	object
 followUpParks[].then.paid.action.Count	number:int
 followUpParks[].then.paid.action.Either	array
 followUpParks[].then.paid.action.Either[]	recursive(game.PayAction)
+followUpParks[].then.paid.action.Forage	bool
 followUpParks[].then.paid.action.Kind	string
 followUpParks[].then.paid.action.Mana	string
 followUpParks[].then.paid.action.Nonland	bool
@@ -2013,6 +2014,7 @@ followUpParks[].then.permission.filter.nonLandPermanentOnly	bool
 followUpParks[].then.permission.filter.noncreatureOnly	bool
 followUpParks[].then.permission.filter.noncreatureOrCreatureType	string
 followUpParks[].then.permission.filter.notOwnedByHolder	bool
+followUpParks[].then.permission.filter.notSubtype	string
 followUpParks[].then.permission.filter.ownedByHolder	bool
 followUpParks[].then.permission.filter.permanentOnly	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
@@ -2492,6 +2494,7 @@ frozenEntries[].event.counterTail.then.paid.action	object
 frozenEntries[].event.counterTail.then.paid.action.Count	number:int
 frozenEntries[].event.counterTail.then.paid.action.Either	array
 frozenEntries[].event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.counterTail.then.paid.action.Forage	bool
 frozenEntries[].event.counterTail.then.paid.action.Kind	string
 frozenEntries[].event.counterTail.then.paid.action.Mana	string
 frozenEntries[].event.counterTail.then.paid.action.Nonland	bool
@@ -2623,6 +2626,7 @@ frozenEntries[].event.counterTail.then.permission.filter.nonLandPermanentOnly	bo
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.counterTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.counterTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -3081,6 +3085,7 @@ frozenEntries[].event.damageTail.each.each.paid.action	object
 frozenEntries[].event.damageTail.each.each.paid.action.Count	number:int
 frozenEntries[].event.damageTail.each.each.paid.action.Either	array
 frozenEntries[].event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.damageTail.each.each.paid.action.Forage	bool
 frozenEntries[].event.damageTail.each.each.paid.action.Kind	string
 frozenEntries[].event.damageTail.each.each.paid.action.Mana	string
 frozenEntries[].event.damageTail.each.each.paid.action.Nonland	bool
@@ -3212,6 +3217,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -3661,6 +3667,7 @@ frozenEntries[].event.damageTail.each.then.paid.action	object
 frozenEntries[].event.damageTail.each.then.paid.action.Count	number:int
 frozenEntries[].event.damageTail.each.then.paid.action.Either	array
 frozenEntries[].event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.damageTail.each.then.paid.action.Forage	bool
 frozenEntries[].event.damageTail.each.then.paid.action.Kind	string
 frozenEntries[].event.damageTail.each.then.paid.action.Mana	string
 frozenEntries[].event.damageTail.each.then.paid.action.Nonland	bool
@@ -3792,6 +3799,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -4093,6 +4101,7 @@ frozenEntries[].event.damageTail.sourceLki.Abilities[]	string
 frozenEntries[].event.damageTail.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
@@ -4411,6 +4420,7 @@ frozenEntries[].event.damageTail.then.paid.action	object
 frozenEntries[].event.damageTail.then.paid.action.Count	number:int
 frozenEntries[].event.damageTail.then.paid.action.Either	array
 frozenEntries[].event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.damageTail.then.paid.action.Forage	bool
 frozenEntries[].event.damageTail.then.paid.action.Kind	string
 frozenEntries[].event.damageTail.then.paid.action.Mana	string
 frozenEntries[].event.damageTail.then.paid.action.Nonland	bool
@@ -4542,6 +4552,7 @@ frozenEntries[].event.damageTail.then.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.damageTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.damageTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -4855,6 +4866,7 @@ frozenEntries[].event.entersAs.grants[]	string
 frozenEntries[].event.entersAs.keywords	array
 frozenEntries[].event.entersAs.keywords[]	string
 frozenEntries[].event.entersAs.label	string
+frozenEntries[].event.entersAs.name	string
 frozenEntries[].event.entersAs.subtypes	array
 frozenEntries[].event.entersAs.subtypes[]	string
 frozenEntries[].event.entersAs.types	array
@@ -5108,6 +5120,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Forage	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -5239,6 +5252,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.nonLan
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -5569,6 +5583,7 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.grants[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.label	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.name	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.types	array
@@ -5762,6 +5777,7 @@ frozenEntries[].event.entryTail.batch.then.paid.action	object
 frozenEntries[].event.entryTail.batch.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.batch.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.entryTail.batch.then.paid.action.Forage	bool
 frozenEntries[].event.entryTail.batch.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Nonland	bool
@@ -5893,6 +5909,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.nonLandPermanentOnl
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -6342,6 +6359,7 @@ frozenEntries[].event.entryTail.keyed.paid.action	object
 frozenEntries[].event.entryTail.keyed.paid.action.Count	number:int
 frozenEntries[].event.entryTail.keyed.paid.action.Either	array
 frozenEntries[].event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.entryTail.keyed.paid.action.Forage	bool
 frozenEntries[].event.entryTail.keyed.paid.action.Kind	string
 frozenEntries[].event.entryTail.keyed.paid.action.Mana	string
 frozenEntries[].event.entryTail.keyed.paid.action.Nonland	bool
@@ -6473,6 +6491,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -6954,6 +6973,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.action	object
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Count	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Forage	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Mana	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -7085,6 +7105,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.nonLandPe
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -7554,6 +7575,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.action	object
 frozenEntries[].event.entryTail.tokens.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.tokens.then.paid.action.Either	array
 frozenEntries[].event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.entryTail.tokens.then.paid.action.Forage	bool
 frozenEntries[].event.entryTail.tokens.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Nonland	bool
@@ -7685,6 +7707,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.nonLandPermanentOn
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -8553,6 +8576,7 @@ frozenEntries[].event.keywordActionTail.then.paid.action	object
 frozenEntries[].event.keywordActionTail.then.paid.action.Count	number:int
 frozenEntries[].event.keywordActionTail.then.paid.action.Either	array
 frozenEntries[].event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.keywordActionTail.then.paid.action.Forage	bool
 frozenEntries[].event.keywordActionTail.then.paid.action.Kind	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Mana	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Nonland	bool
@@ -8684,6 +8708,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.nonLandPermanentO
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9155,6 +9180,7 @@ frozenEntries[].event.lifeTail.each.then.paid.action	object
 frozenEntries[].event.lifeTail.each.then.paid.action.Count	number:int
 frozenEntries[].event.lifeTail.each.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.lifeTail.each.then.paid.action.Forage	bool
 frozenEntries[].event.lifeTail.each.then.paid.action.Kind	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Mana	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Nonland	bool
@@ -9286,6 +9312,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -9738,6 +9765,7 @@ frozenEntries[].event.lifeTail.then.paid.action	object
 frozenEntries[].event.lifeTail.then.paid.action.Count	number:int
 frozenEntries[].event.lifeTail.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.lifeTail.then.paid.action.Forage	bool
 frozenEntries[].event.lifeTail.then.paid.action.Kind	string
 frozenEntries[].event.lifeTail.then.paid.action.Mana	string
 frozenEntries[].event.lifeTail.then.paid.action.Nonland	bool
@@ -9869,6 +9897,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.lifeTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -11114,6 +11143,7 @@ frozenEntries[].event.millTail.run.then.paid.action	object
 frozenEntries[].event.millTail.run.then.paid.action.Count	number:int
 frozenEntries[].event.millTail.run.then.paid.action.Either	array
 frozenEntries[].event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.millTail.run.then.paid.action.Forage	bool
 frozenEntries[].event.millTail.run.then.paid.action.Kind	string
 frozenEntries[].event.millTail.run.then.paid.action.Mana	string
 frozenEntries[].event.millTail.run.then.paid.action.Nonland	bool
@@ -11245,6 +11275,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.nonLandPermanentOnly	b
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.run.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -11692,6 +11723,7 @@ frozenEntries[].event.millTail.then.paid.action	object
 frozenEntries[].event.millTail.then.paid.action.Count	number:int
 frozenEntries[].event.millTail.then.paid.action.Either	array
 frozenEntries[].event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.millTail.then.paid.action.Forage	bool
 frozenEntries[].event.millTail.then.paid.action.Kind	string
 frozenEntries[].event.millTail.then.paid.action.Mana	string
 frozenEntries[].event.millTail.then.paid.action.Nonland	bool
@@ -11823,6 +11855,7 @@ frozenEntries[].event.millTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.millTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.millTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -12143,6 +12176,7 @@ frozenEntries[].event.sourceLki.Abilities[]	string
 frozenEntries[].event.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
+frozenEntries[].event.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
@@ -12392,6 +12426,7 @@ frozenEntries[].event.stackItem.paid.exiledObjects[]	object
 frozenEntries[].event.stackItem.paid.exiledObjects[].epoch	number:int
 frozenEntries[].event.stackItem.paid.exiledObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.exiled[]	custom(uuid.UUID)
+frozenEntries[].event.stackItem.paid.foraged	bool
 frozenEntries[].event.stackItem.paid.giftOpponent	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.grantedOptional	array
 frozenEntries[].event.stackItem.paid.grantedOptional[]	string
@@ -13196,6 +13231,7 @@ frozenEntries[].event.tokenTail.then.paid.action	object
 frozenEntries[].event.tokenTail.then.paid.action.Count	number:int
 frozenEntries[].event.tokenTail.then.paid.action.Either	array
 frozenEntries[].event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.tokenTail.then.paid.action.Forage	bool
 frozenEntries[].event.tokenTail.then.paid.action.Kind	string
 frozenEntries[].event.tokenTail.then.paid.action.Mana	string
 frozenEntries[].event.tokenTail.then.paid.action.Nonland	bool
@@ -13327,6 +13363,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.tokenTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -14995,6 +15032,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -15126,6 +15164,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -15607,6 +15646,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -15738,6 +15778,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -16185,6 +16226,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.action	object
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -16316,6 +16358,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -16783,6 +16826,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.action	object
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Forage	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -16914,6 +16958,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -17446,6 +17491,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Forage	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -17577,6 +17623,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -18281,6 +18328,7 @@ heldCombatDamage.answers[].frame.SourceLKI.Abilities[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AdditionalBlocks	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
 heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackBlockNeedsOtherPower	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
@@ -18457,6 +18505,7 @@ lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
+lastKnownBattlefield{}.AttackBlockNeedsOtherPower	number:int
 lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
@@ -18637,6 +18686,7 @@ lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
+lastKnownPermanents{}[].characteristic.AttackBlockNeedsOtherPower	number:int
 lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
@@ -19356,6 +19406,7 @@ lastKnownStack[].item.paid.exiledObjects[]	object
 lastKnownStack[].item.paid.exiledObjects[].epoch	number:int
 lastKnownStack[].item.paid.exiledObjects[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
+lastKnownStack[].item.paid.foraged	bool
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
 lastKnownStack[].item.paid.grantedOptional	array
 lastKnownStack[].item.paid.grantedOptional[]	string
@@ -19884,6 +19935,7 @@ movesAwaitingTokens[].counterTail.then.paid.action	object
 movesAwaitingTokens[].counterTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].counterTail.then.paid.action.Either	array
 movesAwaitingTokens[].counterTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].counterTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].counterTail.then.paid.action.Kind	string
 movesAwaitingTokens[].counterTail.then.paid.action.Mana	string
 movesAwaitingTokens[].counterTail.then.paid.action.Nonland	bool
@@ -20015,6 +20067,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.nonLandPermanentOnly	bo
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -20473,6 +20526,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.action	object
 movesAwaitingTokens[].damageTail.each.each.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.each.each.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].damageTail.each.each.paid.action.Forage	bool
 movesAwaitingTokens[].damageTail.each.each.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Nonland	bool
@@ -20604,6 +20658,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -21053,6 +21108,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.action	object
 movesAwaitingTokens[].damageTail.each.then.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].damageTail.each.then.paid.action.Forage	bool
 movesAwaitingTokens[].damageTail.each.then.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Nonland	bool
@@ -21184,6 +21240,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -21485,6 +21542,7 @@ movesAwaitingTokens[].damageTail.sourceLki.Abilities[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
@@ -21803,6 +21861,7 @@ movesAwaitingTokens[].damageTail.then.paid.action	object
 movesAwaitingTokens[].damageTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].damageTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].damageTail.then.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.then.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.then.paid.action.Nonland	bool
@@ -21934,6 +21993,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -22247,6 +22307,7 @@ movesAwaitingTokens[].entersAs.grants[]	string
 movesAwaitingTokens[].entersAs.keywords	array
 movesAwaitingTokens[].entersAs.keywords[]	string
 movesAwaitingTokens[].entersAs.label	string
+movesAwaitingTokens[].entersAs.name	string
 movesAwaitingTokens[].entersAs.subtypes	array
 movesAwaitingTokens[].entersAs.subtypes[]	string
 movesAwaitingTokens[].entersAs.types	array
@@ -22500,6 +22561,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Forage	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -22631,6 +22693,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.nonLan
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -22961,6 +23024,7 @@ movesAwaitingTokens[].entryTail.batch.opts.entersAs.grants[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.label	string
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.name	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.types	array
@@ -23154,6 +23218,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.action	object
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].entryTail.batch.then.paid.action.Forage	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Nonland	bool
@@ -23285,6 +23350,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.nonLandPermanentOnl
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -23734,6 +23800,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.action	object
 movesAwaitingTokens[].entryTail.keyed.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.keyed.paid.action.Either	array
 movesAwaitingTokens[].entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].entryTail.keyed.paid.action.Forage	bool
 movesAwaitingTokens[].entryTail.keyed.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Nonland	bool
@@ -23865,6 +23932,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.nonLandPermanentOnly	boo
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -24346,6 +24414,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Forage	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -24477,6 +24546,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.nonLandPe
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -24946,6 +25016,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.action	object
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].entryTail.tokens.then.paid.action.Forage	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Nonland	bool
@@ -25077,6 +25148,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.nonLandPermanentOn
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -25945,6 +26017,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.action	object
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Either	array
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].keywordActionTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Kind	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Mana	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Nonland	bool
@@ -26076,6 +26149,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.nonLandPermanentO
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -26547,6 +26621,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.action	object
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Count	number:int
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].lifeTail.each.then.paid.action.Forage	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Kind	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Mana	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Nonland	bool
@@ -26678,6 +26753,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.nonLandPermanentOnly	
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -27130,6 +27206,7 @@ movesAwaitingTokens[].lifeTail.then.paid.action	object
 movesAwaitingTokens[].lifeTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].lifeTail.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].lifeTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].lifeTail.then.paid.action.Kind	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Mana	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Nonland	bool
@@ -27261,6 +27338,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -28506,6 +28584,7 @@ movesAwaitingTokens[].millTail.run.then.paid.action	object
 movesAwaitingTokens[].millTail.run.then.paid.action.Count	number:int
 movesAwaitingTokens[].millTail.run.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].millTail.run.then.paid.action.Forage	bool
 movesAwaitingTokens[].millTail.run.then.paid.action.Kind	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Mana	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Nonland	bool
@@ -28637,6 +28716,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.nonLandPermanentOnly	b
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -29084,6 +29164,7 @@ movesAwaitingTokens[].millTail.then.paid.action	object
 movesAwaitingTokens[].millTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].millTail.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].millTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].millTail.then.paid.action.Kind	string
 movesAwaitingTokens[].millTail.then.paid.action.Mana	string
 movesAwaitingTokens[].millTail.then.paid.action.Nonland	bool
@@ -29215,6 +29296,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].millTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].millTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -29535,6 +29617,7 @@ movesAwaitingTokens[].sourceLki.Abilities[]	string
 movesAwaitingTokens[].sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].sourceLki.AssignsAsThoughUnblocked	bool
+movesAwaitingTokens[].sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
@@ -29784,6 +29867,7 @@ movesAwaitingTokens[].stackItem.paid.exiledObjects[]	object
 movesAwaitingTokens[].stackItem.paid.exiledObjects[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.exiledObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.exiled[]	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.paid.foraged	bool
 movesAwaitingTokens[].stackItem.paid.giftOpponent	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.grantedOptional	array
 movesAwaitingTokens[].stackItem.paid.grantedOptional[]	string
@@ -30588,6 +30672,7 @@ movesAwaitingTokens[].tokenTail.then.paid.action	object
 movesAwaitingTokens[].tokenTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].tokenTail.then.paid.action.Either	array
 movesAwaitingTokens[].tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].tokenTail.then.paid.action.Forage	bool
 movesAwaitingTokens[].tokenTail.then.paid.action.Kind	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Mana	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Nonland	bool
@@ -30719,6 +30804,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.nonLandPermanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -32387,6 +32473,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -32518,6 +32605,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.nonLandPer
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -32999,6 +33087,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -33130,6 +33219,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.nonL
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -33577,6 +33667,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -33708,6 +33799,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.nonLandPermanen
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34175,6 +34267,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Forage	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -34306,6 +34399,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.nonLandPerman
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -34838,6 +34932,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Forage	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -34969,6 +35064,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.nonLandPerma
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -35790,6 +35886,7 @@ pausedModeWalk.item.paid.exiledObjects[]	object
 pausedModeWalk.item.paid.exiledObjects[].epoch	number:int
 pausedModeWalk.item.paid.exiledObjects[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.exiled[]	custom(uuid.UUID)
+pausedModeWalk.item.paid.foraged	bool
 pausedModeWalk.item.paid.giftOpponent	custom(uuid.UUID)
 pausedModeWalk.item.paid.grantedOptional	array
 pausedModeWalk.item.paid.grantedOptional[]	string
@@ -36112,6 +36209,7 @@ pausedResolutionTail.item.paid.exiledObjects[]	object
 pausedResolutionTail.item.paid.exiledObjects[].epoch	number:int
 pausedResolutionTail.item.paid.exiledObjects[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.exiled[]	custom(uuid.UUID)
+pausedResolutionTail.item.paid.foraged	bool
 pausedResolutionTail.item.paid.giftOpponent	custom(uuid.UUID)
 pausedResolutionTail.item.paid.grantedOptional	array
 pausedResolutionTail.item.paid.grantedOptional[]	string
@@ -36428,6 +36526,7 @@ pausedStepWalk.item.paid.exiledObjects[]	object
 pausedStepWalk.item.paid.exiledObjects[].epoch	number:int
 pausedStepWalk.item.paid.exiledObjects[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.exiled[]	custom(uuid.UUID)
+pausedStepWalk.item.paid.foraged	bool
 pausedStepWalk.item.paid.giftOpponent	custom(uuid.UUID)
 pausedStepWalk.item.paid.grantedOptional	array
 pausedStepWalk.item.paid.grantedOptional[]	string
@@ -37986,6 +38085,7 @@ pendingChoices[].attackSplit.tail.paid.action	object
 pendingChoices[].attackSplit.tail.paid.action.Count	number:int
 pendingChoices[].attackSplit.tail.paid.action.Either	array
 pendingChoices[].attackSplit.tail.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].attackSplit.tail.paid.action.Forage	bool
 pendingChoices[].attackSplit.tail.paid.action.Kind	string
 pendingChoices[].attackSplit.tail.paid.action.Mana	string
 pendingChoices[].attackSplit.tail.paid.action.Nonland	bool
@@ -38117,6 +38217,7 @@ pendingChoices[].attackSplit.tail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].attackSplit.tail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].attackSplit.tail.permission.filter.notSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.ownedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.permanentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
@@ -38924,6 +39025,7 @@ pendingChoices[].copyWalk.item.paid.exiledObjects[]	object
 pendingChoices[].copyWalk.item.paid.exiledObjects[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.exiledObjects[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.exiled[]	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.paid.foraged	bool
 pendingChoices[].copyWalk.item.paid.giftOpponent	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.grantedOptional	array
 pendingChoices[].copyWalk.item.paid.grantedOptional[]	string
@@ -39614,6 +39716,7 @@ pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
@@ -39955,6 +40058,7 @@ pendingChoices[].diceRoll.then.paid.action	object
 pendingChoices[].diceRoll.then.paid.action.Count	number:int
 pendingChoices[].diceRoll.then.paid.action.Either	array
 pendingChoices[].diceRoll.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].diceRoll.then.paid.action.Forage	bool
 pendingChoices[].diceRoll.then.paid.action.Kind	string
 pendingChoices[].diceRoll.then.paid.action.Mana	string
 pendingChoices[].diceRoll.then.paid.action.Nonland	bool
@@ -40086,6 +40190,7 @@ pendingChoices[].diceRoll.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].diceRoll.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].diceRoll.then.permission.filter.notSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.ownedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.permanentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -40422,6 +40527,7 @@ pendingChoices[].divideShield.staged[].lki.Abilities[]	string
 pendingChoices[].divideShield.staged[].lki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
@@ -40587,6 +40693,7 @@ pendingChoices[].divideShield.staged[].sourceLki.Abilities[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
@@ -40910,6 +41017,7 @@ pendingChoices[].divideShield.walk.each.paid.action	object
 pendingChoices[].divideShield.walk.each.paid.action.Count	number:int
 pendingChoices[].divideShield.walk.each.paid.action.Either	array
 pendingChoices[].divideShield.walk.each.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].divideShield.walk.each.paid.action.Forage	bool
 pendingChoices[].divideShield.walk.each.paid.action.Kind	string
 pendingChoices[].divideShield.walk.each.paid.action.Mana	string
 pendingChoices[].divideShield.walk.each.paid.action.Nonland	bool
@@ -41041,6 +41149,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.each.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -41490,6 +41599,7 @@ pendingChoices[].divideShield.walk.then.paid.action	object
 pendingChoices[].divideShield.walk.then.paid.action.Count	number:int
 pendingChoices[].divideShield.walk.then.paid.action.Either	array
 pendingChoices[].divideShield.walk.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].divideShield.walk.then.paid.action.Forage	bool
 pendingChoices[].divideShield.walk.then.paid.action.Kind	string
 pendingChoices[].divideShield.walk.then.paid.action.Mana	string
 pendingChoices[].divideShield.walk.then.paid.action.Nonland	bool
@@ -41621,6 +41731,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.nonLandPermanentOnly	b
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].divideShield.walk.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].divideShield.walk.then.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.permanentOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42076,6 +42187,7 @@ pendingChoices[].libraryOrder.then.paid.action	object
 pendingChoices[].libraryOrder.then.paid.action.Count	number:int
 pendingChoices[].libraryOrder.then.paid.action.Either	array
 pendingChoices[].libraryOrder.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].libraryOrder.then.paid.action.Forage	bool
 pendingChoices[].libraryOrder.then.paid.action.Kind	string
 pendingChoices[].libraryOrder.then.paid.action.Mana	string
 pendingChoices[].libraryOrder.then.paid.action.Nonland	bool
@@ -42207,6 +42319,7 @@ pendingChoices[].libraryOrder.then.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].libraryOrder.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].libraryOrder.then.permission.filter.notSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.ownedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.permanentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -42712,6 +42825,7 @@ pendingChoices[].nameThen.paid.action	object
 pendingChoices[].nameThen.paid.action.Count	number:int
 pendingChoices[].nameThen.paid.action.Either	array
 pendingChoices[].nameThen.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].nameThen.paid.action.Forage	bool
 pendingChoices[].nameThen.paid.action.Kind	string
 pendingChoices[].nameThen.paid.action.Mana	string
 pendingChoices[].nameThen.paid.action.Nonland	bool
@@ -42843,6 +42957,7 @@ pendingChoices[].nameThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].nameThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].nameThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].nameThen.permission.filter.notSubtype	string
 pendingChoices[].nameThen.permission.filter.ownedByHolder	bool
 pendingChoices[].nameThen.permission.filter.permanentOnly	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -43525,6 +43640,7 @@ pendingChoices[].payActionClause	object
 pendingChoices[].payActionClause.Count	number:int
 pendingChoices[].payActionClause.Either	array
 pendingChoices[].payActionClause.Either[]	recursive(game.PayAction)
+pendingChoices[].payActionClause.Forage	bool
 pendingChoices[].payActionClause.Kind	string
 pendingChoices[].payActionClause.Mana	string
 pendingChoices[].payActionClause.Nonland	bool
@@ -43751,6 +43867,7 @@ pendingChoices[].pickTail.paid.action	object
 pendingChoices[].pickTail.paid.action.Count	number:int
 pendingChoices[].pickTail.paid.action.Either	array
 pendingChoices[].pickTail.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].pickTail.paid.action.Forage	bool
 pendingChoices[].pickTail.paid.action.Kind	string
 pendingChoices[].pickTail.paid.action.Mana	string
 pendingChoices[].pickTail.paid.action.Nonland	bool
@@ -43882,6 +43999,7 @@ pendingChoices[].pickTail.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].pickTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].pickTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].pickTail.permission.filter.notSubtype	string
 pendingChoices[].pickTail.permission.filter.ownedByHolder	bool
 pendingChoices[].pickTail.permission.filter.permanentOnly	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -44375,6 +44493,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.action	object
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.counterTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Nonland	bool
@@ -44506,6 +44625,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.nonL
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -44964,6 +45084,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.action	object
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Nonland	bool
@@ -45095,6 +45216,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
@@ -45544,6 +45666,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.action	object
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Nonland	bool
@@ -45675,6 +45798,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -45976,6 +46100,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
@@ -46294,6 +46419,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.action	object
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.damageTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Nonland	bool
@@ -46425,6 +46551,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.nonLa
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -46738,6 +46865,7 @@ pendingChoices[].replacementResume.event.entersAs.grants[]	string
 pendingChoices[].replacementResume.event.entersAs.keywords	array
 pendingChoices[].replacementResume.event.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entersAs.label	string
+pendingChoices[].replacementResume.event.entersAs.name	string
 pendingChoices[].replacementResume.event.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entersAs.subtypes[]	string
 pendingChoices[].replacementResume.event.entersAs.types	array
@@ -46991,6 +47119,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -47122,6 +47251,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -47452,6 +47582,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants[]	
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.label	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.name	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.types	array
@@ -47645,6 +47776,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Nonland	bool
@@ -47776,6 +47908,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -48225,6 +48358,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.action	object
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Nonland	bool
@@ -48356,6 +48490,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.nonLa
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
@@ -48837,6 +48972,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.act
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -48968,6 +49104,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -49437,6 +49574,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action	objec
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Nonland	bool
@@ -49568,6 +49706,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -50436,6 +50575,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action	obje
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Nonland	bool
@@ -50567,6 +50707,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51038,6 +51179,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Nonland	bool
@@ -51169,6 +51311,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.no
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -51621,6 +51764,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.action	object
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Nonland	bool
@@ -51752,6 +51896,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -52997,6 +53142,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.action	object
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Nonland	bool
@@ -53128,6 +53274,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.non
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -53575,6 +53722,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.action	object
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.millTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Nonland	bool
@@ -53706,6 +53854,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.nonLand
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -54026,6 +54175,7 @@ pendingChoices[].replacementResume.event.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
@@ -54275,6 +54425,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.exiledObjects[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.exiledObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.exiledObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.exiled[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.paid.foraged	bool
 pendingChoices[].replacementResume.event.stackItem.paid.giftOpponent	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.grantedOptional	array
 pendingChoices[].replacementResume.event.stackItem.paid.grantedOptional[]	string
@@ -55079,6 +55230,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.action	object
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Nonland	bool
@@ -55210,6 +55362,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.nonLan
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -56878,6 +57031,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.acti
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -57009,6 +57163,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -57490,6 +57645,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -57621,6 +57777,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -58068,6 +58225,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action	ob
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -58199,6 +58357,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -58666,6 +58825,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action	
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -58797,6 +58957,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -59329,6 +59490,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -59460,6 +59622,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHolder	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
@@ -60334,6 +60497,7 @@ pendingChoices[].scryThen.paid.action	object
 pendingChoices[].scryThen.paid.action.Count	number:int
 pendingChoices[].scryThen.paid.action.Either	array
 pendingChoices[].scryThen.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].scryThen.paid.action.Forage	bool
 pendingChoices[].scryThen.paid.action.Kind	string
 pendingChoices[].scryThen.paid.action.Mana	string
 pendingChoices[].scryThen.paid.action.Nonland	bool
@@ -60465,6 +60629,7 @@ pendingChoices[].scryThen.permission.filter.nonLandPermanentOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOnly	bool
 pendingChoices[].scryThen.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].scryThen.permission.filter.notOwnedByHolder	bool
+pendingChoices[].scryThen.permission.filter.notSubtype	string
 pendingChoices[].scryThen.permission.filter.ownedByHolder	bool
 pendingChoices[].scryThen.permission.filter.permanentOnly	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
@@ -60959,6 +61124,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.action	object
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Count	number:int
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
+pendingChoices[].searchPrompt.spec.thenTail.paid.action.Forage	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Kind	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Mana	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Nonland	bool
@@ -61090,6 +61256,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.nonLandPermanentOn
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.noncreatureOrCreatureType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notOwnedByHolder	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.permanentOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
@@ -61631,6 +61798,7 @@ pendingChoices[].targetWalk.frame.lki.Abilities[]	string
 pendingChoices[].targetWalk.frame.lki.AdditionalBlocks	number:int
 pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
 pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].targetWalk.frame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
@@ -62323,6 +62491,7 @@ pendingChoices[].triggerFrame.lki.Abilities[]	string
 pendingChoices[].triggerFrame.lki.AdditionalBlocks	number:int
 pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
 pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
+pendingChoices[].triggerFrame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
@@ -63100,6 +63269,7 @@ pendingTriggers[].paid.exiledObjects[]	object
 pendingTriggers[].paid.exiledObjects[].epoch	number:int
 pendingTriggers[].paid.exiledObjects[].id	custom(uuid.UUID)
 pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
+pendingTriggers[].paid.foraged	bool
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
 pendingTriggers[].paid.grantedOptional	array
 pendingTriggers[].paid.grantedOptional[]	string
@@ -65235,6 +65405,7 @@ resolving.item.paid.exiledObjects[]	object
 resolving.item.paid.exiledObjects[].epoch	number:int
 resolving.item.paid.exiledObjects[].id	custom(uuid.UUID)
 resolving.item.paid.exiled[]	custom(uuid.UUID)
+resolving.item.paid.foraged	bool
 resolving.item.paid.giftOpponent	custom(uuid.UUID)
 resolving.item.paid.grantedOptional	array
 resolving.item.paid.grantedOptional[]	string
@@ -66189,6 +66360,7 @@ seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.noncreatureOrCreatureType	string
 seats[].castPermissions[].filter.notOwnedByHolder	bool
+seats[].castPermissions[].filter.notSubtype	string
 seats[].castPermissions[].filter.ownedByHolder	bool
 seats[].castPermissions[].filter.permanentOnly	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
@@ -69626,6 +69798,7 @@ seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOrCreatureType	string
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
+seats[].statics[].cantBeCountered.filter.notSubtype	string
 seats[].statics[].cantBeCountered.filter.ownedByHolder	bool
 seats[].statics[].cantBeCountered.filter.permanentOnly	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
@@ -69665,6 +69838,7 @@ seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.noncreatureOrCreatureType	string
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
+seats[].statics[].castBan.filter.notSubtype	string
 seats[].statics[].castBan.filter.ownedByHolder	bool
 seats[].statics[].castBan.filter.permanentOnly	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
@@ -69753,6 +69927,7 @@ seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOrCreatureType	string
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
+seats[].statics[].nextSpell.filter.notSubtype	string
 seats[].statics[].nextSpell.filter.ownedByHolder	bool
 seats[].statics[].nextSpell.filter.permanentOnly	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
@@ -69797,6 +69972,7 @@ seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.noncreatureOrCreatureType	string
 seats[].statics[].timing.filter.notOwnedByHolder	bool
+seats[].statics[].timing.filter.notSubtype	string
 seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.permanentOnly	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int
@@ -69876,6 +70052,7 @@ spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
+spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
@@ -70384,6 +70561,7 @@ stackMeta[].paid.exiledObjects[]	object
 stackMeta[].paid.exiledObjects[].epoch	number:int
 stackMeta[].paid.exiledObjects[].id	custom(uuid.UUID)
 stackMeta[].paid.exiled[]	custom(uuid.UUID)
+stackMeta[].paid.foraged	bool
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)
 stackMeta[].paid.grantedOptional	array
 stackMeta[].paid.grantedOptional[]	string
@@ -70740,6 +70918,7 @@ turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
+turnTally.players{}.creaturesLeft	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.equipActivations	number:int
 turnTally.players{}.landsEntered	number:int
@@ -70749,6 +70928,7 @@ turnTally.players{}.lifeLost	number:int
 turnTally.players{}.lifeLow	number:int
 turnTally.players{}.lifeLowSet	bool
 turnTally.players{}.modifiedCreaturesDied	number:int
+turnTally.players{}.nonlandPermanentsEntered	number:int
 turnTally.players{}.nontokenCreaturesEntered	number:int
 turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int

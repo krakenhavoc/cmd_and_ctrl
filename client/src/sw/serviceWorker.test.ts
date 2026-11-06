@@ -117,6 +117,11 @@ describe("service worker routing", () => {
     // A stats share link's read (ADR 0217 §6): no-store on the server,
     // and a revoked link must answer 404 at once, never from a cache.
     "/stats/shared/AAAAAAAAAAAAAAAAAAAAAA",
+    // Pods (ADR 0220 slice 2): private to their members, and a link
+    // preview must answer from the server, never a cache.
+    "/pods",
+    "/pods/6f1c2a9e-0000-4000-8000-000000000000",
+    "/pods/join/AAAAAAAAAAAAAAAAAAAAAA",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {

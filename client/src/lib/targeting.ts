@@ -1437,6 +1437,9 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
   // #4642: "you may behold a Hero" — nothing to behold is an offer that
   // cannot be taken now.
   if (offer.reveal_options) return offer.reveal_options.cards ?? [];
+  // #5193: "you may collect evidence N" — a graveyard short of N is an
+  // offer that cannot be taken now (CR 701.59b).
+  if (offer.evidence_options) return offer.evidence_options.cards ?? [];
   // #4092: a replicate cost that taps — too few to tap is an offer that
   // cannot be taken now.
   if (offer.tap_others_options) {
@@ -1707,6 +1710,9 @@ export interface ClaimedExileCardsCost {
   // opens after the X prompt; `count` is the X announced so far (0 until
   // then).
   fromX: boolean;
+  // #5193: a ticked "you may collect evidence N" offer: any number of the
+  // options (count 0), enough once their total mana value reaches this.
+  manaValueMin?: number;
 }
 
 // castExileCardsCost is the exile-cards cost a cast pays, if any: the
@@ -1718,6 +1724,23 @@ export function castExileCardsCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedExileCardsCost | undefined {
+  // #5193: a ticked "you may collect evidence N" offer asks the same
+  // question over its own graveyard options, as a variable pick with a
+  // mana value floor.
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer?.collect_evidence) {
+      const options = offer.evidence_options?.cards ?? [];
+      return {
+        label: offer.label ?? `Collect evidence ${offer.collect_evidence}`,
+        count: 0,
+        options,
+        cost: { exile_cost_options: options, exile_cost_zone: "graveyard" },
+        fromX: false,
+        manaValueMin: offer.collect_evidence,
+      };
+    }
+  }
   const cost = castAdditionalCost(card, choices);
   if (!cost) return undefined;
   if (cost.exile_cost_x) {

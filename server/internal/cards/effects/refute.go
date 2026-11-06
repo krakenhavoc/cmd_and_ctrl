@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Refute — Instant {1}{U}{U} (EDHREC rank 1899):
 //
 //	"Counter target spell. Draw a card, then discard a card."
@@ -23,14 +21,6 @@ func init() {
 		Name:         "Refute",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
-				return err
-			}
-			return lootOne(ctx.Game, item, 1)
-		},
+		OnResolve:    counterTheTargetThenLootOne,
 	})
 }

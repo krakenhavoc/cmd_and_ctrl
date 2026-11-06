@@ -83,6 +83,17 @@ type AdditionalCost struct {
 	// an optional cost or an either/or branch.
 	SacrificeAll bool
 
+	// SacrificeHalfRoundedUp is "As an additional cost to cast this
+	// spell, sacrifice half the lands you control, rounded up" (Tectonic
+	// Split): the caster chooses which, and the number is half of the
+	// permanents they control that the Sacrifice clause matches, rounded
+	// up, counted as the total cost is determined (CR 601.2f,
+	// sacrifice_half_cost.go). The
+	// clause carries the "any number" bounds, as SacrificeAll's does, and
+	// this flag says which number. effects.Register allows it only on the
+	// mandatory slot.
+	SacrificeHalfRoundedUp bool
+
 	// PayLifeX is "As an additional cost to cast this spell, pay X
 	// life" (Toxic Deluge), where X is the value announced on
 	// CastSpellParams.XValue. Added in S23.
@@ -324,6 +335,17 @@ type AdditionalCost struct {
 	// cost is mandatory: CR 601.2b asks only which branch.
 	Either []AdditionalCost
 
+	// Forage marks a branch of Either as one way to forage (CR 701.61a,
+	// #5184): Feed the Cycle's "forage or pay {B}" is three branches —
+	// exile three cards from your graveyard, sacrifice a Food, pay {B} —
+	// and the first two are marked (effects.ForageOrPay). It is not a
+	// component: the branch's exile or sacrifice is what is paid, and a
+	// cast that pays a marked branch records PaidCost.Foraged and emits
+	// EventForage (forage.go). Only on a branch; effects.Register refuses
+	// it elsewhere and on a branch that neither exiles three cards from
+	// the graveyard nor sacrifices a Food.
+	Forage bool
+
 	// Reveal is "reveal a <type> card from your hand" or "behold a
 	// <type>" (CR 701.20, ADR 0100 amendment 2026-10-07): the caster
 	// names one card on CastSpellParams.RevealIDs and paying shows it to
@@ -549,6 +571,15 @@ const (
 	// additional cost was paid" / "if a Hero was beheld" is
 	// ctx.OptionalCostTimes(BeholdKey) > 0.
 	BeholdKey = "behold"
+
+	// CollectEvidenceKey is "As an additional cost to cast this spell,
+	// you may collect evidence N" (CR 701.59a, #5193; Murders at Karlov
+	// Manor). The cost is a collect evidence ExileCards clause
+	// (CollectEvidenceCost) on an optional entry, its cards on
+	// cast_spell's exile_ids; "if evidence was collected" (CR 701.59c,
+	// 607.2i) is OptionalCostTimes(CollectEvidenceKey) > 0. See
+	// collect_evidence.go.
+	CollectEvidenceKey = "collect-evidence"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose

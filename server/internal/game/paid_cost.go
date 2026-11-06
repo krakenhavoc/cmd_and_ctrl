@@ -305,6 +305,14 @@ type PaidCost struct {
 	// the permanent; no printed permanent reads it.
 	CostBranch int `json:"costBranch,omitempty"`
 
+	// Foraged marks a payment that foraged (CR 701.61a, #5184): an
+	// activated ability's "Forage" cost, or a spell's forage branch of an
+	// either/or additional cost (Feed the Cycle). "If you foraged" reads
+	// it through ctx.Foraged. Which way the player foraged is in the
+	// ordinary records: Exiled holds the three cards, SacrificedObjects
+	// the Food. A CR 707.10 copy keeps it, as it keeps CostBranch.
+	Foraged bool `json:"foraged,omitempty"`
+
 	// Discarded is the cards the additional cost discarded (ADR 0100,
 	// owner decision 6), in the order named — a branch's discard, a
 	// plain DiscardCost and a discarding optional cost alike. Nil for a

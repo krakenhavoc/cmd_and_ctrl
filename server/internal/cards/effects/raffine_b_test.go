@@ -221,12 +221,8 @@ func TestSilverScrutinyDrawsX(t *testing.T) {
 	if got := len(me.Hand.Cards) - before; got != 4 {
 		t.Errorf("drew %d cards, want 4", got)
 	}
-	spec, _ := Lookup(rbSilverScrutinyOracl)
-	// #3225: the flash clause is the card's per-offer X ceiling now, so
-	// nothing is left to caveat (flash_if_x_at_most_test.go covers it).
-	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
-		t.Error("Silver Scrutiny is fully implemented and must not declare a caveat")
-	}
+	// #3225: the flash clause is the card's per-offer X ceiling now
+	// (flash_if_x_at_most_test.go covers it, and its #5207 caveat).
 }
 
 // --- Plaza of Heroes -----------------------------------------------------

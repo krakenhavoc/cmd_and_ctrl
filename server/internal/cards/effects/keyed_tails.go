@@ -100,15 +100,17 @@ func withWord(t game.KeyedTail, w string) game.KeyedTail {
 
 // thenCreatedGainKeywordUntilEOT is "they gain <keyword> until end of turn"
 // over the tokens a creation made (Sokenzan, Crucible of Defiance's haste,
-// Mardu Charm's first strike): the keyword is the tail's Word and the
+// Mardu Charm's first strike): the keyword is the tail's Word, any more
+// keywords its Words (Mardu Monument's "menace and haste"), and the
 // effect's label the source card's name. An on-disk key.
 var thenCreatedGainKeywordUntilEOT = CardTail("then/created-gain-keyword-until-eot", func(ctx *Context, o game.TailOutcome) error {
 	label := ""
 	if c, ok := ctx.Game.LookupCardForEffect(o.Tail.Source); ok {
 		label = c.Name
 	}
+	keywords := append([]string{o.Tail.Word}, o.Tail.Words...)
 	for _, id := range o.IDs {
-		if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{o.Tail.Word}, Label: label}).Apply(ctx); err != nil {
+		if err := (GrantKeywordUntilEOT{Target: id, Keywords: keywords, Label: label}).Apply(ctx); err != nil {
 			return err
 		}
 	}

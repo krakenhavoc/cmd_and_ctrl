@@ -1099,6 +1099,14 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"PUT /admin/users/{id}/advanced-stats", []string{"route:PUT /admin/users/{id}/advanced-stats"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "PUT", "/admin/users/"+fx.user.String()+"/advanced-stats", map[string]any{"on": true})
 		}},
+		// A pod's name and the pod (ADR 0220 §8): an unknown pod, so admin
+		// mode answers 404 or 503 and nothing changes.
+		{"PUT /admin/pods/{id}/name", []string{"route:PUT /admin/pods/{id}/name"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "PUT", "/admin/pods/"+uuid.New().String()+"/name", map[string]any{"name": "Renamed"})
+		}},
+		{"DELETE /admin/pods/{id}", []string{"route:DELETE /admin/pods/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/admin/pods/"+uuid.New().String(), nil)
+		}},
 		// The hot restore of deferred tables (ADR 0148, #3103).
 		{"POST /admin/capacity/restore-deferred", []string{"route:POST /admin/capacity/restore-deferred"}, true, httpProbe("POST", "/admin/capacity/restore-deferred", nil)},
 		// Player reports (#2984).

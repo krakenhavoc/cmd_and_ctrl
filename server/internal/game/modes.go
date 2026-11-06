@@ -246,6 +246,17 @@ type ModeSpec struct {
 	// effects.ChooseUpToX.
 	UpToCastX bool
 
+	// UpToCount is "choose up to X —" where X is a count of the board
+	// read as the trigger is put on the stack (CR 603.3c): Bumi, King of
+	// Three Trials' "the number of Lesson cards in your graveyard". A
+	// registered key (RegisterModeCount, mode_up_to_count.go), never a
+	// func, for the closure ratchet. Bounded and removed at zero exactly
+	// as UpToCastX is; Max holds the printed ceiling, len(Options).
+	// A triggered ability only, never beside another count:
+	// effects.Register refuses the rest. Build it with
+	// effects.ChooseUpToCount.
+	UpToCount ModeUpToCount
+
 	// Pawprints is CR 700.2i's budget: "Choose up to five {P} worth of
 	// modes" is 5. "While casting such a spell, its controller can
 	// choose any number of modes such that the total number of pawprint
@@ -509,8 +520,10 @@ func (g *Game) modeBoundsLocked(ms *ModeSpec, q ModeCountQuery) (lo, hi int) {
 	if ms == nil {
 		return 0, 0
 	}
-	if ms.UpToCastX {
-		// CR 107.3m for X; CR 700.2d caps it at the printed bullets.
+	if ms.upToX() {
+		// CR 107.3m for a cast X, CR 603.3c for a counted one (both
+		// set q.X in queueModePickLocked); CR 700.2d caps it at the
+		// printed bullets.
 		return ms.Min, min(max(q.X, 0), len(ms.Options))
 	}
 	if ms.RaisedMax > ms.Max && ms.RaiseMaxIf.holds(g, q) {

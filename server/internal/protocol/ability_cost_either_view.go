@@ -29,6 +29,15 @@ type AbilityCostBranchView struct {
 	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
 	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
 	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
+	// ExileCostN, ExileCostLabel, ExileCostOptions and ExileCostZone are
+	// a graveyard-exile branch's count, words, the cards that could pay
+	// it and their pile (#5184: forage's "exile three cards from your
+	// graveyard"). A graveyard is public, so the options go to every
+	// viewer.
+	ExileCostN       int      `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
+	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
 }
 
 // abilityCostBranchViews projects the branches of an either/or cost,
@@ -59,6 +68,13 @@ func abilityCostBranchViews(g *game.Game, caster, sourceID uuid.UUID, cost game.
 			b.DiscardCostLabel = dc.Label
 			b.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, sourceID, dc))
 			b.Payable = b.Payable && len(b.DiscardCostOptions) >= dc.N
+		}
+		if ec := folded.ExileCards; ec != nil && ec.N > 0 {
+			b.ExileCostN = ec.N
+			b.ExileCostLabel = ec.Label
+			b.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, sourceID, ec))
+			b.ExileCostZone = string(ec.Zone())
+			b.Payable = b.Payable && len(b.ExileCostOptions) >= ec.N
 		}
 		out = append(out, b)
 	}
