@@ -278,6 +278,12 @@ type TargetPurposeView struct {
 	// Absent for an amount counted at resolution or a change that is not
 	// a pump. A pointer so TargetPurposeView stays comparable.
 	Pump *PumpView `json:"pump,omitempty"`
+	// PumpPowerIsX / PumpToughnessIsX: beside a "benefit", the power or
+	// the toughness the change adds is the announced X (#4976): Tyvar's
+	// Stand's +X/+X sends both, Hatred's +X/+0 the power alone. `pump`
+	// then carries no amount on that side.
+	PumpPowerIsX     bool `json:"pump_power_is_x,omitempty"`
+	PumpToughnessIsX bool `json:"pump_toughness_is_x,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -497,6 +503,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			if pm := t.Pump; pm != nil {
 				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 			}
+			// #4976: a pump of the announced X.
+			out[i].PumpPowerIsX, out[i].PumpToughnessIsX = t.PumpPowerIsX, t.PumpToughnessIsX
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{
 					CreatureTokens: r.CreatureTokens, TokenPower: r.TokenPower, TokenToughness: r.TokenToughness,

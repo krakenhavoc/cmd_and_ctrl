@@ -1523,6 +1523,9 @@ export function castBlightOffer(
 export interface ClaimedRevealCost {
   label: string;
   behold: boolean;
+  // #4687: the behold exiles the card it names ("behold a Kithkin and
+  // exile it"), so the prompt says the card is exiled, not shown.
+  exile: boolean;
   options: string[];
 }
 
@@ -1541,15 +1544,20 @@ export function castRevealCost(
       return {
         label: offer.label ?? (offer.behold ? "Behold" : "Reveal a card from your hand"),
         behold: offer.behold === true,
+        exile: false,
         options: offer.reveal_options?.cards ?? [],
       };
     }
   }
-  const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
+  // The chosen either/or branch, or — #4687 — the card's own mandatory
+  // "behold a Kithkin and exile it", the one reveal a cost with no
+  // branches carries.
+  const branch = castAdditionalCost(card, choices);
   if (!branch?.reveal) return undefined;
   return {
     label: branch.label ?? (branch.behold ? "Behold" : "Reveal a card from your hand"),
     behold: branch.behold === true,
+    exile: branch.behold_exile === true,
     options: branch.reveal_options?.cards ?? [],
   };
 }

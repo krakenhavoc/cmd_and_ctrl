@@ -1705,6 +1705,12 @@ type AdditionalCostView struct {
 	Reveal        bool              `json:"reveal,omitempty"`
 	Behold        bool              `json:"behold,omitempty"`
 	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
+	// BeholdExile marks the mandatory "behold a Kithkin and exile it"
+	// (#4687, the Lorwyn Eclipsed Champions): `reveal` and `behold` are
+	// set too, and the one pick on `reveal_ids` is EXILED with the spell
+	// on the stack rather than shown. The permanent the spell becomes
+	// returns it to its owner's hand when it leaves.
+	BeholdExile bool `json:"behold_exile,omitempty"`
 	// Payable marks a branch the viewer could pay right now:
 	// game.AdditionalCostBranchPayableLocked, the predicate CastSpell and
 	// the bot enumerator ask. Absent means the branch cannot be taken
@@ -8459,6 +8465,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// the validator accepts (#544). The spell itself is excluded.
 		out.Reveal = true
 		out.Behold = ac.Reveal.Behold
+		out.BeholdExile = ac.Reveal.Exile
 		out.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, ac.Reveal))}
 	}
 	return out
@@ -8522,10 +8529,12 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			}
 		}
 		// #4092: a replicate cost that taps — each payment taps Count of
-		// the options, so the stepper stops at what they cover.
+		// the options, so the stepper stops at what they cover. #4690:
+		// conspire's creatures share a colour with the spell, so the walk
+		// is asked with the spell as the cost's source.
 		if tc := oc.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
-			v.TapOthersOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
 			if tc.Count > 0 {
 				if affordable := len(v.TapOthersOptions.Cards) / tc.Count; affordable < v.MaxTimes {
 					v.MaxTimes = max(affordable, 1)

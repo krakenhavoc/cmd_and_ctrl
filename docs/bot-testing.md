@@ -9,6 +9,63 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## A pump of the announced X (#4976, S75)
+
+Tyvar's Stand, Hatred and Mishra's Command's last bullet now declare that
+their +X/+X or +X/+0 is the announced X (`pump_power_is_x`,
+`pump_toughness_is_x`), and so do Primal Might, Bionic Blow, Kessig Wolf
+Run, Martyr of Spores, Secluded Starforge and Tovolar's back face.
+`PriceXPumps` reads the move's X into the pump, so Tyvar's Stand at X=3 on
+an attacker before blocks is priced as a printed +3/+3 with hexproof and
+indestructible, and charges Hatred's X life
+([bot.md](bot.md), [ADR 0126](decisions/0126-bots-that-play-their-decks.md)'s
+amendment for #4976). It **ships off**: the arena below found no gain.
+`heuristic-xpumps` seats today's heuristic with it on. The position tests
+(`heuristic/pump_x_test.go`) and the real-engine Hatred test
+(`aiseat/hatred_x_bot_test.go`) hold the price itself.
+
+No curated deck holds these cards, so the runs use the synthetic
+`--decks xpumps-battle`: BattleDeck in red and green with four Tyvar's
+Stand, four Mishra's Command, two Primal Might, two Kessig Wolf Runs and
+ten Forests in place of eight Bears, four Ogres and ten Mountains. All
+four seats, rotation and lockstep, on develop `ee606a09` plus #4976, on
+2026-11-05 UTC. Every game ended with a winner and none stalled.
+
+First, curated-arena.sh's shape (16 games, seeds 1000–1015) with all four
+seats on one policy, and decision logs. "Taken" counts decision windows
+that cast or activated the card, out of the windows that offered it.
+
+| | price on | price off (today) |
+|---|---|---|
+| mean turns | 14.3 | 16.7 |
+| Tyvar's Stand | 56 of 1714, all in the first main phase | 39 of 3942: 35 first main, 4 declare attackers |
+| Kessig Wolf Run's pump | 35 of 745: 34 first main, 1 declare blockers | 43 of 1409: 35 declare attackers, 7 declare blockers, 1 first main |
+| Primal Might | 40 of 60 | 46 of 76 |
+| Mishra's Command | 74 of 92 (the pump bullet in 5) | 82 of 99 (the pump bullet in 1) |
+
+With the price on, the pump is worth the attack it adds before attackers
+are declared, so it clears the bar in the first main phase and is cast
+there, before the bot knows which attackers are blocked. With it off the
+same cards wait for combat, where `CombatGrant` and the keywords price
+them. The games are shorter with the price on.
+
+Then one head-to-head: two seats with the price on against two without,
+seeds 2000–2047 (48 games). The four-seat null rate is 25%.
+
+| Policy | Wins / 96 seat-games | 95% CI |
+|---|---|---|
+| price on (`heuristic-xpumps`) | 23, 24.0% | 16.5–33.4% |
+| price off (today's `heuristic`) | 25, 26.0% | 18.3–35.6% |
+
+Two seats of one policy share a game, so these trials are not
+independent and the intervals are conservative. The difference is noise,
+and there is no evidence the price helps, so the switch stays off. A
+price that keeps the pump for combat when the attack does not need it to
+be declared, or that compares the main-phase cast with the same cast
+after blocks, is the next thing to measure before turning it on. The
+package tests passed. Reports and decision logs stayed on the authoring
+machine.
+
 ## Burnished Hart's land search by the turn (#5084, S75)
 
 Burnished Hart's "{3}, Sacrifice Burnished Hart: Search your library for

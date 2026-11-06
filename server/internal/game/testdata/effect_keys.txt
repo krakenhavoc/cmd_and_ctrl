@@ -68,6 +68,7 @@ body cipher/cast
 body claim-the-kingdom/indestructible
 body clone-saga/copy-creature-spell-not-legendary
 body combat/untap-and-remove-the-payload
+body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/surge-to-victory-exiled-card
 body copy/the-ability-you-just-activated
@@ -2055,6 +2056,7 @@ tail the-wrath-of-khan/draw-if-exiled
 tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
+tail then/ancient-vendetta-named
 tail then/arcum-dagsson-search
 tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains

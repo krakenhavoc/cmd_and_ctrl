@@ -3171,6 +3171,11 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #4687: the mandatory "behold a Kithkin and exile it" (the Lorwyn
+  // Eclipsed Champions). `reveal` and `behold` are set too, and the one
+  // pick on `reveal_ids` is exiled with the spell on the stack rather than
+  // shown; the permanent returns it to its owner's hand when it leaves.
+  behold_exile?: boolean;
   // #3402: an "exile a creature you control" additional cost (Soul
   // Exchange). `exile_permanent_options` lists the permanents that could
   // pay it, in payment order, min / max the clause's count; the picks ride
@@ -4266,6 +4271,10 @@ export interface TargetPurposeView {
   until_end_of_turn?: "benefit" | "harm";
   // #4302: that change in printed amounts (negative for a harm).
   pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
+  // #4976: beside a "benefit", the power or the toughness the change adds
+  // is the announced X (Tyvar's Stand's +X/+X sends both).
+  pump_power_is_x?: boolean;
+  pump_toughness_is_x?: boolean;
 }
 
 // TargetReturnView is what a removal spell hands the controller of the

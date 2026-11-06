@@ -3042,6 +3042,39 @@ Every game ended on the same turn with the same winner. On these decks the chang
 - Life a spell, an enters trigger or a landfall or creature-enter row gains (Courser of Kruphix, Lifecreed Duo): one event each.
 - A lifegain payoff counted at resolution (Archangel of Thune's counter on each creature you control), and the "if you gained life this turn" rows.
 
+## Amendment 2026-11-05: a pump of the announced X (#4976)
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceXPumps`, off in `DefaultConfig()` and `BaselineConfig()`: the arena found no gain (below). The declarations ship either way. The arena's `heuristic-xpumps` is `DefaultConfig()` with it on.
+**Issue:** [#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976), split from [#4324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4324) (the "+X/+X before combat" line both amendments of 2026-10-24 left in "Not priced"). Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** the amendment of 2026-10-24 (a change until end of turn, priced by whose permanent it is) and its follow-up (b).
+
+### The problem
+
+A target entry's `Pump` holds printed amounts, so a pump whose amount is X declared only its direction: Tyvar's Stand (`{X}{G}`: "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn"), Hatred ("As an additional cost to cast this spell, pay X life. Target creature gets +X/+0 until end of turn") and Mishra's Command's last bullet ("+X/+0 and gains haste") were `BenefitUntilEOT(0, 0, 0, …)`. `temporaryEffectValue` priced them by their keywords and, once the creature was attacking, `CombatGrant`: Tyvar's Stand at X=3 on an attacker before blocks was worth what it is worth at X=0. Yet X here is a number the move already names: it is announced with the cast or activation (CR 601.2b, 602.2b) and rides the move's `x_value`, the same slot `DamageIsX` reads (#1944).
+
+### Decision
+
+1. **Two declared flags.** `TargetPurpose.PumpPowerIsX` and `PumpToughnessIsX` (`pump_power_is_x`, `pump_toughness_is_x` on the wire, additive) say that the power, or the toughness, a benefit until end of turn adds is the announced X. `effects.PumpXUntilEOT(slot, keywords...)` builds "+X/+X", `effects.PowerXUntilEOT(slot, keywords...)` "+X/+0". `effects.Register` refuses either on anything but a `TargetBenefit` (a -X/-X harm keeps the removal price it has) and beside a printed amount on the same side. An X the text defines ("where X is the number of Elves", CR 107.3c) is not the announced X and declares neither. Catalog data only: nothing in a snapshot changes.
+2. **The heuristic can read the move's X.** With `PriceXPumps`, `entryAtX` adds the move's `x_value` to the entry's pump before the entry is priced, as it already resolves `DamageIsX`; `temporaryPicks` reads the same resolved entry, so the spare-mana combat bar, the haste-tap comparison, the lifelink payoff and the no-amount repeat memory see the +X too. Tyvar's Stand cast for X=3 on an attacker before blocks is then priced exactly as a printed +3/+3 with hexproof and indestructible (`TestTyvarsStandAtXIsPricedAsItsPump`).
+3. **Hatred's life is charged.** Hatred's X is also the life its additional cost pays (CR 601.2f, 119.4), and `legal.MoveCost.Life` does not carry it (only fixed and Phyrexian life). The enumerator offers the largest X the life allows (life − 1, capped at `MaxX`), and the bot sends the move as offered, so the X the policy prices is the X the engine charges and pumps by (`TestHeuristicPaysHatredsXInLifeForTheKill`, whole-engine). With the pump priced, a cast whose X is paid in life (`additional_cost.demands_x` without `blight_x` or `exile_cost_x`) and whose picks declare a pump of X is charged `LifeCostValue` for that life, and refused below `LifeFloor`, as `costValue` charges a declared life cost but without the `LifePayoff` proxy: the life buys the pump, which is priced. Toxic Deluge declares no pump and keeps its price.
+4. **The catalog declares it, held to the text.** Nine statements: Tyvar's Stand, Hatred, Mishra's Command's bullet, Primal Might, Bionic Blow, Kessig Wolf Run, Martyr of Spores (its X is the cards revealed), Secluded Starforge (the artifacts tapped) and Tovolar, the Midnight Scourge. `TestPumpXDeclarationsMatchThePrintedCard` (`cards/coverage`) reads every catalog spell's oracle fixture and every mode's and activated row's label: a "target … gets +A/+B" with an X in it and no "X is" in the sentence declares X on exactly the X sides, one that defines X declares neither, and every declaration in the catalog is one the scan found.
+
+### Measured
+
+No curated deck holds these cards, so the runs deal the synthetic `xpumps-battle` (BattleDeck in red and green with four Tyvar's Stand, four Mishra's Command, two Primal Might and two Kessig Wolf Runs) at all four seats, `--rotate --lockstep`, on develop `ee606a09` plus this change. No game stalled.
+
+- curated-arena.sh's shape, 16 games from seed 1000, all four seats on one policy: with the price on the games averaged 14.3 turns against 16.7, and the pumps moved out of combat. Tyvar's Stand was cast 56 times, every one in the first main phase (off: 39, four of them after attackers were declared); Kessig Wolf Run's pump 34 of 35 times in the first main phase (off: 42 of 43 in combat).
+- Head-to-head, 48 games from seed 2000, two seats each: price on 23/96 (24.0%, 16.5–33.4%), price off 25/96 (26.0%, 18.3–35.6%).
+
+The price prices what it should, and the position tests hold it, but the bot then spends the pump before attackers are declared, where the attack it adds is a forecast, rather than in combat; the result is no better at the table. So it ships off, as #5083's counter price did, until a price that keeps the pump for combat is measured. The details are in `docs/bot-testing.md`.
+
+### Not priced
+
+- A -X/-X harm (Chill Haunting, Grim Hireling): it keeps the removal price of a harm with no amount. `shrinkKills` could read it the same way; nothing measured asks for it yet.
+- Mishra's Command's two damage bullets, which declare no `DamageIsX`, and the fight Primal Might and Bionic Blow make after their pump.
+- When a pump is worth casting: with the price on, the pump goes out in the first main phase as soon as the attack it adds clears the bar, before blocks.
+- The X itself is not chosen: the bot takes the X the enumerator offers, the largest one, so a Tyvar's Stand spends all the mana it can.
+
 ## Amendment 2026-11-05 (#4980): mana on a counted resolution
 
 **Status:** Proposed. The code is in the PR that adds this section, behind one `Config` switch, `PriceResolutionMana`, on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-noresolutionmana` is `DefaultConfig()` with it off.
