@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, AllOf(ThisAttacked, youHaveDeliriumWhen), label,
 				func(g *game.Game, item *game.StackItem) error {
-					return socB27ThisGetsAndGains(NewContext(g, item), 2, 0, "menace", "Hand That Feeds")
+					return socB27ThisGetsAndGains(NewContext(g, item), 2, "menace", "Hand That Feeds")
 				}),
 		},
 	})
