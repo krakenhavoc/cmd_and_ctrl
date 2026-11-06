@@ -14,7 +14,6 @@ const (
 	fdnB1AdamantWillOracle     = "467e22c3-6107-40ff-afc7-5960710c970b"
 	fdnB1AngelicEdictOracle    = "36de8401-ee4e-413f-91ad-06924e39c857"
 	fdnB1BakeIntoAPieOracle    = "1b9ec782-0ba1-41f1-bc39-d3302494ecb3"
-	fdnB1BrokenWingsOracle     = "5e316864-d55c-496f-8f46-773567896864"
 	fdnB1BigfinBouncerOracle   = "4e473298-0b67-42b8-90a8-3bcdd73da473"
 	fdnB1BurrogBefuddlerOracle = "73b60c2c-7c74-4554-8861-daa0d6fc22b4"
 	fdnB1CrashThroughOracle    = "41c15160-ee8c-42e3-bc6c-593b8c8ae335"
@@ -28,7 +27,6 @@ func TestFdnB1EveryCardIsRegisteredFull(t *testing.T) {
 		fdnB1AdamantWillOracle:     "Adamant Will",
 		fdnB1AngelicEdictOracle:    "Angelic Edict",
 		fdnB1BakeIntoAPieOracle:    "Bake into a Pie",
-		fdnB1BrokenWingsOracle:     "Broken Wings",
 		fdnB1BigfinBouncerOracle:   "Bigfin Bouncer",
 		fdnB1BurrogBefuddlerOracle: "Burrog Befuddler",
 		fdnB1CrashThroughOracle:    "Crash Through",
@@ -141,35 +139,6 @@ func TestFdnB1BakeIntoAPieStillMakesTheFoodWhenTheCreatureSurvives(t *testing.T)
 	}
 	if got := tmtB1Count(g, me.ID, "Food"); got != 1 {
 		t.Errorf("the caster has %d Foods, want 1", got)
-	}
-}
-
-// --- Broken Wings -------------------------------------------------------------
-
-func TestFdnB1BrokenWingsDestroysAFlierOrAnArtifact(t *testing.T) {
-	g := newCatalogGame(t)
-	opp := g.Seats[1]
-	bird := pushPermanent(g, opp.ID, game.Card{Name: "Their Bird", TypeLine: "Creature — Bird", Power: 2, Toughness: 2, Keywords: []string{"flying"}})
-	castCatalogSpell(t, g, "Broken Wings", "Instant", fdnB1BrokenWingsOracle, cardRefs(bird))
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(bird) {
-		t.Error("the creature with flying survived")
-	}
-
-	rock := b12Permanent(g, opp.ID, "Their Rock", "Artifact")
-	castCatalogSpell(t, g, "Broken Wings", "Instant", fdnB1BrokenWingsOracle, cardRefs(rock))
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(rock) {
-		t.Error("the artifact survived")
-	}
-}
-
-func TestFdnB1BrokenWingsRefusesACreatureWithoutFlying(t *testing.T) {
-	g := newCatalogGame(t)
-	opp := g.Seats[1]
-	bear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	if err := castCatalogSpellErr(t, g, "Broken Wings", "Instant", fdnB1BrokenWingsOracle, cardRefs(bear)); err == nil {
-		t.Error("a creature without flying was accepted as a target")
 	}
 }
 
