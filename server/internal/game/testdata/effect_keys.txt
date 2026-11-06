@@ -397,6 +397,7 @@ choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
 choose choose-cards/commander-into-hand
+choose choose-cards/commune-with-evil-take
 choose choose-cards/compulsive-research-discard
 choose choose-cards/compulsive-research-last-card
 choose choose-cards/connive-discarded
