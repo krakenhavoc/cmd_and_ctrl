@@ -42,12 +42,7 @@ func init() {
 				"Gwenna, Eyes of Gaea — put a +1/+1 counter on Gwenna and untap it",
 				Do(
 					// The untap waits for a prompt the counter asks (CR 608.2c, #4155).
-					Instruction(func(ctx *Context) error {
-						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-							return nil
-						}
-						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-					}),
+					Instruction(plusOneCounterOnThisIfStillHere),
 					Instruction(func(ctx *Context) error {
 						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 							return nil
