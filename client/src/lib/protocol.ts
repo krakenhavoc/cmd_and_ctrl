@@ -4226,7 +4226,12 @@ export interface PurposeView {
   // #4320: on an activated row of its controller's own, what it gives
   // each creature its controller controls until end of turn, with no
   // target (Purphoros, God of the Forge's {2}{R} row: power 1).
-  team_pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
+  team_pump?: {
+    power?: number;
+    toughness?: number;
+    keywords?: string[];
+    cant_be_blocked?: boolean;
+  };
   // #4980: on an activated row of its controller's own, the mana it adds
   // on one numbered resolution of it this turn (Soulbright Seeker: the
   // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.
