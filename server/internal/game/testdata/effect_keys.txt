@@ -352,6 +352,8 @@ choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/aziza-mage-tower-captain-tap-three
+choose choose-cards/azula-cunning-usurper-creature
+choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/binding-negotiation-exiled-to-graveyard
@@ -612,6 +614,7 @@ choose choose-cards/ordered-pick-leg
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
+choose choose-cards/planetarium-of-wan-shi-tong-cast
 choose choose-cards/plargg-and-nassari-picked
 choose choose-cards/plunge-into-darkness-take
 choose choose-cards/populate
@@ -1564,6 +1567,7 @@ tail augusta-order-returned/after-exile
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
+tail azula-cunning-usurper/graveyard
 tail barrowgoyf/after-mill
 tail batch18/exiled-creatures-controllers-fetch
 tail batch21-helpers/after-mill
@@ -1640,6 +1644,7 @@ tail curse-of-the-swine/boar-per-exiled
 tail cyclonus/connive
 tail d-7-battle-cruiser/sacrifice-at-end
 tail dack-fayden-helping-hand/shuffle-goad-and-give
+tail dai-li-agents/second-earthbend
 tail dain-ironfoot/axe-created
 tail damage-steps/next
 tail daredevil-man-without-fear/hero-boost
