@@ -348,6 +348,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Into the Fae Court's Faerie: flying, and it can block only
 	// creatures with flying (Wilds of Eldraine, #4471).
 	printedFlyingBlockerFaerieToken,
+
+	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
+	// legendary Equipment token, +1/+1, vigilance, trample and haste,
+	// equip {2}.
+	printedCragflameToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
