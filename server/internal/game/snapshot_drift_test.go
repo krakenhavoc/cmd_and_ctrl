@@ -157,6 +157,10 @@ var gameFields = plan(
 	// that dropped it would give every exhaust ability on the board a
 	// second use.
 	"Activations", carried, "",
+	// #5245: "This ability triggers only once", per object. Carried
+	// for Activations' reason: it never refreshes, so a restore that
+	// dropped it would let the ability trigger a second time.
+	"OnlyOnceTriggered", carried, "",
 	// #628 CR 732 loop breaker. Carried for the same reason the
 	// per-turn tallies are: a restore mid-loop that forgot the notice
 	// would come back with automatic passing live again, and the

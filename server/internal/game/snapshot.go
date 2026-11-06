@@ -432,6 +432,12 @@ type GameSnapshot struct {
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
 
+	// OnlyOnceTriggered is Game.OnlyOnceTriggered (#5245): the
+	// "triggers only once" abilities that have triggered, per object.
+	// Additive within v9: a file written before it restores with none
+	// spent, which is what such a file's game had.
+	OnlyOnceTriggered map[string]int `json:"onlyOnceTriggered,omitempty"`
+
 	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
 	// table into a live loop with automatic passing back on, and one
@@ -2586,6 +2592,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.DrawnThisStep = copyIntMap(g.DrawnThisStep)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.Activations = cloneActivationTally(g.Activations)
+	s.OnlyOnceTriggered = copyStringIntMap(g.OnlyOnceTriggered)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
 	s.LoopThreshold = g.LoopThreshold
 	s.LoopRecording = cloneLoopRecording(g.LoopRecording)
@@ -3908,6 +3915,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.derivePrePlanOrdinalsLocked()
 	}
 	g.Activations = cloneActivationTally(s.Activations)
+	g.OnlyOnceTriggered = copyStringIntMap(s.OnlyOnceTriggered)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
 	g.LoopRecording = cloneLoopRecording(s.LoopRecording)

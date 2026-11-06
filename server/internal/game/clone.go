@@ -168,6 +168,7 @@ func (g *Game) cloneLocked() *Game {
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
 	out.Activations = cloneActivationTally(g.Activations)
+	out.OnlyOnceTriggered = copyStringIntMap(g.OnlyOnceTriggered)
 	if g.DrawnThisStep != nil {
 		out.DrawnThisStep = make(map[uuid.UUID]int, len(g.DrawnThisStep))
 		for player, n := range g.DrawnThisStep {
@@ -1328,6 +1329,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	// the ability away for the whole game on the strength of an
 	// activation that no longer happened.
 	g.Activations = src.Activations
+	// #5245: and so does the "triggers only once" record, for the same
+	// reason: an undo past the trigger must give the ability back.
+	g.OnlyOnceTriggered = src.OnlyOnceTriggered
 	// #628's loop breaker, missed by this list when it landed: the
 	// clone carries the notice (cloneLocked, above) and the persisted
 	// snapshot carries it, but the undo path did not put it back, so

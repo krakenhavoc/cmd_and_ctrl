@@ -128,6 +128,18 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	return t
 }
 
+// TriggersOnlyOnce is "This ability triggers only once." (Acrobatic
+// Cheerleader, #5245): once for the life of the object, not once each
+// turn (that is TriggersOnlyOnceEachTurn). It sets
+// game.TriggeredAbility.OnlyOnce, and the engine's harvester keeps the
+// per-object record: the first trigger spends it whatever becomes of
+// the item, a doubler adds no second instance, a new object after a
+// zone change may trigger again (CR 400.7), and a restore keeps it.
+func TriggersOnlyOnce(t game.TriggeredAbility) game.TriggeredAbility {
+	t.OnlyOnce = true
+	return t
+}
+
 // DamageToFirstTarget is "this deals N damage to any target" as a
 // trigger's Effect: N damage from the item's source to its first target,
 // or nothing when it has none (Omnath, Locus of Rage; Valakut).
