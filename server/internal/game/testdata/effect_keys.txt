@@ -656,6 +656,7 @@ choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
 choose choose-cards/soldier-military-program-counters
 choose choose-cards/sorin-the-mirthless-take
+choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
@@ -1377,6 +1378,7 @@ run prompt-run/gideons-sacrifice-redirect
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
+run prompt-run/hei-bai-two-counters
 run prompt-run/humiliate-counter
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
@@ -1984,6 +1986,7 @@ tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/general-traag-sacrifice
+tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
@@ -2023,6 +2026,7 @@ tail smugglers-surprise/protect
 tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail soul-shackled-zombie/drain-if-creature
+tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
 tail spelunking/gain-life-for-a-cave
 tail ss-botany-bay/then-you
@@ -2253,6 +2257,7 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail unlucky-cabbage-merchant/after-search
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail valgavoths-onslaught/manifest-again

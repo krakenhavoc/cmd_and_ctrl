@@ -329,6 +329,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedTrekB16NewPlanetToken,
 	// Tribble Cluster's Tribble: can't block (Star Trek Commander, #4974).
 	printedTrekB33TribbleToken,
+
+	// Cruel Administrator's Soldier with firebending 1 (Avatar, #4459).
+	printedAvB16SoldierFirebendingToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
