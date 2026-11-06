@@ -40,14 +40,7 @@ func init() {
 					Reason:        "Encroaching Dragonstorm — up to two basic lands",
 				}.Apply(NewContext(g, item))
 			}),
-			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b23DragonYouControlEntered(ev, source, g)
-			}, "Encroaching Dragonstorm — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
-				if !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
-			}),
+			WhenADragonYouControlEntersReturnThis("Encroaching Dragonstorm"),
 		},
 	})
 }
