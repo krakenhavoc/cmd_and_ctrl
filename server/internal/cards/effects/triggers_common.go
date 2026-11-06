@@ -1360,3 +1360,17 @@ func ACreatureYouControlWasTurnedFaceUp(ev game.Event, source *game.Card, _ game
 func ThisAttackedAlone(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
 	return ThisAttacked(ev, source, c, g) && game.AttackedAlone(g)
 }
+
+// ASourceYouControlDealtNoncombatDamageToAnOpponent — "Whenever a source
+// you control deals noncombat damage to an opponent" (Thor, Guardian of
+// Midgard; Niv-Mizzet, Visionary). One trigger per damage event; "a source
+// you control" is read off the event (b34DamageSourceController: a
+// permanent, or the spell still on the stack), and the amount is the
+// event's.
+func ASourceYouControlDealtNoncombatDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Combat || ev.Amount <= 0 || ev.Target == source.Controller || g.PlayerByIDForEffect(ev.Target) == nil {
+		return false
+	}
+	controller, ok := b34DamageSourceController(ev, g)
+	return ok && controller == source.Controller
+}
