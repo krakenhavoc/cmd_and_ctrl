@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"slices"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // War Balloon — Artifact — Vehicle {2}{R}, 4/3 (Avatar: The Last
 // Airbender, #4459):
@@ -29,20 +25,9 @@ func init() {
 		Name:            "War Balloon",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Static: []game.StaticAbility{{
-			Label: "As long as this Vehicle has three or more fire counters on it, it's an artifact creature.",
-			Layer: game.Layer4Type,
-			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && source.Counters["fire"] >= 3
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, t := range []string{"Artifact", "Creature"} {
-					if !slices.Contains(c.Types, t) {
-						c.Types = append(c.Types, t)
-					}
-				}
-			},
-		}},
+		Static: []game.StaticAbility{selfIsArtifactCreatureWhile(
+			"As long as this Vehicle has three or more fire counters on it, it's an artifact creature.",
+			func(_ *game.Game, source *game.Card) bool { return source.Counters["fire"] >= 3 })},
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{1}: Put a fire counter on this Vehicle.",
