@@ -114,6 +114,10 @@ const (
 	// battlefield under the item's controller's control this turn
 	// (celebration, #5164). The turn's entry tally only rises.
 	FootprintCondCelebration FootprintCond = "celebration"
+	// FootprintCondArtifactSacrificed: the item's controller sacrificed
+	// an artifact this turn (#5224). The turn's sacrifice tally only
+	// rises.
+	FootprintCondArtifactSacrificed FootprintCond = "artifact_sacrificed"
 	// FootprintCondCitysBlessing: the item's controller has the city's
 	// blessing, which is never lost once had (CR 702.131c).
 	FootprintCondCitysBlessing FootprintCond = "citys_blessing"
@@ -741,7 +745,7 @@ func graveyardConditionSees(a *triggerAccess) bool {
 //
 //   - A tally that only rises this turn (life gained, life lost, a
 //     creature died, a permanent returned to hand, nonland permanents
-//     entered) and a designation that is never lost (the city's
+//     entered, an artifact sacrificed) and a designation that is never lost (the city's
 //     blessing) cannot be made false: once it holds, it holds until the
 //     batch has resolved, since a turn cannot end with the batch still on
 //     the stack. So a condition that holds now reads nothing the batch
@@ -783,6 +787,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.PermanentsReturnedToHand > 0
 	case FootprintCondCelebration:
 		return tally.NonlandPermanentsEntered >= atLeast
+	case FootprintCondArtifactSacrificed:
+		return g.SacrificedWithCardTypeThisTurn(you, "artifact") > 0
 	case FootprintCondCitysBlessing:
 		return g.CitysBlessingForEffect(you)
 	case FootprintCondNoSpellsCast:

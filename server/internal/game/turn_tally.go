@@ -313,6 +313,18 @@ type TurnTally struct {
 	// condition silently stopped being true for the commonest case
 	// the card was printed for.
 	SacrificedSubtypes map[string]int `json:"sacrificedSubtypes,omitempty"`
+	// SacrificedCardTypes is SacrificedSubtypes one word over (#5224), as
+	// EnteredCardTypes is EnteredSubtypes': the permanents each player
+	// sacrificed this turn, per card type they had as they were
+	// sacrificed, keyed by subtypeTallyKey with the lowercase card type.
+	// Each sacrifice bumps each of its card types once, so an artifact
+	// creature is one artifact (and, separately, one creature); a token
+	// counts. Read through Game.SacrificedWithCardTypeThisTurn — "if
+	// you've sacrificed an artifact this turn" (Detective's Satchel,
+	// Furtive Courier). Recorded at the sacrifice for #596's reason.
+	// Additive within schema v9: a file without it restores no
+	// sacrifices (weaker, never stronger).
+	SacrificedCardTypes map[string]int `json:"sacrificedCardTypes,omitempty"`
 	// DiedPowerBySubtype is the table-wide total POWER of the creatures
 	// that died this turn (went from the battlefield to a graveyard),
 	// per creature type they had as they died, keyed by the lower-cased
@@ -992,6 +1004,20 @@ func (g *Game) SacrificedWithSubtypeThisTurn(playerID uuid.UUID, subtype string)
 	return subtypeTallyCount(g.TurnTally.SacrificedSubtypes, playerID, subtype)
 }
 
+// SacrificedWithCardTypeThisTurn reports how many permanents playerID
+// sacrificed this turn having card type `cardType` (any case) as they
+// were sacrificed — SacrificedWithSubtypeThisTurn's reading, for a card
+// type (#5224): "if you've sacrificed an artifact this turn". An
+// artifact creature counts once for "artifact"; a token counts.
+//
+// Caller must hold g.mu.
+func (g *Game) SacrificedWithCardTypeThisTurn(playerID uuid.UUID, cardType string) int {
+	if playerID == uuid.Nil || cardType == "" {
+		return 0
+	}
+	return g.TurnTally.SacrificedCardTypes[subtypeTallyKey(playerID, cardType)]
+}
+
 // EnteredThisTurn reports whether the permanent `cardID` names
 // entered the battlefield this turn — Oran-Rief's "each green
 // creature that entered this turn".
@@ -1522,14 +1548,21 @@ func (g *Game) EnteredWithCardTypeThisTurn(playerID uuid.UUID, cardType string) 
 // TurnTally.EnteredCardTypes under `controller`, once per card type it
 // has as it enters.
 func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
-	if controller == uuid.Nil || c == nil {
+	recordCardTypeTally(&g.TurnTally.EnteredCardTypes, controller, c)
+}
+
+// recordCardTypeTally bumps one cell per card type the permanent has
+// right now, allocating the map on first use: recordSubtypeTally for
+// card types (TurnTally.EnteredCardTypes, TurnTally.SacrificedCardTypes).
+func recordCardTypeTally(m *map[string]int, playerID uuid.UUID, c *Card) {
+	if playerID == uuid.Nil || c == nil {
 		return
 	}
 	for _, t := range cardTypesOf(c) {
-		if g.TurnTally.EnteredCardTypes == nil {
-			g.TurnTally.EnteredCardTypes = map[string]int{}
+		if *m == nil {
+			*m = map[string]int{}
 		}
-		g.TurnTally.EnteredCardTypes[subtypeTallyKey(controller, t)]++
+		(*m)[subtypeTallyKey(playerID, t)]++
 	}
 }
 
@@ -1732,6 +1765,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.EnteredFliers = append([]EnteredFlierRecord(nil), t.EnteredFliers...)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.SacrificedCardTypes = copyStringIntMap(t.SacrificedCardTypes)
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
 	if len(t.LoreCounterPut) > 0 {
@@ -1880,6 +1914,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.CardID != uuid.Nil && ev.Actor != uuid.Nil {
 			if c := g.findCardByIDLocked(ev.CardID); c != nil {
 				g.recordSacrificedSubtypesLocked(ev.Actor, c)
+				recordCardTypeTally(&g.TurnTally.SacrificedCardTypes, ev.Actor, c)
 				if c.IsArtifact() || c.IsCreature() {
 					g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.ArtifactsOrCreaturesSacrificed++ })
 				}
