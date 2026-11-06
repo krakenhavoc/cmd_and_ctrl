@@ -337,6 +337,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #4973: Brad Boimler's extra counter, read by no layer. Its cases
 		// are in one_more_counter_test.go and cards/effects.
 		ModOneMoreCounter: true,
+		// #5235: Prairie Dog's extra +1/+1 counter, read by no layer. Its
+		// cases are in one_more_counter_test.go and cards/effects.
+		ModOneMorePlusOneCounter: true,
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,
