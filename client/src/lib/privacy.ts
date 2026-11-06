@@ -123,8 +123,16 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * and, from slice 4, their Not now on a suggested pod. The new "Pods"
  * row names them, with the 30-day invite expiry; account deletion passes
  * a pod they own to the member who joined first and deletes their rows.
+ *
+ * 34 (#3323, ADR 0163 §4) adds identities.role_connection_token: the
+ * sealed refresh token of a person's Discord Linked Roles grant, kept
+ * only once they link CMD & CTRL on Discord. The new "Your stats on your
+ * Discord profile" row names it and what Discord is sent (display name,
+ * games played, games won, the date joined), and the Discord paragraph
+ * says so; account deletion empties the Discord connection, then
+ * deletes the token with the identity row.
  */
-export const PRIVACY_SCHEMA_VERSION = 33;
+export const PRIVACY_SCHEMA_VERSION = 34;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

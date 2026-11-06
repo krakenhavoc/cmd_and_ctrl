@@ -29,6 +29,10 @@ export type Route =
   // sign-in the role gate refused. `retry` is ?retry=1, the callback's
   // word that Discord did not answer the check. Public.
   | { name: "requestAccess"; retry?: true }
+  // Discord Linked Roles (ADR 0163 §3): where the server's verification
+  // URL lands, with how the link ended. Public: linking mints no
+  // session, and "signin" is for someone with no account.
+  | { name: "linkedRole"; status: LinkedRoleStatus }
   // The public roadmap (PR 2 of the same plan): what the rules engine
   // automates today, what's partial, what's missing, and what's next.
   // Public, like the catalogue (ADR 0092).
@@ -158,6 +162,8 @@ export function parseHash(hash: string): Route {
     }
     case "home":
       return { name: "home" };
+    case "linked-role":
+      return { name: "linkedRole", status: linkedRoleStatus(params.get("status")) };
     case "request-access":
       return params.get("retry") === "1"
         ? { name: "requestAccess", retry: true }
@@ -302,4 +308,12 @@ export function spectatorInviteURL(gameID: string, token: string): string {
 // expire.
 export function reclaimURL(gameID: string, ticket: string): string {
   return `${location.origin}${location.pathname}#/games/${gameID}/reclaim?t=${encodeURIComponent(ticket)}`;
+}
+
+/** How a Discord Linked Roles link ended (ADR 0163 §3); the server names it. */
+export type LinkedRoleStatus = "linked" | "signin" | "unavailable" | "failed";
+
+/** linkedRoleStatus reads ?status=; anything the server does not send is "failed". */
+export function linkedRoleStatus(v: string | null): LinkedRoleStatus {
+  return v === "linked" || v === "signin" || v === "unavailable" ? v : "failed";
 }
