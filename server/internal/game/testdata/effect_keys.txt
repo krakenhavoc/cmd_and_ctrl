@@ -1639,6 +1639,7 @@ tail dark-tutor/after-hand
 tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
+tail dawnhand-eulogist/after-mill
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
