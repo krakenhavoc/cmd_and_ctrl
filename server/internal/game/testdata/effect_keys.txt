@@ -1288,6 +1288,7 @@ payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rush-of-inspiration-discard
 payunless pay-unless/sentry-bot-counters
+payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
