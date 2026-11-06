@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -31,22 +29,12 @@ func avB27SwampsOnTheBattlefield(g *game.Game, swamp string) int {
 // addition to their other types" (Swampbenders): EachLandIsAlso narrowed
 // to the source's controller's lands. Layer 4, an idempotent append.
 func avB27LandsYouControlAreAlso(subtype string) game.StaticAbility {
-	return game.StaticAbility{
-		Label: "Lands you control are " + subtype + "s in addition to their other types.",
-		Layer: game.Layer4Type,
-		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return target.IsLand() && target.Controller == source.Controller
-		},
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			now := source.TextSubtype(subtype)
-			for _, st := range c.Subtypes {
-				if strings.EqualFold(st, now) {
-					return
-				}
-			}
-			c.Subtypes = append(c.Subtypes, now)
-		},
+	ab := EachLandIsAlso(subtype)
+	ab.Label = "Lands you control are " + subtype + "s in addition to their other types."
+	ab.AppliesTo = func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		return target.IsLand() && target.Controller == source.Controller
 	}
+	return ab
 }
 
 // avB27AlliesYouControlHaveDuringYourTurn is "During your turn, Allies
