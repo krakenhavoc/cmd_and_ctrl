@@ -766,6 +766,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition cast/you-next-cast
+condition cast/you-next-cast-a-lesson
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
 condition cast/you-next-cast-x-in-mana-cost
@@ -2012,6 +2013,7 @@ tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
 tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
+tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail soul-shackled-zombie/drain-if-creature
 tail speak-secrets/after-mill
