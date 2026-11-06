@@ -38,7 +38,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{G}{W}: Creatures you control get +2/+2 and gain vigilance until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 2, Toughness: 2, Keywords: []string{"vigilance"}}, Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    ManaCost("{3}{G}{W}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

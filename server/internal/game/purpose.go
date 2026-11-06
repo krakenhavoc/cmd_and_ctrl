@@ -250,6 +250,18 @@ type Purpose struct {
 	// activator.
 	SourceCounters int
 
+	// TeamPump is what an activated row gives each creature its
+	// controller controls until end of turn, with no target (#4320):
+	// Purphoros, God of the Forge's "{2}{R}: Creatures you control get
+	// +1/+0 until end of turn." is {Power: 1}. Only a benefit, and only
+	// the printed amounts of a row whose whole effect it is: a row that
+	// pumps a subtype ("Dragons you control"), counts its amount at
+	// resolution (+X/+X) or does something else besides does not declare
+	// it. Pump is what a row gives its own source; this is what it gives
+	// the team. Refused off an activated row of its controller's own: an
+	// any-player row pumps whoever controls the source.
+	TeamPump *Pump
+
 	// The riders below are keyword actions a spell or an ability does
 	// for its controller beside its main effect (#4978, ADR 0126's
 	// amendment of 2026-11-05): Preordain's scry 2 before its draw,

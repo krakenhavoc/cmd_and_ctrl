@@ -34,6 +34,7 @@ func TestParseContestant(t *testing.T) {
 		"heuristic-nosparemana":     {Tier: tiers.Heuristic, Variant: botarena.VariantNoSpareMana},
 		"heuristic-noriders":        {Tier: tiers.Heuristic, Variant: botarena.VariantNoRiders},
 		"heuristic-xpumps":          {Tier: tiers.Heuristic, Variant: botarena.VariantXPumps},
+		"heuristic-noteampumps":     {Tier: tiers.Heuristic, Variant: botarena.VariantNoTeamPumps},
 	} {
 		got, err := botarena.ParseContestant(in)
 		if err != nil {

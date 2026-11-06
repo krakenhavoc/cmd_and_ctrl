@@ -4218,6 +4218,10 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4320: on an activated row of its controller's own, what it gives
+  // each creature its controller controls until end of turn, with no
+  // target (Purphoros, God of the Forge's {2}{R} row: power 1).
+  team_pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

@@ -217,8 +217,12 @@ func (st *state) temporaryPicks(m legal.Move, pumpX bool) ([]targetRef, []*proto
 // mana for the biggest card it could still cast this turn. Such a move
 // spends nothing the bot would otherwise keep, ADR 0126 §5's premise, and
 // clears LeftoverThreshold. On another player's turn the bot's mana comes
-// back in its untap step, so all of it is spare.
+// back in its untap step, so all of it is spare. A team pump with a
+// creature it helps in combat is one too (#4320, team_pump.go).
 func (p *Policy) spareCombatGrant(st *state, m legal.Move) bool {
+	if p.spareTeamPump(st, m) {
+		return true
+	}
 	return p.spareTemporaryMove(st, m, func(c *protocol.CardView, _ *protocol.TargetPurposeView) bool {
 		return inCombatNow(st, c)
 	})
@@ -254,6 +258,13 @@ func (p *Policy) spareTemporaryMove(st *state, m legal.Move, ok func(*protocol.C
 			return false
 		}
 	}
+	return st.manaToSpare(m)
+}
+
+// manaToSpare reports whether the mana m spends is mana the bot's later
+// casts this turn do not need: on another seat's turn all of it, on its
+// own what is left after m still pays for the biggest card it could cast.
+func (st *state) manaToSpare(m legal.Move) bool {
 	if !st.myTurn {
 		return true
 	}

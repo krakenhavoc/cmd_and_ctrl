@@ -132,6 +132,11 @@ type PurposeView struct {
 	// controller's own puts on its own source, to stay (#5083):
 	// Hangarback Walker's {1}, {T} row 1.
 	SourceCounters int `json:"source_counters,omitempty"`
+	// TeamPump is what an activated row of the controller's own gives
+	// each creature its controller controls until end of turn, with no
+	// target (#4320): Purphoros, God of the Forge's {2}{R} row
+	// {power: 1}. Pump is what a row gives its own source.
+	TeamPump *PumpView `json:"team_pump,omitempty"`
 	// The riders (#4978, ADR 0126's amendment of 2026-11-05): keyword
 	// actions it does for its controller beside its main effect, as
 	// printed amounts. Scry is the cards it scries (Preordain 2), Learn
@@ -442,6 +447,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
+	}
+	if pm := p.TeamPump; pm != nil {
+		v.TeamPump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{

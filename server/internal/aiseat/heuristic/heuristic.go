@@ -568,6 +568,21 @@ type Config struct {
 	// price lost head-to-head, so it ships off and the arena's
 	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
 	PriceSourceCounters bool
+	// PriceTeamPumps prices an activated row of the bot's own that
+	// declares a team pump until end of turn (Purpose.TeamPump, #4320,
+	// team_pump.go): Purphoros, God of the Forge's "{2}{R}: Creatures you
+	// control get +1/+0 until end of turn." It is worth the attack the
+	// pump adds to each of the bot's creatures this turn
+	// (pumpAttackGain) and to each of its blocks (the attacker a blocker
+	// now kills, the blocker that now survives), plus CombatGrant once
+	// when that is something and a creature is in combat before damage,
+	// in place of the flat ActivateBase: nothing in a main phase with no
+	// creature to attack, nothing after combat damage, and nothing for a
+	// chump block it does not change. In combat with mana the turn's
+	// later casts do not need, it clears LeftoverThreshold. Off
+	// (BaselineConfig and the arena's `heuristic-noteampumps`) keeps
+	// ActivateBase in every window.
+	PriceTeamPumps bool
 	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
 	// cost at SpareManaSourceCost rather than its board value as a mana
 	// source (#5085, spare_mana.go): a rock is spare when the bot's other
@@ -1064,6 +1079,8 @@ func DefaultConfig() Config {
 		SpareTokenKeep: 2,
 		// #5083: PriceSourceCounters stays off (the price lost in the
 		// arena); `heuristic-sourcecounters` turns it on.
+		// #4320: a team pump priced by the attack it adds this turn.
+		PriceTeamPumps: true,
 		// #5085: a spare mana rock costs what is left of it, so Mind
 		// Stone is cashed in for a card late and kept early.
 		PriceSpareManaSources: true,
@@ -1316,6 +1333,8 @@ func BaselineConfig() Config {
 	c.SpareTokenKeep = 0
 	// #5083: a row's counter on its own source was the flat ActivateBase.
 	c.PriceSourceCounters = false
+	// #4320: a team pump was the flat ActivateBase in every window.
+	c.PriceTeamPumps = false
 	// #5085: every sacrificed mana rock cost its board value.
 	c.PriceSpareManaSources = false
 	c.SpareManaKeep = 0
