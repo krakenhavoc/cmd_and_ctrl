@@ -1607,6 +1607,35 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   the bot prices each counter as a point of power and toughness. A
   counter on a target, an X amount, and an any-player row (Feral Hydra)
   declare none; `effects.Register` refuses it off an activated row.
+- **A pump of the announced X** on a target, until end of turn, is
+  `PumpXUntilEOT(slot, keywords...)` for "+X/+X" and
+  `PowerXUntilEOT(slot, keywords...)` for "+X/+0", in place of a
+  no-amount `BenefitUntilEOT`: Tyvar's Stand is
+  `ForTargets(PumpXUntilEOT(0, "hexproof", "indestructible"))`, Hatred
+  `ForTargets(PowerXUntilEOT(0))`
+  ([#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)).
+  They set `TargetPurpose.PumpPowerIsX` and `PumpToughnessIsX`, and
+  under `PriceXPumps` (off by default, [bot.md](bot.md)) the bot reads
+  the move's X. Only for the X announced with the cast or
+  activation, whether paid in mana, life or a counted cost (Martyr of
+  Spores' reveal); an X the text defines ("where X is the number of
+  Elves") keeps `BenefitUntilEOT(slot, 0, 0, ...)`.
+  `TestPumpXDeclarationsMatchThePrintedCard` holds both to the printed
+  words, and `effects.Register` refuses one on a harm.
+- **`ResolutionMana`** goes on an activated row of the controller's own
+  that adds mana on one numbered resolution of it in a turn: Soulbright
+  Seeker's "If this is the third time this ability has resolved this
+  turn, add {R}{R}{R}{R}" is `&game.ResolutionMana{Resolution: 3, Mana:
+  "{R}{R}{R}{R}"}` beside its trample's target entry
+  ([#4980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4980)).
+  `Resolution` is the count `Game.ResolvedThisTurn` returns for the row's
+  label when the effect adds the mana (it includes the one resolving), so
+  the card's body and the declaration must name the same number; the view
+  stamps the row's `resolved_this_turn` from that tally. `Mana` is fixed
+  symbols only. `effects.Register` refuses it off an activated row, on a
+  resolution before the first, and on a generic, X or hybrid amount.
+  Under `PriceResolutionMana` ([bot.md](bot.md#mana-on-a-counted-resolution-4980))
+  the bot prices a run to that resolution by the casts its mana pays for.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
@@ -1641,9 +1670,22 @@ Master of Time), and that can be announced with no target: it has no `Targets`, 
 clause allows zero ("up to one", "any number of": `Min` 0), or it is
 modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
-A row that must name a target declares nothing: its move already stops
-you. An "up to" row is announced both ways, so declare it too; its
+An "up to" row is announced both ways, so declare it too; its
 targeted moves still carry `has_targets`.
+
+**A row that must name a target may declare** (#4734 slice 7, ADR 0009's
+amendment Q2 (a)), and is not required to. Undeclared, its move carries
+`has_targets` and stops you at every opponent item and key window.
+Declared, smart autopass matches it by its kind, like any other row: Mother
+of Runes (`protect`) stops you when an opponent's item targets a creature
+of yours, and not at an empty end step. Declare a protective, pump or
+prevent row when you add or touch it; nothing else needs one. Declare the
+union of what it gives its target, and never `value`, which no reader
+acts on there (the guard refuses it):
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))}, // Mother of Runes
+```
 
 **The vocabulary.** Use the smallest set that is true. The tier is fixed
 in code, not declared.
@@ -1698,8 +1740,8 @@ both where both are true; neither is derived from the other.
 - on a spell, `AnswerValue` in any slot when its additional cost
   sacrifices or exiles a creature, or on an alternative cost that
   sacrifices or returns one;
-- `Answers` on a sorcery-speed or loyalty row, or on a row whose every
-  announcement has a target;
+- `Answers` on a sorcery-speed or loyalty row, and `AnswerValue` on a row
+  whose every announcement has a target;
 - a crew row without `AnswerAnimate`;
 - a row whose cost sacrifices, exiles or returns a creature without
   `AnswerSacOutlet`, `AnswerSurvive` or `AnswerProtect`;

@@ -511,3 +511,30 @@ The price is a narrow one, in the games the pool plays: it needs a Spirit that t
 **Wire.** Additive. `purpose.answers` may now contain `"graveyard"`, listed after `"restrict"`. A reader that prints the names as they come (`boardtext`'s "(answers: …)" label, the MCP seat's move list) passes it through; the client does not enumerate the kinds. `SnapshotSchemaVersion` stays 7; `Answers` holds no closure.
 
 **Guards.** `TestGraveyardExileRowsDeclareGraveyard` pins the eight rows, `TestRestrictRowsAreNotGraveyardHate` fails on a row that declares `restrict` alone with a graveyard-exile label, and `TestUnionRowsDeclareGraveyard` pins the two unions (`internal/cards/effects`). The match is pinned by `TestAnswersNowByKind`, `TestAnswersNowGraveyardRowsOfTheCatalog` and `TestAnswersNowGraveyardUnion` (`internal/legal`), and four frames in `smart_pass_agreement.json` carry its stop and pass verdicts to the browser's and the seat's readers.
+
+## Amendment 2026-11-05 — a targeted row may declare (#4734, Q2) · Accepted
+
+Slice 7 of [ADR 0009's amendment of 2026-10-30](0009-smart-priority-autopass.md#amendment-of-2026-10-30-4734-a-held-answer-stops-you-only-when-it-can-answer-now). Decision 1 refused `Answers` on a row whose every announcement must name a target, because its move carried `has_targets` and that already stopped you. Under #4734 that stop is the problem: Mother of Runes, held all game, stopped its controller at every opponent item and every key window. The owner chose Q2 (a) on 2026-10-31: such a row may declare, optionally and with no ratchet, and a declared targeted move is matched by its kind.
+
+**The guard** (`checkActivatedAnswers`) accepts `Answers` on a targeted row, under the same rules as any other row (the bits, the cost coupling, crew). It refuses `value` there: a `value` row gets no `answers_now`, and #2877's `value_only` is a cast's, so its move would still stop you through `has_targets` and the declaration would change nothing. An "up to one" row may still declare `value`, since its empty announcement reads it. `answersInScope` and `TestEveryAnswersRowDeclares` do not change: a targeted row is never required to declare, and an undeclared one stops as before.
+
+**The reader** needed no change. `answer_window.go` already set `answers_now` on a targeted activation from `Purpose.Answers` (slice 2 built it for this), and the browser and the MCP seat read the verdict before `has_targets`. `interacts` and `combat_interacts` stay unset on a targeted move, so a reader that does not know `answers_now` stops as before.
+
+**The declarations**, the six protective rows the slice names, each the union of what it gives its target (sweep ruling 4):
+
+| Row | Answers | Why |
+|---|---|---|
+| Mother of Runes | `protect` | protection from a color |
+| Liliana the Faultless | `protect` | hexproof |
+| Plaza of Heroes | `protect`, `survive` | hexproof and indestructible |
+| Skrelv, Defector Mite | `protect`, `combat_grant` | hexproof from a color; toxic 1 and "can't be blocked by" that color |
+| Arwen, Mortal Queen | `survive`, `pump`, `combat_grant` | indestructible; a +1/+1 counter and a lifelink counter |
+| Zack Fair | `survive`, `pump` | indestructible; his counters, a +1/+1 counter at least. Sacrificing himself is owner answer 4's, so no `sac_outlet` |
+
+The remaining targeted pumps and prevents are later batches (`tier:1-mechanical`), declared from the effect with this ADR's table.
+
+**The bot.** `answerSave`, `answerSaveOthers` and the held defensive row skip a move with targets, so their prices do not move. `tapRowUnlockable` (haste for a {T} row) already skips any row that declares answers, so it now skips Mother of Runes', Liliana's and Skrelv's tap rows too, as the defensive answers they are. `boardtext`'s "(answers: …)" label now shows on these moves.
+
+**Wire.** None new: `purpose.answers` may now appear on a targeted row, and `answers_now` on its move. `SnapshotSchemaVersion` stays 7; `Answers` holds no closure.
+
+**Guards.** `TestAnswersGuardOnTargetedRows` and `TestAnswersGuardOnActivatedRows` pin the guard, `TestProtectiveTargetedRowsDeclare` pins the six rows (`internal/cards/effects`), `TestAnswersNowDeclaredTargetedRow` pins the match (`internal/legal`), and three Mother of Runes frames in `smart_pass_agreement.json` carry a stop (an opponent's Murder on the seat's creature) and two passes (a Murder on another player's creature, an empty opponent end step) to the browser's and the seat's readers. Each of the three stops without the verdict (`smartPassAgreement.test.ts`).

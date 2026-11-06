@@ -17,6 +17,7 @@ import {
   settleScale,
   stripContent,
   stripOpen,
+  stripScrolls,
   tappedRoom,
   type RowShape,
 } from "./rowFit";
@@ -39,6 +40,39 @@ describe("stripOpen", () => {
   it("is steady for a lone pile and an unmeasured row", () => {
     expect(stripOpen(88, 88, 50)).toBe(1);
     expect(stripOpen(616, 360, 0)).toBe(0);
+  });
+});
+
+// #4725: the strip scrolls (and draws a sideways scrollbar) only while its
+// piles at rest do not fit, never for what a hovered pile paints past it.
+describe("stripScrolls", () => {
+  it("is false while the piles fit, edge to edge or overlapped", () => {
+    expect(stripScrolls(616, 360, 1000, 0)).toBe(false);
+    expect(stripScrolls(616, 360, 616, 0)).toBe(false);
+    // stripOpen's own answer for 488px of room: exactly the room.
+    expect(stripScrolls(616, 360, 488, stripOpen(616, 360, 488))).toBe(false);
+  });
+
+  it("is true once even the full overlap is wider than the room", () => {
+    expect(stripScrolls(616, 360, 300, 1)).toBe(true);
+    // A lone pile cannot overlap at all.
+    expect(stripScrolls(122, 122, 112, 1)).toBe(true);
+  });
+
+  it("ignores sub-pixel rounding and an unmeasured strip", () => {
+    expect(stripScrolls(122.4, 122.4, 122, 1)).toBe(false);
+    expect(stripScrolls(616, 360, 0, 1)).toBe(false);
+    expect(stripScrolls(0, 0, 300, 1)).toBe(false);
+  });
+
+  it("is what the strip's scrolling follows", () => {
+    const src = readFileSync("src/lib/components/board/BattlefieldRow.svelte", "utf8");
+    // The strip never scrolls up and down, and sideways only when fitRow
+    // says its piles do not fit.
+    expect(src).toMatch(/\n {2}\.row\.strip \{[^}]*\n {4}overflow: hidden;\n {2}\}/);
+    expect(src).toMatch(/\.row\.strip:global\(\[data-scrolls\]\) \{\s*overflow-x: auto;\s*\}/);
+    const fit = readFileSync("src/lib/rowFit.ts", "utf8");
+    expect(fit).toMatch(/row\.toggleAttribute\(\s*"data-scrolls",\s*stripScrolls\(/);
   });
 });
 

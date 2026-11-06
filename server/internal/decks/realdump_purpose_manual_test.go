@@ -116,6 +116,7 @@ var reviewedNotAWipe = map[string]string{
 	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
+	"Bewildering Blizzard":                     "-3/-0 kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
 	"Demonic Consultation":                     "exiles cards from your own library, no permanents",
 	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",

@@ -568,6 +568,16 @@ type Config struct {
 	// price lost head-to-head, so it ships off and the arena's
 	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
 	PriceSourceCounters bool
+	// PriceResolutionMana prices an activation of a row of the bot's own
+	// that declares the mana it adds on one numbered resolution this turn
+	// (Purpose.ResolutionMana, #4980, resolution_mana.go): Soulbright
+	// Seeker's third. In the bot's own main phase, an activation on a
+	// reachable run to that resolution that nets mana its hand can spend
+	// is worth SpellPerMana per mana the hand can spend after the run, in
+	// place of the row's grant price. Off (the zero value, BaselineConfig) prices the row as
+	// any other grant until end of turn. On in DefaultConfig; the arena's
+	// `heuristic-noresolutionmana` turns it off.
+	PriceResolutionMana bool
 	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
 	// cost at SpareManaSourceCost rather than its board value as a mana
 	// source (#5085, spare_mana.go): a rock is spare when the bot's other
@@ -583,6 +593,18 @@ type Config struct {
 	SpareManaKeep int
 	// SpareManaSourceCost is what a spare rock costs when it is given up.
 	SpareManaSourceCost float64
+	// PriceXPumps reads a benefit until end of turn whose power or
+	// toughness is the announced X (TargetPurpose.PumpPowerIsX and
+	// PumpToughnessIsX, #4976, pump_x.go) at the move's X: Tyvar's Stand
+	// at X=3 on an attacker is priced as the +3/+3 it gives, through
+	// PriceTemporaryEffects. A cast whose X is also life paid (Hatred) is
+	// charged that life. Off (the zero value, DefaultConfig and
+	// BaselineConfig) prices such a pump as a benefit with no amount: its
+	// keywords, and CombatGrant once the creature is in combat. In
+	// #4976's arena the price did not win head-to-head and moved the
+	// pumps from combat to the first main phase, so it ships off and the
+	// arena's `heuristic-xpumps` turns it on (docs/bot-testing.md).
+	PriceXPumps bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -1052,11 +1074,16 @@ func DefaultConfig() Config {
 		SpareTokenKeep: 2,
 		// #5083: PriceSourceCounters stays off (the price lost in the
 		// arena); `heuristic-sourcecounters` turns it on.
+		// #4980: Soulbright Seeker's third resolution, priced by the
+		// mana it returns when the hand can spend it.
+		PriceResolutionMana: true,
 		// #5085: a spare mana rock costs what is left of it, so Mind
 		// Stone is cashed in for a card late and kept early.
 		PriceSpareManaSources: true,
 		SpareManaKeep:         5,
 		SpareManaSourceCost:   0.50,
+		// #4976: PriceXPumps stays off (no gain in the arena);
+		// `heuristic-xpumps` turns it on.
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -1302,10 +1329,14 @@ func BaselineConfig() Config {
 	c.SpareTokenKeep = 0
 	// #5083: a row's counter on its own source was the flat ActivateBase.
 	c.PriceSourceCounters = false
+	// #4980: a row's mana on its nth resolution was not priced.
+	c.PriceResolutionMana = false
 	// #5085: every sacrificed mana rock cost its board value.
 	c.PriceSpareManaSources = false
 	c.SpareManaKeep = 0
 	c.SpareManaSourceCost = 0
+	// #4976: a pump of the announced X was a benefit with no amount.
+	c.PriceXPumps = false
 	// #4978: riders priced at nothing.
 	c.PriceRiders = false
 	// #2693: the mulligan counted lands only.

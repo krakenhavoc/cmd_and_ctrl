@@ -82,10 +82,6 @@ var untilEndOfTurnRow = regexp.MustCompile(`(?i)\btarget\b[^.:]*\b(gains?|gets|l
 var untilEndOfTurnExempt = map[string]string{
 	// "+X/+X or -X/-X": the controller picks the sign at resolution.
 	"Liliana of the Dark Realms": "the sign is chosen at resolution",
-	// The third resolution in a turn adds {R}{R}{R}{R}: repeating the
-	// grant is the point, and a direction would price the repeats at
-	// nothing.
-	"Soulbright Seeker": "its repeats add mana",
 	// Moves Zack Fair's counters and Equipment onto the creature for good.
 	"Zack Fair": "part of what it does lasts",
 }

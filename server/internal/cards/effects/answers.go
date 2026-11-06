@@ -27,9 +27,15 @@ import (
 //   - on a spell, `value` in any slot when its additional cost
 //     sacrifices or exiles a creature, or on an alternative cost that
 //     sacrifices or returns one (checkSpellAnswers);
-//   - Answers on a row whose every announcement must name a target (a
-//     clause with Min 0, "up to one", still has the empty announcement):
-//     its move carries has_targets, which already stops smart autopass;
+//   - AnswerValue on a row whose every announcement must name a target
+//     (a clause with Min 0, "up to one", still has the empty
+//     announcement). Since slice 7 of ADR 0009's #4734 amendment (owner
+//     answer Q2 (a)) such a row may declare what it answers, optionally
+//     and with no ratchet, and answer_window.go matches it by its kind
+//     for Move.AnswersNow. But a `value` verdict is never sent (#2877's
+//     value_only is a cast's), so its move would still stop smart
+//     autopass through has_targets: a `value` there would say something
+//     no reader acts on;
 //   - Answers on a sorcery-speed row, which is never offered while an
 //     item waits on the stack. A loyalty row is one, unless its card
 //     opens its own loyalty abilities at instant speed (Teferi, Master
@@ -72,8 +78,8 @@ func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, in
 	if sorcerySpeedRow(ab, instantLoyalty) {
 		fail("are on a sorcery-speed or loyalty row, which is never offered while an item waits on the stack")
 	}
-	if !hasUntargetedAnnouncement(ab) {
-		fail("are on a row whose every announcement has a target — its move carries has_targets, which already stops smart autopass")
+	if a == game.AnswerValue && !hasUntargetedAnnouncement(ab) {
+		fail("say value on a row whose every announcement has a target — its move carries has_targets, which stops smart autopass whatever value says; declare what it answers, or nothing")
 	}
 	if ab.Cost.Crew > 0 && !a.Has(game.AnswerAnimate) {
 		fail("leave out AnswerAnimate on a crew row — crewing makes the Vehicle a creature")
@@ -106,10 +112,12 @@ func ownLoyaltyAtInstant(timings []game.ActivationTiming) bool {
 	return false
 }
 
-// answersInScope reports whether smart autopass reads the row's answers:
-// it may be activated at instant speed with no target (ADR 0142 §4).
+// answersInScope reports whether a row must declare its answers: it may
+// be activated at instant speed with no target (ADR 0142 §4).
 // TestEveryAnswersRowDeclares fails on such a catalog row that declares
-// nothing.
+// nothing. A row that must name a target may declare too (#4734, Q2
+// (a)), and smart autopass reads it when it does, but it is not
+// required to: an undeclared one stops you through has_targets.
 func answersInScope(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
 	return !sorcerySpeedRow(ab, instantLoyalty) && hasUntargetedAnnouncement(ab)
 }

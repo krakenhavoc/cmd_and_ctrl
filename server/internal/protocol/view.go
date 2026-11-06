@@ -4817,6 +4817,14 @@ type ActivatedAbilityView struct {
 	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
 	// way, and the legal-move enumerator does not offer it.
 	PowerUpUsed bool `json:"power_up_used,omitempty"`
+	// ResolvedThisTurn is how many times this row of this object has
+	// resolved this turn (#4980): Game.ResolvedThisTurn for the row's
+	// label, the count the card's own effect reads, per object (CR 400.7).
+	// Stamped only on a row whose purpose declares resolution_mana
+	// (Soulbright Seeker), and absent at zero. An activation still on the
+	// stack has not resolved and is not in it. Public: every player saw
+	// each resolution.
+	ResolvedThisTurn int `json:"resolved_this_turn,omitempty"`
 	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
 	// if this creature attacked this turn and only once each turn")
 	// cannot be activated right now: "not_attacked" or "used". Absent
@@ -13342,6 +13350,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
 		v.PowerUpUsed = g.PowerUpUsed(&c, a)
+		// #4980: the resolutions so far of a row that adds mana on one
+		// of them, from the tally the card's effect reads.
+		if a.Purpose.ResolutionMana != nil {
+			v.ResolvedThisTurn = g.ResolvedThisTurn(c.InstanceID, a.Label)
+		}
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true
