@@ -162,7 +162,10 @@ The Scryfall default-cards bulk dump lives at
 ./scripts/scryfall-refresh.sh
 ```
 
-…on a weekly cron. Images are cached on disk under
+…on a weekly cron. The same script saves Scryfall's set list beside
+it as `$CMDCTRL_DATA_DIR/scryfall/sets.json`; the catalogue's set
+picker uses it, when present, to fold subsets into their parent set
+(#4790). Images are cached on disk under
 `$CMDCTRL_DATA_DIR/images/<aa>/<id>.<size>.jpg` and served via the
 `/cards/{id}/image` route. The server is bootable without the dump —
 card routes 404 until the first refresh lands.

@@ -377,7 +377,8 @@ func TestATokenCreationsKeyedThenRunsAfterARestore(t *testing.T) {
 
 // Two token copies of Clone: each token's "enter as a copy?" is asked in
 // turn, each is a restore point (the staged tokens are written with the
-// frame), and the second is asked only after the first has entered.
+// frame), and, since the two are created together (#4867), both are asked
+// before either enters: the frame is the simultaneous entry's.
 func TestATokenEntryQuestionIsARestorePointForEachToken(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -399,9 +400,9 @@ func TestATokenEntryQuestionIsARestorePointForEachToken(t *testing.T) {
 		if copyPrompt(g) == nil {
 			t.Fatalf("token %d did not ask", q)
 		}
-		g = strictRestoreWithFrame(t, g, game.ReplacementResumeMoveTail)
-		if n := len(battlefieldIDsNamed(g, "Grizzly Bears")); n != 1+q {
-			t.Fatalf("token %d: %d Grizzly Bears on the restored table, want %d", q, n, 1+q)
+		g = strictRestoreWithFrame(t, g, game.ReplacementResumeMoveTokenBatch)
+		if n := len(battlefieldIDsNamed(g, "Grizzly Bears")); n != 1 {
+			t.Fatalf("token %d: %d Grizzly Bears on the restored table, want 1: neither token enters before both are asked", q, n)
 		}
 		c := copyPrompt(g)
 		if c == nil {

@@ -147,8 +147,15 @@ func diesReturnTrigger(k diesReturnKeyword) TriggeredAbility {
 // per persist token (CR 113.2c). harvestLTB's counterpart of
 // keywordTriggersFor.
 func ltbKeywordTriggersFor(lki Characteristic) []TriggeredAbility {
+	return ltbKeywordTriggersForTokens(lki.Abilities)
+}
+
+// ltbKeywordTriggersForTokens is ltbKeywordTriggersFor over a token
+// list: the last-known abilities, or the triggered keywords a borrow
+// lent the permanent (ADR 0155's 2026-11-05 amendment).
+func ltbKeywordTriggersForTokens(tokens []string) []TriggeredAbility {
 	undying, persist, modular := 0, 0, 0
-	for _, a := range lki.Abilities {
+	for _, a := range tokens {
 		switch a {
 		case KeywordUndying:
 			undying++

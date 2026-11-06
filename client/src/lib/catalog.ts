@@ -339,10 +339,43 @@ export function supportedCount(s: CatalogSet): number {
 /**
  * setOptionLabel is a set's line in the picker: the name, then how many of
  * its cards are supported out of how many it has ("Marvel's Spider-Man
- * (120/188)"). The name leads so typing a set's first letters jumps to it.
+ * (120/188)"). The picker's options carry it as their accessible name.
  */
 export function setOptionLabel(s: CatalogSet): string {
   return `${s.name} (${supportedCount(s)}/${s.total})`;
+}
+
+/**
+ * searchSets is the set picker's filter (#4790): the sets whose name
+ * contains the query, or whose code starts with it, best match first.
+ * Players name a set by its code as often as by its name ("hml",
+ * "MH3", "tmt"), so a code that equals the query outright ranks first,
+ * then the names that start with it, then the other names that contain
+ * it, then the codes that only start with it. Case-insensitive. Within a
+ * group the sets keep the order they came in, which from the server is
+ * newest first; an empty query returns every set in that order.
+ */
+export function searchSets(sets: CatalogSet[], query: string): CatalogSet[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return sets.slice();
+  const exactCode: CatalogSet[] = [];
+  const namePrefix: CatalogSet[] = [];
+  const nameContains: CatalogSet[] = [];
+  const codePrefix: CatalogSet[] = [];
+  for (const s of sets) {
+    const code = s.code.toLowerCase();
+    const name = s.name.toLowerCase();
+    if (code === q) exactCode.push(s);
+    else if (name.startsWith(q)) namePrefix.push(s);
+    else if (name.includes(q)) nameContains.push(s);
+    else if (code.startsWith(q)) codePrefix.push(s);
+  }
+  return [...exactCode, ...namePrefix, ...nameContains, ...codePrefix];
+}
+
+/** setYear is the year a set came out, or "" when its date is unknown. */
+export function setYear(s: CatalogSet): string {
+  return /^\d{4}/.test(s.released ?? "") ? s.released!.slice(0, 4) : "";
 }
 
 /**

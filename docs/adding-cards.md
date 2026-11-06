@@ -1607,6 +1607,35 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   the bot prices each counter as a point of power and toughness. A
   counter on a target, an X amount, and an any-player row (Feral Hydra)
   declare none; `effects.Register` refuses it off an activated row.
+- **A pump of the announced X** on a target, until end of turn, is
+  `PumpXUntilEOT(slot, keywords...)` for "+X/+X" and
+  `PowerXUntilEOT(slot, keywords...)` for "+X/+0", in place of a
+  no-amount `BenefitUntilEOT`: Tyvar's Stand is
+  `ForTargets(PumpXUntilEOT(0, "hexproof", "indestructible"))`, Hatred
+  `ForTargets(PowerXUntilEOT(0))`
+  ([#4976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4976)).
+  They set `TargetPurpose.PumpPowerIsX` and `PumpToughnessIsX`, and
+  under `PriceXPumps` (off by default, [bot.md](bot.md)) the bot reads
+  the move's X. Only for the X announced with the cast or
+  activation, whether paid in mana, life or a counted cost (Martyr of
+  Spores' reveal); an X the text defines ("where X is the number of
+  Elves") keeps `BenefitUntilEOT(slot, 0, 0, ...)`.
+  `TestPumpXDeclarationsMatchThePrintedCard` holds both to the printed
+  words, and `effects.Register` refuses one on a harm.
+- **`ResolutionMana`** goes on an activated row of the controller's own
+  that adds mana on one numbered resolution of it in a turn: Soulbright
+  Seeker's "If this is the third time this ability has resolved this
+  turn, add {R}{R}{R}{R}" is `&game.ResolutionMana{Resolution: 3, Mana:
+  "{R}{R}{R}{R}"}` beside its trample's target entry
+  ([#4980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4980)).
+  `Resolution` is the count `Game.ResolvedThisTurn` returns for the row's
+  label when the effect adds the mana (it includes the one resolving), so
+  the card's body and the declaration must name the same number; the view
+  stamps the row's `resolved_this_turn` from that tally. `Mana` is fixed
+  symbols only. `effects.Register` refuses it off an activated row, on a
+  resolution before the first, and on a generic, X or hybrid amount.
+  Under `PriceResolutionMana` ([bot.md](bot.md#mana-on-a-counted-resolution-4980))
+  the bot prices a run to that resolution by the casts its mana pays for.
 - **An edict on a triggered row** ("each opponent sacrifices a
   creature") is wrapped in `TriggerEdict(...)`, which declares
   `AnswerRemove`; a sweep on a triggered row (a saga chapter that
@@ -1641,9 +1670,22 @@ Master of Time), and that can be announced with no target: it has no `Targets`, 
 clause allows zero ("up to one", "any number of": `Min` 0), or it is
 modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
-A row that must name a target declares nothing: its move already stops
-you. An "up to" row is announced both ways, so declare it too; its
+An "up to" row is announced both ways, so declare it too; its
 targeted moves still carry `has_targets`.
+
+**A row that must name a target may declare** (#4734 slice 7, ADR 0009's
+amendment Q2 (a)), and is not required to. Undeclared, its move carries
+`has_targets` and stops you at every opponent item and key window.
+Declared, smart autopass matches it by its kind, like any other row: Mother
+of Runes (`protect`) stops you when an opponent's item targets a creature
+of yours, and not at an empty end step. Declare a protective, pump or
+prevent row when you add or touch it; nothing else needs one. Declare the
+union of what it gives its target, and never `value`, which no reader
+acts on there (the guard refuses it):
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))}, // Mother of Runes
+```
 
 **The vocabulary.** Use the smallest set that is true. The tier is fixed
 in code, not declared.
@@ -1698,8 +1740,8 @@ both where both are true; neither is derived from the other.
 - on a spell, `AnswerValue` in any slot when its additional cost
   sacrifices or exiles a creature, or on an alternative cost that
   sacrifices or returns one;
-- `Answers` on a sorcery-speed or loyalty row, or on a row whose every
-  announcement has a target;
+- `Answers` on a sorcery-speed or loyalty row, and `AnswerValue` on a row
+  whose every announcement has a target;
 - a crew row without `AnswerAnimate`;
 - a row whose cost sacrifices, exiles or returns a creature without
   `AnswerSacOutlet`, `AnswerSurvive` or `AnswerProtect`;
@@ -2294,6 +2336,12 @@ library search, an exile return and a reanimation use** (#478) — as a
 comes from no zone, CR 111.1). So an
 enters-tapped or enters-with-counters replacement you write for cards
 covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation that makes more than one token enters them **together**, as
+one simultaneous entry (#4867, ADR 0061 amendment 2026-11-05; CR 608.2f,
+603.6a), whatever door you call: a Soul Warden token sees the other
+tokens of its own creation enter. (Tokens created blocking are the one
+exception; see the amendment.) Do not loop `N: 1` creations to make N
+tokens; one creation with `N: n` is the printed instruction.
 A creation CAN PAUSE — two different effects in the window is a CR 616
 ordering prompt — and so can a single token's entry, so
 `CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
@@ -5356,7 +5404,8 @@ refuses fewer than two branches, a branch without a unique `Key`, an
 empty, optional, repeating or nested branch, a variable sacrifice in a
 branch, and components on the branched cost itself. Reveal and behold
 branches ship (`RevealOrPay`, `BeholdOrPay`); an OPTIONAL behold is
-`OptionalBehold` (#4642). "tap an untapped artifact", "exile two cards from your graveyard" and
+`OptionalBehold` (#4642), and a mandatory "behold a Kithkin and exile it"
+is `BeholdAndExileCost` (#4687, below). "tap an untapped artifact", "exile two cards from your graveyard" and
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
@@ -5370,6 +5419,26 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+**Behold a creature type and exile it (#4687, CR 701.4a, CR 607.2q, ADR
+0100 amendment 2026-11-05):** the Lorwyn Eclipsed Champions' "As an
+additional cost to cast this spell, behold a Kithkin and exile it" and "When
+this creature leaves the battlefield, return the exiled card to its owner's
+hand" are
+
+```go
+AdditionalCost: BeholdAndExileCost("a", "Kithkin"),                 // Champion of the Clachan
+Triggered: []game.TriggeredAbility{ReturnTheExiledCardToHand("Champion of the Clachan")},
+```
+
+The caster names one card on `reveal_ids`: a permanent of that creature
+type they control, or a card of it in their hand (a changeling counts). It
+is exiled with the spell on the stack, linked to the spell object
+(`Card.ExiledWith`), and the link moves to the permanent as the spell
+resolves, so the leave trigger returns that card and no other. A countered
+spell's card stays in exile. With nothing to behold the card can't be cast.
+The mandatory slot only, and alone on it: Register refuses the exiling form
+on a branch, an optional cost, an alternative cost and an ability.
 
 **Tap an untapped permanent you control as an additional cost (#3868):**
 "As an additional cost to cast this spell, tap an untapped Vampire you
@@ -7251,7 +7320,8 @@ client's pay picker reads "Behold", and the bot charges nothing for the
 picks. `Register` counts the behold as the offer's one card component
 and refuses a malformed one (a plain reveal, no type, a colour, no
 count). An additional cost of "behold a … and exile it" (#4687) is not
-this shape: that card is spent.
+this shape, because that card is spent: it is `BeholdAndExileCost` on the
+mandatory slot.
 
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
@@ -12855,6 +12925,11 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
+  "each noncreature spell you cast has conspire" is `SpellsYouCastHave(label, Noncreature(), Conspire())` (Raiding
+  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
+  engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
+  whose own cost already uses `teamwork_ids` (`castTapListTaken`).
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.

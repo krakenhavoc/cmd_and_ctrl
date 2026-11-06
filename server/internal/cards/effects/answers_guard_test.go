@@ -68,16 +68,50 @@ func TestAnswersGuardOnActivatedRows(t *testing.T) {
 		{"untargeted instant-speed row", game.ActivatedAbilityShape{Label: "{1}{G}: Regenerate this creature."}, ""},
 		{"sorcery speed", game.ActivatedAbilityShape{SorcerySpeed: true}, "sorcery-speed"},
 		{"loyalty", game.ActivatedAbilityShape{Cost: game.AbilityCost{Loyalty: &loyalty}}, "sorcery-speed or loyalty"},
-		{"targeted", game.ActivatedAbilityShape{Targets: target}, "every announcement has a target"},
-		{"every mode targeted", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {Targets: target}}}}, "every announcement has a target"},
+		// #4734 slice 7 (ADR 0009's amendment, Q2 (a)): a row that must
+		// name a target may declare what it answers.
+		{"targeted", game.ActivatedAbilityShape{Targets: target}, ""},
+		{"every mode targeted", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {Targets: target}}}}, ""},
 		{"up to one target", game.ActivatedAbilityShape{Targets: upTo}, ""},
-		{"X targets", game.ActivatedAbilityShape{Targets: &game.TargetSpec{Label: "X target creatures", CountFromX: true}}, "every announcement has a target"},
+		{"X targets", game.ActivatedAbilityShape{Targets: &game.TargetSpec{Label: "X target creatures", CountFromX: true}}, ""},
 		{"one up-to mode", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {Targets: upTo}}}}, ""},
 		{"one untargeted mode", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {}}}}, ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			c.ab.Purpose.Answers = game.AnswerProtect
 			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", c.ab, false) })
+			if c.want == "" && msg != "" {
+				t.Fatalf("refused: %s", msg)
+			}
+			if c.want != "" && !strings.Contains(msg, c.want) {
+				t.Fatalf("got %q, want a refusal naming %q", msg, c.want)
+			}
+		})
+	}
+}
+
+// #4734 slice 7: a row that must name a target may declare any answer
+// but `value`, which no reader would act on: its move carries
+// has_targets, and a value row gets no answers_now. An "up to one" row
+// still declares value, since its empty announcement reads it.
+func TestAnswersGuardOnTargetedRows(t *testing.T) {
+	target := &game.TargetSpec{Label: "target creature", Min: 1, Max: 1}
+	upTo := &game.TargetSpec{Label: "up to one target creature", Min: 0, Max: 1}
+	for _, c := range []struct {
+		name    string
+		targets *game.TargetSpec
+		answers game.Answers
+		want    string
+	}{
+		{"targeted protect", target, game.AnswerProtect, ""},
+		{"targeted survive and pump", target, game.AnswerSurvive | game.AnswerPump, ""},
+		{"targeted remove", target, game.AnswerRemove, ""},
+		{"targeted value", target, game.AnswerValue, "say value on a row whose every announcement has a target"},
+		{"up to one value", upTo, game.AnswerValue, ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			ab := game.ActivatedAbilityShape{Targets: c.targets, Purpose: game.Purpose{Answers: c.answers}}
+			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", ab, false) })
 			if c.want == "" && msg != "" {
 				t.Fatalf("refused: %s", msg)
 			}

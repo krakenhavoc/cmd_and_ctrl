@@ -409,12 +409,16 @@ export function lobbyPrimary(g: GameMeta, v: LobbyViewer): LobbyPrimary {
 
 // --- History (§1 item 3) ---------------------------------------------
 
-export type HistoryFilter = "all" | "won" | "friends" | "archived";
+// ADR 0213 §9 renamed the filters: what ADR 0158 called With friends
+// ("another person was at the table") is With people, and With friends
+// is a current friend at the table (GET /me/games marks each seat).
+export type HistoryFilter = "all" | "won" | "people" | "friends" | "archived";
 
 export const HISTORY_FILTERS: ReadonlyArray<{ id: HistoryFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "won", label: "Won" },
-  { id: "friends", label: "With friends" },
+  { id: "people", label: L.historyWithPeople },
+  { id: "friends", label: L.historyWithFriends },
   { id: "archived", label: "Archived" },
 ];
 
@@ -430,6 +434,9 @@ export interface HistoryRow {
   // When, in Unix milliseconds: the latest thing that happened to it.
   at: number;
   won: boolean;
+  // Another person (not a bot) was at the table.
+  withPeople: boolean;
+  // One of your friends, as of now, was at the table.
   withFriends: boolean;
   archived: boolean;
   // Whether this person held a seat (a GET /me/games entry): their
@@ -466,7 +473,8 @@ function fromMine(g: MyGame): HistoryRow {
       .join(", "),
     at: g.archived_at ?? g.ended_at ?? g.started_at ?? g.created_at,
     won: status.tone === "won",
-    withFriends: others.some((o) => !o.bot),
+    withPeople: others.some((o) => !o.bot),
+    withFriends: others.some((o) => o.friend === true),
     archived: g.archived_at != null,
     seated: true,
     rejoin: g.rejoin,
@@ -495,7 +503,9 @@ function fromListed(g: GameMeta): HistoryRow {
       .join(", "),
     at: Number.isFinite(at) ? at : 0,
     won: false,
-    withFriends: g.players.filter((p) => !p.is_bot).length >= 2,
+    withPeople: g.players.filter((p) => !p.is_bot).length >= 2,
+    // GET /games names no accounts, so a listed table cannot say.
+    withFriends: false,
     archived,
     seated: false,
   };
@@ -528,6 +538,8 @@ export function filterHistory(rows: HistoryRow[], f: HistoryFilter): HistoryRow[
   switch (f) {
     case "won":
       return rows.filter((r) => r.won);
+    case "people":
+      return rows.filter((r) => r.withPeople);
     case "friends":
       return rows.filter((r) => r.withFriends);
     case "archived":

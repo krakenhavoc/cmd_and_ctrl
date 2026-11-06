@@ -331,7 +331,9 @@ type AdditionalCost struct {
 	// (every printed mandatory one pairs it with mana), or — behold only —
 	// on an optional cost keyed BeholdKey ("you may behold a Hero",
 	// effects.OptionalBehold, #4642), which names its card on the same
-	// reveal_ids when the caster takes it.
+	// reveal_ids when the caster takes it. Or, with RevealCost.Exile, on
+	// the mandatory slot alone: "behold a Kithkin and exile it" (#4687,
+	// effects.BeholdAndExileCost; see behold_exile_cost.go).
 	Reveal *RevealCost
 
 	// ExilePermanents is "As an additional cost to cast this spell, exile
@@ -1032,12 +1034,19 @@ func (g *Game) AdditionalCostBranchPayableLocked(playerID uuid.UUID, card Card, 
 // pay — and true for every card without one. CR 601.2h: "Unpayable
 // costs can't be paid", so a cast whose every branch is unpayable is
 // no cast at all; CR 118.3 is why, when one branch is out, the other
-// is the only choice.
+// is the only choice. A mandatory exiling behold (#4687) with nothing
+// to behold answers false for the same reason.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Card) bool {
 	ac := AdditionalCostFor(CatalogKey(card))
 	if !ac.Branched() {
+		// #4687: a mandatory "behold a Kithkin and exile it" with nothing
+		// to behold is as unpayable as an either/or cost with no payable
+		// branch (CR 601.2h).
+		if ac != nil && ac.Reveal != nil {
+			return len(g.RevealCostOptionsForEffect(playerID, card.InstanceID, ac.Reveal)) > 0
+		}
 		return true
 	}
 	for i := range ac.Either {

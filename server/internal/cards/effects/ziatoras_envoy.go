@@ -17,7 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // amendment): the look is private, a land the player can play now is a
 // land play, a spell within the cap gets a free cast from the library made
 // inside the trigger's resolution (a resolution_cast prompt, CR 608.2g,
-// #4250), and every other outcome puts the card into the hand. The cap is
+// #4250), and every other outcome puts the card into the hand. A card
+// with more than one of those answers (a Town, a modal DFC with a spell
+// face and a land face, a pathway) gets one prompt that offers each of
+// them (#4697). The cap is
 // "the damage dealt", read off the trigger's event, so a hit that was
 // partly prevented counts what was actually dealt.
 func init() {

@@ -340,6 +340,15 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 // real answer rather than a degenerate one: this card is not castable
 // from this zone.
 //
+// #5081: and through the per-type budget (Muldrotha's one of each
+// permanent type) of the permission each entry is paired with
+// (CastOfferGrantsForLocked), which CastSpell settles the same way: a
+// bestow cast once Muldrotha's enchantment is spent is not an offer,
+// on the view's `alternative_costs` any more than in the bot's moves. A
+// land is not filtered here; it is played, not cast, and the land
+// play's budget is asked where the play is (the enumerator's
+// landPlayMove, the view's castable_here).
+//
 // Each entry points at a freshly copied value, so a caller may hold
 // one past the call. Caller must hold g.mu.
 //
@@ -355,9 +364,43 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 // PrintedCostTimingClosed, computed alongside this list rather than
 // inside it.
 func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost {
-	var out []*AlternativeCost
-	if g.validateCastPathLocked(card, zone, nil, grant) == nil {
-		out = append(out, nil)
+	grants := g.CastOfferGrantsForLocked(playerID, card, zone, grant)
+	if grants == nil {
+		return nil
+	}
+	out := make([]*AlternativeCost, len(grants))
+	for i, og := range grants {
+		out[i] = og.Offer
+	}
+	return out
+}
+
+// OfferGrant is one entry of CastOfferGrantsForLocked's list: a price a
+// cast may claim (Offer, nil for the printed mana cost) and the
+// permission that cast is made under (Permission, nil when no
+// permission is involved).
+type OfferGrant struct {
+	Offer      *AlternativeCost
+	Permission *CastPermission
+}
+
+// CastOfferGrantsForLocked is CastOffersForLocked's list, each offer
+// paired with the permission a cast claiming it is made under (#5081):
+// the one CastSpell's own lookup (CastPermissionForFaceLocked) hands
+// that claim, which is not always `grant`. Green Goblin's granted mayhem
+// is cast under Goblin Formula and a graveyard Mulldrifter's evoke under
+// Muldrotha beside it, whichever came first, and each is priced, timed
+// and held to a per-type budget under its own (the bot enumerator's
+// moves and the view's stamps read the pairing for that). The printed
+// cost's entry is paired with `grant`, which callers hand in as
+// CastPermissionForLocked's (or, per face, CastableFaceGrantsLocked's)
+// answer: the permission a cast that claims nothing is made under.
+//
+// Caller must hold g.mu.
+func (g *Game) CastOfferGrantsForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []OfferGrant {
+	var out []OfferGrant
+	if g.validateCastPathLocked(card, zone, nil, grant) == nil && g.offerTypeLeftLocked(card, zone, nil, grant) {
+		out = append(out, OfferGrant{Permission: grant})
 	}
 	seen := make(map[string]bool, 2)
 	add := func(ac *AlternativeCost, under *CastPermission) {
@@ -383,11 +426,28 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		if !g.AlternativeCostPayableLocked(playerID, card.InstanceID, ac) {
 			return
 		}
-		out = append(out, ac)
+		if !g.offerTypeLeftLocked(card, zone, ac, under) {
+			return
+		}
+		out = append(out, OfferGrant{Offer: ac, Permission: under})
+	}
+	// #5081: out of a zone a permission opens, an offer is judged under
+	// the permission CastSpell's own lookup hands a cast claiming it
+	// (CastPermissionForFaceLocked), which may be a second one naming its
+	// key or one at the printed cost, rather than `fallback`. A hand's
+	// and the command zone's permissions are chosen below as before.
+	claimedUnder := func(key string, fallback *CastPermission) *CastPermission {
+		if grant == nil || zone == ZoneHand || zone == ZoneCommand {
+			return fallback
+		}
+		if perm := g.CastPermissionForFaceLocked(playerID, card, zone, key, card.ActiveFace); perm != nil {
+			return perm
+		}
+		return fallback
 	}
 	for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), zone) {
 		offer := ac
-		add(&offer, grant)
+		add(&offer, claimedUnder(offer.Key, grant))
 	}
 	// #2167: a permission that opens a zone and charges the PRINTED cost
 	// (Muldrotha, an impulse exile) lets the card be cast for any
@@ -461,7 +521,11 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	// keeps each to where the printed mana cost could be paid (CR
 	// 118.9a).
 	for _, ac := range g.grantedAlternativeCostsLocked(playerID, card, zone) {
-		if duplicatesListedPrice(card, out, ac) {
+		listed := make([]*AlternativeCost, len(out))
+		for i, og := range out {
+			listed[i] = og.Offer
+		}
+		if duplicatesListedPrice(card, listed, ac) {
 			continue
 		}
 		under := grant
@@ -471,6 +535,7 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 			// that happens to come first.
 			under = printed
 		}
+		under = claimedUnder(ac.Key, under)
 		if ac.RequiresGrant {
 			// A granted miracle is claimable only under the hand
 			// permission that names ITS key, which is not always the
@@ -492,6 +557,20 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 func secondInstanceOf(card Card, granted *AlternativeCost) bool {
 	printed := AlternativeCostByKey(castOfferKey(card), granted.Key)
 	return printed != nil && !printed.RequiresGrant && !sameOfferPrice(printed, granted)
+}
+
+// offerTypeLeftLocked reports whether a cast of `card` out of `zone`
+// claiming `offer` has a card type left to spend under `under`'s
+// per-type budget: PermissionTypeOptionsLocked's verdict without its
+// ranking (#5081). Always true for a permission with no budget, a cast
+// the card's own text opens, and a land (CastOffersForLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) offerTypeLeftLocked(card Card, zone ZoneKind, offer *AlternativeCost, under *CastPermission) bool {
+	if card.IsLand() || under == nil || len(under.PerType) == 0 || !g.castUsesGrantLocked(card, zone, offer) {
+		return true
+	}
+	return len(under.PermissionTypeChoices(spellUnderOffer(card, offer))) > 0
 }
 
 // sameOfferPrice reports whether two offers charge the same: the same

@@ -152,6 +152,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 red Warrior":                                                  {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red and white Soldier with haste":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"haste"}},
 	"1/1 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"1/1 red Monk with prowess":                                        {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 white Monk with prowess":                                      {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
 	"1/1 white Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Cat Soldier with vigilance":                             {Name: "Cat Soldier", TypeLine: "Token Creature — Cat Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
@@ -366,4 +367,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 green Legendary Ooze Slug named Murf with indestructible": {Name: "Murf", TypeLine: "Token Legendary Creature — Ooze Slug", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"indestructible"}},
 	// #4974 batch 43: Star Trek Commander's Spacecraft Illusion (U.S.S. Stargazer, Here and There).
 	"4/3 colorless Spacecraft Illusion artifact with flying": {Name: "Spacecraft Illusion", TypeLine: "Token Artifact Creature — Spacecraft Illusion", Power: 4, Toughness: 3, Keywords: []string{"flying"}},
+
+	// #4459 batch 8: Avatar's Ballistic Boulder (Fire Navy Trebuchet, TTLA 13).
+	"2/1 colorless Construct artifact with flying named Ballistic Boulder": {Name: "Ballistic Boulder", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
 }

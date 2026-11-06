@@ -70,6 +70,7 @@ var xMattersAllowlist = map[string]string{
 	"mawloc.go Mawloc":                                            "2/2 body survives at X=0, and the Terror from the Deep fight is X-independent",
 	"mutagen_man_living_ooze.go Mutagen Man, Living Ooze":         "2/3 trample legendary body and the artifact-token discount: the creature stays when it brings no Mutagens",
 	"pull_from_tomorrow.go Pull from Tomorrow":                    "\"then discard a card\" is fixed: X=0 draws nothing and still discards, so it is a bad play rather than a no-op",
+	"united_front.go United Front":                                "\"then put a +1/+1 counter on each creature you control\" never reads X: at X=0 the spell still counters the team",
 	"spiteful_banditry.go Spiteful Banditry":                      "the Treasure-on-death trigger never reads X: at X=0 the enchantment deals no damage and is still an engine",
 	"springleaf_parade.go Springleaf Parade":                      "the \"creature tokens you control have {T}: Add one mana of any color\" static never reads X",
 	"the_scarlet_witch.go The Scarlet Witch":                      "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X she was cast for",

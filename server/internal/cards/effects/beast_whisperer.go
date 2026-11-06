@@ -19,13 +19,7 @@ func init() {
 		Name:         "Beast Whisperer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.IsCreature()
-			}, "Beast Whisperer — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventCast, YouCastACreatureSpell, "Beast Whisperer — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }
