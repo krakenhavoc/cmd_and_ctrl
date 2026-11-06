@@ -93,6 +93,10 @@ export default defineConfig({
       // /pods/join/{token}. The SPA's own #/pods is a hash route
       // requested as `/`, so it is never shadowed.
       "/pods": { target: goServer, changeOrigin: true },
+      // Scheduled tables (ADR 0215 slice 2): /scheduled and
+      // /scheduled/{id}…. The SPA's own #/scheduled/{id} is a hash route
+      // requested as `/`, so it is never shadowed.
+      "/scheduled": { target: goServer, changeOrigin: true },
       "/me": { target: goServer, changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the

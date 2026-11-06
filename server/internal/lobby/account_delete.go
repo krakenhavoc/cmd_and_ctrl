@@ -223,6 +223,9 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 	if c.Lobby != nil {
 		c.Lobby.anonymiseDeletedSeats(res.Seats, res.DiscordSubject)
 		c.Lobby.forgetBlocksOf(id, res.DiscordSubject)
+		// ADR 0215: the plans and RSVPs went in the transaction; the
+		// holds on the tables are the in-memory copy.
+		c.Lobby.forgetScheduleOf(id, res.DiscordSubject, res.ScheduledGames)
 	}
 	// ADR 0182: the key row went in the transaction; a bot seat that had
 	// already opened the key stops using it from its next call.
@@ -272,6 +275,9 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"pod_members", res.Counts.PodMembers,
 		"pod_invites", res.Counts.PodInvites,
 		"pod_dismissals", res.Counts.PodDismissals,
+		"scheduled_tables", res.Counts.ScheduledPlans,
+		"scheduled_cancelled", res.Counts.ScheduledCancelled,
+		"scheduled_rsvps", res.Counts.ScheduledRSVPs,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,

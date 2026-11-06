@@ -99,6 +99,15 @@
         "migration 0033 pods, pod_members, pod_invites, pod_suggestion_dismissals; pods/pods.go InviteTTL, MaxMembers, ForgetAccount",
     },
     {
+      // ADR 0215 privacy section, slice 2: schedule/schedule.go, lobby/scheduled_http.go.
+      what: "Scheduled tables",
+      details: `When you schedule a table or reserve a seat, we keep the plan and the list of people with seats or on the waitlist, in the order they reserved, until ${F.scheduledKeepHours} hours after the start. The host and the people on the list see the names on it; everyone else sees how many seats are open. A plan holds its name, its start and the host’s time zone, the number of players and the host’s table options.`,
+      why: "So a group can book a game ahead, and the seats are kept for the people who said yes, in the order they said it.",
+      howLong: `Until ${F.scheduledKeepHours} hours after the start, or ${F.scheduledKeepHours} hours after it is cancelled. Leaving the list deletes your place at once. Deleting your account deletes every place of yours, and cancels and deletes the tables you scheduled.`,
+      source:
+        "migration 0034 scheduled_tables, scheduled_rsvps; schedule/schedule.go Keep, ForgetAccount",
+    },
+    {
       what: "Your own model key for AI opponents",
       details:
         "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",

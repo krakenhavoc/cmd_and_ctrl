@@ -321,6 +321,21 @@ Each of these is overturnable in review:
 - **No zone is stored on the account.**
 - **Recurring games use our own series**, not Discord's recurrence rule.
 
+## Amendment 2026-11-06: calls slice 2 made
+
+Slice 2 (#3321, migration 0034, `server/internal/schedule`, `lobby/schedule.go`, `lobby/scheduled_http.go`) is built as written. The code needed these calls, which the ADR leaves open. Each is overturnable:
+
+- **Schema.** `scheduled_rsvps` gains `held_until`, when a hold runs out: a promoted hold's end differs from the plan's grace. `scheduled_tables.series_id` waits for slice 8, which adds it with `scheduled_series` (an additive column). `discord_event_id` is in now and stays NULL until slice 4.
+- **States.** A plan is `scheduled`, `open` (its table exists and its holds run), `settled` (the holds are over), `cancelled` or `missed`. A person is `seat` or `waiting` before doors-open, then `held`, `seated` or `lapsed`; `removed` is the host's removal. The host has a row of their own (source `host`), always first, so seat 1 is held and lapses like the others.
+- **A promoted hold** runs until the grace ends or for 10 more minutes, whichever is later. A seat goes down the waitlist whenever it is neither held nor taken, before the grace ends too (someone left, or a seated person stood up).
+- **The plan's players are the table's seats** while the plan is kept: a three-player plan opens a three-seat table. Join, a bot and the #lfg post read it.
+- **The last setup at doors-open** applies its settings only. Its bots would take held seats; they are the first bots when the plan settles with `fill_bots`, and the rest are the heuristic tier on the catalog's decks.
+- **A reservation after doors-open** goes on the waitlist and is given a free seat at once. A person whose hold lapsed may reserve again, at the back.
+- **The start's confirm** is a 409 with `code: "seats_held"` and the count, and the start sent again with `{"without_held": true}`. A refused join is a 409 with `code: "seats_reserved"` and `reserved_until`; its message gives the time in UTC, and the client shows the viewer's zone.
+- **Nobody came (§7)** counts people only: bots and agent seats do not keep the table open, and a waitlist hold still running an hour after the start does not either.
+- **Admins** cancel any plan with the host's `DELETE /scheduled/{id}`; moving and removing stay the host's.
+- **Retention** runs in the scheduler's tick, every minute.
+
 ## Consequences
 
 - **A pod can book a game ahead,** in Discord or on the site, and C2 keeps the seats for the people who said yes.

@@ -122,6 +122,10 @@ describe("service worker routing", () => {
     "/pods",
     "/pods/6f1c2a9e-0000-4000-8000-000000000000",
     "/pods/join/AAAAAAAAAAAAAAAAAAAAAA",
+    // Scheduled tables (ADR 0215 slice 2): a plan's seats change by the
+    // minute around its doors-open, so never from a cache.
+    "/scheduled",
+    "/scheduled/6f1c2a9e-0000-4000-8000-000000000000",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {
