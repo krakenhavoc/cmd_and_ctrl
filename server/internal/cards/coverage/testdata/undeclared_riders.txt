@@ -54,6 +54,7 @@ Hidden Stockpile | scry | the row declares only its answer, and a rider would ma
 Hyperion's Atomic Vision | scry | the text makes it conditional or optional
 In the Darkness Bind Them | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Insectoid Exterminator | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Iron-Fist Pulverizer | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Jace's Sanctum | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lifecrafter's Bestiary | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lita, Little Orphan Amphibian | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
