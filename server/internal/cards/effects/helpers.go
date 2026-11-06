@@ -1016,6 +1016,18 @@ func plusOneCountersOnThis(n int) Effect {
 	}
 }
 
+// plusOneCounterOnThisIfStillHere is "put a +1/+1 counter on this
+// creature" as the first step of a Do whose next step also acts on the
+// source (Gwenna, Eyes of Gaea's untap, Pacesetter Paragon's double
+// strike): nothing happens if the source has left or come back as a new
+// object (CR 400.7).
+func plusOneCounterOnThisIfStillHere(ctx *Context) error {
+	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+		return nil
+	}
+	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
 // tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
 // (Cryotheory Adept, Loch Mare): the first legal target is tapped and
 // gets one stun counter; a target gone by resolution gets nothing.
