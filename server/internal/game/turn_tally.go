@@ -173,6 +173,14 @@ type PlayerTurnTally struct {
 	// changed controller still counts (Gyome, Master Chef's ruling,
 	// #4834). Additive.
 	NontokenCreaturesEntered int `json:"nontokenCreaturesEntered,omitempty"`
+	// CreaturesLeft counts the creatures this player controlled that left
+	// the battlefield, by any route and to any zone: PermanentsLeft
+	// narrowed to a permanent that was a creature as it last existed on
+	// the battlefield (CR 608.2h), under the controller it left from
+	// (CR 603.10a). Tale of Momo's and That's Rough Buddy's "if a
+	// creature left the battlefield under your control this turn" read it
+	// through Game.CreatureLeftThisTurn. Additive.
+	CreaturesLeft int `json:"creaturesLeft,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -2117,6 +2125,26 @@ func (g *Game) recordPermanentLeftLocked(ev Event) {
 		controller = ev.Actor
 	}
 	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
+	if g.leftAsACreatureLocked(ev) {
+		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesLeft++ })
+	}
+}
+
+// leftAsACreatureLocked reports whether the permanent an EventLTB names
+// was a creature as it last existed on the battlefield (CR 608.2h): the
+// exit's own last-known types first, then the CR 603.10 snapshot, then
+// the card as it now sits. recordNonlandPermanentLeftLocked's order.
+func (g *Game) leftAsACreatureLocked(ev Event) bool {
+	if was, known := ev.WasType("creature"); known {
+		return was
+	}
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		return hasTypeFold(lki.Types, "creature")
+	}
+	if c := g.findCardByIDLocked(ev.CardID); c != nil {
+		return c.IsCreature()
+	}
+	return false
 }
 
 // recordNonlandPermanentLeftLocked bumps NonlandPermanentsLeft when the
@@ -2171,6 +2199,14 @@ func (g *Game) VoidThisTurn() bool {
 // Caller must hold g.mu.
 func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).PermanentsLeft > 0
+}
+
+// CreatureLeftThisTurn reports whether a creature `playerID` controlled
+// left the battlefield this turn (Tale of Momo, That's Rough Buddy).
+//
+// Caller must hold g.mu.
+func (g *Game) CreatureLeftThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).CreaturesLeft > 0
 }
 
 // PermanentReturnedToHandThisTurn reports whether a permanent was
