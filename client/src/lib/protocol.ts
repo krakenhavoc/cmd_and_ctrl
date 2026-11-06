@@ -3171,6 +3171,11 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #4687: the mandatory "behold a Kithkin and exile it" (the Lorwyn
+  // Eclipsed Champions). `reveal` and `behold` are set too, and the one
+  // pick on `reveal_ids` is exiled with the spell on the stack rather than
+  // shown; the permanent returns it to its owner's hand when it leaves.
+  behold_exile?: boolean;
   // #3402: an "exile a creature you control" additional cost (Soul
   // Exchange). `exile_permanent_options` lists the permanents that could
   // pay it, in payment order, min / max the clause's count; the picks ride
@@ -3796,6 +3801,11 @@ export interface ActivatedAbilityView {
   // charged_mana_cost already carries the keyword's reduction by the
   // permanent's mana cost the turn it entered.
   power_up_used?: boolean;
+  // #4980: on a row whose purpose declares resolution_mana, how many
+  // times this permanent's row has resolved this turn (the engine's own
+  // count; an activation still on the stack is not in it). Bot data; the
+  // client does not read it.
+  resolved_this_turn?: number;
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is
@@ -4213,6 +4223,10 @@ export interface PurposeView {
   // #5083: on an activated row of its controller's own, the +1/+1
   // counters it puts on its own source, to stay (Hangarback Walker 1).
   source_counters?: number;
+  // #4980: on an activated row of its controller's own, the mana it adds
+  // on one numbered resolution of it this turn (Soulbright Seeker: the
+  // third, "{R}{R}{R}{R}"). The row carries resolved_this_turn.
+  resolution_mana?: { resolution: number; mana: string };
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
@@ -4257,6 +4271,10 @@ export interface TargetPurposeView {
   until_end_of_turn?: "benefit" | "harm";
   // #4302: that change in printed amounts (negative for a harm).
   pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
+  // #4976: beside a "benefit", the power or the toughness the change adds
+  // is the announced X (Tyvar's Stand's +X/+X sends both).
+  pump_power_is_x?: boolean;
+  pump_toughness_is_x?: boolean;
 }
 
 // TargetReturnView is what a removal spell hands the controller of the
@@ -4804,6 +4822,13 @@ export interface FinalBoardView {
   graveyard?: FinalCardView[];
   exile?: FinalCardView[];
   command?: FinalCardView[];
+  /**
+   * #4547: the names of the commanders the player owned, each once,
+   * wherever each was when they left (one an opponent had stolen, one on
+   * the stack, one in the library). The tombstone's commander line. Absent
+   * for a player with none, and on a record written before #4547.
+   */
+  commanders?: string[];
 }
 
 /**

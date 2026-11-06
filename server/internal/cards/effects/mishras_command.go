@@ -74,7 +74,7 @@ func init() {
 						return err
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"haste"}, Label: "Mishra's Command"}.Apply(ctx)
-				}), ForTargets(BenefitUntilEOT(0, 0, 0, "haste"))),
+				}), ForTargets(PowerXUntilEOT(0, "haste"))),
 		),
 	})
 }

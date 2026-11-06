@@ -87,7 +87,7 @@ func TestEitherCostBranchesAreProjected(t *testing.T) {
 	if ac.DiscardCards != 0 || ac.SacrificeOptions != nil || ac.Label == "" {
 		t.Errorf("the branched cost itself = %+v, want only its label", ac)
 	}
-	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []*game.AlternativeCost{nil}) {
+	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []game.OfferGrant{{}}) {
 		t.Error("castable_here = false with two payable branches")
 	}
 
@@ -99,7 +99,7 @@ func TestEitherCostBranchesAreProjected(t *testing.T) {
 	if c.AdditionalCost.Branches[3].Payable {
 		t.Error("the life branch is payable at 2 life")
 	}
-	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []*game.AlternativeCost{nil}) {
+	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []game.OfferGrant{{}}) {
 		t.Error("castable_here = false with the mana branch open")
 	}
 }
@@ -142,14 +142,14 @@ func TestEitherCostWithNoPayableBranchIsNotCastable(t *testing.T) {
 	// castableNow is the stamp behind castable_here on a graveyard,
 	// library-top or exile card; a hand card's castability is the legal
 	// move list, which offers no branch it cannot pay.
-	if castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []*game.AlternativeCost{nil}) {
+	if castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []game.OfferGrant{{}}) {
 		t.Fatal("castable_here = true with no payable branch")
 	}
 	// A card to discard opens the discard branch.
 	filler := game.NewCard("Filler", me.ID)
 	filler.KnownBy = map[uuid.UUID]bool{me.ID: true}
 	me.Hand.PushTop(filler)
-	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []*game.AlternativeCost{nil}) {
+	if !castableNow(g, me.ID, spell, game.ZoneHand, nil, "", []game.OfferGrant{{}}) {
 		t.Fatal("castable_here = false with the discard branch open")
 	}
 }

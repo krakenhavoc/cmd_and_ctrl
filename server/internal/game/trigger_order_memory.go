@@ -114,6 +114,7 @@ func init() {
 		evolveGrowBody.key:           true,
 		renownGrowBody.key:           true,
 		casualtyCopyBody.key:         true,
+		conspireCopyBody.key:         true,
 		madnessOfferBody.key:         true,
 		miracleOfferBody.key:         true,
 		suspendTickBody.key:          true,

@@ -366,4 +366,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 green Legendary Ooze Slug named Murf with indestructible": {Name: "Murf", TypeLine: "Token Legendary Creature — Ooze Slug", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"indestructible"}},
 	// #4974 batch 43: Star Trek Commander's Spacecraft Illusion (U.S.S. Stargazer, Here and There).
 	"4/3 colorless Spacecraft Illusion artifact with flying": {Name: "Spacecraft Illusion", TypeLine: "Token Artifact Creature — Spacecraft Illusion", Power: 4, Toughness: 3, Keywords: []string{"flying"}},
+
+	// #4459 batch 8: Avatar's Ballistic Boulder (Fire Navy Trebuchet, TTLA 13).
+	"2/1 colorless Construct artifact with flying named Ballistic Boulder": {Name: "Ballistic Boulder", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
 }

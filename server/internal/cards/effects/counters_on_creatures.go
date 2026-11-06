@@ -88,7 +88,7 @@ func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 	}
 }
 
-// putCountersOnEachYouControlThat is "put n <kind> counters on each
+// putPlusOneCountersOnEachYouControlThat is "put n +1/+1 counters on each
 // creature you control that's a <type>" (Vault 12: The Necropolis,
 // chapter III): every creature the resolving item's controller
 // controls that `match` admits, as ONE placement of n counters per
@@ -96,7 +96,7 @@ func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 // counters" watcher sees one placement. The set is read before the
 // first counter goes on, and a creature that left meanwhile is
 // skipped.
-func putCountersOnEachYouControlThat(kind string, n int, match CardPredicate) Effect {
+func putPlusOneCountersOnEachYouControlThat(n int, match CardPredicate) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -109,7 +109,7 @@ func putCountersOnEachYouControlThat(kind string, n int, match CardPredicate) Ef
 			if !onBattlefield(g, id) {
 				continue
 			}
-			if err := (AddCounter{Target: id, Kind: kind, N: n}).Apply(ctx); err != nil {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx); err != nil {
 				return err
 			}
 		}
