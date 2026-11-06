@@ -16,10 +16,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Modelling a surcharge as an alternative cost has one visible edge: the
 // offer REPLACES the mana cost, so it cannot be combined with a second
-// alternative cost on the same spell (CR 118.9a). No card in the
-// catalog that prints this clause has another, and cost reductions
+// alternative cost on the same spell (CR 118.9a), such as one another
+// permanent grants or "without paying its mana cost". On the printed
+// card the {N} is an additional cost and the flash a timing permission,
+// so it could. A card built on this offer is CompletenessCaveats with
+// that caveat (#5207; coverage's
+// TestEveryFlashIfOfferCardDeclaresItsCaveat holds it). Cost reductions
 // apply to the offer exactly as they would to the printed cost plus
-// {N}, so the price is the same.
+// {N}, so the price is otherwise the same.
 
 // FlashForMore is the offer. `total` is the printed mana cost with the
 // surcharge already added ({2}{U}{U} plus {2} is "{4}{U}{U}"), and

@@ -9,9 +9,10 @@ import (
 // flash_if_x_at_most.go — "You may cast this spell as though it had flash
 // if X is N or less" (Silver Scrutiny; #3225).
 //
-// CR 601.3c: an effect that lets a spell be cast as though it had flash
-// only if a condition holds lets its caster BEGIN to cast it at instant
-// speed; the condition is then checked against the announcement. Here
+// CR 601.3b: an effect that lets a spell with certain qualities be cast
+// as though it had flash lets its caster BEGIN to cast it at instant
+// speed when a choice made while casting could give it those qualities;
+// the condition is then checked against the announcement. Here
 // the condition is on X, a number the caster chooses after the timing
 // window has been opened, so the shape is the same as FlashForMore's —
 // an alternative cost that opens the window for that claim only
@@ -24,6 +25,11 @@ import (
 // let a player draw ten cards at instant speed, which is stronger than
 // printed. The offer charges the card's own mana cost, so claiming it
 // costs nothing extra and the price is the same as the printed one.
+//
+// Both offers here have FlashForMore's one edge (flash_for_more.go): an
+// offer is an alternative cost, so the flash cast cannot also take a
+// second one (CR 118.9a), and a card built on either is
+// CompletenessCaveats with that caveat (#5207).
 
 // FlashIfXAtMost is the offer. `cost` is the card's printed mana cost
 // (it must contain {X}, which Register checks) and `max` is the largest
