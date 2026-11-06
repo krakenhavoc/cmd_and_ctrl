@@ -478,7 +478,7 @@ func readRSVPs(ctx context.Context, q querier, ids ...string) (map[string][]RSVP
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		plan, r, err := scanRSVP(rows)
 		if err != nil {
@@ -591,9 +591,8 @@ func discordOf(ctx context.Context, q querier, user string) (string, error) {
 
 // normalize deals the seats of a plan waiting for its doors again: the
 // first players people on the list, in order, have a seat, and the rest
-// wait. rs is in order. It returns the people who moved up.
-func normalize(players int, rs []RSVP, now time.Time) []RSVP {
-	var up []RSVP
+// wait. rs is in order.
+func normalize(players int, rs []RSVP, now time.Time) {
 	n := 0
 	for i := range rs {
 		r := &rs[i]
@@ -606,13 +605,9 @@ func normalize(players int, rs []RSVP, now time.Time) []RSVP {
 		}
 		n++
 		if r.State != want {
-			if want == StateSeat {
-				up = append(up, *r)
-			}
 			r.State, r.UpdatedAt = want, now
 		}
 	}
-	return up
 }
 
 // openList turns every seat into a hold until the grace ends, at
