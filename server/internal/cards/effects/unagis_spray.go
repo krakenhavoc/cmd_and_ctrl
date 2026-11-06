@@ -24,6 +24,7 @@ func init() {
 		Name:         "Unagi's Spray",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(HarmUntilEOT(0, -4, 0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
 			if !ok || t.Kind != game.TargetCard {
