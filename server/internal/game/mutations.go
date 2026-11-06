@@ -1206,6 +1206,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		params.SacrificeIDs = ids
 	}
+	// #5075: "sacrifice half the lands you control, rounded up" — the
+	// caster picks them, the count is fixed here as the total cost is
+	// determined (CR 601.2f), and the clause's own "any number" bounds let the
+	// validator check the rest.
+	if addCost != nil && addCost.SacrificeHalfRoundedUp && len(params.SacrificeIDs) != g.sacrificeHalfCountLocked(playerID, addCost.Sacrifice) {
+		slog.Warn("cast_spell rejected: sacrifice_ids are not half the permanents a sacrifice-half cost counts",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"sacrifices_received", len(params.SacrificeIDs),
+		)
+		return ErrSacrificeHalfCount
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2). #1590: the
 	// count's bounds are read HERE, "as you cast this spell", for a

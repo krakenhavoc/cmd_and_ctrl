@@ -347,6 +347,8 @@ castfollowup msc6/helmut-zemo-mastermind-counter
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
+choose avatar-b30/azula-experience-after-discard
+choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
 choose choose-cards/aegis-sculptor-exile-two
@@ -831,6 +833,8 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
+confirm avatar-b30/bison-whistle-take-creature
+confirm avatar-b30/bison-whistle-to-graveyard
 confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
@@ -1207,6 +1211,7 @@ payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
+payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
@@ -1602,6 +1607,9 @@ tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail augusta-order-returned/after-exile
 tail avatar-b24/put-n-counters-on-each-next
+tail avatar-b30/bison-whistle-after-bison
+tail avatar-b30/cracked-earth-gain-life
+tail avatar-b30/cracked-earth-second-earthbend
 tail avatar-destiny/after-mill
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw

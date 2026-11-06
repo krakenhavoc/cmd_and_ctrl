@@ -8410,6 +8410,12 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
 			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
 		}
+		if ac.SacrificeHalfRoundedUp && out.SacrificeOptions != nil {
+			// #5075: "half the lands you control, rounded up" — the
+			// caster's pick, of exactly the number CastSpell demands.
+			n := g.SacrificeHalfCountForEffect(caster, ac.Sacrifice)
+			out.SacrificeOptions.Min, out.SacrificeOptions.Max = n, n
+		}
 	}
 	if ec := ac.ExilePermanents; !ec.Empty() {
 		// #3402: the activation's own walk and view, so the picker offers
