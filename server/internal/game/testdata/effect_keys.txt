@@ -1439,6 +1439,7 @@ run prompt-run/pox-plague-sacrifice
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
+run prompt-run/provisions-merchant-sacrifice-pump
 run prompt-run/reactor-raid-draw
 run prompt-run/return-chosen-permanent-to-hand
 run prompt-run/rhovanion-rampager-sacrifice
@@ -2041,6 +2042,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
+tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice

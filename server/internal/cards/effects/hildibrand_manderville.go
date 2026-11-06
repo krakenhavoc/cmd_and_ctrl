@@ -15,15 +15,16 @@ import (
 //	  "Create a 2/2 black Zombie creature token. (Then exile this card.
 //	   You may cast the creature later from exile.)"
 //
-// The anthem is Intangible Virtue's. The dies trigger grants a cast
-// permission over the card in its owner's graveyard, narrowed to the
-// Adventure face (the permission's Faces, as a defeated Siege's
-// transformed cast is) and good until the end of your next turn
-// (UntilEndOfYourNextTurnDuration). The grant is the "may": nothing is
-// asked, and an uncast card simply stays. It names the object that died
-// (CR 400.7), so a Hildibrand that left the graveyard first is not
-// castable. Cast that way the Adventure resolves into exile like any
-// other (CR 715.3d) and the creature can be cast from there later.
+// The anthem is Intangible Virtue's. The dies trigger is
+// castItFromYourGraveyardAsAnAdventure (shared with Mosswood
+// Dreadknight): a cast permission over the card in its owner's
+// graveyard, narrowed to the Adventure face (the permission's Faces, as
+// a defeated Siege's transformed cast is) and good until the end of
+// your next turn. The grant is the "may": nothing is asked, and an
+// uncast card simply stays. It names the object that died (CR 400.7),
+// so a Hildibrand that left the graveyard first is not castable. Cast
+// that way the Adventure resolves into exile like any other (CR 715.3d)
+// and the creature can be cast from there later.
 //
 // No simplification.
 const hildibrandOracleID = "6df03db9-e4b3-4931-94e3-c582d2b04110"
@@ -45,27 +46,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Hildibrand Manderville — you may cast it from your graveyard as an Adventure until the end of your next turn",
-				func(g *game.Game, item *game.StackItem) error {
-					z := g.FindCardZoneForEffect(item.SourceCardID)
-					if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
-						return nil
-					}
-					c, ok := g.LookupCardForEffect(item.SourceCardID)
-					if !ok {
-						return nil
-					}
-					g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-						Player:     item.Controller,
-						Zone:       game.ZoneGraveyard,
-						Duration:   g.UntilEndOfYourNextTurnDuration(item.Controller),
-						CastOnly:   true,
-						Faces:      []int{1},
-						Source:     item.SourceCardID,
-						SourceName: "Hildibrand Manderville",
-						Label:      "Hildibrand Manderville — cast Gentleman's Rise from your graveyard",
-					}, []game.Card{c})
-					return nil
-				}),
+				castItFromYourGraveyardAsAnAdventure("Hildibrand Manderville", "Gentleman's Rise")),
 		},
 	})
 	Register(Spec{
