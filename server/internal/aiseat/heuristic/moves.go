@@ -200,6 +200,12 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	return v, false
 }
 
+// castBeholdExiles reports whether c's mandatory additional cost exiles
+// the card its behold names (#4687): `additional_cost.behold_exile`.
+func castBeholdExiles(c *protocol.CardView) bool {
+	return c != nil && c.AdditionalCost != nil && c.AdditionalCost.BeholdExile
+}
+
 // castTapsPermanents reports whether a cast of c pays a mandatory "tap an
 // untapped <permanent> you control" additional cost (#3868): the card's
 // own cost, or the either/or branch the cast names (Disruption Protocol's
@@ -896,6 +902,23 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		}
 	} else {
 		v -= st.w.Hand * float64(len(cp.ExileFromHandIDs))
+	}
+	// #4687: the card a "behold a Kithkin and exile it" exiles is gone
+	// until the permanent leaves, priced as the two exile costs above
+	// price a permanent and a hand card. A plain behold or reveal keeps
+	// its card and costs nothing.
+	if castBeholdExiles(card) {
+		for _, id := range cp.RevealIDs {
+			if st.bf[id] != nil {
+				v -= p.sacrificeCost(st, []string{id})
+				continue
+			}
+			if p.cfg.DiscardCostByCard {
+				v -= p.discardCost(st, id, cp.InstanceID, cp.RevealIDs)
+			} else {
+				v -= st.w.Hand
+			}
+		}
 	}
 	v += targetV
 	if cp.FromZone == "command" {

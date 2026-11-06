@@ -1712,7 +1712,7 @@ func checkAltCostBehold(card string, ac game.AlternativeCost) {
 		}
 		return
 	}
-	if !rc.Behold || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
+	if !rc.Behold || rc.Exile || rc.Subtype == "" || rc.Color != "" || ac.BeholdCount < 1 {
 		panic(fmt.Sprintf("effects.Register: %q offers %q with a malformed behold — build it with FlashbackBehold", card, ac.Key))
 	}
 }

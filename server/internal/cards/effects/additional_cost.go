@@ -257,6 +257,35 @@ func BeholdCost(article, subtype string) *game.AdditionalCost {
 	}
 }
 
+// BeholdAndExileCost is the Lorwyn Eclipsed Champions' "As an additional
+// cost to cast this spell, behold a Kithkin and exile it. (Exile a Kithkin
+// you control or a Kithkin card from your hand.)" (#4687, ADR 0100's
+// 2026-11-05 amendment, CR 701.4a): the mandatory slot's one component.
+// The caster names one card on cast_spell as reveal_ids — a permanent of
+// that creature type they control, or a card of it in their hand, a
+// changeling included — and it is exiled with the spell on the stack. The
+// permanent the spell becomes is linked to it (CR 607.2q), so its leave
+// trigger returns it with ReturnTheExiledCardToHand. `article` is the
+// printed "a" or "an".
+func BeholdAndExileCost(article, subtype string) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		Reveal: &game.RevealCost{Subtype: subtype, Behold: true, Exile: true},
+		Label:  "Behold " + article + " " + subtype + " and exile it",
+	}
+}
+
+// ReturnTheExiledCardToHand is the Champions' "When this creature leaves
+// the battlefield, return the exiled card to its owner's hand" (#4687):
+// the card BeholdAndExileCost exiled to pay for the spell that became this
+// permanent (CR 607.2q), read through the leave trigger's own source
+// object, so a Champion that left and came back is a new object with no
+// claim on it (CR 400.7), and a card that has since left exile is not
+// pulled out of anywhere. A countered Champion never became a permanent,
+// so its card stays in exile. `name` is the card's name.
+func ReturnTheExiledCardToHand(name string) game.TriggeredAbility {
+	return On(game.EventLTB, Self, name+" — return the exiled card to its owner's hand", b36ReturnCardsExiledWithToOwnersHands)
+}
+
 // ExilePermanentCost is "As an additional cost to cast this spell, exile
 // a creature you control" (Soul Exchange, #3402): the activated ability's
 // ExilePermanentsCost on a cast's mandatory slot. The type is read off
@@ -543,7 +572,17 @@ func checkEitherCost(spec Spec) {
 	}
 	if !ac.Branched() {
 		if ac.Reveal != nil {
-			panic(fmt.Sprintf("effects.Register: %q declares a reveal / behold cost outside an either/or branch — every printed one is a branch beside mana (ADR 0100 amendment 2026-10-07)", spec.Name))
+			// #4687: the one mandatory form is the Champions' "behold a
+			// Kithkin and exile it", alone on the slot (BeholdAndExileCost).
+			rest := *ac
+			rest.Reveal, rest.Label = nil, ""
+			rc := ac.Reveal
+			if !rc.Exile {
+				panic(fmt.Sprintf("effects.Register: %q declares a reveal / behold cost outside an either/or branch — every printed one is a branch beside mana (ADR 0100 amendment 2026-10-07), or the exiling behold (BeholdAndExileCost)", spec.Name))
+			}
+			if !rc.Behold || rc.Subtype == "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+				panic(fmt.Sprintf("effects.Register: %q declares a malformed behold-and-exile cost — build it with BeholdAndExileCost, alone on the mandatory slot (#4687)", spec.Name))
+			}
 		}
 		if ac.ManaCost != "" {
 			panic(fmt.Sprintf("effects.Register: %q declares a mandatory additional MANA cost — mana on the mandatory slot is a branch of EitherCost (ADR 0100); a single mana cost is part of the mana cost", spec.Name))
@@ -583,6 +622,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles cards from hand — only the mandatory slot may, not a branch (#3175)", spec.Name, where))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
+		case b.Reveal != nil && b.Reveal.Exile:
+			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
 			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
