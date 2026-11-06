@@ -67,7 +67,7 @@ func checkRevealCardsClause(name, where string, cost game.AbilityCost) {
 		return
 	}
 	switch {
-	case rc.Behold:
+	case rc.Behold || rc.Exile:
 		panic(fmt.Sprintf("effects.Register: %q %s beholds in an ability cost — behold is a cast's either/or branch (BeholdCost), not an activation component", name, where))
 	case rc.Label == "":
 		panic(fmt.Sprintf("effects.Register: %q %s reveals cards with no Label — build it with RevealX / RevealN", name, where))

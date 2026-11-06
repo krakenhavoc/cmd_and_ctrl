@@ -177,8 +177,10 @@ func inCombatNow(st *state, c *protocol.CardView) bool {
 }
 
 // temporaryPicks is each permanent pick of an activation or a cast whose
-// declared entry is a change until end of turn, with that entry.
-func (st *state) temporaryPicks(m legal.Move) ([]targetRef, []*protocol.TargetPurposeView) {
+// declared entry is a change until end of turn, with that entry. With
+// pumpX (Config.PriceXPumps, #4976) a pump of the announced X is read at
+// the move's X, as the move's price reads it.
+func (st *state) temporaryPicks(m legal.Move, pumpX bool) ([]targetRef, []*protocol.TargetPurposeView) {
 	var picks []targetRef
 	var entries []*protocol.TargetPurposeView
 	add := func(t targetRef, e *protocol.TargetPurposeView) {
@@ -195,7 +197,7 @@ func (st *state) temporaryPicks(m legal.Move) ([]targetRef, []*protocol.TargetPu
 			return nil, nil
 		}
 		for _, t := range cp.Targets {
-			add(t, rowEntryFor(src, cp.AbilityIndex, t))
+			add(t, entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue, pumpX))
 		}
 	case legal.KindCast:
 		cp := decode[castParams](m.Params)
@@ -204,7 +206,7 @@ func (st *state) temporaryPicks(m legal.Move) ([]targetRef, []*protocol.TargetPu
 			return nil, nil
 		}
 		for _, t := range spellTargets(c, cp) {
-			add(t, castEntryFor(c, cp, t))
+			add(t, entryAtX(castEntryFor(c, cp, t), cp.XValue, pumpX))
 		}
 	}
 	return picks, entries
@@ -242,7 +244,7 @@ func (p *Policy) spareTemporaryMove(st *state, m legal.Move, ok func(*protocol.C
 	if !p.cfg.PriceTemporaryEffects || !p.costsOnlyManaAndTaps(st, m) {
 		return false
 	}
-	picks, entries := st.temporaryPicks(m)
+	picks, entries := st.temporaryPicks(m, p.cfg.PriceXPumps)
 	if len(picks) == 0 {
 		return false
 	}
@@ -321,11 +323,11 @@ func noAmountGrant(e *protocol.TargetPurposeView) bool {
 
 // grantKeys names each pick of m that noAmountGrant covers, by row and
 // target: the memory's keys.
-func (st *state) grantKeys(m legal.Move) []string {
+func (st *state) grantKeys(m legal.Move, pumpX bool) []string {
 	if m.Kind != legal.KindActivate {
 		return nil
 	}
-	picks, entries := st.temporaryPicks(m)
+	picks, entries := st.temporaryPicks(m, pumpX)
 	if len(picks) == 0 {
 		return nil
 	}
@@ -346,7 +348,7 @@ func (p *Policy) repeatsTemporaryGrant(st *state, m legal.Move) bool {
 	if !p.cfg.PriceTemporaryEffects || h == nil || h.seat != st.me || h.turn != st.turn {
 		return false
 	}
-	keys := st.grantKeys(m)
+	keys := st.grantKeys(m, p.cfg.PriceXPumps)
 	return len(keys) > 0 && !slices.ContainsFunc(keys, func(k string) bool { return !h.keys[k] })
 }
 
@@ -359,7 +361,7 @@ func (p *Policy) noteTemporaryGrant(st *state, moves []legal.Move, d aiseat.Deci
 	if !p.cfg.PriceTemporaryEffects || d.Index < 0 || d.Index >= len(moves) {
 		return
 	}
-	keys := st.grantKeys(moves[d.Index])
+	keys := st.grantKeys(moves[d.Index], p.cfg.PriceXPumps)
 	if len(keys) == 0 {
 		return
 	}

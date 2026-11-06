@@ -1216,6 +1216,12 @@ type Card struct {
 	// abilities of all cards exiled with it" borrower, whose lenders are
 	// read on every layer pass. Other ability exiles still keep the
 	// effects package's event-log record (b27ExiledWith).
+	//
+	// #4687 (CR 607.2q): a card exiled to PAY for a permanent spell (an
+	// exiling behold, payBeholdExileLocked) is linked to the SPELL object
+	// {instance, stack epoch} until the spell resolves, and then to the
+	// permanent it became (relinkCostExilesLocked). A countered spell's
+	// card keeps naming the spell object, which no reader ever matches.
 	ExiledWith PermissionCardRef
 
 	// ExiledWithAbility is the other half of CR 607.2a's link: WHICH

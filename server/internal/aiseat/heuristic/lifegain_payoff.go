@@ -77,7 +77,7 @@ func (p *Policy) lifelinkGrantPayoff(st *state, m legal.Move) float64 {
 	if per <= 0 || !p.spareCombatGrant(st, m) || p.repeatsTemporaryGrant(st, m) {
 		return 0
 	}
-	picks, entries := st.temporaryPicks(m)
+	picks, entries := st.temporaryPicks(m, p.cfg.PriceXPumps)
 	n := 0
 	for i, t := range picks {
 		c, e := st.bf[t.ID], entries[i]

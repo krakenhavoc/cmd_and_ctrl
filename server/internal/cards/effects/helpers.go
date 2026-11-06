@@ -1543,6 +1543,21 @@ func millHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
 	return nil
 }
 
+// targetPlayerMills is "target player mills N cards" as a trigger's Effect:
+// the player the item targets, if still legal as it resolves (CR 608.2b),
+// mills N through the mill primitive. Scrabbling Skullcrab and Desperate
+// Bloodseeker share it.
+func targetPlayerMills(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		p := targetedPlayerOf(ctx)
+		if p == uuid.Nil {
+			return nil
+		}
+		return MillCards{Player: p, N: n}.Apply(ctx)
+	}
+}
+
 // plusOneCounterOnChosenTargets is "put a +1/+1 counter on target
 // creature": a triggered ability's Effect that reads the creature(s) the
 // controller chose from the item and puts one counter on each that is

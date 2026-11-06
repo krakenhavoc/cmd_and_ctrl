@@ -11,12 +11,15 @@
 //   - the commander the tombstone names. An eliminated player's objects
 //     leave the game with them (CR 800.4a) except when their leaving ends
 //     it, so the frame that eliminates a seat no longer shows its
-//     commander. The name is remembered from the frames before it.
+//     commander. The server names it instead, on the seat's final board
+//     (#4547, `final_board.commanders`), the same for every viewer on every
+//     frame, so a spectator or a fresh device that never saw the commander
+//     names it too.
 //
 // EliminationFx.svelte measures, draws and plays; Tombstone.svelte is the
 // stone on the panel.
 
-import type { CardView, GameView, LogEvent, PlayerView } from "./protocol";
+import type { FinalBoardView, GameView, LogEvent, PlayerView } from "./protocol";
 
 // ---- Which seats left ----
 
@@ -143,123 +146,75 @@ function mulberry32(seed: number): () => number {
 
 // ---- The commander the tombstone names ----
 
-function isDungeonOrEmblem(c: CardView): boolean {
-  const t = c.type_line ?? "";
-  return t.includes("Dungeon") || t.includes("Emblem");
+interface CommandCard {
+  name?: string;
+  type_line?: string;
+  is_commander?: boolean;
+}
+
+/**
+ * The commanders among a command zone's cards: those flagged, else every
+ * card but a dungeon or an emblem, which a command zone also holds and
+ * which are not commanders.
+ */
+function commandZoneCommanders<C extends CommandCard>(cards: readonly C[]): C[] {
+  const flagged = cards.filter((c) => c.is_commander === true);
+  if (flagged.length > 0) return flagged;
+  return cards.filter((c) => {
+    const t = c.type_line ?? "";
+    return !t.includes("Dungeon") && !t.includes("Emblem");
+  });
+}
+
+function addName(names: string[], name: string | undefined): void {
+  if (name && !names.includes(name)) names.push(name);
 }
 
 /**
  * The names of a seat's commanders as this frame shows them: those in its
- * command zone first, then any it owns or controls in a shared zone or its
- * graveyard. Empty when none is visible (they left with the player).
+ * command zone first, then any it owns in a shared zone or its graveyard.
+ * Empty when none is visible (they left with the player).
  */
 export function commanderNames(view: GameView, seat: PlayerView): string[] {
   const names: string[] = [];
-  const add = (c: CardView) => {
-    if (c.name && !names.includes(c.name)) names.push(c.name);
-  };
-  const command = seat.command?.cards ?? [];
-  const flagged = command.filter((c) => c.is_commander === true);
-  // A command zone also holds dungeons and emblems; they are not commanders.
-  for (const c of flagged.length > 0 ? flagged : command.filter((c) => !isDungeonOrEmblem(c))) {
-    add(c);
-  }
+  for (const c of commandZoneCommanders(seat.command?.cards ?? [])) addName(names, c.name);
   for (const z of [view.battlefield, view.stack, view.exile, seat.graveyard]) {
     for (const c of z?.cards ?? []) {
-      if (c.is_commander && (c.owner === seat.id || c.controller === seat.id)) add(c);
+      // The owner's: a commander they had stolen is another player's.
+      if (c.is_commander && c.owner === seat.id) addName(names, c.name);
     }
   }
   return names;
 }
 
-const MEMORY_KEY = "cmdctrl.commanders";
-const MEMORY_MAX_GAMES = 8;
-
-// game ID -> seat ID -> names. Insertion-ordered, so the oldest game is
-// the first key and is dropped past MEMORY_MAX_GAMES.
-const memory = new Map<string, Map<string, string[]>>();
-let loaded = false;
-
-function load(): void {
-  if (loaded) return;
-  loaded = true;
-  try {
-    const raw = typeof sessionStorage === "undefined" ? null : sessionStorage.getItem(MEMORY_KEY);
-    if (!raw) return;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return;
-    for (const entry of parsed) {
-      if (!Array.isArray(entry) || typeof entry[0] !== "string" || !Array.isArray(entry[1]))
-        continue;
-      const seats = new Map<string, string[]>();
-      for (const pair of entry[1]) {
-        if (!Array.isArray(pair) || typeof pair[0] !== "string" || !Array.isArray(pair[1]))
-          continue;
-        seats.set(
-          pair[0],
-          pair[1].filter((n): n is string => typeof n === "string"),
-        );
-      }
-      memory.set(entry[0], seats);
-    }
-  } catch {
-    // Storage blocked or damaged: the memory lives for this page only.
+/**
+ * The commander names a final board records (#4547): `commanders`, which
+ * the server fills with every commander the player owned wherever it was.
+ * A record written before that field names the commanders in its command
+ * zone. Empty without a record.
+ */
+export function finalBoardCommanders(fb: FinalBoardView | null | undefined): string[] {
+  const names: string[] = [];
+  if (!fb) return names;
+  if (fb.commanders && fb.commanders.length > 0) {
+    for (const n of fb.commanders) addName(names, n);
+    return names;
   }
-}
-
-function save(): void {
-  try {
-    if (typeof sessionStorage === "undefined") return;
-    const dump = [...memory].map(([game, seats]) => [game, [...seats]]);
-    sessionStorage.setItem(MEMORY_KEY, JSON.stringify(dump));
-  } catch {
-    // Same: a private window still remembers in memory.
-  }
+  for (const c of commandZoneCommanders(fb.command ?? [])) addName(names, c.name);
+  return names;
 }
 
 /**
- * Remember the seat's commanders while they can be seen, so the tombstone
- * can name them after they have gone. Only ever adds: the frame that
- * eliminates a seat shows none, and that must not forget them. The
- * remembered names survive a reload of the page (sessionStorage).
+ * The commander names to put on a seat's tombstone: what its final board
+ * records, which every viewer gets on every frame (a spectator or a fresh
+ * device that never saw the commander included); else what this frame
+ * shows, for a seat restored from a snapshot older than the record (#4912)
+ * whose departure ended the game and so left its board in place.
  */
-export function rememberCommanders(view: GameView, seat: PlayerView): void {
-  const names = commanderNames(view, seat);
-  if (names.length === 0) return;
-  load();
-  let seats = memory.get(view.id);
-  if (!seats) {
-    seats = new Map();
-    memory.set(view.id, seats);
-    if (memory.size > MEMORY_MAX_GAMES) {
-      const oldest = memory.keys().next().value;
-      if (oldest !== undefined) memory.delete(oldest);
-    }
-  }
-  const before = seats.get(seat.id) ?? [];
-  const merged = [...before, ...names.filter((n) => !before.includes(n))];
-  if (merged.length === before.length) return;
-  seats.set(seat.id, merged);
-  save();
-}
-
-/** The commander names to put on a seat's tombstone: what is visible now, else what was remembered. */
 export function tombstoneCommanders(view: GameView, seat: PlayerView): string[] {
-  const now = commanderNames(view, seat);
-  if (now.length > 0) return now;
-  load();
-  return memory.get(view.id)?.get(seat.id) ?? [];
-}
-
-/** Forget everything remembered. For tests. */
-export function resetCommanderMemory(): void {
-  memory.clear();
-  loaded = false;
-  try {
-    if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(MEMORY_KEY);
-  } catch {
-    // ignore
-  }
+  const recorded = finalBoardCommanders(seat.final_board);
+  if (recorded.length > 0) return recorded;
+  return commanderNames(view, seat);
 }
 
 /** The commanders as one line: "A", "A & B". */

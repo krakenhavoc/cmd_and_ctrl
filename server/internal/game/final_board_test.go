@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -168,9 +169,97 @@ func TestFinalBoardSurvivesASnapshotAndAClone(t *testing.T) {
 		t.Errorf("restored Aura %+v", c)
 	}
 
+	if len(fb.Commanders) == 0 || !slices.Equal(fb.Commanders, p.b.FinalBoard.Commanders) {
+		t.Errorf("restored commanders %q, want %q", fb.Commanders, p.b.FinalBoard.Commanders)
+	}
+
 	cp := clonePlayer(p.b)
 	cp.FinalBoard.Battlefield[0].Counters[CounterPlusOne] = 9
 	if c, _ := finalCardByID(p.b.FinalBoard.Battlefield, cp.FinalBoard.Battlefield[0].InstanceID); c.Counters[CounterPlusOne] == 9 {
 		t.Error("a clone shares the final board's counters with the original")
+	}
+	first := p.b.FinalBoard.Commanders[0]
+	cp.FinalBoard.Commanders[0] = "changed"
+	if p.b.FinalBoard.Commanders[0] != first {
+		t.Error("a clone shares the final board's commanders with the original")
+	}
+}
+
+// commandZoneCommanders is the names of the commanders in p's command zone.
+func commandZoneCommanders(p *Player) []string {
+	var names []string
+	for _, c := range p.Command.Cards {
+		if c.IsCommander {
+			names = append(names, c.Name)
+		}
+	}
+	return names
+}
+
+// TestFinalBoardNamesEveryCommanderTheyOwned (#4547): the tombstone's
+// commander line reads the record's names, so they cover each commander
+// the player owned wherever it was, not only the command zone: one an
+// opponent had stolen, one on the stack, one in the library. An
+// opponent's commander the player had stolen is not theirs to name.
+func TestFinalBoardNamesEveryCommanderTheyOwned(t *testing.T) {
+	p := newDepartureProbe(t)
+	stolen := NewCommander("B's Partner", p.b.ID)
+	stolen.TypeLine = "Legendary Creature — Human"
+	stolen.Controller = p.c.ID
+	p.g.Battlefield.PushTop(stolen)
+	theirs := NewCommander("C's Commander", p.c.ID)
+	theirs.TypeLine = "Legendary Creature — Elf"
+	theirs.Controller = p.b.ID
+	p.g.Battlefield.PushTop(theirs)
+	p.g.Stack.PushTop(NewCommander("B's Background", p.b.ID))
+	p.b.Library.PushTop(NewCommander("B's Shuffled Commander", p.b.ID))
+	// A second card of one name is named once.
+	p.g.Exile.PushTop(NewCommander("B's Commander", p.b.ID))
+	// The command zone first (the seat's own and the probe's), then the rest.
+	want := append(commandZoneCommanders(p.b), "B's Partner", "B's Background", "B's Shuffled Commander")
+	if !slices.Contains(want, "B's Commander") {
+		t.Fatalf("the probe's commander is not in B's command zone: %q", want)
+	}
+
+	if err := p.g.Concede(p.b.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	fb := p.b.FinalBoard
+	if fb == nil {
+		t.Fatal("B left the game with no final board recorded")
+	}
+	if !slices.Equal(fb.Commanders, want) {
+		t.Errorf("final board commanders %q, want %q", fb.Commanders, want)
+	}
+}
+
+// TestFinalBoardCommandersWhenTheDepartureEndsTheGame: the last loser's
+// commanders are named too, though their board is not stripped.
+func TestFinalBoardCommandersWhenTheDepartureEndsTheGame(t *testing.T) {
+	g := newActiveGameWithSeats(t, 2)
+	a := g.Seats[0]
+	a.Command.PushTop(NewCommander("A's Commander", a.ID))
+	want := commandZoneCommanders(a)
+	if err := g.Concede(a.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if g.State == StateActive {
+		t.Fatal("the game should be over")
+	}
+	if a.FinalBoard == nil || !slices.Equal(a.FinalBoard.Commanders, want) {
+		t.Errorf("final board %+v, want commanders %q", a.FinalBoard, want)
+	}
+}
+
+// TestFinalBoardNamesNoCommanderForADeckWithout: no commander, no names.
+func TestFinalBoardNamesNoCommanderForADeckWithout(t *testing.T) {
+	g := newActiveGameWithSeats(t, 3)
+	a := g.Seats[0]
+	a.Command.Cards = nil
+	if err := g.Concede(a.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if a.FinalBoard == nil || a.FinalBoard.Commanders != nil {
+		t.Errorf("final board %+v, want one with no commanders", a.FinalBoard)
 	}
 }

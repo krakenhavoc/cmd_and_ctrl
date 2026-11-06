@@ -472,6 +472,16 @@ type TargetPurpose struct {
 	// Declared only beside UntilEndOfTurn. A pointer so TargetPurpose
 	// stays comparable.
 	Pump *Pump
+	// PumpPowerIsX and PumpToughnessIsX are set when the power, or the
+	// toughness, a benefit until end of turn adds is the spell's or
+	// ability's announced X (#4976): Tyvar's Stand's "+X/+X" sets both,
+	// Hatred's "+X/+0" the power alone. Pump then prints no amount on
+	// that side, and a reader adds the X the move names, as it reads
+	// DamageIsX. An X counted at resolution ("where X is the number of
+	// Elves") is not this, and declares nothing. Declared only beside a
+	// TargetBenefit.
+	PumpPowerIsX     bool
+	PumpToughnessIsX bool
 }
 
 // TargetEffect is TargetPurpose.UntilEndOfTurn: which way a change that
@@ -531,7 +541,8 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
 	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.DamagePerTapped == 0 && t.Returns.IsZero() && !t.Reanimates &&
-		!t.Exiles && t.ExileGrows == "" && t.UntilEndOfTurn == "" && t.Pump == nil
+		!t.Exiles && t.ExileGrows == "" && t.UntilEndOfTurn == "" && t.Pump == nil &&
+		!t.PumpPowerIsX && !t.PumpToughnessIsX
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a
