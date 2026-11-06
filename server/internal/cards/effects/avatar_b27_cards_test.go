@@ -347,7 +347,7 @@ func TestAvatarB27UnclesMusingsReturnsOnePermanentPerColourAndExilesItself(t *te
 
 func TestAvatarB27AirNomadStudentGrowsOnlyWhenItDidntAttack(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	student := b12Push(g, me.ID, "Air Nomad Student", "Creature — Human Monk", avB27StudentOracle, 2, 2)
 	if !hasEffectiveKeyword(t, g, student, "flying") {
 		t.Error("printed flying is missing")
@@ -359,7 +359,7 @@ func TestAvatarB27AirNomadStudentGrowsOnlyWhenItDidntAttack(t *testing.T) {
 	}
 
 	g2 := newCatalogGame(t)
-	me, opp = g2.Seats[0], g2.Seats[1]
+	me, opp := g2.Seats[0], g2.Seats[1]
 	attacker := b12Push(g2, me.ID, "Air Nomad Student", "Creature — Human Monk", avB27StudentOracle, 2, 2)
 	declareAttack(t, g2, opp.ID, attacker)
 	mkAdvanceTo(t, g2, game.StepEnd)

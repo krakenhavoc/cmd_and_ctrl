@@ -48,16 +48,6 @@ func TestAvatarB26EveryCardIsRegisteredFull(t *testing.T) {
 	}
 }
 
-func avB26Count(g *game.Game, controller uuid.UUID, name string) int {
-	n := 0
-	for _, c := range g.Battlefield.Cards {
-		if c.Controller == controller && c.Name == name {
-			n++
-		}
-	}
-	return n
-}
-
 func avB26Tapped(t *testing.T, g *game.Game, id uuid.UUID, tapped bool) {
 	t.Helper()
 	g.WithWriteLock(func() {
