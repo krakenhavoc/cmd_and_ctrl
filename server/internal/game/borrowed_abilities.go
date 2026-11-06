@@ -66,6 +66,13 @@ type AbilityBorrow struct {
 	// Label is the printed clause, for the wire's granted_abilities line
 	// and the borrow's identity.
 	Label string
+	// Triggered also lends the lenders' TRIGGERED abilities, triggered
+	// mana abilities and triggered keywords included: "has all activated
+	// and triggered abilities of the last chosen card" (Koh, the Face
+	// Stealer; ADR 0155's 2026-11-05 amendment, borrowed_triggers.go).
+	// False lends activated and mana abilities only, as printed on every
+	// other card in the family.
+	Triggered bool
 }
 
 // BorrowExcept is a set of row kinds a borrow does not lend.
@@ -88,6 +95,11 @@ const (
 	LentCatalog LentKind = iota
 	// LentLand is a CR 305.6 intrinsic land mana ability: Color names it.
 	LentLand
+	// LentKeyword is a triggered keyword the engine derives from the
+	// ability list rather than from a catalog row (prowess, exalted,
+	// undying, annihilator N, ...): Key is the ability token
+	// (borrowed_triggers.go).
+	LentKeyword
 )
 
 // BorrowSlotMana is a BorrowedAbility's Slot for a lent mana ability;
@@ -99,7 +111,9 @@ const BorrowSlotMana = "mana"
 // CatalogAbilityKey. Plain data, so the last-known-information copy of a
 // Characteristic carries it.
 type BorrowedAbility struct {
-	// Slot is AbilitySlotActivated or BorrowSlotMana.
+	// Slot is AbilitySlotActivated or BorrowSlotMana, or, for a borrow
+	// that also lends triggered abilities, AbilitySlotTriggered or
+	// BorrowSlotManaTrigger.
 	Slot string
 	// Kind is where the row is read from.
 	Kind LentKind
@@ -558,6 +572,9 @@ func (g *Game) applyOneBorrowLocked(pb pendingBorrow, st *layerPassState) {
 	var rows []BorrowedAbility
 	for _, l := range pb.lenders {
 		rows = append(rows, lentRowsOf(l, eff.ability.Borrows.Except)...)
+		if eff.ability.Borrows.Triggered {
+			rows = append(rows, lentTriggerRowsOf(l)...)
+		}
 	}
 	if len(rows) == 0 {
 		return

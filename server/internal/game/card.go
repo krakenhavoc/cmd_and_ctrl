@@ -913,6 +913,21 @@ type Card struct {
 	// Game.LinkedPermanentForEffect (linked_permanent.go).
 	LinkedPermanent ObjectRef
 
+	// ChosenCard is the CARD one of this permanent's abilities chose last
+	// while it was on the battlefield, as the object it was when chosen:
+	// Koh, the Face Stealer's "Pay 1 life: Choose a creature card exiled
+	// with Koh", read back by "Koh has all activated and triggered
+	// abilities of the last chosen card" (ADR 0155's 2026-11-05
+	// amendment). Each choice replaces the last; the zero ref is "none
+	// chosen". The ref carries the CR 400.7 epoch, so a chosen card that
+	// leaves its zone is a new object nobody chose, and the borrow lends
+	// nothing until another choice is made. ChosenPermanent's lifecycle:
+	// per INSTANCE, carried by the snapshot and by clone, cleared when
+	// this permanent leaves the battlefield, and NOT a copiable value
+	// (CR 707.2). Written by Game.SetChosenCardForEffect and read with
+	// Game.ChosenExiledCardOf (chosen_card.go).
+	ChosenCard ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

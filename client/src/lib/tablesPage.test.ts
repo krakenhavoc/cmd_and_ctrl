@@ -526,7 +526,11 @@ describe("History (ADR 0158 §1 item 3)", () => {
         ended_at: NOW - 2 * HOUR,
         others: [{ seat: 1, name: "Bob" }],
       }),
-      mine("shelved", { state: "active", archived_at: NOW - HOUR }),
+      mine("shelved", {
+        state: "active",
+        archived_at: NOW - HOUR,
+        others: [{ seat: 2, name: "Cara", friend: true }],
+      }),
       mine("now", { state: "active" }),
     ],
     [
@@ -547,7 +551,10 @@ describe("History (ADR 0158 §1 item 3)", () => {
 
   it("filters", () => {
     expect(filterHistory(rows, "won").map((r) => r.id)).toEqual(["won"]);
-    expect(filterHistory(rows, "friends").map((r) => r.id)).toEqual(["lost"]);
+    // ADR 0213 §9: With people is another person at the table; With
+    // friends is a current friend there.
+    expect(filterHistory(rows, "people").map((r) => r.id)).toEqual(["shelved", "lost"]);
+    expect(filterHistory(rows, "friends").map((r) => r.id)).toEqual(["shelved"]);
     expect(filterHistory(rows, "archived").map((r) => r.id)).toEqual(["shelved"]);
     expect(filterHistory(rows, "all")).toHaveLength(4);
   });

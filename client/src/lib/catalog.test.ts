@@ -8,8 +8,10 @@ import {
   findSet,
   matchesColor,
   matchesQuery,
+  searchSets,
   setOptionLabel,
   setSummary,
+  setYear,
   supportedCount,
   toggle,
   EMPTY_FILTER,
@@ -344,5 +346,68 @@ describe("set summaries", () => {
     const sets = [setOf(), setOf({ code: "old", name: "Old" })];
     expect(findSet(sets, "old")?.name).toBe("Old");
     expect(findSet(sets, "zzz")).toBeUndefined();
+  });
+});
+
+describe("searchSets, the set picker's filter (#4790)", () => {
+  function set(code: string, name: string, released: string): CatalogSet {
+    return { code, name, released, total: 1, full: 1, caveats: 0, unreviewed: 0, unsupported: 0 };
+  }
+  // Newest first, as the server sends them.
+  const sets = [
+    set("tmt", "Teenage Mutant Ninja Turtles", "2026-03-06"),
+    set("mh3", "Modern Horizons 3", "2024-06-14"),
+    set("mh2", "Modern Horizons 2", "2021-06-18"),
+    set("mh1", "Modern Horizons", "2019-06-14"),
+    set("csp", "Coldsnap", "2006-07-21"),
+    set("hml", "Homelands", "1995-10-01"),
+    set("ice", "Ice Age", "1995-06-03"),
+  ];
+  const codes = (q: string) => searchSets(sets, q).map((s) => s.code);
+
+  it("returns every set in the order given for an empty query", () => {
+    expect(codes("")).toEqual(sets.map((s) => s.code));
+    expect(codes("   ")).toEqual(sets.map((s) => s.code));
+    expect(searchSets(sets, "")).not.toBe(sets);
+  });
+
+  it("finds a set by its code", () => {
+    expect(codes("hml")).toEqual(["hml"]);
+    expect(codes("tmt")).toEqual(["tmt"]);
+  });
+
+  it("ignores case in the code and the name", () => {
+    expect(codes("MH3")).toEqual(["mh3"]);
+    expect(codes("HOMELANDS")).toEqual(["hml"]);
+    expect(codes("  homeL ")).toEqual(["hml"]);
+  });
+
+  it("ranks an exact code first, then name prefixes, then other names, each newest first", () => {
+    // "ice" is Ice Age's code and its name's start; Coldsnap does not contain it.
+    expect(codes("ice")).toEqual(["ice"]);
+    // "mh" is no set's code or name: the codes that start with it, newest first.
+    expect(codes("mh")).toEqual(["mh3", "mh2", "mh1"]);
+    // "modern" starts three names.
+    expect(codes("modern")).toEqual(["mh3", "mh2", "mh1"]);
+    // "horizons" is inside three names.
+    expect(codes("horizons")).toEqual(["mh3", "mh2", "mh1"]);
+    // "cs": no name has it, Coldsnap's code starts with it.
+    expect(codes("cs")).toEqual(["csp"]);
+    // "ho": Homelands starts with it, and it is inside the three Horizons names.
+    expect(codes("ho")).toEqual(["hml", "mh3", "mh2", "mh1"]);
+  });
+
+  it("puts an exact code ahead of a name that starts with the query", () => {
+    const withClash = [set("hom", "Homeward", "2020-01-01"), set("ho", "Old Hollow", "1990-01-01")];
+    expect(searchSets(withClash, "ho").map((s) => s.code)).toEqual(["ho", "hom"]);
+  });
+
+  it("finds nothing for a query that matches no set", () => {
+    expect(codes("zzz")).toEqual([]);
+  });
+
+  it("gives the year a set came out", () => {
+    expect(setYear(set("hml", "Homelands", "1995-10-01"))).toBe("1995");
+    expect(setYear({ ...set("x", "X", ""), released: undefined })).toBe("");
   });
 });

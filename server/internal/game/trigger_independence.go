@@ -134,6 +134,9 @@ const (
 	// read through the layers (a creature with power 4 or greater, three
 	// artifacts, seven land names, thirty counters).
 	FootprintCondBoard FootprintCond = "board"
+	// FootprintCondAttacked: the item's controller declared an attacker
+	// this turn (raid: Fire Nation Raider).
+	FootprintCondAttacked FootprintCond = "attacked"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -717,6 +720,11 @@ func boardConditionSees(a *triggerAccess, statics func() layerStatics) bool {
 //   - "You cast no spells this turn" can only become false, by a cast,
 //     and no step in the vocabulary casts. The same rule applies: it
 //     reads nothing while it holds, and is refused once it does not.
+//   - "You attacked this turn" (raid) counts attackers declared, a
+//     turn-based action (CR 508.1); no item on the stack declares one, so
+//     the tally cannot change while the batch is waiting. A creature put
+//     onto the battlefield attacking was never declared and is not
+//     counted.
 //   - The monarch: an item that makes a player the monarch can change it
 //     (monarchRead).
 //   - The source: a read of the item's source object, as a counter on
@@ -747,6 +755,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondCastSpellMV:
 		return g.CastTallyFor(you).MaxManaValue >= s.N
+	case FootprintCondAttacked:
+		return tally.AttacksDeclared > 0
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:

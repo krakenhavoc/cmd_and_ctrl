@@ -143,6 +143,21 @@ describe("the privacy page", () => {
     expect(text).toContain("Deleting your account removes you from these lists");
   });
 
+  it("says what friends and blocks keep, and for how long (ADR 0213 §10, slice 3)", () => {
+    const { container } = render(Privacy as never, {} as never);
+    const entry = [...container.querySelectorAll("h3")].find(
+      (h) => h.textContent === "Friends and blocks",
+    );
+    expect(entry).toBeDefined();
+    const text = entry!.parentElement!.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain(`Your friends (at most ${PRIVACY_FACTS.friendCap})`);
+    expect(text).toContain(`or ${PRIVACY_FACTS.friendRequestDays} days`);
+    expect(text).toContain("A block is never shown to the person you blocked");
+    expect(text).toContain("who can send you friend requests");
+    expect(text).toContain("who can see what you’re doing on CMD & CTRL");
+    expect(text).toContain("Deleting your account deletes all of it, on both sides");
+  });
+
   it("is a public route and is reachable by its hash", async () => {
     session.set(null);
     navigate(PRIVACY_HASH);

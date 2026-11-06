@@ -133,6 +133,7 @@ body facedown/ward
 body fatal-fissure/earthbend-4
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
+body fire-lord-sozin/reanimate
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
@@ -267,6 +268,7 @@ body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rowan-kenrith/creatures-attack-this-turn
+body ruinous-waterbending/gain-one-life
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body sakashima/return-listed-to-hand
@@ -294,6 +296,7 @@ body synthetic-destiny/reveal-that-many-creatures
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body teferi-hero/untap-two-lands
+body teo-spirited-glider/counter
 body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
@@ -470,6 +473,7 @@ choose choose-cards/karn-the-great-creator-take
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
+choose choose-cards/last-chosen-exiled-card
 choose choose-cards/last-march-of-the-ents-put
 choose choose-cards/last-rites-reveal
 choose choose-cards/last-voyage-of-the-blank-return
@@ -683,6 +687,7 @@ choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
 choose choose-cards/temporal-conqueror-return-land
+choose choose-cards/teo-spirited-glider-discarded
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -710,6 +715,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vow-to-erebor-attach
@@ -989,6 +995,7 @@ drawthen seasoned-cryomancer/discard-two
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
+drawthen teo-spirited-glider/discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
@@ -1180,6 +1187,7 @@ payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/chain-lightning-offer-copy
+payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
@@ -1204,6 +1212,7 @@ payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/extort-drain
+payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
@@ -1281,6 +1290,8 @@ payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
+payunless pay-unless/waterbending-lesson-discard
+payunless pay-unless/wolfbat-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
@@ -1647,6 +1658,7 @@ tail dark-tutor/after-hand
 tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
+tail dawnhand-eulogist/after-mill
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
@@ -2020,6 +2032,7 @@ tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
 tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
+tail sold-out/clue
 tail sorin-vengeful-bloodlord/vampires
 tail soul-shackled-zombie/drain-if-creature
 tail speak-secrets/after-mill
@@ -2060,6 +2073,7 @@ tail the-gitrog-ravenous-ride/sacrificed
 tail the-invincible-iron-man/attach-equipment
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
+tail the-rise-of-sozin/named
 tail the-wrath-of-khan/draw-if-exiled
 tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
@@ -2217,6 +2231,7 @@ tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil
 tail then/valakut-exploration-damage
+tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen

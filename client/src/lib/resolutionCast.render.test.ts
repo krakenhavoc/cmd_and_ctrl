@@ -330,3 +330,83 @@ describe("ResolutionCastSheet — same-named targets (#4709)", () => {
     ]);
   });
 });
+
+describe("ResolutionCastSheet — play a land or cast a spell from the top (#4697)", () => {
+  // Ziatora's Envoy over a Town: a land play of the land face and the free
+  // cast of the Adventure, each a move naming the prompt, and the decline.
+  const town = {
+    instance_id: "town-1",
+    name: "Fixture Town",
+    owner: "me",
+    controller: "me",
+    type_line: "Land — Town",
+    known_by_you: true,
+  } as CardView;
+  const envoyMove = (kind: string, label: string, face: number): LegalMoveView =>
+    ({
+      type: "cast_spell",
+      player: "me",
+      kind,
+      label: `Ziatora's Envoy: ${label}`,
+      source: "town-1",
+      params: { instance_id: "town-1", from_zone: "library", face, resolution_cast: "rc-1" },
+      resolution_cast: "rc-1",
+    }) as LegalMoveView;
+  const envoyDecline = {
+    ...declineMove,
+    label: "Ziatora's Envoy: don't cast",
+  } as LegalMoveView;
+
+  function mountTown(moves: LegalMoveView[]): { sent: Sent[] } {
+    const sent: Sent[] = [];
+    const snap = snapWith(moves, "me", {
+      keyword: "play_or_free_or_hand",
+      reason: "Ziatora's Envoy",
+      decline: "Put it into your hand",
+    });
+    (snap.pending_choices![0] as { options: CardView[] }).options = [town];
+    render(
+      ChoiceDockHarness as never,
+      {
+        snap,
+        viewerID: "me",
+        sendAction: (type: ActionType, params?: unknown, player?: string) =>
+          sent.push({ type, params, player }),
+        lastError: null,
+      } as never,
+    );
+    return { sent };
+  }
+
+  it("says play or cast, lists the land play beside the cast, and sends the one clicked", () => {
+    const { sent } = mountTown([
+      envoyMove("land", "Play Fixture Town", 0),
+      envoyMove("cast", "Cast Fixture Overture", 1),
+      envoyDecline,
+    ]);
+    const sheet = document.querySelector('[role="dialog"][aria-label^="Ziatora\'s Envoy"]');
+    expect(nameOf(sheet!)).toBe(
+      "Ziatora's Envoy: you may play or cast Fixture Town from the top of your library",
+    );
+    expect(document.body.textContent).toContain("Play or cast Fixture Town now, or don't.");
+    expect(document.body.textContent).toContain("it goes into your hand");
+    const rows = [...document.querySelectorAll<HTMLButtonElement>("ul.casts button")];
+    expect(rows.map((b) => nameOf(b))).toEqual(["Play Fixture Town", "Cast Fixture Overture"]);
+    const buttons = [...document.querySelectorAll("button")].map((b) => nameOf(b));
+    expect(buttons).toContain("Put it into your hand");
+    click(rows[0]);
+    expect(sent).toEqual([
+      {
+        type: "cast_spell",
+        player: "me",
+        params: { instance_id: "town-1", from_zone: "library", face: 0, resolution_cast: "rc-1" },
+      },
+    ]);
+  });
+
+  it("makes a lone land play the primary", () => {
+    mountTown([envoyMove("land", "Play Fixture Town", 0), envoyDecline]);
+    const primary = barPrimary();
+    expect(primary && nameOf(primary)).toBe("Play Fixture Town");
+  });
+});

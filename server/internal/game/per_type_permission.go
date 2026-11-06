@@ -314,6 +314,16 @@ func (g *Game) PermissionTypeOptionsLocked(holder uuid.UUID, card Card, zone Zon
 	if grant == nil || len(grant.PerType) == 0 || !g.castUsesGrantLocked(card, zone, offer) {
 		return []string{""}, true
 	}
+	out := g.RankPermissionTypesLocked(holder, grant, spellUnderOffer(card, offer))
+	return out, len(out) > 0
+}
+
+// spellUnderOffer is `card`, its face already set, as a cast claiming
+// `offer` puts it on the stack, for the per-type budget's question:
+// bestowed (an Aura spell, CR 702.103b), face down (CR 708.4) or turned
+// to the face the offer casts (disturb), as CastSpell applies them
+// before it settles the type. A nil offer is the card unchanged.
+func spellUnderOffer(card Card, offer *AlternativeCost) Card {
 	played := card
 	if offer != nil && offer.Bestow {
 		played.Bestowed = true
@@ -321,9 +331,7 @@ func (g *Game) PermissionTypeOptionsLocked(holder uuid.UUID, card Card, zone Zon
 	if offer != nil && offer.FaceDown != nil {
 		played.SetFaceDown(offer.FaceDown.Kind)
 	}
-	played = offer.CastFaceOf(played)
-	out := g.RankPermissionTypesLocked(holder, grant, played)
-	return out, len(out) > 0
+	return offer.CastFaceOf(played)
 }
 
 // RankPermissionTypesLocked orders the types a play or cast of `card`

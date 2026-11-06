@@ -11,6 +11,8 @@ export interface MySeat {
   seat: number;
   name: string;
   bot?: boolean;
+  /** Held by one of your friends now (ADR 0213 §9). Absent otherwise. */
+  friend?: boolean;
 }
 
 // MyGame mirrors lobby.MyGame, one entry of GET /me/games. Every time

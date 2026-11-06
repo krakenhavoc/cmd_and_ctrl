@@ -1579,7 +1579,10 @@ export interface PendingChoiceView {
     // the one real card on offer (in exile, or for free_or_hand off the top
     // of the chooser's library, where the knower filter keeps it from
     // every other viewer), with `may_cast_keyword` naming the rule and
-    // `accept_label` / `decline_label` the two answers. Answered by one of
+    // `accept_label` / `decline_label` the two answers. Under
+    // play_or_free_or_hand (#4697) a land face of the top card may be
+    // played instead: a cast_spell naming the prompt and that `face`.
+    // Answered by one of
     // the legal moves naming it
     // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
     // the prompt's id and no priority needed, or {choice_id, card_ids: []},
