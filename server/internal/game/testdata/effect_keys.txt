@@ -38,6 +38,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
 body agathas-soul-cauldron/counter
+body all-out-assault/untap-each-creature-you-control
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
 body ant-man-colony-commander/counter
@@ -46,6 +47,7 @@ body ascend/exile-listed-unless-citys-blessing
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
+body awaken-the-honored-dead/return-to-hand
 body basri-ket/soldiers-tapped-and-attacking
 body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
@@ -336,8 +338,10 @@ castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
@@ -348,6 +352,7 @@ choose choose-cards/as-enters-permanent
 choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
+choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
@@ -1060,6 +1065,7 @@ option option-pick/dinas-guidance-placed
 option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
 option option-pick/emergent-ultimatum-opponent
+option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
@@ -1528,6 +1534,7 @@ tail advanced-reconstruction/exile-random
 tail aether-rift/offer-return-of-discarded-creature
 tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
+tail ainok-wayfarer/after-mill
 tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
 tail aminatous-augury/after-mill
@@ -1588,6 +1595,7 @@ tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore
 tail brass-tunnel-grinder/transform
 tail breach-the-multiverse/phyrexians
+tail breaching-dragonstorm/after-exile
 tail bring-to-light/cast
 tail brudiclad/choose-a-token
 tail budding-insurgent/draw-if-legendary-enchantment

@@ -568,6 +568,16 @@ type Config struct {
 	// price lost head-to-head, so it ships off and the arena's
 	// `heuristic-sourcecounters` turns it on (docs/bot-testing.md).
 	PriceSourceCounters bool
+	// PriceResolutionMana prices an activation of a row of the bot's own
+	// that declares the mana it adds on one numbered resolution this turn
+	// (Purpose.ResolutionMana, #4980, resolution_mana.go): Soulbright
+	// Seeker's third. In the bot's own main phase, an activation on a
+	// reachable run to that resolution that nets mana its hand can spend
+	// is worth SpellPerMana per mana the hand can spend after the run, in
+	// place of the row's grant price. Off (the zero value, BaselineConfig) prices the row as
+	// any other grant until end of turn. On in DefaultConfig; the arena's
+	// `heuristic-noresolutionmana` turns it off.
+	PriceResolutionMana bool
 	// PriceSpareManaSources prices a spare mana rock sacrificed to pay a
 	// cost at SpareManaSourceCost rather than its board value as a mana
 	// source (#5085, spare_mana.go): a rock is spare when the bot's other
@@ -1064,6 +1074,9 @@ func DefaultConfig() Config {
 		SpareTokenKeep: 2,
 		// #5083: PriceSourceCounters stays off (the price lost in the
 		// arena); `heuristic-sourcecounters` turns it on.
+		// #4980: Soulbright Seeker's third resolution, priced by the
+		// mana it returns when the hand can spend it.
+		PriceResolutionMana: true,
 		// #5085: a spare mana rock costs what is left of it, so Mind
 		// Stone is cashed in for a card late and kept early.
 		PriceSpareManaSources: true,
@@ -1316,6 +1329,8 @@ func BaselineConfig() Config {
 	c.SpareTokenKeep = 0
 	// #5083: a row's counter on its own source was the flat ActivateBase.
 	c.PriceSourceCounters = false
+	// #4980: a row's mana on its nth resolution was not priced.
+	c.PriceResolutionMana = false
 	// #5085: every sacrificed mana rock cost its board value.
 	c.PriceSpareManaSources = false
 	c.SpareManaKeep = 0
