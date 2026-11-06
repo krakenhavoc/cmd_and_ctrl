@@ -1027,6 +1027,43 @@ the plans counted. The labelled position suite, the gated heuristic games
 package tests passed. With the switch off, `DefaultConfig` plays exactly
 as before. Reports and decision logs stayed on the authoring machine.
 
+## Team pumps (#4320, S75)
+
+`heuristic-noteampumps` is today's heuristic with `PriceTeamPumps` off:
+a row that declares `team_pump` (Purphoros, God of the Forge's {2}{R}
+row) keeps the flat `ActivateBase` in every window. The position tests
+(`heuristic/team_pump_test.go`) hold the issue's cases: no pump in a main
+phase with no creature able to attack, nor after combat damage, nor for a
+chump block it does not change; a pump for two declared attackers with
+spare mana, and none with the mana a second-main-phase cast needs; haste
+for a fresh creature only; and Shadowspear's `restrict` row held with no
+combat and with attackers. `TestTeamPumpRowsDeclareTheirPump`
+(`cards/effects`) holds the 21 declared rows to their text.
+
+The 2026-11-06 UTC runs used `develop` at `ee606a09b` with the change,
+the standard pool, `--rotate --lockstep --games 48`, two seats of each
+policy, each run twice with the policies swapped between the chairs.
+Seeds 2000–2047 ran in chunks of eight with decision logs on (scanned,
+then deleted); seeds 3000–3047 without. 192 games, no stalls.
+
+| Purphoros's row, seeds 2000–2047 | heuristic | heuristic-noteampumps |
+|---|---:|---:|
+| activations | 89 | 180 |
+| before combat, own turn, no attacker declared | 8 | 48 |
+| after combat damage | 0 | 16 |
+| in its own combat | 10 | 0 |
+| on another seat's turn | 48 | 97 |
+
+| mono-red-aggro wins | heuristic | heuristic-noteampumps |
+|---|---:|---:|
+| seeds 2000–2047 | 15/48 | 20/48 |
+| seeds 3000–3047 | 19/48 | 20/48 |
+| both | 34/96, 35.4% (26.6–45.4%) | 40/96, 41.7% (32.3–51.7%) |
+
+The pumps changed as the issue asked; the aggro deck's win rate did not
+move beyond noise in either direction (the intervals overlap almost
+entirely, and the second seed's runs are a game apart).
+
 ## Test knobs
 
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them; `server-test` is sharded across five runners by `scripts/ci-test-shard.sh`, the same flags on each, and `aiseat` is in the `rest` shard, #2766):

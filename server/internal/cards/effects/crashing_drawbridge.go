@@ -23,7 +23,7 @@ func init() {
 		PrintedKeywords: []string{"defender"},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Creatures you control gain haste until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"haste"}}, Answers: game.AnswerCombatGrant},
 			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{

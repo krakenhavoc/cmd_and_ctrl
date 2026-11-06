@@ -28,7 +28,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{8}: Creatures you control get +2/+0 until end of turn.",
 			// Instant speed: a team pump answers a block or a burn spell.
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 2}, Answers: game.AnswerPump},
 			Cost:    ManaCost("{8}"),
 			Effect: Do(BoostUntilEOT{Match: And(Creature(), YouControl()), Power: 2,
 				Label: "Cleveland Booker, Empath — creatures you control get +2/+0"}),

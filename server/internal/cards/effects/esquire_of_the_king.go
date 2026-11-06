@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}, {T}: Creatures you control get +1/+1 until end of turn. This ability costs {2} less to activate if you control a legendary creature.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Toughness: 1}, Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{4}{W}"), TapCost()),
 			CostModifiers: []game.CostModifier{
 				CostsLess(2, "This ability costs {2} less to activate if you control a legendary creature.",

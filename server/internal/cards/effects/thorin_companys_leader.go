@@ -34,7 +34,7 @@ func init() {
 			Label: "{10}: Creatures you control gain double strike until end of turn.",
 			Cost:  ManaCost("{10}"),
 			// A team-wide double strike is a combat trick for the whole board.
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"double strike"}}, Answers: game.AnswerPump},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{Match: And(Creature(), YouControl()), Keywords: []string{"double strike"},
 					Label: "Thorin, Company's Leader — double strike"}.Apply(NewContext(g, item))

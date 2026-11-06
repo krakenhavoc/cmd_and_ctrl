@@ -23,7 +23,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{B}{B}: Creatures you control gain lifelink until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"lifelink"}}, Answers: game.AnswerCombatGrant},
 			Cost:    ManaCost("{3}{B}{B}"),
 			Effect: Do(GrantKeywordUntilEOT{
 				Match:    And(Creature(), YouControl()),

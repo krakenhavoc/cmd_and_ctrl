@@ -52,6 +52,9 @@ import (
 //     row of the controller's own (#4191);
 //   - SourceCounters anywhere but an activated row of the controller's
 //     own (#5083);
+//   - TeamPump anywhere but an activated row of the controller's own,
+//     one that gives nothing, or one that takes power or toughness away
+//     (#4320);
 //   - ResolutionMana anywhere but an activated row of the controller's
 //     own, or one with no resolution or no fixed mana (#4980);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
@@ -188,6 +191,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
 	checkPump(p.Pump, fail)
+	checkTeamPump(p.TeamPump, slot, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)
 	checkDiscardPayoff(p.OnOpponentDiscard, fail)
 	checkLandfallPayoff(p.LandfallPayoff, fail)
@@ -299,6 +303,23 @@ func checkPump(pm *game.Pump, fail func(string)) {
 			fail(fmt.Sprintf("names a pump keyword %q that is not lowercase", k))
 		}
 	}
+}
+
+// checkTeamPump is checkPurpose's half for a declared TeamPump (#4320):
+// on an activated row of the controller's own, a pump that gives
+// something (checkPump) and takes nothing away. A row that shrinks the
+// team is not the benefit the bot prices it as.
+func checkTeamPump(pm *game.Pump, slot purposeSlot, fail func(string)) {
+	if pm == nil {
+		return
+	}
+	if slot != purposeOnActivated {
+		fail("sets TeamPump off an activated row of its controller's own — it is what a row gives the creatures its controller controls, and an any-player row pumps another player's (#4320)")
+	}
+	if pm.Power < 0 || pm.Toughness < 0 {
+		fail("sets a TeamPump that takes power or toughness away — it is a benefit (#4320)")
+	}
+	checkPump(pm, fail)
 }
 
 // checkDiscardPayoff is checkPurpose's half for a declared

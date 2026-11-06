@@ -25,7 +25,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}{B}, {T}: Creatures you control gain deathtouch and lifelink until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"deathtouch", "lifelink"}}, Answers: game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{2}{W}{B}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{

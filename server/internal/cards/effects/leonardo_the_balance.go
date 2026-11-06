@@ -46,7 +46,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{W}{U}{B}{R}{G}: Creatures you control gain menace, trample, and lifelink until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"menace", "trample", "lifelink"}}, Answers: game.AnswerCombatGrant},
 			Cost:    ManaCost("{W}{U}{B}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
