@@ -340,6 +340,15 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 // real answer rather than a degenerate one: this card is not castable
 // from this zone.
 //
+// #5081: and through the per-type budget (Muldrotha's one of each
+// permanent type) of the permission each entry is paired with
+// (CastOfferGrantsForLocked), which CastSpell settles the same way: a
+// bestow cast once Muldrotha's enchantment is spent is not an offer,
+// on the view's `alternative_costs` any more than in the bot's moves. A
+// land is not filtered here; it is played, not cast, and the land
+// play's budget is asked where the play is (the enumerator's
+// landPlayMove, the view's castable_here).
+//
 // Each entry points at a freshly copied value, so a caller may hold
 // one past the call. Caller must hold g.mu.
 //
@@ -390,7 +399,7 @@ type OfferGrant struct {
 // Caller must hold g.mu.
 func (g *Game) CastOfferGrantsForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []OfferGrant {
 	var out []OfferGrant
-	if g.validateCastPathLocked(card, zone, nil, grant) == nil {
+	if g.validateCastPathLocked(card, zone, nil, grant) == nil && g.offerTypeLeftLocked(card, zone, nil, grant) {
 		out = append(out, OfferGrant{Permission: grant})
 	}
 	seen := make(map[string]bool, 2)
@@ -415,6 +424,9 @@ func (g *Game) CastOfferGrantsForLocked(playerID uuid.UUID, card Card, zone Zone
 			return
 		}
 		if !g.AlternativeCostPayableLocked(playerID, card.InstanceID, ac) {
+			return
+		}
+		if !g.offerTypeLeftLocked(card, zone, ac, under) {
 			return
 		}
 		out = append(out, OfferGrant{Offer: ac, Permission: under})
@@ -545,6 +557,20 @@ func (g *Game) CastOfferGrantsForLocked(playerID uuid.UUID, card Card, zone Zone
 func secondInstanceOf(card Card, granted *AlternativeCost) bool {
 	printed := AlternativeCostByKey(castOfferKey(card), granted.Key)
 	return printed != nil && !printed.RequiresGrant && !sameOfferPrice(printed, granted)
+}
+
+// offerTypeLeftLocked reports whether a cast of `card` out of `zone`
+// claiming `offer` has a card type left to spend under `under`'s
+// per-type budget: PermissionTypeOptionsLocked's verdict without its
+// ranking (#5081). Always true for a permission with no budget, a cast
+// the card's own text opens, and a land (CastOffersForLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) offerTypeLeftLocked(card Card, zone ZoneKind, offer *AlternativeCost, under *CastPermission) bool {
+	if card.IsLand() || under == nil || len(under.PerType) == 0 || !g.castUsesGrantLocked(card, zone, offer) {
+		return true
+	}
+	return len(under.PermissionTypeChoices(spellUnderOffer(card, offer))) > 0
 }
 
 // sameOfferPrice reports whether two offers charge the same: the same
