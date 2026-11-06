@@ -2369,6 +2369,7 @@ tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail waste-management/rogue-per-creature
+tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
 tail will-of-the-sultai/after-mill
