@@ -492,18 +492,23 @@ func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID
 }
 
 // unconditionalLandPlays is the Spec's AdditionalLandPlays that count
-// always; a Spec with AdditionalLandPlaysNeedsAnother has none of those, its
-// plays are ConditionalLandPlays.
+// always; a Spec with AdditionalLandPlaysNeedsAnother or
+// AdditionalLandPlaysForEachPlayer has none of those, its plays are
+// ConditionalLandPlays.
 func unconditionalLandPlays(spec Spec) int {
-	if spec.AdditionalLandPlaysNeedsAnother != "" {
+	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer {
 		return 0
 	}
 	return spec.AdditionalLandPlays
 }
 
 // conditionalLandPlays is the Spec's AdditionalLandPlays that count only
-// while the controller controls another permanent of a creature type.
+// while the controller controls another permanent of a creature type, or
+// that count for every player (AdditionalLandPlaysForEachPlayer).
 func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
+	if spec.AdditionalLandPlaysForEachPlayer {
+		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, EachPlayer: true}
+	}
 	if spec.AdditionalLandPlaysNeedsAnother == "" {
 		return game.ConditionalLandPlays{}
 	}

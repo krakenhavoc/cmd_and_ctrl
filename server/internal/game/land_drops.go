@@ -71,6 +71,11 @@ type ConditionalLandPlays struct {
 	Plays int
 	// Another is the creature type of the OTHER permanent that is needed.
 	Another string
+	// EachPlayer makes Plays count for EVERY player, not only the
+	// permanent's controller, and unconditionally: Rites of Flourishing's
+	// "each player may play an additional land on each of their turns".
+	// Another is empty with it.
+	EachPlayer bool
 }
 
 // CatalogConditionalLandPlays returns a battlefield permanent's
@@ -96,6 +101,16 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			if c.Controller != p.ID {
+				// "Each player may play an additional land" counts
+				// for every player at the table, not only the
+				// permanent's controller.
+				if CatalogConditionalLandPlays != nil {
+					if key := catalogAbilityKeyOf(c); key != "" {
+						if cp := CatalogConditionalLandPlays(key); cp.EachPlayer {
+							n += cp.Plays
+						}
+					}
+				}
 				continue
 			}
 			// CatalogAbilityKey, not CatalogKey: "you may play an
@@ -110,7 +125,9 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 			}
 			n += CatalogAdditionalLandPlays(key)
 			if CatalogConditionalLandPlays != nil {
-				if cp := CatalogConditionalLandPlays(key); cp.Plays > 0 && g.controlsAnotherSubtypeLocked(p.ID, c.InstanceID, cp.Another) {
+				if cp := CatalogConditionalLandPlays(key); cp.EachPlayer {
+					n += cp.Plays
+				} else if cp.Plays > 0 && g.controlsAnotherSubtypeLocked(p.ID, c.InstanceID, cp.Another) {
 					n += cp.Plays
 				}
 			}
