@@ -2448,6 +2448,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !card.IsCreature() {
 		tally.Noncreature++
 	}
+	// #5235: "if you haven't cast a spell from your hand this turn".
+	// src is the zone the card was found in before CR 601.2a moved it to
+	// the stack, the zone CastFromZone records on the item.
+	if src.Kind != ZoneHand {
+		tally.NotFromHand++
+	}
 	// ADR 0108 §9: the colours of the instants and sorceries cast this
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {

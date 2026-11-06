@@ -105,6 +105,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
   - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
   - ["If you've sacrificed an artifact this turn" (#5224)](#if-youve-sacrificed-an-artifact-this-turn-5224)
+  - ["If you haven't cast a spell from your hand this turn" (#5235)](#if-you-havent-cast-a-spell-from-your-hand-this-turn-5235)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -13230,6 +13231,21 @@ if SacrificedAnArtifactThisTurn(g, you) { … }       // a resolution check, a b
 ```
 
 `CondSacrificedAnArtifact` declares `game.FootprintCondArtifactSacrificed`, since the count only rises within a turn. Another card type is the same call with its name; never walk `g.Events` for a sacrificed permanent.
+
+### "If you haven't cast a spell from your hand this turn" (#5235)
+
+The cast tally records the zone each spell was cast from, as the card was found before CR 601.2a moved it to the stack: `CastTally.NotFromHand` counts the casts from anywhere but the hand (a graveyard, exile, a plotted card, the command zone, the top of a library), and `CastTally.FromHand()` is `Total` minus that. A copy isn't cast (CR 707.10). The readers are in `cards/effects/cast_from_hand.go`:
+
+```go
+AtYourEndStepIfNoSpellFromHand(label, effect)            // the printed trigger (Jem Lightfoote, Wrangler of the Damned)
+AtYourEndStepIfNoSpellFromHand(label, effect, moreWhen)  // "… and this creature doesn't have a flying counter on it"
+InterveningIf(CondNoSpellFromHand{}, On(...))            // the same "if" on another trigger
+if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check or a static's condition
+```
+
+`CondNoSpellFromHand` declares `game.FootprintCondNoSpellsCastFromHand`: like Edgar's "if you didn't cast a spell this turn", it can only become false, by a cast, and no step casts. An extra "and" the printed condition adds goes in the trigger's `When` (the `also` arguments) and in an `If` inside the effect, so it is asked both times too (CR 603.4).
+
+Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
 
 ### Adding a `Spec` slot (#622)
 
