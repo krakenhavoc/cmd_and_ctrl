@@ -571,6 +571,15 @@ const (
 	// additional cost was paid" / "if a Hero was beheld" is
 	// ctx.OptionalCostTimes(BeholdKey) > 0.
 	BeholdKey = "behold"
+
+	// CollectEvidenceKey is "As an additional cost to cast this spell,
+	// you may collect evidence N" (CR 701.59a, #5193; Murders at Karlov
+	// Manor). The cost is a collect evidence ExileCards clause
+	// (CollectEvidenceCost) on an optional entry, its cards on
+	// cast_spell's exile_ids; "if evidence was collected" (CR 701.59c,
+	// 607.2i) is OptionalCostTimes(CollectEvidenceKey) > 0. See
+	// collect_evidence.go.
+	CollectEvidenceKey = "collect-evidence"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose

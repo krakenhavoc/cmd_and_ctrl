@@ -563,8 +563,10 @@ func checkEitherCost(spec Spec) {
 		if !oc.ExilePermanents.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles a permanent — only the mandatory slot may (#3402)", spec.Name, oc.Key))
 		}
-		if oc.ExileCards != nil {
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536)", spec.Name, oc.Key))
+		// #5193: the one optional graveyard exile is "you may collect
+		// evidence N" (checkOptionalCollectEvidence holds its shape).
+		if oc.ExileCards != nil && oc.Key != game.CollectEvidenceKey {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536), or an optional collect evidence (OptionalCollectEvidence)", spec.Name, oc.Key))
 		}
 		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Forage {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))

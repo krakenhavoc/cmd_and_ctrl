@@ -3331,6 +3331,14 @@ export interface OptionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #5193: "you may collect evidence N" (CR 701.59a) — exile any number of
+  // cards from your graveyard with total mana value `collect_evidence` or
+  // greater. `evidence_options` is your graveyard cards that could be
+  // exiled; present-and-empty means the whole graveyard is short and the
+  // offer cannot be taken (CR 701.59b). Taken, the picks ride cast_spell as
+  // `exile_ids`; the server refuses a set whose total falls short.
+  collect_evidence?: number;
+  evidence_options?: LegalTargetsView;
   // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
   // cast's tap cost: the board opens the tap picker from it and sends
   // the picks as `tap_ids` (lib/targeting.ts tapCostFor).
@@ -4011,6 +4019,9 @@ export interface ActivatedAbilityView {
   exile_cost_any_number?: boolean;
   exile_cost_symbol_color?: string;
   exile_cost_symbol_min?: number;
+  // #5193: collect evidence N's floor — an `exile_cost_any_number` pick is
+  // enough once the picked cards' total mana value reaches this.
+  exile_cost_mana_value_min?: number;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —

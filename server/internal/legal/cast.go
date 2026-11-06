@@ -1177,7 +1177,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// #3536: and an exile-N-cards-from-your-graveyard cost names its cards
 	// the same way. A graveyard too small to pay it drops the cast.
-	exileCardIDs, ok := e.exileCardsCastPayment(card.InstanceID, addCost)
+	exileCardIDs, ok := e.exileCardsCastPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}
@@ -1275,6 +1275,7 @@ modeLoop:
 				GrantIncrease:         grantMore,
 				ExilingFromHand:       len(handExile),
 				TappingToPay:          len(tapAny),
+				OptionalCosts:         chosen,
 			})
 			if err != nil {
 				continue
@@ -1394,6 +1395,7 @@ modeLoop:
 					GrantIncrease:         grantMore,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
+					OptionalCosts:         chosen,
 				})
 				if err != nil {
 					continue
@@ -1475,6 +1477,7 @@ modeLoop:
 							GrantIncrease:         grantMore,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
+							OptionalCosts:         chosen,
 						})
 						if err != nil {
 							continue

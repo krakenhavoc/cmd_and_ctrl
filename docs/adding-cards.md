@@ -51,6 +51,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
+  - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4552,6 +4553,57 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   two mana"), which has no either/or cost, and "cast … by foraging in
   addition to paying their other costs" (Osteomancer Adept).
 
+### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
+
+"Collect evidence N" is "exile any number of cards from your graveyard with
+total mana value N or greater" (CR 701.59a). It is the graveyard
+`game.ExileCost` in its any-number form with a `ManaValueAtLeast` floor
+(`game.CollectEvidenceCost`), so one gate, `ExileCost.FloorMet`, decides who
+may pay for the engine, the view's offers and the bot. A card's mana value is
+the one it has in the graveyard: a modal double-faced card's front face (CR
+712.8a), an adventurer card's main half (CR 715.4). With less than N in the
+whole graveyard the player can't collect evidence (CR 701.59b). Three forms:
+
+```go
+OptionalCosts: []game.AdditionalCost{OptionalCollectEvidence(6)},   // Crimestopper Sprite
+Cost: Plus(TapCost(), CollectEvidenceN(3)),                          // Forensic Researcher
+var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web-collect-evidence", 4,
+	func(ctx *Context, exiled []uuid.UUID) error { … })             // Izoni: "you may collect evidence 4. If you do, …"
+```
+
+- **The optional additional cost** ("As an additional cost to cast this
+  spell, you may collect evidence N") is keyed `game.CollectEvidenceKey`. The
+  caster names the cards on `cast_spell`'s `exile_ids`; they are exiled with
+  the spell on the stack and recorded on `PaidCost.Exiled` beside the offer's
+  index on `PaidCost.OptionalCosts`. "If evidence was collected" (CR 701.59c,
+  607.2i) reads the announcement: `ctx.EvidenceCollected()` on the resolving
+  spell, `ThisEvidenceCollected` as a permanent's intervening if (Vitu-Ghazi
+  Inspector), and `WhenThisEntersEvidence` with `ItemEvidenceCollected` for an
+  enters trigger that only branches on it (Crimestopper Sprite's stun).
+  "This spell costs {2} less to cast if evidence was collected" is
+  `SelfCostModifiers: []game.CostModifier{CostsLessIfEvidenceCollected(2, label)}`,
+  read off `game.CostQuery.OptionalCosts` at CR 601.2f (Bite Down on Crime).
+  `Register` refuses a second optional collect evidence, one beside a
+  mandatory graveyard exile (they share `exile_ids`), and anything else on
+  the offer.
+- **The activated ability's cost** is `CollectEvidenceN(n)` composed with
+  `Plus`. The activator names the cards on `activate_ability`'s `exile_ids`;
+  the row ships `exile_cost_any_number` and `exile_cost_mana_value_min`, and
+  is greyed when the graveyard is short.
+- **The effect form** ("you may collect evidence N. If you do, …", "When you
+  do, …") is a `CollectEvidence` registered once from a package-level var with
+  `RegisterCollectEvidence(key, n, then)` and asked with `.Ask(ctx, question)`
+  as the ability resolves: one choose_cards prompt over the graveyard, any
+  number, none included, whose registered set rule is `game.CollectEvidenceMet`.
+  Nothing is asked below N. `then` runs after the cards are exiled and only
+  when evidence was collected; a "when you do" is a `ReflexiveTrigger` from it
+  (Sample Collector).
+
+Not built yet: "whenever you collect evidence" (no event is emitted),
+collect evidence X, a mana ability that collects evidence, ward with a
+collect evidence cost and collect evidence as an alternative cost (the
+roadmap's `collect-evidence` row names the cards).
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
@@ -5543,7 +5595,7 @@ announces X and the pitched card must have exactly that mana value; the
 spell reads it with `ctx.X()`. Register allows the bound only on a one-card
 hand pitch of a card that declares `XMatters`.
 
-**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Graveyard only: Register refuses the hand form, a non-positive count and an optional cost. **"Exile X cards from your graveyard" (#1948)** is `AdditionalCost: ExileXFromGraveyardCost("X cards", nil)` with `XMatters: true`: the count is the X announced with the cast (the mana cost's {X} too, if it has one), so read the number with `ctx.X()` (Skeletal Scrying, Harvest Pyre, Chill Haunting). The X form is the mandatory slot's only and may not share X with pay X life, blight X or a waterbend {X}. A fixed count may be a branch of `EitherCost` (Soaring Stoneglider: `EitherCost(ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`).
+**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Graveyard only: Register refuses the hand form, a non-positive count and an optional cost (the one optional graveyard exile is collect evidence, [#5193](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)). **"Exile X cards from your graveyard" (#1948)** is `AdditionalCost: ExileXFromGraveyardCost("X cards", nil)` with `XMatters: true`: the count is the X announced with the cast (the mana cost's {X} too, if it has one), so read the number with `ctx.X()` (Skeletal Scrying, Harvest Pyre, Chill Haunting). The X form is the mandatory slot's only and may not share X with pay X life, blight X or a waterbend {X}. A fixed count may be a branch of `EitherCost` (Soaring Stoneglider: `EitherCost(ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`).
 
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
