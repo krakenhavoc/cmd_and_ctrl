@@ -128,7 +128,7 @@ func spliceObjectsOf(pays []SplicePayment) []uuid.UUID {
 func castSpentObjects(params CastSpellParams) []uuid.UUID {
 	return unionIDList(params.DiscardIDs, params.SacrificeIDs, params.AltCostIDs, params.DelveIDs,
 		params.ExilePermanentIDs, params.ExileFromHandIDs, params.ExileIDs, params.TeamworkIDs,
-		params.TapIDs, params.BlightIDs)
+		params.TapIDs, params.BlightIDs, params.ReturnIDs)
 }
 
 // unionIDList is the ids of several lists in one slice, in order.

@@ -369,6 +369,18 @@ type AdditionalCost struct {
 	// (a graveyard, an open count, a set rule), which no spell prints.
 	ExilePermanents *ExilePermanentsCost
 
+	// ReturnToHand is "As an additional cost to cast this spell, return a
+	// permanent you control to its owner's hand" (Fear of Isolation,
+	// #5247): the activated ability's component (ReturnToHandCost) on a
+	// cast. The caster names the permanents on CastSpellParams.ReturnIDs
+	// (`return_ids`, the name an activation already uses), they are
+	// validated at announce (CR 601.2b) and returned with the spell on
+	// the stack (CR 601.2h), each to its OWNER's hand (CR 400.3). Nothing
+	// to return makes the spell uncastable (CR 118.3). Mandatory slot
+	// only: effects.Register refuses it on an optional cost or an
+	// either/or branch. See return_additional_cost.go.
+	ReturnToHand *ReturnToHandCost
+
 	// ExileFromHand is "As an additional cost to cast this spell, you may
 	// exile any number of blue cards from your hand" (March of Swirling
 	// Mist, #3175): any number of matching hand cards, zero included, named
@@ -478,7 +490,8 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty())
+		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty() &&
+		c.ReturnToHand.Empty())
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -491,7 +504,7 @@ func (c *AdditionalCost) Empty() bool {
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
 		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
-		!c.TapOthers.Empty())
+		!c.TapOthers.Empty() || !c.ReturnToHand.Empty())
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -1078,6 +1091,11 @@ func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Car
 		if ac != nil && ac.Reveal != nil {
 			return len(g.RevealCostOptionsForEffect(playerID, card.InstanceID, ac.Reveal)) > 0
 		}
+		// #5247: and a "return a permanent you control to its owner's
+		// hand" with nothing to return (CR 118.3).
+		if ac != nil && !ac.ReturnToHand.Empty() {
+			return g.ReturnToHandPayable(playerID, card.InstanceID, ac.ReturnToHand)
+		}
 		return true
 	}
 	for i := range ac.Either {
@@ -1134,6 +1152,10 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	}
 	// #3868: enough untapped matching permanents to tap (CR 118.3).
 	if !g.TapOthersPayable(playerID, castID, cost.TapOthers) {
+		return false
+	}
+	// #5247: enough permanents to return (CR 118.3).
+	if !g.ReturnToHandPayable(playerID, castID, cost.ReturnToHand) {
 		return false
 	}
 	return true

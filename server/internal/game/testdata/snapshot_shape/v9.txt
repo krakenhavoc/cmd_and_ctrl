@@ -37087,6 +37087,8 @@ pendingChoices[].assist.announce.params.PaperPayment.mana[].count	number:int
 pendingChoices[].assist.announce.params.PaperPayment.mana[].x	bool
 pendingChoices[].assist.announce.params.PermissionType	string
 pendingChoices[].assist.announce.params.PhyrexianLife	number:int
+pendingChoices[].assist.announce.params.ReturnIDs	array
+pendingChoices[].assist.announce.params.ReturnIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.RevealIDs	array
 pendingChoices[].assist.announce.params.RevealIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.SacrificeIDs	array
@@ -43704,6 +43706,8 @@ pendingChoices[].parked.cast.params.PaperPayment.mana[].count	number:int
 pendingChoices[].parked.cast.params.PaperPayment.mana[].x	bool
 pendingChoices[].parked.cast.params.PermissionType	string
 pendingChoices[].parked.cast.params.PhyrexianLife	number:int
+pendingChoices[].parked.cast.params.ReturnIDs	array
+pendingChoices[].parked.cast.params.ReturnIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.RevealIDs	array
 pendingChoices[].parked.cast.params.RevealIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.SacrificeIDs	array

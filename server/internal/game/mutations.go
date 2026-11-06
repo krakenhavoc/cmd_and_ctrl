@@ -410,6 +410,14 @@ type CastSpellParams struct {
 	// `exile_permanent_ids`, the name an activation already uses.
 	ExilePermanentIDs []uuid.UUID
 
+	// ReturnIDs names the permanents paid to a mandatory ReturnToHand
+	// additional cost (#5247) — Fear of Isolation's "return a permanent
+	// you control to its owner's hand". Validated at announce by the
+	// activation's own validator and returned with the spell on the
+	// stack. On the wire as `return_ids`, the name an activation already
+	// uses.
+	ReturnIDs []uuid.UUID
+
 	// ExileFromHandIDs names the hand cards paid to a mandatory
 	// ExileFromHand additional cost (#3175) — March of Swirling Mist's
 	// "you may exile any number of blue cards from your hand". Any number,
@@ -1577,6 +1585,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #5247: and the return-a-permanent cost, with every permanent another
+	// component of this cast already takes off the battlefield (CR 118.3).
+	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad return-a-permanent payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"returns_received", len(params.ReturnIDs),
+			"err", err,
+		)
+		return err
+	}
 	// #3175: and the hand-exile cost (March of Swirling Mist), with every
 	// hand card another component of this cast already pays with (CR 118.3).
 	if err := g.validateCastHandExileLocked(playerID, cardID, costPlan, params.ExileFromHandIDs,
@@ -1919,6 +1938,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.DelveIDs...)
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #5247: and the permanents a return-a-permanent cost returns.
+	moving = append(moving, params.ReturnIDs...)
 	// #3175: and the hand cards a hand-exile cost takes.
 	moving = append(moving, params.ExileFromHandIDs...)
 	// #3536: and the graveyard cards an exile-cards cost takes.
@@ -1936,8 +1957,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		return err
 	}
 	// ADR 0115: of those, only a card the payment puts into a hand or
-	// a library is asked first (CR 903.9b), and the one cast cost that
-	// does is the alternative cost's return to hand (Daze, Gush). A
+	// a library is asked first (CR 903.9b), and the cast costs that do
+	// are the returns to hand: the alternative cost's (Daze, Gush), a
+	// splice card's and the additional cost's (Fear of Isolation). A
 	// discarded, sacrificed, pitched, escaped or delved commander is
 	// paid like any other card and offered the command zone afterwards
 	// by the CR 903.9a state-based action.
@@ -1947,6 +1969,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #4055: and a splice cost's return to hand (Veil of Secrecy).
 	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
+	// #5247: and the additional cost's return to hand (Fear of Isolation).
+	asking = append(asking, costCommanderMovesTo(ZoneHand, params.ReturnIDs...)...)
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
@@ -2250,6 +2274,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(params.ExilePermanentIDs) > 0 {
 		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
 			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
+	// #5247: the return-a-permanent cost, in the same window and for the
+	// same reason, each to its owner's hand (CR 400.3). A commander's owner
+	// was asked CR 903.9b before anything was paid.
+	if len(params.ReturnIDs) > 0 {
+		if _, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: return-a-permanent cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
 				"err", err,

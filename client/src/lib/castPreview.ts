@@ -53,6 +53,9 @@ export interface AutoTapCastParams {
   teamworkIDs?: string[];
   blightIDs?: string[];
   exilePermanentIDs?: string[];
+  // #5247: the permanent a return-a-permanent cost returns. A land named
+  // there may still tap for mana first; a Treasure may not be sacrificed.
+  returnIDs?: string[];
   // #3175: the hand cards a March exiles. Their count changes the PRICE —
   // "{2} less for each card exiled this way".
   exileFromHandIDs?: string[];
@@ -98,6 +101,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   if (choices.exilePermanentIDs && choices.exilePermanentIDs.length > 0) {
     out.exilePermanentIDs = [...choices.exilePermanentIDs];
   }
+  if (choices.returnIDs && choices.returnIDs.length > 0) out.returnIDs = [...choices.returnIDs];
   if (choices.exileFromHandIDs && choices.exileFromHandIDs.length > 0) {
     out.exileFromHandIDs = [...choices.exileFromHandIDs];
   }
@@ -180,6 +184,8 @@ export function castPreviewParamsFromPayload(
   if (blight.length > 0) out.blightIDs = blight;
   const exiled = stringIDs(payload.exile_permanent_ids);
   if (exiled.length > 0) out.exilePermanentIDs = exiled;
+  const returned = stringIDs(payload.return_ids);
+  if (returned.length > 0) out.returnIDs = returned;
   const fromHand = stringIDs(payload.exile_from_hand_ids);
   if (fromHand.length > 0) out.exileFromHandIDs = fromHand;
   const delve = stringIDs(payload.delve_ids);

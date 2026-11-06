@@ -141,6 +141,10 @@ export interface CastChoices {
   // #3402: the permanents a mandatory "exile a creature you control"
   // additional cost exiles. Rides cast_spell as `exile_permanent_ids`.
   exilePermanentIDs?: string[];
+  // #5247: the permanents a mandatory "return a permanent you control to
+  // its owner's hand" additional cost returns. Rides cast_spell as
+  // `return_ids`.
+  returnIDs?: string[];
   // #3175: the hand cards a "you may exile any number of blue cards from
   // your hand" additional cost exiles (March of Swirling Mist). Rides
   // cast_spell as `exile_from_hand_ids`; `[]` is the answer "none".
@@ -293,6 +297,8 @@ export function applyCastChoices(
     params.reveal_ids = choices.revealIDs;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
+  if (choices.returnIDs !== undefined && choices.returnIDs.length > 0)
+    params.return_ids = choices.returnIDs;
   if (choices.exileFromHandIDs !== undefined && choices.exileFromHandIDs.length > 0)
     params.exile_from_hand_ids = choices.exileFromHandIDs;
   if (choices.exileIDs !== undefined && choices.exileIDs.length > 0)
@@ -1582,10 +1588,31 @@ export function castExilePermanentCost(
   choices: CastChoices | undefined,
 ): ClaimedExilePermanentCost | undefined {
   const cost = castAdditionalCost(card, choices);
-  const opts = cost?.exile_permanent_options;
-  if (!cost || !opts) return undefined;
+  return claimedPermanentCost(cost?.exile_permanent_options, cost?.exile_permanent_label);
+}
+
+// castReturnCost is the return-a-permanent cost a cast pays, if any (#5247,
+// Fear of Isolation): the card's mandatory additional cost. The same shape
+// as the exile-a-permanent cost, one destination over; the prompt after the
+// exile step asks which to return.
+export function castReturnCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedExilePermanentCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  return claimedPermanentCost(cost?.return_options, cost?.return_label);
+}
+
+// claimedPermanentCost reads one "<verb> a permanent you control" picker
+// the server shipped: its clause, its count and the permanents that could
+// pay it. Undefined when the cost has no such picker.
+function claimedPermanentCost(
+  opts: LegalTargetsView | undefined,
+  label: string | undefined,
+): ClaimedExilePermanentCost | undefined {
+  if (!opts) return undefined;
   return {
-    label: cost.exile_permanent_label ?? "a permanent you control",
+    label: label ?? "a permanent you control",
     count: opts.min ?? 1,
     options: opts.cards ?? [],
   };

@@ -169,6 +169,7 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castReturnCost,
     castTapCost,
     castHandExileCost,
     altCostPayDefinesX,
@@ -892,6 +893,28 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #5247: "return a permanent you control to its owner's hand" as a
+  // spell's additional cost (Fear of Isolation) — the exile picker one
+  // destination over, over the server's `return_options`, the answer sent
+  // as `return_ids`.
+  let returnPrompt = $state<{
+    card: CardView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  let returnPromptOptionIDs = $state<string[]>([]);
+  const returnPromptOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, returnPromptOptionIDs),
+  );
+
+  function confirmReturnPermanent(ids: string[]): void {
+    const p = returnPrompt;
+    returnPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, returnIDs: ids });
+  }
+
   // #3868: "tap an untapped Vampire you control" as a spell's additional
   // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
   // server's `tap_others_options`, the answer sent as `teamwork_ids`.
@@ -1021,6 +1044,19 @@
     if (ex && choices.exilePermanentIDs === undefined) {
       exilePromptOptionIDs = ex.options;
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
+      return;
+    }
+    // #5247: the return pick, after the exile pick. Skipped when the board
+    // offers exactly the permanents the clause demands, as the activated
+    // return pick is: a modal with one possible answer is worse than none.
+    const rt = castReturnCost(card, choices);
+    if (rt && choices.returnIDs === undefined) {
+      if (rt.options.length <= rt.count) {
+        afterSacrificeCost(card, { ...choices, returnIDs: rt.options });
+        return;
+      }
+      returnPromptOptionIDs = rt.options;
+      returnPrompt = { card, label: rt.label, count: rt.count, choices };
       return;
     }
     const tc = castTapCost(card, choices);
@@ -4437,6 +4473,18 @@
     verb="Exile"
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
+  />
+  <!-- #5247: return a permanent you control to its owner's hand, as a
+       spell's additional cost. The picks ride cast_spell's return_ids. -->
+  <SacrificeCostModal
+    source={returnPrompt?.card ?? null}
+    label={returnPrompt?.label ?? "a permanent you control"}
+    options={returnPromptOptions}
+    count={returnPrompt?.count ?? 1}
+    verb="Return"
+    castName={returnPrompt?.card.name}
+    onConfirm={confirmReturnPermanent}
+    onCancel={() => (returnPrompt = null)}
   />
   <!-- #3868: tap an untapped Vampire you control, as a spell's additional
        cost. The picks ride cast_spell's teamwork_ids. -->

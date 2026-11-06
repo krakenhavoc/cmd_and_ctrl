@@ -65,7 +65,13 @@ import "github.com/google/uuid"
 func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uuid.UUID]bool {
 	full := [][]uuid.UUID{params.LockedSources, params.TapIDs, params.DiscardIDs,
 		params.TeamworkIDs, params.BlightIDs, params.ExilePermanentIDs}
-	sacrificed := [][]uuid.UUID{params.SacrificeIDs}
+	// #5247: a permanent named to a return-to-hand additional cost is
+	// SACRIFICE-NAMED for the same reason a sacrificed one is: CR 601.2g
+	// has its mana abilities activated before CR 601.2h returns it, so an
+	// Island named to Fear of Isolation may tap for the {U} first, and only
+	// a mana ability that sacrifices it (a Treasure) would leave the return
+	// nothing to pay with.
+	sacrificed := [][]uuid.UUID{params.SacrificeIDs, params.ReturnIDs}
 	// #4055: and what a splice card's cost spends. A sacrificed Mountain
 	// may still tap for mana first, as a Village Rites sacrifice may.
 	for _, pay := range params.SplicePayments {

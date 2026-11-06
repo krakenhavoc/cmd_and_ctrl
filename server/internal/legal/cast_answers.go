@@ -119,13 +119,21 @@ func AdditionalCostAnswers(c *game.AdditionalCost) game.Answers {
 		return 0
 	}
 	var a game.Answers
-	if sacrificeInteracts(c.Sacrifice) || exileCostInteracts(c.ExilePermanents) {
+	// #5247: and so is returning one to hand (Fear of Isolation's "a
+	// permanent you control"), as an alternative cost's return is.
+	if sacrificeInteracts(c.Sacrifice) || exileCostInteracts(c.ExilePermanents) || returnCostInteracts(c.ReturnToHand) {
 		a |= game.AnswerSacOutlet
 	}
 	for i := range c.Either {
 		a |= AdditionalCostAnswers(&c.Either[i])
 	}
 	return a
+}
+
+// returnCostInteracts: returning a creature (or any permanent) you control
+// as a cost saves it from what is on the stack; returning a land does not.
+func returnCostInteracts(c *game.ReturnToHandCost) bool {
+	return !c.Empty() && sacrificeInteracts(c.Filter)
 }
 
 // AlternativeCostAnswers is the same question for an alternative cost:

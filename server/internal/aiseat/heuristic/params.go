@@ -65,6 +65,10 @@ type castParams struct {
 	// additional cost gives up (#3402) — gone from the board exactly as a
 	// sacrificed one is, and priced the same way.
 	ExilePermanentIDs []string `json:"exile_permanent_ids"`
+	// ReturnIDs is the permanent a mandatory return-a-permanent additional
+	// cost sends back to its owner's hand (#5247, Fear of Isolation) —
+	// priced as a permanent returned as a cost is (selfReturnCost).
+	ReturnIDs []string `json:"return_ids"`
 	// ExileFromHandIDs are the hand cards a March's additional cost exiles
 	// for its discount (#3175) — lost from hand as a discarded card is.
 	ExileFromHandIDs []string `json:"exile_from_hand_ids"`
