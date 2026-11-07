@@ -34,7 +34,7 @@ func init() {
 						return nil
 					}
 					return untilEndOfTurn(ctx, t.ID, nil, rabbitLabel,
-						game.SetColorsMod("W"),
+						game.SetColorsMod(ctx.TextColors("W")...),
 						game.SetCreatureTypesMod(ctx.TextSubtypes("Rabbit")...),
 						game.SetBasePowerMod(0), game.SetBaseToughnessMod(1))
 				}),
