@@ -116,13 +116,14 @@ func TestImageCacheKeyIncludesFace(t *testing.T) {
 		t.Errorf("CDN hits = %d, want 2 (one per face)", hits.Load())
 	}
 	// Face 0 keeps the ORIGINAL, unsuffixed filename. Anything else
-	// orphans every image already on disk in every deployment.
-	if strings.Contains(filepath.Base(front), "face") {
-		t.Errorf("face 0 path %q carries a face suffix; every cached "+
-			"image would be re-downloaded", filepath.Base(front))
+	// orphans every image already on disk in every deployment. Compare
+	// whole names: the random ID's hex can itself spell "face" (#5257).
+	if got, want := filepath.Base(front), id.String()+".normal.jpg"; got != want {
+		t.Errorf("face 0 path %q, want %q; a face suffix on face 0 "+
+			"would re-download every cached image", got, want)
 	}
-	if !strings.Contains(filepath.Base(back), "face1") {
-		t.Errorf("face 1 path %q does not name the face", filepath.Base(back))
+	if got, want := filepath.Base(back), id.String()+".face1.normal.jpg"; got != want {
+		t.Errorf("face 1 path %q, want %q (it must name the face)", got, want)
 	}
 	// Both are real files with the fetched bytes.
 	for _, p := range []string{front, back} {

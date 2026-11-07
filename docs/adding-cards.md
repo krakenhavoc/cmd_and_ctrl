@@ -46,6 +46,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
+  - ["Skip that draw" (#5246, CR 614.1b)](#skip-that-draw-5246-cr-6141b)
+  - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
@@ -104,6 +106,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
   - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
+  - ["If you've sacrificed an artifact this turn" (#5224)](#if-youve-sacrificed-an-artifact-this-turn-5224)
+  - ["If you haven't cast a spell from your hand this turn" (#5235)](#if-you-havent-cast-a-spell-from-your-hand-this-turn-5235)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -4413,6 +4417,50 @@ Replacements: []game.ReplacementEffect{
   own descendant draw that inherits the applied replacements (CR 614.5), and
   the mark keeps every later draw this turn plain.
 
+### "Skip that draw" (#5246, CR 614.1b)
+
+"If you would draw a card while your library has no cards in it, skip that
+draw instead" (Living Conundrum) is `SkipThatDrawFromAnEmptyLibrary(name)`
+([draw_replacements.go](../server/internal/cards/effects/draw_replacements.go)),
+Laboratory Maniac's replacement with nothing in place of the win. A skip is a
+replacement (CR 614.1b, 614.10), and its `Replace` is `ev.Cancel()` alone.
+
+- **A skipped draw is not a draw** (CR 614.6). No card moves and no
+  `EventDrawCard` is emitted, so "whenever you draw" does not trigger, the
+  turn's draw counts (`PlayerTurnTally.CardsDrawn`, `CardsDrawnThisTurnFor`)
+  do not rise, and no CR 704.5b flag is set.
+- **Each draw is asked on its own** (CR 121.2). "Draw three" off a two-card
+  library draws two and skips the third.
+- **A static that reads "no cards in your library"** declares
+  `DependsOnLibraryTop`: an empty library is a top card that is gone, so the
+  library-top watch recomputes the layers on the draw that empties it.
+
+### "This ability triggers only once" (#5245)
+
+Once for the life of the object, not once each turn (Acrobatic Cheerleader).
+Wrap the row in `TriggersOnlyOnce(t)` ([triggers_common.go](../server/internal/cards/effects/triggers_common.go)),
+which sets `game.TriggeredAbility.OnlyOnce`:
+
+```go
+Triggered: []game.TriggeredAbility{
+    TriggersOnlyOnce(Survival("Acrobatic Cheerleader — put a flying counter on it",
+        Do(CounterOnThis{Kind: game.CounterFlying, N: 1}))),
+},
+```
+
+- **The record is the engine's.** The harvester writes
+  `Game.OnlyOnceTriggered` under `ObjectTallyKey(source, epoch, Key)` the
+  first time the ability triggers, and declines every later match of that
+  object, on any turn. A countered or fizzled trigger still spent it. A new
+  object after a zone change may trigger again (CR 400.7); a change of
+  control does not refresh it. The snapshot and the undo clone carry it.
+- **A doubler adds nothing.** The printed ruling says an effect that would
+  make it trigger again does nothing, so the doublers are not asked.
+- **A trigger that did not happen spends nothing.** A failed intervening if,
+  a suppressor and a zero occurrence count all return before the claim.
+- `Register` refuses `OnlyOnce` on a row with no `Key` or on a state trigger.
+  "Triggers only once each turn" is still `TriggersOnlyOnceEachTurn(t)`.
+
 ### Attaching, and an ability whose source has gone (#812)
 
 Two rules, each at one choke point, and no card file checks either.
@@ -4608,12 +4656,44 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   number, none included, whose registered set rule is `game.CollectEvidenceMet`.
   Nothing is asked below N. `then` runs after the cards are exiled and only
   when evidence was collected; a "when you do" is a `ReflexiveTrigger` from it
-  (Sample Collector).
+  (Sample Collector). Pass a nil `then` for "you may collect evidence N." with
+  nothing after it (Evidence Examiner, Surveillance Monitor).
+- **Collect evidence X as an effect** ("you may collect evidence X. When you
+  do, …", X chosen as it resolves, CR 107.3f; #5223) is a `CollectEvidenceX`
+  from `RegisterCollectEvidenceX(slug, name, then)`, asked with
+  `.Ask(ctx, question)`: a yes/no (collect evidence 0 is always possible, an
+  empty graveyard included), then any number of graveyard cards
+  (`Game.CollectEvidenceXOptionsForEffect`), then X from 0 to their total
+  mana value (`Game.CollectEvidenceXCeilingForEffect`, not asked when it is
+  0). The gate is `Game.CollectEvidenceXMetForEffect`, `FloorMet` with the
+  floor at X. `then(ctx, x, exiled)` runs once the cards are exiled
+  (Incinerator of the Guilty: a reflexive trigger carrying X in `Params`).
+- **"Whenever you collect evidence"** is `WheneverYouCollectEvidence(label,
+  effect)`, off `game.EventCollectEvidence`: one event per collection, from
+  every form above, collect evidence 0 included. Its `CardIDs` are the exiled
+  cards in the order named and its `Amount` their total mana value. Write a
+  one-sentence payoff with `Do` (Surveillance Monitor's Thopter).
 
-Not built yet: "whenever you collect evidence" (no event is emitted),
-collect evidence X, a mana ability that collects evidence, ward with a
-collect evidence cost and collect evidence as an alternative cost (the
-roadmap's `collect-evidence` row names the cards).
+```go
+WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(CreateToken{Template: ClueToken(), N: 1}))
+var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", "Incinerator of the Guilty",
+	func(ctx *Context, x int, _ []uuid.UUID) error { … })             // "you may collect evidence X. When you do, …"
+```
+
+- **Collect evidence X sized by the spell's targets** ("As an additional
+  cost to cast this spell, collect evidence X, where X is the total mana value
+  of the permanents this spell targets", Urgent Necropsy; #5240, ADR 0021
+  amendment 2026-11-06) is `AdditionalCost: CollectEvidenceFromTargetsCost()`.
+  CastSpell fixes X from the announced targets (CR 601.2c before 601.2f), each
+  permanent counted once, and checks `exile_ids` against it; X = 0 needs no
+  cards. The client asks for the cards after targeting, and the bot pays from
+  the graveyard per target set. Register allows it only alone on the mandatory
+  slot of a spell whose every target clause is "up to" (`WithCount(0, 1)`), so
+  X = 0 is always a legal cast.
+
+Not built yet: a mana ability that collects evidence, ward with a collect
+evidence cost and collect evidence as an alternative cost (the roadmap's
+`collect-evidence` row names the cards).
 
 ### Adding a block-rule card (S37+, #750)
 
@@ -5397,6 +5477,22 @@ only counters itself is `powerUpAnswering(text, cost, effect)`, which
 declares the pump; any other row builds `PowerUp` and sets its own
 `Purpose`.
 
+**"Activate only once" without a keyword (CR 602.5b, #5221):** set
+`OnlyOnce: true` on the row and keep the clause in its label (Possessed
+Goat, Haunted Screen, Mild-Mannered Librarian). It is exhaust's limit
+without exhaust's keyword: `Game.OnlyOnceSpent` reads the same
+per-object, per-label activation record, so a flicker refreshes it, a
+change of control does not, and a restore keeps it. The activation path
+(`ErrAbilityActivatedOnce`), the bot enumerator and the view
+(`once_used`) read that one gate. Never write `Exhaust: true` for it:
+the event, cost and permission readers that watch exhaust abilities
+(Rangers' Refueler, Boom Scholar, Elvish Refueler) would see it, and
+`OnlyOnce` is never stamped on an event or a cost query. "Activate only
+once each turn" is still `OncePerTurnActivation(label)`. `Register`
+panics when the label prints "Activate only once" (with no "each") and
+the row sets none of `OnlyOnce`, `Exhaust` or `PowerUp`, or sets
+`OnlyOnce` without the clause.
+
 **Equip-only mana (#4600, ADR 0020 Decision 75):** "Spend this mana only
 to cast Equipment spells or activate equip abilities" is
 `Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast,
@@ -5523,6 +5619,17 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+**Return a permanent you control as an additional cost (#5247):** "As an
+additional cost to cast this spell, return a permanent you control to its
+owner's hand" is `AdditionalCost: ReturnPermanentToHandCost("a permanent
+you control")`, with predicates for a narrower clause (`Creature()` for "a
+creature you control"): the activated ability's `ReturnToHandCost` on a
+cast, so the walk, the validator and the payer are the ability's. The
+caster names it on `return_ids`; it goes to its owner's hand with the spell
+on the stack, and with nothing to return the spell is not castable (Fear of
+Isolation). Mandatory slot only; Register refuses it in an optional cost
+and an either/or branch.
 
 **Behold a creature type and exile it (#4687, CR 701.4a, CR 607.2q, ADR
 0100 amendment 2026-11-05):** the Lorwyn Eclipsed Champions' "As an
@@ -8510,7 +8617,11 @@ Negation, every cumulative upkeep that is not a coin flip),
 Charger, Banon), `GuardedPayUnless{Else}` (Divert; the guarded spell is
 `r.Guards`) and `CounterUnlessPaid{Then}` for a consequence on the paid half.
 A plain `CounterUnlessPaid` (Daze, Mana Leak, ward's mana half) is keyed by the
-engine and needs nothing from the card. A non-mana payment (a discard, a
+engine and needs nothing from the card. "If that spell is countered this way,
+exile it instead" is `CounterUnlessPaid{Dest: game.ZoneRef{Kind:
+game.ZoneExile}}` (Syncopate, No More Lies; #5236), which the engine keys as
+`pay-unless/counter-guarded-exile`; exile is the only destination keyed so far,
+any other is refused, and so is a `Dest` beside a `Then`. A non-mana payment (a discard, a
 sacrifice, a tap) is plain data on the prompt (`PayActionClause`). The any-player
 offers are `AnyPlayerPays{Then, Carry}` with `AnyPlayerConsequences(key, onPaid,
 onNobody, perPayer)` (`anyPlayerMayCounterThisSpell` is the shared helper; Dash
@@ -11758,7 +11869,8 @@ On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mill
   which fires once per card. It is one trigger per event batch (AtBatchEnd
   with `ThatManyEvents`), whoever milled, and `nonlandCardsMilledThisWay(item)`
   is "that many" / X. A battlefield ability only. "This ability triggers
-  only once each turn" is `TriggersOnlyOnceEachTurn(t)`; "do this only once
+  only once each turn" is `TriggersOnlyOnceEachTurn(t)` ("triggers only
+  once", with no "each turn", is `TriggersOnlyOnce(t)`); "do this only once
   each turn" is the `b28DoneThisTurn` record (Screeching Scorchbeast).
 - **"A card in a graveyard that was milled this turn"** (Tato Farmer, The
   Master, Transcendent) is the target predicate `MilledThisTurn()`: the
@@ -13043,7 +13155,8 @@ ctx.SourcePermanent()                                                           
 - **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
   thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
 - **Bargain** is `OptionalCosts: []game.AdditionalCost{g2Bargain()}` (`exile_if_dies_g2.go`); "if this spell was
-  bargained" is `g2WasBargained(ctx)`.
+  bargained" is `g2WasBargained(ctx)`, and "This spell costs {n} less to cast if it's bargained" is
+  `SelfCostModifiers: []game.CostModifier{CostsLessIfBargained(n, label)}` (Ice Out, Johann's Stopgap).
 - **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
   if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
   2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
@@ -13173,11 +13286,101 @@ The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the tr
 SelfPumpWhileCelebration(0, 2)                        // "This creature gets +0/+2 as long as …"
 WheneverThisAttacksIfCelebration(label, effect)       // "Celebration — Whenever ~ attacks, if …"
 AtBeginningOfYourCombatIfCelebration(label, effect)   // "Celebration — At the beginning of combat on your turn, if …"
+AtYourEndStepIfCelebration(label, effect)             // "Celebration — At the beginning of your end step, if …"
 InterveningIf(CondCelebration{}, On(...))             // any other trigger shape
 if Celebration(g, item.Controller) { … }              // a resolution-time check
 ```
 
 The trigger shapes are intervening ifs (CR 603.4), and `CondCelebration` declares `game.FootprintCondCelebration`, since the count only rises within a turn. Set `Targets` on the returned ability for a targeted body.
+
+### "If you've sacrificed an artifact this turn" (#5224)
+
+The turn tally counts sacrifices per player and per card type the permanent had as it was sacrificed (`TurnTally.SacrificedCardTypes`, read through `Game.SacrificedWithCardTypeThisTurn(player, "artifact")`), beside the per-subtype tally the Food readers use (`SacrificedWithSubtypeThisTurn(player, "Food")`). A token counts, though it is gone by the time anyone asks (CR 704.5d); an artifact creature is one artifact. The readers are in `cards/effects/sacrificed_artifact.go`:
+
+```go
+Condition: YouSacrificedAnArtifactThisTurn,         // "Activate only if …" (Detective's Satchel)
+InterveningIf(CondSacrificedAnArtifact{}, On(...))  // an intervening "if"
+if SacrificedAnArtifactThisTurn(g, you) { … }       // a resolution check, a block rule, a cost reduction
+```
+
+`CondSacrificedAnArtifact` declares `game.FootprintCondArtifactSacrificed`, since the count only rises within a turn. Another card type is the same call with its name; never walk `g.Events` for a sacrificed permanent.
+
+### "If you haven't cast a spell from your hand this turn" (#5235)
+
+The cast tally records the zone each spell was cast from, as the card was found before CR 601.2a moved it to the stack: `CastTally.NotFromHand` counts the casts from anywhere but the hand (a graveyard, exile, a plotted card, the command zone, the top of a library), and `CastTally.FromHand()` is `Total` minus that. A copy isn't cast (CR 707.10). The readers are in `cards/effects/cast_from_hand.go`:
+
+```go
+AtYourEndStepIfNoSpellFromHand(label, effect)            // the printed trigger (Jem Lightfoote, Wrangler of the Damned)
+AtYourEndStepIfNoSpellFromHand(label, effect, moreWhen)  // "… and this creature doesn't have a flying counter on it"
+InterveningIf(CondNoSpellFromHand{}, On(...))            // the same "if" on another trigger
+if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check or a static's condition
+```
+
+`CondNoSpellFromHand` declares `game.FootprintCondNoSpellsCastFromHand`: like Edgar's "if you didn't cast a spell this turn", it can only become false, by a cast, and no step casts. An extra "and" the printed condition adds goes in the trigger's `When` (the `also` arguments) and in an `If` inside the effect, so it is asked both times too (CR 603.4).
+
+Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
+
+### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
+
+Three small pieces around CR 708 face-down permanents and CR 702.168 disguise.
+
+```go
+TurnFaceUpRestrictions: []game.TurnFaceUpRestriction{
+    OpponentsPermanentsCantTurnFaceUpDuringYourTurn("…"),          // Karlov Watchdog
+},
+Do(GrantNextSpellPromise{From: "Goblin Maskmaker", Promise: game.NextSpellPromise{
+    FaceDownOnly: true, Reduce: 1, EveryMatchingSpell: true, Text: "…"}})  // "face-down spells you cast this turn cost {1} less"
+g.PermanentEnteredFaceDownThisTurn(you) || g.TurnedPermanentFaceUpThisTurn(you) // Oblivious Bookworm's "unless"
+```
+
+- **"Can't be turned face up"** is a static of a permanent on the battlefield
+  (`Spec.TurnFaceUpRestrictions`, `game/turn_face_up_gate.go`), read through
+  `CatalogAbilityKey` like a land-play restriction (CR 101.2), so nothing is
+  stored and the source leaving lifts it. The turn-face-up special action's
+  window (`SpecialActionTimingOKLocked`) asks it, so the engine refuses the
+  action before charging, the enumerator does not offer it and the view greys
+  the row. `TurnFaceUpForEffect` asks it too, and a card that offers a choice
+  to turn something face up asks `g.TurnFaceUpForbiddenForEffect(c)` first
+  (`canTurnFaceUpByEffect` already does). A `Forbids` with a shape the
+  constructor does not cover is a literal over `game.TurnFaceUpQuery`
+  (the game, the face-down permanent, the source).
+- **A face-down spell** is a promise with `FaceDownOnly`. A face-down cast is
+  stamped a CR 708.2 object before it is priced (CR 708.4), so the promise sees
+  the 2/2 and not the card. Read a promise through `NextSpellPromise.Matches`,
+  never its `Filter` alone.
+- **The turn tally** counts, per player, the permanents that entered face down
+  under their control (`PermanentsEnteredFaceDown`: a face-down spell resolving,
+  a manifest, a cloak; not a permanent turned face down where it was) and the
+  permanents they turned face up (`PermanentsTurnedFaceUp`, the Actor of
+  `EventTurnedFaceUp`, by the special action or by their effect).
+- **Disguise {X} is not built.** CR 107.3d has the player choose X just before
+  paying a special action's cost, and a special action carries no X (not in
+  `SpecialActionParams`, the enumerator or the client's row), so Aurelia's
+  Vindicator is left out.
+
+### "You may look at face-down creatures you don't control" (#5251)
+
+```go
+LooksAtFaceDownCreatures: true,                                        // Found Footage's static
+ctx.Game.LookAtFaceDownCreaturesThisTurnForEffect(source, you, label)  // Lumbering Laundry's "{2}: until end of turn"
+```
+
+- **The static** is `Spec.LooksAtFaceDownCreatures`, read from the battlefield
+  through `CatalogAbilityKey` (`game/face_down_look.go`), so a source that has
+  lost its abilities grants nothing and the look ends the frame the source
+  leaves. "Your opponents control" and "you don't control" are the same set
+  here: the engine has no teams (CR 806.1).
+- **The until-end-of-turn form** is a `game.ModLookAtFaceDownCreatures`
+  scoped record naming the activator, swept at cleanup (CR 514.2) and kept by
+  a restore point. It lasts whether or not its source stays (CR 611.2a).
+- **Never stamp `KnownBy` for either.** The view asks
+  `g.FaceDownLookGrantsLocked()` every frame and makes the holder's seat
+  alone a knower of each face-down CREATURE on the battlefield it covers
+  (`protocol.stampFaceDownLooks`, the unexported `lookers` set). A spectator
+  never counts a grant toward "every seat knows it", so a two-player table
+  with a Found Footage does not show the spectator the card. A face-down spell,
+  a face-down card in exile and a face-down permanent that is not a creature
+  (Yedora's Forest) are not covered.
 
 ### Adding a `Spec` slot (#622)
 

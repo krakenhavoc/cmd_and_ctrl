@@ -1607,6 +1607,18 @@ type AdditionalCostView struct {
 	// a hexproof creature you control is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ReturnLabel / ReturnOptions describe a "return a permanent you
+	// control to its owner's hand" additional cost (#5247, Fear of
+	// Isolation): the activated ability's fields of the same names, off
+	// the same engine walk (game.ReturnToHandOptionsForEffect). min / max
+	// are the clause's count, the cards come in payment order, and the
+	// picks ride back on cast_spell as `return_ids`. Absent when the cost
+	// has no such component; fewer cards than `min` means it cannot be
+	// paid right now, which makes the spell uncastable (CR 118.3). Not a
+	// target list: a hexproof permanent you control is on it, and so is a
+	// tapped one (CR 601.2h).
+	ReturnLabel   string            `json:"return_label,omitempty"`
+	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
 	// TapOthersLabel / TapOthersOptions describe a "tap an untapped
 	// Vampire you control" additional cost (#3868, New Blood): the
 	// activated ability's two fields of the same names, off the same
@@ -1654,6 +1666,17 @@ type AdditionalCostView struct {
 	// is then the only announcement). The server refuses a larger X.
 	ExileCostX    bool `json:"exile_cost_x,omitempty"`
 	ExileCostXMax int  `json:"exile_cost_x_max,omitempty"`
+	// ExileCostFromTargets marks "collect evidence X, where X is the total
+	// mana value of the permanents this spell targets" (#5240, Urgent
+	// Necropsy, CR 701.59a): any number of ExileCostOptions (none included)
+	// whose total mana value reaches X, and X is only known once the
+	// targets are chosen (CR 601.2c before 601.2f), so the client asks for
+	// the cards AFTER targeting. ExileCostTargetManaValues is each
+	// permanent's mana value as the engine reads it, keyed by instance ID:
+	// X is the sum over the distinct permanents picked as targets, and a
+	// pick whose cards fall short of it is refused. ExileCostN is absent.
+	ExileCostFromTargets      bool           `json:"exile_cost_from_targets,omitempty"`
+	ExileCostTargetManaValues map[string]int `json:"exile_cost_target_mana_values,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -3309,8 +3332,10 @@ type CardView struct {
 	FaceDownKind string `json:"face_down_kind,omitempty"`
 	// FaceVisible is whether THIS viewer may look at the face of a
 	// face-down object — the controller of a CR 708.5 permanent, the
-	// owner of a foretold card (CR 702.143d), nobody for a plain
-	// face-down exile (CR 406.3). Stamped per-viewer by
+	// owner of a foretold card (CR 702.143d), the holder of a look
+	// grant for a face-down creature someone else controls (#5251,
+	// `lookers`), nobody for a plain face-down exile (CR 406.3).
+	// Stamped per-viewer by
 	// FilterViewFor beside KnownByYou and never trusted from the
 	// input; it is exactly `face_down && known_by_you`, on the wire
 	// rather than derived client-side because it is the rules
@@ -3355,6 +3380,18 @@ type CardView struct {
 	// the wire — the only consumer is the in-process per-viewer
 	// projection. Added in S13.5.
 	knowers map[string]bool
+
+	// lookers is the seats that may look at this face-down creature
+	// through a look grant right now (#5251: Found Footage's static,
+	// Lumbering Laundry's until end of turn), stamped per frame by
+	// stampFaceDownLooks from game.FaceDownLookGrantsLocked. Apart from
+	// knowers on purpose: a grant is a permission to one player, not a
+	// reveal to the table, so it makes THAT seat (and a player
+	// controlling it, CR 723.4) a knower and never counts toward a
+	// spectator's "every seat knows it". Unexported, like knowers, and
+	// cleared by redactCardForViewer, so it never reaches the wire, a
+	// replay or the log.
+	lookers map[string]bool
 
 	// libraryTop marks the card the CR 401.5 standing visibility rule
 	// currently applies to — the top of its owner's library, under a
@@ -4616,6 +4653,18 @@ type SpecialActionView struct {
 	// whose card also prints morph or disguise lists two rows, which
 	// can cost the same. Empty for every other kind.
 	Route string `json:"route,omitempty"`
+	// DemandsX marks a row whose cost has an {X} the player chooses as
+	// they take the action (CR 107.3d, #5249): Aurelia's Vindicator's
+	// "Turn face up {X}{3}{W}". The client asks for X before it sends
+	// the payload, which then carries `x_value`. Absent on every row
+	// whose cost has no {X}.
+	DemandsX bool `json:"demands_x,omitempty"`
+	// XMax is the largest X the viewer can pay for right now, from the
+	// floating pool and an auto-tap plan together, priced as the engine
+	// charges it (game.SpecialActionXCeilingForEffect). The legal move
+	// offers the same X. A pointer, because 0 is a real ceiling ("only
+	// X = 0 is payable"); nil beside DemandsX means not even X = 0 is.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -4828,6 +4877,14 @@ type ActivatedAbilityView struct {
 	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
 	// way, and the legal-move enumerator does not offer it.
 	PowerUpUsed bool `json:"power_up_used,omitempty"`
+	// OnceUsed is true when the ability says "Activate only once"
+	// without the exhaust keyword (#5221, CR 602.5b — Possessed Goat,
+	// Haunted Screen) and this object has already activated it. Its own
+	// flag rather than Exhausted, because the client names the reason
+	// and the ability is not an exhaust ability. Only a new object (CR
+	// 400.7) clears it. The server refuses with ErrAbilityActivatedOnce
+	// either way, and the legal-move enumerator does not offer it.
+	OnceUsed bool `json:"once_used,omitempty"`
 	// ResolvedThisTurn is how many times this row of this object has
 	// resolved this turn (#4980): Game.ResolvedThisTurn for the row's
 	// label, the count the card's own effect reads, per object (CR 400.7).
@@ -5987,6 +6044,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLibraryTop(g, view.Seats)
 		stampHandRevealed(view.Seats)
+		stampFaceDownLooks(g, &view.Battlefield)
 		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
@@ -8443,6 +8501,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
 	}
+	if rc := ac.ReturnToHand; !rc.Empty() {
+		// #5247: the activation's own walk and view, with the spell as the
+		// source — it is on no battlefield, so it is never a pick — so the
+		// picker offers exactly the permanents the validator accepts (#544).
+		out.ReturnLabel = rc.Label
+		out.ReturnOptions = returnCostOptions(g, caster, castID, rc)
+	}
 	if tc := ac.TapOthers; !tc.Empty() {
 		// #3868: the activation's own walk and view, with no source — the
 		// spell is not on the battlefield — so the picker offers exactly
@@ -8469,6 +8534,21 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if ec.CountFromX {
 			out.ExileCostX = true
 			out.ExileCostXMax = g.ExileCardsXCeilingForEffect(caster, castID, ec)
+		}
+	}
+	if ec := ac.ExileCards; ec.IsCollectEvidenceFromTargets() {
+		// #5240: the same walk, and the mana values the engine sums for
+		// the floor (CollectEvidenceTargetsFloorForEffect), so the client's
+		// X is the engine's (#544).
+		out.ExileCostLabel = ec.Label
+		out.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, castID, ec))
+		out.ExileCostZone = string(ec.Zone())
+		out.ExileCostFromTargets = true
+		if mvs := g.PermanentManaValuesForEffect(); len(mvs) > 0 {
+			out.ExileCostTargetManaValues = make(map[string]int, len(mvs))
+			for id, mv := range mvs {
+				out.ExileCostTargetManaValues[id.String()] = mv
+			}
 		}
 	}
 	if ac.BlightX {
@@ -9263,6 +9343,14 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			if charged, err := g.SpecialActionManaCostForEffect(owner, card, sa.Kind, sa); err == nil {
 				s := charged.String()
 				view.ChargedCost = &s
+			}
+		}
+		// #5249: a cost with an {X} asks for X, under the ceiling the
+		// engine would let the viewer pay (CR 107.3d).
+		if game.SpecialActionDemandsX(sa) {
+			view.DemandsX = true
+			if x, ok := g.SpecialActionXCeilingForEffect(owner, card, sa); ok {
+				view.XMax = &x
 			}
 		}
 		out = append(out, view)
@@ -11316,13 +11404,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		case "":
 			return true
 		case SpectatorViewerID:
+			// #5251: never c.lookers. A look grant is one seat's
+			// permission, not public information.
 			return knownToEverySeat(c, seatIDs)
 		}
-		if c.knowers[viewerID] {
+		if c.knowers[viewerID] || c.lookers[viewerID] {
 			return true
 		}
 		for _, id := range controlled {
-			if c.knowers[id] {
+			if c.knowers[id] || c.lookers[id] {
 				return true
 			}
 		}
@@ -12120,6 +12210,7 @@ func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool, playingFor 
 func redactCardForViewer(c CardView, known bool) CardView {
 	out := c
 	out.knowers = nil
+	out.lookers = nil
 	out.KnownByYou = known
 	// #671: stamped afterwards, on the owner's own hand only, never
 	// trusted from the input.
@@ -13144,6 +13235,45 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 	}
 }
 
+// stampFaceDownLooks marks each face-down creature on the battlefield
+// with the seats a look grant lets look at it right now (#5251,
+// game/face_down_look.go): Found Footage's "you may look at face-down
+// creatures your opponents control any time" and Lumbering Laundry's
+// until-end-of-turn form.
+//
+// Into `lookers`, not `knowers`, and not into Card.KnownBy: the view
+// runs under a READ lock, the set of creatures a grant covers changes
+// without any of them moving, and the grant ends the moment its source
+// leaves or the turn's cleanup runs. Re-deriving it per frame is what
+// makes the card hidden again the frame after, with nothing to take
+// back. FilterViewFor makes a looker a knower for that seat alone.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampFaceDownLooks(g *game.Game, bf *ZoneView) {
+	grants := g.FaceDownLookGrantsLocked()
+	if len(grants) == 0 {
+		return
+	}
+	for ci := range bf.Cards {
+		cv := &bf.Cards[ci]
+		if !cv.FaceDown {
+			continue
+		}
+		id, err := uuid.Parse(cv.InstanceID)
+		if err != nil {
+			continue
+		}
+		seats := grants[id]
+		if len(seats) == 0 {
+			continue
+		}
+		cv.lookers = make(map[string]bool, len(seats))
+		for _, s := range seats {
+			cv.lookers[s.String()] = true
+		}
+	}
+}
+
 // stampHandRevealed makes every card in a hand its owner plays with
 // revealed (Telepathy, Revelation, Stromgald Spy; ADR 0199) known to
 // every seat, the way stampLibraryTop does for a revealed top card and
@@ -13385,6 +13515,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// CR 702.193a (#4527): a power-up ability already activated,
 		// the reader ActivateCatalogAbility and internal/legal share.
 		v.PowerUpUsed = g.PowerUpUsed(&c, a)
+		// #5221, CR 602.5b: a plain "Activate only once" already spent,
+		// the reader ActivateCatalogAbility and internal/legal share.
+		v.OnceUsed = g.OnlyOnceSpent(c.InstanceID, a)
 		// #4980: the resolutions so far of a row that adds mana on one
 		// of them, from the tally the card's effect reads.
 		if a.Purpose.ResolutionMana != nil {

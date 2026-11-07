@@ -141,6 +141,10 @@ export interface CastChoices {
   // #3402: the permanents a mandatory "exile a creature you control"
   // additional cost exiles. Rides cast_spell as `exile_permanent_ids`.
   exilePermanentIDs?: string[];
+  // #5247: the permanents a mandatory "return a permanent you control to
+  // its owner's hand" additional cost returns. Rides cast_spell as
+  // `return_ids`.
+  returnIDs?: string[];
   // #3175: the hand cards a "you may exile any number of blue cards from
   // your hand" additional cost exiles (March of Swirling Mist). Rides
   // cast_spell as `exile_from_hand_ids`; `[]` is the answer "none".
@@ -293,6 +297,8 @@ export function applyCastChoices(
     params.reveal_ids = choices.revealIDs;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
+  if (choices.returnIDs !== undefined && choices.returnIDs.length > 0)
+    params.return_ids = choices.returnIDs;
   if (choices.exileFromHandIDs !== undefined && choices.exileFromHandIDs.length > 0)
     params.exile_from_hand_ids = choices.exileFromHandIDs;
   if (choices.exileIDs !== undefined && choices.exileIDs.length > 0)
@@ -1582,10 +1588,31 @@ export function castExilePermanentCost(
   choices: CastChoices | undefined,
 ): ClaimedExilePermanentCost | undefined {
   const cost = castAdditionalCost(card, choices);
-  const opts = cost?.exile_permanent_options;
-  if (!cost || !opts) return undefined;
+  return claimedPermanentCost(cost?.exile_permanent_options, cost?.exile_permanent_label);
+}
+
+// castReturnCost is the return-a-permanent cost a cast pays, if any (#5247,
+// Fear of Isolation): the card's mandatory additional cost. The same shape
+// as the exile-a-permanent cost, one destination over; the prompt after the
+// exile step asks which to return.
+export function castReturnCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedExilePermanentCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  return claimedPermanentCost(cost?.return_options, cost?.return_label);
+}
+
+// claimedPermanentCost reads one "<verb> a permanent you control" picker
+// the server shipped: its clause, its count and the permanents that could
+// pay it. Undefined when the cost has no such picker.
+function claimedPermanentCost(
+  opts: LegalTargetsView | undefined,
+  label: string | undefined,
+): ClaimedExilePermanentCost | undefined {
+  if (!opts) return undefined;
   return {
-    label: cost.exile_permanent_label ?? "a permanent you control",
+    label: label ?? "a permanent you control",
     count: opts.min ?? 1,
     options: opts.cards ?? [],
   };
@@ -1713,6 +1740,10 @@ export interface ClaimedExileCardsCost {
   // #5193: a ticked "you may collect evidence N" offer: any number of the
   // options (count 0), enough once their total mana value reaches this.
   manaValueMin?: number;
+  // #5240: collect evidence X where X is the total mana value of the
+  // targeted permanents (Urgent Necropsy): the picker opens after
+  // targeting, sized by exileCostForTargets.
+  fromTargets?: boolean;
 }
 
 // castExileCardsCost is the exile-cards cost a cast pays, if any: the
@@ -1743,6 +1774,17 @@ export function castExileCardsCost(
   }
   const cost = castAdditionalCost(card, choices);
   if (!cost) return undefined;
+  if (cost.exile_cost_from_targets) {
+    return {
+      label:
+        cost.exile_cost_label ?? "cards from your graveyard with total mana value X or greater",
+      count: 0,
+      options: cost.exile_cost_options ?? [],
+      cost,
+      fromX: false,
+      fromTargets: true,
+    };
+  }
   if (cost.exile_cost_x) {
     const x = choices?.xValue ?? 0;
     return {
@@ -1760,6 +1802,38 @@ export function castExileCardsCost(
     options: cost.exile_cost_options ?? [],
     cost,
     fromX: false,
+  };
+}
+
+// targetsManaValue is the X of "collect evidence X, where X is the total
+// mana value of the permanents this spell targets" (#5240): the sum of the
+// server's mana value for each distinct card picked, so a permanent picked
+// for two clauses counts once. A player, or a card the map does not name,
+// adds nothing — the server sums the same numbers.
+export function targetsManaValue(cost: AdditionalCostView, targets: TargetRef[]): number {
+  const values = cost.exile_cost_target_mana_values ?? {};
+  const seen = new Set<string>();
+  let x = 0;
+  for (const t of targets) {
+    if (t.kind !== "card" || seen.has(t.id)) continue;
+    seen.add(t.id);
+    x += values[t.id] ?? 0;
+  }
+  return x;
+}
+
+// exileCostForTargets sizes a target-sized collect evidence cost by the
+// picked targets: the floor is their total mana value, and the "X" in its
+// label is that number. X = 0 has one answer, no cards, which `exileIDs`
+// carries so the chain asks nothing (exactly as exileXChoice answers X = 0).
+export function exileCostForTargets(
+  cost: ClaimedExileCardsCost,
+  targets: TargetRef[],
+): { cost: ClaimedExileCardsCost; exileIDs?: string[] } {
+  const x = targetsManaValue(cost.cost, targets);
+  if (x <= 0) return { cost: { ...cost, manaValueMin: 0 }, exileIDs: [] };
+  return {
+    cost: { ...cost, manaValueMin: x, label: cost.label.replace(/\bX\b/, String(x)) },
   };
 }
 

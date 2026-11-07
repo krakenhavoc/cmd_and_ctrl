@@ -620,6 +620,22 @@ const (
 	// Emitted only by noteForageLocked (forage.go).
 	EventForage EventKind = "forage"
 
+	// EventCollectEvidence — a player collected evidence (CR 701.59a,
+	// #5223): exiled cards from their graveyard with the total mana value
+	// a collect evidence N or X asked for, as an optional additional cost
+	// to cast a spell, an activated ability's cost or a resolving
+	// effect's "you may collect evidence". Actor is the player, Source the
+	// card whose cost or effect it was, CardIDs the exiled cards in the
+	// order named, and Amount their total mana value. One event per
+	// collection, also for collect evidence 0 with no card exiled
+	// (Incinerator of the Guilty's ruling: "whenever you collect
+	// evidence" still triggers). The exiles emit their own events first;
+	// this one is the keyword action, which "whenever you collect
+	// evidence" (Evidence Examiner, Surveillance Monitor) watches.
+	//
+	// Emitted only by noteCollectEvidenceLocked (collect_evidence.go).
+	EventCollectEvidence EventKind = "collect_evidence"
+
 	// EventBecomesTarget — an object or player became the target of
 	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the
@@ -1416,6 +1432,14 @@ const (
 	// kind a TriggeredAbility names, and by the time this is emitted
 	// the permanent is face up and its catalog entry answers again.
 	// Added in S43 (ADR 0082, #1194).
+	//
+	// Amount is the X chosen as the special action was taken, for a
+	// turn-face-up cost with an {X} in it (CR 107.3d, CR 702.168e,
+	// #5249): "other abilities of that permanent may also refer to X",
+	// and Aurelia's Vindicator's turned-face-up trigger reads it off its
+	// trigger context, as Shark Typhoon's cycle trigger reads
+	// EventCycle's. Zero for a cost with no {X} and for an effect that
+	// turns the permanent up, which pays nothing.
 	EventTurnedFaceUp EventKind = "turned_face_up"
 
 	// EventTurnedFaceDown — the permanent CardID was turned face down
@@ -1886,6 +1910,14 @@ type Event struct {
 	// counters' inherent trigger (CR 728.1a, "life loss from
 	// radiation"; rad_counters.go, #2042). False on every other event.
 	FromRadiation bool `json:"from_radiation,omitempty"`
+
+	// CardIDs are the cards one keyword action moved together, on the
+	// event that names the action rather than a single card: the cards
+	// an EventCollectEvidence exiled, in the order named (#5223). Nil on
+	// every other event. The slice is never mutated after the event is
+	// emitted (the log is shared, #629). Additive within the snapshot
+	// version.
+	CardIDs []uuid.UUID `json:"card_ids,omitempty"`
 
 	// Cause, CauseController and CauseItem say WHAT moved a card, on
 	// the events a routed zone change emits (EventZoneMove, EventMill,

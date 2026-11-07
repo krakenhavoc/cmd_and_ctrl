@@ -1107,6 +1107,12 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/pods/{id}", []string{"route:DELETE /admin/pods/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/pods/"+uuid.New().String(), nil)
 		}},
+		// Cancelling a scheduled table (ADR 0215 §12): the host or an
+		// admin. The fixture has no database, so every caller is told
+		// the feature is off, before the admin decision.
+		{"DELETE /scheduled/{id}", []string{"deleteScheduled"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/scheduled/"+uuid.New().String(), nil)
+		}},
 		// The hot restore of deferred tables (ADR 0148, #3103).
 		{"POST /admin/capacity/restore-deferred", []string{"route:POST /admin/capacity/restore-deferred"}, true, httpProbe("POST", "/admin/capacity/restore-deferred", nil)},
 		// Player reports (#2984).

@@ -103,6 +103,9 @@ func TestAMonotoneConditionReadsNothingOnceItHolds(t *testing.T) {
 		{"celebration", cond(FootprintCondCelebration, 2), func(f condFixture) {
 			f.g.TurnTally.Players = map[uuid.UUID]PlayerTurnTally{f.me.ID: {NonlandPermanentsEntered: 2}}
 		}},
+		{"an artifact sacrificed", cond(FootprintCondArtifactSacrificed, 0), func(f condFixture) {
+			f.g.TurnTally.SacrificedCardTypes = map[string]int{subtypeTallyKey(f.me.ID, "artifact"): 1}
+		}},
 		{"the city's blessing", cond(FootprintCondCitysBlessing, 0), func(f condFixture) { f.me.CitysBlessing = true }},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -138,6 +141,22 @@ func TestNoSpellsCastReadsNothingWhileItHolds(t *testing.T) {
 	f.g.SpellsCastThisTurn = map[uuid.UUID]CastTally{f.me.ID: {Total: 1}}
 	if _, ok := f.access(t, cond(FootprintCondNoSpellsCast, 0), drawOne); ok {
 		t.Error("once a spell was cast the condition is false, and the step is refused")
+	}
+}
+
+// "You haven't cast a spell from your hand this turn" (#5235) is the same
+// argument: a spell cast from anywhere else leaves it true, and once one
+// was cast from the hand it is false and the step is refused.
+func TestNoSpellsCastFromHandReadsNothingWhileItHolds(t *testing.T) {
+	f := newCondFixture(t)
+	f.g.SpellsCastThisTurn = map[uuid.UUID]CastTally{f.me.ID: {Total: 2, NotFromHand: 2}}
+	a := f.mustAccess(t, cond(FootprintCondNoSpellsCastFromHand, 0), drawOne)
+	if len(a.reads) != 0 || a.boardReads || a.monarchRead {
+		t.Errorf("a held condition read %v (board %v, monarch %v), want nothing", a.reads, a.boardReads, a.monarchRead)
+	}
+	f.g.SpellsCastThisTurn = map[uuid.UUID]CastTally{f.me.ID: {Total: 3, NotFromHand: 2}}
+	if _, ok := f.access(t, cond(FootprintCondNoSpellsCastFromHand, 0), drawOne); ok {
+		t.Error("once a spell was cast from the hand the condition is false, and the step is refused")
 	}
 }
 

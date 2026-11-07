@@ -114,12 +114,20 @@ const (
 	// battlefield under the item's controller's control this turn
 	// (celebration, #5164). The turn's entry tally only rises.
 	FootprintCondCelebration FootprintCond = "celebration"
+	// FootprintCondArtifactSacrificed: the item's controller sacrificed
+	// an artifact this turn (#5224). The turn's sacrifice tally only
+	// rises.
+	FootprintCondArtifactSacrificed FootprintCond = "artifact_sacrificed"
 	// FootprintCondCitysBlessing: the item's controller has the city's
 	// blessing, which is never lost once had (CR 702.131c).
 	FootprintCondCitysBlessing FootprintCond = "citys_blessing"
 	// FootprintCondNoSpellsCast: the item's controller cast no spells
 	// this turn (Edgar). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
+	// FootprintCondNoSpellsCastFromHand: the item's controller cast no
+	// spell from their hand this turn (#5235, Outlaws of Thunder
+	// Junction). No step in the vocabulary casts a spell.
+	FootprintCondNoSpellsCastFromHand FootprintCond = "no_spells_cast_from_hand"
 	// FootprintCondCastSpellMV: the item's controller has cast a spell
 	// with mana value N or greater this turn (Rhino, Barreling Brute).
 	// No step in the vocabulary casts a spell.
@@ -741,14 +749,15 @@ func graveyardConditionSees(a *triggerAccess) bool {
 //
 //   - A tally that only rises this turn (life gained, life lost, a
 //     creature died, a permanent returned to hand, nonland permanents
-//     entered) and a designation that is never lost (the city's
+//     entered, an artifact sacrificed) and a designation that is never lost (the city's
 //     blessing) cannot be made false: once it holds, it holds until the
 //     batch has resolved, since a turn cannot end with the batch still on
 //     the stack. So a condition that holds now reads nothing the batch
 //     can change. One that does not hold yet could be made true by
 //     another item, so the step is refused.
-//   - "You cast no spells this turn" can only become false, by a cast,
-//     and no step in the vocabulary casts. The same rule applies: it
+//   - "You cast no spells this turn", and "you haven't cast a spell from
+//     your hand this turn", can only become false, by a cast, and no
+//     step in the vocabulary casts. The same rule applies: it
 //     reads nothing while it holds, and is refused once it does not.
 //   - "You attacked this turn" (raid) counts attackers declared, a
 //     turn-based action (CR 508.1); no item on the stack declares one, so
@@ -783,10 +792,14 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.PermanentsReturnedToHand > 0
 	case FootprintCondCelebration:
 		return tally.NonlandPermanentsEntered >= atLeast
+	case FootprintCondArtifactSacrificed:
+		return g.SacrificedWithCardTypeThisTurn(you, "artifact") > 0
 	case FootprintCondCitysBlessing:
 		return g.CitysBlessingForEffect(you)
 	case FootprintCondNoSpellsCast:
 		return g.CastTallyFor(you).Total == 0
+	case FootprintCondNoSpellsCastFromHand:
+		return g.CastTallyFor(you).FromHand() == 0
 	case FootprintCondCastSpellMV:
 		return g.CastTallyFor(you).MaxManaValue >= s.N
 	case FootprintCondAttacked:
@@ -1702,6 +1715,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"UntapOptOuts": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
 	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert, "IgnorableEffect": defFieldInert,
+	"TurnFaceUpRestrictions": defFieldInert,
 	"EntryRestrictions":      defFieldInert,
 	"ActivationRestrictions": defFieldInert, "ActivationTimings": defFieldInert,
 	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert, "CantBeCopied": defFieldInert,
@@ -1723,7 +1737,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 

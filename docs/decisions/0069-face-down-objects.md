@@ -144,6 +144,15 @@ entered:
 > through `Card.HiddenBy` and kept current by a state-check sweep as that
 > permanent changes hands; CR 406.3 keeps anyone who has already looked.
 
+> **2026-11-06 — a live viewer beside the table (#5251).** "You may look at
+> face-down creatures your opponents control any time" (Found Footage's
+> static, Lumbering Laundry's until end of turn) adds the grant's holder as a
+> viewer of every face-down creature someone else controls. It is not a row:
+> the answer changes without the object moving, so it is derived per frame
+> (`game.FaceDownLookGrantsLocked`) the way ADR 0199 derives a revealed hand,
+> and never written into `KnownBy`. The projection makes the holder's seat a
+> knower and never counts it toward a spectator's "every seat knows it".
+
 `faceDownViewersLocked(c)` is that table and it is called from exactly the two
 places that put a card into a face-down state (the exile route, decision 5, and
 the battlefield entry, decision 7). The old `ClearKnown()` is the

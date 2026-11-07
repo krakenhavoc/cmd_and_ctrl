@@ -104,6 +104,18 @@ type CounterUnlessPaidPrompt struct {
 	Then  PayUnlessElse
 	Carry []uuid.UUID
 
+	// Dest is where the decline puts a spell it counters instead of its
+	// owner's graveyard (#5236), as CounterTargetToZoneForEffect's dst is
+	// for a plain counter (#1230): Syncopate's and No More Lies's "if that
+	// spell is countered this way, exile it instead of putting it into its
+	// owner's graveyard" is ZoneRef{Kind: ZoneExile}. The zero value is
+	// the graveyard. It rides the prompt as the decline's key
+	// (counterGuardedDeclineTo), so the prompt needs no field of its own
+	// and a table waiting on the payer stays a restore point; a
+	// destination with no keyed decline is refused. Never beside a Then:
+	// a card with its own branches counters in its own decline.
+	Dest ZoneRef
+
 	// Asked is the asking stack item as data (NewAskedItem), handed to a
 	// keyed branch as PayUnlessAnswer.Item (#4264). Nil when the branch
 	// reads none.
@@ -161,6 +173,20 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	if p.LifeCost < 0 {
 		return ErrInvalidParam
 	}
+	if p.Dest.Kind != "" && p.Then.key != "" {
+		return fmt.Errorf("%w: counter-unless-pays with both a destination and branches of its own", ErrInvalidParam)
+	}
+	// #4264: the registered branches, or the engine's own for the plain
+	// "counter that spell" (to Dest, #5236), leave the prompt without a
+	// closure.
+	then, carry := p.Then, p.Carry
+	if then.key == "" {
+		decline, err := counterGuardedDeclineTo(p.Dest)
+		if err != nil {
+			return err
+		}
+		then, carry = decline, nil
+	}
 	guarded := g.StackItemForEffect(p.StackItem)
 	if guarded == nil {
 		return nil
@@ -168,12 +194,6 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	chooser := p.Chooser
 	if chooser == uuid.Nil {
 		chooser = guarded.Controller
-	}
-	// #4264: the registered branches, or the engine's own for the plain
-	// "counter that spell", leave the prompt without a closure.
-	then, carry := p.Then, p.Carry
-	if then.key == "" {
-		then, carry = counterGuardedDecline, nil
 	}
 	// The waterbend clause rides the prompt as data, rebuilt by its
 	// registered builder (RegisterTapCost). #4361: there is no frame left
@@ -198,17 +218,51 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 // so the prompt needs no closure and a table waiting on it is a restore
 // point. A spell that has left the stack by the answer is not an error.
 var counterGuardedDecline = RegisterPayUnlessElse("pay-unless/counter-guarded", func(g *Game, r PayUnlessAnswer) error {
-	return g.counterIfStillOnStackLocked(r.Guards)
+	return g.counterIfStillOnStackLocked(r.Guards, ZoneRef{})
 })
 
-// counterIfStillOnStackLocked counters `stackID` unless it has
-// already left the stack, in which case the "unless" clause bought
-// off nothing and that is not an error. Caller must hold g.mu.
-func (g *Game) counterIfStillOnStackLocked(stackID uuid.UUID) error {
+// counterGuardedExileDecline is counterGuardedDecline with the countered
+// spell exiled instead of put into its owner's graveyard (#5236):
+// Syncopate's and No More Lies's "if that spell is countered this way,
+// exile it". The destination is the key, so a restore point taken while
+// the payer is deciding still exiles on a decline, and an older binary
+// refuses the file (checkEffectKeys) rather than send the spell to the
+// graveyard. The key is an on-disk identity: never renamed, never reused.
+var counterGuardedExileDecline = RegisterPayUnlessElse("pay-unless/counter-guarded-exile", func(g *Game, r PayUnlessAnswer) error {
+	return g.counterIfStillOnStackLocked(r.Guards, ZoneRef{Kind: ZoneExile})
+})
+
+// counterGuardedDeclineTo is the engine's keyed "counter that spell" for
+// a countered spell's destination: the graveyard for the zero ZoneRef,
+// exile for ZoneExile. "Its owner's" is the only owner a printed
+// destination names, so a ref naming a player, or a zone with no keyed
+// decline yet (Remand's hand, Memory Lapse's library), is refused.
+func counterGuardedDeclineTo(dst ZoneRef) (PayUnlessElse, error) {
+	switch dst {
+	case ZoneRef{}:
+		return counterGuardedDecline, nil
+	case ZoneRef{Kind: ZoneExile}:
+		return counterGuardedExileDecline, nil
+	}
+	return PayUnlessElse{}, fmt.Errorf("%w: counter-unless-pays to %q has no keyed decline", ErrInvalidParam, dst.Kind)
+}
+
+// counterIfStillOnStackLocked counters `stackID`, to `dst` when its Kind
+// is set (CounterTargetToZoneForEffect), unless it has already left the
+// stack, in which case the "unless" clause bought off nothing and that
+// is not an error. Either door leaves a spell that can't be countered
+// on the stack, neither countered nor moved. Caller must hold g.mu.
+func (g *Game) counterIfStillOnStackLocked(stackID uuid.UUID, dst ZoneRef) error {
 	if g.StackItemForEffect(stackID) == nil {
 		return nil
 	}
-	if err := g.CounterTargetForEffect(stackID); err != nil && !errors.Is(err, ErrCardNotOnStack) {
+	var err error
+	if dst.Kind == "" {
+		err = g.CounterTargetForEffect(stackID)
+	} else {
+		err = g.CounterTargetToZoneForEffect(stackID, dst)
+	}
+	if err != nil && !errors.Is(err, ErrCardNotOnStack) {
 		return err
 	}
 	return nil
@@ -224,7 +278,7 @@ func (g *Game) counterIfStillOnStackLocked(stackID uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) CounterIfStillOnStackForEffect(stackID uuid.UUID) error {
-	return g.counterIfStillOnStackLocked(stackID)
+	return g.counterIfStillOnStackLocked(stackID, ZoneRef{})
 }
 
 // choiceGuardsALiveStackItem reports whether `c` is a prompt whose

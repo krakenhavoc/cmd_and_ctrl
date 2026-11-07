@@ -1001,6 +1001,22 @@ type ActivatedAbilityShape struct {
 	//     and the payment price it from one function.
 	PowerUp bool
 
+	// OnlyOnce is the ability's own "Activate only once." without the
+	// exhaust keyword (#5221, CR 602.1b / 602.5b): Possessed Goat,
+	// Haunted Screen. Once per OBJECT for as long as it stays one, read
+	// from the per-object, per-label record exhaust reads, so a flicker
+	// makes a new object that may activate it again (CR 400.7) and a
+	// restore keeps a spent one spent.
+	//
+	// Its own bit rather than Exhaust, because the keyword is more than
+	// the limit: "whenever you activate an exhaust ability", exhaust
+	// cost modifiers and Elvish Refueler's permission all read Exhaust,
+	// and none of them may see this. Game.OnlyOnceSpent is the gate
+	// (activate_only_once.go); ActivateCatalogAbility
+	// (ErrAbilityActivatedOnce), internal/legal and the view
+	// (`once_used`) read it.
+	OnlyOnce bool
+
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
@@ -1647,6 +1663,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the same record and key as exhaust, before anything is paid.
 	if g.PowerUpUsed(source, ab) {
 		return ErrPowerUpUsed
+	}
+	// #5221, CR 602.5b: a plain "Activate only once", from the same
+	// record and key, before anything is paid.
+	if g.OnlyOnceSpent(cardID, ab) {
+		return ErrAbilityActivatedOnce
 	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
 	// once each turn" (Mairsil). Keyed, like exhaust, before anything is
@@ -2486,6 +2507,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.Forage {
 		paid.Foraged = true
 		g.noteForageLocked(playerID, cardID)
+	}
+	// #5223, CR 701.59a: and a "Collect evidence N" component, paid with
+	// the exiles above (Forensic Researcher), is a collection that
+	// "whenever you collect evidence" sees.
+	if ab.Cost.ExileCards.IsCollectEvidence() {
+		g.noteCollectEvidenceLocked(playerID, cardID, exiles)
 	}
 
 	// --- announce -----------------------------------------------

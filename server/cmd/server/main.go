@@ -227,6 +227,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
@@ -937,7 +938,14 @@ func main() {
 		// Mountains stand-in sub-PR 4 shipped while the real decks
 		// were still being built. See botdecks.go.
 		BotDecks: botDeckCatalog{},
+		// Scheduled tables (ADR 0215 slice 2), nil with no database.
+		Schedule: newScheduleStore(database),
 	}
+	// ADR 0215: the scheduler opens each plan's doors 15 minutes before
+	// its start and runs its held seats. After the restore, so its first
+	// tick puts the holds back on the restored tables; it needs the
+	// Config for the bots and the last setup.
+	go l.RunSchedule(ctx, lobbyCfg)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -1757,6 +1765,15 @@ func newPodStore(database *db.DB, s *social.Store) *pods.Store {
 		return nil
 	}
 	return pods.NewStore(database, s)
+}
+
+// newScheduleStore is ADR 0215's scheduled tables (migration 0034), or
+// nil with no database, where nobody is signed in to schedule one.
+func newScheduleStore(database *db.DB) *schedule.Store {
+	if database == nil {
+		return nil
+	}
+	return schedule.NewStore(database)
 }
 
 func newTableSetupStore(database *db.DB) tablesetups.Store {

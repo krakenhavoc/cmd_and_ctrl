@@ -420,6 +420,13 @@ var (
 	// exhaust gate, so nothing is paid.
 	ErrPowerUpUsed = errors.New("game: this power-up ability has already been activated")
 
+	// ErrAbilityActivatedOnce is returned by ActivateCatalogAbility when
+	// an ability that says "Activate only once" (CR 602.5b, #5221) has
+	// already been activated by this object. Its own error rather than
+	// ErrAbilityExhausted, because the ability is not an exhaust
+	// ability. Checked beside the exhaust gate, so nothing is paid.
+	ErrAbilityActivatedOnce = errors.New("game: this ability can be activated only once, and it has been")
+
 	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
 	// ActivateManaAbility when the announcement names an ability by a
 	// ref (ADR 0093 Decision 5) and the row at its index is no longer

@@ -173,9 +173,11 @@ body heroic-sacrifice/its-counters-and-draw
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body immortal-coil/exile-per-prevented
+body incinerator-of-the-guilty/damage
 body initiative/take
 body initiative/venture
 body inkshield/inklings
+body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
 body jace-reality-sculptor/attacker-gets-minus-five
@@ -229,6 +231,7 @@ body phelia/return
 body phyrexian-hydra/minus-counters-per-prevented
 body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
+body pit-automaton/copy-exhaust
 body planechase/planeswalk
 body portent/draw
 body power-pack/cast-exiled-free
@@ -256,6 +259,7 @@ body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
 body primal-witchstalker/land
+body prishes-wanderings/counter
 body protean-hydra/two-counters
 body prowess/pump
 body pygmy-hippo/add-colorless
@@ -450,6 +454,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
+choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-top-face-down-linked
 choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expressive-iteration-bottom
@@ -481,6 +486,7 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
+choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
@@ -575,6 +581,8 @@ choose choose-cards/mairsil-cage
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
+choose choose-cards/memories-returning-bottom
+choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
 choose choose-cards/mill-then-take-first-contact-pick
@@ -699,6 +707,7 @@ choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/surtland-elementalist-cast
+choose choose-cards/surveillance-monitor-collect-evidence
 choose choose-cards/sylvan-library-chosen
 choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
@@ -839,6 +848,7 @@ condition loki-laufeyson/next-cast
 condition ltb/the-listed-object
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
@@ -906,6 +916,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
@@ -933,6 +944,7 @@ confirm confirm/mystic-remora-draw
 confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
+confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
 confirm confirm/ophidian-draw
@@ -1058,6 +1070,7 @@ number number/die-young-minus-one-for-each
 number number/expel-the-interlopers-destroy-power-at-least
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
+number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/necrodominance-draw-that-many
@@ -1137,6 +1150,8 @@ option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
 option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
+option option-pick/manifold-mouse-keyword
+option option-pick/memories-returning-opponent
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
@@ -1238,6 +1253,7 @@ payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
 payunless pay-unless/contract-hero-pump
 payunless pay-unless/counter-guarded
+payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/curious-forager-return
@@ -1344,6 +1360,7 @@ payunless pay-unless/wolfbat-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/nightsnare-discard-two
+pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/salt-vampire-draw
@@ -1449,6 +1466,7 @@ run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/liliana-dreadhorde-general-keep
+run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
@@ -2005,6 +2023,7 @@ tail ostrich-horse/after-mill
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made
+tail oviya-automech-artisan/two-counters-on-an-artifact
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
@@ -2023,9 +2042,11 @@ tail portent/ask-shuffle
 tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
+tail prishes-wanderings/searched
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
+tail push-the-limit/sacrifice-animate-haste
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
@@ -2077,6 +2098,7 @@ tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
+tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
@@ -2248,6 +2270,8 @@ tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
 tail then/mazemind-tome-gain-life
 tail then/megatron-when-you-do
+tail then/memories-returning-bottomed
+tail then/memories-returning-taken
 tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
@@ -2369,6 +2393,7 @@ tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail waste-management/rogue-per-creature
+tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
 tail will-of-the-sultai/after-mill

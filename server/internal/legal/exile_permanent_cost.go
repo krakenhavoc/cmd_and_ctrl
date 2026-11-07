@@ -26,3 +26,22 @@ func (e *enumerator) exileCastPayment(castID uuid.UUID, mandatory *game.Addition
 	}
 	return sets[0], true
 }
+
+// returnCastPayment is the permanent(s) a mandatory return-a-permanent
+// additional cost names (#5247, Fear of Isolation): exileCastPayment one
+// destination over, through the activation's own walk and payment search
+// (ReturnToHandOptionsForEffect, returnPayments), so a payment this builds
+// is one validateReturnToHandCostLocked accepts. ONE payment, the policy's
+// cheapest-fuel-first pick. ok is false when the seat has nothing to
+// return, which drops the cast from the move list (CR 118.3).
+func (e *enumerator) returnCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost) (ids []uuid.UUID, ok bool) {
+	if mandatory == nil || mandatory.ReturnToHand.Empty() {
+		return nil, true
+	}
+	rc := mandatory.ReturnToHand
+	sets := e.returnPayments(e.g.ReturnToHandOptionsForEffect(e.seat, castID, rc), rc, castID)
+	if len(sets) == 0 {
+		return nil, false
+	}
+	return sets[0], true
+}

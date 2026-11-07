@@ -748,6 +748,11 @@ func dispatch(g *game.Game, a Action) error {
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #5247 — the permanents a mandatory return-a-permanent
+			// additional cost returns to their owners' hands ("return a
+			// permanent you control to its owner's hand"). The name an
+			// activate_ability already uses.
+			ReturnIDs []string `json:"return_ids,omitempty"`
 			// #3175 — the hand cards a mandatory hand-exile additional
 			// cost exiles ("you may exile any number of blue cards from
 			// your hand"). Any number, none included.
@@ -925,6 +930,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
+			{"return_ids", p.ReturnIDs, &params.ReturnIDs},
 			{"exile_from_hand_ids", p.ExileFromHandIDs, &params.ExileFromHandIDs},
 			{"exile_ids", p.ExileIDs, &params.ExileIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
@@ -2876,6 +2882,10 @@ func dispatch(g *game.Game, a Action) error {
 			// sacrifices as its cost. Required for that kind, refused
 			// for every other.
 			SacrificeID string `json:"sacrifice_id,omitempty"`
+			// #5249, CR 107.3d: the X for an {X} in a turn_face_up
+			// cost (Aurelia's Vindicator's disguise {X}{3}{W}), chosen
+			// as the action is taken. Refused on any other cost.
+			XValue int `json:"x_value,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2911,6 +2921,7 @@ func dispatch(g *game.Game, a Action) error {
 			Cost:    p.Cost,
 			Door:    door,
 			Route:   route,
+			XValue:  p.XValue,
 
 			SacrificeID: sacrificeID,
 		})

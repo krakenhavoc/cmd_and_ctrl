@@ -150,6 +150,14 @@ var Inventory = join(
 		"pod_id", "user_id", "invited_by", "created_at", "declined_at"),
 	cols("pod_suggestion_dismissals", Deleted, "the person's Not now on a suggested pod; another person's row holds only a one-way hash of a set that included them, names nobody and goes in 180 days",
 		"user_id", "group_key", "dismissed_at"),
+	// ADR 0215 privacy section (slice 2, migration 0034): scheduled
+	// tables. A host's plans are theirs and go whole, cancelling the
+	// upcoming ones; the person's RSVPs go by account and by Discord id.
+	cols("scheduled_tables", Deleted, "every plan the person hosts, with its list: the upcoming ones are cancelled by it (owner decision 14), and a table that already opened stays an ordinary table",
+		"id", "host_user_id", "name", "starts_at", "length_minutes", "zone", "players", "options",
+		"status", "moves", "discord_event_id", "game_id", "created_at", "updated_at"),
+	cols("scheduled_rsvps", Deleted, "every seat and waitlist place of the person's, found by their account and by their Discord id; a plan still waiting for its doors deals its seats again",
+		"schedule_id", "discord_id", "user_id", "source", "state", "rsvp_at", "held_until", "updated_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 

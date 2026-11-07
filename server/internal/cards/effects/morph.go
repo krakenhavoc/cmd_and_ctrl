@@ -81,6 +81,28 @@ func faceDownCast(key, printed string, kind game.FaceDownKind, faceUpCost string
 	}
 }
 
+// AsTurnedFaceUp adds the card's printed "As this creature is turned
+// face up, put N +1/+1 counters on it" to its morph, megamorph or
+// disguise declaration (CR 614.1e, #5237):
+//
+//	AlternativeCosts: []game.AlternativeCost{
+//		AsTurnedFaceUp(Disguise("{5}{U}"), game.AsTurnedFaceUpCounters{N: 4}),
+//	},
+//
+// A computed count goes in Count instead of N. The engine applies it as
+// the permanent turns face up, by any route, before any "when this is
+// turned face up" trigger sees it (CR 708.11). `ac` is copied, never
+// modified.
+func AsTurnedFaceUp(ac game.AlternativeCost, up game.AsTurnedFaceUpCounters) game.AlternativeCost {
+	if ac.FaceDown == nil {
+		panic("effects.AsTurnedFaceUp: " + ac.Key + " is not a face-down cast")
+	}
+	fd := *ac.FaceDown
+	fd.AsTurnedFaceUp = &up
+	ac.FaceDown = &fd
+	return ac
+}
+
 // WhenThisIsTurnedFaceUp — "When this permanent is turned face up,
 // ..." (CR 708.8). Willbender, Kadena's Silencer, the whole
 // morph-trigger family.

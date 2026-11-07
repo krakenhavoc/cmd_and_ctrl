@@ -274,6 +274,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
 	{field: "CastRestrictions", fallback: "Casting restriction", ownLabel: true},
 	{field: "LandPlayRestrictions", fallback: "Land-play restriction", ownLabel: true},
+	{field: "TurnFaceUpRestrictions", fallback: "Stops permanents being turned face up", ownLabel: true},
 	{field: "EntryRestrictions", fallback: "Can't enter the battlefield", ownLabel: true},
 	{field: "ActivationRestrictions", fallback: "Activation restriction", ownLabel: true},
 	{field: "ActivationTimings", fallback: "Changes when abilities can be activated", ownLabel: true},
@@ -310,6 +311,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
 	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
+	{field: "LooksAtFaceDownCreatures", label: boolRow("You may look at face-down creatures your opponents control any time.")},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in

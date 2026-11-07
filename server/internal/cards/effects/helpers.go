@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -1233,11 +1234,13 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 // one that left in response is skipped (CR 608.2b). Curtains' Call's
 // "two target creatures" and Wear Down's gift-promised "two target
 // artifacts and/or enchantments" — and the one-target unpromised Wear
-// Down, which is the same loop over one slot.
+// Down, which is the same loop over one slot. A permanent chosen for two
+// of the spell's "target" words (CR 115.3, Urgent Necropsy's artifact
+// creature) is destroyed once.
 func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) {
+		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) || slices.Contains(ids, t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)
@@ -1709,12 +1712,25 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 // on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
 // "enters with".
 func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 1)
+}
+
+// returnTargetCreatureWithTwoPlusOneCounters is the same OnResolve with
+// "two additional +1/+1 counters on it" (Evil Reawakened).
+func returnTargetCreatureWithTwoPlusOneCounters(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 2)
+}
+
+// returnTargetCreatureWithPlusOneCounters returns the first legal target
+// from the graveyard under the caster's control with n +1/+1 counters as
+// it enters (CR 614.1c).
+func returnTargetCreatureWithPlusOneCounters(ctx *Context, n int) error {
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
 		return nil
 	}
 	_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(ts[0].ID, ctx.Controller(), false,
-		map[string]int{game.CounterPlusOne: 1})
+		map[string]int{game.CounterPlusOne: n})
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil // CR 400.7: it left the graveyard in response
 	}
@@ -1739,4 +1755,16 @@ func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
+}
+
+// bounceTheTargetThenDraw is "Return target nonland permanent to its
+// owner's hand. Draw a card." as a spell's whole OnResolve (Fantastic
+// Bounce, Johann's Stopgap): the bounce, then the draw as a keyed tail
+// that waits behind it, so a replacement or an order prompt on the
+// return is answered before the card is drawn.
+func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }

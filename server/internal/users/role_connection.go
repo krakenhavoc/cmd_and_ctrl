@@ -2,7 +2,7 @@ package users
 
 // role_connection.go is the user store's half of ADR 0163 §4: the sealed
 // refresh token of a person's Linked Roles grant
-// (identities.role_connection_token, migration 0034), kept apart from
+// (identities.role_connection_token, migration 0035), kept apart from
 // the sign-in grant's refresh_token, which every sign-in replaces.
 
 import (

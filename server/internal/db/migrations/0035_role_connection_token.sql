@@ -1,4 +1,4 @@
--- Migration 0034: the Discord Linked Roles grant (ADR 0163 §4, #3323).
+-- Migration 0035: the Discord Linked Roles grant (ADR 0163 §4, #3323).
 --
 --   identities.role_connection_token  the OAuth refresh token of the
 --                                      person's Linked Roles grant

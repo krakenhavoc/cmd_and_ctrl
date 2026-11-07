@@ -4157,3 +4157,44 @@ moved, cards named without the offer refused, declining, an MDFC and an adventur
 effect form's walk), `cards/effects/mkm_collect_evidence_cards_test.go` (each card, both branches of "if evidence was
 collected", the Register refusals, the view row and the enumerator reading the gate), and the client's
 `collectEvidence.test.ts`.
+
+## Amendment 2026-11-06 ([#5223](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5223)): "whenever you collect evidence" and collect evidence X
+
+Two pieces Decision 80 left out: "Whenever you collect evidence, …" (Evidence Examiner, Surveillance Monitor) and
+"you may collect evidence X. When you do, … X …" (Incinerator of the Guilty). Their rulings say the payoff triggers on
+any collection its controller makes, and that collect evidence 0 is a collection (with no card exiled). CR text
+checked against the 2026-09-25 edition (CR 107.1b, 107.3f, 603.12, 608.2d, 701.59a-b).
+
+### Decision 81: one event per collection, and X chosen as the effect resolves
+
+`game.EventCollectEvidence` is the keyword action, emitted once per collection after the cards are exiled, by each
+owner Decision 80 has: the cast path for an announced `OptionalCollectEvidence`, the activation for a
+`CollectEvidenceN` component, and the effect form (`Game.NoteCollectEvidenceForEffect`, called by
+`RegisterCollectEvidence` and `RegisterCollectEvidenceX`). Actor is the player, Source the card, `Event.CardIDs` the
+exiled cards in the order named and `Amount` their total mana value. `effects.WheneverYouCollectEvidence` watches it.
+The public log stays silent on it: the exiles are its lines.
+
+Collect evidence X as an effect is `effects.RegisterCollectEvidenceX`: a keyed yes/no (always asked, since X = 0 is
+always possible), a keyed choose_cards over the whole graveyard (any number, none included), then a keyed number
+from 0 to the chosen cards' total (not asked when the total is 0). Asking for the cards before X reaches the same
+outcomes the rule allows, since nothing can happen between the answers. The gate is
+`Game.CollectEvidenceXMetForEffect`, Decision 80's `FloorMet` with the floor at X, and the number prompt's ceiling
+is the same total, so an X above it is refused. Every prompt is keyed, so a table waiting on one is a restore point.
+
+Not built: collect evidence X as a cast's additional cost whose X is the total mana value of the spell's targets
+(Urgent Necropsy). Its floor is known only once the targets are chosen, and the client's cost pickers and the bot's
+cast payment are both settled before the targets. Built since (#5240): see [ADR 0021's 2026-11-06
+amendment](0021-additional-costs.md#amendment-2026-11-06-a-cost-sized-by-the-chosen-targets-5240).
+
+### Snapshot, closure and ledger
+
+`Event.CardIDs` (`card_ids`) is a new optional field, additive within v9 (`-update-shape`). No `Game` route to a
+func is added. The three keyed prompts of Incinerator of the Guilty, its reflexive body and the two new collect
+evidence picks are on-disk keys in the ledger.
+
+### Cards and tests
+
+Evidence Examiner, Surveillance Monitor and Incinerator of the Guilty ship Full. `game/collect_evidence_event_test.go`
+(one event from the cost form with the cards and the total, none when declined or refused, the X gate) and
+`cards/effects/mkm_collect_evidence_x_cards_test.go` (one event from each of the three forms, the cards' rules, X = 0
+on an empty graveyard and with cards, an X above the total refused, declining).

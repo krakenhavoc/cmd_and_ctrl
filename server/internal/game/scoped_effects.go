@@ -1116,6 +1116,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModRollExtraDieIgnoreOne: {reader: readerReplacement},
 	// #4973: Brad Boimler's one more counter of each kind this turn.
 	ModOneMoreCounter: {reader: readerReplacement},
+	// #5235: Prairie Dog's one more +1/+1 counter this turn.
+	ModOneMorePlusOneCounter: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -1145,6 +1147,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #5251: Lumbering Laundry's look at face-down creatures, read by
+	// the view (face_down_look.go).
+	ModLookAtFaceDownCreatures: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},

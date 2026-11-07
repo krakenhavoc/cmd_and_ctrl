@@ -23,8 +23,9 @@ import (
 //   - Celebration(g, you) for a spell's or ability's own resolution.
 //   - SelfPumpWhileCelebration for "this creature gets +p/+t as long as
 //     …", a layer 7c static.
-//   - WheneverThisAttacksIfCelebration and
-//     AtBeginningOfYourCombatIfCelebration are the trigger shapes: an
+//   - WheneverThisAttacksIfCelebration,
+//     AtBeginningOfYourCombatIfCelebration and
+//     AtYourEndStepIfCelebration are the trigger shapes: an
 //     intervening "if" (CR 603.4), checked as the trigger fires and
 //     again as it resolves (InterveningIf with CondCelebration).
 
@@ -96,4 +97,13 @@ func SelfKeywordWhileCelebration(keyword string) game.StaticAbility {
 	ab := KeywordGrant(whileYouHave(Celebration, selfCreature), keyword)
 	ab.Label = "Has " + keyword + " as long as two or more nonland permanents entered the battlefield under your control this turn."
 	return ab
+}
+
+// AtYourEndStepIfCelebration is "Celebration — At the beginning of your
+// end step, if two or more nonland permanents entered the battlefield
+// under your control this turn, …" (Lady of Laughter): the intervening
+// "if" is checked as the end step begins and again as the trigger
+// resolves (CR 603.4).
+func AtYourEndStepIfCelebration(label string, effect Effect) game.TriggeredAbility {
+	return InterveningIf(CondCelebration{}, On(game.EventBeginEndStep, AllOf(ByYou, YouHaveCelebration), label, effect))
 }

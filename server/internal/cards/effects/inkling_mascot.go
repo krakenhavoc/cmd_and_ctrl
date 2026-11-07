@@ -24,7 +24,7 @@ func init() {
 				"Inkling Mascot — Repartee: gains flying until end of turn, surveil 1",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					if err := socB27ThisGetsAndGains(ctx, 0, 0, "flying", "Inkling Mascot"); err != nil {
+					if err := socB27ThisGetsAndGains(ctx, 0, "flying", "Inkling Mascot"); err != nil {
 						return err
 					}
 					return Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)

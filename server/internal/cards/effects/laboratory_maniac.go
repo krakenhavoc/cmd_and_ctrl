@@ -51,17 +51,8 @@ func init() {
 // the same instruction is replaced into a no-op the same way.
 func WinInsteadOfDrawingFromAnEmptyLibrary(name string) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventDrawCard},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil {
-				return false
-			}
-			if ev.DrawPlayer != src.Controller {
-				return false
-			}
-			p := g.PlayerByIDForEffect(ev.DrawPlayer)
-			return p != nil && !p.Eliminated && p.Library.Size() == 0
-		},
+		Watches:   []game.EventKind{game.EventDrawCard},
+		AppliesTo: youWouldDrawFromAnEmptyLibrary,
 		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 			ev.Cancel()
 			_, err := g.WinTheGameForEffect(ev.DrawPlayer, src.InstanceID)

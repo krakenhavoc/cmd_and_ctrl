@@ -128,6 +128,18 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	return t
 }
 
+// TriggersOnlyOnce is "This ability triggers only once." (Acrobatic
+// Cheerleader, #5245): once for the life of the object, not once each
+// turn (that is TriggersOnlyOnceEachTurn). It sets
+// game.TriggeredAbility.OnlyOnce, and the engine's harvester keeps the
+// per-object record: the first trigger spends it whatever becomes of
+// the item, a doubler adds no second instance, a new object after a
+// zone change may trigger again (CR 400.7), and a restore keeps it.
+func TriggersOnlyOnce(t game.TriggeredAbility) game.TriggeredAbility {
+	t.OnlyOnce = true
+	return t
+}
+
 // DamageToFirstTarget is "this deals N damage to any target" as a
 // trigger's Effect: N damage from the item's source to its first target,
 // or nothing when it has none (Omnath, Locus of Rage; Valakut).
@@ -706,6 +718,12 @@ func WheneverACreatureYouControlDies(label string, effect Effect) game.Triggered
 // damage to a player".
 func WheneverThisDealsCombatDamageToAPlayer(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventDealDamage, ThisDealtCombatDamageToAPlayer, label, effect)
+}
+
+// WheneverThisDealsDamageToAnOpponent — "Whenever ~ deals damage to an
+// opponent" (Looter il-Kor, Thieving Otter).
+func WheneverThisDealsDamageToAnOpponent(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventDealDamage, ThisDealtDamageToAnOpponent, label, effect)
 }
 
 // AtYourStep — "At the beginning of your <step>" for any step. The
@@ -1333,4 +1351,56 @@ func AnotherCreatureWithPower2OrLessEnteredUnderYourControl(ev game.Event, sourc
 func ACreatureYouControlWasTurnedFaceUp(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.Controller == source.Controller && c.IsCreature()
+}
+
+// ThisAttackedAlone is "whenever this creature attacks alone" (Intrepid
+// Trufflesnout): the source was declared as an attacker and is the only
+// creature declared as one (CR 506.5), read through game.AttackedAlone as
+// the attack trigger is harvested, after the whole declaration.
+func ThisAttackedAlone(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
+	return ThisAttacked(ev, source, c, g) && game.AttackedAlone(g)
+}
+
+// ASourceYouControlDealtNoncombatDamageToAnOpponent — "Whenever a source
+// you control deals noncombat damage to an opponent" (Thor, Guardian of
+// Midgard; Niv-Mizzet, Visionary). One trigger per damage event; "a source
+// you control" is read off the event (b34DamageSourceController: a
+// permanent, or the spell still on the stack), and the amount is the
+// event's.
+func ASourceYouControlDealtNoncombatDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Combat || ev.Amount <= 0 || ev.Target == source.Controller || g.PlayerByIDForEffect(ev.Target) == nil {
+		return false
+	}
+	controller, ok := b34DamageSourceController(ev, g)
+	return ok && controller == source.Controller
+}
+
+// ADetectiveEnteredOrWasTurnedFaceUp is "whenever [this creature or]
+// another Detective you control enters and whenever a Detective you
+// control is turned face up" (Perimeter Enforcer, Projektor Inspector),
+// one ability on two event kinds (OnAny over EventETB and
+// EventTurnedFaceUp). `self` admits this permanent's own entry, whatever
+// its types ("this creature or another Detective"). A face-down permanent
+// has no creature types (CR 708.2a), so a disguised Detective entering
+// does not count and turning it face up does: the permanent is face up
+// by the time that event is emitted (CR 708.8). "Detective" is a word of
+// the source's text (CR 612.2).
+func ADetectiveEnteredOrWasTurnedFaceUp(self bool) When {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		var (
+			c  game.Card
+			ok bool
+		)
+		switch ev.Kind {
+		case game.EventETB:
+			if ev.CardID == source.InstanceID {
+				return self
+			}
+			c, ok = enteredUnderYourControl(ev, source, g, true)
+		case game.EventTurnedFaceUp:
+			c, ok = g.LookupCardForEffect(ev.CardID)
+			ok = ok && c.Controller == source.Controller
+		}
+		return ok && c.HasSubtype(source.TextSubtype("Detective"))
+	}
 }

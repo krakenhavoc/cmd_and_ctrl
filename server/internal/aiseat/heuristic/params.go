@@ -65,6 +65,10 @@ type castParams struct {
 	// additional cost gives up (#3402) — gone from the board exactly as a
 	// sacrificed one is, and priced the same way.
 	ExilePermanentIDs []string `json:"exile_permanent_ids"`
+	// ReturnIDs is the permanent a mandatory return-a-permanent additional
+	// cost sends back to its owner's hand (#5247, Fear of Isolation) —
+	// priced as a permanent returned as a cost is (selfReturnCost).
+	ReturnIDs []string `json:"return_ids"`
 	// ExileFromHandIDs are the hand cards a March's additional cost exiles
 	// for its discount (#3175) — lost from hand as a discarded card is.
 	ExileFromHandIDs []string `json:"exile_from_hand_ids"`
@@ -125,6 +129,9 @@ type specialActionParams struct {
 	// Route is which of a permanent's two turn-face-up offers this is
 	// — "mana_cost", "morph" or "disguise" (ADR 0189 decision 4).
 	Route string `json:"route"`
+	// XValue is the X a turn-face-up move pays for an {X} in its cost
+	// (#5249): the enumerator's largest affordable X, which the bot keeps.
+	XValue int `json:"x_value"`
 }
 
 type attackParams struct {

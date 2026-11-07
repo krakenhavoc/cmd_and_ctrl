@@ -88,7 +88,7 @@ func (l *Lobby) SetLFG(id uuid.UUID, enabled bool) (GameMeta, error) {
 		switch {
 		case entry.meta.State != string(game.StateLobby) || entry.meta.Archived():
 			return GameMeta{}, ErrLFGUnavailable
-		case len(entry.meta.Players) >= game.MaxPlayers:
+		case len(entry.meta.Players) >= seatCapLocked(entry):
 			return GameMeta{}, ErrLFGFull
 		case l.lfgHostLocked(entry) == "":
 			return GameMeta{}, ErrLFGGuestHost
@@ -153,18 +153,22 @@ func (l *Lobby) lfgTable(id uuid.UUID) (lfgTable, bool) {
 		return lfgTable{}, false
 	}
 	host := l.lfgHostLocked(entry)
+	// ADR 0215 §6: a scheduled table's held seats count as taken, and a
+	// table whose every free seat is held posts nothing until one frees.
+	held := heldLocked(entry)
+	seated, seats := len(entry.meta.Players)+held, seatCapLocked(entry)
 	t := lfgTable{
 		enabled: entry.meta.LFG,
 		eligible: entry.room.Game.CurrentState() == game.StateLobby &&
-			!entry.meta.Archived() && host != "",
+			!entry.meta.Archived() && host != "" && (held == 0 || seated < seats),
 		hostID:      host,
 		inviteToken: entry.meta.InviteToken,
 		messageID:   entry.lfgMessageID,
 		post: discord.LFGPost{
 			Table:     entry.meta.Name,
 			HostID:    host,
-			Seated:    len(entry.meta.Players),
-			Seats:     game.MaxPlayers,
+			Seated:    seated,
+			Seats:     seats,
 			Voice:     entry.meta.VoiceRoom && l.voiceOn,
 			Settings:  lfgSettings(entry.room.Game.TableSettingsSnapshot()),
 			CreatedAt: entry.meta.CreatedAt,

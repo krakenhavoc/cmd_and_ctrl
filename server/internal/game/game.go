@@ -424,6 +424,14 @@ type Game struct {
 	// (#1181).
 	Activations ActivationTally
 
+	// OnlyOnceTriggered records the triggered abilities that print
+	// "This ability triggers only once" (TriggeredAbility.OnlyOnce) and
+	// have triggered, keyed by ObjectTallyKey(source, epoch, Key). Never
+	// reset: the limit is for the life of the object, and a new object
+	// after a zone change (CR 400.7) reads a key nothing has written.
+	// Nil until the first such trigger. See trigger_only_once.go (#5245).
+	OnlyOnceTriggered map[string]int
+
 	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
 	// turn with no player decision in between, nil otherwise. While
@@ -2146,6 +2154,29 @@ type CastTally struct {
 	// through CastFlyingCreatureSpellWithout. Additive within the
 	// snapshot version.
 	FlyingCreatureSubtypes string `json:"flyingCreatureSubtypes,omitempty"`
+	// NotFromHand counts the spells the player cast this turn from
+	// anywhere but their hand (#5235): a graveyard, exile, the command
+	// zone, the top of a library, outside the game. The zone is the one
+	// the card was in as the cast was proposed, before CR 601.2a moved it
+	// to the stack. Outlaws of Thunder Junction's "if you haven't cast a
+	// spell from your hand this turn" reads Total minus this, through
+	// CastTally.FromHand. A copy of a spell isn't cast (CR 707.10) and
+	// playing a land is a special action, not a cast (CR 305.1), so
+	// neither adds anything.
+	//
+	// It counts the casts NOT from the hand, rather than the casts from
+	// it, so that a file written before it existed reads every spell of
+	// that turn as cast from the hand: the condition is then off for the
+	// rest of the turn (weaker, never stronger). Additive within the
+	// snapshot version.
+	NotFromHand int `json:"notFromHand,omitempty"`
+}
+
+// FromHand is how many of the player's spells this turn were cast from
+// their hand (NotFromHand): "if you haven't cast a spell from your hand
+// this turn" is FromHand() == 0.
+func (t CastTally) FromHand() int {
+	return max(t.Total-t.NotFromHand, 0)
 }
 
 // CastFlyingCreatureSpellWithout reports whether the player cast a

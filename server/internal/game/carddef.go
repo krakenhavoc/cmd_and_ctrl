@@ -282,6 +282,11 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// TurnFaceUpRestrictions are the "can't be turned face up" statics
+	// this PERMANENT imposes (#5241, turn_face_up_gate.go): Karlov
+	// Watchdog. Read from the battlefield through CatalogAbilityKey,
+	// like LandPlayRestrictions.
+	TurnFaceUpRestrictions []TurnFaceUpRestriction
 	// IgnorableEffect says this PERMANENT's static ability may be
 	// ignored by the player it bears on, by sacrificing a permanent
 	// (CR 116.2d, #1986, ignore_effect.go): Damping Engine. The
@@ -633,6 +638,14 @@ type CardDef struct {
 	// attackDirectionRulesLocked; see attack_direction.go (ADR 0206).
 	AttackOnlyNearestOpponentInChosenDirection bool
 
+	// LooksAtFaceDownCreatures is "you may look at face-down creatures
+	// your opponents control any time" (Found Footage, #5251): this
+	// permanent's controller may look at every face-down creature they
+	// don't control while it is on the battlefield. Read by
+	// faceDownLookHoldersLocked through catalogAbilityKeyOf and never
+	// written into KnownBy; see face_down_look.go.
+	LooksAtFaceDownCreatures bool
+
 	// DiscardByOpponent and DiscardByOpponentForHand are what the card
 	// declares about "if a spell or ability an opponent controls causes
 	// you to discard" (ADR 0153 §5): its own shape while it sits in a
@@ -962,6 +975,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogTurnFaceUpRestrictions = func(key string) []TurnFaceUpRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.TurnFaceUpRestrictions
 		}
 		return nil
 	}

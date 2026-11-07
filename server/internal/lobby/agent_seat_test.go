@@ -235,10 +235,10 @@ func TestAgentJoinRefusesASignedInSession(t *testing.T) {
 	}
 
 	// The lobby holds the rule too, for any caller that is not HTTP.
-	if _, _, err := s.lobby.join(meta.ID, meta.InviteToken, "x", DiscordIdentity{ID: "1", Username: "u"}, uuid.Nil, &AgentDecl{Client: "c"}); !errors.Is(err, ErrAgentSignedIn) {
+	if _, _, err := s.lobby.join(meta.ID, meta.InviteToken, "x", DiscordIdentity{ID: "1", Username: "u"}, uuid.Nil, &AgentDecl{Client: "c"}, false); !errors.Is(err, ErrAgentSignedIn) {
 		t.Errorf("join with an identity and an agent: %v, want ErrAgentSignedIn", err)
 	}
-	if _, _, err := s.lobby.join(meta.ID, meta.InviteToken, "x", DiscordIdentity{}, uuid.New(), &AgentDecl{Client: "c"}); !errors.Is(err, ErrAgentSignedIn) {
+	if _, _, err := s.lobby.join(meta.ID, meta.InviteToken, "x", DiscordIdentity{}, uuid.New(), &AgentDecl{Client: "c"}, false); !errors.Is(err, ErrAgentSignedIn) {
 		t.Errorf("join with a user and an agent: %v, want ErrAgentSignedIn", err)
 	}
 

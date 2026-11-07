@@ -16,6 +16,8 @@
 //     invite the person sent or was sent and their pod suggestion
 //     dismissals (ADR 0220 §12; a pod they owned passes to the member
 //     who joined first, or is deleted if they were the last), the
+//     scheduled tables they host and every RSVP of theirs (ADR 0215;
+//     the upcoming plans are cancelled by it), the
 //     identities row (Discord id, name, avatar hash, the encrypted
 //     refresh token and the encrypted Linked Roles grant), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -55,6 +57,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 )
 
 // DeletedPlayerName is the stable name an anonymised seat carries, in
@@ -112,10 +115,16 @@ type Counts struct {
 	PodMembers    int
 	PodInvites    int
 	PodDismissals int
-	ModelKeyRows  int
-	Identities    int
-	Reports       int
-	Blocks        int
+	// ADR 0215 (privacy section): the person's scheduled tables, of
+	// which ScheduledCancelled were still upcoming, and their RSVPs on
+	// other people's.
+	ScheduledPlans     int
+	ScheduledCancelled int
+	ScheduledRSVPs     int
+	ModelKeyRows       int
+	Identities         int
+	Reports            int
+	Blocks             int
 }
 
 // Result is what Delete hands back after it commits.
@@ -135,8 +144,11 @@ type Result struct {
 	// is gone; the caller uses this once to empty the connection on
 	// Discord, best effort, and must never log it.
 	RoleConnectionToken []byte
-	Counts              Counts
-	DeletedAt           time.Time
+	// ScheduledGames are the tables of the person's scheduled tables that
+	// had opened; the caller lets go of their holds (ADR 0215).
+	ScheduledGames []string
+	Counts         Counts
+	DeletedAt      time.Time
 }
 
 // Store deletes accounts. SQLStore is the production one.
@@ -355,6 +367,16 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	}
 	res.Counts.PodsPassedOn, res.Counts.PodsDeleted = pc.PodsPassedOn, pc.PodsDeleted
 	res.Counts.PodMembers, res.Counts.PodInvites, res.Counts.PodDismissals = pc.Members, pc.Invites, pc.Dismissals
+	// Scheduled tables (ADR 0215, migration 0034): the plans the person
+	// hosts go with their lists, which cancels the upcoming ones (owner
+	// decision 14), and every RSVP of theirs goes, by account and by
+	// Discord id. A plan still waiting deals its seats again.
+	sc, err := schedule.ForgetAccount(ctx, tx, uid, res.DiscordSubject, at)
+	if err != nil {
+		return Result{}, fmt.Errorf("accountdelete: scheduled tables: %w", err)
+	}
+	res.Counts.ScheduledPlans, res.Counts.ScheduledCancelled, res.Counts.ScheduledRSVPs = sc.PlansDeleted, sc.PlansCancelled, sc.RSVPs
+	res.ScheduledGames = sc.Games
 	// The person's own model key (ADR 0182, migration 0025), sealed
 	// key and all. A bot seat that ran on it keeps pointing at the
 	// tombstone (seats.bot_key_user_id), which carries no identity and
