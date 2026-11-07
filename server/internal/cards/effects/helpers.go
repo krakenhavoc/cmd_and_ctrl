@@ -10,6 +10,24 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// thisGetsPlusOneZeroAndCantBeBlockedThisTurn is "this creature gets
+// +1/+0 until end of turn and can't be blocked this turn" as a trigger's
+// whole body (Nimrodel Watcher, Merfolk Cave-Diver): both halves land on
+// the source only while it is still the permanent the ability came from
+// (CR 400.7).
+func thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !sourceIsStillThisPermanent(g, item) {
+			return nil
+		}
+		ctx := NewContext(g, item)
+		if err := (BoostUntilEOT{Target: item.SourceCardID, Power: 1, Label: label}).Apply(ctx); err != nil {
+			return err
+		}
+		return RestrictUntilEOT{Target: item.SourceCardID, Restrictions: game.CantBeBlocked, Label: label}.Apply(ctx)
+	}
+}
+
 // exileTheFirstTargetIfLegal is "Exile target <thing>" for a spell or
 // ability whose first target is the one exiled (Baleful Mastery, Fall to
 // Earth). It re-checks the target against the item's own targets rather

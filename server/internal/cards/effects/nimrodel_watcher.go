@@ -28,16 +28,7 @@ func init() {
 					return ByYou(ev, source, lki, g) && !b11TriggeredThisTurn(g, source.InstanceID, label)
 				},
 				label,
-				func(g *game.Game, item *game.StackItem) error {
-					if !sourceIsStillThisPermanent(g, item) {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					if err := (BoostUntilEOT{Target: item.SourceCardID, Power: 1, Label: label}).Apply(ctx); err != nil {
-						return err
-					}
-					return RestrictUntilEOT{Target: item.SourceCardID, Restrictions: game.CantBeBlocked, Label: label}.Apply(ctx)
-				}),
+				thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label)),
 		},
 	})
 }
