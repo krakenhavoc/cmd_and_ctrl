@@ -10872,6 +10872,31 @@ trigger whose combat never begins is dropped when the turn changes. Give
 each bound card its own `Body` key, as a new key makes an older binary
 refuse a file that holds the binding.
 
+**"During that combat phase" (Bumi, Unleashed, ADR 0188 Decision 13,
+#5277):** a rule in force for the whole of the combat a card adds, and
+in no other, is `AddPhases.DuringThatCombat`, a `*CombatRule` (a live
+scope and the restriction bits):
+
+```go
+extra := ExtraCombatAfterThisPhase()
+extra.DuringThatCombat = OnlyLandCreaturesCanAttack("Bumi, Unleashed — only land creatures can attack during this combat")
+return extra.Apply(ctx)
+```
+
+It is not a trigger, so nothing goes on the stack. The engine
+(`Game.DuringCombatPhaseRuleEffectForEffect`, `game/phase_effects.go`)
+builds the record as the card resolves, holds it on `Game.PhaseEffects`
+keyed by the turn and the phase id, and registers it on `ScopedEffects`
+as that combat begins, lasting until it ends (CR 511.3). It does not
+apply in the combat that created it, nor in a newer added combat that
+runs first (CR 500.8). If its combat never begins, the record is dropped
+as the next turn begins. The scope is read live (CR 611.2c: "can't
+attack" changes no characteristic) and judged as attackers are declared
+(CR 508.1c). `game.ScopeCreaturesThatArentLands` is "creatures that
+aren't lands". Like `ScopeCreaturesWithoutFlying` it reads a layer
+result, so it carries only restriction bits. Only a scope can be bound,
+never affected objects, for the reason ADR 0188 Decision 3b gives.
+
 ### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
 
 "End the turn." is one primitive from

@@ -133,6 +133,9 @@ var gameFields = plan(
 	// plan describes, and restore stamps it from the restored cursor.
 	"TurnPlan", carried, "",
 	"NextPhaseID", carried, "",
+	// ADR 0188 Decision 13 (#5277): rules effects waiting for one combat
+	// phase of this turn. Plain data.
+	"PhaseEffects", carried, "",
 	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",

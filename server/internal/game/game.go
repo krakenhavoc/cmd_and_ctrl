@@ -292,6 +292,13 @@ type Game struct {
 	// phase is 6.
 	NextPhaseID int
 
+	// PhaseEffects are rules effects waiting for one combat phase of
+	// this turn (#5277, ADR 0188 Decision 13, phase_effects.go): built
+	// when the card resolved, registered as that combat begins. Bumi,
+	// Unleashed's "only land creatures can attack during that combat
+	// phase". Copy on write.
+	PhaseEffects []PhaseEffect
+
 	// planAt is the cursor position TurnPlan was built or last popped
 	// for. A cursor that moved some other way (a test setting
 	// Turn.Step, a snapshot from before the plan) no longer matches,
@@ -2571,6 +2578,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// mid-combat waits for the next combat phase.
 	if opensPhase && PhaseOf(g.Turn.Step) == PhaseCombat {
 		g.beginCombatControlsLocked()
+		// #5277, ADR 0188 Decision 13: a rules effect bound to this
+		// combat phase ("only land creatures can attack during that
+		// combat phase") begins with it, before anything is announced.
+		g.registerPhaseEffectsLocked()
 	}
 	g.DrawnThisStep = nil
 	// S31 sub-PR 0: announce the step for the public game log, and

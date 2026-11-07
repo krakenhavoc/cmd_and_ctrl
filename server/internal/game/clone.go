@@ -126,6 +126,9 @@ func (g *Game) cloneLocked() *Game {
 	// past a Relentless Assault must take its phases back out.
 	out.TurnPlan = clonePlan(g.TurnPlan)
 	out.NextPhaseID = g.NextPhaseID
+	// ADR 0188 Decision 13 (#5277): an undo past Bumi's trigger takes its
+	// waiting rule back out.
+	out.PhaseEffects = clonePhaseEffects(g.PhaseEffects)
 	out.planAt = g.planAt
 	if len(g.LoyaltyActivatedThisTurn) > 0 {
 		out.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool, len(g.LoyaltyActivatedThisTurn))
@@ -1311,6 +1314,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.NextExtraRef = src.NextExtraRef
 	g.TurnPlan = src.TurnPlan
 	g.NextPhaseID = src.NextPhaseID
+	g.PhaseEffects = src.PhaseEffects
 	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.LoyaltyActivatedTwiceThisTurn = src.LoyaltyActivatedTwiceThisTurn

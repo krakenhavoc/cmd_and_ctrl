@@ -34,23 +34,56 @@ type AddPhases struct {
 	// (an anchor that did not hold) nothing is scheduled, which is the
 	// card's text: there is no "that combat".
 	AtThatCombat *ScheduleDelayedTrigger
+
+	// DuringThatCombat is a rule in force "during that combat phase"
+	// (Bumi, Unleashed: "Only land creatures can attack during that
+	// combat phase"): a rules effect bound to the first combat phase
+	// this added (#5277, ADR 0188 Decision 13), registered as that
+	// combat begins and lasting until it ends. It applies in no other
+	// combat, not even a newer added combat that runs first (CR 500.8).
+	// When no combat was added nothing is bound, as for AtThatCombat.
+	DuringThatCombat *CombatRule
+}
+
+// CombatRule is a "can't" rule for the whole of one combat phase,
+// over a live scope (CR 611.2c: it changes no characteristic, so it
+// reaches every object the scope names as the rule is asked).
+type CombatRule struct {
+	Scope        game.AffectedScope
+	Restrictions game.Restriction
+	Label        string
+}
+
+// OnlyLandCreaturesCanAttack is "Only land creatures can attack during
+// that combat phase": "can't attack" on every creature that isn't a
+// land, judged as attackers are declared (CR 508.1c).
+func OnlyLandCreaturesCanAttack(label string) *CombatRule {
+	return &CombatRule{Scope: game.ScopeCreaturesThatArentLands, Restrictions: game.CantAttack, Label: label}
 }
 
 func (a AddPhases) Apply(ctx *Context) error {
 	ids := ctx.Game.AddPhasesForEffect(ctx.Source(), a.Anchor, a.Kinds...)
+	combat := 0
+	for i, k := range a.Kinds {
+		if k == game.PhaseKindCombat && i < len(ids) {
+			combat = ids[i]
+			break
+		}
+	}
+	if combat == 0 {
+		return nil
+	}
+	if r := a.DuringThatCombat; r != nil {
+		ctx.Game.DuringCombatPhaseRuleEffectForEffect(combat, ctx.Source(), r.Scope, ctx.Controller(),
+			[]game.Mod{game.AddRestrictionsMod(r.Restrictions)}, r.Label)
+	}
 	if a.AtThatCombat == nil {
 		return nil
 	}
-	for i, k := range a.Kinds {
-		if k != game.PhaseKindCombat || i >= len(ids) {
-			continue
-		}
-		dt := *a.AtThatCombat
-		dt.At = game.StepBeginCombat
-		dt.OnPhase = ids[i]
-		return dt.Apply(ctx)
-	}
-	return nil
+	dt := *a.AtThatCombat
+	dt.At = game.StepBeginCombat
+	dt.OnPhase = combat
+	return dt.Apply(ctx)
 }
 
 // ExtraCombatAfterThisPhase is "after this phase, there is an

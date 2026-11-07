@@ -2,6 +2,7 @@
 
 Date: 2026-10-14
 Status: Accepted (owner answers 2026-10-14, recorded under [Owner decisions](#owner-decisions-2026-10-14); answer 4 adds [Decision 12](#12-asking-which-skip-takes-an-extra-turn-cr-6161) and two slices)
+Amended: 2026-11-07, Decision 13, a rules effect during one added combat (Bumi, Unleashed; [#5277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5277)); see [the amendment](#amendment-2026-11-07--a-rules-effect-during-one-added-combat-5277)
 Sprint: none (unscheduled card-coverage seam, #753; outside docs/sprints.md)
 Issues: #753 (turn machinery). Registry rows: `extra-turns` (Ugin's Nexus, Savor the Moment, Magosi, the Waterveil, Lethal Vapors, Alchemist's Gambit) and `extra-combats` (World at War; Moraug, Fury of Akoum).
 Builds on: [ADR 0059](0059-turn-machinery.md) (turn identity, the rotation seam, the extra-turn queue, the turn plan, and its amendments of 2026-09-30, 2026-10-05 and 2026-10-07), [ADR 0041](0041-game-persistence.md) phase 3 (ScopedEffect records, unknown-key refusal), [ADR 0063](0063-durations-and-control.md) (durations), [ADR 0178](0178-life-instructions-after-a-replaced-move.md) (instructions after a replaced move), [ADR 0126](0126-bots-that-play-their-decks.md) §6 (Purpose).
@@ -648,3 +649,34 @@ Kept as asked. The answers are under [Owner decisions](#owner-decisions-2026-10-
   - four view fields.
 - The rotation seam can now pause, for exactly one question (Decision 12). Everything on disk is additive in v8, and every addition that could make a card stronger after a rollback makes an older binary refuse the file instead.
 - **The thing most likely to be got wrong later.** Spending a skip anywhere but the rotation seam: in `onTurnBeganLocked`, say, or in the untap step. By then the turn has begun, and CR 614.10 says it can no longer be skipped. Its `Seq`, resets and triggers would already have happened. A skip is spent while the next turn is being chosen, and never after.
+
+## Amendment 2026-11-07 — a rules effect during one added combat (#5277)
+
+**Context.** Bumi, Unleashed (`tla`, #4459) prints "Whenever Bumi deals combat damage to a player, untap all lands you control. After this phase, there is an additional combat phase. Only land creatures can attack during that combat phase." The extra combat and the untap already existed. The last sentence did not. Bumi's 2025-10-02 ruling says the restriction "applies only to the combat phase created by Bumi, Unleashed, not to any other combat phases that might occur that turn". That includes a combat added later in the same phase, which runs first (CR 500.8: "If multiple extra phases are created after the same phase, the most recently created phase will occur first"). Three shipped tools came close and none fitted:
+
+- An `UntilEndOfCombat` duration names the combat in progress. A record stamped with a future combat would be swept at once.
+- Decision 5's phase-bound delayed trigger would put an object on the stack that the card does not print, and the rule would start a priority window late.
+- Decision 3b's deferred effects wait on a queued *turn*, not on a phase.
+
+**Decision 13. A rules effect waits on its combat phase and is registered as that combat begins.** It is Decision 3b's shape for a phase:
+
+```go
+type PhaseEffect struct {
+    Turn    int          `json:"turn"`    // Turn.Seq
+    PhaseID int          `json:"phaseId"` // PlannedStep.PhaseID
+    Effect  ScopedEffect `json:"effect"`
+}
+// Game.PhaseEffects []PhaseEffect, copy on write.
+
+func (g *Game) DuringCombatPhaseRuleEffectForEffect(phaseID int, sourceID uuid.UUID, scope AffectedScope, controller uuid.UUID, mods []Mod, label string) bool
+```
+
+- **The binding is to a combat phase still ahead.** It must be in this turn's plan and be a combat phase. The combat in progress is refused, since "that combat phase" has not begun; an effect for the current combat is the ordinary `RegisterScopedRuleEffectForEffect` with `UntilEndOfCombatDuration`. So are any other phase, an unknown id, `ScopeNone` and no mods.
+- **Built now, registered later.** The record is built and validated when the card resolves (`buildScopedEffectLocked`) and keeps that timestamp (CR 613.7b; the earlier sections cite it as 613.7a, which in the pinned text is the static-ability rule). `finishStepEntryLocked` registers it when the first step of its combat phase really begins (`opensPhase`, beside `beginCombatControlsLocked`), before the step is announced. It lasts until the end of that combat (`UntilEndOfCombatDuration`, CR 511.3). It never runs in another combat, because registration matches `Turn.Seq` and `PhaseID` exactly.
+- **A combat that never begins takes its records with it.** `sweepUnreachableBoundTriggersLocked` drops records of another turn as a turn begins, as it does for Decision 5's triggers. That covers a turn ended early (CR 724.1) and a phase whose steps were all skipped.
+- **Rules effects only.** The API takes a scope, never affected objects, for the reason Decision 3b gives (CR 611.2c).
+- **A new live scope, `ScopeCreaturesThatArentLands` (`"creaturesThatArentLands"`).** It covers every player's creatures that are not lands. "Only land creatures can attack" is "can't attack" (CR 508.1c) on every creature that is not also a land. That is a rules modification (CR 611.2c's second sentence), so it reaches a creature that enters, or stops being a land, after the effect began. Whether an object is a land is a layer-4 result: an earthbent land becomes a land creature. So, like `ScopeCreaturesWithoutFlying`, the scope carries only mods the post-layer fold applies (`scopeReadsLayerResult`, enforced at registration whether the record is waiting or live). The fold runs on every layer pass, and registration bumps the layer version, so the restriction is current when attackers are declared. The enumerator and the client read it through `AttackerEligible` with no change.
+- **Card side.** `effects.AddPhases.DuringThatCombat *CombatRule`, bound to the first combat phase the `AddPhases` added, alongside the existing `AtThatCombat`. `OnlyLandCreaturesCanAttack(label)` is Bumi's rule. Nothing is bound when no combat was added.
+- **Snapshot, undo and the ratchet.** `phaseEffects` is additive in v9, recorded in `snapshot_shape/v9.txt` and classified `carried` in the drift guard. Its records are held to the scoped-effect vocabulary at restore (`checkEffectKeys`), so a file naming a scope this binary does not know is refused. An older binary drops the field, and Bumi's combat has no restriction there, which is weaker, never stronger. `Clone` deep-copies the list (`clonePhaseEffects`). `ScopedEffect` holds no closure, so the closure ratchet does not move. There is no new effect-ledger key. Two corpus boards are added as new files: the rule waiting, and the rule registered in Bumi's combat.
+
+**Open question, conservative answer taken.** The binding is only to a combat phase. "During that main phase" and "during that turn" (Decision 3b) are the other shapes. No card in the catalog waits on the first, so the API refuses a non-combat phase rather than invent an end-of-phase duration.
