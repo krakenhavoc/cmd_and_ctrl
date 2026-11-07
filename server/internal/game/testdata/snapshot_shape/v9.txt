@@ -71101,6 +71101,7 @@ turnTally.phasesBegun	map:string
 turnTally.phasesBegun{}	number:int
 turnTally.players	map:array
 turnTally.players{}	object
+turnTally.players{}.airbends	number:int
 turnTally.players{}.artifactsOrCreaturesSacrificed	number:int
 turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
@@ -71109,8 +71110,10 @@ turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.creaturesLeft	number:int
+turnTally.players{}.earthbends	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.equipActivations	number:int
+turnTally.players{}.firebends	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.landsToGraveyard	number:int
 turnTally.players{}.lifeGained	number:int
@@ -71131,6 +71134,7 @@ turnTally.players{}.powerUpActivations	number:int
 turnTally.players{}.speedTriggered	bool
 turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
+turnTally.players{}.waterbends	number:int
 turnTally.prevNoncombatVictims	array
 turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
 turnTally.replacementsApplied	map:string

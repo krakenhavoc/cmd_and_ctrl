@@ -4667,6 +4667,12 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
+				// #5276, CR 701.67c: a waterbend payment (a ward's
+				// "unless that player pays waterbend {N}") is the
+				// payer waterbending, however much the taps covered.
+				if frame != nil && frame.tap != nil && frame.tap.Key == "waterbend" {
+					g.noteBendLocked(EventWaterbend, chooserID, choice.Source)
+				}
 			}
 		}
 	}

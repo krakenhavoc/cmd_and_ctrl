@@ -1621,6 +1621,7 @@ tail aether-rift/offer-return-of-discarded-creature
 tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
 tail ainok-wayfarer/after-mill
+tail airbend/grant-and-announce
 tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
 tail aminatous-augury/after-mill

@@ -206,6 +206,16 @@ type PlayerTurnTally struct {
 	// of EventTurnedFaceUp, whoever controls the permanent. Read through
 	// Game.TurnedPermanentFaceUpThisTurn. Additive within schema v9.
 	PermanentsTurnedFaceUp int `json:"permanentsTurnedFaceUp,omitempty"`
+	// Waterbends, Earthbends, Firebends and Airbends count the times this
+	// player performed each bending action this turn (#5276): one per
+	// EventWaterbend, EventEarthbend, EventFirebend and EventAirbend whose
+	// Actor they are (bending.go). Avatar Aang's "if you've done all four
+	// this turn" reads them through Game.AllFourBendsThisTurn. Additive
+	// within schema v9.
+	Waterbends int `json:"waterbends,omitempty"`
+	Earthbends int `json:"earthbends,omitempty"`
+	Firebends  int `json:"firebends,omitempty"`
+	Airbends   int `json:"airbends,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -2056,6 +2066,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 	case EventTurnedFaceUp:
 		// #5241: the player who turned it, not its controller.
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.PermanentsTurnedFaceUp++ })
+	case EventWaterbend, EventEarthbend, EventFirebend, EventAirbend:
+		// #5276: the bending player's count of each action this turn.
+		g.recordBendLocked(ev)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

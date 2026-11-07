@@ -636,6 +636,46 @@ const (
 	// Emitted only by noteCollectEvidenceLocked (collect_evidence.go).
 	EventCollectEvidence EventKind = "collect_evidence"
 
+	// EventWaterbend — a player waterbent (CR 701.67c, #5276): paid a
+	// waterbend cost, however they paid it, as part of a spell's total
+	// cost, an activated ability's cost or a resolving "unless they pay".
+	// Actor is the player, Source the card whose cost it was. One event per
+	// waterbend cost paid. The taps and the mana emit their own events
+	// first; this one is the keyword action, which "whenever you waterbend"
+	// (Avatar Aang) watches.
+	//
+	// Emitted only through noteBendLocked (bending.go).
+	EventWaterbend EventKind = "waterbend"
+
+	// EventEarthbend — a player earthbent (CR 701.66b, #5276): the delayed
+	// "return it to the battlefield tapped" trigger of an earthbend was
+	// created. Actor is the player who earthbent, Source the card whose
+	// effect it was. Raised after the land is animated; the counters
+	// follow. "Whenever you earthbend" (Avatar Aang) watches it.
+	//
+	// Emitted only through noteBendLocked (bending.go, earthbend.go).
+	EventEarthbend EventKind = "earthbend"
+
+	// EventFirebend — a player firebent (CR 702.189b, #5276): a firebending
+	// ability they control resolved, whatever mana it added (none at X =
+	// 0). Actor is the ability's controller, Source its source. "Whenever
+	// you firebend" (Avatar Aang) watches it.
+	//
+	// Emitted only through noteBendLocked (bending.go), by the firebending
+	// ability's own effect.
+	EventFirebend EventKind = "firebend"
+
+	// EventAirbend — a player airbent (CR 701.65b, #5276): exiled one or
+	// more objects as the result of an airbend instruction. Actor is the
+	// player who airbent, Source the card whose effect it was, CardIDs the
+	// cards that landed in exile. One event per instruction, after the
+	// exile; none when nothing was exiled. "Whenever you airbend" (Avatar
+	// Aang) watches it.
+	//
+	// Emitted only through noteBendLocked (bending.go), by the airbend
+	// primitive's continuation.
+	EventAirbend EventKind = "airbend"
+
 	// EventBecomesTarget — an object or player became the target of
 	// a spell or ability (CR 115.3). Actor is the controller of the
 	// spell / ability, Source is its source card, Target is the

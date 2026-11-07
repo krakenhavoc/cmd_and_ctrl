@@ -71,9 +71,36 @@ func printedFirebendingDragonToken() tokenTemplate {
 	}
 }
 
-// firebending is "Firebending N": add N red mana that lasts until end of
-// combat.
-func firebending(n int) AddMana {
+// firebending is the whole effect of a "Firebending N" ability (CR
+// 702.189a): add N red mana that lasts until end of combat, and then, as
+// the ability finishes resolving, announce that its controller firebent
+// (CR 702.189b, #5276; game.EventFirebend), which "whenever you firebend"
+// (Avatar Aang) watches. N of zero or less adds nothing and still
+// firebends: the ability resolved.
+//
+// Only a firebending ability's effect: red mana kept until end of combat
+// that is not firebending (Avatar Roku, Firebender; Fire Lord Ozai) is
+// redUntilEndOfCombat.
+func firebending(n int) Firebending { return Firebending{N: n} }
+
+// Firebending is firebending's Applier.
+type Firebending struct{ N int }
+
+// Apply adds the mana, then announces the firebend.
+func (f Firebending) Apply(ctx *Context) error {
+	if f.N > 0 {
+		if err := redUntilEndOfCombat(f.N).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	ctx.Game.NoteBendForEffect(game.EventFirebend, ctx.Controller(), ctx.Source())
+	return nil
+}
+
+// redUntilEndOfCombat is "add N {R}. Until end of combat, you don't lose
+// this mana as steps end", the mana half of firebending, for an effect
+// that is not a firebending ability.
+func redUntilEndOfCombat(n int) AddMana {
 	return AddMana{
 		Produced: game.RepeatMana("{R}", n),
 		Riders:   []game.ManaSpendRider{KeepManaUntilEndOfCombat()},
