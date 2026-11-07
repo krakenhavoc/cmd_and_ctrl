@@ -1512,12 +1512,12 @@ var items = []Item{
 	{
 		Slug: "ability-cost-modification", Name: "Cheaper abilities and granted costs", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Effects that make activated abilities cost less work, such as Boom Scholar's.",
-		Missing:     "A discount that can't take an ability below one mana (Training Grounds), and granting spells an alternative cost like prowl, aren't supported yet.",
+		Missing:     "Granting spells an alternative cost like prowl isn't supported yet.",
 		Issue:       302,
-		Tracked:     "#302 (batch issue; #1184 shipped the ability half)",
-		Waiting:     []string{"Training Grounds", "Hunting Velociraptor"},
-		Examples:    []string{"Boom Scholar"},
-		EngineNotes: "primitive: **narrowed twice.** #1184 put activations through the CR 601.2f pass for BOARD modifiers (`CostModifier.Activations`, Boom Scholar), and #1296 gave an ability its OWN cost clause (`ActivatedAbilityShape.CostModifiers` — \"This ability costs {1} less to activate …\", including clauses that read the ability's target; see Closed seams). **Still open:** a board reduction with a FLOOR on someone else's abilities — Training Grounds' and Power Artifact's \"can't reduce the mana in that cost to less than one mana\" (`CostFloor` is the Trinisphere shape, a total-mana minimum, not a per-reduction cap) — and granted alternative costs for spells (Hunting Velociraptor)",
+		Tracked:     "#302 (batch issue; #1184 shipped the ability half; S79 the one-mana floor)",
+		Waiting:     []string{"Hunting Velociraptor"},
+		Examples:    []string{"Boom Scholar", "Training Grounds"},
+		EngineNotes: "primitive: **narrowed twice.** #1184 put activations through the CR 601.2f pass for BOARD modifiers (`CostModifier.Activations`, Boom Scholar), and #1296 gave an ability its OWN cost clause (`ActivatedAbilityShape.CostModifiers` — \"This ability costs {1} less to activate …\", including clauses that read the ability's target; see Closed seams). **The FLOOR half closed in S79** (ADR 0020 amendment 2026-11-06): `CostModifier.KeepsOneMana`, built with `effects.KeepsOneMana`, is Training Grounds' and Power Artifact's \"can't reduce the mana in that cost to less than one mana\" — a per-reduction cap measured against the total so far with {X} at its announced value (`Game.AbilityManaCostAtXForEffect`), applied before the other reductions (CR 601.2f, any order). Training Grounds ships `full` on it. **Still open:** granted alternative costs for spells (Hunting Velociraptor)",
 	},
 	{
 		Slug: "search-replacement", Name: "Changing how a library is searched", Kind: KindSeam, Status: StatusMissing,

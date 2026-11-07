@@ -2473,6 +2473,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// S79 (#5075, CR 500.11): a combat phase of a turn whose combat
+	// phases are skipped never begins, an added one included, so the
+	// cursor walks past each of its steps (skip_combat_phases.go).
+	if PhaseOf(g.Turn.Step) == PhaseCombat && g.combatPhasesSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step

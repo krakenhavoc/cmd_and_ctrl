@@ -1874,7 +1874,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if !ab.Cost.Waterbend.Empty() {
 		// #1296: with the announced targets, so a target-keyed
 		// discount sizes the budget as it sizes the payment below.
-		priced, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
+		priced, err := g.AbilityManaCostAtXForEffect(playerID, *source, srcZone, ab, params.Targets, params.XValue)
 		if err != nil {
 			return ErrInvalidParam
 		}
@@ -2218,7 +2218,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// before 601.2f, so "{1} less for each color of the creature
 		// it targets" (Dragonfire Blade) is sized against the target
 		// this activation actually named.
-		manaCost, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
+		// S79 (#302): and with the announced X, which a one-mana floor
+		// (Training Grounds) measures the total against.
+		manaCost, err := g.AbilityManaCostAtXForEffect(playerID, *source, srcZone, ab, params.Targets, params.XValue)
 		if err != nil {
 			return ErrInvalidParam
 		}

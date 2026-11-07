@@ -537,6 +537,62 @@ type CostModifier struct {
 	// graveyard or exile. Use the effects.Eminence constructor rather
 	// than setting it by hand.
 	Eminence bool
+
+	// KeepsOneMana is a per-reduction floor (S79, #302): "This effect
+	// can't reduce the mana in that cost to less than one mana"
+	// (Training Grounds, Power Artifact). A CostReduction of generic
+	// mana only (no Unit): it takes off what it can while the total cost
+	// keeps at least one mana, and a cost that already had less than two
+	// is untouched by it. A Trinisphere CostFloor is a different thing,
+	// a minimum for the whole cost after every reduction.
+	//
+	// The total it measures is the cost so far, increases included (the
+	// Training Grounds ruling on Suppression Field), with {X} at the
+	// announced value (CostQuery.XValue; the ruling on Drana's {X}{B}{B}).
+	// CR 601.2f lets the player apply reductions in any order, so the
+	// pass applies these before every other reduction: that is the order
+	// that leaves the least to pay, because a floored reduction can only
+	// take more off a larger total and the rest take theirs either way.
+	//
+	// effects.Register refuses it on anything but a generic
+	// CostReduction, and on an ability's own cost clause. Build it with
+	// effects.KeepsOneMana.
+	KeepsOneMana bool
+}
+
+// KeepsOneManaProblem says why a modifier's KeepsOneMana cannot be
+// applied, or "" when it can (or is unset). One function, so the boot
+// guard and the pass cannot drift apart.
+func (m CostModifier) KeepsOneManaProblem() string {
+	if !m.KeepsOneMana {
+		return ""
+	}
+	if m.Kind != CostReduction {
+		return "a one-mana floor on something other than a reduction"
+	}
+	if m.Unit != nil {
+		return "a one-mana floor on a reduction with a mana unit"
+	}
+	return ""
+}
+
+// reduceKeepingOneMana spends up to `n` generic mana out of a cost, as
+// reduceGeneric does, but never takes the total (at X = x) below one
+// mana: "can't reduce the mana in that cost to less than one mana". A
+// cost whose total is already one mana or less is returned unchanged
+// (the ruling: it never ADDS a {1}).
+func reduceKeepingOneMana(cost ParsedCost, n, x int) ParsedCost {
+	if n <= 0 {
+		return cost
+	}
+	room := cost.totalManaWithX(x) - 1
+	if room <= 0 {
+		return cost
+	}
+	if n > room {
+		n = room
+	}
+	return reduceGeneric(cost, n)
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -893,12 +949,31 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// And the cast permission's own "costs {N} more" (Zero, Incorporeal
 	// Sensate), one more increase among them.
 	cost = increaseBy(cost, q.GrantIncrease, nil)
-	// CR 601.2f step 4: every reduction. Also additive, but each one
+	// CR 601.2f step 4, first the reductions with a one-mana floor
+	// (KeepsOneMana, Training Grounds): the player may apply reductions
+	// in any order, and floored ones first leaves the least to pay.
+	for _, bm := range mods {
+		if bm.modifier.Kind != CostReduction || !bm.modifier.KeepsOneMana {
+			continue
+		}
+		if why := bm.modifier.KeepsOneManaProblem(); why != "" {
+			return ParsedCost{}, fmt.Errorf("%w: %q on %s declares %s",
+				ErrCostModifier, bm.modifier.Label, bm.source.Name, why)
+		}
+		n, ok, err := amountFor(bm, q, cost)
+		if err != nil {
+			return ParsedCost{}, err
+		}
+		if ok {
+			cost = reduceKeepingOneMana(cost, n, q.XValue)
+		}
+	}
+	// Then every other reduction. Also additive, but each one
 	// is clamped against the generic remaining as it is spent, which
 	// is what keeps two {2}-reducers from making a {1}{B} spell owe
 	// negative generic.
 	for _, bm := range mods {
-		if bm.modifier.Kind != CostReduction {
+		if bm.modifier.Kind != CostReduction || bm.modifier.KeepsOneMana {
 			continue
 		}
 		n, ok, err := amountFor(bm, q, cost)
@@ -1022,6 +1097,20 @@ func (g *Game) AbilityManaCostForEffect(activator uuid.UUID, source Card, zone Z
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef) (ParsedCost, error) {
+	return g.AbilityManaCostAtXForEffect(activator, source, zone, ab, targets, 0)
+}
+
+// AbilityManaCostAtXForEffect is AbilityManaCostForTargetsForEffect with
+// the X announced for the activation (CR 602.2b through 601.2b, before
+// the total cost in 601.2f), for the one modifier that reads it: a
+// reduction with a one-mana floor (CostModifier.KeepsOneMana, Training
+// Grounds) measures the total with {X} at its value. The activation pays
+// this; the menu row, the enumerator and the auto-tap preview price
+// before X is chosen, at 0, where the floor keeps more of the cost — an
+// upper bound on what the activation charges, never below it.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef, x int) (ParsedCost, error) {
 	base, err := ParseCost(ab.Cost.Mana)
 	if err != nil {
 		return ParsedCost{}, err
@@ -1033,7 +1122,11 @@ func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Ca
 		// off the {T}-only abilities that are most of the catalog.
 		return base, nil
 	}
-	priced, err := g.applyCostModifiersLocked(base, g.abilityCostQueryLocked(activator, source, zone, ab, targets))
+	q := g.abilityCostQueryLocked(activator, source, zone, ab, targets)
+	if x > 0 {
+		q.XValue = x
+	}
+	priced, err := g.applyCostModifiersLocked(base, q)
 	if err != nil {
 		return ParsedCost{}, err
 	}

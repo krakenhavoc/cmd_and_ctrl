@@ -1195,6 +1195,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0058 amendment 2026-10-16 (#3995): a player-wide "don't untap
 	// during <player>'s next untap step".
 	ModSkipNextUntapStep: {reader: readerRule},
+	// S79 (#5075): "skips all combat phases of their next turn".
+	ModSkipCombatPhases: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1725,6 +1727,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextUntapStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipCombatPhasesModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
