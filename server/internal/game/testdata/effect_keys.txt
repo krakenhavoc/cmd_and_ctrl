@@ -739,6 +739,7 @@ choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
+choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
@@ -2364,6 +2365,7 @@ tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
 tail toph-hardheaded-teacher/lesson-counter
+tail town-greeter/after-mill
 tail transwarp-hub/after-mill
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail trek-b27/deep-space-9-put-permanents
