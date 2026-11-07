@@ -55,14 +55,6 @@ func TestTdmSZ2EveryCardIsRegisteredFull(t *testing.T) {
 
 // --- fixtures ------------------------------------------------------------------
 
-// tdmSZ2Flyer seeds a creature with flying.
-func tdmSZ2Flyer(g *game.Game, owner uuid.UUID, name string, power, toughness int) uuid.UUID {
-	return pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Bird", Power: power, Toughness: toughness,
-		Keywords: []string{"flying"}, Owner: owner, Controller: owner,
-	})
-}
-
 // tdmSZ2Damage deals `n` noncombat damage to `target` from a source the
 // test makes up, so the target "was dealt damage this turn".
 func tdmSZ2Damage(t *testing.T, g *game.Game, by, target uuid.UUID, n int) {
