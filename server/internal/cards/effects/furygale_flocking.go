@@ -56,13 +56,15 @@ func init() {
 	})
 }
 
-// furygaleFlockingBindTokens is "that attack that opponent this turn if
-// able. They gain haste until end of turn." over the tokens one creation
-// made; the opponent is the tail's Carry. An on-disk key: never renamed,
-// never reused. Since #4867 the spell makes one creation for every
-// opponent (furygaleFlockingBindTaggedTokens); this key stays registered
-// for a restore point written while a creation per opponent was paused.
-var furygaleFlockingBindTokens = CardTail("furygale-flocking/attack-that-opponent-and-haste", func(ctx *Context, o game.TailOutcome) error {
+// The "furygale-flocking/attack-that-opponent-and-haste" tail is "that
+// attack that opponent this turn if able. They gain haste until end of
+// turn." over the tokens one creation made; the opponent is the tail's
+// Carry. An on-disk key: never renamed, never reused. Since #4867 the
+// spell makes one creation for every opponent
+// (furygaleFlockingBindTaggedTokens) and no longer schedules this tail; it
+// stays registered (by CardTail at init, hence the blank identifier) for a
+// restore point written while a creation per opponent was paused.
+var _ = CardTail("furygale-flocking/attack-that-opponent-and-haste", func(ctx *Context, o game.TailOutcome) error {
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
@@ -80,8 +82,8 @@ var furygaleFlockingBindTokens = CardTail("furygale-flocking/attack-that-opponen
 	return nil
 })
 
-// furygaleFlockingBindTaggedTokens is furygaleFlockingBindTokens over the
-// one creation for every opponent (#4867): each token attacks the opponent
+// furygaleFlockingBindTaggedTokens is the attack-that-opponent tail over
+// the one creation for every opponent (#4867): each token attacks the opponent
 // its group was tagged with (game.TokenTags). A token a replacement added
 // (an untagged group) is not one of the Elementals the text binds. An
 // on-disk key: never renamed, never reused.
