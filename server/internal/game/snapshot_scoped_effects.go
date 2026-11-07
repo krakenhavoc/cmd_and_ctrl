@@ -506,6 +506,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextUntapStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// S79 (#5075): a combat-phase skip naming no player.
+			if problem := skipCombatPhasesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #2567: an attack-this-permanent requirement naming no
 			// permanent, or a turn stamp on another kind.
 			if problem := attackPermanentModProblem(m); problem != "" {

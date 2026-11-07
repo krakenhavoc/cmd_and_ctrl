@@ -415,6 +415,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0058 amendment 2026-10-16 (#3995): a player-wide untap
 		// skip. Its cases are in untap_player_skip_test.go.
 		ModSkipNextUntapStep: true,
+		// #5075 (Empty City Ruse): a player's next turn's combat phases
+		// skipped. Its cases are in skip_combat_phases_test.go.
+		ModSkipCombatPhases: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

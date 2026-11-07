@@ -544,6 +544,10 @@ func Register(spec Spec) {
 			if why := m.UnitProblem(); why != "" {
 				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares %s (ADR 0048 addendum §16)", spec.Name, i, m.Label, why))
 			}
+			// S79 (#302): the one-mana floor is a generic reduction's.
+			if why := m.KeepsOneManaProblem(); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares %s — build it with KeepsOneMana(ActivationCostsLess(…))", spec.Name, i, m.Label, why))
+			}
 		}
 	}
 	// The completeness declaration is published verbatim on the
@@ -2722,6 +2726,9 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		}
 		if m.Kind == game.CostFloor || m.Kind == game.CostZeroAlternative {
 			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor or CostZeroAlternative — an ability's own cost clause increases or reduces", name, where))
+		}
+		if m.KeepsOneMana {
+			panic(fmt.Sprintf("effects.Register: %q %s keeps one mana — no printed ability floors its own cost; the floor is a board clause about other abilities (Training Grounds)", name, where))
 		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))

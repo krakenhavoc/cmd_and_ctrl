@@ -2632,9 +2632,8 @@ Endures** (`full`, via `effects.ChannelDiscountPerLegendaryCreature`).
 
 ### Still out of scope
 
-- **Board reductions with a per-reduction floor** — Training Grounds, Power
-  Artifact ("can't reduce the mana in that cost to less than one mana"). A
-  `CostFloor` is a total-mana minimum (Trinisphere), not this.
+- ~~**Board reductions with a per-reduction floor**~~ — closed by the
+  amendment of 2026-11-06 below (Training Grounds).
 - **Belt of Giant Strength** ("{X} less, where X is the power of the creature
   it targets") is one `CostsLessForTheCardItTargets` away and was not added;
   the non-target members of the family (Arm-Mounted Anchor, Crown of Gondor,
@@ -4198,3 +4197,36 @@ Evidence Examiner, Surveillance Monitor and Incinerator of the Guilty ship Full.
 (one event from the cost form with the cards and the total, none when declined or refused, the X gate) and
 `cards/effects/mkm_collect_evidence_x_cards_test.go` (one event from each of the three forms, the cards' rules, X = 0
 on an empty graveyard and with cards, an X above the total refused, declining).
+
+## Amendment 2026-11-06 ([#302](https://github.com/krakenhavoc/cmd_and_ctrl/issues/302)): a reduction that keeps one mana
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first. Card:
+Training Grounds (#5075).
+
+"This effect can't reduce the mana in that cost to less than one mana"
+(Training Grounds, Power Artifact) is `CostModifier.KeepsOneMana` on a
+generic `CostReduction`, built with `effects.KeepsOneMana`. Three decisions:
+
+1. **What the floor measures.** The total cost as the pass has it so far,
+   increases included (the Training Grounds ruling on Suppression Field),
+   with {X} at its announced value (the ruling on Drana, Kalastria
+   Bloodchief's {X}{B}{B}). The reduction takes off what it can while one
+   mana remains, and leaves a cost of one mana or less alone: it never adds
+   a {1} (the ruling on {R}{R} and {0} costs).
+2. **Order.** CR 601.2f: "If multiple cost reductions apply, the player may
+   apply them in any order." The floored reductions go first. A floored
+   reduction can only take more off a larger total, and the others take
+   theirs whatever the order, so this is the order that leaves the least to
+   pay; the engine takes it on the activator's behalf, as it takes a
+   `CostZeroAlternative`.
+3. **X for activations.** `CostQuery.XValue` was set only for casts. The
+   activation now prices with its announced X
+   (`Game.AbilityManaCostAtXForEffect`, read in `ActivateCatalogAbility` for
+   the payment and the waterbend budget). The menu row, the enumerator and
+   the auto-tap preview price before X is chosen, at 0, where the floor
+   keeps more of the cost: an upper bound on what the activation charges,
+   never below it, so a bot is never offered an activation it cannot pay.
+
+`effects.Register` refuses the flag on an increase, a `CostFloor`, a
+reduction with a mana `Unit` and an ability's own cost clause; the pass
+refuses it the same way (`CostModifier.KeepsOneManaProblem`).

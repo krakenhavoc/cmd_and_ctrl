@@ -73,6 +73,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a choose-a-color card (#742)](#adding-a-choose-a-color-card-742)
   - [Shared vocabulary, and the clone gate](#shared-vocabulary-and-the-clone-gate)
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
+  - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](#adding-a-trigger-doubler-752)
@@ -5551,6 +5552,33 @@ each target on its own. Build other equip clauses from
 `AnEquipAbilityCost()`, `YouActivate()` and `ThatTargetThisPermanent()`;
 never match on the label.
 
+**A discount that keeps one mana (#302, S79):** "Activated abilities of
+creatures you control cost {2} less to activate. This effect can't reduce
+the mana in that cost to less than one mana" (Training Grounds) is a
+generic activation reduction wrapped in `KeepsOneMana`:
+
+```go
+CostModifiers: []game.CostModifier{
+    KeepsOneMana(ActivationCostsLess(2, label, OfACreatureYouControl())),
+},
+```
+
+The engine does the rest (`CostModifier.KeepsOneMana`,
+`game/cost_modifier.go`): the floor is measured against the TOTAL cost so
+far, increases included (Suppression Field's {2} is taken back off) and
+{X} at its announced value (Drana's {X}{B}{B} at X = 5 is {3}{B}{B}); a
+cost already at one mana or less is never raised to {1}; and because CR
+601.2f lets the player apply reductions in any order, the floored ones
+go first, which is the order that leaves the least to pay. The
+activation prices at the announced X (`AbilityManaCostAtXForEffect`);
+the menu row, the enumerator and the auto-tap preview price before X is
+chosen, at 0, which only ever shows more than the activation charges.
+`OfACreatureYouControl()` is the source predicate: a creature on the
+battlefield under the modifier's controller, so a cycling ability from
+the hand is not one. Register refuses the floor on an increase, a
+Trinisphere floor, a reduction with a mana unit and an ability's own
+cost clause.
+
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
 `Spec.AdditionalCost`, not in `OnResolve`:
@@ -10874,6 +10902,38 @@ trigger the process caused goes on the stack before another cleanup step
 Not built yet: Day's Undoing's "if it's your turn" is buildable on the
 same primitive; Discontinuity's "costs {2}{U}{U} less" is a coloured
 cost reduction with no shape, so it stays out.
+
+### Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)
+
+"Target player skips all combat phases of their next turn" (False Peace,
+Empty City Ruse) is one primitive from
+[skip_combat_phases.go](../server/internal/cards/effects/skip_combat_phases.go),
+and like the turn skips it never touches the cursor:
+
+```go
+Targets:   TargetPlayer("target opponent", Opponent()),
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return TargetPlayerSkipsCombatPhasesOfNextTurn{}.Apply(ctx)
+},
+```
+
+It writes a `skipCombatPhases` ScopedEffect record
+(`Game.SkipCombatPhasesOfNextTurnForEffect`) that waits for the player's
+next turn that really begins, extra or normal; a turn skipped whole does
+not use it up, and a skip made during the player's own turn waits for
+the next one (CR 614.10). As that turn begins the record is armed: the
+turn's combat phases come out of the plan, so the before-attackers
+windows see no combat to come (CR 506.8e), and the step entry walks past
+any combat step of that turn, so a combat phase added later in it
+(Relentless Assault) is skipped too. Nothing in a skipped phase happens
+(CR 500.11): no beginning-of-combat trigger, no attack. Two skips take
+the combat phases of two turns, the oldest first (CR 614.10a). The armed
+record goes as the next turn begins; a waiting one for a player who has
+left goes then too. `Game.CombatPhaseSkipsForLocked(player)` counts what
+is owed, the turn in progress included.
+
+"Skip your next combat phase" (Moment of Silence) is not this: it skips
+one phase of THIS turn, and is not built.
 
 ### Exert (ADR 0130, #2048, CR 701.43)
 

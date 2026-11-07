@@ -167,6 +167,34 @@ func ActivationCostsLess(n int, label string, when ...CostPredicate) game.CostMo
 	return ActivationCostsLessEach(func(game.CostQuery) int { return n }, label, when...)
 }
 
+// KeepsOneMana adds a reduction's one-mana floor: "This effect can't
+// reduce the mana in that cost to less than one mana" (Training Grounds,
+// S79, #302). Wrap a generic reduction:
+//
+//	KeepsOneMana(ActivationCostsLess(2, label, OfACreatureYouControl()))
+//
+// The engine applies it before the other reductions (the order CR
+// 601.2f lets the player pick that leaves the least to pay), measures
+// the total with increases and the announced {X} in it, and leaves a
+// cost of one mana or less alone. Register refuses it on an increase, a
+// floor, a reduction with a mana unit and an ability's own cost clause.
+func KeepsOneMana(m game.CostModifier) game.CostModifier {
+	m.KeepsOneMana = true
+	return m
+}
+
+// OfACreatureYouControl — "activated abilities of creatures you
+// control": the ability's source is a creature on the battlefield under
+// the modifier's controller. An ability that works from another zone,
+// such as cycling, is not one (the Training Grounds ruling).
+func OfACreatureYouControl() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.FromZone == game.ZoneBattlefield &&
+			q.Card.Controller == q.Source.Controller &&
+			q.Card.IsCreature()
+	}
+}
+
 // ActivationCostsLessEach is ActivationCostsLess with an amount computed
 // per activation — Dragonkin Berserker's "Boast abilities you activate
 // cost {1} less to activate for each Dragon you control" (#2697).
