@@ -40,6 +40,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			records = append(append([]ScopedEffect(nil), records...), et.Effects...)
 		}
 	}
+	// ADR 0188 Decision 13 (#5277): and so are the effects waiting for
+	// one combat phase, registered as that combat begins.
+	for _, pe := range s.PhaseEffects {
+		records = append(append([]ScopedEffect(nil), records...), pe.Effect)
+	}
 	unknown = append(unknown, unknownScopedEffectRecordKeys(records)...)
 	// ADR 0203: a venture marker on a dungeon or room this binary does
 	// not register.

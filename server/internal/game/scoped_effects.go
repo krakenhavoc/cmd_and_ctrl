@@ -625,6 +625,18 @@ const (
 	// and exileIfWouldDie (dealtDamageByScopeProblem), and as a permanent
 	// predicate on the layer pass it matches nothing.
 	ScopeDealtDamageBy AffectedScope = "dealtDamageBy"
+	// ScopeCreaturesThatArentLands is "creatures that aren't lands",
+	// every player's, read live (#5277): Bumi, Unleashed's "only land
+	// creatures can attack during that combat phase" is "can't attack"
+	// on every creature that is not also a land. Whether an object is a
+	// land is a layer-4 result (an earthbent land becomes a land
+	// creature), so, like ScopeCreaturesWithoutFlying, a record with
+	// this scope carries only mods read after the layer pass is
+	// finished (scopeReadsLayerResult). It is judged as attackers are
+	// declared (CR 508.1c) because the fold runs on every layer pass, and
+	// it reaches a creature that arrives or stops being a land after the
+	// effect began (CR 611.2c: it changes no characteristic).
+	ScopeCreaturesThatArentLands AffectedScope = "creaturesThatArentLands"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -632,10 +644,33 @@ func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
-		ScopeCreatures, ScopeDealtDamageBy:
+		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands:
 		return true
 	}
 	return false
+}
+
+// scopeReadsLayerResult reports whether a live scope's predicate reads a
+// characteristic the layer pass computes (a keyword, a card type), so a
+// record with it may only carry mods folded after the pass
+// (foldedAfterLayers). A layer mod would read the characteristic
+// half-way through the pass (#1650).
+func scopeReadsLayerResult(scope AffectedScope) bool {
+	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands
+}
+
+// panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
+// a scope that reads a layer result. A programming error in the card,
+// caught by the first test that exercises it.
+func panicOnLayerModUnderLayerScope(scope AffectedScope, mods []Mod, label string) {
+	if !scopeReadsLayerResult(scope) {
+		return
+	}
+	for _, m := range mods {
+		if !foldedAfterLayers(scope, m.Kind) {
+			panic(fmt.Sprintf("game: scoped effect %q: scope %q carries only addRestrictions, got %q", label, scope, m.Kind))
+		}
+	}
 }
 
 // Mod is one operation of a ScopedEffect, with its plain parameters.
@@ -1593,16 +1628,10 @@ func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope Affec
 	if scope == ScopeNone || !KnownAffectedScope(scope) || len(mods) == 0 {
 		return false
 	}
-	if scope == ScopeCreaturesWithoutFlying {
-		// #1650: this scope reads a layer-6 result, so only a mod the
-		// post-layer fold applies may use it. A layer mod would read
-		// the keyword half-way through the pass.
-		for _, m := range mods {
-			if !foldedAfterLayers(scope, m.Kind) {
-				panic(fmt.Sprintf("game: scoped effect %q: scope %q carries only addRestrictions, got %q", label, scope, m.Kind))
-			}
-		}
-	}
+	// #1650: a scope that reads a layer result (flying, a card type)
+	// takes only a mod the post-layer fold applies. A layer mod would
+	// read the characteristic half-way through the pass.
+	panicOnLayerModUnderLayerScope(scope, mods, label)
 	return g.appendScopedEffectLocked(sourceID, nil, scope, controller, mods, d, label, timeNowUnixNano())
 }
 
@@ -2064,6 +2093,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 	case ScopeCreatures:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature()
+		}
+	case ScopeCreaturesThatArentLands:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && !target.IsLand()
 		}
 	}
 	// ScopeGame names no object, so it matches none.

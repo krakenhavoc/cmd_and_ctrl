@@ -953,6 +953,9 @@ func (g *Game) sweepUnreachableBoundTriggersLocked() {
 	// ADR 0188 Decision 3a: a skipped step bound to a turn that can no
 	// longer happen goes with it (CR 614.10a).
 	g.sweepSkippedStepsLocked()
+	// ADR 0188 Decision 13 (#5277): a rules effect bound to a combat
+	// phase of a turn that is over never began, and goes too.
+	g.sweepUnreachablePhaseEffectsLocked()
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
