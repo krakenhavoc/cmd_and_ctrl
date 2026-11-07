@@ -38,13 +38,7 @@ func init() {
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
 				return permanentCardsInGraveyard(g, controller) >= 8
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return g.ReturnFromGraveyardWithCountersKeyedForEffect(item.SourceCardID, item.Controller, false,
-					map[string]int{game.CounterFinality: 1}, game.KeyedTail{})
-			},
+			Effect: returnThisFromGraveyardWithAFinalityCounter,
 		}},
 	})
 }

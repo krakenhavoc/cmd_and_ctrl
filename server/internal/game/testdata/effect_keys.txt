@@ -151,6 +151,7 @@ body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
+body gastal-blockbuster/destroy
 body gaze-of-pain/damage-equal-to-its-power
 body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
@@ -1454,6 +1455,7 @@ run prompt-run/frantic-scapegoat-suspect
 run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
+run prompt-run/gastal-blockbuster-sacrifice
 run prompt-run/general-traag-sacrifice
 run prompt-run/genesis-device-sacrifice
 run prompt-run/ghouls-night-out-return
@@ -1699,6 +1701,7 @@ tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail cantankerous-keepers/after-mill
 tail carnival-of-souls/add-mana
+tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail charming-prince/after-exile
 tail chrome-dome/haste-and-sacrifice-copy
@@ -2107,6 +2110,7 @@ tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
+tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans

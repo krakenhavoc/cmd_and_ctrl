@@ -1786,3 +1786,17 @@ func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
 	}
 	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }
+
+// returnThisFromGraveyardWithAFinalityCounter is "<cost>: Return this card
+// from your graveyard to the battlefield with a finality counter on it"
+// (Uchbenbak, the Great Mistake; Gastal Thrillroller): the card comes back
+// with the counter as it enters, and a card that left the graveyard in
+// response stays where it is. Grim Reaper's Scythe's verb aimed at the
+// source.
+func returnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return g.ReturnFromGraveyardWithCountersKeyedForEffect(item.SourceCardID, item.Controller, false,
+		map[string]int{game.CounterFinality: 1}, game.KeyedTail{})
+}
