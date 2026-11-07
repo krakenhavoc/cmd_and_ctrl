@@ -2127,6 +2127,7 @@ tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
+tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
