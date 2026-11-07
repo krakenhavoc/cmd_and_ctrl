@@ -42,7 +42,7 @@ func TestRoleConnectionTokenRoundTripIsSealedAndApartFromSignIn(t *testing.T) {
 		t.Errorf("RoleConnectionToken = %q %v %v, want rc-1", rt, ok, err)
 	}
 	// The sealed blob opens only as this column of this identity.
-	if _, err := s.sealer.Open(raw, refreshTokenAD(ProviderDiscord, alice.ID)); err == nil {
+	if _, err := s.sealer.Open(raw, refreshTokenAD(alice.ID)); err == nil {
 		t.Error("the role-connection blob opens as a sign-in refresh token")
 	}
 	if _, err := s.OpenRoleConnectionToken("222", raw); err == nil {

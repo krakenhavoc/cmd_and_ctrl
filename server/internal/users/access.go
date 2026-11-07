@@ -72,7 +72,7 @@ func (s *SQLStore) SetRefreshToken(ctx context.Context, subject, token string) e
 	if s.sealer == nil || token == "" {
 		return nil
 	}
-	sealed, err := s.sealer.Seal([]byte(token), refreshTokenAD(ProviderDiscord, subject))
+	sealed, err := s.sealer.Seal([]byte(token), refreshTokenAD(subject))
 	if err != nil {
 		return err
 	}
