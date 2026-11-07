@@ -2361,6 +2361,15 @@ one simultaneous entry (#4867, ADR 0061 amendment 2026-11-05; CR 608.2f,
 tokens of its own creation enter. (Tokens created blocking are the one
 exception; see the amendment.) Do not loop `N: 1` creations to make N
 tokens; one creation with `N: n` is the printed instruction.
+"For each opponent, create a token that attacks that opponent" (encore,
+Furygale Flocking) is ONE creation too: one `TokenGroup` per opponent with
+`Tag: opp`, and a keyed tail that reads `game.TokenTags(o, ownCarry)` to know
+which landed token belongs to whom. A doubler's extra tokens keep their
+group's tag, and a group a replacement adds (Peregrin Took's Food) has none.
+"Each player creates a token" (Fractured Identity) is
+`CreateTokensForPlayersTogetherForEffect(specs)`, one `TokenCreation` per
+player: each player's CR 701.7b window is their own, and every token enters
+in one event (ADR 0061 amendment 2026-11-06).
 A creation CAN PAUSE — two different effects in the window is a CR 616
 ordering prompt — and so can a single token's entry, so
 `CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If

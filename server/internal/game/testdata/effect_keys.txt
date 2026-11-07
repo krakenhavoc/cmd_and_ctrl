@@ -1782,6 +1782,7 @@ tail emergent-ultimatum/tucked
 tail emeritus-of-truce/then-prepare
 tail empower-jace/finish
 tail empower-jace/place-counters
+tail encore/bind-tokens
 tail engine/adventure-exiled
 tail engine/amass-counters-placed
 tail engine/amass-created
@@ -1883,6 +1884,7 @@ tail fractal-harness/fractal-created
 tail fractured-identity/after-exile
 tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
+tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers

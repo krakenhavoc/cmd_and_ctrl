@@ -35,6 +35,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // included (CR 608.2b). The copies are only made if the exile
 // actually landed.
 //
+// The players create their copies at the same time (CR 101.4, CR 608.2f),
+// so every copy enters in one event and each sees the others enter
+// (CR 603.6a, #4867): Fractured Identity on a Soul Warden gains each new
+// controller a life for every other copy. Each player's creation is still
+// their own, and so are the replacement effects applying to its token
+// (CR 701.7b): a Doubling Season doubles only its controller's copy
+// (game.CreateTokensForPlayersTogetherForEffect).
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -68,13 +76,19 @@ var fracturedIdentityExiled = CardTail("fractured-identity/after-exile", func(ct
 	if !exiled {
 		return nil
 	}
+	tmpl, ok := TokenCopyTemplate(ctx.Game, copyOf)
+	if !ok {
+		return nil
+	}
+	var specs []game.TokenCreation
 	for _, p := range apnapPlayers(ctx.Game) {
 		if p == owner {
 			continue
 		}
-		if err := (CreateTokenCopy{Controller: p, Copy: copyOf, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
+		specs = append(specs, game.TokenCreation{
+			Controller: p, Source: ctx.Source(),
+			Groups: []game.TokenGroup{{Template: copiedToken(tmpl), Count: 1}},
+		})
 	}
-	return nil
+	return ctx.Game.CreateTokensForPlayersTogetherForEffect(specs)
 })

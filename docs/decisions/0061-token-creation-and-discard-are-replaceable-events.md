@@ -616,3 +616,70 @@ opponent from the IDs its creation reports, which a single creation with a
 doubler in its window could not split back by opponent without a tail told the
 landed IDs per group; Fractured Identity's copies are created by different
 players, and `TokenCreation` has one controller. Each needs that seam first.
+
+## Amendment — 2026-11-06: tokens created for each opponent, and by each player, enter together (S79, #4867)
+
+The 2026-11-05 amendment left two shapes making one creation per player:
+encore's "for each opponent, create a token ... that attacks that opponent"
+(and Furygale Flocking's pairs), and Fractured Identity's "each player other
+than its controller creates a token". Both are one effect taking one action
+on several objects (CR 608.2f), and for Fractured Identity several players
+acting at once (CR 101.4: "Then the actions happen simultaneously"), so their
+tokens enter in one event and each newcomer sees the others enter (CR 603.6a).
+
+**Decision 1: a token group can be tagged.** `TokenGroup.Tag` is the caller's
+name for a group. Encore makes ONE creation, one group per opponent with
+`Tag: opp`. Once the creation window has settled and the tokens are minted,
+the engine appends a (token, tag) pair for each tagged token to the
+creation's keyed tail's `Carry`, after the caller's own entries, and
+`game.TokenTags(o, own)` reads them back. The tail binds each token that
+landed to its opponent and schedules the sacrifice.
+- A count replacement keeps its group's tag. Doubling Season's second token is
+  that opponent's too, which is what the per-opponent loop did.
+- A kind replacement keeps the tag (`ReplaceTokenKindsWhere` copies it).
+- A replacement that adds a group (Xorn, Peregrin Took) adds an untagged one,
+  so its token is neither bound nor sacrificed. The loop got that wrong: it read
+  back every token its controller had created since a cursor.
+- Pairs are written by token ID, so a token whose entry is replaced away (or
+  that never lands) cannot shift another token's binding.
+
+The pairs are written before any token enters, so an entry question that
+pauses the batch carries them inside the tail the frame already writes. A
+pause in the creation window writes the groups, now with `tag` (additive in
+v9, `snapshot_shape/v9.txt`). Only a tail that reads tags is told them, and
+each such tail is a key of its own (`encore/bind-tokens`,
+`furygale-flocking/bind-tagged-tokens`). A binary from before the tag never
+silently drops one: it refuses the file by that key (the rollback case).
+`furygale-flocking/attack-that-opponent-and-haste` stays registered for a file
+written while a creation per opponent was paused.
+
+**Decision 2: "each player creates" is one window per player, one entry.**
+`CreateTokensForPlayersTogetherForEffect(specs)` takes one `TokenCreation`
+per player. Each player's creation window opens in APNAP order against a board
+where none of the tokens exists yet. Each window is that player's own: CR 701.7b
+replacements apply to the token being created, a Doubling Season doubles only
+its controller's tokens, and each player orders their own (CR 616.1). Then
+every minted token enters through the one simultaneous entry a single creation
+uses. The batch already enters each member under its own controller.
+
+**The fallback.** A player whose window asks a question (Doubling Season beside
+Parallel Lives) is not waited for. That player's creation pauses on the
+ordinary `ReplacementResumeCreateTokens` frame and its tokens enter together,
+on their own, when it is answered. The other players' tokens enter together at
+once. This writes no new frame, and no player's tokens enter later than they
+did under the loop it replaces. Making the settled players wait for the
+question needs a frame holding the minted tokens and the windows still to run.
+That is the open question below.
+
+**Out of scope, still one at a time.** Tokens created blocking (Brimaz under a
+doubler) remain the 2026-11-05 exception: they need a member field and a frame
+key of their own. The door refuses attacking and blocking groups, since no
+"each player creates" card makes them.
+
+**Open questions (for the owner).**
+1. Should a player's paused creation window hold up the other players' tokens,
+   so every Fractured Identity copy enters together even when one player is
+   asked to order replacements? That needs a new frame key (minted tokens plus
+   the remaining windows). The fallback is the conservative, reversible choice.
+2. Should the blocking-token exception be closed now, with its own frame key,
+   or left until a card has a blocking token that cares about its siblings?
