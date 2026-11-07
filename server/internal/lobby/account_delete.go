@@ -247,6 +247,12 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 			log.Warn("account deletion: removing playmat files failed", "user_id", id, "err", err)
 		}
 	}
+	// ADR 0163 §7: the grant went with the identity row; empty the
+	// Discord connection with it so the profile stops showing the
+	// numbers. In the background, and a failure is only logged.
+	if c.LinkedRoles != nil && len(res.RoleConnectionToken) > 0 {
+		c.LinkedRoles.Forget(res.DiscordSubject, res.RoleConnectionToken)
+	}
 	if c.DiscordAvatars != nil && res.DiscordSubject != "" {
 		if err := c.DiscordAvatars.Forget(res.DiscordSubject); err != nil {
 			log.Warn("account deletion: removing the cached avatar failed", "user_id", id, "err", err)

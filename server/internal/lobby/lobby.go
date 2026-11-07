@@ -401,6 +401,10 @@ type Lobby struct {
 	// results is the results feed (ADR 0174), nil when it is off. Set
 	// once at boot by SetResultsFeed.
 	results *ResultsFeed
+	// linkedRoles queues a Discord Linked Roles push for the accounts
+	// of a game that ends (ADR 0163 §5), nil when it is off. Set once
+	// at boot by SetLinkedRoles.
+	linkedRoles RoleConnectionQueue
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.

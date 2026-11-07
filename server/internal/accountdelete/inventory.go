@@ -99,6 +99,8 @@ var Inventory = join(
 
 	cols("identities", Deleted, "the whole row, including the encrypted refresh token",
 		"provider", "subject", "user_id", "display_name", "avatar_hash", "refresh_token", "scopes", "linked_at", "refreshed_at"),
+	cols("identities", Deleted, "the encrypted Linked Roles grant (ADR 0163 §4), with the row; the server first asks Discord to empty the connection, best effort",
+		"role_connection_token"),
 
 	cols("decks", Deleted, "every deck the person saved",
 		"id", "owner_id", "name", "source_format", "source_text", "commanders", "card_count", "created_at", "updated_at", "source_url", "power_level"),

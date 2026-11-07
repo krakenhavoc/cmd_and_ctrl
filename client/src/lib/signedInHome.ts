@@ -23,6 +23,9 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // The gate page (ADR 0156 §5): the Discord callback sends a refused
   // sign-in here, and a refused sign-in leaves no session behind.
   "requestAccess",
+  // Discord Linked Roles' page (ADR 0163 §3): the server's verification
+  // URL lands here without a session.
+  "linkedRole",
   // The practice table's door (ADR 0076 §2.2). Signed out it opens a
   // guest practice game (ADR 0156 §2, POST /games/practice/guest).
   "practice",

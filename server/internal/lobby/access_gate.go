@@ -263,6 +263,10 @@ type communityResponse struct {
 	// but production) the Played with list offers Copy invite instead
 	// (ADR 0213 §1).
 	DMInvites bool `json:"dm_invites"`
+	// LinkedRoles is whether a person can link CMD & CTRL to their
+	// Discord profile (ADR 0163): the Linked Roles verification URL,
+	// GET /auth/discord/linked-role, works on this server.
+	LinkedRoles bool `json:"linked_roles"`
 }
 
 // community is GET /community: public, no session, cacheable for five
@@ -270,11 +274,12 @@ type communityResponse struct {
 func community(c Config, w http.ResponseWriter, _ *http.Request) error {
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	return writeJSON(w, http.StatusOK, communityResponse{
-		InviteURL: c.CommunityInviteURL,
-		Gate:      c.Discord.Gate.Enabled(),
-		Voice:     c.DiscordVoice.Enabled(),
-		LFG:       c.Lobby.LFGEnabled(),
-		Results:   c.Lobby.ResultsEnabled(),
-		DMInvites: c.DiscordBot.Enabled() && c.InviteBaseURL != "",
+		InviteURL:   c.CommunityInviteURL,
+		Gate:        c.Discord.Gate.Enabled(),
+		Voice:       c.DiscordVoice.Enabled(),
+		LFG:         c.Lobby.LFGEnabled(),
+		Results:     c.Lobby.ResultsEnabled(),
+		DMInvites:   c.DiscordBot.Enabled() && c.InviteBaseURL != "",
+		LinkedRoles: c.LinkedRoles != nil && c.Discord.Enabled(),
 	})
 }

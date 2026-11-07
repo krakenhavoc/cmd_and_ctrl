@@ -33,10 +33,12 @@ func NewSQLStore(d *db.DB, sealer *Sealer) *SQLStore {
 }
 
 // refreshTokenAD is the associated data a refresh token is sealed
-// with: the identity it belongs to. A sealed blob moved to another
-// row fails to open.
-func refreshTokenAD(provider, subject string) []byte {
-	return []byte(provider + "\x00" + subject)
+// with: the Discord identity it belongs to. A sealed blob moved to
+// another row fails to open. Only Discord identities carry a refresh
+// token, so the provider is fixed (the bytes are unchanged from when it
+// was a parameter, so tokens sealed before still open).
+func refreshTokenAD(subject string) []byte {
+	return []byte(ProviderDiscord + "\x00" + subject)
 }
 
 // UpsertFromDiscord implements Store. See the interface for the
@@ -82,7 +84,7 @@ func (s *SQLStore) upsertDiscord(ctx context.Context, profile discord.User, refr
 		keep = true
 	default:
 		var err error
-		sealed, err = s.sealer.Seal([]byte(refreshToken), refreshTokenAD(ProviderDiscord, profile.ID))
+		sealed, err = s.sealer.Seal([]byte(refreshToken), refreshTokenAD(profile.ID))
 		if err != nil {
 			return User{}, err
 		}
@@ -270,7 +272,7 @@ func (s *SQLStore) RefreshToken(ctx context.Context, subject string) (token stri
 	if s.sealer == nil {
 		return "", false, fmt.Errorf("users: a refresh token is stored but %s is not set", IdentityKeyEnv)
 	}
-	pt, err := s.sealer.Open(sealed, refreshTokenAD(ProviderDiscord, subject))
+	pt, err := s.sealer.Open(sealed, refreshTokenAD(subject))
 	if err != nil {
 		return "", false, err
 	}

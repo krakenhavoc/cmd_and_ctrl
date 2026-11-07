@@ -33,6 +33,11 @@ import (
 // already-seated player attaching a Discord identity to the seat they
 // hold (GET /auth/discord/link, ADR 0051 sub-PR 4). See Link.
 //
+// RoleConnection is set, alone, for the fourth shape: a person linking
+// CMD & CTRL from Discord's Linked Roles (ADR 0163 §3). It names no game
+// and no seat, and the callback mints no session for it. See
+// StartRoleConnection.
+//
 // Prompt is the `prompt` the round-trip's authorize URL was sent with
 // (ADR 0110 §2). The callback reads it to decide whether an `error`
 // from Discord earns the one consent retry: only a PromptNone round
@@ -42,9 +47,11 @@ type StateEntry struct {
 	GameID       uuid.UUID
 	InviteToken  string
 	LinkPlayerID uuid.UUID
-	Prompt       Prompt
-	CodeVerifier string
-	CreatedAt    time.Time
+	// RoleConnection marks a Linked Roles round-trip (ADR 0163 §3).
+	RoleConnection bool
+	Prompt         Prompt
+	CodeVerifier   string
+	CreatedAt      time.Time
 }
 
 // Link reports whether this round-trip was started by a seated player
@@ -66,7 +73,7 @@ func (e StateEntry) Link() bool {
 // pair, and treating that as "unbound" would silently drop a seat
 // claim the user asked for.
 func (e StateEntry) Unbound() bool {
-	return e.GameID == uuid.Nil && e.InviteToken == "" && e.LinkPlayerID == uuid.Nil
+	return e.GameID == uuid.Nil && e.InviteToken == "" && e.LinkPlayerID == uuid.Nil && !e.RoleConnection
 }
 
 // StateStore is a tiny in-memory TTL map. Sized for at most a
@@ -134,6 +141,13 @@ func (s *StateStore) StartLink(game, player uuid.UUID) (state, codeChallenge str
 	return s.start(StateEntry{GameID: game, LinkPlayerID: player, Prompt: PromptConsent})
 }
 
+// StartRoleConnection is Start for the Linked Roles flow (ADR 0163 §3):
+// no game, no seat, and always the consent screen, because the grant
+// puts the person's numbers on their Discord profile.
+func (s *StateStore) StartRoleConnection() (state, codeChallenge string, err error) {
+	return s.start(StateEntry{RoleConnection: true, Prompt: PromptConsent})
+}
+
 // ErrNoRetry is Retry's refusal: the round-trip was not a PromptNone
 // one, so it has had its consent screen already.
 var ErrNoRetry = errors.New("discord: only a prompt=none round-trip is retried")
@@ -154,10 +168,11 @@ func (s *StateStore) Retry(entry StateEntry) (state, codeChallenge string, err e
 		return "", "", ErrNoRetry
 	}
 	return s.start(StateEntry{
-		GameID:       entry.GameID,
-		InviteToken:  entry.InviteToken,
-		LinkPlayerID: entry.LinkPlayerID,
-		Prompt:       PromptConsent,
+		GameID:         entry.GameID,
+		InviteToken:    entry.InviteToken,
+		LinkPlayerID:   entry.LinkPlayerID,
+		RoleConnection: entry.RoleConnection,
+		Prompt:         PromptConsent,
 	})
 }
 

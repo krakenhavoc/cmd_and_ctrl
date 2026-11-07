@@ -19,6 +19,17 @@ describe("parseHash", () => {
   });
 
   // ADR 0156 §5: the gate page, and ?retry=1 when Discord did not answer.
+  it("parses #/linked-role with each status the server sends, and anything else as failed", () => {
+    for (const status of ["linked", "signin", "unavailable", "failed"] as const) {
+      expect(parseHash(`#/linked-role?status=${status}`)).toEqual({ name: "linkedRole", status });
+    }
+    expect(parseHash("#/linked-role")).toEqual({ name: "linkedRole", status: "failed" });
+    expect(parseHash("#/linked-role?status=admin")).toEqual({
+      name: "linkedRole",
+      status: "failed",
+    });
+  });
+
   it("parses #/request-access, with and without ?retry=1", () => {
     expect(parseHash("#/request-access")).toEqual({ name: "requestAccess" });
     expect(parseHash("#/request-access?retry=1")).toEqual({ name: "requestAccess", retry: true });
