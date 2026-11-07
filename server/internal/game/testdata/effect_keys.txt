@@ -2144,6 +2144,7 @@ tail simic-fluxmage/take-one
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
+tail skyserpent-seeker/rest-on-bottom-then-counter
 tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
 tail smugglers-surprise/after-mill
