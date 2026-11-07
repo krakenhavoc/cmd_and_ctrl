@@ -22,14 +22,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Sun Warriors — firebending X", func(g *game.Game, item *game.StackItem) error {
-				n := b04CreaturesControlled(g, item.Controller)
-				if n <= 0 {
-					return nil
-				}
-				return AddMana{
-					Amount: ManaN(n, "R"),
-					Riders: []game.ManaSpendRider{KeepManaUntilEndOfCombat()},
-				}.Apply(NewContext(g, item))
+				// X of zero adds nothing but still firebends (#5276).
+				return firebending(b04CreaturesControlled(g, item.Controller)).Apply(NewContext(g, item))
 			}),
 		},
 		Activated: []ActivatedAbility{{

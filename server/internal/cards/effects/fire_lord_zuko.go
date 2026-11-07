@@ -33,14 +33,12 @@ func init() {
 			WheneverThisAttacks("Fire Lord Zuko — firebending X, where X is Fire Lord Zuko's power",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					info, ok := ctx.SourcePermanent()
-					if !ok || info.Power <= 0 {
-						return nil
+					n := 0
+					if info, ok := ctx.SourcePermanent(); ok {
+						n = info.Power
 					}
-					return AddMana{
-						Amount: ManaN(info.Power, "R"),
-						Riders: []game.ManaSpendRider{KeepManaUntilEndOfCombat()},
-					}.Apply(ctx)
+					// X of zero adds nothing but still firebends (#5276).
+					return firebending(n).Apply(ctx)
 				}),
 			OnAny([]game.EventKind{game.EventCast, game.EventETB}, fireLordZukoFromExile,
 				"Fire Lord Zuko — put a +1/+1 counter on each creature you control",

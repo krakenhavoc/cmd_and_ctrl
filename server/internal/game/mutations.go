@@ -2448,6 +2448,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if planCollectsEvidence(costPlan) {
 		g.noteCollectEvidenceLocked(playerID, cardID, params.ExileIDs)
 	}
+	// #5276, CR 701.67c: each waterbend cost in the total cost has been
+	// paid with the mana and the taps above, so the caster has waterbent
+	// once for each — announced for "whenever you waterbend", with the
+	// spell on the stack below the triggers.
+	g.noteWaterbendsOfCastLocked(playerID, cardID, card, params)
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {

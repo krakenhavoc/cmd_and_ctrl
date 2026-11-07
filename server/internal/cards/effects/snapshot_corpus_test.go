@@ -140,7 +140,12 @@ func corpusBoards() []corpusBoard {
 		{"scoped_effect_kinds", corpusScopedEffectKinds},
 		{"mass_diminish_cast_batch", corpusMassDiminish},
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
-		{"earthbend", corpusEarthbend},
+		// #5276: the board that wrote earthbend.json earthbent without
+		// announcing it, a history this engine no longer makes (an
+		// earthbend raises EventEarthbend as its return trigger is
+		// created, CR 701.66b). The file stays and is still restored;
+		// the same board is a new file.
+		{"earthbend_announced", corpusEarthbend},
 		// #3942: the board that wrote suspend_haste.json logged a counter
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file

@@ -75,6 +75,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
   - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
+  - [Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)](#whenever-you-waterbend-earthbend-firebend-or-airbend-5276-adr-0081-amendment-2026-11-07)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](#adding-a-trigger-doubler-752)
   - [Emblems (#623)](#emblems-623)
@@ -10968,6 +10969,39 @@ is owed, the turn in progress included.
 
 "Skip your next combat phase" (Moment of Silence) is not this: it skips
 one phase of THIS turn, and is not built.
+
+### Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)
+
+The four Avatar bending actions are engine events, each raised where the
+CR says the action happens, with Actor the bending player
+([bending.go](../server/internal/game/bending.go)):
+
+| Event | Raised when | CR |
+|---|---|---|
+| `game.EventWaterbend` | a waterbend cost is paid, however it was paid: a cast's own, optional or permission-priced waterbend, an activation's, a ward's | 701.67c |
+| `game.EventEarthbend` | an earthbend's return trigger is created (an earthbend of a land that was there) | 701.66b |
+| `game.EventFirebend` | a firebending ability resolves, even at X = 0 | 702.189b |
+| `game.EventAirbend` | an airbend instruction exiles one or more objects (one event per instruction, `CardIDs` the cards) | 701.65b |
+
+A card that bends needs nothing new: `WaterbendCost`, `Waterbend`,
+`OptionalWaterbend`, `Earthbend`, `AirbendAll`/`Airbend` and
+`firebending(n)` raise the events. Two rules for a card author:
+
+- **`firebending(n)` is a firebending ability's whole effect**, as in
+  `WheneverThisAttacks("<Card> — firebending 2", Do(firebending(2)))`. For
+  an X, pass the X even when it is zero, so the ability still firebends.
+  Red mana that lasts until end of combat but is not firebending is
+  `redUntilEndOfCombat(n)`.
+- **One airbend instruction is one `AirbendAll`.** "Airbend all other
+  creatures" exiles them together; a loop of `Airbend` calls would be
+  several airbends.
+
+A trigger watches the kinds it names, with `ByYou` for "whenever you":
+`OnAny(append([]game.EventKind(nil), game.BendKinds...), ByYou, label, effect)`
+is all four (Avatar Aang). "If you've done all four this turn" is
+`Game.AllFourBendsThisTurn(player)`, and one kind is
+`Game.BendsThisTurn(player, game.EventAirbend)`. Both read a per-turn
+count on `PlayerTurnTally` that resets with the turn.
 
 ### Exert (ADR 0130, #2048, CR 701.43)
 

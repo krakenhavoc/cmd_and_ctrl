@@ -370,3 +370,42 @@ Earthbending Lesson animates and returns; Rockalanche counts Forests at
 resolution (a Stomping Ground counts, an opponent's Forest does not)
 and its zero case animates-and-returns; its flashback is declared;
 Kyoshi's chapter II does both clauses and the face carries no caveat.
+
+## Amendment 2026-11-07 ([#5276](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5276)): the four bending actions are events
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first. Card: Avatar
+Aang // Aang, Master of Elements (#4459).
+
+"Whenever you waterbend, earthbend, firebend, or airbend" and "if you've done
+all four this turn" need each bending action to be something the engine
+announces and remembers. Decisions:
+
+1. **Four event kinds, one per action, raised where the CR says it happens.**
+   `EventWaterbend`: a player paid a waterbend cost, however they paid it (CR
+   701.67c), on a cast (its own additional cost, a chosen optional one, a
+   permission's waterbend price; one event per waterbend cost in the total), an
+   activation, or a resolving "unless they pay" (a ward). `EventEarthbend`: the
+   earthbend's return trigger was created (CR 701.66b), raised by
+   `applyEarthbendLocked` right after `scheduleEarthbendReturnLocked`, for every
+   earthbend of a land that was there to animate, including a second earthbend
+   of the same land (the rules create a second trigger even though the engine
+   keeps one). `EventFirebend`: a firebending ability resolved (CR 702.189b),
+   raised by the ability's own effect (`effects.firebending`) once its mana is
+   added, also at X = 0. `EventAirbend`: an airbend instruction exiled one or
+   more objects (CR 701.65b), raised once per instruction by `AirbendAll`'s
+   continuation after the cards land, carrying them; "airbend all other
+   creatures" (Avatar's Wrath) is now one simultaneous exile and one event.
+   Actor is the bending player, Source the card.
+2. **A count per kind on `PlayerTurnTally`** (`Waterbends`, `Earthbends`,
+   `Firebends`, `Airbends`), written by the turn tally's listener from the four
+   events and reset with the turn. Additive within schema v9: the fields are
+   `omitempty`, so a file written before has none and means none.
+   `Game.BendsThisTurn` and `Game.AllFourBendsThisTurn` read them.
+3. **Not logged.** Each action already writes its own lines (the payment, the
+   animation and counters, the trigger and its mana, the exiles). The events
+   exist for triggers and are listed as deliberate silences in the protocol's
+   log gate.
+4. **Firebending's mana and its event are one helper.** `effects.firebending(n)`
+   is now only a firebending ability's effect. Red mana kept until end of combat
+   that is not firebending (Avatar Roku, Firebender; Fire Lord Ozai) uses
+   `redUntilEndOfCombat`.

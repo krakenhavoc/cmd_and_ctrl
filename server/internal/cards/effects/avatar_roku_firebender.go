@@ -24,7 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, AnyPlayer,
-				"Avatar Roku, Firebender — a player attacked: add six {R} until end of combat", Do(firebending(6)))),
+				"Avatar Roku, Firebender — a player attacked: add six {R} until end of combat", Do(redUntilEndOfCombat(6)))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}{R}{R}: Target creature gets +3/+0 until end of turn.",

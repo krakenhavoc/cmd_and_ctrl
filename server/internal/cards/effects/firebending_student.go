@@ -23,11 +23,8 @@ func init() {
 			WheneverThisAttacks("Firebending Student — firebending X, where X is its power",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					n := sourcePowerNow(ctx)
-					if n <= 0 {
-						return nil
-					}
-					return firebending(n).Apply(ctx)
+					// X of zero adds nothing but still firebends (#5276).
+					return firebending(sourcePowerNow(ctx)).Apply(ctx)
 				}),
 		},
 	})

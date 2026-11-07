@@ -32,11 +32,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Zuko, Firebending Master — firebending X, where X is your experience counters",
 				func(g *game.Game, item *game.StackItem) error {
-					n := experienceCounters(g, item.Controller)
-					if n <= 0 {
-						return nil
-					}
-					return firebending(n).Apply(NewContext(g, item))
+					// None adds nothing but still firebends (#5276).
+					return firebending(experienceCounters(g, item.Controller)).Apply(NewContext(g, item))
 				}),
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && game.PhaseOf(g.Turn.Step) == game.PhaseCombat

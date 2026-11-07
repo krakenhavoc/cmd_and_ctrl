@@ -200,12 +200,38 @@ func (a AirbendAll) Apply(ctx *Context) error {
 	if len(targets) == 0 {
 		return nil
 	}
-	return exileAllWithPermission(ctx.Game, targets, ExileWithPermission{
+	perm := ExileWithPermission{
 		CastOnly:     true,
 		WhileExiled:  true,
 		CostOverride: AirbendCost,
-	}.permission())
+	}.permission()
+	return ctx.Game.ExileCardsKeyedForEffect(targets, game.KeyedTail{
+		Ref:        airbendLanded,
+		Player:     ctx.Controller(),
+		Source:     ctx.Source(),
+		Permission: &perm,
+	})
 }
+
+// airbendLanded is AirbendAll's continuation (#5276): the grant over each
+// card that landed in exile, as grantOverLanded gives it, and then, if one
+// or more did, the airbend itself (CR 701.65b: "whenever a player
+// airbends" triggers when that player exiles one or more objects as a
+// result of an instruction to airbend). One event per instruction, so
+// "airbend all other creatures" is one airbend. An on-disk key.
+var airbendLanded = game.RegisterTail("airbend/grant-and-announce", func(g *game.Game, o game.TailOutcome) error {
+	if o.Tail.Permission != nil {
+		for _, id := range o.IDs {
+			p := *o.Tail.Permission
+			p.Zone = game.ZoneExile
+			g.GrantCastPermissionOverCardForEffect(id, p)
+		}
+	}
+	if len(o.IDs) > 0 {
+		g.NoteAirbendForEffect(o.Tail.Player, o.Tail.Source, o.IDs)
+	}
+	return nil
+})
 
 // AirbendOtherTarget is "airbend up to one OTHER target …" — the
 // trigger body Aang, the Last Airbender, Aang, Swift Savior and Avatar

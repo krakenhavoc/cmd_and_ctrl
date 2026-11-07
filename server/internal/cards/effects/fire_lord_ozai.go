@@ -59,7 +59,7 @@ var fireLordOzaiSacrificed = RegisterSacrificedOne("prompt-run/fire-lord-ozai-ad
 	if n <= 0 {
 		return nil
 	}
-	return firebending(n).Apply(ctx)
+	return redUntilEndOfCombat(n).Apply(ctx)
 })
 
 // fireLordOzaiExile is the activation's resolution.

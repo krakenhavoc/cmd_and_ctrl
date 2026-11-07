@@ -2716,6 +2716,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// use. Validated above with every other component; the mana they
 	// stood in for was already subtracted from the mana component.
 	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
+	// #5276, CR 701.67c: the waterbend cost is paid, however much of it
+	// the taps covered, so the activator has waterbent.
+	if !ab.Cost.Waterbend.Empty() {
+		g.noteBendLocked(EventWaterbend, playerID, cardID)
+	}
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.
