@@ -33,9 +33,10 @@ func init() {
 			On(game.EventLTB, ThisDied, "Hopeful Vigil — scry 2", Do(Scry{N: 2})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{W}: Sacrifice this enchantment.",
-			Cost:   ManaCost("{2}{W}"),
-			Effect: sacrificeDelayedTriggerSource,
+			Label:   "{2}{W}: Sacrifice this enchantment.",
+			Cost:    ManaCost("{2}{W}"),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect:  sacrificeDelayedTriggerSource,
 		}},
 	})
 }

@@ -31,9 +31,10 @@ func init() {
 			On(game.EventLTB, ThisDied, "Hopeless Nightmare — scry 2", Do(Scry{N: 2})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{B}: Sacrifice this enchantment.",
-			Cost:   ManaCost("{2}{B}"),
-			Effect: sacrificeDelayedTriggerSource,
+			Label:   "{2}{B}: Sacrifice this enchantment.",
+			Cost:    ManaCost("{2}{B}"),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect:  sacrificeDelayedTriggerSource,
 		}},
 	})
 }
