@@ -1495,6 +1495,7 @@ run prompt-run/rhovanion-rampager-sacrifice
 run prompt-run/rise-of-the-witch-king-return
 run prompt-run/roiling-regrowth-fetch
 run prompt-run/ruthless-technomancer-treasures
+run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
 run prompt-run/seize-the-spotlight-gain-control
 run prompt-run/sephiroth-sacrifice-draw
@@ -2126,6 +2127,7 @@ tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
+tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
