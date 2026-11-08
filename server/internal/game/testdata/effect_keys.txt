@@ -1510,6 +1510,7 @@ run prompt-run/ss-botany-bay-opponents-exile
 run prompt-run/summon-valefor-sonic-wings
 run prompt-run/sunder-the-gateway-transform
 run prompt-run/suppression-ray-stun
+run prompt-run/swarm-culler-draw
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
@@ -2122,6 +2123,7 @@ tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
+tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
