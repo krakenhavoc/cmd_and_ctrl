@@ -55,24 +55,35 @@ func init() {
 	})
 }
 
-// aridArchwayReturned returns the chosen land, then surveils 1 if it was
-// another Desert and it reached a hand. An on-disk key: never renamed,
-// never reused.
+// aridArchwayReturned returns the chosen land. Whether it is "another
+// Desert" is read while it is still on the battlefield; the surveil
+// then hangs off the bounce's own continuation, so it is paid only once
+// the land has really reached a hand (CR 400.7, #993): a bounce the
+// CR 614 window cancelled or redirected earns nothing. An on-disk key:
+// never renamed, never reused.
 var aridArchwayReturned = RegisterPermanentsPick("prompt-run/arid-archway-return-land", PermanentsDef{
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
 			c, ok := ctx.Game.LookupCardForEffect(id)
-			desert := ok && id != ctx.Source() && b02IsDesert(ctx.Game, ctx.Controller(), c)
-			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+			bounce := BounceToHand{Target: id}
+			if ok && id != ctx.Source() && b02IsDesert(ctx.Game, ctx.Controller(), c) {
+				bounce.ThenTail = ctx.Tail(aridArchwaySurveil)
+			}
+			if err := bounce.Apply(ctx); err != nil {
 				return err
-			}
-			if !desert {
-				continue
-			}
-			if z := ctx.Game.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneHand {
-				return Surveil{N: 1}.Apply(ctx)
 			}
 		}
 		return nil
 	},
+})
+
+// aridArchwaySurveil is "If another Desert was returned this way,
+// surveil 1": attached only when the chosen land was another Desert, and
+// paid only when it reached a hand. An on-disk key: never renamed, never
+// reused.
+var aridArchwaySurveil = CardTail("arid-archway/surveil-if-desert-returned", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
+		return nil
+	}
+	return Surveil{N: 1}.Apply(ctx)
 })
