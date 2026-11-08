@@ -22,13 +22,7 @@ func init() {
 	trigger.Modes = ChooseOne(
 		ModeDoing("Put two +1/+1 counters on target creature you control.",
 			TargetCreature("target creature you control", YouControl()),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-			}),
+			twoPlusOneCountersOnModeTarget),
 		ModeDoing("You gain 4 life.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
 		}),

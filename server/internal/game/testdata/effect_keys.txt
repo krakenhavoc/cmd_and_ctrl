@@ -2388,6 +2388,7 @@ tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/tibalts-trickery-exile-until
+tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
