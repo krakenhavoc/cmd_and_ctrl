@@ -710,6 +710,7 @@ choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/stillness-in-motion-restack
+choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/sunbirds-invocation-cast
@@ -2101,6 +2102,7 @@ tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail recipient/reckless-blaze-watch-death
+tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
@@ -2156,6 +2158,7 @@ tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
+tail salt-road-skirmish/warriors-haste-and-sacrifice
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
@@ -2165,6 +2168,7 @@ tail scout-the-city/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
 tail sheoldred-the-true-scriptures/flicker-this
+tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
