@@ -43,9 +43,14 @@ func init() {
 
 // vaultguardTrooperDiscardHand is the yes. An on-disk key: never renamed,
 // never reused.
-var vaultguardTrooperDiscardHand = MayYes("confirm/vaultguard-trooper-discard-hand", func(ctx *Context, r game.ConfirmAnswer) error {
+var vaultguardTrooperDiscardHand = MayYes("confirm/vaultguard-trooper-discard-hand", discardHandThenDrawTwo)
+
+// discardHandThenDrawTwo is the yes to "you may discard your hand. If you
+// do, draw two cards" (Vaultguard Trooper, Byway Barterer). A hand with
+// no cards in it may still be discarded, so a yes always draws.
+func discardHandThenDrawTwo(ctx *Context, r game.ConfirmAnswer) error {
 	if _, err := discardWholeHand(ctx.Game, r.Chooser); err != nil {
 		return err
 	}
 	return DrawCards{Player: r.Chooser, N: 2}.Apply(ctx)
-})
+}

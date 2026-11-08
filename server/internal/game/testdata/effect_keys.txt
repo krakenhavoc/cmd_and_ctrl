@@ -876,6 +876,7 @@ confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
+confirm confirm/byway-barterer-discard-hand
 confirm confirm/chain-sacrifice-a-land
 confirm confirm/channel-harm-deal
 confirm confirm/charismatic-conqueror-tap
