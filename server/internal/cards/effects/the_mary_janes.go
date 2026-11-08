@@ -19,12 +19,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(func(q game.CostQuery) int {
-				if q.Game == nil {
-					return 0
-				}
-				return q.Game.CreaturesAttackedThisTurn()
-			}, "This spell costs {1} less to cast for each creature that attacked this turn"),
+			CostsLessEach(creaturesThatAttackedThisTurn,
+				"This spell costs {1} less to cast for each creature that attacked this turn"),
 		},
 	})
+}
+
+// creaturesThatAttackedThisTurn is the count behind "This spell costs {1}
+// less to cast for each creature that attacked this turn" (The Mary Janes,
+// Rowdy Research): distinct creatures declared as attackers this turn,
+// anyone's.
+func creaturesThatAttackedThisTurn(q game.CostQuery) int {
+	if q.Game == nil {
+		return 0
+	}
+	return q.Game.CreaturesAttackedThisTurn()
 }
