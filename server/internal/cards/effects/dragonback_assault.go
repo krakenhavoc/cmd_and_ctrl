@@ -17,8 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "413fb2db-f1a1-4d22-ac37-a52821d35ca2",
-		Name:         "Dragonback Assault",
+		OracleID: "413fb2db-f1a1-4d22-ac37-a52821d35ca2",
+		Name:     "Dragonback Assault",
+		// The entry trigger is a board wipe (ADR 0126), declared as
+		// Invasion of Karsus declares its own.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 3}},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Dragonback Assault — 3 damage to each creature and each planeswalker",
