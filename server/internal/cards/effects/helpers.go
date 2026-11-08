@@ -1987,3 +1987,66 @@ func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
 		Label: label,
 	}
 }
+
+// putThisOnTheBottomOfItsOwnersLibrary is "When this creature dies, put
+// it on the bottom of its owner's library" (Murderous Rider, Fell
+// Horseman). The card moves only while it is still the graveyard object
+// that died (CR 400.7), through the tuck route, so a commander's owner is
+// offered the command zone (CR 903.9) and a token, which ceased to exist
+// (CR 111.7), is not found.
+func putThisOnTheBottomOfItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
+	z := g.FindCardZoneForEffect(item.SourceCardID)
+	if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
+		return nil
+	}
+	return PutIntoLibrary{Card: item.SourceCardID, ToBottom: true}.Apply(NewContext(g, item))
+}
+
+// cardHasAnAdventure is "a card that has an Adventure" (CR 715.1): an
+// Adventurer card, in whatever zone it is. A face-down card shows no
+// Adventure.
+func cardHasAnAdventure(c game.Card) bool {
+	return c.Layout == game.LayoutAdventure && !c.FaceDown
+}
+
+// HasAnAdventure is cardHasAnAdventure as a CardPredicate, for a target
+// clause ("target card that has an Adventure from your graveyard",
+// Edgewall Inn).
+func HasAnAdventure() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return cardHasAnAdventure(c) }
+}
+
+// instantSorceryOrAdventureCardsInGraveyard is "the number of cards in
+// your graveyard that are instant cards, sorcery cards, and/or have an
+// Adventure" (Frantic Firebolt, Hearth Elemental). Each card counts once,
+// however many of the three it is. In the graveyard an Adventurer card
+// has only its creature characteristics (CR 715.4), so its layout is what
+// says it has an Adventure.
+func instantSorceryOrAdventureCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+	p := g.PlayerByIDForEffect(player)
+	if p == nil || p.Graveyard == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range p.Graveyard.Cards {
+		if c.IsInstant() || c.IsSorcery() || cardHasAnAdventure(c) {
+			n++
+		}
+	}
+	return n
+}
+
+// youOwnAnAdventureCardInExile is "as long as you own a card in exile
+// that has an Adventure" (Howling Galefang): any face-up Adventurer card
+// in exile that you own, on an adventure or not.
+func youOwnAnAdventureCardInExile(g *game.Game, you uuid.UUID) bool {
+	if g == nil || g.Exile == nil {
+		return false
+	}
+	for _, c := range g.Exile.Cards {
+		if c.Owner == you && cardHasAnAdventure(c) {
+			return true
+		}
+	}
+	return false
+}

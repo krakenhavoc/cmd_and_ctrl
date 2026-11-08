@@ -12,7 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	  "Destroy target creature or planeswalker. You lose 2 life. (Then
 //	   exile this card. You may cast the creature later from exile.)"
 //
-// The dies trigger moves the card only while it is still the graveyard
+// The dies trigger (putThisOnTheBottomOfItsOwnersLibrary, shared with
+// Fell Horseman) moves the card only while it is still the graveyard
 // object that died (CR 400.7), through the tuck route, so a
 // commander's owner is offered the command zone (CR 903.9) and a token,
 // which ceased to exist (CR 111.7), is not found. Swift End is
@@ -28,14 +29,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisDies("Murderous Rider — put it on the bottom of its owner's library",
-				func(g *game.Game, item *game.StackItem) error {
-					z := g.FindCardZoneForEffect(item.SourceCardID)
-					if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
-						return nil
-					}
-					return PutIntoLibrary{Card: item.SourceCardID, ToBottom: true}.Apply(NewContext(g, item))
-				}),
+			WhenThisDies("Murderous Rider — put it on the bottom of its owner's library", putThisOnTheBottomOfItsOwnersLibrary),
 		},
 	})
 	Register(Spec{
