@@ -1047,6 +1047,18 @@ func plusOneCounterOnThisIfStillHere(ctx *Context) error {
 	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 }
 
+// plusOneCounterOnTheTarget is "Put a +1/+1 counter on target creature"
+// (Vastwood Fortification, Ingenious Leonin's first sentence): one counter
+// through the counter pipeline on the first still-legal target card, and
+// nothing for a target that is gone (CR 608.2b).
+func plusOneCounterOnTheTarget(ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
 // tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
 // (Cryotheory Adept, Loch Mare): the first legal target is tapped and
 // gets one stun counter; a target gone by resolution gets nothing.
