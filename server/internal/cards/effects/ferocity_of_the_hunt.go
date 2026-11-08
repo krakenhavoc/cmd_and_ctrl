@@ -1,12 +1,6 @@
 package effects
 
-import (
-	"errors"
-
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Ferocity of the Hunt — Enchantment — Aura {1}{B/G} (Reality Fracture):
 //
@@ -33,13 +27,7 @@ func init() {
 			GrantToAttached("deathtouch"),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenEnchantedCreatureDies("Ferocity of the Hunt — return that card to the battlefield tapped", func(g *game.Game, item *game.StackItem) error {
-				_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, uuid.Nil, true)
-				if errors.Is(err, game.ErrCardNotFound) {
-					return nil
-				}
-				return err
-			}),
+			WhenEnchantedCreatureDies("Ferocity of the Hunt — return that card to the battlefield tapped", returnDiedCardToBattlefieldTapped),
 		},
 	})
 }

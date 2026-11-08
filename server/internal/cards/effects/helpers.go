@@ -1932,3 +1932,16 @@ func caveCount(g *game.Game, player, except uuid.UUID) int {
 	}
 	return n
 }
+
+// returnDiedCardToBattlefieldTapped is "When enchanted creature dies,
+// return it to the battlefield tapped under its owner's control" as the
+// dies trigger's body (Ferocity of the Hunt, Fungal Fortitude): the card
+// the trigger's event names comes back as a new object, tapped, under its
+// OWNER's control. A token has no card to return, so it does nothing.
+func returnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
+	_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, uuid.Nil, true)
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
+}
