@@ -669,3 +669,14 @@ func ArtifactInstantOrSorcerySpell() CostPredicate {
 func SpellOfCreatureType(subtype string) CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype(q.Source.TextSubtype(subtype)) }
 }
+
+// SpellOfEitherCreatureType is "<A> spells and <B> spells you cast" (Gagh
+// Slinger, Ballyrush Banneret): a spell with either creature type. One
+// predicate for both, so a spell with both types is one spell and is
+// discounted once. Both types are words of the source's text (CR 612.2),
+// and a changeling spell has both.
+func SpellOfEitherCreatureType(a, b string) CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Card.HasSubtype(q.Source.TextSubtype(a)) || q.Card.HasSubtype(q.Source.TextSubtype(b))
+	}
+}

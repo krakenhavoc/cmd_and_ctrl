@@ -63,14 +63,10 @@ func trekB37OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 // --- Klingons and Warriors -----------------------------------------------------
 
 // trekB37KlingonOrWarriorSpell is the cost half of "Klingon spells and
-// Warrior spells you cast" (Gagh Slinger): a spell with either creature
-// type. One predicate for both, so a Klingon Warrior spell is one spell
-// and gets the discount once. The types are words of the source's text
-// (CR 612.2) and a changeling spell has both.
+// Warrior spells you cast" (Gagh Slinger): SpellOfEitherCreatureType, so a
+// Klingon Warrior spell is one spell and gets the discount once.
 func trekB37KlingonOrWarriorSpell() CostPredicate {
-	return func(q game.CostQuery) bool {
-		return q.Card.HasSubtype(q.Source.TextSubtype("Klingon")) || q.Card.HasSubtype(q.Source.TextSubtype("Warrior"))
-	}
+	return SpellOfEitherCreatureType("Klingon", "Warrior")
 }
 
 // trekB37AnotherKlingonOrWarriorEntered is "whenever another Klingon or
