@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // station.go — the card-facing half of Station (CR 702.184, CR 721),
 // ADR 0071 decision 2. A station card (a Spacecraft, or a Planet,
@@ -25,6 +29,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // while the permanent has n or more charge counters. Read LIVE, so a
 // Spacecraft that loses charge counters loses the abilities again.
 func AtChargeCounters(n int) game.Designation { return game.ChargeCounters(n) }
+
+// ManaAtChargeCounters is AtChargeCounters for a MANA ability, which
+// carries no designation gate: a ManaAbility.Condition that passes while
+// the source has n or more charge counters (Uthros, Titanic Godcore's
+// "12+ | {U}, {T}: …"). Below n the ability is listed and greyed.
+func ManaAtChargeCounters(n int) ActivationCondition {
+	return func(g *game.Game, _, source uuid.UUID) bool {
+		c, ok := g.LookupCardForEffect(source)
+		return ok && c.Counters[game.CounterCharge] >= n
+	}
+}
 
 // --- Station (CR 721) ------------------------------------------------
 
