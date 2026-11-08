@@ -1898,6 +1898,7 @@ tail extraction-family/after-exile
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
+tail fell-gravship/after-mill
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
