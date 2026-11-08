@@ -33,6 +33,12 @@ func Devour(name string, n int) game.ReplacementEffect {
 	return devourOver(name, n, "creatures", func(c game.Card) bool { return c.IsCreature() })
 }
 
+// DevourLand is "Devour land N" (CR 702.82a): sacrifice any number of
+// lands as it enters (Famished Worldsire).
+func DevourLand(name string, n int) game.ReplacementEffect {
+	return devourOver(name, n, "lands", func(c game.Card) bool { return c.IsLand() })
+}
+
 // devourOver is the shared body: sacrifice any number of permanents
 // matching `matches` ("Devour land 3", "Devour Food 3").
 func devourOver(name string, n int, plural string, matches func(game.Card) bool) game.ReplacementEffect {
