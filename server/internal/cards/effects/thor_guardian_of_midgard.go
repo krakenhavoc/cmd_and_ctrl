@@ -29,13 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventDealDamage, ASourceYouControlDealtNoncombatDamageToAnOpponent,
 				"Thor, Guardian of Midgard — exile that many cards from the top of your library; you may play them this turn",
-				func(g *game.Game, item *game.StackItem) error {
-					return ExileTopWithPermission{
-						From:    item.Controller,
-						GrantTo: item.Controller,
-						N:       item.Trigger.Event.Amount,
-					}.Apply(NewContext(g, item))
-				}), "Exile that many cards from the top of your library? You may play them this turn."),
+				exileThatManyYouMayPlayThisTurn), "Exile that many cards from the top of your library? You may play them this turn."),
 		},
 	})
 }
