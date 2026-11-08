@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -78,7 +80,15 @@ func attackDrainTrigger(cardName string) game.TriggeredAbility {
 // condition: "Whenever this creature attacks, defending player loses 1
 // life and you gain 1 life" (Agate-Blade Assassin) passes ThisAttacked.
 func attackDrainTriggerWhen(cardName string, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
-	label := cardName + " — defending player loses 1 life and you gain 1 life"
+	return attackDrainNTriggerWhen(cardName, 1, applies)
+}
+
+// attackDrainNTriggerWhen is attackDrainTriggerWhen for a drain of n:
+// "Whenever this land attacks, defending player loses 2 life and you gain
+// 2 life" (Restless Fortress) is n = 2. The key spells n out, so a drain
+// of 1 keeps the key it always had.
+func attackDrainNTriggerWhen(cardName string, n int, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
+	label := fmt.Sprintf("%s — defending player loses %d life and you gain %d life", cardName, n, n)
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventAttack},
 		AppliesTo: applies,
@@ -92,11 +102,11 @@ func attackDrainTriggerWhen(cardName string, applies func(game.Event, *game.Card
 		Effect: Do(
 			Instruction(func(ctx *Context) error {
 				if defender := ctx.Item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(ctx.Game, defender) {
-					return GainLife{Player: defender, Amount: -1}.Apply(ctx)
+					return GainLife{Player: defender, Amount: -n}.Apply(ctx)
 				}
 				return nil
 			}),
-			GainLife{Amount: 1},
+			GainLife{Amount: n},
 		),
 	}
 }
