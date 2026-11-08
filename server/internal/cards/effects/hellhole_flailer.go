@@ -25,15 +25,7 @@ func init() {
 			Label:   "{2}{B}{R}, Sacrifice this creature: It deals damage equal to its power to target player or planeswalker.",
 			Cost:    Plus(ManaCost("{2}{B}{R}"), SacrificeThis()),
 			Targets: targetPlayerOrPlaneswalker(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				info, ok := ctx.SourcePermanent()
-				legal := ctx.LegalTargets()
-				if !ok || info.Power <= 0 || len(legal) == 0 {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: info.Power}.Apply(ctx)
-			},
+			Effect:  sacrificedSourceDealsItsPowerToTheTarget,
 		}},
 	})
 }

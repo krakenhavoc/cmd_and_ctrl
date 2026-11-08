@@ -10,7 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Boomerang Basics' bounce with the draw waiting behind it as the bounce's
 // continuation (#993), gated on the kicker record (Burst Lightning's
-// ctx.WasKicked) instead of on who controlled the permanent.
+// ctx.WasKicked) instead of on who controlled the permanent:
+// bounceTheTargetThenDrawIfKicked, which Into the Roil shares.
 //
 // No simplification.
 func init() {
@@ -22,15 +23,6 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{
 			Kicker("{1}{U}"),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			draws := 0
-			if ctx.WasKicked() {
-				draws = 1
-			}
-			return BounceToHand{Target: item.Targets[0].ID, ThenTail: withN(ctx.Tail(thenDrawCards), draws)}.Apply(ctx)
-		},
+		OnResolve: bounceTheTargetThenDrawIfKicked,
 	})
 }

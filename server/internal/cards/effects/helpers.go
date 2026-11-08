@@ -1799,6 +1799,54 @@ func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
 	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }
 
+// bounceTheTargetThenDrawIfKicked is "Return target nonland permanent to
+// its owner's hand. If this spell was kicked, draw a card." as a spell's
+// whole OnResolve (Whoosh!, Into the Roil): bounceTheTargetThenDraw's
+// keyed draw, for one card when the kicker was paid and none otherwise.
+func bounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	draws := 0
+	if ctx.WasKicked() {
+		draws = 1
+	}
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: withN(ctx.Tail(thenDrawCards), draws)}.Apply(ctx)
+}
+
+// sacrificedSourceDealsItsPowerToTheTarget is "Sacrifice this creature:
+// It deals damage equal to its power to <target>" as an activated
+// ability's whole Effect (Hellhole Flailer, Heartfire Immolator). The
+// sacrifice is the cost, so "its power" is the power the creature had as
+// it last existed on the battlefield (CR 113.7a, ctx.SourcePermanent), and
+// it is still the damage's source. Nothing is dealt for a power of 0 or
+// less, or when the target is no longer legal (CR 608.2b).
+func sacrificedSourceDealsItsPowerToTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.SourcePermanent()
+	legal := ctx.LegalTargets()
+	if !ok || info.Power <= 0 || len(legal) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: info.Power}.Apply(ctx)
+}
+
+// plusOneCountersEqualToItsPower puts X +1/+1 counters on the permanent
+// id, where X is its power as the effect applies, with the layers applied
+// (CR 608.2h). A permanent that has left the battlefield, or whose power
+// is 0 or less, gets nothing (Railway Brawler, Heroes' Bane).
+func plusOneCountersEqualToItsPower(g *game.Game, item *game.StackItem, id uuid.UUID) error {
+	if !onBattlefield(g, id) {
+		return nil
+	}
+	g.RecomputeLayersIfStaleLocked()
+	c, ok := g.LookupCardForEffect(id)
+	if !ok || c.CurrentPower() <= 0 {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: c.CurrentPower()}.Apply(NewContext(g, item))
+}
+
 // returnThisFromGraveyardWithAFinalityCounter is "<cost>: Return this card
 // from your graveyard to the battlefield with a finality counter on it"
 // (Uchbenbak, the Great Mistake; Gastal Thrillroller): the card comes back
