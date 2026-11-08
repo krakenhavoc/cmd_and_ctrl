@@ -380,6 +380,7 @@ choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
 choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
+choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/beatrix-loyal-general-attach
@@ -587,6 +588,7 @@ choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
 choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
@@ -1369,6 +1371,7 @@ payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/wolfbat-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
+pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
@@ -2012,6 +2015,7 @@ tail mass/worlds-within-worlds-exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
+tail mill-then-take/cache-grab
 tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
