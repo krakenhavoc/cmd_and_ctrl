@@ -172,6 +172,24 @@ func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.
 	})
 }
 
+// aCreatureYouControl is the `candidates` argument for "enter as a copy
+// of a creature you control" (Glasspool Mimic, Visage Bandit): the
+// entering permanent's controller's own creatures. Not targeting, so
+// hexproof does not narrow it (CR 115.10a).
+func aCreatureYouControl(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return copyCandidates(g, self, func(c game.Card) bool {
+		return c.IsCreature() && c.Controller == controller
+	})
+}
+
+// alsoAShapeshifterRogue is the `except` argument for "except it's a
+// Shapeshifter Rogue in addition to its other types" (Glasspool Mimic,
+// Visage Bandit): both subtypes join the copied ones (CR 707.9b).
+func alsoAShapeshifterRogue(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
+	v.AddSubtype("Shapeshifter")
+	v.AddSubtype("Rogue")
+}
+
 // anyCreatureCardInAGraveyard is the `candidates` argument for "enter as
 // a copy of any creature card in a graveyard" (Body Double, Superior
 // Spider-Man; Voq, Torchbearer's "a creature card in a graveyard", #4797):
