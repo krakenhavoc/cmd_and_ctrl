@@ -352,11 +352,13 @@ body vronos/phase-out-the-objects
 body warp/exile
 body warren-torchmaster/haste
 body weeping-angel/owner-shuffles-it-in
+body wicks-patrol/shrink
 body winter-tormented-loner/edict
 body wolf-in-blank-clothing/shrink
 body yunas-whistle/counters
 body zara/return-to-hand
 body ziatora/fling
+body zoraline-cosmos-caller/return
 castfollowup chandra-torch-of-defiance-2-to-each-opponent
 castfollowup conduit-of-worlds-no-more-spells
 castfollowup emet-selch-of-the-third-seat-once-each-turn
@@ -698,6 +700,7 @@ choose choose-cards/rooms-b-return-chosen-creature
 choose choose-cards/rooms-d-take-up-to-from-milled
 choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/run-leg
+choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/seasoned-cryomancer-discarded
@@ -1397,6 +1400,7 @@ payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/wolfbat-return
+payunless pay-unless/zoraline-cosmos-caller-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast

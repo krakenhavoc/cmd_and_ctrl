@@ -70,11 +70,4 @@ func egoDrainExile(g *game.Game, item *game.StackItem) error {
 
 // egoDrainExiled is the keyed answer to "exile a card from your hand"
 // (#4253). An on-disk key: never renamed, never reused.
-var egoDrainExiled = game.RegisterChooseCardsThen("choose-cards/ego-drain-exile", func(g *game.Game, r game.CardsChosen) error {
-	for _, id := range r.Picked {
-		if err := g.ExileCardForEffect(id); err != nil {
-			return err
-		}
-	}
-	return nil
-})
+var egoDrainExiled = game.RegisterChooseCardsThen("choose-cards/ego-drain-exile", exileEachChosenCard)
