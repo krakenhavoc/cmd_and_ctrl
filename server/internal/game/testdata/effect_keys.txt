@@ -136,6 +136,7 @@ body extra-combat/untap-creatures-that-attacked
 body extra-turn/lose-the-game
 body facedown/ward
 body fatal-fissure/earthbend-4
+body felonious-rage/detective
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
 body fire-lord-sozin/reanimate
@@ -1331,6 +1332,8 @@ payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jolted-awake-return
 payunless pay-unless/kazuul-ogre
 payunless pay-unless/koya-death-from-above-return
+payunless pay-unless/krenko-baron-of-tin-street-goblin
+payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
@@ -1488,6 +1491,7 @@ run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
 run prompt-run/gastal-blockbuster-sacrifice
+run prompt-run/gearbane-orangutan-sacrifice
 run prompt-run/general-traag-sacrifice
 run prompt-run/genesis-device-sacrifice
 run prompt-run/ghouls-night-out-return
@@ -1498,6 +1502,7 @@ run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
 run prompt-run/humiliate-counter
+run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/killmonger-sacrificed
@@ -1921,6 +1926,7 @@ tail finneas-ace-archer/draw-on-power
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
+tail flourishing-bloom-kin/forest-to-hand
 tail foggy-swamp-visions/copy-exiled
 tail foggy-swamp-visions/sacrifice-copies
 tail foot-chopper/draw-cards-equal-to-sacrificed-power
@@ -1957,6 +1963,7 @@ tail greenhouse-rickety-gazebo/after-mill
 tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
+tail harried-dronesmith/haste-then-sacrifice
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
 tail herald-of-amity/after-exile
@@ -1965,6 +1972,7 @@ tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
+tail hotshot-investigators/investigate
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
@@ -2157,6 +2165,7 @@ tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
+tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
