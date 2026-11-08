@@ -1842,3 +1842,16 @@ func pumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label stri
 	}
 	return BoostUntilEOT{Target: source.AttachedObject.ID, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
 }
+
+// exileThatManyYouMayPlayThisTurn is "exile that many cards from the top of
+// your library. You may play those cards this turn", where "that many" is
+// the triggering damage event's amount: Breeches' play-this-turn window over
+// the trigger controller's own library. Thor, Guardian of Midgard and
+// Virtue of Courage.
+func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
+	return ExileTopWithPermission{
+		From:    item.Controller,
+		GrantTo: item.Controller,
+		N:       item.Trigger.Event.Amount,
+	}.Apply(NewContext(g, item))
+}
