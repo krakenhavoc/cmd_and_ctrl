@@ -89,6 +89,7 @@ Season of Growth | scry | on a triggered row that is not the card's enters effec
 Sméagol, Helpful Guide | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Swashbuckler's Whip | discover | on an ability the card grants, which no catalog row declares
 Sylvan Anthem | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Taken by Nightmares | scry | the text makes it conditional or optional
 Temple of Abandon | scry | a land's enters effect; a land play is not priced by its purpose
 Temple of Deceit | scry | a land's enters effect; a land play is not priced by its purpose
 Temple of Enlightenment | scry | a land's enters effect; a land play is not priced by its purpose
