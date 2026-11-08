@@ -710,6 +710,7 @@ choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/ss-botany-bay-you-exile
+choose choose-cards/starseer-mentor-punisher-discarded
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -743,6 +744,7 @@ choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
+choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
@@ -1202,6 +1204,7 @@ option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
+option option-pick/starseer-mentor-punisher
 option option-pick/tap-or-untap-that-permanent
 option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
@@ -1209,6 +1212,7 @@ option option-pick/thanos-destroy-parity
 option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
+option option-pick/thornplate-intimidator-punisher
 option option-pick/thrull-wizard-pay
 option option-pick/tireless-provisioner-token
 option option-pick/tomb-of-annihilation-sandfall-cell
@@ -2373,6 +2377,7 @@ tail then/skrelv-defector-mite-color-chosen
 tail then/sorin-lord-of-innistrad-return
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
+tail then/starseer-mentor-punisher-sacrificed
 tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/stronghold-arena-lose-life
@@ -2391,6 +2396,7 @@ tail then/the-misty-mountains-cold-dragon
 tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
 tail then/this-is-how-it-ends-shuffle-choice
+tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
