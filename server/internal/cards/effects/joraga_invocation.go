@@ -20,14 +20,14 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			for _, id := range b23CreaturesYouControl(ctx.Game, ctx.Controller()) {
-				if err := (BoostUntilEOT{Target: id, Power: 3, Toughness: 3, Label: "Joraga Invocation — +3/+3"}).Apply(ctx); err != nil {
+				if err := (BoostUntilEOT{Target: id, Power: 3, Toughness: 3, Label: "Joraga Invocation — +3/+3"}).Apply(ctx.asGroupMember()); err != nil {
 					return err
 				}
 				if err := (BlockRequirementUntilEOT{
 					Target: id,
 					Kind:   game.BlockRequirementMustBeBlocked,
 					Label:  "Joraga Invocation — must be blocked this turn",
-				}).Apply(ctx); err != nil {
+				}).Apply(ctx.asGroupMember()); err != nil {
 					return err
 				}
 			}
