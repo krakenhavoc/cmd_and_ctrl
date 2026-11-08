@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Phoenix Down — Artifact {W} (deck request #3655):
 //
 //	"{1}{W}, {T}, Exile this artifact: Choose one —
@@ -26,13 +24,7 @@ func init() {
 				ModeDoing("Return target creature card with mana value 4 or less from your graveyard to the battlefield tapped.",
 					TargetCardInGraveyard("target creature card with mana value 4 or less in your graveyard",
 						YouOwn(), Creature(), ManaValueLE(4)),
-					func(item *game.StackItem, ctx *Context, occ int) error {
-						t, ok := ModeTarget(ctx, occ)
-						if !ok {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
-					}),
+					ReturnTheModesTargetToBattlefieldTapped),
 				ModeDoing("Exile target Skeleton, Spirit, or Zombie.",
 					TargetPermanent("target Skeleton, Spirit, or Zombie", AnySubtype("Skeleton", "Spirit", "Zombie")),
 					exileTheModesTarget),
