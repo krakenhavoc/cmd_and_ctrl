@@ -1298,6 +1298,7 @@ payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/forage-only
+payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-vandal-destroy-artifact
