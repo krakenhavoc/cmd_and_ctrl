@@ -305,6 +305,7 @@ body spider-man-to-the-rescue/indestructible
 body storm/the-spell-just-cast
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
+body sunfire-torch/damage
 body superior-spider-man/exile-that-card
 body suspend/free-cast
 body suspend/tick
@@ -328,6 +329,7 @@ body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
 body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
+body thousand-moons-crackshot/tap
 body time-to-feed/gain-three-life
 body tolarian-kraken/tap-or-untap
 body transformers/convert-this
@@ -993,6 +995,7 @@ confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
 confirm confirm/stromgald-spy-reveal-hand
+confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
 confirm confirm/sword-of-light-and-shadow-return
 confirm confirm/sylvan-library-pay-or-top
@@ -1362,6 +1365,7 @@ payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/tester-of-the-tangential-move
 payunless pay-unless/the-thing-double-counters
+payunless pay-unless/thousand-moons-crackshot-tap
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trudge-garden-fungus-beast
@@ -2208,6 +2212,7 @@ tail summoners-sending/after-exile
 tail summoners-sending/counter-if-big
 tail sunder-the-gateway/choose-an-incubator-and-transform
 tail sundering-eruption/creatures-cant-block
+tail sunfire-torch/sacrificed
 tail surge-to-victory/exiled
 tail surprise-deployment/return-at-end-step
 tail survival-cache/compare
@@ -2422,6 +2427,9 @@ tail tombstone-stairwell/next-players-tombspawn
 tail toph-hardheaded-teacher/lesson-counter
 tail town-greeter/after-mill
 tail transwarp-hub/after-mill
+tail treasure-map/check-landmarks
+tail treasure-map/landmark
+tail treasure-map/transform
 tail trek-b16/infinite-diversity/copy-x-times-then-exile-self
 tail trek-b27/deep-space-9-put-permanents
 tail trek-b31/artifact-creatures-protection-from-chosen-color
