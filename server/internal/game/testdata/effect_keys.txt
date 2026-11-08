@@ -295,6 +295,7 @@ body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shriek-treblemaker/cant-block
+body snaremaster-sprite/tap-and-stun
 body sorin-imperious-bloodlord/strike
 body speed-young-avenger/unblockable
 body speed/increase
@@ -1339,6 +1340,7 @@ payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
+payunless pay-unless/snaremaster-sprite-tap-and-stun
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/springheart-nantuko-copy-or-insect
@@ -2176,6 +2178,7 @@ tail spelunking/gain-life-for-a-cave
 tail ss-botany-bay/then-you
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
+tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
 tail study-the-classics/double
 tail study-the-classics/gain
