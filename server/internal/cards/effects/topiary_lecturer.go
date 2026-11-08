@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Topiary Lecturer — Creature — Elf Druid {2}{G}, 1/2 (Secrets of
 // Strixhaven, #4456):
@@ -32,11 +28,9 @@ func init() {
 		ReadsManaSpent:  game.ReadsYourCasts,
 		Triggered:       []game.TriggeredAbility{Increment()},
 		ManaAbilities: []ManaAbility{{
-			Cost:  ManaAbilityCost{Tap: true},
-			Label: "Add an amount of {G} equal to this creature's power",
-			ProducedAmount: func(g *game.Game, _ uuid.UUID, source uuid.UUID) game.ManaAmount {
-				return game.ManaAmount{Options: []string{"G"}, N: b31CurrentPowerOf(g, source)}
-			},
+			Cost:           ManaAbilityCost{Tap: true},
+			Label:          "Add an amount of {G} equal to this creature's power",
+			ProducedAmount: tdmGreenEqualToPower,
 		}},
 	})
 }

@@ -22,9 +22,7 @@ func init() {
 		Purpose:      game.Purpose{Draws: 3, Discards: 1},
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if you've cast another spell this turn.",
-				func(q game.CostQuery) bool {
-					return q.Game != nil && q.Game.CastTallyFor(q.Controller).Total > 0
-				}),
+				tdmCastAnotherSpellThisTurn),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 3, 1, "")
