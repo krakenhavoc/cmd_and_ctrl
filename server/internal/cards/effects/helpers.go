@@ -1800,3 +1800,22 @@ func returnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackI
 	return g.ReturnFromGraveyardWithCountersKeyedForEffect(item.SourceCardID, item.Controller, false,
 		map[string]int{game.CounterFinality: 1}, game.KeyedTail{})
 }
+
+// returnCardsExiledWithToOwnersHands is "Return all cards exiled with this
+// <permanent> to their owner's hand" (Bag of Holding, Connecting the Dots):
+// every card still in exile that the source's ability labelled `label`
+// put there (b27ExiledWith) returns to its OWNER's hand (CR 610.3). The
+// source is usually sacrificed as the cost, which costs the reader
+// nothing: the stack item keeps its instance ID, and the record was
+// written against that ID while it was on the battlefield.
+func returnCardsExiledWithToOwnersHands(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		for _, id := range b27ExiledWith(g, item.SourceCardID, label) {
+			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
