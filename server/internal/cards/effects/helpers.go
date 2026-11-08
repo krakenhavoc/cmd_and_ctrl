@@ -1987,3 +1987,15 @@ func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
 		Label: label,
 	}
 }
+
+// exileEachChosenCard is a choose-cards answer that exiles every picked
+// card (Ego Drain's and Ruthless Negotiation's "exile a card from your
+// hand"). The prompt's LiveZone has already dropped a pick that left.
+func exileEachChosenCard(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.ExileCardForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
