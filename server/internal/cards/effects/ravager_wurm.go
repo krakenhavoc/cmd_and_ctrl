@@ -46,13 +46,7 @@ func ravagerWurmTrigger() game.TriggeredAbility {
 	t.Modes = ChooseN("Choose up to one", 0, 1,
 		ModeDoing("This creature fights target creature you don't control.",
 			Harmful(TargetCreature("target creature you don't control", OpponentControls())),
-			func(item *game.StackItem, ctx *Context, occ int) error {
-				target, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				return b10Fight(ctx, item.SourceCardID, target.ID)
-			}),
+			ThisFightsTheModesTarget),
 		ModeDoing("Destroy target land with an activated ability that isn't a mana ability.",
 			Harmful(TargetPermanent("target land with an activated ability that isn't a mana ability", Land(), landWithNonManaActivatedAbility)),
 			DestroyTheModesTarget),

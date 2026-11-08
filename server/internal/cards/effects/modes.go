@@ -428,6 +428,19 @@ func FightTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
 	return b10Fight(ctx, mine.ID, theirs.ID)
 }
 
+// ThisFightsTheModesTarget is "this creature fights target <creature>" as
+// a modal bullet's body: the ability's source fights this occurrence's
+// still-legal pick (CR 608.2b), and b10Fight deals nothing if either has
+// left (CR 701.14b). Ravager Wurm's and Hivespine Wolverine's fight
+// bullets differ only in the clause on the option.
+func ThisFightsTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	target, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return b10Fight(ctx, item.SourceCardID, target.ID)
+}
+
 // BoostTheModesTarget is "target creature gets +P/+T until end of
 // turn" as a modal bullet's body, for a printed fixed amount —
 // Auntie's Sentence's "-2/-2" bullet (ADR 0116 pool B, #2078). The
