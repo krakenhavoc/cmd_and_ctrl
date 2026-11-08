@@ -16,11 +16,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+			return plusOneCounterOnTheTarget(ctx)
 		},
 	})
 }
