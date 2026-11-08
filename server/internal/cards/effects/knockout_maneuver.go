@@ -28,15 +28,25 @@ func init() {
 			TargetCreature("target creature you control", YouControl()),
 			TargetCreature("target creature an opponent controls", OpponentControls()),
 		),
-		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				mine, ok := ctx.ClauseTarget(0)
-				if !ok || mine.Kind != game.TargetCard {
-					return nil
-				}
-				return AddCounter{Target: mine.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-			}),
-			Instruction(func(ctx *Context) error { return oneSidedBite(ctx.Item, ctx) }),
-		),
+		OnResolve: counterOnYourCreatureThenBite(),
 	})
+}
+
+// counterOnYourCreatureThenBite is "Put a +1/+1 counter on target creature
+// you control, then it deals damage equal to its power to target creature
+// an opponent controls" over two target clauses: slot 0 gets the counter
+// and then deals the damage, slot 1 takes it (Knockout Maneuver, Felling
+// Blow). The counter is its own step, so the power read is the power with
+// the counter on it.
+func counterOnYourCreatureThenBite() func(*game.StackItem, *Context) error {
+	return ResolveSteps(
+		Instruction(func(ctx *Context) error {
+			mine, ok := ctx.ClauseTarget(0)
+			if !ok || mine.Kind != game.TargetCard {
+				return nil
+			}
+			return AddCounter{Target: mine.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+		}),
+		Instruction(func(ctx *Context) error { return oneSidedBite(ctx.Item, ctx) }),
+	)
 }
