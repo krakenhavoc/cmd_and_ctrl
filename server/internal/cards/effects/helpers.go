@@ -1291,6 +1291,18 @@ func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) erro
 	return nil
 }
 
+// twoPlusOneCountersOnModeTarget is a mode's "Put two +1/+1 counters on
+// target creature [you control]": the bullet's still-legal target gets two
+// counters (CR 608.2b). Shared by Apothecary Stomper's first mode and Trash
+// the Town's first Spree bullet.
+func twoPlusOneCountersOnModeTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetCard {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+}
+
 // plusOneCounterPlacementOnYourCreature is Hardened Scales' and
 // Branching Evolution's shared predicate: "if one or more +1/+1
 // counters would be PUT ON a creature you control" (CR 122.6 / CR
