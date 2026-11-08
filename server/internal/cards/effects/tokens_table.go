@@ -181,6 +181,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Vampire":                                                {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Vampire with lifelink":                                  {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
 	"1/1 black Vampire Knight with lifelink":                           {Name: "Vampire Knight", TypeLine: "Token Creature — Vampire Knight", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
+	"1/1 black Vampire Rogue with lifelink":                            {Name: "Vampire Rogue", TypeLine: "Token Creature — Vampire Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
 	"2/2 black Vampire with flying":                                    {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"2/3 black Vampire with flying and lifelink":                       {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 2, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying", "lifelink"}},
 	"1/1 white Vampire with lifelink":                                  {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},

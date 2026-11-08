@@ -1413,6 +1413,7 @@ run prompt-run/ambrosia-whiteheart-return
 run prompt-run/annihilator-sacrifice
 run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
+run prompt-run/arid-archway-return-land
 run prompt-run/ascent-of-the-worthy-redirect
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
@@ -1634,6 +1635,7 @@ tail animists-awakening/rest-then-untap
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail archdruids-charm/bite
+tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
 tail artistic-process/token-haste
@@ -1696,6 +1698,7 @@ tail breach-the-multiverse/phyrexians
 tail breaching-dragonstorm/after-exile
 tail bring-to-light/cast
 tail brudiclad/choose-a-token
+tail bruse-tarl/ox-if-land
 tail budding-insurgent/draw-if-legendary-enchantment
 tail budoka-gardener/flip-with-ten-lands
 tail cait-sith-fortune-teller/impulse-exile
