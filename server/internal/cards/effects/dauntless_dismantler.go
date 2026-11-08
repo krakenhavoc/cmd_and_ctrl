@@ -27,6 +27,7 @@ func init() {
 		OracleID:     "7129bdec-83e0-4c1e-a87b-ac0da1a714b3",
 		Name:         "Dauntless Dismantler",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Replacements: []game.ReplacementEffect{
 			opponentsArtifactsEnterTapped("Dauntless Dismantler: artifacts your opponents control enter tapped"),
 		},
