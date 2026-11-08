@@ -1987,3 +1987,24 @@ func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
 		Label: label,
 	}
 }
+
+// lookAtTopMayPutALandTapped is "look at the top N cards of your library.
+// You may put a land card from among them onto the battlefield tapped.
+// Put the rest on the bottom of your library in a random order" —
+// Kaslem's Stonetree (six) and Freestrider Lookout (five). Only the
+// controller sees the cards.
+func lookAtTopMayPutALandTapped(n int, label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		controller := item.Controller
+		return PutFromLibraryOntoBattlefield{
+			Player:   controller,
+			Cards:    g.LookAtTopOfLibraryForEffect(controller, n),
+			Match:    Land(),
+			Max:      1,
+			Optional: true,
+			Tapped:   true,
+			Label:    label,
+			ThenTail: PutRestOnBottomInRandomOrderTail,
+		}.Apply(NewContext(g, item))
+	}
+}

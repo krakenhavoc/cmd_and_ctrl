@@ -27,24 +27,11 @@ func init() {
 		Name:         "Kaslem's Stonetree",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Kaslem's Stonetree — look at the top six; you may put a land onto the battlefield tapped", kaslemsStonetreeLook),
+			WhenThisEnters("Kaslem's Stonetree — look at the top six; you may put a land onto the battlefield tapped",
+				lookAtTopMayPutALandTapped(6, "Kaslem's Stonetree — you may put a land card from among them onto the battlefield tapped")),
 		},
 		Activated: []ActivatedAbility{
 			Craft("Craft with Cave {5}{G}", "{5}{G}", CraftWithSubtype("Cave")),
 		},
 	})
-}
-
-func kaslemsStonetreeLook(g *game.Game, item *game.StackItem) error {
-	controller := item.Controller
-	return PutFromLibraryOntoBattlefield{
-		Player:   controller,
-		Cards:    g.LookAtTopOfLibraryForEffect(controller, 6),
-		Match:    Land(),
-		Max:      1,
-		Optional: true,
-		Tapped:   true,
-		Label:    "Kaslem's Stonetree — you may put a land card from among them onto the battlefield tapped",
-		ThenTail: PutRestOnBottomInRandomOrderTail,
-	}.Apply(NewContext(g, item))
 }
