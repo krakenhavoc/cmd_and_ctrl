@@ -1945,3 +1945,16 @@ func returnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error
 	}
 	return err
 }
+
+// whenThisEntersReturnAnotherPermanentYouControl is "When this creature
+// enters, return up to one other target permanent you control to its
+// owner's hand" (Mischievous Pup, Stickytongue Sentinel): the still-legal
+// pick returns to its owner's hand (bounceTheTargetToHand), and choosing
+// none returns nothing. "Other" is the object, never a name.
+func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.TriggeredAbility {
+	return Targeting(
+		WhenThisEnters(cardName+" — return up to one other target permanent you control to its owner's hand",
+			bounceTheTargetToHand),
+		Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
+	)
+}

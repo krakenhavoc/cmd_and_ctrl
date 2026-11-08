@@ -1049,6 +1049,7 @@ drawthen discard-two-unless-basic-land
 drawthen discard-two-unless-creature
 drawthen discard-unless-attacked
 drawthen discard-unless-three-lessons
+drawthen discard-unless-threshold
 drawthen discard:
 drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
