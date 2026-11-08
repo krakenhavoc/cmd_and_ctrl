@@ -76,6 +76,7 @@ Poised Practitioner | scry | on a triggered row that is not the card's enters ef
 Political Triumph | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Prescient Chimera | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Primordial Gnawer | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Rabbit Response | scry | the text makes it conditional or optional
 Restless Spire | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Retriever Phoenix | learn | the text makes it conditional or optional
 Rohirrim Lancer | ring | on a triggered row that is not the card's enters effect, which nothing prices
