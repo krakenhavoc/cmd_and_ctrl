@@ -1703,6 +1703,7 @@ tail budding-insurgent/draw-if-legendary-enchantment
 tail budoka-gardener/flip-with-ten-lands
 tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
+tail call-a-surprise-witness/flying-spirit
 tail cantankerous-keepers/after-mill
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
