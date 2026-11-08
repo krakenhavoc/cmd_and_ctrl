@@ -1551,6 +1551,7 @@ run prompt-run/vampire-gourmand-draw-unblockable
 run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
+run prompt-run/vile-mutilator-sacrifice-creatures
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
 run prompt-run/west-wind-avatar-gain-3
