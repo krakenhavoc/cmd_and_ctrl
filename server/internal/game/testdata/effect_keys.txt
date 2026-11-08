@@ -159,6 +159,7 @@ body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
 body glacial-dragonhunt/damage
 body gloom-surgeon/exile-that-many
+body glorifier-of-suffering/counters
 body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
 body grant/double-strike-and-trample-until-eot
@@ -178,6 +179,7 @@ body incinerator-of-the-guilty/damage
 body initiative/take
 body initiative/venture
 body inkshield/inklings
+body inti-seneschal-of-the-sun/counter-and-trample
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
@@ -494,6 +496,7 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
+choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
@@ -936,6 +939,7 @@ confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
+confirm confirm/kellan-daring-traveler-to-graveyard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
 confirm confirm/krile-baldesion-return
@@ -1319,6 +1323,7 @@ payunless pay-unless/human-torch-share-damage
 payunless pay-unless/inalla-archmage-ritualist-copy
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
+payunless pay-unless/inti-seneschal-of-the-sun-discard
 payunless pay-unless/invisible-woman-pump
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
@@ -1487,6 +1492,7 @@ run prompt-run/general-traag-sacrifice
 run prompt-run/genesis-device-sacrifice
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
+run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
@@ -2152,6 +2158,7 @@ tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
+tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice

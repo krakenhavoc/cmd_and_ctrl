@@ -112,12 +112,19 @@ var bisonWhistleTakeCreature = MayYes("avatar-b30/bison-whistle-take-creature", 
 	return ctx.Game.BounceToHandForEffect(carryAt(r, 0))
 })
 
-var bisonWhistleToGraveyard = MayYes("avatar-b30/bison-whistle-to-graveyard", func(ctx *Context, r game.ConfirmAnswer) error {
+var bisonWhistleToGraveyard = MayYes("avatar-b30/bison-whistle-to-graveyard", putCarriedLibraryCardIntoGraveyard)
+
+// putCarriedLibraryCardIntoGraveyard is "you may put it into your
+// graveyard" about one looked-at or revealed library card, the answer's
+// first carry: a plain move (not a mill), made only while the card is
+// still in the library. Shared by Bison Whistle and Kellan, Daring
+// Traveler.
+func putCarriedLibraryCardIntoGraveyard(ctx *Context, r game.ConfirmAnswer) error {
 	if !bisonWhistleStillInLibrary(ctx.Game, carryAt(r, 0)) {
 		return nil
 	}
 	return ctx.Game.PutIntoGraveyardForEffect(carryAt(r, 0))
-})
+}
 
 // bisonWhistleStillInLibrary is the CR 608.2b check on the looked-at
 // card: one that has left the library in the meantime is a new object.

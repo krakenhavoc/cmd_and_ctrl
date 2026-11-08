@@ -1958,3 +1958,32 @@ func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.Trigge
 		Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
 	)
 }
+
+// opponentsArtifactsEnterTapped is "Artifacts your opponents control enter
+// tapped" (Manglehorn, Dauntless Dismantler): Kismet's CR 614 replacement
+// narrowed to artifacts entering under another player's control. A token
+// runs the same entry pipeline, so an opponent's Treasure enters tapped
+// too.
+func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventZoneMove},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
+				return false
+			}
+			entering, ok := g.LookupCardForEffect(ev.CardID)
+			if !ok || entering.Controller == src.Controller {
+				return false
+			}
+			return entering.IsArtifact()
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.EntersTapped = true
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: label,
+	}
+}
