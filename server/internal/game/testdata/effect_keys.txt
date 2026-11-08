@@ -1544,6 +1544,7 @@ run prompt-run/tomb-of-annihilation-sandfall-sacrificed
 run prompt-run/tovolar-dire-overlord-transform
 run prompt-run/tragic-arrogance-sacrifice-the-rest
 run prompt-run/unstable-glyphbridge-destroy
+run prompt-run/vampire-gourmand-draw-unblockable
 run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
@@ -2147,6 +2148,7 @@ tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
