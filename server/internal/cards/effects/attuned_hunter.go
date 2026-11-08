@@ -24,10 +24,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(OnAny(leftGraveyardEvents,
-				func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return IsYourTurn(g, source.Controller) && whenCardsLeaveYourGraveyard(ev, source, lki, g)
-				},
+			OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyardDuringYourTurn,
 				"Attuned Hunter — put a +1/+1 counter on this creature",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
 		},

@@ -1266,6 +1266,7 @@ payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
 payunless pay-unless/contract-hero-pump
+payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
