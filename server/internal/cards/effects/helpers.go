@@ -1867,3 +1867,20 @@ func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
 		N:       item.Trigger.Event.Amount,
 	}.Apply(NewContext(g, item))
 }
+
+// caveCount is "the number of Caves you control plus the number of Cave
+// cards in your graveyard" (The Lost Caverns of Ixalan: Sinuous
+// Benthisaur, Calamitous Cave-In), read when it is asked. A permanent
+// whose instance is `except` is left out, for Cavernous Maw's "other
+// Caves"; uuid.Nil leaves out nothing. Cave is a land type, read through
+// the effective view on the battlefield (so a type grant counts) and the
+// printed type line in the graveyard.
+func caveCount(g *game.Game, player, except uuid.UUID) int {
+	n := b19ZombieCardsInGraveyard(g, player, "Cave")
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player && c.InstanceID != except && c.IsLand() && c.HasSubtype("Cave") {
+			n++
+		}
+	}
+	return n
+}

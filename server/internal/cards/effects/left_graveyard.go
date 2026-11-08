@@ -107,3 +107,11 @@ func wasCardInAGraveyard(c game.Card, is func(game.Card) bool) bool {
 func whenCardsLeaveYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return cardLeftYourGraveyard(ev, source, g)
 }
+
+// whenCardsLeaveYourGraveyardDuringYourTurn is whenCardsLeaveYourGraveyard
+// with "during your turn" as part of the trigger condition, so cards that
+// leave on an opponent's turn do nothing (Attuned Hunter, Kheru
+// Goldkeeper, Kishla Skimmer).
+func whenCardsLeaveYourGraveyardDuringYourTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return IsYourTurn(g, source.Controller) && whenCardsLeaveYourGraveyard(ev, source, lki, g)
+}
