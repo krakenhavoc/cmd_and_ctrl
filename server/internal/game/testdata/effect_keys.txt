@@ -1149,6 +1149,7 @@ option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
+option option-pick/ezrim-agency-chief-keyword
 option option-pick/face-down-piles-curator-of-destinies
 option option-pick/face-down-piles-riddles-in-the-dark
 option option-pick/fact-or-fiction-splitter
