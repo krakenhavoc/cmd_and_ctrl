@@ -9,6 +9,7 @@ Along the Crooked Way | amass | on a triggered row that is not the card's enters
 Anchor to Reality | scry | the text makes it conditional or optional
 Aqueous Form | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Aragorn, the Uniter | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Bitter Chill | scry | the text makes it conditional or optional
 Boromir, Warden of the Tower | ring | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Bothersome Noisemaker | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Cait Sith, Fortune Teller | scry | on a triggered row that is not the card's enters effect, which nothing prices

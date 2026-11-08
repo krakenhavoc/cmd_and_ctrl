@@ -1958,3 +1958,22 @@ func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.Trigge
 		Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
 	)
 }
+
+// gainThreeLifeAndDrawAbility is "{2}, {T}, Sacrifice this artifact: You
+// gain 3 life and draw a card", printed under `label`: Bagel and Schmear's
+// Nosh, and Candy Trail's merged Food and Clue sacrifice. It answers
+// nothing on its own (ADR 0142's AnswerValue).
+func gainThreeLifeAndDrawAbility(label string) ActivatedAbility {
+	return ActivatedAbility{
+		Label:   label,
+		Purpose: game.Purpose{Answers: game.AnswerValue},
+		Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			ctx := NewContext(g, item)
+			if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(ctx); err != nil {
+				return err
+			}
+			return DrawCards{N: 1}.Apply(ctx)
+		},
+	}
+}

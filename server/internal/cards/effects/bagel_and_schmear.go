@@ -33,18 +33,7 @@ func init() {
 					return DrawCards{N: 1}.Apply(NewContext(g, item))
 				},
 			},
-			{
-				Label:   "Nosh — {2}, {T}, Sacrifice this artifact: You gain 3 life and draw a card.",
-				Purpose: game.Purpose{Answers: game.AnswerValue},
-				Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{N: 1}.Apply(ctx)
-				},
-			},
+			gainThreeLifeAndDrawAbility("Nosh — {2}, {T}, Sacrifice this artifact: You gain 3 life and draw a card."),
 		},
 	})
 }

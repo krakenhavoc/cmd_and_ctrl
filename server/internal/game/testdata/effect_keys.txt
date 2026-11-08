@@ -1267,6 +1267,7 @@ payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
+payunless pay-unless/bitter-chill-scry-then-draw
 payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
@@ -1905,6 +1906,7 @@ tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
 tail fell-gravship/after-mill
+tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
@@ -2015,6 +2017,7 @@ tail many-partings/create-food
 tail mari-the-killing-quill/after-exile
 tail mass/bane-of-progress-counters
 tail mass/blood-money-treasures
+tail mass/break-the-spell-draw
 tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
