@@ -191,6 +191,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Warrior with vigilance":                                 {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"1/1 white Zombie":                                                 {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"2/1 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"reach"}},
+	"2/1 green Varmint":                                                {Name: "Varmint", TypeLine: "Token Creature — Varmint", Power: 2, Toughness: 1, Colors: []string{"G"}}, // Rise of the Varmints (#4468)
 	"2/1 black and green Spider with menace and reach":                 {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B", "G"}, Keywords: []string{"menace", "reach"}},
 	"1/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 1, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"1/2 blue Moonfolk with flying":                                    {Name: "Moonfolk", TypeLine: "Token Creature — Moonfolk", Power: 1, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
