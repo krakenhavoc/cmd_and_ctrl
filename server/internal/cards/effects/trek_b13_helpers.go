@@ -51,3 +51,14 @@ func ReturnTheModesTargetToBattlefield(_ *game.StackItem, ctx *Context, occ int)
 	}
 	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
 }
+
+// ReturnTheModesTargetToBattlefieldTapped is a modal bullet's "Return
+// target ... card from your graveyard to the battlefield tapped" (Phoenix
+// Down, Deadly Plot): the occurrence's still-legal target returns tapped.
+func ReturnTheModesTargetToBattlefieldTapped(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
+}
