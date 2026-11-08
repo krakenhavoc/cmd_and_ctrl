@@ -192,6 +192,7 @@ body kravens-last-hunt/damage
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
+body lithobraking/damage-each-creature
 body lockjaw/unblockable
 body ltb/sacrifice-the-source
 body madness/graveyard-if-not-cast
@@ -1329,6 +1330,7 @@ payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jolted-awake-return
+payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
 payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/leyline-tyrant-damage
@@ -1503,8 +1505,10 @@ run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/killmonger-sacrificed
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
+run prompt-run/larval-scoutlander-search
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/liliana-dreadhorde-general-keep
+run prompt-run/lithobraking-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
 run prompt-run/manifest-from-hand
@@ -1683,6 +1687,7 @@ tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
+tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
 tail attacking-tokens/mobilize-sacrifice-the-warriors
@@ -2162,6 +2167,8 @@ tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
+tail sacrificed-one/prompt-run/larval-scoutlander-search
+tail sacrificed-one/prompt-run/lithobraking-sacrifice
 tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/namazu-trader-surveil

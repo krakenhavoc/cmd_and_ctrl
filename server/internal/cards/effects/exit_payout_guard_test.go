@@ -138,6 +138,11 @@ var exitPayoutAllowlist = map[string]string{
 		"indestructible or regenerated target still makes the Lander. The value is read before " +
 		"the destroy because that is the last moment the permanent is guaranteed findable " +
 		"(CR 608.2h).",
+	"fallers_faithful.go:52": "Faller's Faithful's `undamaged` is Tainted Treats' gate (#4461): \"If " +
+		"that creature wasn't dealt damage this turn, its controller draws two cards\" has no \"if you " +
+		"do\", so an indestructible or regenerated target still draws its controller two. The damage " +
+		"record and the controller are read before the destroy because that is the last moment the " +
+		"permanent is guaranteed findable (CR 608.2h).",
 	"sokkas_haiku.go:42": "Sokka's Haiku's `t` is its second target, the land of \"Untap target " +
 		"land\": a separate printed sentence that reads the target's legality (CR 608.2b), never the " +
 		"mill's outcome, so a replaced or redirected mill cannot change whether the land untaps.",
